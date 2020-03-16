@@ -66,7 +66,7 @@ public abstract class DebugExprDereferenceNode extends LLVMExpressionNode implem
             Object member = ma.getMember();
             return getMemberAndType(member).getRight();
         }
-        throw DebugExprException.create(this, "member " + pointerNode + " is not accessible");
+        throw DebugExprException.create(this, "member %s is not accessible", pointerNode);
     }
 
     @TruffleBoundary
@@ -107,7 +107,7 @@ public abstract class DebugExprDereferenceNode extends LLVMExpressionNode implem
             Object member = ma.getMember();
             return getMemberAndType(member).getLeft();
         }
-        throw DebugExprException.create(this, "member " + pointerNode + " is not accessible");
+        throw DebugExprException.create(this, "member %s is not accessible", pointerNode);
     }
 
 }

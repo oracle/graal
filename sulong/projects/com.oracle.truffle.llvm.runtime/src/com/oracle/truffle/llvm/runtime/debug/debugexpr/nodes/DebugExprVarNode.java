@@ -71,7 +71,7 @@ public abstract class DebugExprVarNode extends LLVMExpressionNode implements Mem
             } catch (ClassCastException e) {
                 // member has no value, e.g. if the compiler has eliminated unused symbols
                 // OR metaObj is no primitive type
-                throw DebugExprException.create(this, "\"" + name + "\" cannot be casted to a LLVMDebuggerValue");
+                throw DebugExprException.create(this, "\"%s\" cannot be casted to a LLVMDebuggerValue", name);
             } catch (UnsupportedMessageException e) {
                 // should only happen if hasMembers == false
                 throw DebugExprException.symbolNotFound(this, name, null);

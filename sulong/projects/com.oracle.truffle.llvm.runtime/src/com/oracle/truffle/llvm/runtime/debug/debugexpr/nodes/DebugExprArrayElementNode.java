@@ -78,10 +78,10 @@ public abstract class DebugExprArrayElementNode extends LLVMExpressionNode {
                 }
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw DebugExprException.create(this, "Array access of " + baseMember + " not possible");
+                throw DebugExprException.create(this, "Array access of %s not possible", baseMember);
             } catch (InvalidArrayIndexException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw DebugExprException.create(this, "Invalid array index: " + e.getInvalidIndex());
+                throw DebugExprException.create(this, "Invalid array index: %d", e.getInvalidIndex());
             } catch (UnknownIdentifierException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw DebugExprException.symbolNotFound(this, e.getUnknownIdentifier(), baseMember);
