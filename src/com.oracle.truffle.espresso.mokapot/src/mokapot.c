@@ -80,6 +80,7 @@ MokapotEnv* getEnv() {
 
 void disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv* moka_env) {
   struct MokapotNativeInterface_ *functions = (struct MokapotNativeInterface_*) *moka_env;
+  struct JNIInvokeInterface_ *java_vm_functions = (struct JNIInvokeInterface_ *)(*(functions->vm));
 
   #define DISPOSE__(name) \
        (*truffle_env)->releaseClosureRef(truffle_env, functions->name); \
@@ -88,7 +89,6 @@ void disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv* moka_env) {
   VM_METHOD_LIST(DISPOSE__)
   #undef DISPOSE__
 
-  struct JNIInvokeInterface_ *java_vm_functions = (struct JNIInvokeInterface_ *)(*(functions->vm));
   #define DISPOSE_INVOCATION_API__(name) \
       (*truffle_env)->releaseClosureRef(truffle_env, java_vm_functions->name); \
       java_vm_functions->name = NULL;
@@ -150,7 +150,7 @@ jlong JVM_NanoTime(JNIEnv *env, jclass ignored) {
 
 void JVM_ArrayCopy(JNIEnv *env, jclass ignored, jobject src, jint src_pos, jobject dst, jint dst_pos, jint length) {
   IMPLEMENTED(JVM_ArrayCopy);
-  return (*getEnv())->JVM_ArrayCopy(env, ignored, src, src_pos, dst, dst_pos, length);
+  (*getEnv())->JVM_ArrayCopy(env, ignored, src, src_pos, dst, dst_pos, length);
 }
 
 jobject JVM_InitProperties(JNIEnv *env, jobject p) {
@@ -446,8 +446,8 @@ jobject JVM_GetArrayElement(JNIEnv *env, jobject arr, jint index) {
 }
 
 jvalue JVM_GetPrimitiveArrayElement(JNIEnv *env, jobject arr, jint index, jint wCode) {
-  UNIMPLEMENTED(JVM_GetPrimitiveArrayElement);
-  jvalue result = {(jlong) 0};
+  jvalue result = {0};
+  UNIMPLEMENTED(JVM_GetPrimitiveArrayElement);  
   return result;
 }
 
@@ -956,8 +956,9 @@ char *JVM_NativePath(char *pathname) {
 }
 
 jint JVM_Open(const char *fname, jint flags, jint mode) {
+  int result = 0;
   NATIVE(JVM_Open);
-  int result = os_open(fname, flags, mode);
+  result = os_open(fname, flags, mode);
   if (result >= 0) {
     return result;
   } else {
@@ -1059,19 +1060,23 @@ jint JVM_Bind(jint fd, struct sockaddr *him, jint len) {
 }
 
 jint JVM_Accept(jint fd, struct sockaddr *him, jint *len) {
+  socklen_t socklen;
+  jint result;
   NATIVE(JVM_Accept);
-  socklen_t socklen = (socklen_t)(*len);
+  socklen = (socklen_t)(*len);
   // Linux doc says this can't return EINTR, unlike accept() on Solaris.
   // But see attachListener_linux.cpp, LinuxAttachListener::dequeue().
-  jint result = (int)os_accept(fd, him, &socklen);
+  result = (int)os_accept(fd, him, &socklen);
   *len = (jint)socklen;
   return result;
 }
 
 jint JVM_RecvFrom(jint fd, char *buf, int nBytes, int flags, struct sockaddr *from, int *fromlen) {
+  socklen_t socklen;
+  jint result;
   NATIVE(JVM_RecvFrom);
-  socklen_t socklen = (socklen_t)(*fromlen);
-  jint result = os_recvfrom(fd, buf, (size_t)nBytes, (uint)flags, from, &socklen);
+  socklen = (socklen_t)(*fromlen);
+  result = os_recvfrom(fd, buf, (size_t)nBytes, (uint)flags, from, &socklen);
   *fromlen = (int)socklen;
   return result;
 }
@@ -1087,17 +1092,21 @@ jint JVM_SocketAvailable(jint fd, jint *result) {
 }
 
 jint JVM_GetSockName(jint fd, struct sockaddr *him, int *len) {
+  socklen_t socklen;
+  jint result;
   NATIVE(JVM_GetSockName);
-  socklen_t socklen = (socklen_t)(*len);
-  jint result = os_get_sock_name(fd, him, &socklen);
+  socklen = (socklen_t)(*len);
+  result = os_get_sock_name(fd, him, &socklen);
   *len = (int)socklen;
   return result;
 }
 
 jint JVM_GetSockOpt(jint fd, int level, int optname, char *optval, int *optlen) {
+  socklen_t socklen;
+  jint result;
   NATIVE(JVM_GetSockOpt);
-  socklen_t socklen = (socklen_t)(*optlen);
-  jint result = os_get_sock_opt(fd, level, optname, optval, &socklen);
+  socklen = (socklen_t)(*optlen);
+  result = os_get_sock_opt(fd, level, optname, optval, &socklen);
   *optlen = (int)socklen;
   return result;
 }
@@ -1120,31 +1129,39 @@ static JNIEnv* getGuestJNI() {
 }
 
 void *JVM_RawMonitorCreate(void) {
+  JNIEnv* jniEnv;
+  jclass java_lang_Object;
+  jmethodID constructor;
+  jobject lock;
   NATIVE(JVM_RawMonitorCreate);
   // TODO(peterssen): Cache class and method.
-  JNIEnv* jniEnv = getGuestJNI();
-  jclass java_lang_Object = (*jniEnv)->FindClass(jniEnv, "java/lang/Object");
-  jmethodID constructor = (*jniEnv)->GetMethodID(jniEnv, java_lang_Object, "<init>", "()V");
-  jobject lock = (*jniEnv)->NewObject(jniEnv, java_lang_Object, constructor);
+  jniEnv = getGuestJNI();
+  java_lang_Object = (*jniEnv)->FindClass(jniEnv, "java/lang/Object");
+  constructor = (*jniEnv)->GetMethodID(jniEnv, java_lang_Object, "<init>", "()V");
+  lock = (*jniEnv)->NewObject(jniEnv, java_lang_Object, constructor);
   return (void*) (*jniEnv)->NewGlobalRef(jniEnv, lock);
 }
 
 void JVM_RawMonitorDestroy(void *mon) {
+  jobject lock;
+  JNIEnv* jniEnv;
   NATIVE(JVM_RawMonitorDestroy);
-  jobject lock = (jobject) mon;
-  JNIEnv* jniEnv = getGuestJNI();
+  lock = (jobject) mon;
+  jniEnv = getGuestJNI();
   (*jniEnv)->DeleteGlobalRef(jniEnv, lock);
 }
 
 jint JVM_RawMonitorEnter(void *mon) {
+  JNIEnv* jniEnv;
   NATIVE(JVM_RawMonitorEnter);
-  JNIEnv* jniEnv = getGuestJNI();
+  jniEnv = getGuestJNI();
   return (*jniEnv)->MonitorEnter(jniEnv, (jobject) mon);
 }
 
 void JVM_RawMonitorExit(void *mon) {
+  JNIEnv* jniEnv;
   NATIVE(JVM_RawMonitorExit);
-  JNIEnv* jniEnv = getGuestJNI();
+  jniEnv = getGuestJNI();
   (*jniEnv)->MonitorExit(jniEnv, (jobject) mon);
 }
 
@@ -1256,9 +1273,9 @@ int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
 }
 
 int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
-  NATIVE(jio_snprintf);
   int len;
   va_list args;
+  NATIVE(jio_snprintf);  
   va_start(args, fmt);
   len = jio_vsnprintf(str, count, fmt, args);
   va_end(args);
@@ -1266,9 +1283,9 @@ int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
 }
 
 int jio_fprintf(FILE *file, const char *fmt, ...) {
-  NATIVE(jio_fprintf);
   int len;
   va_list args;
+  NATIVE(jio_fprintf);  
   va_start(args, fmt);
   len = jio_vfprintf(file, fmt, args);
   va_end(args);

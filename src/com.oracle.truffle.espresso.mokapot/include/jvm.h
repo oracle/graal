@@ -21,10 +21,6 @@
  * questions.
  *
  */
-
-#ifndef SHARE_VM_PRIMS_JVM_H
-#define SHARE_VM_PRIMS_JVM_H
-
 #ifndef _JAVASOFT_JVM_H_
 #define _JAVASOFT_JVM_H_
 
@@ -1685,6 +1681,3 @@ typedef struct JDK1_1InitArgs {
 #endif /* __cplusplus */
 
 #endif /* !_JAVASOFT_JVM_H_ */
-
-#endif // SHARE_VM_PRIMS_JVM_H
- 

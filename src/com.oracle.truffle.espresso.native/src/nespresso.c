@@ -24,12 +24,25 @@
 #include <trufflenfi.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
+#if defined(_WIN32)
+#define va_copy(dest, src) (dest = src)
+// Sulong is not yet supported on Windows.
+void *truffle_deref_handle_for_managed(void *managed) {
+  return NULL;
+}
+void *truffle_release_handle(void *handle) {
+  return NULL;
+}
+#else
 // Sulong intrinsics.
 extern void *truffle_deref_handle_for_managed(void *managed);
 extern void *truffle_release_handle(void *handle);
+#endif
 
 #define EXPAND(...) __VA_ARGS__
+#define EXPAND2(...) EXPAND(EXPAND(__VA_ARGS__))
 
 #define JNI_FUNCTION_LIST(V) \
 V(GetVersion) \
@@ -182,16 +195,27 @@ V(NewDirectByteBuffer)
   V(void, Void)
 
 
-#define VAR_jobject(x) jobject x =
-#define VAR_jboolean(x) jboolean x =
-#define VAR_jchar(x) jchar x =
-#define VAR_jbyte(x) jbyte x =
-#define VAR_jshort(x) jshort x =
-#define VAR_jint(x) jint x =
-#define VAR_jfloat(x) jfloat x =
-#define VAR_jdouble(x) jdouble x =
-#define VAR_jlong(x) jlong x =
+#define VAR_jobject(x) x =
+#define VAR_jboolean(x) x =
+#define VAR_jchar(x) x =
+#define VAR_jbyte(x) x =
+#define VAR_jshort(x) x =
+#define VAR_jint(x) x =
+#define VAR_jfloat(x) x =
+#define VAR_jdouble(x) x =
+#define VAR_jlong(x) x =
 #define VAR_void(x)
+
+#define DECL_jobject(x) jobject x;
+#define DECL_jboolean(x) jboolean x;
+#define DECL_jchar(x) jchar x;
+#define DECL_jbyte(x) jbyte x;
+#define DECL_jshort(x) jshort x;
+#define DECL_jint(x) jint x;
+#define DECL_jfloat(x) jfloat x;
+#define DECL_jdouble(x) jdouble x;
+#define DECL_jlong(x) jlong x;
+#define DECL_void(x)
 
 #define RETURN_jobject(x) return x
 #define RETURN_jboolean(x) return x
@@ -207,6 +231,7 @@ V(NewDirectByteBuffer)
 #define CONCAT_(X, Y) X ## Y
 #define RETURN(returnType) CONCAT_(RETURN_, returnType)
 #define VAR(returnType) CONCAT_(VAR_, returnType)
+#define DECL(returnType) CONCAT_(DECL_, returnType)
 
 struct Varargs {
     const struct VarargsInterface* functions;
@@ -406,7 +431,8 @@ struct NespressoEnv {
 
 #define CALL_METHOD_BRIDGE(returnType, Type) \
 returnType Call##Type##MethodV(JNIEnv *env, jobject obj, jmethodID methodID, va_list args) { \
-  struct VarargsV varargs = { .base = { .functions = &valist_functions } }; \
+  DECL(returnType)(result) \
+  struct VarargsV varargs = { /* .base = */ { /* .functions = */ &valist_functions } }; \
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
   va_copy(varargs.args, args); \
   VAR(returnType)(result) nespresso_env->Call##Type##MethodVarargs(env, obj, methodID, &varargs); \
@@ -414,12 +440,14 @@ returnType Call##Type##MethodV(JNIEnv *env, jobject obj, jmethodID methodID, va_
   RETURN(returnType)(result); \
 } \
 returnType Call##Type##MethodA(JNIEnv *env, jobject obj, jmethodID methodID, const jvalue *args) { \
-  struct VarargsA varargs = { .base = { .functions = &jvalues_functions }, .args = (void*) args}; \
+  DECL(returnType)(result) \
+  struct VarargsA varargs = { /* .base = */ { /* .functions = */ &jvalues_functions }, /* .args = */ (void*) args}; \
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
   VAR(returnType)(result) nespresso_env->Call##Type##MethodVarargs(env, obj, methodID, &varargs); \
   RETURN(returnType)(result); \
 } \
 returnType Call##Type##Method(JNIEnv *env, jobject obj, jmethodID methodID, ...) { \
+  DECL(returnType)(result) \
   va_list args; \
   va_start(args, methodID); \
   VAR(returnType)(result) Call##Type##MethodV(env, obj, methodID, args); \
@@ -429,7 +457,8 @@ returnType Call##Type##Method(JNIEnv *env, jobject obj, jmethodID methodID, ...)
 
 #define CALL_STATIC_METHOD_BRIDGE(returnType, Type) \
 returnType CallStatic##Type##MethodV(JNIEnv *env, jclass clazz, jmethodID methodID, va_list args) { \
-  struct VarargsV varargs = { .base = { .functions = &valist_functions } }; \
+  DECL(returnType)(result) \
+  struct VarargsV varargs = { /* .base = */ { /* .functions = */ &valist_functions } }; \
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
   va_copy(varargs.args, args); \
   VAR(returnType)(result) nespresso_env->CallStatic##Type##MethodVarargs(env, clazz, methodID, &varargs); \
@@ -437,12 +466,14 @@ returnType CallStatic##Type##MethodV(JNIEnv *env, jclass clazz, jmethodID method
   RETURN(returnType)(result); \
 } \
 returnType CallStatic##Type##MethodA(JNIEnv *env, jclass clazz, jmethodID methodID, const jvalue *args) { \
-  struct VarargsA varargs = { .base = { .functions = &jvalues_functions } , .args = (void*) args}; \
+  DECL(returnType)(result) \
+  struct VarargsA varargs = { /* .base = */ { /* .functions = */ &jvalues_functions } , /* .args = */ (void*) args}; \
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
   VAR(returnType)(result) nespresso_env->CallStatic##Type##MethodVarargs(env, clazz, methodID, &varargs); \
   RETURN(returnType)(result); \
 } \
 returnType CallStatic##Type##Method(JNIEnv *env, jclass clazz, jmethodID methodID, ...) { \
+  DECL(returnType)(result) \
   va_list args; \
   va_start(args, methodID); \
   VAR(returnType)(result) CallStatic##Type##MethodV(env, clazz, methodID, args); \
@@ -452,19 +483,22 @@ returnType CallStatic##Type##Method(JNIEnv *env, jclass clazz, jmethodID methodI
 
 #define CALL_NON_VIRTUAL_METHOD_BRIDGE(returnType, Type) \
 returnType CallNonvirtual##Type##MethodV(JNIEnv *env, jobject obj, jclass clazz, jmethodID methodID, va_list args) { \
-  struct VarargsV varargs = { .base = { .functions = &valist_functions } }; \
-  va_copy(varargs.args, args); \
+  DECL(returnType)(result) \
+  struct VarargsV varargs = { /* .base = */ { /* .functions = */ &valist_functions } }; \
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
+  va_copy(varargs.args, args); \
   VAR(returnType)(result) nespresso_env->CallNonvirtual##Type##MethodVarargs(env, obj, clazz, methodID, &varargs); \
   RETURN(returnType)(result); \
 } \
 returnType CallNonvirtual##Type##MethodA(JNIEnv *env, jobject obj, jclass clazz, jmethodID methodID, const jvalue *args) { \
-  struct VarargsA varargs = { .base = { .functions = &jvalues_functions }, .args = (void*) args}; \
+  DECL(returnType)(result) \
+  struct VarargsA varargs = { /* .base = */ { /* .functions = */ &jvalues_functions }, /* .args = */ (void*) args}; \
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
   VAR(returnType)(result) nespresso_env->CallNonvirtual##Type##MethodVarargs(env, obj, clazz, methodID, &varargs); \
   RETURN(returnType)(result); \
 } \
 returnType CallNonvirtual##Type##Method(JNIEnv *env, jobject obj, jclass clazz, jmethodID methodID, ...) { \
+  DECL(returnType)(result) \
   va_list args; \
   va_start(args, methodID); \
   VAR(returnType)(result) CallNonvirtual##Type##MethodV(env, obj, clazz, methodID, args); \
@@ -495,23 +529,23 @@ TYPE_LIST2(CALL_NON_VIRTUAL_METHOD_BRIDGE)
 
 // TODO(peterssen): RegisterNative is not a varargs.
 #define VARARGS_METHOD_LIST(V) \
-  EXPAND(TYPE_LIST2(V MAKE_METHOD_VARARGS)) \
-  EXPAND(TYPE_LIST2(V MAKE_STATIC_METHOD_VARARGS)) \
-  EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD_VARARGS)) \
+  EXPAND2(TYPE_LIST2(V MAKE_METHOD_VARARGS)) \
+  EXPAND2(TYPE_LIST2(V MAKE_STATIC_METHOD_VARARGS)) \
+  EXPAND2(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD_VARARGS)) \
   V(NewObjectVarargs) \
   V(RegisterNative)
 
 
 #define BRIDGE_METHOD_LIST(V) \
-  EXPAND(TYPE_LIST2(V MAKE_METHOD)) \
-  EXPAND(TYPE_LIST2(V MAKE_METHOD_A)) \
-  EXPAND(TYPE_LIST2(V MAKE_METHOD_V)) \
-  EXPAND(TYPE_LIST2(V MAKE_STATIC_METHOD)) \
-  EXPAND(TYPE_LIST2(V MAKE_STATIC_METHOD_A)) \
-  EXPAND(TYPE_LIST2(V MAKE_STATIC_METHOD_V)) \
-  EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD)) \
-  EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD_A)) \
-  EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD_V)) \
+  EXPAND2(TYPE_LIST2(V MAKE_METHOD)) \
+  EXPAND2(TYPE_LIST2(V MAKE_METHOD_A)) \
+  EXPAND2(TYPE_LIST2(V MAKE_METHOD_V)) \
+  EXPAND2(TYPE_LIST2(V MAKE_STATIC_METHOD)) \
+  EXPAND2(TYPE_LIST2(V MAKE_STATIC_METHOD_A)) \
+  EXPAND2(TYPE_LIST2(V MAKE_STATIC_METHOD_V)) \
+  EXPAND2(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD)) \
+  EXPAND2(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD_A)) \
+  EXPAND2(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD_V)) \
   V(NewObject) \
   V(NewObjectA) \
   V(NewObjectV) \
@@ -519,33 +553,35 @@ TYPE_LIST2(CALL_NON_VIRTUAL_METHOD_BRIDGE)
 
 
 jobject NewObjectV(JNIEnv *env, jclass clazz, jmethodID methodID, va_list args) {
-  struct VarargsV varargs = { .base = { .functions = &valist_functions } };
-  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
+  jobject result;
+  struct VarargsV varargs = { /* .base = */ { /* .functions = */ &valist_functions } };
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;  
   va_copy(varargs.args, args);
-  jobject result = nespresso_env->NewObjectVarargs(env, clazz, methodID, &varargs);
+  result = nespresso_env->NewObjectVarargs(env, clazz, methodID, &varargs);
   va_end(varargs.args);
   return result;
 }
 
 jobject NewObjectA(JNIEnv *env, jclass clazz, jmethodID methodID, const jvalue *args) {
-  struct VarargsA varargs = { .base = { .functions = &jvalues_functions }, .args = (jvalue*) args };
+  struct VarargsA varargs = { /* .base = */ { /* .functions = */ &jvalues_functions }, /* .args = */ (jvalue*) args };
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
   return nespresso_env->NewObjectVarargs(env, clazz, methodID, &varargs);
 }
 
 jobject NewObject(JNIEnv *env, jclass clazz, jmethodID methodID, ...) {
+  jobject result;
   va_list args;
   va_start(args, methodID);
-  jobject result = (*env)->NewObjectV(env, clazz, methodID, args);
+  result = (*env)->NewObjectV(env, clazz, methodID, args);
   va_end(args);
   return result;
 }
 
 jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods) {
-
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
   jint ret = JNI_OK;
-  for (jint i = 0; i < nMethods; ++i) {
+  jint i;
+  for (i = 0; i < nMethods; ++i) {
     ret = nespresso_env->RegisterNative(env, clazz, methods[i].name, methods[i].signature, methods[i].fnPtr);
     if (ret != JNI_OK) {
         break;
@@ -574,7 +610,8 @@ JNIEnv* initializeNativeContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(
   struct NespressoEnv* nespresso_env = (struct NespressoEnv*) malloc(sizeof(*nespresso_env));
 
   int fnCount = sizeof(*jni_impl) / sizeof(void*);
-  for (int i = 0; i < fnCount; ++i) {
+  int i;
+  for (i = 0; i < fnCount; ++i) {
     ((void**)jni_impl)[i] = &unset_function_error;
   }
 

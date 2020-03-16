@@ -28,6 +28,7 @@
 #include <trufflenfi.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <errno.h>
 
 struct MokapotNativeInterface_;
 struct MokapotEnv_;

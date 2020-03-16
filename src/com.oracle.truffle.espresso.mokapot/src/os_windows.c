@@ -24,10 +24,14 @@
 
 #if defined(_WIN32)
 
+#pragma comment(lib, "Ws2_32.lib")
+
 #include "os.h"
 #include <windows.h>
+#include <winsock.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <assert.h>
 
 #include <malloc.h>
 #include <errno.h>
@@ -59,9 +63,9 @@ char * os_native_path(char *path) {
                                         letter */
 
   /* Assumption: '/', '\\', ':', and drive letters are never lead bytes */
-  assert(((!::IsDBCSLeadByte('/'))
-    && (!::IsDBCSLeadByte('\\'))
-    && (!::IsDBCSLeadByte(':'))),
+  assert(((!IsDBCSLeadByte('/'))
+    && (!IsDBCSLeadByte('\\'))
+    && (!IsDBCSLeadByte(':'))),
     "Illegal lead byte");
 
   /* Check for leading separators */
@@ -70,7 +74,7 @@ char * os_native_path(char *path) {
     src++;
   }
 
-  if (::isalpha(*src) && !::IsDBCSLeadByte(*src) && src[1] == ':') {
+  if (isalpha(*src) && !IsDBCSLeadByte(*src) && src[1] == ':') {
     /* Remove leading separators if followed by drive specifier.  This
       hack is necessary to support file URLs containing drive
       specifiers (e.g., "file://c:/path").  As a side effect,
@@ -123,7 +127,7 @@ char * os_native_path(char *path) {
       }
       end = dst;
     } else {
-      if (::IsDBCSLeadByte(*src)) { /* Copy a double-byte character */
+      if (IsDBCSLeadByte(*src)) { /* Copy a double-byte character */
         *dst++ = *src++;
         if (*src) *dst++ = *src++;
         end = dst;
@@ -156,27 +160,82 @@ int os_open(const char *path, int oflag, int mode) {
           return -1;
   }
   os_native_path(strcpy(pathbuf, path));
-  return ::open(pathbuf, oflag | O_BINARY | O_NOINHERIT, mode);
+  return open(pathbuf, oflag | O_BINARY | O_NOINHERIT, mode);
 }
 
 int os_close(int fd) {
     return close(fd);
 }
 
-int os_vsnprintf(char* buf, size_t len, const char* fmt, va_list args) ATTRIBUTE_PRINTF(3, 0);
-int os_snprintf(char* buf, size_t len, const char* fmt, ...) ATTRIBUTE_PRINTF(3, 4);
+int os_vsnprintf(char* buf, size_t len, const char* fmt, va_list args) {
+#if _MSC_VER >= 1900
+  // Starting with Visual Studio 2015, vsnprint is C99 compliant.
+  int result = vsnprintf(buf, len, fmt, args);
+  // If an encoding error occurred (result < 0) then it's not clear
+  // whether the buffer is NUL terminated, so ensure it is.
+  if ((result < 0) && (len > 0)) {
+    buf[len - 1] = '\0';
+  }
+  return result;
+#else
+  // Before Visual Studio 2015, vsnprintf is not C99 compliant, so use
+  // _vsnprintf, whose behavior seems to be *mostly* consistent across
+  // versions.  However, when len == 0, avoid _vsnprintf too, and just
+  // go straight to _vscprintf.  The output is going to be truncated in
+  // that case, except in the unusual case of empty output.  More
+  // importantly, the documentation for various versions of Visual Studio
+  // are inconsistent about the behavior of _vsnprintf when len == 0,
+  // including it possibly being an error.
+  int result = -1;
+  if (len > 0) {
+    result = _vsnprintf(buf, len, fmt, args);
+    // If output (including NUL terminator) is truncated, the buffer
+    // won't be NUL terminated.  Add the trailing NUL specified by C99.
+    if ((result < 0) || (result >= (int) len)) {
+      buf[len - 1] = '\0';
+    }
+  }
+  if (result < 0) {
+    result = _vscprintf(fmt, args);
+  }
+  return result;
+#endif // _MSC_VER dispatch
+}
 
 size_t os_lasterror(char *buf, size_t len) {
-  if (errno == 0)  return 0;
+  DWORD errval;
 
-  const char *s = strerror(errno);
-  size_t n = strlen(s);
-  if (n >= len) {
-    n = len - 1;
+  if ((errval = GetLastError()) != 0) {
+    // DOS error
+    size_t n = (size_t)FormatMessage(
+          FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS,
+          NULL,
+          errval,
+          0,
+          buf,
+          (DWORD)len,
+          NULL);
+    if (n > 3) {
+      // Drop final '.', CR, LF
+      if (buf[n - 1] == '\n') n--;
+      if (buf[n - 1] == '\r') n--;
+      if (buf[n - 1] == '.') n--;
+      buf[n] = '\0';
+    }
+    return n;
   }
-  strncpy(buf, s, n);
-  buf[n] = '\0';
-  return n;
+
+  if (errno != 0) {
+    // C runtime error that has no corresponding DOS error code
+    const char* s = strerror(errno);
+    size_t n = strlen(s);
+    if (n >= len) n = len - 1;
+    strncpy(buf, s, n);
+    buf[n] = '\0';
+    return n;
+  }
+
+  return 0;
 }
 
 int os_socket_close(int fd) {
@@ -211,8 +270,7 @@ int os_sendto(int fd, char* buf, size_t len, uint flags,
 }
 
 int os_recvfrom(int fd, char *buf, size_t nBytes, uint flags,
-                 sockaddr* from, socklen_t* fromlen) {
-
+                 struct sockaddr* from, socklen_t* fromlen) {
   return recvfrom(fd, buf, (int)nBytes, flags, from, fromlen);
 }
 

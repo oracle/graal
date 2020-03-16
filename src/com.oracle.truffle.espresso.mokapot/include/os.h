@@ -27,7 +27,6 @@
 
 #include <jni.h>
 #include <stdarg.h>
-#include <sys/socket.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -88,10 +87,5 @@ int os_get_sock_opt(int fd, int level, int optname,
 int os_set_sock_opt(int fd, int level, int optname,
                           const char* optval, socklen_t optlen);
 int os_get_host_name(char* name, int namelen);
-
-int JVM_handle_linux_signal(int sig,
-                          siginfo_t* info,
-                          void* ucVoid,
-                          int abort_if_unrecognized);
 
 #endif // OS_H
