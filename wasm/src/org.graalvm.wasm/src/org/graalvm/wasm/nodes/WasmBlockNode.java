@@ -967,9 +967,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case I64_LOAD32_S:
                 case I64_LOAD32_U: {
                     /* The memAlign hint is not currently used or taken into account. */
-                    byte memAlignConstantLength = codeEntry().byteConstant(byteConstantOffset);
-                    byteConstantOffset++;
-                    offset += memAlignConstantLength;
+                    if (isLeb128InPool(offset)) {
+                        offset += getByteConstant(byteConstantOffset);
+                        byteConstantOffset++;
+                    } else {
+                        offset += getLeb128Length(offset);
+                    }
 
                     // region Load LEB128 Unsigned32 -> memOffset
                     boolean inPool = isLeb128InPool(offset);
@@ -1078,9 +1081,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case I64_STORE_16:
                 case I64_STORE_32: {
                     /* The memAlign hint is not currently used or taken into account. */
-                    byte memAlignConstantLength = codeEntry().byteConstant(byteConstantOffset);
-                    byteConstantOffset++;
-                    offset += memAlignConstantLength;
+                    if (isLeb128InPool(offset)) {
+                        offset += getByteConstant(byteConstantOffset);
+                        byteConstantOffset++;
+                    } else {
+                        offset += getLeb128Length(offset);
+                    }
 
                     // region Load LEB128 Unsigned32 -> memOffset
                     boolean inPool = isLeb128InPool(offset);

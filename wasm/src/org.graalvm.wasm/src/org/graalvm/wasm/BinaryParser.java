@@ -619,7 +619,9 @@ public class BinaryParser extends BinaryStreamParser {
                     // We don't store the `align` literal, as our implementation does not make use
                     // of it, but we need to store it's byte length, so that we can skip it
                     // during execution.
-                    state.useByteConstant(getLeb128Length());
+                    if(storeLeb128InPool(data, offset)) {
+                        state.useByteConstant(getLeb128Length(data, offset));
+                    }
                     readUnsignedInt32(); // align
                     readUnsignedInt32(state); // load offset
                     Assert.assertIntGreater(state.stackSize(), 0, String.format("load instruction 0x%02X requires at least one element in the stack", opcode));
@@ -639,7 +641,9 @@ public class BinaryParser extends BinaryStreamParser {
                     // We don't store the `align` literal, as our implementation does not make use
                     // of it, but we need to store it's byte length, so that we can skip it
                     // during the execution.
-                    state.useByteConstant(getLeb128Length());
+                    if(storeLeb128InPool(data, offset)) {
+                        state.useByteConstant(getLeb128Length(data, offset));
+                    }
                     readUnsignedInt32(); // align
                     readUnsignedInt32(state); // store offset
                     Assert.assertIntGreater(state.stackSize(), 1, String.format("store instruction 0x%02X requires at least two elements in the stack", opcode));
@@ -1348,10 +1352,6 @@ public class BinaryParser extends BinaryStreamParser {
         }
         offset += length;
         return value;
-    }
-    
-    byte getLeb128Length() {
-        return getLeb128Length(data, offset);
     }
 
     private boolean tryJumpToSection(int targetSectionId) {
