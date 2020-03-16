@@ -33,8 +33,8 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.JavaKind;
  * to a {@link AMD64ArrayIndexOfNode} or a specialized snippet.
  */
 @NodeInfo(size = SIZE_512, cycles = NodeCycles.CYCLES_UNKNOWN)
-public class AMD64ArrayIndexOfDispatchNode extends AbstractStateSplit implements Lowerable, MemoryAccess, DeoptimizingNode.DeoptBefore {
+public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements Lowerable, MemoryAccess, DeoptimizingNode.DeoptBefore {
 
     public static final NodeClass<AMD64ArrayIndexOfDispatchNode> TYPE = NodeClass.create(AMD64ArrayIndexOfDispatchNode.class);
 
@@ -81,11 +81,6 @@ public class AMD64ArrayIndexOfDispatchNode extends AbstractStateSplit implements
         this.fromIndex = fromIndex;
         this.searchValues = new NodeInputList<>(this, searchValues);
 
-    }
-
-    @Override
-    public boolean hasSideEffect() {
-        return false;
     }
 
     public boolean isFindTwoConsecutive() {
