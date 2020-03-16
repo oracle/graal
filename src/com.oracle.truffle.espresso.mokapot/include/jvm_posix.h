@@ -32,6 +32,7 @@
 #include <unistd.h>             /* For F_OK, R_OK, W_OK */
 #include <stddef.h>             /* For ptrdiff_t */
 #include <stdint.h>             /* For uintptr_t */
+#include <sys/socket.h>
 
 #define JNI_ONLOAD_SYMBOLS   {"JNI_OnLoad"}
 #define JNI_ONUNLOAD_SYMBOLS {"JNI_OnUnload"}
