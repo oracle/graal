@@ -272,10 +272,19 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
         if (doc != null) {
             return doc.getLanguageId();
         }
+
+        Future<String> future = contextAwareExecutor.executeWithDefaultContext(() -> {
+            try {
+                return Source.findLanguage(envInternal.getTruffleFile(uri));
+            } catch (IOException ex) {
+                return null;
+            }
+        });
+
         try {
-            return Source.findLanguage(envInternal.getTruffleFile(uri));
-        } catch (IOException ex) {
-            return null;
+            return future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
         }
     }
 
