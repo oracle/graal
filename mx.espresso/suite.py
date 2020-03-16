@@ -129,12 +129,16 @@ suite = {
             "buildDependencies": [
                 "com.oracle.truffle.espresso.playground",
             ],
-            "os": {
+            "os_arch": {
                 "windows": {
-                    "cflags": ["-Wall"],
+                    "<others>": {
+                        "cflags": ["-Wall"],
+                    },
                 },
                 "<others>": {
-                    "cflags": ["-Wall", "-Werror"],
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
+                    },
                 },
             },
         },
@@ -149,12 +153,16 @@ suite = {
             "buildDependencies": [
                 "truffle:TRUFFLE_NFI_NATIVE",
             ],            
-            "os": {
+            "os_arch": {
                 "windows": {
-                    "cflags": ["-Wall"],
+                    "<others>": {
+                        "cflags": ["-Wall"],
+                    },
                 },
                 "<others>": {
-                    "cflags": ["-Wall", "-Werror"],
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
+                    },
                 },
             },
         },
@@ -197,12 +205,16 @@ suite = {
             "buildDependencies": [
                 "com.oracle.truffle.espresso.test",
             ],
-            "os": {
+            "os_arch": {
                 "windows": {
-                    "cflags": ["-Wall"],
+                    "<others>": {
+                        "cflags": ["-Wall"],
+                    },
                 },
                 "<others>": {
-                    "cflags": ["-Wall", "-Werror"],
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
+                    },
                 },
             },
         },
@@ -239,6 +251,11 @@ suite = {
                         ],
                     },
                 },
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-Wall"],
+                    },
+                }
             },
         },
     },
@@ -317,8 +334,16 @@ suite = {
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:mokapot>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>"
                 ],
-                # On MacOS -install_name (Linux's -soname counterpart) is not enough to fool the dynamic linker.
-                "lib/<lib:jvm>": "link:<lib:mokapot>",
+            },
+            "os_arch": {
+                "darwin": {
+                    "<others>": {
+                        "layout": {
+                            # On MacOS -install_name (Linux's -soname counterpart) is not enough to fool the dynamic linker.
+                            "lib/<lib:jvm>": "link:<lib:mokapot>",
+                        },
+                    },
+                },
             },
         },
 
