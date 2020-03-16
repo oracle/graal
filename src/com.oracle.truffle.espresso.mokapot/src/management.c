@@ -20,6 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+#include "management.h"
 #include "jmm.h"
 
 #include <trufflenfi.h>
@@ -69,7 +70,7 @@
     V(SetDiagnosticFrameworkNotificationEnabled)
 
 
-jlong initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
+JNIEXPORT jlong initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
 
   struct jmmInterface_1_ *management = (JmmInterface*) malloc(sizeof(struct jmmInterface_1_));
 
@@ -84,7 +85,7 @@ jlong initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name
   return (jlong) management;
 }
 
-void disposeManagementContext(TruffleEnv *truffle_env, jlong management_ptr) {
+JNIEXPORT void disposeManagementContext(TruffleEnv *truffle_env, jlong management_ptr) {
   struct jmmInterface_1_ *management = (struct jmmInterface_1_*) management_ptr;
 
   #define DISPOSE__(name) \
