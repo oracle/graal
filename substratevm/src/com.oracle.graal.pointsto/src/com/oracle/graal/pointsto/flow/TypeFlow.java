@@ -242,19 +242,42 @@ public abstract class TypeFlow<T> {
 
         PointsToStats.registerTypeFlowSuccessfulUpdate(bb, this, add);
 
-        /*
-         * Checkcast and instanceof type flows no longer reflect a type state that contains only the
-         * types assignable to the declared type; they keep track of all the types discovered during
-         * analysis and are always followed by a filter type flow that implements the filter
-         * operation based on the declared type.
-         */
-        assert !PointstoOptions.ExtendedAsserts.getValue(bb.getOptions()) || this instanceof InstanceOfTypeFlow || after.verifyDeclaredType(declaredType) : "declaredType: " +
-                        declaredType.toJavaName(true) + " after: " + after + " before: " + before + " this: " + this;
+        assert !PointstoOptions.ExtendedAsserts.getValue(bb.getOptions()) || checkTypeState(bb, before, after);
 
         if (postFlow) {
             bb.postFlow(this);
         }
+
         return true;
+    }
+
+    private boolean checkTypeState(BigBang bb, TypeState before, TypeState after) {
+        assert PointstoOptions.ExtendedAsserts.getValue(bb.getOptions());
+
+        if (this instanceof InstanceOfTypeFlow || this instanceof FilterTypeFlow) {
+            /*
+             * The type state of an InstanceOfTypeFlow doesn't contain only types assignable from
+             * its declared type. The InstanceOfTypeFlow keeps track of all the types discovered
+             * during analysis and there is always a corresponding filter type flow that implements
+             * the filter operation based on the declared type.
+             *
+             * Similarly, since a FilterTypeFlow implements complex logic, i.e., the filter can be
+             * either inclusive or exclusive and it can filter exact types or complete type
+             * hierarchies, the types in its type state are not necessary assignable from its
+             * declared type.
+             */
+            return true;
+        }
+        assert after.verifyDeclaredType(declaredType) : String.format("The type state of %s contains types that are not assignable from its declared type %s. " +
+                        "%nState before: %s. %nState after: %s", formatFlow(false), declaredType.toJavaName(true), formatState(bb, before), formatState(bb, after));
+        return true;
+    }
+
+    private static String formatState(BigBang bb, TypeState typeState) {
+        if (typeState.closeToAllInstantiated(bb)) {
+            return "close to AllInstantiated";
+        }
+        return typeState.toString();
     }
 
     // manage uses
@@ -286,6 +309,10 @@ public abstract class TypeFlow<T> {
             use.addInput(this);
         }
         return ConcurrentLightHashSet.addElement(this, USE_UPDATER, use);
+    }
+
+    public boolean removeUse(TypeFlow<?> use) {
+        return ConcurrentLightHashSet.removeElement(this, USE_UPDATER, use);
     }
 
     public Collection<TypeFlow<?>> getUses() {
@@ -391,9 +418,14 @@ public abstract class TypeFlow<T> {
 
     }
 
+    private String formatFlow(boolean withState) {
+        String method = source instanceof Node ? ((StructuredGraph) ((Node) source).graph()).method().format("%h.%n@") : "";
+        return getClass().getName() + '<' + (method + source) + (withState ? ": " + getState() : "") + '>';
+    }
+
     @Override
     public String toString() {
-        return "TypeFlow<" + (source instanceof Node ? ((StructuredGraph) ((Node) source).graph()).method().format("%h.%n@") : "") + source + ": " + getState() + ">";
+        return formatFlow(true);
     }
 
     @Override

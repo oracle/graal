@@ -211,7 +211,8 @@ public class MethodFlowsGraph {
 
     @SuppressWarnings("unchecked")
     public <T extends TypeFlow<?>> T lookupCloneOf(BigBang bb, T original) {
-        assert original != null && !original.isClone();
+        assert original != null : "Looking for the clone of a 'null' flow in " + this;
+        assert !original.isClone() : "Looking for the clone of the already cloned flow " + original + " in " + this;
         assert !(original instanceof FieldTypeFlow) : "Trying to clone a field type flow";
         assert !(original instanceof ArrayElementsTypeFlow) : "Trying to clone an mixed elements type flow";
 
@@ -329,11 +330,11 @@ public class MethodFlowsGraph {
     }
 
     public void linearizeGraph() {
-        linearizedGraph = getLinearizeGraph();
+        linearizedGraph = doLinearizeGraph();
         isLinearized = true;
     }
 
-    public TypeFlow<?>[] getLinearizeGraph() {
+    private TypeFlow<?>[] doLinearizeGraph() {
 
         Deque<TypeFlow<?>> worklist = new ArrayDeque<>();
 
