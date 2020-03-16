@@ -40,28 +40,39 @@ public final class CGlobalDataImpl<T extends PointerBase> extends CGlobalData<T>
 
     public final Supplier<byte[]> bytesSupplier;
     public final IntSupplier sizeSupplier;
+    public final boolean nonConstant;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     CGlobalDataImpl(String symbolName, Supplier<byte[]> bytesSupplier) {
-        this(symbolName, bytesSupplier, null); // pre-existing data
+        this(symbolName, bytesSupplier, null, false); // pre-existing data
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     CGlobalDataImpl(String symbolName, IntSupplier sizeSupplier) {
-        this(symbolName, null, sizeSupplier); // zero-initialized data
+        this(symbolName, null, sizeSupplier, false); // zero-initialized data
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     CGlobalDataImpl(String symbolName) {
-        this(symbolName, null, null); // reference to symbol
+        this(symbolName, null, null, false); // reference to symbol
+    }
+
+    /**
+     * nonConstant parameter marks whether object have to be used as a compile-time constant. If
+     * nonConstant is 'false', the symbolName should be known at compile time.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    CGlobalDataImpl(String symbolName, boolean nonConstant) {
+        this(symbolName, null, null, nonConstant);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private CGlobalDataImpl(String symbolName, Supplier<byte[]> bytesSupplier, IntSupplier sizeSupplier) {
+    private CGlobalDataImpl(String symbolName, Supplier<byte[]> bytesSupplier, IntSupplier sizeSupplier, boolean nonConstant) {
         assert !(bytesSupplier != null && sizeSupplier != null);
         this.symbolName = symbolName;
         this.bytesSupplier = bytesSupplier;
         this.sizeSupplier = sizeSupplier;
+        this.nonConstant = nonConstant;
     }
 
     @Override

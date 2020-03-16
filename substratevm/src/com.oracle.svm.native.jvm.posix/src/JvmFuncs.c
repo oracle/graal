@@ -44,6 +44,12 @@
 #define OS_OK 0
 #define OS_ERR -1
 
+#ifdef JNI_VERSION_9
+    #define JVM_INTERFACE_VERSION 6
+#else
+    #define JVM_INTERFACE_VERSION 4
+#endif
+
 /* macros for restartable system calls */
 
 #define RESTARTABLE(_cmd, _result) do { \
@@ -57,6 +63,10 @@
 } while(0)
 
 JNIEXPORT void JNICALL initialize() {
+}
+
+JNIEXPORT int JNICALL JVM_GetInterfaceVersion() {
+    return JVM_INTERFACE_VERSION;
 }
 
 JNIEXPORT int JNICALL JVM_ActiveProcessorCount() {

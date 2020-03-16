@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,23 +24,30 @@
  */
 package com.oracle.svm.jni.hosted;
 
-import java.util.Arrays;
-import java.util.List;
-
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
+import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
+import com.oracle.svm.jni.JNILibraryInitializer;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.jni.functions.JNIFunctionTablesFeature;
+import java.util.List;
 
-/**
- * Support for the Java Native Interface (JNI). Read more in JNI.md in the project's root directory.
- *
- * @see <a href="http://docs.oracle.com/javase/8/docs/technotes/guides/jni/">Java Native Interface
- *      Specification</a>
- */
-public class JNIFeature implements Feature {
+public class JNILibraryLoadFeature implements Feature {
+
+    private JNILibraryInitializer jniLibraryInitializer = new JNILibraryInitializer();
 
     @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(JNIFunctionTablesFeature.class, JNICallWrapperFeature.class, JNILibraryLoadFeature.class);
+    public void duringSetup(DuringSetupAccess access) {
+        NativeLibrarySupport.singleton().registerLibraryInitializer(jniLibraryInitializer);
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess access) {
+        NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
+        List<String> staticLibNames = nativeLibraries.getJniStaticLibraries();
+        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(staticLibNames);
+        if (isChanged) {
+            access.requireAnalysisIteration();
+        }
     }
 }
