@@ -129,7 +129,14 @@ suite = {
             "buildDependencies": [
                 "com.oracle.truffle.espresso.playground",
             ],
-            "cflags": ["-Wall", "-Werror"],
+            "os": {
+                "windows": {
+                    "cflags": ["-Wall"],
+                },
+                "<others>": {
+                    "cflags": ["-Wall", "-Werror"],
+                },
+            },
         },
 
         # Native library for Espresso native interface
@@ -141,8 +148,15 @@ suite = {
             "use_jdk_headers": True,
             "buildDependencies": [
                 "truffle:TRUFFLE_NFI_NATIVE",
-            ],
-            "cflags": ["-Wall", "-Werror"],
+            ],            
+            "os": {
+                "windows": {
+                    "cflags": ["-Wall"],
+                },
+                "<others>": {
+                    "cflags": ["-Wall", "-Werror"],
+                },
+            },
         },
 
         "com.oracle.truffle.espresso.test": {
@@ -183,7 +197,7 @@ suite = {
             "buildDependencies": [
                 "com.oracle.truffle.espresso.test",
             ],
-            "cflags": ["-Wall", "-Werror"],
+            "cflags": ["-Wall", "-Werror"],            
         },
 
         # libjvm Espresso implementation
@@ -217,11 +231,6 @@ suite = {
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
                         ],
                     },
-                },
-                "windows" : {
-                    "<others>" : {
-                        "cflags" : []
-                    }
                 },
             },
         },
