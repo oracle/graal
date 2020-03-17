@@ -291,12 +291,10 @@ final class Target_java_lang_Thread {
             return;
         }
 
-        // Cf. os::interrupt(Thread*) from HotSpot, which unparks all of:
-        // (1) thread->_SleepEvent,
-        // (2) ((JavaThread*)thread)->parker()
-        // (3) thread->_ParkEvent
         JavaThreads.interrupt(JavaThreads.fromTarget(this));
         JavaThreads.unpark(JavaThreads.fromTarget(this));
+
+        JavaThreads.wakeUpVMConditionWaiters();
     }
 
     @Substitute

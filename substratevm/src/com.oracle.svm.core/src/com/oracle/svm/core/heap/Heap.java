@@ -149,7 +149,10 @@ public abstract class Heap {
     public abstract boolean hasReferencePendingList();
 
     /** Blocks until the heap has pending {@linkplain Reference references}. */
-    public abstract void waitForReferencePendingList();
+    public abstract void waitForReferencePendingList() throws InterruptedException;
+
+    /** Unblocks any threads in {@link #waitForReferencePendingList()}. */
+    public abstract void wakeUpReferencePendingListWaiters();
 
     /**
      * Atomically get the list of pending {@linkplain Reference references} and clears (resets) it.

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.heap;
 
 import java.lang.ref.ReferenceQueue;
 import java.util.function.Function;
@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 class Package_jdk_internal_ref implements Function<TargetClass, String> {
@@ -57,7 +58,7 @@ public final class Target_jdk_internal_ref_Cleaner {
     static ReferenceQueue<Object> dummyQueue = new ReferenceQueue<>();
 
     @Alias
-    public native void clean();
+    native void clean();
 }
 
 /**

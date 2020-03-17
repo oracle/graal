@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.KeepOriginal;
@@ -173,6 +174,12 @@ public final class Target_java_lang_ref_Reference<T> {
     static void reachabilityFence(Object ref) {
         GraalDirectives.blackhole(ref);
     }
+}
+
+/** We provide our own {@link com.oracle.svm.core.heap.ReferenceHandler}. */
+@TargetClass(value = Reference.class, innerClass = "ReferenceHandler")
+@Delete
+final class Target_java_lang_ref_Reference_ReferenceHandler {
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)

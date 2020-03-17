@@ -69,13 +69,21 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
+import com.oracle.svm.core.locks.VMCondition;
+import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMThreads;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -85,6 +93,10 @@ import sun.management.Util;
 
 /** An implementation of a card remembered set generational heap. */
 public class HeapImpl extends Heap {
+    /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
+    private static final VMMutex REF_MUTEX = new VMMutex();
+    private static final VMCondition REF_CONDITION = new VMCondition(REF_MUTEX);
+
     // Singleton instances, created during image generation.
     private final YoungGeneration youngGeneration;
     private final OldGeneration oldGeneration;
@@ -98,10 +110,15 @@ public class HeapImpl extends Heap {
     private HeapVerifierImpl heapVerifier;
     private final StackVerifier stackVerifier;
 
+    /** The head of the list of currently pending (ready to be enqueued) {@link Reference}s. */
+    private Reference<?> refPendingList;
+    /** Total number of times when a new pending reference list became available. */
+    private long refListOfferCounter;
+    /** Total number of times when threads waiting for a pending reference list were interrupted. */
+    private long refListWaiterWakeUpCounter;
+
     /** A list of all the classes, if someone asks for it. */
     private List<Class<?>> classList;
-
-    private Reference<?> referencePendingList;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapImpl(FeatureAccess access) {
@@ -645,24 +662,144 @@ public class HeapImpl extends Heap {
         return new CardTableBarrierSet(objectArrayType);
     }
 
-    public void setReferencePendingList(Reference<?> list) {
-        this.referencePendingList = list;
+    void addToReferencePendingList(Reference<?> list) {
+        VMOperation.guaranteeGCInProgress("Must only be called during a GC.");
+        if (list == null) {
+            return;
+        }
+        REF_MUTEX.lock();
+        try {
+            if (refPendingList != null) { // append
+                Reference<?> current = refPendingList;
+                Reference<?> next = ReferenceInternals.getNextDiscovered(current);
+                while (next != null) {
+                    current = next;
+                    next = ReferenceInternals.getNextDiscovered(current);
+                }
+                ReferenceInternals.setNextDiscovered(current, list);
+                // No need to notify: waiters would have been notified about the existing list
+            } else {
+                refPendingList = list;
+                refListOfferCounter++;
+                REF_CONDITION.broadcast();
+            }
+        } finally {
+            REF_MUTEX.unlock();
+        }
     }
 
     @Override
+    @Uninterruptible(reason = "Safepoint while holding the lock could lead to a deadlock in GC.")
     public boolean hasReferencePendingList() {
-        return (referencePendingList != null);
+        REF_MUTEX.lockNoTransition();
+        try {
+            return (refPendingList != null);
+        } finally {
+            REF_MUTEX.unlock();
+        }
     }
 
     @Override
-    public void waitForReferencePendingList() {
+    @Uninterruptible(reason = "Safepoint while holding the lock could lead to a deadlock in GC.")
+    public void waitForReferencePendingList() throws InterruptedException {
+        long initialOffers;
+        long initialWakeUps;
+        REF_MUTEX.lockNoTransition();
+        try {
+            if (refPendingList != null) {
+                return;
+            }
+            /*
+             * Remember current counter values to detect changes when waiting in native. We need to
+             * do this right after the above check while holding the lock to prevent lost updates.
+             */
+            initialOffers = refListOfferCounter;
+            initialWakeUps = refListWaiterWakeUpCounter;
+        } finally {
+            REF_MUTEX.unlock();
+        }
+        transitionToParkedInNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    private static void transitionToParkedInNativeThenAwaitPendingRefs(long initialOffers, long initialWakeUps) throws InterruptedException {
+        doTransitionToParkedInNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
+    }
+
+    private static void doTransitionToParkedInNativeThenAwaitPendingRefs(long initialOffers, long initialWakeUps) throws InterruptedException {
+        Thread currentThread = Thread.currentThread();
+        int oldThreadStatus = JavaThreads.getThreadStatus(currentThread);
+        JavaThreads.setThreadStatus(currentThread, ThreadStatus.PARKED);
+        try {
+            boolean offered;
+            do {
+                if (Thread.interrupted()) {
+                    throw new InterruptedException();
+                }
+                offered = transitionToNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
+            } while (!offered);
+        } finally {
+            JavaThreads.setThreadStatus(currentThread, oldThreadStatus);
+        }
+    }
+
+    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
+    private static boolean transitionToNativeThenAwaitPendingRefs(long initialOffers, long initialWakeUps) {
+        // Note that we cannot hold the lock going into or out of native because we could enter a
+        // safepoint during the transition and would risk a deadlock with the VMOperation.
+        CFunctionPrologueNode.cFunctionPrologue(VMThreads.StatusSupport.STATUS_IN_NATIVE);
+        boolean offered = awaitPendingRefsInNative(initialOffers, initialWakeUps);
+        CFunctionEpilogueNode.cFunctionEpilogue(VMThreads.StatusSupport.STATUS_IN_NATIVE);
+        return offered;
+    }
+
+    @Uninterruptible(reason = "In native.")
+    @NeverInline("Provide a return address for the Java frame anchor.")
+    private static boolean awaitPendingRefsInNative(long initialOffers, long initialWakeUps) {
+        /*
+         * This method is executing in native state and must not deal with object references.
+         * Therefore it has to be static and cannot access the `refPendingList` field either. We
+         * work around this by indicating updates and interrupts via counter updates. We can safely
+         * access those counters as fields of HeapImpl as long as we can get the HeapImpl instance
+         * folded to its memory address so that the field accesses become direct memory reads.
+         */
+        REF_MUTEX.lockNoTransition();
+        try {
+            while (getHeapImpl().refListOfferCounter == initialOffers) {
+                REF_CONDITION.blockNoTransition();
+                if (getHeapImpl().refListWaiterWakeUpCounter != initialWakeUps) {
+                    return false;
+                }
+            }
+            return true;
+        } finally {
+            REF_MUTEX.unlock();
+        }
     }
 
     @Override
+    @Uninterruptible(reason = "Safepoint while holding the lock could lead to a deadlock in GC.")
+    public void wakeUpReferencePendingListWaiters() {
+        REF_MUTEX.lockNoTransition();
+        try {
+            refListWaiterWakeUpCounter++;
+            REF_CONDITION.broadcast();
+        } finally {
+            REF_MUTEX.unlock();
+        }
+    }
+
+    @Override
+    @Uninterruptible(reason = "Safepoint while holding the lock could lead to a deadlock in GC.")
     public Reference<?> getAndClearReferencePendingList() {
-        Reference<?> list = referencePendingList;
-        referencePendingList = null;
-        return list;
+        REF_MUTEX.lockNoTransition();
+        try {
+            Reference<?> list = refPendingList;
+            refPendingList = null;
+            return list;
+        } finally {
+            REF_MUTEX.unlock();
+        }
     }
 }
 

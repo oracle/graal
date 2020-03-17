@@ -74,7 +74,7 @@ import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.heap.ReferenceInternals;
+import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
@@ -87,7 +87,6 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
@@ -533,10 +532,9 @@ public class GCImpl implements GC {
             }
 
             trace.string("  Discovered references: ");
-            /* Process the list of DiscoveredReferences after walking the heap. */
             try (Timer drt = referenceObjectsTimer.open()) {
-                Reference<?> pending = ReferenceObjectProcessing.processDiscoveredReferences();
-                HeapImpl.getHeapImpl().setReferencePendingList(pending);
+                Reference<?> newlyPendingList = ReferenceObjectProcessing.processDiscoveredReferences();
+                HeapImpl.getHeapImpl().addToReferencePendingList(newlyPendingList);
             }
 
             trace.string("  Release spaces: ");
@@ -969,18 +967,9 @@ public class GCImpl implements GC {
             return;
         }
 
-        processPendingReferences();
+        ReferenceHandler.maybeProcessCurrentlyPending();
 
         visitWatchersReport();
-    }
-
-    private void processPendingReferences() {
-        ThreadingSupportImpl.pauseRecurringCallback("An exception in a recurring callback must not interrupt pending reference processing because it could result in a memory leak.");
-        try {
-            ReferenceInternals.processPendingReferences();
-        } finally {
-            ThreadingSupportImpl.resumeRecurringCallback();
-        }
     }
 
     /* Collection counting. */

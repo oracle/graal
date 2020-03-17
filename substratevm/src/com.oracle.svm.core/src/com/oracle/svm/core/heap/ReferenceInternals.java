@@ -35,8 +35,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.jdk.Target_jdk_internal_ref_Cleaner;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -128,33 +128,54 @@ public final class ReferenceInternals {
     private static final Object processPendingLock = new Object();
     private static boolean processPendingActive = false;
 
+    public static void waitForPendingReferences() throws InterruptedException {
+        Heap.getHeap().waitForReferencePendingList();
+    }
+
     @SuppressFBWarnings(value = "NN_NAKED_NOTIFY", justification = "Notifies on progress, not a specific state change.")
     public static void processPendingReferences() {
-        Heap.getHeap().waitForReferencePendingList();
         Target_java_lang_ref_Reference<?> pendingList;
         synchronized (processPendingLock) {
+            if (processPendingActive) {
+                /*
+                 * If there is no dedicated reference handler thread, this method may be called by
+                 * multiple threads after a garbage collection, but only one of them can retrieve
+                 * and process the list of newly pending references.
+                 */
+                return;
+            }
             pendingList = cast(Heap.getHeap().getAndClearReferencePendingList());
+            if (pendingList == null) {
+                return;
+            }
             processPendingActive = true;
         }
-        while (pendingList != null) {
-            Target_java_lang_ref_Reference<?> ref = pendingList;
-            pendingList = ref.discovered;
-            ref.discovered = null;
+        try {
+            while (pendingList != null) {
+                Target_java_lang_ref_Reference<?> ref = pendingList;
+                pendingList = ref.discovered;
+                ref.discovered = null;
 
-            if (Target_jdk_internal_ref_Cleaner.class.isInstance(ref)) {
-                Target_jdk_internal_ref_Cleaner cleaner = Target_jdk_internal_ref_Cleaner.class.cast(ref);
-                // Cleaner catches all exceptions, cannot be overridden due to private constructor
-                cleaner.clean();
-                synchronized (processPendingLock) {
-                    processPendingLock.notifyAll();
+                if (Target_jdk_internal_ref_Cleaner.class.isInstance(ref)) {
+                    Target_jdk_internal_ref_Cleaner cleaner = Target_jdk_internal_ref_Cleaner.class.cast(ref);
+                    // Cleaner catches all exceptions, cannot be overridden due to private c'tor
+                    cleaner.clean();
+                    synchronized (processPendingLock) {
+                        processPendingLock.notifyAll();
+                    }
+                } else if (hasQueue(uncast(ref))) {
+                    enqueueDirectly(ref);
                 }
-            } else if (hasQueue(uncast(ref))) {
-                enqueueDirectly(ref);
             }
-        }
-        synchronized (processPendingLock) {
-            processPendingActive = false;
-            processPendingLock.notifyAll();
+        } catch (StackOverflowError | OutOfMemoryError e) {
+            throw e;
+        } catch (Throwable t) {
+            VMError.shouldNotReachHere("ReferenceQueue and Cleaner must handle all potential exceptions", t);
+        } finally {
+            synchronized (processPendingLock) {
+                processPendingActive = false;
+                processPendingLock.notifyAll();
+            }
         }
     }
 
