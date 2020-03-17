@@ -20,8 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef __NESPRESSO_H
-#define __NESPRESSO_H
+#ifndef _NESPRESSO_H
+#define _NESPRESSO_H
 
 #include <jni.h>
 #include <trufflenfi.h>
@@ -30,7 +30,7 @@ JNIEXPORT void* JNICALL dupClosureRef(TruffleEnv *truffle_env, void* closure);
 
 JNIEXPORT JNIEnv* JNICALL initializeNativeContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
 
-JNIEXPORT void JNICALL disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env); 
+JNIEXPORT void JNICALL disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env);
 
 // varargs support
 JNIEXPORT jboolean JNICALL pop_boolean(struct Varargs* varargs);
@@ -44,6 +44,6 @@ JNIEXPORT jlong JNICALL pop_long(struct Varargs* varargs);
 JNIEXPORT jobject JNICALL pop_object(struct Varargs* varargs);
 JNIEXPORT void* JNICALL pop_word(struct Varargs* varargs);
 
-#endif // __NESPRESSO_H
+#endif // _NESPRESSO_H
 
 

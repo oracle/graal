@@ -20,11 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+#ifndef _MANAGEMENT_H
+#define _MANAGEMENT_H
+
 #include "jmm.h"
 
 #include <trufflenfi.h>
 #include <jni.h>
 
-JNIEXPORT jlong initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+JNIEXPORT jlong JNICALL initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
 
-JNIEXPORT void disposeManagementContext(TruffleEnv *truffle_env, jlong management_ptr);
+JNIEXPORT void JNICALL disposeManagementContext(TruffleEnv *truffle_env, jlong management_ptr);
+
+#endif // _MANAGEMENT_H

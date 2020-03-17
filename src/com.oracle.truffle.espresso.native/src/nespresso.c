@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -555,7 +555,7 @@ TYPE_LIST2(CALL_NON_VIRTUAL_METHOD_BRIDGE)
 jobject NewObjectV(JNIEnv *env, jclass clazz, jmethodID methodID, va_list args) {
   jobject result;
   struct VarargsV varargs = { /* .base = */ { /* .functions = */ &valist_functions } };
-  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;  
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
   va_copy(varargs.args, args);
   result = nespresso_env->NewObjectVarargs(env, clazz, methodID, &varargs);
   va_end(varargs.args);
@@ -650,7 +650,7 @@ static void releaseClosure(TruffleEnv *truffle_env, void* closure) {
     }
 }
 
-JNIEXPORT void JNICALL disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {  
+JNIEXPORT void JNICALL disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {
   struct JNINativeInterface_* jni_impl = (struct JNINativeInterface_*) *env;
   struct NespressoEnv *nespresso_env = (struct NespressoEnv *) (*env)->reserved0;
 

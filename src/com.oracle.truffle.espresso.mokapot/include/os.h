@@ -22,8 +22,8 @@
  *
  */
 
-#ifndef OS_H
-#define OS_H
+#ifndef _OS_H
+#define _OS_H
 
 #include <jni.h>
 #include <stdarg.h>
@@ -88,4 +88,4 @@ int os_set_sock_opt(int fd, int level, int optname,
                           const char* optval, socklen_t optlen);
 int os_get_host_name(char* name, int namelen);
 
-#endif // OS_H
+#endif // _OS_H

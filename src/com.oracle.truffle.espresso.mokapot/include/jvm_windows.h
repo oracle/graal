@@ -21,6 +21,7 @@
  * questions.
  *
  */
+
 #if defined(_WIN32)
 
 #ifndef _JAVASOFT_JVM_MD_H_

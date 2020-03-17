@@ -20,8 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef __MOKAPOT_H
-#define __MOKAPOT_H
+#ifndef _MOKAPOT_H
+#define _MOKAPOT_H
 
 #include "jvm.h"
 #include <jni.h>
@@ -749,4 +749,4 @@ struct MokapotEnv_ {
     #endif
 };
 
-#endif
+#endif // _MOKAPOT_H
