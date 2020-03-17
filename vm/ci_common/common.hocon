@@ -86,13 +86,18 @@ truffleruby_darwin: {
 }
 
 # FASTR
+# Note: On Linux, FastR depends on the gnur module and on gfortran of a specific version (4.8.5)
+# However, we do not need to load those modules, we only configure specific environment variables to
+# point to these specific modules. These modules and the configuration is only necessary for installation of
+# some R packages (that have Fortran code) and in order to run GNU-R
+
 fastr: {
   environment: {
     FASTR_RELEASE: "true"
   }
   downloads: {
-    F2C_BINARY: { name: "f2c-binary", version: "6", platformspecific: true },
-    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "4", platformspecific: true },
+    F2C_BINARY: { name: "f2c-binary", version: "7", platformspecific: true },
+    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "5", platformspecific: true },
   }
 }
 
@@ -102,18 +107,14 @@ fastr_linux: ${fastr} {
     pcre: "==8.43"
     zlib: ">=1.2.11"
     curl: ">=7.50.1"
-    gnur: "==3.6.1"
   }
   environment: {
     TZDIR: "/usr/share/zoneinfo"
     PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/zlib/1.2.11/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/curl/7.50.1/include"
-    PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/8.3.0/lib64"
-    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1/lib64/R",
-    FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran",
-    F77: "/cm/shared/apps/gcc/8.3.0/bin/gfortran",
-  }
-  downloads: {
-    BLAS_LAPACK_DIR: { name: "fastr-blas-lapack-gcc", version: "8.3.0", platformspecific: true },
+    PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.8.5/lib64"
+    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1-gcc4.8.5/lib64/R",
+    FC: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
+    FF: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
   }
 }
 
