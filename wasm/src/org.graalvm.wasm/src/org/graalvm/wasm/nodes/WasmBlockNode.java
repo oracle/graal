@@ -2485,8 +2485,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return isLeb128InPool(offset) ? codeEntry().longConstant(longConstantOffset) : BinaryStreamParser.peekSignedInt64(codeEntry().data(), offset);
     }
 
-    private int offsetDelta(int offset, int intConstantOffset) {
-        return isLeb128InPool(offset) ? codeEntry().intConstant(intConstantOffset) : getLeb128Length(offset);
+    private int offsetDelta(int offset, int byteConstantOffset) {
+        return isLeb128InPool(offset) ? codeEntry().intConstant(byteConstantOffset) : getLeb128Length(offset);
     }
 
     private int longConstantDelta(int offset) {
