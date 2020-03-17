@@ -661,9 +661,17 @@ public class MethodTypeFlowBuilder {
                  * branch of an if statement, so we have to make sure that its associated type flow
                  * is unique.
                  */
-                TypeFlowBuilder<?> instanceOfBuilder = uniqueInstanceOfFlow(instanceOf, type);
                 TypeFlowBuilder<?> objectBuilder = state.lookup(object);
-                instanceOfBuilder.addUseDependency(objectBuilder);
+                NodeSourcePosition instanceOfPosition = instanceOf.getNodeSourcePosition();
+                if (instanceOfPosition != null && instanceOfPosition.getBCI() >= 0) {
+                    /*
+                     * An InstanceOf with negative BCI is not useful. This can happen for example
+                     * for instanceof bytecodes for exception unwind. However, the filtering below
+                     * is still useful for other further operations in the exception handler.
+                     */
+                    TypeFlowBuilder<?> instanceOfBuilder = uniqueInstanceOfFlow(instanceOf, type);
+                    instanceOfBuilder.addUseDependency(objectBuilder);
+                }
 
                 /*
                  * Note that we create the filter flow with the original objectFlow as the input and
