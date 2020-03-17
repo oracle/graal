@@ -2214,6 +2214,21 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Ensures that the target language is initialized. This method firstly verifies that the
+         * target language is accessible from this language. If not the {@link SecurityException} is
+         * thrown. Then the target language initialization is performed if not already done.
+         *
+         * @param targetLanguage the language to initialize
+         * @throws SecurityException if an access to {@code targetLanguage} is not permitted
+         * @since 20.1.0
+         */
+        @TruffleBoundary
+        public void initializeLanguage(LanguageInfo targetLanguage) {
+            Objects.requireNonNull(targetLanguage, "TargetLanguage must be non null.");
+            LanguageAccessor.engineAccess().initializeLanguage(polyglotLanguageContext, targetLanguage);
+        }
+
+        /**
          * @since 0.26
          * @deprecated
          */
