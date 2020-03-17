@@ -191,7 +191,7 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
             return;
         }
     }
-    
+
     private void launchImpl(List<String> argumentsList) {
         if (isAOT()) {
             maybeNativeExec(argumentsList, true, Collections.emptyMap());
@@ -451,6 +451,8 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
     }
 
     private static final class RestartInJVMException extends RuntimeException {
+        static final long serialVersionUID = 1;
+
         RestartInJVMException() {
         }
     }
