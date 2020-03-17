@@ -275,6 +275,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (UseDedicatedVMOperationThread.getValue()) {
             VMOperationControl.startVMOperationThread();
         }
+        RuntimeSupport.executeInitializationHooks();
         return CEntryPointErrors.NO_ERROR;
     }
 
