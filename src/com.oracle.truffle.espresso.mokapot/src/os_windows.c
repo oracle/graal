@@ -33,18 +33,10 @@
 #include <sys/stat.h>
 #include <assert.h>
 
-#include <malloc.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <io.h>
 
-// macros for restartable system calls
-
-#define RESTARTABLE_RETURN_INT(_cmd) do { \
-  int _result; \
-  RESTARTABLE(_cmd, _result); \
-  return _result; \
-} while(0)
 
 /* Convert a pathname to native format.  On win32, this involves forcing all
    separators to be '\\' rather than '/' (both are legal inputs, but Win95
