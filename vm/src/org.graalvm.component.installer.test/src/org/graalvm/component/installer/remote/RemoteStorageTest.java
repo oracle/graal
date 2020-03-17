@@ -69,7 +69,7 @@ public class RemoteStorageTest extends TestBase {
         localRegistry = new ComponentRegistry(this, storage);
         remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, TEST_GRAAL_FLAVOUR,
                         Version.fromString("0.33-dev"), new URL(TEST_BASE_URL));
-        try (InputStream is = getClass().getResourceAsStream("catalog")) {
+        try (InputStream is = getClass().getResourceAsStream("catalog.properties")) {
             catalogProps.load(is);
         }
     }
@@ -116,7 +116,7 @@ public class RemoteStorageTest extends TestBase {
 
     @Test
     public void testInvalidRemoteURL() throws Exception {
-        loadCatalog("catalog.bad1");
+        loadCatalog("catalog.bad1.properties");
         // load good compoennt:
         ComponentInfo rInfo = loadLastComponent("ruby");
         assertEquals("ruby", rInfo.getId());
@@ -128,7 +128,7 @@ public class RemoteStorageTest extends TestBase {
 
     @Test
     public void testLoadMetadataMalformed() throws Exception {
-        loadCatalog("catalog.bad2");
+        loadCatalog("catalog.bad2.properties");
         // load good compoennt:
         ComponentInfo rInfo = loadLastComponent("r");
         assertEquals("R", rInfo.getId());
@@ -194,7 +194,7 @@ public class RemoteStorageTest extends TestBase {
      */
     @Test
     public void loadMultipleVersions() throws Exception {
-        loadCatalog("catalogMultiVersions");
+        loadCatalog("catalogMultiVersions.properties");
         Set<String> ids = remStorage.listComponentIDs();
         assertEquals(3, ids.size());
         assertTrue(ids.contains("python"));
@@ -205,7 +205,7 @@ public class RemoteStorageTest extends TestBase {
      */
     @Test
     public void obsoleteVersionsNotIncluded() throws Exception {
-        loadCatalog("catalogMultiVersions");
+        loadCatalog("catalogMultiVersions.properties");
         remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, TEST_GRAAL_FLAVOUR,
                         Version.fromString("1.0.0.0"), new URL(TEST_BASE_URL));
         Set<ComponentInfo> rubies = remStorage.loadComponentMetadata("ruby");
@@ -221,7 +221,7 @@ public class RemoteStorageTest extends TestBase {
 
     @Test
     public void checkMultipleGraalVMDependencies() throws Exception {
-        loadCatalog("catalogMultiVersions");
+        loadCatalog("catalogMultiVersions.properties");
 
         Set<ComponentInfo> rubies = remStorage.loadComponentMetadata("ruby");
         Set<Version> versions = new HashSet<>();
@@ -237,7 +237,7 @@ public class RemoteStorageTest extends TestBase {
     @Test
     public void loadMultipleComponentFlavours() throws Exception {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.0.0");
-        loadCatalog("catalogMultiFlavours");
+        loadCatalog("catalogMultiFlavours.properties");
         Set<String> ids = remStorage.listComponentIDs();
         assertEquals(3, ids.size());
         assertTrue(ids.contains("python"));
