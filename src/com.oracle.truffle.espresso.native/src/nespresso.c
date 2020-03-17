@@ -373,43 +373,43 @@ static const struct VarargsInterface jvalues_functions = {
 };
 
 // Exported
-JNIEXPORT jboolean pop_boolean(struct Varargs* varargs) {
+JNIEXPORT jboolean JNICALL pop_boolean(struct Varargs* varargs) {
   return varargs->functions->pop_boolean(varargs);
 }
 
-JNIEXPORT jbyte pop_byte(struct Varargs* varargs) {
+JNIEXPORT jbyte JNICALL pop_byte(struct Varargs* varargs) {
   return varargs->functions->pop_byte(varargs);
 }
 
-JNIEXPORT jchar pop_char(struct Varargs* varargs) {
+JNIEXPORT jchar JNICALL pop_char(struct Varargs* varargs) {
   return varargs->functions->pop_char(varargs);
 }
 
-JNIEXPORT jshort pop_short(struct Varargs* varargs) {
+JNIEXPORT jshort JNICALL pop_short(struct Varargs* varargs) {
   return varargs->functions->pop_short(varargs);
 }
 
-JNIEXPORT jint pop_int(struct Varargs* varargs) {
+JNIEXPORT jint JNICALL pop_int(struct Varargs* varargs) {
   return varargs->functions->pop_int(varargs);
 }
 
-JNIEXPORT jfloat pop_float(struct Varargs* varargs) {
+JNIEXPORT jfloat JNICALL pop_float(struct Varargs* varargs) {
   return varargs->functions->pop_float(varargs);
 }
 
-JNIEXPORT jdouble pop_double(struct Varargs* varargs) {
+JNIEXPORT jdouble JNICALL pop_double(struct Varargs* varargs) {
   return varargs->functions->pop_double(varargs);
 }
 
-JNIEXPORT jlong pop_long(struct Varargs* varargs) {
+JNIEXPORT jlong JNICALL pop_long(struct Varargs* varargs) {
   return varargs->functions->pop_long(varargs);
 }
 
-JNIEXPORT jobject pop_object(struct Varargs* varargs) {
+JNIEXPORT jobject JNICALL pop_object(struct Varargs* varargs) {
   return varargs->functions->pop_object(varargs);
 }
 
-JNIEXPORT void* pop_word(struct Varargs* varargs) {
+JNIEXPORT void* JNICALL pop_word(struct Varargs* varargs) {
   return varargs->functions->pop_word(varargs);
 }
 
@@ -595,7 +595,7 @@ static void unset_function_error() {
   exit(-1);
 }
 
-JNIEXPORT void* dupClosureRef(TruffleEnv *truffle_env, void* closure) {
+JNIEXPORT void* JNICALL dupClosureRef(TruffleEnv *truffle_env, void* closure) {
     if (truffle_env != NULL) {
         (*truffle_env)->newClosureRef(truffle_env, closure);
     } else {
@@ -604,7 +604,7 @@ JNIEXPORT void* dupClosureRef(TruffleEnv *truffle_env, void* closure) {
     return closure;
 }
 
-JNIEXPORT JNIEnv* initializeNativeContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
+JNIEXPORT JNIEnv* JNICALL initializeNativeContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
   JNIEnv* env = (JNIEnv*) malloc(sizeof(*env));
   struct JNINativeInterface_* jni_impl = malloc(sizeof(*jni_impl));
   struct NespressoEnv* nespresso_env = (struct NespressoEnv*) malloc(sizeof(*nespresso_env));
@@ -650,7 +650,7 @@ static void releaseClosure(TruffleEnv *truffle_env, void* closure) {
     }
 }
 
-JNIEXPORT void disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {  
+JNIEXPORT void JNICALL disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {  
   struct JNINativeInterface_* jni_impl = (struct JNINativeInterface_*) *env;
   struct NespressoEnv *nespresso_env = (struct NespressoEnv *) (*env)->reserved0;
 

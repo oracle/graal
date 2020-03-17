@@ -279,11 +279,11 @@ typedef uint64_t julong;
 extern "C" {
 #endif
 
-JNIEXPORT MokapotEnv* initializeMokapotContext(TruffleEnv *truffle_env, JNIEnv* env, void* (*fetch_by_name)(const char *));
+JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(TruffleEnv *truffle_env, JNIEnv* env, void* (*fetch_by_name)(const char *));
 
-JNIEXPORT void disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv* moka_env);
+JNIEXPORT void JNICALL disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv* moka_env);
 
-JNIEXPORT JavaVM* getJavaVM();
+JNIEXPORT JavaVM* JNICALL getJavaVM();
 
 #ifdef __cplusplus
 } // extern "C"

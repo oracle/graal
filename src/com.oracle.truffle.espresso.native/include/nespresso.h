@@ -26,23 +26,23 @@
 #include <jni.h>
 #include <trufflenfi.h>
 
-JNIEXPORT void* dupClosureRef(TruffleEnv *truffle_env, void* closure);
+JNIEXPORT void* JNICALL dupClosureRef(TruffleEnv *truffle_env, void* closure);
 
-JNIEXPORT JNIEnv* initializeNativeContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+JNIEXPORT JNIEnv* JNICALL initializeNativeContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
 
-JNIEXPORT void disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env); 
+JNIEXPORT void JNICALL disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env); 
 
 // varargs support
-JNIEXPORT jboolean pop_boolean(struct Varargs* varargs);
-JNIEXPORT jbyte pop_byte(struct Varargs* varargs);
-JNIEXPORT jchar pop_char(struct Varargs* varargs);
-JNIEXPORT jshort pop_short(struct Varargs* varargs);
-JNIEXPORT jint pop_int(struct Varargs* varargs);
-JNIEXPORT jfloat pop_float(struct Varargs* varargs);
-JNIEXPORT jdouble pop_double(struct Varargs* varargs);
-JNIEXPORT jlong pop_long(struct Varargs* varargs);
-JNIEXPORT jobject pop_object(struct Varargs* varargs);
-JNIEXPORT void* pop_word(struct Varargs* varargs);
+JNIEXPORT jboolean JNICALL pop_boolean(struct Varargs* varargs);
+JNIEXPORT jbyte JNICALL pop_byte(struct Varargs* varargs);
+JNIEXPORT jchar JNICALL pop_char(struct Varargs* varargs);
+JNIEXPORT jshort JNICALL pop_short(struct Varargs* varargs);
+JNIEXPORT jint JNICALL pop_int(struct Varargs* varargs);
+JNIEXPORT jfloat JNICALL pop_float(struct Varargs* varargs);
+JNIEXPORT jdouble JNICALL pop_double(struct Varargs* varargs);
+JNIEXPORT jlong JNICALL pop_long(struct Varargs* varargs);
+JNIEXPORT jobject JNICALL pop_object(struct Varargs* varargs);
+JNIEXPORT void* JNICALL pop_word(struct Varargs* varargs);
 
 #endif // __NESPRESSO_H
 

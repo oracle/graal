@@ -110,7 +110,7 @@
 
 #define MAX_PATH    (2 * K)
 
-JNIEXPORT int JVM_handle_linux_signal(int sig,
+JNIEXPORT int JNICALL JVM_handle_linux_signal(int sig,
                           siginfo_t* info,
                           void* ucVoid,
                           int abort_if_unrecognized);
