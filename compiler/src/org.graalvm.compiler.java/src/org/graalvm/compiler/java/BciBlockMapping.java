@@ -302,7 +302,7 @@ import jdk.vm.ci.meta.JavaMethod;
 public final class BciBlockMapping implements JavaMethodContext {
     public static class Options {
         @Option(help = "Determines whether to treat final fields with default values as constant.")//
-        public static final OptionKey<Boolean> DuplicateIrreducibleLoops = new OptionKey<>(false);
+        public static final OptionKey<Boolean> DuplicateIrreducibleLoops = new OptionKey<>(true);
         @Option(help = "How much duplication can happen because of irreducible loops before bailing out.")//
         public static final OptionKey<Double> MaxDuplicationFactor = new OptionKey<>(2.0);
     }
@@ -1219,23 +1219,10 @@ public final class BciBlockMapping implements JavaMethodContext {
         return lastHandler;
     }
 
-    private boolean loopChanges;
-
     private void computeBlockOrder(BciBlock[] blockMap) {
         int maxBlocks = blocksNotYetAssignedId;
         this.blocks = new BciBlock[blocksNotYetAssignedId];
         computeBlockOrder(blockMap[0]);
-        // TODO remove me: test code
-        // -----
-        loopChanges = false;
-        for (BciBlock b : blocks) {
-            if (b != null) {
-                b.visited = false;
-            }
-        }
-        GraalError.guarantee(fixLoopBits(blockMap[0]) == 0, "fixLoopBits should not find irreducible loops");
-        GraalError.guarantee(!loopChanges, "fixLoopBits should not find things to change");
-        // -----
         int duplicatedBlocks = newDuplicateBlocks + duplicateBlocks;
         if (duplicatedBlocks > 0) {
             debug.log(DebugContext.INFO_LEVEL, "Duplicated %d blocks. Original block count: %d", duplicatedBlocks, postJsrBlockCount);
@@ -1564,50 +1551,6 @@ public final class BciBlockMapping implements JavaMethodContext {
         }
         assert !seen.contains(inserting) : "Trying to add " + inserting + " again";
         return true;
-    }
-
-    private long fixLoopBits(BciBlock initialBlock) {
-        ArrayDeque<TraversalStep> workStack = new ArrayDeque<>();
-        workStack.push(new TraversalStep(initialBlock));
-        while (true) {
-            TraversalStep step = workStack.peek();
-            BciBlock block = step.block;
-            if (step.currentSuccessorIndex == 0) {
-                block.visited = true;
-                step.loops = block.loops;
-            }
-            if (step.currentSuccessorIndex < block.getSuccessors().size()) {
-                BciBlock successor = block.getSuccessors().get(step.currentSuccessorIndex);
-                if (successor.visited) {
-                    // Return cached loop information for this block.
-                    if (successor.isLoopHeader) {
-                        step.loops |= successor.loops & ~(1L << successor.loopId);
-                    } else {
-                        step.loops |= successor.loops;
-                    }
-                } else {
-                    workStack.push(new TraversalStep(successor));
-                }
-                step.currentSuccessorIndex++;
-            } else {
-                if (block.loops != step.loops) {
-                    loopChanges = true;
-                    block.loops = step.loops;
-                    debug.log("fixLoopBits0(%s) -> %x", block, block.loops);
-                }
-
-                if (block.isLoopHeader) {
-                    step.loops &= ~(1L << block.loopId);
-                }
-
-                workStack.pop();
-                if (!workStack.isEmpty()) {
-                    workStack.peek().loops |= step.loops;
-                } else {
-                    return step.loops;
-                }
-            }
-        }
     }
 
     @SuppressWarnings("try")
