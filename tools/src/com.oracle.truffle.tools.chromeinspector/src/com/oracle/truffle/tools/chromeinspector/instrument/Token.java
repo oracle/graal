@@ -40,8 +40,8 @@ import java.util.Base64;
  * The Token class does not allow the data to be extracted in the original form. It has limited set
  * of operation that allow you to learn something about the data:
  * <ul>
- * <li>Comparison – designed not to leak any data through its execution time.</li>
- * <li>{@link #hashCode()} – this might expose part of the <strong>hash</strong>. Note that some
+ * <li>Comparison - designed not to leak any data through its execution time.</li>
+ * <li>{@link #hashCode()} - this might expose part of the <strong>hash</strong>. Note that some
  * collection implementations like {@link java.util.HashMap} might use it and leak this value
  * through timing attack.</li>
  * <li>{@link #toString()} might contain whole <strong>hash</strong> of the sensitive data.</li>
@@ -61,9 +61,9 @@ import java.util.Base64;
  *
  * Those operations are explicitly not planned to be ever supported:
  * <ul>
- * <li>serialization – Allowing serialization would not allow us to change the hash function or
+ * <li>serialization - Allowing serialization would not allow us to change the hash function or
  * String encoding in future.</li>
- * <li>comparing values like {@link Comparable#compareTo(Object)} – This could be hardly implemented
+ * <li>comparing values like {@link Comparable#compareTo(Object)} - This could be hardly implemented
  * in a meaningful way without compromising security.</li>
  * </ul>
  */
