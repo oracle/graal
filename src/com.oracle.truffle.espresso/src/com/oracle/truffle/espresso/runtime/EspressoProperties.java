@@ -471,7 +471,7 @@ final class WindowsBuilder extends PlatformBuilder {
 
     @Override
     List<Path> defaultBootLibraryPath() {
-        return Collections.singletonList(javaHome().resolve("lib"));
+        return Collections.singletonList(javaHome().resolve("bin"));
     }
 
     @Override
