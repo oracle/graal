@@ -879,7 +879,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     intConstantOffset += intConstantDelta(offset);
                     byteConstantOffset += byteConstantDelta(offset);
                     offset += offsetDelta(offset, byteConstantOffset);
-                    boolean inPool = isLeb128InPool(offset);
                     // endregion
 
                     byte type = module().symbolTable().globalValueType(index);
@@ -1200,7 +1199,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case I64_CONST: {
                     // region Load LEB128 Signed64 -> value
-                    long value = signedLongConstant(offset, intConstantOffset);
+                    long value = signedLongConstant(offset, longConstantOffset);
                     longConstantOffset += longConstantDelta(offset);
                     byteConstantOffset += byteConstantDelta(offset);
                     offset += offsetDelta(offset, byteConstantOffset);

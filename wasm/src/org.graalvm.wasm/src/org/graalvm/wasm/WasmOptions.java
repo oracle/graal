@@ -65,5 +65,5 @@ public class WasmOptions {
 
     public static OptionType<StoreConstantsInPoolChoice> StoreConstantsInPoolType = new OptionType<>("storeConstantsInPoolChoice", StoreConstantsInPoolChoice::valueOf);
     @Option(help = "Whenever to store the constants in a pool or not.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL)//
-    public static final OptionKey<StoreConstantsInPoolChoice> StoreConstantsInPool = new OptionKey<StoreConstantsInPoolChoice>(StoreConstantsInPoolChoice.NONE, StoreConstantsInPoolType);
+    public static final OptionKey<StoreConstantsInPoolChoice> StoreConstantsInPool = new OptionKey<>(StoreConstantsInPoolChoice.NONE, StoreConstantsInPoolType);
 }
