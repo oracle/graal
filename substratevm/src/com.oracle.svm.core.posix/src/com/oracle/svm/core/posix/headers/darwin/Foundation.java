@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,57 +27,33 @@ package com.oracle.svm.core.posix.headers.darwin;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.SignedWord;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 
 // Checkstyle: stop
 
 /**
- * Definitions manually translated from the C header file CoreFoundation/CoreFoundation.h.
+ * Definitions manually translated from the C header file Foundation/Foundation.h.
  */
 @CContext(PosixDirectives.class)
-@CLibrary("-framework CoreFoundation")
-public class CoreFoundation {
+@CLibrary("-framework Foundation")
+public class Foundation {
 
-    public interface CFStringRef extends PointerBase {
-    }
+    @CStruct
+    public interface NSOperatingSystemVersion extends PointerBase {
+        @CField("majorVersion")
+        long getMajorVersion();
 
-    public interface CFMutableStringRef extends CFStringRef {
+        @CField("minorVersion")
+        long getMinorVersion();
 
-    }
-
-    @CFunction
-    public static native CFMutableStringRef CFStringCreateMutable(PointerBase alloc, SignedWord maxLength);
-
-    @CFunction
-    public static native void CFStringAppendCharacters(CFMutableStringRef theString, PointerBase chars, SignedWord numChars);
-
-    @CFunction
-    public static native void CFStringNormalize(CFMutableStringRef theString, SignedWord theForm);
-
-    @CFunction
-    public static native long CFStringGetLength(CFStringRef theString);
-
-    @CFunction
-    public static native void CFRelease(PointerBase cf);
-
-    @CFunction
-    public static native PointerBase CFRetain(PointerBase cf);
-
-    public interface CFDictionaryRef extends PointerBase {
+        @CField("patchVersion")
+        long getPatchVersion();
     }
 
     @CFunction
-    public static native CFDictionaryRef _CFCopyServerVersionDictionary();
-
-    @CFunction
-    public static native CFDictionaryRef _CFCopySystemVersionDictionary();
-
-    @CFunction
-    public static native CFStringRef CFDictionaryGetValue(CFDictionaryRef theDict, CFStringRef key);
-
-    @CFunction
-    public static native char CFStringGetCharacterAtIndex(CFStringRef theString, long idx);
+    public static native void operatingSystemVersion(PointerBase osVersionStruct);
 }
