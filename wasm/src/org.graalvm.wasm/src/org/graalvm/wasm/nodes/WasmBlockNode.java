@@ -237,6 +237,7 @@ import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.constants.TargetOffset;
+import org.graalvm.wasm.exception.BinaryParserException;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -939,12 +940,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case I64_LOAD32_S:
                 case I64_LOAD32_U: {
                     /* The memAlign hint is not currently used or taken into account. */
-                    if (isLeb128InPool(offset)) {
-                        offset += codeEntry().byteConstant(byteConstantOffset);
-                        byteConstantOffset++;
-                    } else {
-                        offset += getLeb128Length(offset);
-                    }
+                    offset += offsetDelta(offset, byteConstantOffset);
+                    byteConstantOffset += byteConstantDelta(offset);
 
                     // region Load LEB128 Unsigned32 -> memOffset
                     int memOffset = unsignedIntConstant(offset, intConstantOffset);
@@ -1050,12 +1047,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case I64_STORE_16:
                 case I64_STORE_32: {
                     /* The memAlign hint is not currently used or taken into account. */
-                    if (isLeb128InPool(offset)) {
-                        offset += codeEntry().intConstant(byteConstantOffset);
-                        byteConstantOffset++;
-                    } else {
-                        offset += getLeb128Length(offset);
-                    }
+                    offset += offsetDelta(offset, byteConstantOffset);
+                    byteConstantOffset += byteConstantDelta(offset);
 
                     // region Load LEB128 Unsigned32 -> memOffset
                     int memOffset = unsignedIntConstant(offset, intConstantOffset);
@@ -2473,39 +2466,88 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return typeLength(continuationTypeId);
     }
 
-    private int signedIntConstant(int offset, int intConstantOffset) {
-        return isLeb128InPool(offset) ? codeEntry().intConstant(intConstantOffset) : BinaryStreamParser.peekSignedInt32(codeEntry().data(), offset);
+    private int unsignedIntConstant(int offset, int intConstantOffset) {
+        switch (module().storeConstantsInPool) {
+            case ALWAYS:
+                return codeEntry().intConstant(intConstantOffset);
+            case ONLY_BIG:
+                return isLargeConstant(offset) ? codeEntry().intConstant(intConstantOffset) : codeEntry().data()[offset];
+            case NONE:
+                return BinaryStreamParser.peekUnsignedInt32(codeEntry().data(), offset);
+            default:
+                throw new WasmExecutionException(this, "Invalid StoreConstantsInPoolChoice");
+        }
     }
 
-    private int unsignedIntConstant(int offset, int intConstantOffset) {
-        return isLeb128InPool(offset) ? codeEntry().intConstant(intConstantOffset) : BinaryStreamParser.peekUnsignedInt32(codeEntry().data(), offset);
+    private int signedIntConstant(int offset, int intConstantOffset) {
+        switch (module().storeConstantsInPool) {
+            case ALWAYS:
+                return codeEntry().intConstant(intConstantOffset);
+            case ONLY_BIG:
+                return isLargeConstant(offset) ? codeEntry().intConstant(intConstantOffset) : BinaryStreamParser.peekSignedInt32(codeEntry().data(), offset);
+            case NONE:
+                return BinaryStreamParser.peekSignedInt32(codeEntry().data(), offset);
+            default:
+                throw new WasmExecutionException(this, "Invalid StoreConstantsInPoolChoice");
+        }
     }
 
     public long signedLongConstant(int offset, int longConstantOffset) {
-        return isLeb128InPool(offset) ? codeEntry().longConstant(longConstantOffset) : BinaryStreamParser.peekSignedInt64(codeEntry().data(), offset);
+        switch (module().storeConstantsInPool) {
+            case ALWAYS:
+                return codeEntry().longConstant(longConstantOffset);
+            case ONLY_BIG:
+                return isLargeConstant(offset) ? codeEntry().longConstant(longConstantOffset) : BinaryStreamParser.peekSignedInt64(codeEntry().data(), offset);
+            case NONE:
+                return BinaryStreamParser.peekSignedInt64(codeEntry().data(), offset);
+            default:
+                throw new WasmExecutionException(this, "Invalid StoreConstantsInPoolChoice");
+        }
     }
 
     private int offsetDelta(int offset, int byteConstantOffset) {
-        return isLeb128InPool(offset) ? codeEntry().byteConstant(byteConstantOffset) : getLeb128Length(offset);
+        switch (module().storeConstantsInPool) {
+            case ALWAYS:
+                return codeEntry().byteConstant(byteConstantOffset);
+            case ONLY_BIG:
+                return isLargeConstant(offset) ? codeEntry().byteConstant(byteConstantOffset) : 1;
+            case NONE:
+                return getLeb128Length(offset);
+            default:
+                throw new WasmExecutionException(this, "Invalid StoreConstantsInPoolChoice");
+        }
     }
 
     private int longConstantDelta(int offset) {
-        return isLeb128InPool(offset) ? 1 : 0;
+        return constantDelta(offset);
     }
 
     private int intConstantDelta(int offset) {
-        return isLeb128InPool(offset) ? 1 : 0;
+        return constantDelta(offset);
     }
 
     private int byteConstantDelta(int offset) {
-        return isLeb128InPool(offset) ? 1 : 0;
+        return constantDelta(offset);
+    }
+
+    private int constantDelta(int offset) {
+        switch (module().storeConstantsInPool) {
+            case ALWAYS:
+                return 1;
+            case ONLY_BIG:
+                return isLargeConstant(offset) ? 1 : 0;
+            case NONE:
+                return 0;
+            default:
+                throw new WasmExecutionException(this, "Invalid StoreConstantsInPoolChoice");
+        }
     }
 
     public int getLeb128Length(int offset) {
         return BinaryStreamParser.getLeb128Length(codeEntry().data(), offset);
     }
 
-    public boolean isLeb128InPool(int offset) {
-        return BinaryStreamParser.mustPoolLeb128(codeEntry().data(), offset, module().storeConstantsInPool);
+    private boolean isLargeConstant(int offset) {
+        return (codeEntry().data()[offset] & 0x80) != 0;
     }
 }
