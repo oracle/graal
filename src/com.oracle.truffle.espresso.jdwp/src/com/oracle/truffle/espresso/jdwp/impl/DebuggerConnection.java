@@ -89,7 +89,7 @@ public final class DebuggerConnection implements Commands {
     }
 
     // the suspended event instance is only valid while suspended, so
-    // to avoid a race, we have to block until we're sure that the debubgger
+    // to avoid a race, we have to block until we're sure that the debugger
     // command was prepared on the suspended event instance
     private void addBlocking(DebuggerCommand command) {
         queue.add(command);
