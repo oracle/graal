@@ -34,6 +34,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -53,8 +54,8 @@ public interface SubstrateLoweringProvider extends LoweringProvider {
 
     Stamp loadStamp(Stamp stamp, JavaKind kind);
 
-    static LoweringProvider create(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
-        return GraalConfiguration.instance().createLoweringProvider(metaAccess, foreignCalls);
+    static LoweringProvider create(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig) {
+        return GraalConfiguration.instance().createLoweringProvider(metaAccess, foreignCalls, platformConfig);
 
     }
 

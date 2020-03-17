@@ -63,7 +63,7 @@ public class CopyingImageHeapProvider implements ImageHeapProvider {
         } else {
             Word requiredReservedSize = imageHeapSizeInFile.add(imageHeapOffsetInAddressSpace);
             if (reservedAddressSpace.isNonNull() && reservedSize.belowThan(requiredReservedSize)) {
-                return CEntryPointErrors.MAP_HEAP_FAILED;
+                return CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE;
             }
 
             PointerBase mappedImageHeapBegin = reservedAddressSpace.add(imageHeapOffsetInAddressSpace);
@@ -71,7 +71,7 @@ public class CopyingImageHeapProvider implements ImageHeapProvider {
         }
 
         if (heap.isNull()) {
-            return CEntryPointErrors.MAP_HEAP_FAILED;
+            return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
         }
 
         MemoryUtil.copyConjointMemoryAtomic(imageHeapBegin, heap, imageHeapSizeInFile);
@@ -108,7 +108,7 @@ public class CopyingImageHeapProvider implements ImageHeapProvider {
             assert Heap.getHeap().getImageHeapOffsetInAddressSpace() == 0;
             Word imageHeapSizeInFile = IMAGE_HEAP_END.get().subtract(IMAGE_HEAP_BEGIN.get());
             if (VirtualMemoryProvider.get().free(imageHeap, imageHeapSizeInFile) != 0) {
-                return CEntryPointErrors.MAP_HEAP_FAILED;
+                return CEntryPointErrors.FREE_IMAGE_HEAP_FAILED;
             }
         }
         return CEntryPointErrors.NO_ERROR;

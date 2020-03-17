@@ -246,6 +246,7 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
         }
         assert backEdgeCounter >= 0;
         LoopNode.reportLoopCount(this, backEdgeCounter);
+        assert returnValue != null;
         return returnValue;
     }
 

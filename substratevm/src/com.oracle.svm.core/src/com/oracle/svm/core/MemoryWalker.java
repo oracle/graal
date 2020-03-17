@@ -50,7 +50,7 @@ public abstract class MemoryWalker {
 
         /** Visit a region from the native image heap. */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting memory.")
-        boolean visitNativeImageHeapRegion(NativeImageHeapRegionAccess access);
+        <T> boolean visitNativeImageHeapRegion(T region, NativeImageHeapRegionAccess<T> access);
 
         /**
          * Visit a heap chunk, using the provided access methods. Return true if visiting should
@@ -68,16 +68,17 @@ public abstract class MemoryWalker {
     }
 
     /** A set of access methods for visiting regions of the native image heap. */
-    public interface NativeImageHeapRegionAccess {
+    public interface NativeImageHeapRegionAccess<T> {
 
-        /** Return the start of the native image heap region. */
-        UnsignedWord getStart();
+        UnsignedWord getStart(T region);
 
-        /** Return the size of the native image heap region. */
-        UnsignedWord getSize();
+        UnsignedWord getSize(T region);
 
-        /** Return the name of the native image heap region. */
-        String getRegion();
+        String getRegionName(T region);
+
+        boolean containsReferences(T region);
+
+        boolean isWritable(T region);
     }
 
     /** A set of access methods for visiting heap chunk memory. */

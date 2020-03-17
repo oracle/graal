@@ -442,6 +442,23 @@ suite = {
             },
         },
 
+        "com.oracle.svm.native.darwin": {
+            "subDir": "src",
+            "native": "static_lib",
+            "os_arch": {
+                "darwin": {
+                    "<others>": {
+                        "cflags": ["-ObjC", "-fPIC", "-O1", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "only needed on darwin",
+                    },
+                },
+            },
+        },
+
         "com.oracle.svm.native.jvm.posix": {
             "subDir": "src",
             "native": "static_lib",
@@ -951,6 +968,7 @@ suite = {
                 "<os>-<arch>/": [
                     "dependency:com.oracle.svm.native.libchelper/*",
                     "dependency:com.oracle.svm.native.strictmath/*",
+                    "dependency:com.oracle.svm.native.darwin/*",
                     "dependency:com.oracle.svm.native.jvm.posix/*",
                     "dependency:com.oracle.svm.native.jvm.windows/*",
                     "extracted-dependency:truffle:LIBFFI_DIST",
@@ -1109,7 +1127,7 @@ suite = {
             },
         },
 
-        "JDK11_NATIVE_IMAGE_MUSL_SUPPORT" : {
+        "JDK11_NATIVE_IMAGE_MUSL_SUPPORT_CE" : {
             "native" : True,
             "platformDependent" : True,
             "description" : "Static JDK11 libraries required for building images with musl",
@@ -1120,6 +1138,14 @@ suite = {
                         "layout" : {
                             "musl/" : ["extracted-dependency:substratevm:JDK11_LIBMUSL_STATIC_LIBS"],
                         },
+                    },
+                    "<others>" : {
+                        "ignore" : "only linux-amd64 is supported",
+                    },
+                },
+                "<others>" : {
+                    "<others>" : {
+                        "ignore" : "only linux-amd64 is supported",
                     },
                 },
             },

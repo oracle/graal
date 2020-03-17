@@ -30,6 +30,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 public final class DynamicNewInstanceTypeFlow extends TypeFlow<ValueNode> {
@@ -44,8 +45,8 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<ValueNode> {
      */
     protected final AnalysisContext allocationContext;
 
-    public DynamicNewInstanceTypeFlow(TypeFlow<?> newTypeFlow, ValueNode node, BytecodeLocation allocationLabel) {
-        super(node, null);
+    public DynamicNewInstanceTypeFlow(TypeFlow<?> newTypeFlow, AnalysisType type, ValueNode node, BytecodeLocation allocationLabel) {
+        super(node, type);
         this.allocationSite = allocationLabel;
         this.allocationContext = null;
         this.newTypeFlow = newTypeFlow;

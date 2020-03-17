@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -39,11 +39,11 @@
 ;; SOFTWARE.
 ;;
 (module
-    (func (export "_main") (result i32)
+    (func (export "_main") (result i64)
         block $B0 (result i32)
-            i32.const 11
+            i32.const 0x80000000
         end
-        i32.const 21
-        i32.add
+        i32.const 0x80000001
+        i64.add
     )
 )

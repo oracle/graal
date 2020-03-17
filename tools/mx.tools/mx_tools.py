@@ -194,6 +194,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dependencies=['Truffle'],
     truffle_jars=['tools:AGENTSCRIPT'],
     support_distributions=['tools:AGENTSCRIPT_GRAALVM_SUPPORT'],
+    priority=10,
     include_by_default=True,
 ))
 

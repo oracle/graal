@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil;
@@ -65,32 +66,6 @@ public class BitcodeFormatTest {
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
 
     private static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "bitcodeformat");
-
-    enum OS {
-        Darwin,
-        Linux,
-        Solaris;
-
-        private static OS findCurrent() {
-            final String name = System.getProperty("os.name");
-            if (name.equals("Linux")) {
-                return Linux;
-            }
-            if (name.equals("SunOS")) {
-                return Solaris;
-            }
-            if (name.equals("Mac OS X") || name.equals("Darwin")) {
-                return Darwin;
-            }
-            throw new IllegalArgumentException("unknown OS: " + name);
-        }
-
-        private static final OS current = findCurrent();
-
-        public static OS getCurrent() {
-            return current;
-        }
-    }
 
     protected Map<String, String> getContextOptions() {
         return Collections.emptyMap();
@@ -122,9 +97,8 @@ public class BitcodeFormatTest {
 
     @Before
     public void checkOS() {
-        OS os = OS.getCurrent();
-        Assume.assumeTrue("Linux only test", os != OS.Darwin || !value.toString().contains("linux-link"));
-        Assume.assumeTrue("Darwin only test", os == OS.Darwin || !value.toString().contains("darwin-link"));
+        Assume.assumeTrue("Linux only test", !Platform.isDarwin() || !value.toString().contains("linux-link"));
+        Assume.assumeTrue("Darwin only test", Platform.isDarwin() || !value.toString().contains("darwin-link"));
     }
 
     @Test

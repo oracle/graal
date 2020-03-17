@@ -126,24 +126,7 @@ public class VMErrorSubstitutions {
                 log.string(": ").string(msg);
             }
             if (ex != null) {
-                /*
-                 * We do not want to call getMessage(), since it can be overridden by subclasses of
-                 * Throwable. So we access the raw detailMessage directly from the field in
-                 * Throwable. That is better than printing nothing.
-                 */
-                String detailMessage = JDKUtils.getRawMessage(ex);
-                StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(ex);
-
-                log.string(": ").string(ex.getClass().getName()).string(": ").string(detailMessage);
-                if (stackTrace != null) {
-                    for (StackTraceElement element : stackTrace) {
-                        if (element != null) {
-                            log.newline();
-                            log.string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
-                            log.string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
-                        }
-                    }
-                }
+                log.string(": ").exception(ex);
             }
             log.newline();
 

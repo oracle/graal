@@ -34,9 +34,62 @@ truffleWeekly: ${truffle-weekly-notifications} {
   targets: ["weekly"]
 }
 
+simpleToolMavenProjectGate:  {
+    packages : {
+      maven : "==3.3.9"
+    }
+    run : [
+        ["mx", "-p", "../vm", "--dy", "/graal-js", "build"],
+        ["mx", "maven-deploy", "--all-suites", "--all-distribution-types", "--version-string", ["mx", "-p", "../vm", "graalvm-version"]],
+        ["mx", "-p", "../vm", "--java-home", "$JDK_FOR_GRAALVM", "--dy", "/graal-js", "build"],
+        ["set-export", "JAVA_HOME", ["mx", "-p", "../vm", "--java-home", "$JDK_FOR_GRAALVM", "--dy", "/graal-js", "graalvm-home"]],
+        ["cd", "external_repos/"],
+        ["python", "populate.py"],
+        ["cd", "simpletool"],
+        ["mvn", "package"],
+        ["./simpletool", "js", "example.js"],
+    ],
+    targets : [gate],
+}
+
+simpleLanguageMavenProjectGate:  {
+    packages : {
+        maven : "==3.3.9"
+        make: ">=3.83"
+        gcc-build-essentials: ">=4.9.1" # GCC 4.9.0 fails on cluster
+        binutils: ">=2.30"
+        ruby: ">=2.1.0"
+        valgrind: ">=3.9.0"
+    }
+    run : [
+        ["mx", "-p", "../vm", "--native-images=none", "build"],
+        ["mx", "maven-deploy", "--all-suites", "--version-string", ["mx", "-p", "../vm", "graalvm-version"]],
+        ["mx", "-p", "../vm", "--java-home", "$JDK_FOR_GRAALVM", "--dy", "/substratevm", "--native-images=none", "build"],
+        ["set-export", "JAVA_HOME", ["mx", "-p", "../vm", "--java-home", "$JDK_FOR_GRAALVM", "--dy", "/substratevm", "--native-images=none", "graalvm-home"]],
+        ["cd", "external_repos"],
+        ["python", "populate.py"],
+        ["cd", "simplelanguage"],
+        ["mvn", "package"],
+        ["./sl", "language/tests/Add.sl"],
+        ["./native/slnative", "language/tests/Add.sl"],
+        ["$JAVA_HOME/bin/gu", "install", "-L", "component/sl-component.jar"],
+        ["$JAVA_HOME/bin/sl", "language/tests/Add.sl"],
+        ["$JAVA_HOME/bin/slnative", "language/tests/Add.sl"],
+        ["$JAVA_HOME/bin/polyglot", "--jvm", "--language", "sl", "--file", "language/tests/Add.sl"],
+        ["$JAVA_HOME/bin/gu", "remove", "sl"],
+    ],
+    targets : [gate],
+}
+
 builds += [
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {run : [["mx", "build"], ["mx", "sigtest", "--check", "all"]], targets : [gate], name: "gate-truffle-sigtest"},
   ${linux-amd64} ${oraclejdk11}   ${truffleCommon} {run : [["mx", "build"], ["mx", "sigtest", "--check", "bin"]], targets : [gate], name: "gate-truffle-sigtest-11"},
+
+  ${linux-amd64} ${oraclejdk8} ${truffleCommon} ${simpleToolMavenProjectGate}     {environment: {JDK_FOR_GRAALVM: "$JAVA_HOME"},        name: "gate-external-mvn-simpletool-8"},
+  ${linux-amd64} ${oraclejdk8} ${truffleCommon} ${simpleToolMavenProjectGate}     {environment: {JDK_FOR_GRAALVM: "$EXTRA_JAVA_HOMES"}, name: "gate-external-mvn-simpletool-11"},
+  ${linux-amd64} ${oraclejdk8} ${truffleCommon} ${simpleLanguageMavenProjectGate} {environment: {JDK_FOR_GRAALVM: "$JAVA_HOME"},        name: "gate-external-mvn-simplelanguage-8"},
+  ${linux-amd64} ${oraclejdk8} ${truffleCommon} ${simpleLanguageMavenProjectGate} {environment: {JDK_FOR_GRAALVM: "$EXTRA_JAVA_HOMES"}, name: "gate-external-mvn-simplelanguage-11"},
+
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-8"},
   ${linux-amd64} ${oraclejdk11}   ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-oraclejdk-11"},
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {

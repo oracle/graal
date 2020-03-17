@@ -72,6 +72,7 @@ public abstract class ObjectHeader {
     public abstract void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind);
 
     public enum HeapKind {
-        Unmanaged
+        Unmanaged,
+        ImageHeap,
     }
 }

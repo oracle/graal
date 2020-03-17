@@ -329,6 +329,12 @@ public abstract class Log implements AutoCloseable {
     public abstract Log spaces(int value);
 
     /**
+     * Prints the provided exception, including a stack trace if available.
+     */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
+    public abstract Log exception(Throwable t);
+
+    /**
      * Forces the log to flush to its destination.
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
@@ -522,6 +528,11 @@ public abstract class Log implements AutoCloseable {
         @Override
         public Log hexdump(PointerBase from, int wordSize, int numWords) {
             return null;
+        }
+
+        @Override
+        public Log exception(Throwable t) {
+            return this;
         }
 
         @Override

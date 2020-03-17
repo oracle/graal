@@ -43,16 +43,16 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.MemReadI16NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.MemReadI32NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.MemReadI64NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.MemReadI8NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.MemReadNativeNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.MemWriteI16NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.MemWriteI32NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.MemWriteI64NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.MemWriteI8NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.MemWriteNativeNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.MemReadI16NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.MemReadI32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.MemReadI64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.MemReadI8NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.MemReadNativeNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.MemWriteI16NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.MemWriteI32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.MemWriteI64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.MemWriteI8NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.MemWriteNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -61,7 +61,7 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 /**
  * Helper class for memmove involving managed (foreign) objects.
  */
-final class ManagedMemMoveHelperNode extends LLVMNode {
+abstract class ManagedMemMoveHelperNode extends LLVMNode {
 
     @Child MemReadHelperNode read;
     @Child MemWriteHelperNode write;
@@ -69,13 +69,13 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
     public static ManagedMemMoveHelperNode create(LLVMPointer target, LLVMPointer source) {
         MemReadHelperNode read = MemReadHelperNode.create(source);
         MemWriteHelperNode write = MemWriteHelperNode.create(target);
-        return new ManagedMemMoveHelperNode(read, write);
+        return ManagedMemMoveHelperNodeGen.create(read, write);
     }
 
     public static ManagedMemMoveHelperNode createSlowPath(LLVMPointer target, LLVMPointer source) {
         MemReadHelperNode read = MemReadHelperNode.createSlowPath(source);
         MemWriteHelperNode write = MemWriteHelperNode.createSlowPath(target);
-        return new ManagedMemMoveHelperNode(read, write);
+        return ManagedMemMoveHelperNodeGen.create(read, write);
     }
 
     public boolean supportsUnitSize(int unitSize) {
@@ -92,10 +92,30 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
         return write.guard(target);
     }
 
-    public void moveUnit(LLVMPointer target, LLVMPointer source, int unitSize) {
+    // return value unused but needed to make rewriteOn not re-execute
+    abstract Object execute(LLVMPointer target, LLVMPointer source, int unitSize);
+
+    @Specialization(rewriteOn = UnexpectedResultException.class)
+    protected long moveUnitLong(LLVMPointer target, LLVMPointer source, int unitSize) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(unitSize);
-        long value = read.execute(source, unitSize);
+        long value;
+        try {
+            value = read.execute(source, unitSize);
+        } catch (UnexpectedResultException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            write.executeGeneric(target, e.getResult(), unitSize);
+            throw e;
+        }
         write.execute(target, value, unitSize);
+        return 0L;
+    }
+
+    @Specialization(replaces = "moveUnitLong")
+    protected Object moveUnitGeneric(LLVMPointer target, LLVMPointer source, int unitSize) {
+        CompilerAsserts.partialEvaluationConstant(unitSize);
+        Object value = read.executeGeneric(source, unitSize);
+        write.executeGeneric(target, value, unitSize);
+        return null;
     }
 
     abstract static class UnitSizeNode extends LLVMNode {
@@ -138,7 +158,7 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
         }
     }
 
-    private ManagedMemMoveHelperNode(MemReadHelperNode read, MemWriteHelperNode write) {
+    protected ManagedMemMoveHelperNode(MemReadHelperNode read, MemWriteHelperNode write) {
         this.read = read;
         this.write = write;
     }
@@ -193,7 +213,9 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
             }
         }
 
-        abstract long execute(LLVMPointer source, int unitSize);
+        abstract long execute(LLVMPointer source, int unitSize) throws UnexpectedResultException;
+
+        abstract Object executeGeneric(LLVMPointer source, int unitSize);
     }
 
     @GenerateUncached
@@ -351,15 +373,16 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
             return Long.BYTES;
         }
 
-        @Specialization
-        long doManaged(LLVMManagedPointer source, int unitSize) {
-            try {
-                assert unitSize == Long.BYTES;
-                return managedRead.readI64(source.getObject(), source.getOffset());
-            } catch (UnexpectedResultException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Can not memmove from an object containing foreign pointers.");
-            }
+        @Specialization(rewriteOn = UnexpectedResultException.class)
+        long doLong(LLVMManagedPointer source, int unitSize) throws UnexpectedResultException {
+            assert unitSize == Long.BYTES;
+            return managedRead.readI64(source.getObject(), source.getOffset());
+        }
+
+        @Specialization(replaces = "doLong")
+        Object doGeneric(LLVMManagedPointer source, int unitSize) {
+            assert unitSize == Long.BYTES;
+            return managedRead.readGenericI64(source.getObject(), source.getOffset());
         }
     }
 
@@ -407,6 +430,8 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
         }
 
         abstract void execute(LLVMPointer target, long value, int unitSize);
+
+        abstract void executeGeneric(LLVMPointer target, Object value, int unitSize);
     }
 
     @GenerateUncached
@@ -559,9 +584,15 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
         }
 
         @Specialization
-        void doManaged(LLVMManagedPointer target, long value, int unitSize) {
+        void doLong(LLVMManagedPointer target, long value, int unitSize) {
             assert unitSize == Long.BYTES;
             managedWrite.writeI64(target.getObject(), target.getOffset(), value);
+        }
+
+        @Specialization(replaces = "doLong")
+        void doManaged(LLVMManagedPointer target, Object value, int unitSize) {
+            assert unitSize == Long.BYTES;
+            managedWrite.writeGenericI64(target.getObject(), target.getOffset(), value);
         }
     }
 }

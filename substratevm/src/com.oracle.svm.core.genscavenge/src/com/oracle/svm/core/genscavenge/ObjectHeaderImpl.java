@@ -167,8 +167,8 @@ public class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind) {
-        assert heapKind == HeapKind.Unmanaged;
-        // headers in unmanaged memory don't need any GC-specific bits set
+        assert heapKind == HeapKind.Unmanaged || heapKind == HeapKind.ImageHeap;
+        // headers in unmanaged memory or image heap don't need any GC-specific bits set
         Word objectHeader = encodeAsObjectHeader(hub, false, false);
         initializeHeaderOfNewObject(objectPointer, objectHeader);
     }
@@ -240,7 +240,6 @@ public class ObjectHeaderImpl extends ObjectHeader {
         }
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     public long encodeAsImageHeapObjectHeader(long heapBaseRelativeAddress) {
         assert (heapBaseRelativeAddress & MASK_HEADER_BITS.rawValue()) == 0 : "Object header bits must be zero";

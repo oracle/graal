@@ -179,7 +179,7 @@ builds += [
 
   ${sulong-gateTestLLVMorg-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
 
-  ${sulong-gateTestLLVMorg-linux} ${sulong-labsjdk-ce-11-only} ${linux-aarch64} { name: gate-sulong-build_bundled-llvm-linux-aarch64, run: [[mx, gate, --tags, "build"]] }
+  ${sulong-gateTestLLVMorg-linux} ${sulong-labsjdk-ce-11-only} ${linux-aarch64} { name: gate-sulong_bundled-llvm-linux-aarch64, run: [[mx, gate, --tags, "build,sulong"]] }
   ${sulong-gateTestLLVMorg-linux} ${sulong-labsjdk-ce-11-only} { name: gate-sulong-build_bundled-llvm-linux-amd64-labsjdk-ce-11, run: [
     [mx, gate, --tags, "build"]
   ] ${sulong-test-toolchain} }

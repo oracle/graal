@@ -53,9 +53,12 @@ public final class StatisticsPrinter {
 
     private void printStats(PrintWriter out) {
         out.println("Analysis Results Statistics");
+        int[] reachableTypes = getNumReachableTypes(bigbang);
         int[] reachableMethods = getNumReachableMethods(bigbang);
         long[] typeChecksStats = getTypeCheckStats(bigbang);
 
+        out.format("Total reachable types          %8s %n", reachableTypes[0]);
+        out.format("App reachable types            %8s %n", reachableTypes[1]);
         out.format("Total reachable methods        %8s %n", reachableMethods[0]);
         out.format("App reachable methods          %8s %n", reachableMethods[1]);
         out.format("Total type checks              %8s %n", typeChecksStats[0]);
@@ -63,6 +66,20 @@ public final class StatisticsPrinter {
         out.format("App type checks                %8s %n", typeChecksStats[2]);
         out.format("App removable type checks      %8s %n", typeChecksStats[3]);
         out.println();
+    }
+
+    private static int[] getNumReachableTypes(BigBang bb) {
+        int reachable = 0;
+        int appReachable = 0;
+        for (AnalysisType type : bb.getUniverse().getTypes()) {
+            if (type.isInstantiated()) {
+                reachable++;
+                if (!isRuntimeLibraryType(type)) {
+                    appReachable++;
+                }
+            }
+        }
+        return new int[]{reachable, appReachable};
     }
 
     private static int[] getNumReachableMethods(BigBang bb) {

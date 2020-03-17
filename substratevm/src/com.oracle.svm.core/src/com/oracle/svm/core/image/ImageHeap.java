@@ -26,10 +26,6 @@ package com.oracle.svm.core.image;
 
 import java.util.Collection;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-@Platforms(value = Platform.HOSTED_ONLY.class)
 public interface ImageHeap {
     Collection<? extends ImageHeapObject> getObjects();
 

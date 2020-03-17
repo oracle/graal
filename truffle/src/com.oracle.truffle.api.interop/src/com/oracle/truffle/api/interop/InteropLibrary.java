@@ -228,7 +228,8 @@ public abstract class InteropLibrary extends Library {
      * Executes an executable value with the given arguments.
      *
      * @throws UnsupportedTypeException if one of the arguments is not compatible to the executable
-     *             signature
+     *             signature. The exception is thrown on best effort basis, dynamic languages may
+     *             throw their own exceptions if the arguments are wrong.
      * @throws ArityException if the number of expected arguments does not match the number of
      *             actual arguments.
      * @throws UnsupportedMessageException if and only if {@link #isExecutable(Object)} returns
@@ -502,9 +503,12 @@ public abstract class InteropLibrary extends Library {
 
     // Member Messages
     /**
-     * Returns <code>true</code> if the receiver may have members. Members are structural elements
-     * of a class. For example, a method or field is a member of a class. Invoking this message does
-     * not cause any observable side-effects. Returns <code>false</code> by default.
+     * Returns <code>true</code> if the receiver may have members. Therefore, at least one of
+     * {@link #readMember(Object, String)}, {@link #writeMember(Object, String, Object)},
+     * {@link #removeMember(Object, String)}, {@link #invokeMember(Object, String, Object...)} must
+     * not throw {@link UnsupportedMessageException}. Members are structural elements of a class.
+     * For example, a method or field is a member of a class. Invoking this message does not cause
+     * any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #getMembers(Object, boolean)
      * @see #isMemberReadable(Object, String)
@@ -578,8 +582,13 @@ public abstract class InteropLibrary extends Library {
      * method must have not observable side-effects unless
      * {@link #hasMemberReadSideEffects(Object, String)} returns <code>true</code>.
      *
-     * @throws UnsupportedMessageException if the member is not readable
-     * @throws UnknownIdentifierException if the given member does not exist.
+     * @throws UnsupportedMessageException if when the receiver does not support reading at all. An
+     *             empty receiver with no readable members supports the read operation (even though
+     *             there is nothing to read), therefore it throws {@link UnknownIdentifierException}
+     *             for all arguments instead.
+     * @throws UnknownIdentifierException if the given member is not
+     *             {@link #isMemberReadable(Object, String) readable}, e.g. when the member with the
+     *             given name does not exist.
      * @see #hasMemberReadSideEffects(Object, String)
      * @since 19.0
      */
@@ -626,9 +635,12 @@ public abstract class InteropLibrary extends Library {
      * This method must have not observable side-effects other than the changed member unless
      * {@link #hasMemberWriteSideEffects(Object, String) side-effects} are allowed.
      *
-     * @throws UnsupportedMessageException if the member is not writable
-     * @throws UnknownIdentifierException if the given member is not insertable and does not exist.
-     * @throws UnsupportedTypeException if the provided value type is not allowed to be written
+     * @throws UnsupportedMessageException when the receiver does not support writing at all, e.g.
+     *             when it is immutable.
+     * @throws UnknownIdentifierException if the given member is not
+     *             {@link #isMemberModifiable(Object, String) modifiable} nor
+     *             {@link #isMemberInsertable(Object, String) insertable}.
+     * @throws UnsupportedTypeException if the provided value type is not allowed to be written.
      * @see #hasMemberWriteSideEffects(Object, String)
      * @since 19.0
      */
@@ -657,9 +669,11 @@ public abstract class InteropLibrary extends Library {
      *
      * This method does not have not observable side-effects other than the removed member.
      *
-     * @throws UnsupportedMessageException if the member is not removable
-     * @throws UnknownIdentifierException if the given member is not existing but removing would be
-     *             allowed
+     * @throws UnsupportedMessageException when the receiver does not support removing at all, e.g.
+     *             when it is immutable.
+     * @throws UnknownIdentifierException if the given member is not
+     *             {@link #isMemberRemovable(Object, String)} removable}, e.g. the receiver does not
+     *             have a member with the given name.
      * @see #isMemberRemovable(Object, String)
      * @since 19.0
      */
@@ -685,12 +699,15 @@ public abstract class InteropLibrary extends Library {
     /**
      * Invokes a member for a given receiver and arguments.
      *
-     * @throws UnknownIdentifierException if the given member does not exist.
+     * @throws UnknownIdentifierException if the given member does not exist or is not
+     *             {@link #isMemberInvocable(Object, String) invocable}.
      * @throws UnsupportedTypeException if one of the arguments is not compatible to the executable
-     *             signature
+     *             signature. The exception is thrown on best effort basis, dynamic languages may
+     *             throw their own exceptions if the arguments are wrong.
      * @throws ArityException if the number of expected arguments does not match the number of
      *             actual arguments.
-     * @throws UnsupportedMessageException if the member is not invocable
+     * @throws UnsupportedMessageException when the receiver does not support invoking at all, e.g.
+     *             when storing executable members is not allowed.
      * @see #isMemberInvocable(Object, String)
      * @since 19.0
      */
@@ -769,9 +786,12 @@ public abstract class InteropLibrary extends Library {
     // Array Messages
 
     /**
-     * Returns <code>true</code> if the receiver may have array elements. For example, the contents
-     * of an array or list datastructure could be interpreted as array elements. Invoking this
-     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     * Returns <code>true</code> if the receiver may have array elements. Therefore, At least one of
+     * {@link #readArrayElement(Object, long)}, {@link #writeArrayElement(Object, long, Object)},
+     * {@link #removeArrayElement(Object, long)} must not throw {#link
+     * {@link UnsupportedMessageException}. For example, the contents of an array or list
+     * datastructure could be interpreted as array elements. Invoking this message does not cause
+     * any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #getArraySize(Object)
      * @since 19.0
@@ -785,8 +805,13 @@ public abstract class InteropLibrary extends Library {
      * Reads the value of an array element by index. This method must have not observable
      * side-effect.
      *
-     * @throws UnsupportedMessageException if the array element is not readable.
-     * @throws InvalidArrayIndexException if the array index is out of bounds or invalid.
+     * @throws UnsupportedMessageException when the receiver does not support reading at all. An
+     *             empty receiver with no readable array elements supports the read operation (even
+     *             though there is nothing to read), therefore it throws
+     *             {@link UnknownIdentifierException} for all arguments instead.
+     * @throws InvalidArrayIndexException if the given index is not
+     *             {@link #isArrayElementReadable(Object, long) readable}, e.g. when the index is
+     *             invalid or the index is out of bounds.
      * @since 19.0
      */
     @Abstract(ifExported = {"hasArrayElements"})
@@ -827,9 +852,13 @@ public abstract class InteropLibrary extends Library {
      *
      * This method must have not observable side-effects other than the changed array element.
      *
-     * @throws UnsupportedMessageException if the array element is not writable
-     * @throws InvalidArrayIndexException if the array element is not insertable and does not exist.
-     * @throws UnsupportedTypeException if the provided value type is not allowed to be written
+     * @throws UnsupportedMessageException when the receiver does not support writing at all, e.g.
+     *             when it is immutable.
+     * @throws InvalidArrayIndexException if the given index is not
+     *             {@link #isArrayElementInsertable(Object, long) insertable} nor
+     *             {@link #isArrayElementModifiable(Object, long) modifiable}, e.g. when the index
+     *             is invalid or the index is out of bounds and the array does not support growing.
+     * @throws UnsupportedTypeException if the provided value type is not allowed to be written.
      * @since 19.0
      */
     @Abstract(ifExported = {"isArrayElementModifiable", "isArrayElementInsertable"})
@@ -843,11 +872,16 @@ public abstract class InteropLibrary extends Library {
      * return <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as
      * well and {@link #isArrayElementInsertable(Object, long)} returns <code>false</code>.
      *
-     * This method does not have not observable side-effects other than the removed array element.
+     * This method does not have observable side-effects other than the removed array element and
+     * shift of remaining elements. If shifting is not supported then the array might allow only
+     * removal of last element.
      *
-     * @throws UnsupportedMessageException if the array element is not removable
-     * @throws InvalidArrayIndexException if the given array element index is not existing but
-     *             removing would be allowed
+     * @throws UnsupportedMessageException when the receiver does not support removing at all, e.g.
+     *             when it is immutable.
+     * @throws InvalidArrayIndexException if the given index is not
+     *             {@link #isArrayElementRemovable(Object, long) removable}, e.g. when the index is
+     *             invalid, the index is out of bounds, or the array does not support shifting of
+     *             remaining elements.
      * @see #isArrayElementRemovable(Object, long)
      * @since 19.0
      */
@@ -991,7 +1025,8 @@ public abstract class InteropLibrary extends Library {
      * @see #isDate(Object)
      * @see #isTime(Object)
      * @see #isTimeZone(Object)
-     * @throws UnsupportedMessageException if {@link #isInstant(Object)} returns <code>false</code>.
+     * @throws UnsupportedMessageException if and only if {@link #isInstant(Object)} returns
+     *             <code>false</code>.
      * @since 20.0.0 beta 2
      */
     public Instant asInstant(Object receiver) throws UnsupportedMessageException {
@@ -1059,8 +1094,8 @@ public abstract class InteropLibrary extends Library {
      * Returns the receiver as timestamp if this object represents a {@link #isTimeZone(Object)
      * timezone}.
      *
-     * @throws UnsupportedMessageException if {@link #isTimeZone(Object)} returns <code>false</code>
-     *             .
+     * @throws UnsupportedMessageException if and only if {@link #isTimeZone(Object)} returns
+     *             <code>false</code> .
      * @see #isTimeZone(Object)
      * @since 20.0.0 beta 2
      */
@@ -1087,7 +1122,8 @@ public abstract class InteropLibrary extends Library {
      * returned date is either aware if the receiver has a {@link #isTimeZone(Object) timezone}
      * otherwise it is naive.
      *
-     * @throws UnsupportedMessageException if {@link #isDate(Object)} returns <code>false</code>.
+     * @throws UnsupportedMessageException if and only if {@link #isDate(Object)} returns
+     *             <code>false</code>.
      * @see #isDate(Object)
      * @since 20.0.0 beta 2
      */
@@ -1114,7 +1150,8 @@ public abstract class InteropLibrary extends Library {
      * returned time is either aware if the receiver has a {@link #isTimeZone(Object) timezone}
      * otherwise it is naive.
      *
-     * @throws UnsupportedMessageException if {@link #isTime(Object)} returns <code>false</code>.
+     * @throws UnsupportedMessageException if and only if {@link #isTime(Object)} returns
+     *             <code>false</code>.
      * @see #isTime(Object)
      * @since 20.0.0 beta 2
      */
@@ -1139,8 +1176,8 @@ public abstract class InteropLibrary extends Library {
      * Returns the receiver as duration if this object represents a {@link #isDuration(Object)
      * duration}.
      *
-     * @throws UnsupportedMessageException if {@link #isDuration(Object)} returns <code>false</code>
-     *             .
+     * @throws UnsupportedMessageException if and only if {@link #isDuration(Object)} returns
+     *             <code>false</code> .
      * @see #isDuration(Object)
      * @since 20.0.0 beta 2
      */

@@ -789,6 +789,7 @@ final class PolyglotProxy implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean config) {
         try {
             return this.proxy.toString();

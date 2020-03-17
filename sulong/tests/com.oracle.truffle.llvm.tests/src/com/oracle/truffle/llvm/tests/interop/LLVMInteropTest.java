@@ -63,11 +63,11 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
-import com.oracle.truffle.llvm.tests.SulongSuite;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
 import com.oracle.truffle.llvm.tests.interop.values.NullValue;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.llvm.tests.Platform;
 
 public class LLVMInteropTest {
     @Test
@@ -1413,7 +1413,7 @@ public class LLVMInteropTest {
             runner.load();
             Assert.assertEquals("construct\n", buf.toString());
         }
-        if (SulongSuite.IS_MAC) {
+        if (Platform.isDarwin()) {
             /*
              * On MacOS, newer clang version implement destructors by registering it via `atexit` in
              * a generated constructor. Our test also registers an `atexit` function in a

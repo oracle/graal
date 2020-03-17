@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNode.UnitSizeNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.UnitSizeNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.UnitSizeNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -57,7 +57,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
                     UnitSizeNode unitSizeNode) {
         int unitSize = unitSizeNode.execute(helper, length);
         for (long i = 0; i < length; i += unitSize) {
-            helper.moveUnit(target.increment(i), source.increment(i), unitSize);
+            helper.execute(target.increment(i), source.increment(i), unitSize);
         }
     }
 
@@ -66,7 +66,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
                     UnitSizeNode unitSizeNode) {
         int unitSize = unitSizeNode.execute(helper, length);
         for (long i = length - unitSize; i >= 0; i -= unitSize) {
-            helper.moveUnit(target.increment(i), source.increment(i), unitSize);
+            helper.execute(target.increment(i), source.increment(i), unitSize);
         }
     }
 

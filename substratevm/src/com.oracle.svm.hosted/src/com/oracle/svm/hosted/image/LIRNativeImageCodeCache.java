@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.code.CompilationResult;
@@ -214,10 +215,11 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public List<ObjectFile.Symbol> getGlobalSymbols(ObjectFile objectFile) {
-        return StreamSupport.stream(objectFile.getSymbolTable().spliterator(), false)
-                        .filter(ObjectFile.Symbol::isGlobal)
-                        .filter(ObjectFile.Symbol::isDefined)
-                        .collect(Collectors.toList());
+    public List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile, boolean onlyGlobal) {
+        Stream<ObjectFile.Symbol> stream = StreamSupport.stream(objectFile.getSymbolTable().spliterator(), false);
+        if (onlyGlobal) {
+            stream = stream.filter(ObjectFile.Symbol::isGlobal);
+        }
+        return stream.filter(ObjectFile.Symbol::isDefined).collect(Collectors.toList());
     }
 }

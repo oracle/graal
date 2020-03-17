@@ -46,6 +46,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.llvm.tests.Platform;
+
 /**
  * This class (with an executable main method) produces an exhaustive test of all unary/binary/cast
  * bitcode operations on all arithmetic types (incl. vectors).
@@ -68,28 +70,6 @@ public class LLIRTestGen {
         boolean isFloat();
 
         String toName();
-    }
-
-    enum Architecture {
-        AMD64,
-        AArch64;
-
-        private static Architecture findCurrent() {
-            final String name = System.getProperty("os.arch");
-            if (name.equals("amd64") || name.equals("x86_64")) {
-                return AMD64;
-            }
-            if (name.equals("aarch64")) {
-                return AArch64;
-            }
-            throw new IllegalArgumentException("unknown architecture: " + name);
-        }
-
-        private static final Architecture current = findCurrent();
-
-        public static Architecture getCurrent() {
-            return current;
-        }
     }
 
     private enum ScalarType implements Type {
@@ -780,9 +760,9 @@ public class LLIRTestGen {
                         "fsub_x86_fp80", // Fails with managed sulong
                         "fdiv_x86_fp80"  // Fails with managed sulong
         ));
-        Architecture arch = Architecture.getCurrent();
-        if (arch == Architecture.AArch64) {
-            filenameBlacklist.add("bitcast_x86_fp80");
+        if (Platform.isAArch64()) {
+            filenameBlacklist.addAll(Arrays.asList(
+                            "ashr_3xi8", "ashr_4xi8", "bitcast_x86_fp80", "lshr_2xi8", "lshr_3xi8", "lshr_4xi8", "shl_2xi8", "shl_3xi8", "shl_4xi8"));
         }
 
         filenameBlacklist = filenameBlacklist.stream().map(s -> makeBlacklistFilename(outputDir, s)).collect(Collectors.toSet());
