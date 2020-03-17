@@ -451,7 +451,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // Assert.assertEquals(state.stackSize() - startStackSize,
                     // currentBlock.returnTypeLength(), "Invalid stack state on BR instruction");
                     int unwindLevel = readLabelIndex(bytesConsumed);
-                    state.useLongConstant(unwindLevel);
+                    state.useIntConstant(unwindLevel);
                     state.useByteConstant(bytesConsumed[0]);
                     final int targetStackSize = state.getStackState(unwindLevel);
                     state.useIntConstant(targetStackSize);
@@ -473,7 +473,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // Assert.assertEquals(state.stackSize() - startStackSize,
                     // currentBlock.returnTypeLength(), "Invalid stack state on BR instruction");
                     int unwindLevel = readLabelIndex(bytesConsumed);
-                    state.useLongConstant(unwindLevel);
+                    state.useIntConstant(unwindLevel);
                     state.useByteConstant(bytesConsumed[0]);
                     state.useIntConstant(state.getStackState(unwindLevel));
                     state.useIntConstant(state.getContinuationReturnLength(unwindLevel));
@@ -516,7 +516,7 @@ public class BinaryParser extends BinaryStreamParser {
                     for (int i = 0; i < codeEntry.function().returnTypeLength(); i++) {
                         state.pop();
                     }
-                    state.useLongConstant(state.stackStateCount());
+                    state.useIntConstant(state.stackStateCount());
                     state.useIntConstant(state.getRootBlockReturnLength());
                     // This instruction is stack-polymorphic.
                     state.setReachable(false);
@@ -524,7 +524,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.CALL: {
                     int functionIndex = readFunctionIndex(bytesConsumed);
-                    state.useLongConstant(functionIndex);
+                    state.useIntConstant(functionIndex);
                     state.useByteConstant(bytesConsumed[0]);
                     WasmFunction function = module.symbolTable().function(functionIndex);
                     state.pop(function.numArguments());
@@ -545,7 +545,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.CALL_INDIRECT: {
                     int expectedFunctionTypeIndex = readTypeIndex(bytesConsumed);
-                    state.useLongConstant(expectedFunctionTypeIndex);
+                    state.useIntConstant(expectedFunctionTypeIndex);
                     state.useByteConstant(bytesConsumed[0]);
                     int numArguments = module.symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
                     int returnLength = module.symbolTable().functionTypeReturnTypeLength(expectedFunctionTypeIndex);
@@ -570,7 +570,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 case Instructions.LOCAL_GET: {
                     int localIndex = readLocalIndex(bytesConsumed);
-                    state.useLongConstant(localIndex);
+                    state.useIntConstant(localIndex);
                     state.useByteConstant(bytesConsumed[0]);
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.get");
@@ -579,7 +579,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.LOCAL_SET: {
                     int localIndex = readLocalIndex(bytesConsumed);
-                    state.useLongConstant(localIndex);
+                    state.useIntConstant(localIndex);
                     state.useByteConstant(bytesConsumed[0]);
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.set");
@@ -590,7 +590,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.LOCAL_TEE: {
                     int localIndex = readLocalIndex(bytesConsumed);
-                    state.useLongConstant(localIndex);
+                    state.useIntConstant(localIndex);
                     state.useByteConstant(bytesConsumed[0]);
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.tee");
@@ -600,7 +600,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.GLOBAL_GET: {
                     int index = readLocalIndex(bytesConsumed);
-                    state.useLongConstant(index);
+                    state.useIntConstant(index);
                     state.useByteConstant(bytesConsumed[0]);
                     Assert.assertIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(),
                                     "Invalid global index for global.get.");
@@ -609,7 +609,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.GLOBAL_SET: {
                     int index = readLocalIndex(bytesConsumed);
-                    state.useLongConstant(index);
+                    state.useIntConstant(index);
                     state.useByteConstant(bytesConsumed[0]);
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(),
@@ -643,7 +643,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // Set consume count for the bytes.
                     state.useByteConstant(bytesConsumed[0]);
                     int loadOffset = readUnsignedInt32(bytesConsumed);
-                    state.useLongConstant(loadOffset);
+                    state.useIntConstant(loadOffset);
                     state.useByteConstant(bytesConsumed[0]);
                     Assert.assertIntGreater(state.stackSize(), 0, String.format("load instruction 0x%02X requires at least one element in the stack", opcode));
                     state.pop();   // Base address.
@@ -665,7 +665,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // during the execution.
                     state.useByteConstant(bytesConsumed[0]);
                     int storeOffset = readUnsignedInt32(bytesConsumed);
-                    state.useLongConstant(storeOffset);
+                    state.useIntConstant(storeOffset);
                     state.useByteConstant(bytesConsumed[0]);
                     Assert.assertIntGreater(state.stackSize(), 1, String.format("store instruction 0x%02X requires at least two elements in the stack", opcode));
                     state.pop();  // Value to store.
@@ -687,7 +687,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.I32_CONST: {
                     int value = readSignedInt32(bytesConsumed);
-                    state.useLongConstant(value);
+                    state.useIntConstant(value);
                     state.useByteConstant(bytesConsumed[0]);
                     state.push();
                     break;
@@ -701,7 +701,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.F32_CONST: {
                     int value = readFloatAsInt32();
-                    state.useLongConstant(value);
+                    state.useIntConstant(value);
                     state.push();
                     break;
                 }
