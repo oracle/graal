@@ -419,9 +419,9 @@ final class DarwinBuilder extends PlatformBuilder {
 
 final class WindowsBuilder extends PlatformBuilder {
 
-    private final Path WINDOWS_ROOT = Paths.get(System.getenv("SystemRoot"));
+    private static final Path WINDOWS_ROOT = Paths.get(System.getenv("SystemRoot"));
 
-    private final Path PACKAGE_DIR = Paths.get("Sun", "Java");
+    private static final Path PACKAGE_DIR = Paths.get("Sun", "Java");
 
     @Override
     List<Path> defaultJavaLibraryPath() {
