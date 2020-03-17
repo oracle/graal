@@ -1109,7 +1109,7 @@ suite = {
             },
         },
 
-        "JDK11_NATIVE_IMAGE_MUSL_SUPPORT" : {
+        "JDK11_NATIVE_IMAGE_MUSL_SUPPORT_CE" : {
             "native" : True,
             "platformDependent" : True,
             "description" : "Static JDK11 libraries required for building images with musl",
@@ -1120,6 +1120,14 @@ suite = {
                         "layout" : {
                             "musl/" : ["extracted-dependency:substratevm:JDK11_LIBMUSL_STATIC_LIBS"],
                         },
+                    },
+                    "<others>" : {
+                        "ignore" : "only linux-amd64 is supported",
+                    },
+                },
+                "<others>" : {
+                    "<others>" : {
+                        "ignore" : "only linux-amd64 is supported",
                     },
                 },
             },

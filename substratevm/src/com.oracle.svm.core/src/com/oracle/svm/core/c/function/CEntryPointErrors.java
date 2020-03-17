@@ -81,6 +81,12 @@ public final class CEntryPointErrors {
     @Description("Mapping the heap from the image file into memory failed.") //
     public static final int MAP_HEAP_FAILED = 8;
 
+    @Description("Reserving address space for the new isolate failed.") //
+    public static final int RESERVE_ADDRESS_SPACE_FAILED = 801;
+
+    @Description("The image heap does not fit in the available address space.") //
+    public static final int INSUFFICIENT_ADDRESS_SPACE = 802;
+
     @Description("Setting the protection of the heap memory failed.") //
     public static final int PROTECT_HEAP_FAILED = 9;
 
@@ -110,6 +116,12 @@ public final class CEntryPointErrors {
 
     @Description("Auxiliary images are not supported on this platform or edition.") //
     public static final int AUX_IMAGE_UNSUPPORTED = 18;
+
+    @Description("Releasing the isolate's address space failed.") //
+    public static final int FREE_ADDRESS_SPACE_FAILED = 19;
+
+    @Description("Releasing the isolate's image heap memory failed.") //
+    public static final int FREE_IMAGE_HEAP_FAILED = 20;
 
     public static String getDescription(int code) {
         String result = null;
