@@ -576,9 +576,6 @@ public class NativeImageGenerator {
                 recordMethodsWithStackValues();
                 recordRestrictHeapAccessCallees(aUniverse.getMethods());
 
-                FeatureImpl.AfterUniverseCreationAccessImpl afterUniverseCreation = new FeatureImpl.AfterUniverseCreationAccessImpl(featureHandler, loader, hUniverse, hMetaAccess, debug);
-                featureHandler.forEachFeature(feature -> feature.afterUniverseCreation(afterUniverseCreation));
-
                 /*
                  * After this point, all TypeFlow (and therefore also TypeState) objects are
                  * unreachable and can be garbage collected. This is important to keep the overall
@@ -632,7 +629,7 @@ public class NativeImageGenerator {
                         heapLayouter.initialize();
                         heapLayouter.assignPartitionRelativeOffsets(heap);
 
-                        AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, hMetaAccess, debug);
+                        AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
                         this.image = AbstractBootImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader.getClassLoader());

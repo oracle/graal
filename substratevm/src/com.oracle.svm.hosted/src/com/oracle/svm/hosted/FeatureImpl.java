@@ -432,25 +432,6 @@ public class FeatureImpl {
         }
     }
 
-    public static class AfterUniverseCreationAccessImpl extends FeatureAccessImpl implements Feature.AfterUniverseCreationAccess {
-        private final HostedUniverse hUniverse;
-        private final HostedMetaAccess hMetaAccess;
-
-        AfterUniverseCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess, DebugContext debugContext) {
-            super(featureHandler, imageClassLoader, debugContext);
-            this.hUniverse = hUniverse;
-            this.hMetaAccess = hMetaAccess;
-        }
-
-        public HostedUniverse getUniverse() {
-            return hUniverse;
-        }
-
-        public HostedMetaAccess getMetaAccess() {
-            return hMetaAccess;
-        }
-    }
-
     public static class CompilationAccessImpl extends FeatureAccessImpl implements Feature.CompilationAccess {
 
         protected final AnalysisUniverse aUniverse;
@@ -567,7 +548,7 @@ public class FeatureImpl {
         private Collection<CompileQueue.CompileTask> compilationTasks;
 
         AfterCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
-                                   Collection<CompileQueue.CompileTask> compilationTasks, NativeImageHeap heap, DebugContext debugContext) {
+                        Collection<CompileQueue.CompileTask> compilationTasks, NativeImageHeap heap, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, aUniverse, hUniverse, hMetaAccess, heap, debugContext);
             this.compilationTasks = compilationTasks;
         }
@@ -579,14 +560,20 @@ public class FeatureImpl {
 
     public static class AfterHeapLayoutAccessImpl extends FeatureAccessImpl implements Feature.AfterHeapLayoutAccess {
         protected final HostedMetaAccess hMetaAccess;
+        protected final NativeImageHeap heap;
 
-        AfterHeapLayoutAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedMetaAccess hMetaAccess, DebugContext debugContext) {
+        AfterHeapLayoutAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageHeap heap, HostedMetaAccess hMetaAccess, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
+            this.heap = heap;
             this.hMetaAccess = hMetaAccess;
         }
 
         public HostedMetaAccess getMetaAccess() {
             return hMetaAccess;
+        }
+
+        public NativeImageHeap getHeap() {
+            return heap;
         }
     }
 
