@@ -237,7 +237,6 @@ import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.constants.TargetOffset;
-import org.graalvm.wasm.exception.BinaryParserException;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.memory.WasmMemory;
