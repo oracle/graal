@@ -346,12 +346,24 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public void resumeAll(boolean sessionClosed) {
-        JDWPLogger.log("Called resumeAll:", JDWPLogger.LogLevel.THREAD);
+        Object steppingThread = null;
 
+        // The order of which to resume threads is not specified, however when RESUME_ALL command is
+        // sent while performing a stepping request, some debuggers (IntelliJ is a known case) will
+        // expect all other threads but the current stepping thread to be resumed first.
         for (Object thread : getContext().getAllGuestThreads()) {
             while (threadSuspension.getSuspensionCount(thread) > 0) {
-                resume(thread, sessionClosed);
+                SteppingInfo steppingInfo = commandRequestIds.get(thread);
+                if (steppingInfo != null) {
+                    steppingThread = thread;
+                    break;
+                } else {
+                    resume(thread, sessionClosed);
+                }
             }
+        }
+        if (steppingThread != null) {
+            resume(steppingThread, sessionClosed);
         }
     }
 
