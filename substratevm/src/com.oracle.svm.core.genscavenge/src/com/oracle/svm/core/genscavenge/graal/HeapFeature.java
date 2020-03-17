@@ -72,13 +72,18 @@ public class HeapFeature implements GraalFeature {
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        // Even though I don't hold on to this instance,
-        // it is preserved because it becomes the enclosing instance
-        // for the lowerings registered within it.
+        // Even though I don't hold on to this instance, it is preserved because it becomes the
+        // enclosing instance for the lowerings registered within it.
         final BarrierSnippets barrierSnippets = BarrierSnippets.factory(options, factories, providers, snippetReflection);
         barrierSnippets.registerLowerings(lowerings);
 
         GenScavengeAllocationSnippets.registerLowering(options, factories, providers, snippetReflection, lowerings);
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        // Needed for the barrier set
+        access.registerAsUsed(Object[].class);
     }
 
     @Override
