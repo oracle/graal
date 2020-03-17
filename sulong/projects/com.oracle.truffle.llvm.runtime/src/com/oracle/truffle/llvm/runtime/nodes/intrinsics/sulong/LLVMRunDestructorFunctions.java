@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
 
@@ -47,7 +48,7 @@ public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
     @Specialization
     protected Object doOp(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         runDestructorFunctions(ctx);
-        return null;
+        return LLVMNativePointer.createNull();
     }
 
     @TruffleBoundary

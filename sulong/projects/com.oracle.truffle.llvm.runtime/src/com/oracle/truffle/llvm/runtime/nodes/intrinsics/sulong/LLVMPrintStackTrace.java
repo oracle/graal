@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,6 +49,7 @@ import com.oracle.truffle.llvm.runtime.SulongStackTrace.Element;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
     @TruffleBoundary
@@ -60,7 +61,7 @@ public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
         for (Element element : elements) {
             System.err.print(element);
         }
-        return null;
+        return LLVMNativePointer.createNull();
     }
 
     // method can be used for debugging
