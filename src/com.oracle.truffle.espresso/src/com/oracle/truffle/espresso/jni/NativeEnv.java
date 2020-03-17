@@ -232,7 +232,7 @@ public abstract class NativeEnv {
         return loadLibraryInternal(searchPaths, name, true);
     }
 
-    public static @Pointer TruffleObject loadLibraryInternal(List<Path> searchPaths, String name, boolean throwOnError) {
+    public static @Pointer TruffleObject loadLibraryInternal(List<Path> searchPaths, String name, boolean notFoundIsFatal) {
         for (Path path : searchPaths) {
             Path libPath = path.resolve(System.mapLibraryName(name));
             try {
@@ -241,7 +241,7 @@ public abstract class NativeEnv {
                 // continue
             }
         }
-        if (throwOnError) {
+        if (notFoundIsFatal) {
             throw EspressoError.shouldNotReachHere("Cannot load library: " + name);
         }
         return null;
