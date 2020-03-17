@@ -196,8 +196,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         // Try to load verify dll first. In 1.3 java dll depends on it and is not
         // always able to find it when the loading executable is outside the JDK.
         // In order to keep working with 1.2 we ignore any loading errors.
-        /* verifyLibrary = */ loadLibrary(bootLibraryPath, "verify");
-        TruffleObject libJava = loadLibrary(bootLibraryPath, "java");
+        /* verifyLibrary = */ loadLibraryInternal(bootLibraryPath, "verify");
+        TruffleObject libJava = loadLibraryInternal(bootLibraryPath, "java");
 
         // The JNI_OnLoad handling is normally done by method load in
         // java.lang.ClassLoader$NativeLibrary, but the VM loads the base library
@@ -216,12 +216,22 @@ public final class VM extends NativeEnv implements ContextAccess {
         return libJava;
     }
 
+    private @Pointer TruffleObject loadMokapotLibrary(List<Path> searchPaths) {
+        TruffleObject mokapotLibrary = loadLibraryInternal(searchPaths, "mokapot", false);
+        if (mokapotLibrary != null) {
+            return mokapotLibrary;
+        }
+        // Windows uses jvm.dll instead of mokapot.dll
+        // assert OS.isWindows()
+        return loadLibraryInternal(searchPaths, "jvm");
+    }
+
     private VM(JniEnv jniEnv) {
         this.jniEnv = jniEnv;
         try {
             EspressoProperties props = getContext().getVmProperties();
 
-            mokapotLibrary = loadLibrary(Collections.singletonList(props.espressoLibraryPath()), "mokapot");
+            mokapotLibrary = loadMokapotLibrary(Collections.singletonList(props.espressoLibraryPath()));
             assert mokapotLibrary != null;
 
             initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,

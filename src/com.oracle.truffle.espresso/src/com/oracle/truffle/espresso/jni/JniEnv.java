@@ -352,7 +352,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         EspressoProperties props = context.getVmProperties();
         this.context = context;
         try {
-            nespressoLibrary = loadLibrary(Collections.singletonList(props.espressoLibraryPath()), "nespresso");
+            nespressoLibrary = loadLibraryInternal(Collections.singletonList(props.espressoLibraryPath()), "nespresso");
             dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
                             "initializeNativeContext", "(env, (pointer): pointer): pointer");
