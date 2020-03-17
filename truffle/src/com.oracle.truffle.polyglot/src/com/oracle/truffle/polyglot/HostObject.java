@@ -340,7 +340,8 @@ final class HostObject implements TruffleObject {
             writeField.execute(f, this, value);
         } catch (ClassCastException | NullPointerException e) {
             // conversion failed by ToJavaNode
-            throw UnsupportedTypeException.create(new Object[]{value});
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
         }
     }
 
@@ -1295,23 +1296,34 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
         static void doCached(HostFieldDesc field, HostObject object, Object rawValue,
                         @Cached("field") HostFieldDesc cachedField,
-                        @Cached ToHostNode toHost) throws UnsupportedTypeException, UnknownIdentifierException {
-            Object value;
-            try {
-                value = toHost.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext, true);
-            } catch (ClassCastException | NullPointerException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.create(new Object[]{rawValue}, e.getMessage());
+                        @Cached ToHostNode toHost,
+                        @Cached BranchProfile errorBranch) throws UnsupportedTypeException, UnknownIdentifierException {
+            if (field.isFinal()) {
+                errorBranch.enter();
+                throw UnknownIdentifierException.create(field.getName());
             }
-            cachedField.set(object.obj, value);
+            try {
+                Object value = toHost.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext, true);
+                cachedField.set(object.obj, value);
+            } catch (ClassCastException | NullPointerException | IllegalArgumentException e) {
+                errorBranch.enter();
+                throw HostInteropErrors.unsupportedTypeException(rawValue, e);
+            }
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
         static void doUncached(HostFieldDesc field, HostObject object, Object rawValue,
                         @Cached ToHostNode toHost) throws UnsupportedTypeException, UnknownIdentifierException {
-            Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext, true);
-            field.set(object.obj, val);
+            if (field.isFinal()) {
+                throw UnknownIdentifierException.create(field.getName());
+            }
+            try {
+                Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext, true);
+                field.set(object.obj, val);
+            } catch (ClassCastException | NullPointerException | IllegalArgumentException e) {
+                throw HostInteropErrors.unsupportedTypeException(rawValue, e);
+            }
         }
     }
 
