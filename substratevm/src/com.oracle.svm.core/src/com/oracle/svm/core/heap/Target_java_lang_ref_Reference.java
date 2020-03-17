@@ -61,17 +61,16 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * <p>
  * Implementation methods are in the separate class {@link ReferenceInternals} because
  * {@link Reference} can be subclassed and subclasses could otherwise inadvertently override
- * injected methods by declaring methods with identical names and signatures, or override methods
- * such as {@link #enqueue()} with an incompatible implementation, which is problematic because some
- * of the methods are invoked during garbage collection.
+ * injected methods by declaring methods with identical names and signatures.
  * <p>
  * This class serves three purposes:
  * <ul>
- * <li>It has a {@linkplain #referent reference to an object,} which is not strong. Therefore, if
- * the object is not otherwise strongly reachable, the garbage collector can choose to reclaim it
- * and will then set our reference (and possibly others) to {@code null}.
+ * <li>It has a {@linkplain #referent reference to an object,} which is excluded from the reference
+ * map. If the object is not otherwise strongly reachable, the garbage collector can choose to
+ * reclaim it and will then set our reference (and possibly others) to {@code null}.
  * <li>It has {@linkplain #discovered linkage} to become part of a linked list of reference objects
- * that are discovered during garbage collection, when allocation is restricted.
+ * that are discovered during garbage collection, when allocation is restricted, or become part of a
+ * linked list of reference objects which are pending to be added to a reference queue.
  * <li>It has {@linkplain #next linkage} to optionally become part of a {@linkplain #queue linked
  * reference queue,} which is used to clean up resources associated with reclaimed objects.
  * </ul>
@@ -80,14 +79,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @TargetClass(Reference.class)
 @Substitute
 public final class Target_java_lang_ref_Reference<T> {
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = ReferenceInternals.REFERENT_FIELD_NAME, declClass = Target_java_lang_ref_Reference.class) //
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = ReferenceInternals.REFERENT_FIELD_NAME, declClass = Target_java_lang_ref_Reference.class) //
     static long referentFieldOffset;
 
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "discovered", declClass = Target_java_lang_ref_Reference.class) //
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "discovered", declClass = Target_java_lang_ref_Reference.class) //
     static long discoveredFieldOffset;
-
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "queue", declClass = Target_java_lang_ref_Reference.class) //
-    static long queueFieldOffset;
 
     /** @see ReferenceInternals#isInitialized */
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTrue.class) //
@@ -119,18 +115,10 @@ public final class Target_java_lang_ref_Reference<T> {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Target_java_lang_ref_Reference<?> discovered;
 
-    /**
-     * The queue to which this reference object will be added when the referent becomes unreachable.
-     * This field becomes {@code null} when the reference object is enqueued.
-     */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeQueueValue.class) //
     volatile Target_java_lang_ref_ReferenceQueue<? super T> queue;
 
-    /**
-     * If this reference is on a {@linkplain Target_java_lang_ref_ReferenceQueue queue}, the next
-     * reference object on the queue. If the reference is not (yet) on a queue, set to {@code this}.
-     */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeThisInstanceValue.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Reference<?> next;
 
     @Substitute
@@ -144,30 +132,21 @@ public final class Target_java_lang_ref_Reference<T> {
         this.referent = referent;
         this.discovered = null;
         this.isDiscovered = false;
-        this.queue = queue;
-        ReferenceQueueInternals.doClearQueuedState(ReferenceInternals.uncast(this));
+        this.queue = (queue == null) ? Target_java_lang_ref_ReferenceQueue.NULL : queue;
         this.initialized = true;
     }
 
-    @Substitute
-    T get() {
-        return referent;
-    }
+    @KeepOriginal
+    native T get();
 
-    @Substitute
-    void clear() {
-        ReferenceInternals.doClear(this);
-    }
+    @KeepOriginal
+    native void clear();
 
-    @Substitute
-    boolean enqueue() {
-        return ReferenceInternals.doEnqueue(this);
-    }
+    @KeepOriginal
+    native boolean enqueue();
 
-    @Substitute
-    boolean isEnqueued() {
-        return ReferenceInternals.isEnqueued(ReferenceInternals.uncast(this));
-    }
+    @KeepOriginal
+    native boolean isEnqueued();
 
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
@@ -235,14 +214,6 @@ class ComputeQueueValue implements CustomFieldValueComputer {
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ComputeThisInstanceValue implements CustomFieldValueComputer {
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        return receiver;
     }
 }
 

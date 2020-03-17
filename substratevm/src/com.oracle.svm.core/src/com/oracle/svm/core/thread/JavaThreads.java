@@ -57,7 +57,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.ReferenceQueueInternals;
 import com.oracle.svm.core.jdk.ManagementSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -533,10 +532,6 @@ public abstract class JavaThreads {
     protected abstract void setNativeName(Thread thread, String name);
 
     protected abstract void yield();
-
-    protected static void interruptVMCondVars() {
-        ReferenceQueueInternals.interruptWaiters();
-    }
 
     static StackTraceElement[] getStackTrace(Thread thread) {
         StackTraceElement[][] result = new StackTraceElement[1][0];

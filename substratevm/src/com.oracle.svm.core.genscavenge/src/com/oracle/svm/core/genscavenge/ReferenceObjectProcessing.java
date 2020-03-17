@@ -58,29 +58,20 @@ public class ReferenceObjectProcessing {
         Reference<?> dr = KnownIntrinsics.convertUnknownValue(obj, Reference.class);
         Log trace = Log.noopLog().string("[ReferenceObjectProcessing.handleDiscoverableReference:");
         trace.string("  dr: ").object(dr);
-        /*
-         * If the Reference has been allocated but not initialized, do not do anything with it. The
-         * referent will be strongly-reachable because it is on the call stack to the constructor so
-         * the Reference does not need to be put on the discovered list.
-         */
-        if (ReferenceInternals.isInitialized(dr)) {
+        if (ReferenceInternals.needsDiscovery(dr)) {
             if (trace.isEnabled()) {
                 trace.string("  referent: ").hex(ReferenceInternals.getReferentPointer(dr));
             }
             addToDiscoveredList(dr);
         } else {
-            trace.string("  uninitialized");
+            trace.string("  does not need to be discovered (uninitialized, already on a list, or null referent)]").newline();
         }
         trace.string("]").newline();
     }
 
     private static void addToDiscoveredList(Reference<?> dr) {
-        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.addToDiscoveredList:").string("  this: ").object(dr).string("  referent: ")
-                        .hex(ReferenceInternals.getReferentPointer(dr));
-        if (ReferenceInternals.isDiscovered(dr)) {
-            trace.string("  already on list]").newline();
-            return;
-        }
+        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.addToDiscoveredList:").string("  this: ").object(dr)
+                        .string("  referent: ").hex(ReferenceInternals.getReferentPointer(dr));
         trace.newline().string("  [adding to list:").string("  oldList: ").object(discoveredReferencesList);
         ReferenceInternals.setNextDiscovered(dr, discoveredReferencesList);
         discoveredReferencesList = dr;
@@ -105,7 +96,7 @@ public class ReferenceObjectProcessing {
              */
             if (!processReferent(current)) {
                 trace.string("  unpromoted current: ").object(current).newline();
-                if (ReferenceInternals.hasFutureQueue(current)) {
+                if (ReferenceInternals.hasQueue(current)) {
                     ReferenceInternals.setNextDiscovered(current, pendingHead);
                     pendingHead = current;
                 }

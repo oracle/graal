@@ -28,7 +28,6 @@ import java.lang.ref.Reference;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
@@ -43,17 +42,12 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-// Checkstyle: stop
-import sun.misc.Unsafe;
-// Checkstyle: resume
-
 /**
  * Methods implementing the internals of {@link Reference} or providing access to them. These are
  * not injected into {@link Target_java_lang_ref_Reference} so that subclasses of {@link Reference}
  * cannot interfere with them.
  */
 public final class ReferenceInternals {
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     public static final String REFERENT_FIELD_NAME = "referent";
 
     @SuppressWarnings("unchecked")
@@ -78,23 +72,7 @@ public final class ReferenceInternals {
     }
 
     public static <T> void clear(Reference<T> instance) {
-        doClear(cast(instance));
-    }
-
-    static <T> void doClear(Target_java_lang_ref_Reference<T> instance) {
-        instance.referent = null;
-    }
-
-    public static <T> boolean enqueue(Reference<T> instance) {
-        return doEnqueue(cast(instance));
-    }
-
-    public static <T> boolean doEnqueue(Target_java_lang_ref_Reference<T> instance) {
-        Target_java_lang_ref_ReferenceQueue<? super T> q = instance.queue;
-        if (q != null) {
-            return ReferenceQueueInternals.doEnqueue(q, uncast(instance));
-        }
-        return false;
+        cast(instance).referent = null;
     }
 
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#referent} as pointer. */
@@ -107,8 +85,15 @@ public final class ReferenceInternals {
         ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), value.toObject());
     }
 
-    public static <T> boolean isDiscovered(Reference<T> instance) {
-        return cast(instance).isDiscovered;
+    public static <T> boolean needsDiscovery(Reference<T> instance) {
+        Target_java_lang_ref_Reference<T> ref = cast(instance);
+        /*
+         * If the Reference has been allocated but not initialized, the referent will be
+         * strongly-reachable because it is on the call stack to the constructor. If the Reference
+         * is initialized but has a null referent, it has already been enqueued (either manually or
+         * by the GC) and does not need to be discovered.
+         */
+        return ref.initialized && getReferentPointer(instance).isNonNull() && !ref.isDiscovered;
     }
 
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered}. */
@@ -130,43 +115,8 @@ public final class ReferenceInternals {
         cast(instance).isDiscovered = newIsDiscovered;
     }
 
-    /** Address of field {@link Target_java_lang_ref_Reference#discovered} in the instance. */
-    public static <T> Pointer getNextDiscoveredFieldPointer(Reference<T> instance) {
-        return Word.objectToUntrackedPointer(instance).add(WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset));
-    }
-
-    public static boolean hasFutureQueue(Reference<?> instance) {
-        return cast(instance).queue != null;
-    }
-
-    /**
-     * Clears the queue on which the reference should eventually be enqueued and returns the
-     * previous value, which may be {@code null} if this reference should not be put on a queue, but
-     * also if the method has been called before -- such as, in a race to queue it.
-     */
-    @SuppressWarnings("unchecked")
-    static <T> Target_java_lang_ref_ReferenceQueue<? super T> clearFutureQueue(Reference<T> instance) {
-        return (Target_java_lang_ref_ReferenceQueue<? super T>) UNSAFE.getAndSetObject(instance, Target_java_lang_ref_Reference.queueFieldOffset, null);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T> boolean isEnqueued(Reference<T> instance) {
-        return cast(instance).next != instance;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static <T> Reference<?> getQueueNext(Reference<T> instance) {
-        return cast(instance).next;
-    }
-
-    static <T> void setQueueNext(Reference<T> instance, Reference<?> newNext) {
-        assert newNext != instance : "Creating self-loop.";
-        cast(instance).next = newNext;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static <T> void clearQueueNext(Reference<T> instance) {
-        cast(instance).next = instance;
+    public static boolean hasQueue(Reference<?> instance) {
+        return cast(instance).queue != Target_java_lang_ref_ReferenceQueue.NULL;
     }
 
     /*
@@ -198,14 +148,19 @@ public final class ReferenceInternals {
                 synchronized (processPendingLock) {
                     processPendingLock.notifyAll();
                 }
-            } else {
-                doEnqueue(ref);
+            } else if (hasQueue(uncast(ref))) {
+                enqueueDirectly(ref);
             }
         }
         synchronized (processPendingLock) {
             processPendingActive = false;
             processPendingLock.notifyAll();
         }
+    }
+
+    /** Enqueues, avoiding the potentially overridden {@link Reference#enqueue()}. */
+    private static <T> void enqueueDirectly(Target_java_lang_ref_Reference<T> ref) {
+        ref.queue.enqueue(ref);
     }
 
     @SuppressFBWarnings(value = "WA_NOT_IN_LOOP", justification = "Wait for progress, not necessarily completion.")
