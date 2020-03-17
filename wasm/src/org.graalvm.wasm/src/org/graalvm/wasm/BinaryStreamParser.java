@@ -43,6 +43,7 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.exception.BinaryParserException;
 
 import static com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
 
@@ -286,7 +287,7 @@ public abstract class BinaryStreamParser {
             case NONE:
                 return false;
             default:
-                throw new RuntimeException("Invalid StoreConstantsInPoolChoice");
+                throw new BinaryParserException("Invalid StoreConstantsInPoolChoice");
         }
     }
 }
