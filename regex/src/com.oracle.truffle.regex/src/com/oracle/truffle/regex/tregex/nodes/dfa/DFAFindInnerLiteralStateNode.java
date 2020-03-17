@@ -78,7 +78,7 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
                 locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
                 return;
             }
-            if (prefixMatcher == null || prefixMatcherMatches(locals, executor, compactString)) {
+            if (prefixMatcher == null || prefixMatcherMatches(locals, compactString)) {
                 if (prefixMatcher == null && executor.isSimpleCG()) {
                     locals.getCGData().results[0] = locals.getIndex();
                 }
@@ -90,8 +90,8 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
         }
     }
 
-    private boolean prefixMatcherMatches(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
-        Object result = prefixMatcher.execute(locals.toInnerLiteralBackwardLocals(executor.getPrefixLength()), compactString);
+    private boolean prefixMatcherMatches(TRegexDFAExecutorLocals locals, boolean compactString) {
+        Object result = prefixMatcher.execute(locals.toInnerLiteralBackwardLocals(), compactString);
         return prefixMatcher.isSimpleCG() ? result != null : (int) result != TRegexDFAExecutorNode.NO_MATCH;
     }
 

@@ -166,6 +166,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                 return null;
             }
             locals.setLastInnerLiteralIndex(indexOfInnerLiteral);
+            // TODO: translate code points to array slots here
             locals.setIndex(Math.max(locals.getFromIndex(), indexOfInnerLiteral - innerLiteral.getMaxPrefixSize()));
         }
         if (loopbackInitialState) {
@@ -201,7 +202,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                 } else if (!locals.canPop()) {
                     if (loopbackInitialState) {
                         /*
-                         * We are out of states to pop from the stack, so we start with the inital
+                         * We are out of states to pop from the stack, so we start with the initial
                          * state again.
                          */
                         assert isForward();
@@ -220,6 +221,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                                     locals.setLastInnerLiteralIndex(locals.getMaxIndex());
                                 } else {
                                     locals.setLastInnerLiteralIndex(nextIndex);
+                                    // TODO: translate code points to array slots here
                                     nextIndex = Math.max(locals.getFromIndex(), nextIndex - innerLiteral.getMaxPrefixSize());
                                 }
                             }

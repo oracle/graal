@@ -110,7 +110,7 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
         return Math.max(-1, fromIndex - 1 - prefixLength);
     }
 
-    public TRegexDFAExecutorLocals toInnerLiteralBackwardLocals(int prefixLength) {
-        return new TRegexDFAExecutorLocals(getInput(), getFromIndex(), getIndex() - 1, backwardMaxIndex(getFromIndex(), prefixLength), cgData);
+    public TRegexDFAExecutorLocals toInnerLiteralBackwardLocals() {
+        return new TRegexDFAExecutorLocals(getInput(), getFromIndex(), getIndex() - 1, getFromIndex() - 1, cgData);
     }
 }

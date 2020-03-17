@@ -65,6 +65,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         result = new PreCalculatedResultFactory(ast.getNumberOfCaptureGroups());
         this.extractLiteral = extractLiteral;
         if (extractLiteral) {
+            // TODO: minPath is in code points, so not applicable here
             literal = new char[ast.getRoot().getMinPath()];
             mask = ast.getProperties().hasCharClasses() ? new char[ast.getRoot().getMinPath()] : null;
         } else {

@@ -173,18 +173,15 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             Arrays.fill(locals.getCGData().results, -1);
         }
         // check if input is long enough for a match
-        if (props.getMinResultLength() > 0 && (isForward() ? locals.getMaxIndex() - locals.getIndex() : locals.getIndex() - locals.getMaxIndex()) < props.getMinResultLength()) {
+        if (props.getMinResultLength() > 0 &&
+                        (isForward() ? locals.getMaxIndex() - locals.getIndex() : locals.getIndex() - Math.max(-1, locals.getMaxIndex() - getPrefixLength())) < props.getMinResultLength()) {
             // no match possible, break immediately
             return isGenericCG() || isSimpleCG() ? null : TRegexDFAExecutorNode.NO_MATCH;
         }
         if (recordExecution()) {
             debugRecorder.startRecording(locals);
         }
-        if (isBackward() && locals.getFromIndex() - 1 > locals.getMaxIndex()) {
-            locals.setCurMaxIndex(locals.getFromIndex() - 1);
-        } else {
-            locals.setCurMaxIndex(locals.getMaxIndex());
-        }
+        locals.setCurMaxIndex(locals.getMaxIndex());
         int ip = 0;
         outer: while (true) {
             if (CompilerDirectives.inInterpreter()) {

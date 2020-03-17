@@ -354,7 +354,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
                 backwardCallTarget = null;
             } else {
                 backwardCallTarget = Truffle.getRuntime().createCallTarget(
-                                new RegexRootNode(language, new TRegexLazyFindStartRootNode(language, source, getForwardExecutor().getPrefixLength(), backwardNode)));
+                                new RegexRootNode(language, new TRegexLazyFindStartRootNode(language, source, backwardNode)));
             }
             this.captureGroupEntryNode = insert(captureGroupNode);
             if (captureGroupNode == null) {
@@ -418,7 +418,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         }
 
         private RegexResult executeBackwardAnchored(Object input, int fromIndexArg, int inputLength) {
-            int maxIndex = Math.max(-1, fromIndexArg - 1 - getForwardExecutor().getPrefixLength());
+            int maxIndex = fromIndexArg - 1;
             if (getBackwardExecutor().isSimpleCG()) {
                 int[] result = (int[]) backwardEntryNode.execute(input, fromIndexArg, inputLength - 1, maxIndex);
                 return result == null ? NoMatchResult.getInstance() : new SingleIndexArrayResult(result);
