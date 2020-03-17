@@ -30,7 +30,8 @@ import pipes
 import mx, mx_benchmark
 import mx_sdk_vm, mx_sdk_vm_impl
 import os
-from os.path import dirname
+import re
+from os.path import dirname, join
 
 
 _suite = mx.suite('vm')
@@ -377,8 +378,75 @@ class NativeImageBuildBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         ]
 
 
+class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
+    def __init__(self):
+        super(AgentScriptJsBenchmarkSuite, self).__init__()
+        self._benchmarks = {
+            'plain' : [],
+            'triple' : ['--agentscript=sieve-filter1.js', '--experimental-options'],
+            'single' : ['--agentscript=sieve-filter2.js', '--experimental-options'],
+        }
+
+    def group(self):
+        return 'Graal'
+
+    def subgroup(self):
+        return 'agentscript'
+
+    def name(self):
+        return 'agentscript-js'
+
+    def benchmarkList(self, bmSuiteArgs):
+        return self._benchmarks.keys()
+
+    def failurePatterns(self):
+        return [
+            re.compile(r'error:'),
+            re.compile(r'internal error:'),
+            re.compile(r'Error in'),
+            re.compile(r'\tat '),
+            re.compile(r'Defaulting the .*\. Consider using '),
+            re.compile(r'java.lang.OutOfMemoryError'),
+        ]
+
+    def successPatterns(self):
+        return [
+            re.compile(r'Hundred thousand prime numbers in [0-9]+ ms', re.MULTILINE),
+        ]
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        assert len(benchmarks) == 1
+        return [
+            mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms', {
+                "bench-suite": self.name(),
+                "benchmark": (benchmarks[0], str),
+                "metric.name": "time",
+                "metric.type": "numeric",
+                "metric.unit": "ms",
+                "metric.value": ("<time>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": ("$iteration", int),
+            })
+        ]
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        return self.vmArgs(bmSuiteArgs) + super(AgentScriptJsBenchmarkSuite, self).createCommandLineArgs(benchmarks, bmSuiteArgs)
+
+    def createVmCommandLineArgs(self, benchmarks, runArgs):
+        if not benchmarks:
+            raise mx.abort("Benchmark suite '{}' cannot run multiple benchmarks in the same VM process".format(self.name()))
+        if len(benchmarks) != 1:
+            raise mx.abort("Benchmark suite '{}' can run only one benchmark at a time".format(self.name()))
+        return self._benchmarks[benchmarks[0]] + ['-e', 'count=50'] + runArgs + [join(_suite.dir, 'benchmarks', 'agentscript', 'sieve.js')]
+
+    def get_vm_registry(self):
+        return mx_benchmark.js_vm_registry
+
+
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='native-image', benchmarks={'js': ['--language:js']}, registry=_native_image_vm_registry))
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={'js': ['js'], 'libpolyglot': ['libpolyglot']}, registry=_gu_vm_registry))
+mx_benchmark.add_bm_suite(AgentScriptJsBenchmarkSuite())
 
 
 def register_graalvm_vms():
