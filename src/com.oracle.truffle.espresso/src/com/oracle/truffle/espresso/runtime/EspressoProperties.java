@@ -419,7 +419,7 @@ final class DarwinBuilder extends PlatformBuilder {
 
 final class WindowsBuilder extends PlatformBuilder {
 
-    private static final Path WINDOWS_ROOT = Paths.get(System.getenv("SystemRoot"));
+    private final Path windowsRoot = Paths.get(System.getenv("SystemRoot"));
 
     private static final Path PACKAGE_DIR = Paths.get("Sun", "Java");
 
@@ -446,13 +446,13 @@ final class WindowsBuilder extends PlatformBuilder {
         libraryPath.add(javaHome().resolve("bin"));
 
         // 2. The system wide Java Extensions directory (Java only)
-        libraryPath.add(WINDOWS_ROOT.resolve(PACKAGE_DIR).resolve("bin"));
+        libraryPath.add(windowsRoot.resolve(PACKAGE_DIR).resolve("bin"));
 
         // 3. System directory (GetSystemDirectory)
-        libraryPath.add(WINDOWS_ROOT.resolve("system32"));
+        libraryPath.add(windowsRoot.resolve("system32"));
 
         // 4. Windows directory (GetWindowsDirectory)
-        libraryPath.add(WINDOWS_ROOT);
+        libraryPath.add(windowsRoot);
 
         // 5. The PATH environment variable
         String envPath = System.getenv("PATH");
@@ -478,6 +478,6 @@ final class WindowsBuilder extends PlatformBuilder {
     List<Path> defaultExtDirs() {
         return Arrays.asList(
                         javaHome().resolve(EXTENSIONS_DIR),
-                        WINDOWS_ROOT.resolve(PACKAGE_DIR).resolve(EXTENSIONS_DIR));
+                        windowsRoot.resolve(PACKAGE_DIR).resolve(EXTENSIONS_DIR));
     }
 }

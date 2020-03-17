@@ -152,7 +152,7 @@ suite = {
             "use_jdk_headers": True,
             "buildDependencies": [
                 "truffle:TRUFFLE_NFI_NATIVE",
-            ],            
+            ],
             "os_arch": {
                 "windows": {
                     "<others>": {
@@ -228,7 +228,7 @@ suite = {
             "use_jdk_headers": True,
             "buildDependencies": [
                 "truffle:TRUFFLE_NFI_NATIVE",
-            ],            
+            ],
             "os_arch": {
                 "darwin": {
                     "<others>": {
