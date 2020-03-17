@@ -1,3 +1,0 @@
->[0?] js -e "var count = 50" sieve.js
->[0?] js --experimental-options -e "var count = 50" --agentscript=sieve-filter1.js sieve.js
->[0?] js --experimental-options -e "var count = 50" --agentscript=sieve-filter2.js sieve.js
