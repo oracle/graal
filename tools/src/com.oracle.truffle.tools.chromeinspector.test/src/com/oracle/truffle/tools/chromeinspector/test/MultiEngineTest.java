@@ -140,9 +140,9 @@ public class MultiEngineTest {
             try {
                 for (int i = 0; i < isUp.length; i++) {
                     isUp[i].await();
-                    String sourceName = "MTest" + (i + 1) + ".sl." + SecureInspectorPathGenerator.getToken();
-                    checkInfo(sourceName);
-                    checkSuspendAndResume(sourceName);
+                    String path = "MTest" + (i + 1) + ".sl." + SecureInspectorPathGenerator.getToken();
+                    checkInfo(path);
+                    checkSuspendAndResume(path);
                 }
             } catch (Throwable thr) {
                 thr.printStackTrace();
@@ -240,16 +240,16 @@ public class MultiEngineTest {
                 for (int i = 0; i < isUp.length; i++) {
                     isUp[i].await();
                 }
-                String[] sourceNames = new String[isUp.length];
-                for (int i = 0; i < sourceNames.length; i++) {
-                    sourceNames[i] = "MTest" + (i + 1) + ".sl." + SecureInspectorPathGenerator.getToken();
+                String[] paths = new String[isUp.length];
+                for (int i = 0; i < paths.length; i++) {
+                    paths[i] = "MTest" + (i + 1) + ".sl." + SecureInspectorPathGenerator.getToken();
                 }
-                checkInfo(sourceNames);
-                for (int i = 0; i < sourceNames.length; i++) {
+                checkInfo(paths);
+                for (int i = 0; i < paths.length; i++) {
                     int index = i;
                     new Thread(() -> {
                         try {
-                            checkSuspendAndResume(sourceNames[index]);
+                            checkSuspendAndResume(paths[index]);
                         } catch (Throwable thr) {
                             thr.printStackTrace();
                             errors.add(thr);
