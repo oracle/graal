@@ -33,6 +33,7 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.elf.ELFObjectFile;
+import org.graalvm.compiler.debug.DebugContext;
 
 import java.nio.ByteOrder;
 import java.util.Map;
@@ -70,7 +71,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * in most cases this task reruns the operations performed under createContent but this time
      * actually writing data to the target byte[].
      */
-    public abstract void writeContent();
+    public abstract void writeContent(DebugContext debugContext);
 
     @Override
     public boolean isLoadable() {
@@ -80,22 +81,32 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return false;
     }
 
-    public void checkDebug(int pos) {
+    public String debugSectionLogName() {
+        return "DWARF_" + getSectionName().substring(1).toUpperCase();
+    }
+
+    public void enableLog(DebugContext context, int pos) {
         /*
-         * if the env var relevant to this element type is set then switch on debugging
+         * debug output is disabled during the first pass where we size the buffer.
+         * this is called to enable it during the second pass where the buffer gets written,
+         * but only if the scope is enabled.
          */
-        String name = getSectionName();
-        String envVarName = "DWARF_" + name.substring(1).toUpperCase();
-        if (System.getenv(envVarName) != null) {
+        if (context.areScopesEnabled()) {
             debug = true;
             debugBase = pos;
             debugAddress = debugTextBase;
         }
     }
 
-    protected void debug(String format, Object... args) {
+    protected void log(DebugContext context, String format, Object... args) {
         if (debug) {
-            System.out.format(format, args);
+            context.logv(DebugContext.INFO_LEVEL, format, args);
+        }
+    }
+
+    protected void verboseLog(DebugContext context, String format, Object... args) {
+        if (debug) {
+            context.logv(DebugContext.VERBOSE_LEVEL, format, args);
         }
     }
 
@@ -336,9 +347,13 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         createContent();
 
         /*
-         * ensure content byte[] has been written before calling super method
+         * ensure content byte[] has been written before calling super method.
+         *
+         * we do this in a nested debug scope derived from the one set up under the object file write
          */
-        writeContent();
+        getOwner().debugContext(debugSectionLogName(), debugContext -> {
+            writeContent(debugContext);
+        });
 
         return super.getOrDecideContent(alreadyDecided, contentHint);
     }

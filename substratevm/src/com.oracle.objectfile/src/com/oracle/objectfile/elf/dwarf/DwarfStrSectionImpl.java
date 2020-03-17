@@ -28,6 +28,7 @@ package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.StringEntry;
+import org.graalvm.compiler.debug.DebugContext;
 
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_STR_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.TEXT_SECTION_NAME;
@@ -60,12 +61,12 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
     }
 
     @Override
-    public void writeContent() {
+    public void writeContent(DebugContext context) {
         byte[] buffer = getContent();
         int size = buffer.length;
         int pos = 0;
 
-        checkDebug(pos);
+        enableLog(context, pos);
 
         for (StringEntry stringEntry : dwarfSections.getStringTable()) {
             if (stringEntry.isAddToStrSection()) {
@@ -75,11 +76,6 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
             }
         }
         assert pos == size;
-    }
-
-    @Override
-    protected void debug(String format, Object... args) {
-        super.debug(format, args);
     }
 
     /**

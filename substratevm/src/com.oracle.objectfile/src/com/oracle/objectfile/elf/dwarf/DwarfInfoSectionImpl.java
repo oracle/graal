@@ -30,6 +30,7 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
+import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.LinkedList;
 
@@ -118,7 +119,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             int lengthPos = pos;
             pos = writeCUHeader(buffer, pos);
             assert pos == lengthPos + DW_DIE_HEADER_SIZE;
-            pos = writeCU(classEntry, buffer, pos);
+            pos = writeCU(null, classEntry, buffer, pos);
             /*
              * no need to backpatch length at lengthPos
              */
@@ -128,15 +129,15 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     }
 
     @Override
-    public void writeContent() {
+    public void writeContent(DebugContext context) {
         byte[] buffer = getContent();
         int size = buffer.length;
         int pos = 0;
 
-        checkDebug(pos);
+        enableLog(context, pos);
 
-        debug("  [0x%08x] DEBUG_INFO\n", pos);
-        debug("  [0x%08x] size = 0x%08x\n", pos, size);
+        log(context, "  [0x%08x] DEBUG_INFO", pos);
+        log(context, "  [0x%08x] size = 0x%08x", pos, size);
         for (ClassEntry classEntry : getPrimaryClasses()) {
             /*
              * save the offset of this file's CU so it can be used when writing the aranges section
@@ -144,9 +145,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             classEntry.setCUIndex(pos);
             int lengthPos = pos;
             pos = writeCUHeader(buffer, pos);
-            debug("  [0x%08x] Compilation Unit\n", pos, size);
+            log(context, "  [0x%08x] Compilation Unit", pos, size);
             assert pos == lengthPos + DW_DIE_HEADER_SIZE;
-            pos = writeCU(classEntry, buffer, pos);
+            pos = writeCU(context, classEntry, buffer, pos);
             /*
              * backpatch length at lengthPos (excluding length field)
              */
@@ -178,23 +179,23 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    public int writeCU(ClassEntry classEntry, byte[] buffer, int p) {
+    public int writeCU(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
-        debug("  [0x%08x] <0> Abbrev Number %d\n", pos, DW_ABBREV_CODE_compile_unit);
+        log(context, "  [0x%08x] <0> Abbrev Number %d", pos, DW_ABBREV_CODE_compile_unit);
         pos = writeAbbrevCode(DW_ABBREV_CODE_compile_unit, buffer, pos);
-        debug("  [0x%08x]     language  %s\n", pos, "DW_LANG_Java");
+        log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
         pos = writeAttrData1(DW_LANG_Java, buffer, pos);
-        debug("  [0x%08x]     name  0x%x (%s)\n", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
         pos = writeAttrStrp(classEntry.getFileName(), buffer, pos);
-        debug("  [0x%08x]     low_pc  0x%08x\n", pos, classPrimaryEntries.getFirst().getPrimary().getLo());
+        log(context, "  [0x%08x]     lo_pc  0x%08x", pos, classPrimaryEntries.getFirst().getPrimary().getLo());
         pos = writeAttrAddress(classPrimaryEntries.getFirst().getPrimary().getLo(), buffer, pos);
-        debug("  [0x%08x]     hi_pc  0x%08x\n", pos, classPrimaryEntries.getLast().getPrimary().getHi());
+        log(context, "  [0x%08x]     hi_pc  0x%08x", pos, classPrimaryEntries.getLast().getPrimary().getHi());
         pos = writeAttrAddress(classPrimaryEntries.getLast().getPrimary().getHi(), buffer, pos);
-        debug("  [0x%08x]     stmt_list  0x%08x\n", pos, classEntry.getLineIndex());
+        log(context, "  [0x%08x]     stmt_list  0x%08x", pos, classEntry.getLineIndex());
         pos = writeAttrData4(classEntry.getLineIndex(), buffer, pos);
         for (PrimaryEntry primaryEntry : classPrimaryEntries) {
-            pos = writePrimary(primaryEntry, buffer, pos);
+            pos = writePrimary(context, primaryEntry, buffer, pos);
         }
         /*
          * write a terminating null attribute for the the level 2 primaries
@@ -203,21 +204,21 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     }
 
-    public int writePrimary(PrimaryEntry primaryEntry, byte[] buffer, int p) {
+    public int writePrimary(DebugContext context, PrimaryEntry primaryEntry, byte[] buffer, int p) {
         int pos = p;
         Range primary = primaryEntry.getPrimary();
-        debug("  [0x%08x] <1> Abbrev Number  %d\n", pos, DW_ABBREV_CODE_subprogram);
+        verboseLog(context, "  [0x%08x] <1> Abbrev Number  %d", pos, DW_ABBREV_CODE_subprogram);
         pos = writeAbbrevCode(DW_ABBREV_CODE_subprogram, buffer, pos);
-        debug("  [0x%08x]     name  0x%X (%s)\n", pos, debugStringIndex(primary.getFullMethodName()), primary.getFullMethodName());
+        verboseLog(context, "  [0x%08x]     name  0x%X (%s)", pos, debugStringIndex(primary.getFullMethodName()), primary.getFullMethodName());
         pos = writeAttrStrp(primary.getFullMethodName(), buffer, pos);
-        debug("  [0x%08x]     low_pc  0x%08x\n", pos, primary.getLo());
+        verboseLog(context, "  [0x%08x]     lo_pc  0x%08x", pos, primary.getLo());
         pos = writeAttrAddress(primary.getLo(), buffer, pos);
-        debug("  [0x%08x]     high_pc  0x%08x\n", pos, primary.getHi());
+        verboseLog(context, "  [0x%08x]     hi_pc  0x%08x", pos, primary.getHi());
         pos = writeAttrAddress(primary.getHi(), buffer, pos);
         /*
          * need to pass true only if method is public
          */
-        debug("  [0x%08x]     external  true\n", pos);
+        verboseLog(context, "  [0x%08x]     external  true", pos);
         return writeFlag(DW_FLAG_true, buffer, pos);
     }
 
@@ -237,15 +238,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             return pos + value.length() + 1;
         } else {
             return putAsciiStringBytes(value, buffer, pos);
-        }
-    }
-
-    @Override
-    protected void debug(String format, Object... args) {
-        if (((int) args[0] - debugBase) < 0x100000) {
-            super.debug(format, args);
-        } else if (format.startsWith("  [0x%08x] primary file")) {
-            super.debug(format, args);
         }
     }
 

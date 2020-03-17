@@ -30,6 +30,7 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import org.graalvm.compiler.debug.DebugContext;
 
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_CIE_id;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_CIE_version;
@@ -74,12 +75,12 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     }
 
     @Override
-    public void writeContent() {
+    public void writeContent(DebugContext context) {
         byte[] buffer = getContent();
         int size = buffer.length;
         int pos = 0;
 
-        checkDebug(pos);
+        enableLog(context, pos);
 
         /*
          * there are entries for the prologue region where the stack is being built, the method body
@@ -362,11 +363,6 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     public abstract int getSPIdx();
 
     public abstract int writeInitialInstructions(byte[] buffer, int pos);
-
-    @Override
-    protected void debug(String format, Object... args) {
-        super.debug(format, args);
-    }
 
     /**
      * debug_frame section content depends on debug_line section content and offset.

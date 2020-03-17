@@ -164,14 +164,18 @@ public abstract class NativeBootImage extends AbstractBootImage {
     @Override
     public abstract String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);
 
-    protected final void write(Path outputFile) {
+    protected final void write(DebugContext context, Path outputFile) {
         try {
             Path outFileParent = outputFile.normalize().getParent();
             if (outFileParent != null) {
                 Files.createDirectories(outFileParent);
             }
             try (FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
-                objectFile.write(channel);
+                objectFile.withDebugContext(context, "ObjectFile.write", channel, c -> {
+                    objectFile.write(c);
+                    // doesn't actually matter what we return
+                    return true;
+                });
             }
         } catch (Exception ex) {
             throw shouldNotReachHere(ex);

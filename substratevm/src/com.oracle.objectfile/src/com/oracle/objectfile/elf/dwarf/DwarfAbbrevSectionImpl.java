@@ -27,6 +27,7 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.LayoutDecision;
+import org.graalvm.compiler.debug.DebugContext;
 
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_CODE_compile_unit;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_CODE_subprogram;
@@ -135,23 +136,23 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * </ul>
          */
 
-        pos = writeAbbrev1(null, pos);
-        pos = writeAbbrev2(null, pos);
+        pos = writeAbbrev1(null, null, pos);
+        pos = writeAbbrev2(null, null, pos);
 
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
     }
 
     @Override
-    public void writeContent() {
+    public void writeContent(DebugContext context) {
         byte[] buffer = getContent();
         int size = buffer.length;
         int pos = 0;
 
-        checkDebug(pos);
+        enableLog(context, pos);
 
-        pos = writeAbbrev1(buffer, pos);
-        pos = writeAbbrev2(buffer, pos);
+        pos = writeAbbrev1(context, buffer, pos);
+        pos = writeAbbrev2(context, buffer, pos);
         assert pos == size;
     }
 
@@ -171,7 +172,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    public int writeAbbrev1(byte[] buffer, int p) {
+    public int writeAbbrev1(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         /*
          * abbrev 1 compile unit
@@ -197,7 +198,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    public int writeAbbrev2(byte[] buffer, int p) {
+    public int writeAbbrev2(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         /*
          * abbrev 2 compile unit
@@ -219,11 +220,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DW_AT_null, buffer, pos);
         pos = writeAttrForm(DW_FORM_null, buffer, pos);
         return pos;
-    }
-
-    @Override
-    protected void debug(String format, Object... args) {
-        super.debug(format, args);
     }
 
     /**
