@@ -181,6 +181,18 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
 
     private void launch(String[] args) {
         List<String> argumentsList = new ArrayList<>(Arrays.asList(args));
+        for (;;) {
+            try {
+                launchImpl(argumentsList);
+            } catch (RestartInJVMException ex) {
+                argumentsList.add(0, "--jvm");
+                continue;
+            }
+            return;
+        }
+    }
+    
+    private void launchImpl(List<String> argumentsList) {
         if (isAOT()) {
             maybeNativeExec(argumentsList, true, Collections.emptyMap());
         }
@@ -438,6 +450,11 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
         }
     }
 
+    private static final class RestartInJVMException extends RuntimeException {
+        RestartInJVMException() {
+        }
+    }
+
     private abstract class Script {
         final String languageId;
 
@@ -456,7 +473,12 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
                 }
             }
             if (language == null) {
-                throw abort(String.format("Can not determine language for '%s' %s", this, this.getLanguageSpecifierHelp()));
+                final String msg = "Cannot determine language for '%s' %s";
+                if (isAOT()) {
+                    getError().println(String.format(msg, this, "Trying with --jvm mode..."));
+                    throw new RestartInJVMException();
+                }
+                throw abort(String.format(msg, this, this.getLanguageSpecifierHelp()));
             }
             return language;
         }
