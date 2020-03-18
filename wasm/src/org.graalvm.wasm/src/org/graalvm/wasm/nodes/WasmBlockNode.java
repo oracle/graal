@@ -2526,7 +2526,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             case ONLY_BIG:
                 return isLargeConstant(offset) ? codeEntry().byteConstant(byteConstantOffset) : 1;
             case NONE:
-                return getLeb128Length(offset);
+                return peekLeb128Length(offset);
             default:
                 throw new WasmExecutionException(this, "Invalid StoreConstantsInPoolChoice");
         }
@@ -2557,8 +2557,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         }
     }
 
-    public int getLeb128Length(int offset) {
-        return BinaryStreamParser.getLeb128Length(codeEntry().data(), offset);
+    public int peekLeb128Length(int offset) {
+        return BinaryStreamParser.peekLeb128Length(codeEntry().data(), offset);
     }
 
     private boolean isLargeConstant(int offset) {

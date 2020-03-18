@@ -265,7 +265,7 @@ public abstract class BinaryStreamParser {
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
-    public static byte getLeb128Length(byte[] data, int initialOffset) {
+    public static byte peekLeb128Length(byte[] data, int initialOffset) {
         int offset = initialOffset;
         byte length = 0;
         byte b;

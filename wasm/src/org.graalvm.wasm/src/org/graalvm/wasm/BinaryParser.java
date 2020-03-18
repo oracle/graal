@@ -622,7 +622,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // of it, but we need to store it's byte length, so that we can skip it
                     // during execution.
                     if (storeLeb128InPool()) {
-                        state.useByteConstant(getLeb128Length(data, offset));
+                        state.useByteConstant(peekLeb128Length(data, offset));
                     }
                     readUnsignedInt32(); // align
                     readUnsignedInt32(state); // load offset
@@ -644,7 +644,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // of it, but we need to store it's byte length, so that we can skip it
                     // during the execution.
                     if (storeLeb128InPool()) {
-                        state.useByteConstant(getLeb128Length(data, offset));
+                        state.useByteConstant(peekLeb128Length(data, offset));
                     }
                     readUnsignedInt32(); // align
                     readUnsignedInt32(state); // store offset
@@ -1323,7 +1323,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     protected int readUnsignedInt32(ExecutionState state) {
         int value = peekUnsignedInt32(data, offset);
-        byte length = getLeb128Length(data, offset);
+        byte length = peekLeb128Length(data, offset);
         if (state != null && storeLeb128InPool()) {
             state.useIntConstant(value);
             state.useByteConstant(length);
@@ -1334,7 +1334,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     protected int readSignedInt32(ExecutionState state) {
         int value = peekSignedInt32(data, offset);
-        byte length = getLeb128Length(data, offset);
+        byte length = peekLeb128Length(data, offset);
         if (state != null && storeLeb128InPool()) {
             state.useIntConstant(value);
             state.useByteConstant(length);
@@ -1345,7 +1345,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     protected long readSignedInt64(ExecutionState state) {
         long value = peekSignedInt64(data, offset);
-        byte length = getLeb128Length(data, offset);
+        byte length = peekLeb128Length(data, offset);
         if (state != null && storeLeb128InPool()) {
             state.useLongConstant(value);
             state.useByteConstant(length);
