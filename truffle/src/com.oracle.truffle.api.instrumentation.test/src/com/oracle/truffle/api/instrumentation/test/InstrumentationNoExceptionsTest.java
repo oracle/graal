@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import org.junit.Assert;
@@ -55,8 +56,7 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -70,110 +70,89 @@ public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest
     @Override
     public void setup() {
         Context.Builder builder = Context.newBuilder().allowAllAccess(true).option("engine.InstrumentExceptionsAreThrown", "false").out(out).err(err);
-        setupEnv(builder.build());
+        setupEnv(builder.build(), new TestDecentInstrument());
         engine = context.getEngine();
-        TestDecentInstrument.reset();
-        assureEnabled(engine.getInstruments().get("testDecentInstrument"));
     }
 
     @Test
     public void testInstrumentExceptionOnEnter() throws Exception {
-        TestInstrumentExceptionOnEnter.reset();
-        assureEnabled(engine.getInstruments().get("testInstrumentExceptionOnEnter"));
+        AtomicInteger returnedValue = new AtomicInteger();
+        AtomicInteger returnedExceptional = new AtomicInteger();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
+
+            @Override
+            public void onEnter(EventContext ctx, VirtualFrame frame) {
+                throw new MyInstrumentException();
+            }
+
+            @Override
+            public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+                returnedValue.incrementAndGet();
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                returnedExceptional.incrementAndGet();
+            }
+        });
         run("ROOT(EXPRESSION)");
         String errOut = getErr();
         Assert.assertTrue(errOut, errOut.contains("MyInstrumentException"));
-        Assert.assertEquals(1, TestInstrumentExceptionOnEnter.returnedValue);
-        Assert.assertEquals(0, TestInstrumentExceptionOnEnter.returnedExceptional);
+        Assert.assertEquals(1, returnedValue.get());
+        Assert.assertEquals(0, returnedExceptional.get());
         TestDecentInstrument.assertHitOK(1);
-    }
-
-    @Registration(name = "", version = "", id = "testInstrumentExceptionOnEnter", services = Object.class)
-    public static class TestInstrumentExceptionOnEnter extends TruffleInstrument {
-
-        static int returnedValue;
-        static int returnedExceptional;
-
-        static void reset() {
-            returnedValue = 0;
-            returnedExceptional = 0;
-        }
-
-        @Override
-        protected void onCreate(Env env) {
-            // Not to get error: declares service, but doesn't register it
-            env.registerService(new Object());
-            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
-
-                @Override
-                public void onEnter(EventContext ctx, VirtualFrame frame) {
-                    throw new MyInstrumentException();
-                }
-
-                @Override
-                public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
-                    returnedValue++;
-                }
-
-                @Override
-                public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
-                    returnedExceptional++;
-                }
-            });
-        }
     }
 
     @Test
     public void testInstrumentExceptionOnReturn() throws Exception {
-        TestInstrumentExceptionOnReturn.reset();
-        assureEnabled(engine.getInstruments().get("testInstrumentExceptionOnReturn"));
+        AtomicInteger entered = new AtomicInteger();
+        AtomicInteger returnedExceptional = new AtomicInteger();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
+
+            @Override
+            public void onEnter(EventContext ctx, VirtualFrame frame) {
+                entered.incrementAndGet();
+            }
+
+            @Override
+            public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+                throw new MyInstrumentException();
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                returnedExceptional.incrementAndGet();
+            }
+        });
         run("ROOT(EXPRESSION)");
         String errOut = getErr();
         Assert.assertTrue(errOut, errOut.contains("MyInstrumentException"));
-        Assert.assertEquals(1, TestInstrumentExceptionOnReturn.entered);
-        Assert.assertEquals(0, TestInstrumentExceptionOnReturn.returnedExceptional);
+        Assert.assertEquals(1, entered.get());
+        Assert.assertEquals(0, returnedExceptional.get());
         TestDecentInstrument.assertHitOK(1);
-    }
-
-    @Registration(name = "", version = "", id = "testInstrumentExceptionOnReturn", services = Object.class)
-    public static class TestInstrumentExceptionOnReturn extends TruffleInstrument {
-
-        static int entered;
-        static int returnedExceptional;
-
-        static void reset() {
-            entered = 0;
-            returnedExceptional = 0;
-        }
-
-        @Override
-        protected void onCreate(Env env) {
-            // Not to get error: declares service, but doesn't register it
-            env.registerService(new Object());
-            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
-
-                @Override
-                public void onEnter(EventContext ctx, VirtualFrame frame) {
-                    entered++;
-                }
-
-                @Override
-                public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
-                    throw new MyInstrumentException();
-                }
-
-                @Override
-                public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
-                    returnedExceptional++;
-                }
-            });
-        }
     }
 
     @Test
     public void testInstrumentExceptionOnReturnExceptional() throws Exception {
-        TestInstrumentExceptionOnReturnExceptional.reset();
-        assureEnabled(engine.getInstruments().get("testInstrumentExceptionOnReturnExceptional"));
+        AtomicInteger entered = new AtomicInteger();
+        AtomicInteger returnedValue = new AtomicInteger();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
+
+            @Override
+            public void onEnter(EventContext ctx, VirtualFrame frame) {
+                entered.incrementAndGet();
+            }
+
+            @Override
+            public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+                returnedValue.incrementAndGet();
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                throw new MyInstrumentException();
+            }
+        });
         try {
             run("ROOT(EXPRESSION(THROW(test, test)))");
             Assert.fail();
@@ -182,44 +161,9 @@ public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest
         }
         String errOut = getErr();
         Assert.assertTrue(errOut, errOut.contains("MyInstrumentException"));
-        Assert.assertEquals(1, TestInstrumentExceptionOnReturnExceptional.entered);
-        Assert.assertEquals(0, TestInstrumentExceptionOnReturnExceptional.returnedValue);
+        Assert.assertEquals(1, entered.get());
+        Assert.assertEquals(0, returnedValue.get());
         TestDecentInstrument.assertHitErr(1);
-    }
-
-    @Registration(name = "", version = "", id = "testInstrumentExceptionOnReturnExceptional", services = Object.class)
-    public static class TestInstrumentExceptionOnReturnExceptional extends TruffleInstrument {
-
-        static int entered;
-        static int returnedValue;
-
-        static void reset() {
-            entered = 0;
-            returnedValue = 0;
-        }
-
-        @Override
-        protected void onCreate(Env env) {
-            // Not to get error: declares service, but doesn't register it
-            env.registerService(new Object());
-            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
-
-                @Override
-                public void onEnter(EventContext ctx, VirtualFrame frame) {
-                    entered++;
-                }
-
-                @Override
-                public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
-                    returnedValue++;
-                }
-
-                @Override
-                public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
-                    throw new MyInstrumentException();
-                }
-            });
-        }
     }
 
     @Test
@@ -395,8 +339,7 @@ public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest
     }
 
     private void testExceptionInInstrument(String code, Consumer<Instrumenter> attachInstrumentation, boolean assertDecentInstrument) throws Exception {
-        Instrumenter instrumenter = engine.getInstruments().get("testExceptionInInstrument").lookup(Instrumenter.class);
-        attachInstrumentation.accept(instrumenter);
+        attachInstrumentation.accept(instrumentEnv.getInstrumenter());
         run(code);
         String errOut = getErr();
         Assert.assertTrue(errOut, errOut.contains("MyInstrumentException"));
@@ -405,23 +348,13 @@ public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest
         }
     }
 
-    @Registration(name = "", version = "", id = "testExceptionInInstrument", services = Instrumenter.class)
-    public static class TestExceptionInInstrument extends TruffleInstrument {
-
-        @Override
-        protected void onCreate(Env env) {
-            env.registerService(env.getInstrumenter());
-        }
-    }
-
-    @Registration(name = "", version = "", id = "testDecentInstrument", services = Object.class)
-    public static class TestDecentInstrument extends TruffleInstrument {
+    public static class TestDecentInstrument extends ProxyInstrument {
 
         static int entered;
         static int returnedValue;
         static int returnedExceptional;
 
-        static void reset() {
+        TestDecentInstrument() {
             entered = 0;
             returnedValue = 0;
             returnedExceptional = 0;
@@ -441,8 +374,7 @@ public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest
 
         @Override
         protected void onCreate(Env env) {
-            // Not to get error: declares service, but doesn't register it
-            env.registerService(new Object());
+            super.onCreate(env);
             env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
 
                 @Override
