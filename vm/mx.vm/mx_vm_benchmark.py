@@ -391,10 +391,10 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return 'Graal'
 
     def subgroup(self):
-        return 'agentscript'
+        return 'graal-js'
 
     def name(self):
-        return 'agentscript-js'
+        return 'agentscript'
 
     def benchmarkList(self, bmSuiteArgs):
         return self._benchmarks.keys()

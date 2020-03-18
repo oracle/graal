@@ -31,9 +31,9 @@ builds += [
   }
   ${bench_daily_vm_linux} ${bench_vm_linux_base} {
     run: [
-      ${mx_vm_common} [benchmark, --results-file, ${bench_vm_linux_base.result_file}, "agentscript-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=jvm", "--js=graal-js", "--js-config=default"]
+      ${mx_vm_common} [benchmark, --results-file, ${bench_vm_linux_base.result_file}, "agentscript-graal-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=jvm", "--js=graal-js", "--js-config=default"]
       ${bench_vm_linux_base.upload}
-      ${mx_vm_common} [benchmark, --results-file, ${bench_vm_linux_base.result_file}, "agentscript-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=native", "--js=graal-js", "--js-config=default"]
+      ${mx_vm_common} [benchmark, --results-file, ${bench_vm_linux_base.result_file}, "agentscript-graal-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=native", "--js=graal-js", "--js-config=default"]
       ${bench_vm_linux_base.upload}
     ]
     timelimit: "45:00"
