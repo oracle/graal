@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -46,10 +47,15 @@ final class ArrayObject implements TruffleObject {
     Object readArrayElement(long index) {
         Object value = arr[(int) index];
         if (convertToString) {
-            return value.toString();
+            return toString(value);
         } else {
             return value;
         }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static String toString(Object value) {
+        return value.toString();
     }
 
     @ExportMessage

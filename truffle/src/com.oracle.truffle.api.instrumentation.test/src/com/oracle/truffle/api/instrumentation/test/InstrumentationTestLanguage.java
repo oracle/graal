@@ -335,6 +335,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         private final Source source;
         private final String code;
         private int current;
+        private int argumentIndex = 0;
 
         Parser(InstrumentationTestLanguage lang, Source source) {
             this.lang = lang;
@@ -365,7 +366,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 throw new LanguageError(String.format("Illegal tag \"%s\".", tag));
             }
 
-            int argumentIndex = 0;
             int numberOfIdents = 0;
             if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("UNEXPECTED_RESULT") || tag.equals("SLEEP") ||
                             tag.equals("SPAWN") | tag.equals("CATCH")) {
@@ -644,13 +644,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     if (i > 0) {
                         b.append("+");
                     }
-                    b.append(value);
+                    b.append(InstrumentationTestLanguage.toString(value));
                 }
             }
             b.append(")");
-            return b.toString();
+            return InstrumentationTestLanguage.toString(b);
         }
-
     }
 
     static class BlockNoSourceSectionNode extends BlockNode {
@@ -839,7 +838,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 if (ex instanceof TruffleException) {
                     Object exceptionObject = ((TruffleException) ex).getExceptionObject();
                     if (exceptionObject != null) {
-                        String type = exceptionObject.toString();
+                        String type = InstrumentationTestLanguage.toString(exceptionObject);
                         for (CatchNode cn : catchNodes) {
                             if (type.startsWith(cn.getExceptionName())) {
                                 return cn.execute(frame);
@@ -898,6 +897,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
             @ExportMessage
+            @TruffleBoundary
             final Object invokeMember(String member, Object[] arguments) throws UnknownIdentifierException {
                 if ("catches".equals(member)) {
                     String type = arguments[0].toString();
@@ -1426,6 +1426,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         public Object execute(VirtualFrame frame) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError();
         }
 
@@ -2009,6 +2010,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @ExportMessage
+        @TruffleBoundary
         final boolean isMemberReadable(@SuppressWarnings("unused") String member) {
             return callTargets.containsKey(member);
         }
@@ -2130,7 +2132,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @ExportMessage
         @TruffleBoundary
         boolean isMetaInstance(Object instance) {
-            return instance.equals(original);
+            return instance.equals(original) || (original instanceof InstrumentationLanguageView && instance.equals(((InstrumentationLanguageView) original).delegate));
         }
 
         @ExportMessage
@@ -2222,6 +2224,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return new InstrumentationMetaObject(this, getTypeName());
         }
 
+    }
+
+    @TruffleBoundary
+    private static String toString(Object object) {
+        return object.toString();
     }
 
     public static final class SpecialServiceImpl implements SpecialService {

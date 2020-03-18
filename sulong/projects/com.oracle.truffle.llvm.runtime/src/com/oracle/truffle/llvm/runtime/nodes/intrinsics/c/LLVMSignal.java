@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -152,10 +152,10 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
 
             lock.lock();
             try {
-                if (function.equals(context.getSigDfl())) {
+                if (function.isSame(context.getSigDfl())) {
                     this.handler = function;
                     Signal.handle(signal, SignalHandler.SIG_DFL);
-                } else if (function.equals(context.getSigIgn())) {
+                } else if (function.isSame(context.getSigIgn())) {
                     this.handler = function;
                     Signal.handle(signal, SignalHandler.SIG_IGN);
                 } else {

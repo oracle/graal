@@ -142,7 +142,7 @@ public final class DebugExprNodeFactory {
             case '!':
                 return DebugExpressionPair.create(DebugExprNotNodeGen.create(pair.getNode()), pair.getType());
             default:
-                throw DebugExprException.create(pair.getNode(), "unknown symbol: " + unaryOp);
+                throw DebugExprException.create(pair.getNode(), "unknown symbol: %c", unaryOp);
         }
     }
 
@@ -238,7 +238,7 @@ public final class DebugExprNodeFactory {
         }
         LLVMExpressionNode node = CommonNodeFactory.createSimpleConstantNoArray((byte) value, PrimitiveType.I8);
         if (!valid) {
-            throw DebugExprException.create(node, "character " + charString + " not found");
+            throw DebugExprException.create(node, "character %s not found", charString);
         }
         return DebugExpressionPair.create(node, DebugExprType.getIntType(8, false));
     }
@@ -249,7 +249,7 @@ public final class DebugExprNodeFactory {
             return pair;
         }
         if (!pair.getType().canBeCastTo(type)) {
-            throw DebugExprException.create(pair.getNode(), "Cast from " + pair.getType() + " to " + type + " not possible!");
+            throw DebugExprException.create(pair.getNode(), "Cast from %s to %s not possible!", pair.getType(), type);
         }
         LLVMExpressionNode node;
         if (type.isFloatingType() || type.isIntegerType()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,7 +55,7 @@ public class TypedExportTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        Value testLibrary = InteropTestBase.loadTestBitcodeValue("typedExport");
+        Value testLibrary = loadTestBitcodeValue("typedExport.c");
         allocPoint = testLibrary.getMember("allocPoint");
         allocPointUninitialized = testLibrary.getMember("allocPointUninitialized");
         readPoint = testLibrary.getMember("readPoint");

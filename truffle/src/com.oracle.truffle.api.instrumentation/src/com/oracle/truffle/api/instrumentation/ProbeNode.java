@@ -1133,7 +1133,7 @@ public final class ProbeNode extends Node {
 
         static final Object[] EMPTY_ARRAY = new Object[0];
         @CompilationFinal(dimensions = 1) private volatile FrameSlot[] inputSlots;
-        private volatile FrameDescriptor sourceFrameDescriptor;
+        @CompilationFinal private volatile FrameDescriptor sourceFrameDescriptor;
         final int inputBaseIndex;
         final int inputCount;
         @CompilationFinal(dimensions = 1) volatile EventContext[] inputContexts;

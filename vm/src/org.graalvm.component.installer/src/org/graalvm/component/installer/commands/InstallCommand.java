@@ -33,9 +33,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -147,10 +147,11 @@ public class InstallCommand implements InstallerCommand {
     public InstallCommand() {
     }
 
-    List<ComponentParam> components = new ArrayList<>();
     Map<ComponentParam, Installer> realInstallers = new LinkedHashMap<>();
 
     private String current;
+
+    private StringBuilder parameterList = new StringBuilder();
 
     /**
      * Minimum required GraalVM version for the to-be-installed content.
@@ -256,7 +257,10 @@ public class InstallCommand implements InstallerCommand {
             return;
         }
 
-        Set<ComponentInfo> deps = new HashSet<>();
+        // dependencies are scanned breadth-first; so the deeper dependencies are
+        // later in the iterator order. Installers from dependencies will be reversed
+        // in registerComponent
+        Set<ComponentInfo> deps = new LinkedHashSet<>();
 
         LOG.log(Level.FINE, "Inspecting dependencies of {0}", ci);
         Set<String> errors = input.getRegistry().findDependencies(ci, true, Boolean.FALSE, deps);
@@ -269,6 +273,8 @@ public class InstallCommand implements InstallerCommand {
         }
 
         for (ComponentInfo i : deps) {
+            // knownDeps may contain multiple component versions, this
+            // will be sorted later, when converting to Installers.
             if (!knownDeps.add(i)) {
                 continue;
             }
@@ -288,38 +294,6 @@ public class InstallCommand implements InstallerCommand {
             feedback.output("INSTALL_RequiredDependencyLine", p.getDisplayName(), ci.getId(), ci.getVersion().displayString(),
                             printComponentList(dependencyMap.get(ci.getId())));
         }
-    }
-
-    private static final class Params implements Iterator<ComponentParam> {
-        private final Iterator<ComponentParam> first;
-        private final List<ComponentParam> second;
-        private int index = 0;
-
-        Params(Iterator<ComponentParam> first, List<ComponentParam> second) {
-            this.first = first;
-            this.second = second;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return first.hasNext() || index < second.size();
-        }
-
-        @Override
-        public ComponentParam next() {
-            if (first.hasNext()) {
-                return first.next();
-            }
-            if (index < second.size()) {
-                return second.get(index++);
-            } else {
-                throw new NoSuchElementException();
-            }
-        }
-    }
-
-    Iterable<ComponentParam> componentsWithDependencies() {
-        return () -> new Params(input.existingFiles().iterator(), dependencies);
     }
 
     boolean verifyInstaller(Installer inst) {
@@ -379,16 +353,81 @@ public class InstallCommand implements InstallerCommand {
                             printComponentList(dependencyMap.get(s)));
         }
         if (!input.getRegistry().isRemoteEnabled()) {
-            feedback.error("INSTALL_UnknownComponentsNote1", null);
+            feedback.error("INSTALL_UnknownComponentsNote1", null, parameterList.toString());
         }
         if (wasFile && !input.hasOption(Commands.OPTION_LOCAL_DEPENDENCIES)) {
-            feedback.error("INSTALL_UnknownComponentsNote2", null);
+            feedback.error("INSTALL_UnknownComponentsNote2", null, parameterList.toString());
         }
         throw feedback.failure("INSTALL_UnresolvedDependencies", null);
     }
 
+    private void appendParameterText() {
+        String s = input.peekParameter();
+        if (parameterList.length() > 0) {
+            parameterList.append(" "); // NOI18N
+        }
+        parameterList.append(s);
+    }
+
+    /**
+     * True during dependency processing. Dependencies should be inserted at the start, so their
+     * order is reversed (most deepest dependencies first). That means that if a component already
+     * exists, it must be reinserted at the start.
+     */
+    private boolean installDependencies;
+
+    protected boolean registerComponent(Installer inst, ComponentParam p) throws IOException {
+        ComponentInfo info = inst.getComponentInfo();
+        Installer existing = installerMap.get(info.getId());
+
+        Installer removedInstaller = null;
+
+        if (existing == null) {
+            installerMap.put(info.getId(), inst);
+            if (installDependencies) {
+                installers.add(0, inst);
+            } else {
+                installers.add(inst);
+            }
+            return true;
+        } else {
+            int i = installers.indexOf(existing);
+            ComponentInfo exInfo = existing.getComponentInfo();
+            int newer = exInfo.getVersion().compareTo(info.getVersion());
+            if (newer < 0) {
+                feedback.verboseOutput("INSTALL_UsingNewerComponent", info.getId(), info.getName(),
+                                info.getVersion().displayString(), exInfo.getVersion().displayString());
+
+                removedInstaller = installerMap.put(info.getId(), inst);
+                if (installDependencies) {
+                    // must reinsert at the start: later items may depend on this one
+                    installers.remove(i);
+                    installers.add(0, inst);
+                } else {
+                    // replace at the same position, to mainain commandline order
+                    installers.set(i, inst);
+                }
+                existing.close();
+                if (removedInstaller != null) {
+                    realInstallers.remove(p);
+                }
+                return true;
+            } else {
+                // if dependencies are processed, move the installer to the front
+                // of the work queue, to maintain the depenency-first order.
+                if (installDependencies) {
+                    installers.remove(i);
+                    installers.add(0, inst);
+                }
+                return false;
+            }
+        }
+    }
+
     protected void processComponents(Iterable<ComponentParam> toProcess) throws IOException {
-        for (ComponentParam p : toProcess) {
+        for (Iterator<ComponentParam> it = toProcess.iterator(); it.hasNext();) {
+            appendParameterText();
+            ComponentParam p = it.next();
             feedback.output(p.isComplete() ? "INSTALL_VerboseProcessingArchive" : "INSTALL_VerboseProcessingComponent", p.getDisplayName());
             current = p.getSpecification();
             MetadataLoader ldr = validateDownload ? p.createFileLoader() : p.createMetaLoader();
@@ -396,13 +435,14 @@ public class InstallCommand implements InstallerCommand {
             if (!verifyInstaller(inst)) {
                 continue;
             }
-            installers.add(inst);
-            if (p.isComplete()) {
-                // null realInstaller will be handled in completeInstallers() later.
-                addLicenseToAccept(inst, ldr);
-                realInstallers.put(p, inst);
-            } else {
-                realInstallers.put(p, null);
+            if (registerComponent(inst, p)) {
+                if (p.isComplete()) {
+                    // null realInstaller will be handled in completeInstallers() later.
+                    addLicenseToAccept(inst, ldr);
+                    realInstallers.put(p, inst);
+                } else {
+                    realInstallers.put(p, null);
+                }
             }
             current = null;
 
@@ -412,6 +452,9 @@ public class InstallCommand implements InstallerCommand {
             }
         }
 
+    }
+
+    protected void prevalidateInstallers() throws IOException {
         for (Installer i : new ArrayList<>(installers)) {
             if (validateBeforeInstall) {
                 current = i.getComponentInfo().getName();
@@ -424,14 +467,20 @@ public class InstallCommand implements InstallerCommand {
         processComponents(input.existingFiles());
         // first check after explicit components have been processed.
         checkDependencyErrors();
-        printRequiredComponents();
         if (dependencies.isEmpty()) {
             return;
         }
         // dependencies were scanned recursively; so just one additional pass should
         // be sufficient
-        processComponents(new ArrayList<>(dependencies));
+        try {
+            installDependencies = true;
+            processComponents(new ArrayList<>(dependencies));
+        } finally {
+            installDependencies = false;
+        }
+        printRequiredComponents();
         checkDependencyErrors();
+        prevalidateInstallers();
     }
 
     public void setIgnoreFailures(boolean ignoreFailures) {
@@ -578,6 +627,7 @@ public class InstallCommand implements InstallerCommand {
         }
     }
 
+    private final Map<String, Installer> installerMap = new HashMap<>();
     private final List<Installer> installers = new ArrayList<>();
     private final List<Installer> executedInstallers = new ArrayList<>();
 

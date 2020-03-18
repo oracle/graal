@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.library.test;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -71,6 +72,7 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
         @ExportMessage
         static class M0 {
             @Specialization(guards = "innerNode.execute(receiver)")
+            @CompilerDirectives.TruffleBoundary
             static String doM0(NodeAdoptionObject receiver,
                             @Cached(allowUncached = true) InnerNode innerNode,
                             @Cached(value = "0", uncached = "1") int cached) {
@@ -89,6 +91,7 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
         abstract boolean execute(Object argument);
 
         @Specialization
+        @CompilerDirectives.TruffleBoundary
         boolean s0(Object argument) {
             assertNotNull(this.getRootNode());
             return true;

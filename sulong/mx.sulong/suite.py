@@ -28,24 +28,18 @@ suite = {
     },
     "GCC_SOURCE" : {
       "packedResource" : True,
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-5.2.0.tar.gz",
-        "https://mirrors-usa.go-parts.com/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz",
-      ],
+      # original: https://mirrors-usa.go-parts.com/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-5.2.0.tar.gz"],
       "sha1" : "713211883406b3839bdba4a22e7111a0cff5d09b",
     },
     "SHOOTOUT_SUITE" : {
       "packedResource" : True,
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/benchmarksgame-scm-latest.tar.gz",
-      ],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/benchmarksgame-scm-latest.tar.gz"],
       "sha1" : "9684ca5aaa38ff078811f9b42f15ee65cdd259fc",
     },
     "NWCC_SUITE" : {
       "packedResource" : True,
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/nwcc_0.8.3.tar.gz",
-      ],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/nwcc_0.8.3.tar.gz"],
       "sha1" : "2ab1825dc1f8bd5258204bab19e8fafad93fef26",
     },
     # Support Libraries.
@@ -434,6 +428,12 @@ suite = {
     "com.oracle.truffle.llvm.tests.llirtestgen" : {
       "subDir" : "tests",
       "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.llvm.tests",
+      ],
+      "javaProperties" : {
+        "llirtestgen.prelude": "prelude.ll",
+      },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
       "license" : "BSD-new",
@@ -452,7 +452,7 @@ suite = {
       ],
       "buildEnv" : {
         "LDFLAGS": "-lm",
-        "LLIR_TEST_GEN_JAR" : "<path:LLIR_TEST_GEN>",
+        "LLIRTESTGEN_CMD" : "<get_jvm_cmd_line:LLIR_TEST_GEN>",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -1153,8 +1153,12 @@ suite = {
 
     "LLIR_TEST_GEN" : {
       "relpath" : True,
+      "mainClass" : "com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen",
       "dependencies" : [
         "com.oracle.truffle.llvm.tests.llirtestgen",
+      ],
+      "distDependencies" : [
+        "SULONG_TEST",
       ],
       "license" : "BSD-new",
       "testDistribution" : True,

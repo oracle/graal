@@ -38,9 +38,4 @@ public class RuntimeFeature implements Feature {
         RuntimeSupport.initializeRuntimeSupport();
         ImageSingletons.add(VMRuntimeSupport.class, RuntimeSupport.getRuntimeSupport());
     }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().sortCommandPlugins();
-    }
 }

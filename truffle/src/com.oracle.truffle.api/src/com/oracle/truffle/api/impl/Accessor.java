@@ -217,6 +217,7 @@ public abstract class Accessor {
     }
 
     public abstract static class EngineSupport {
+        public abstract <T> Iterable<T> loadServices(Class<T> type);
 
         public abstract Object getInstrumentationHandler(Object polyglotObject);
 
@@ -342,7 +343,9 @@ public abstract class Accessor {
 
         public abstract Object findMetaObjectForLanguage(Object polyglotLanguageContext, Object value);
 
-        public abstract boolean isDefaultFileSystem(FileSystem fs);
+        public abstract boolean isInternal(FileSystem fs);
+
+        public abstract boolean hasAllAccess(FileSystem fs);
 
         public abstract String getLanguageHome(Object engineObject);
 
@@ -436,6 +439,8 @@ public abstract class Accessor {
         public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
 
         public abstract Object getScopedView(LanguageInfo viewLanguage, Node location, Frame frame, Object value);
+
+        public abstract boolean initializeLanguage(Object polyglotLanguageContext, LanguageInfo targetLanguage);
     }
 
     public abstract static class LanguageSupport {
@@ -550,7 +555,7 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
 
-        public abstract boolean isDefaultFileSystem(Object fileSystemContext);
+        public abstract boolean hasAllAccess(Object fileSystemContext);
 
         public abstract TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
 

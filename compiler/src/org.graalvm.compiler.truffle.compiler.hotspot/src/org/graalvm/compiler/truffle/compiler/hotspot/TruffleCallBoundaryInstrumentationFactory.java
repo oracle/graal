@@ -47,18 +47,21 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * // normal compiled code
  * </pre>
  */
-public abstract class TruffleCallBoundaryInstrumentationFactory implements CompilationResultBuilderFactory {
+public abstract class TruffleCallBoundaryInstrumentationFactory {
 
-    protected MetaAccessProvider metaAccess;
-    protected GraalHotSpotVMConfig config;
-    protected HotSpotRegistersProvider registers;
+    public abstract static class TruffleCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
+        protected MetaAccessProvider metaAccess;
+        protected GraalHotSpotVMConfig config;
+        protected HotSpotRegistersProvider registers;
 
-    @SuppressWarnings("hiding")
-    public final void init(MetaAccessProvider metaAccess, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
-        this.metaAccess = metaAccess;
-        this.config = config;
-        this.registers = registers;
+        public TruffleCompilationResultBuilderFactory(MetaAccessProvider metaAccess, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
+            this.metaAccess = metaAccess;
+            this.config = config;
+            this.registers = registers;
+        }
     }
+
+    public abstract CompilationResultBuilderFactory create(MetaAccessProvider metaAccess, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers);
 
     /**
      * Gets the architecture supported by this factory.

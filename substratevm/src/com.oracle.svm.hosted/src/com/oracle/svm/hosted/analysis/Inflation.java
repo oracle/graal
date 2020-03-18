@@ -94,8 +94,9 @@ public class Inflation extends BigBang {
     private final Pattern targetCallersPattern;
     private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
 
-    public Inflation(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForkJoinPool executor) {
-        super(options, universe, providers, universe.hostVM(), executor, new SubstrateUnsupportedFeatures());
+    public Inflation(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForkJoinPool executor,
+                    Runnable heartbeatCallback) {
+        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures());
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         String[] targetCallers = new String[]{"com\\.oracle\\.graal\\.", "org\\.graalvm[^\\.polyglot\\.nativeapi]"};

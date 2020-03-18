@@ -440,12 +440,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case END:
                     break;
                 case BR: {
-                    int unwindCounterValue = codeEntry().longConstantAsInt(longConstantOffset);
+                    int unwindCounterValue = codeEntry().intConstant(intConstantOffset);
                     TargetOffset unwindCounter = TargetOffset.createOrCached(unwindCounterValue);
 
                     // Reset the stack pointer to the target block stack pointer.
-                    int continuationStackPointer = codeEntry().intConstant(intConstantOffset);
-                    int targetBlockReturnLength = codeEntry().intConstant(intConstantOffset + 1);
+                    int continuationStackPointer = codeEntry().intConstant(intConstantOffset + 1);
+                    int targetBlockReturnLength = codeEntry().intConstant(intConstantOffset + 2);
                     // Technically, we should increment the intConstantOffset and longConstantOffset
                     // at this point,
                     // but since we are returning, it does not really matter.
@@ -461,12 +461,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case BR_IF: {
                     stackPointer--;
                     if (popCondition(frame, stackPointer)) {
-                        int unwindCounterValue = codeEntry().longConstantAsInt(longConstantOffset);
+                        int unwindCounterValue = codeEntry().intConstant(intConstantOffset);
                         TargetOffset unwindCounter = TargetOffset.createOrCached(unwindCounterValue);
 
                         // Reset the stack pointer to the target block stack pointer.
-                        int continuationStackPointer = codeEntry().intConstant(intConstantOffset);
-                        int targetBlockReturnLength = codeEntry().intConstant(intConstantOffset + 1);
+                        int continuationStackPointer = codeEntry().intConstant(intConstantOffset + 1);
+                        int targetBlockReturnLength = codeEntry().intConstant(intConstantOffset + 2);
                         // Technically, we should increment the intConstantOffset and
                         // longConstantOffset at this point,
                         // but since we are returning, it does not really matter.
@@ -479,8 +479,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                         return unwindCounter;
                     }
-                    longConstantOffset++;
-                    intConstantOffset += 2;
+                    intConstantOffset += 3;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -509,15 +508,15 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // A return statement causes the termination of the current function, i.e.
                     // causes the execution
                     // to resume after the instruction that invoked the current frame.
-                    int unwindCounterValue = codeEntry().longConstantAsInt(longConstantOffset);
-                    int rootBlockReturnLength = codeEntry().intConstant(intConstantOffset);
+                    int unwindCounterValue = codeEntry().intConstant(intConstantOffset);
+                    int rootBlockReturnLength = codeEntry().intConstant(intConstantOffset + 1);
                     unwindStack(frame, stackPointer, 0, rootBlockReturnLength);
                     trace("return");
                     return TargetOffset.createOrCached(unwindCounterValue);
                 }
                 case CALL: {
-                    int functionIndex = codeEntry().longConstantAsInt(longConstantOffset);
-                    longConstantOffset++;
+                    int functionIndex = codeEntry().intConstant(intConstantOffset);
+                    intConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -587,9 +586,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
 
                     // Extract the function type index.
-                    int expectedFunctionTypeIndex = codeEntry().longConstantAsInt(longConstantOffset);
+                    int expectedFunctionTypeIndex = codeEntry().intConstant(intConstantOffset);
+                    intConstantOffset++;
                     int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
-                    longConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -672,8 +671,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case LOCAL_GET: {
-                    int index = codeEntry().longConstantAsInt(longConstantOffset);
-                    longConstantOffset++;
+                    int index = codeEntry().intConstant(intConstantOffset);
+                    intConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -714,8 +713,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case LOCAL_SET: {
-                    int index = codeEntry().longConstantAsInt(longConstantOffset);
-                    longConstantOffset++;
+                    int index = codeEntry().intConstant(intConstantOffset);
+                    intConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -756,8 +755,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case LOCAL_TEE: {
-                    int index = codeEntry().longConstantAsInt(longConstantOffset);
-                    longConstantOffset++;
+                    int index = codeEntry().intConstant(intConstantOffset);
+                    intConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -806,8 +805,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case GLOBAL_GET: {
-                    int index = codeEntry().longConstantAsInt(longConstantOffset);
-                    longConstantOffset++;
+                    int index = codeEntry().intConstant(intConstantOffset);
+                    intConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -853,8 +852,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case GLOBAL_SET: {
-                    int index = codeEntry().longConstantAsInt(longConstantOffset);
-                    longConstantOffset++;
+                    int index = codeEntry().intConstant(intConstantOffset);
+                    intConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -921,8 +920,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset++;
                     offset += memAlignConstantLength;
 
-                    int memOffset = codeEntry().longConstantAsInt(longConstantOffset);
-                    longConstantOffset++;
+                    int memOffset = codeEntry().intConstant(intConstantOffset);
+                    intConstantOffset++;
                     byte memOffsetConstantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += memOffsetConstantLength;
@@ -1028,8 +1027,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset++;
                     offset += memAlignConstantLength;
 
-                    int memOffset = codeEntry().longConstantAsInt(longConstantOffset);
-                    longConstantOffset++;
+                    int memOffset = codeEntry().intConstant(intConstantOffset);
+                    intConstantOffset++;
                     byte memOffsetConstantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += memOffsetConstantLength;
@@ -1155,8 +1154,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case I32_CONST: {
-                    int value = codeEntry().longConstantAsInt(longConstantOffset);
-                    longConstantOffset++;
+                    int value = codeEntry().intConstant(intConstantOffset);
+                    intConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -1897,8 +1896,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case F32_CONST: {
-                    int value = codeEntry().longConstantAsInt(longConstantOffset);
-                    longConstantOffset++;
+                    int value = codeEntry().intConstant(intConstantOffset);
+                    intConstantOffset++;
                     offset += 4;
                     pushInt(frame, stackPointer, value);
                     stackPointer++;

@@ -38,11 +38,12 @@ import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @GenerateUncached
-public abstract class LLVMI32LoadNode extends LLVMAbstractLoadNode {
+public abstract class LLVMI32LoadNode extends LLVMLoadNode {
 
     public static LLVMI32LoadNode create() {
         return LLVMI32LoadNodeGen.create((LLVMExpressionNode) null);

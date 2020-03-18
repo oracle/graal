@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,7 +48,7 @@ public abstract class LLVMReadCharsetNode extends LLVMNode {
 
     public abstract Object execute(VirtualFrame frame);
 
-    @Specialization(guards = "cachedPointer.equals(pointer)")
+    @Specialization(guards = "cachedPointer.isSame(pointer)")
     @SuppressWarnings("unused")
     protected LLVMCharset doCachedPointer(LLVMPointer pointer,
                     @Cached("pointer") LLVMPointer cachedPointer,

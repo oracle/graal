@@ -62,7 +62,11 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
     }
 
     protected final void setupContext() {
-        setupContext(Context.newBuilder().allowAllAccess(true).option("engine.InstrumentExceptionsAreThrown", "true").build());
+        setupContext(Context.newBuilder());
+    }
+
+    protected final void setupContext(Context.Builder builder) {
+        setupContext(builder.allowAllAccess(true).option("engine.InstrumentExceptionsAreThrown", "true").build());
     }
 
     protected final Context getContext() {

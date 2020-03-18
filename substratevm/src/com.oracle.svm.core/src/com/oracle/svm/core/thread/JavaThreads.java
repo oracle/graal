@@ -54,7 +54,6 @@ import org.graalvm.word.PointerBase;
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.ForceFixedRegisterReads;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -312,7 +311,6 @@ public abstract class JavaThreads {
     }
 
     @Uninterruptible(reason = "Called during isolate initialization")
-    @ForceFixedRegisterReads
     public void initializeIsolate() {
         /* The thread that creates the isolate is considered the "main" thread. */
         currentThread.set(mainThread);

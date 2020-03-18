@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.None;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 import static org.graalvm.compiler.options.OptionType.User;
 
 import java.nio.file.Paths;
@@ -31,6 +33,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.options.Option;
@@ -199,16 +202,24 @@ public class SubstrateOptions {
     @Option(help = "Use only a writable native image heap.")//
     public static final HostedOptionKey<Boolean> UseOnlyWritableBootImageHeap = new HostedOptionKey<>(false);
 
-    @Option(help = "Support multiple isolates. ")//
+    @Option(help = "Support multiple isolates.") //
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<Boolean>(null) {
         @Override
+        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (!values.containsKey(this)) {
+                /*
+                 * With the LLVM backend, isolate support has a significant performance cost, so we
+                 * disable it unless it is explicitly enabled.
+                 */
+                return !useLLVMBackend();
+            }
+            return (Boolean) values.get(this);
+        }
+
+        @Override
         public Boolean getValue(OptionValues values) {
-            Boolean value = super.getValue(values);
-            /*
-             * Spawning isolates results in a significant performance hit, so we disable them on the
-             * LLVM backend unless they were explicitly requested.
-             */
-            return (value != null) ? value : !CompilerBackend.getValue().equals("llvm");
+            assert checkDescriptorExists();
+            return getValueOrDefault(values.getMap());
         }
     };
 
@@ -360,9 +371,18 @@ public class SubstrateOptions {
                  * functions makes it incoherent with the executable.
                  */
                 RemoveUnusedSymbols.update(values, false);
+                /*
+                 * The LLVM backend doesn't support speculative execution attack mitigation
+                 */
+                MitigateSpeculativeExecutionAttacks.update(values, None);
             }
         }
     };
+
+    @Fold
+    public static boolean useLLVMBackend() {
+        return "llvm".equals(CompilerBackend.getValue());
+    }
 
     @Option(help = "Emit substitutions for UTF16 and latin1 compression", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> EmitStringEncodingSubstitutions = new HostedOptionKey<>(true);

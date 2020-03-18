@@ -50,10 +50,11 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRe
  * <ul>
  * <li>{@link RegexASTNode#getMinPath()}:
  * <ul>
- * <li>The minPath of {@link LookBehindAssertion} and {@link LookAheadAssertion} nodes is the
- * minimum number of CharacterClass nodes that need to be traversed in order to reach the node.</li>
- * <li>The minPath of {@link BackReference}, {@link PositionAssertion} and {@link MatchFound} nodes
- * is undefined (or is always 0). Their minPath is never set by {@link CalcASTPropsVisitor}.</li>
+ * <li>The minPath of {@link BackReference}, {@link PositionAssertion}, {@link LookBehindAssertion}
+ * and {@link LookAheadAssertion} nodes is the minimum number of CharacterClass nodes that need to
+ * be traversed in order to reach the node.</li>
+ * <li>The minPath of {@link MatchFound} nodes is undefined (or is always 0). Their minPath is never
+ * set by {@link CalcASTPropsVisitor}.</li>
  * <li>The minPath of {@link Sequence} and {@link Group} nodes is the minimum number of
  * {@link CharacterClass} nodes that need to be traversed (starting at the AST root) in order to
  * reach the end of the node. The minPath field of {@link Sequence} nodes is used as a mutable
@@ -97,14 +98,13 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRe
  * </li>
  * <li>{@link RegexAST#getReachableCarets()}/{@link RegexAST#getReachableDollars()}: all
  * caret/dollar {@link PositionAssertion} that are not dead are added to these lists.</li>
- * <li>{@link RegexAST#getLookAheads()}/{@link RegexAST#getLookBehinds()}: all reachable
- * {@link LookAroundAssertion}s are added to these lists.</li>
+ * <li>{@link RegexAST#getLookArounds()}}: all reachable {@link LookAroundAssertion}s are added to
+ * these lists.</li>
  * </ul>
  *
  * @see RegexAST#getReachableCarets()
  * @see RegexAST#getReachableDollars()
- * @see RegexAST#getLookAheads()
- * @see RegexAST#getLookBehinds()
+ * @see RegexAST#getLookArounds()
  * @see RegexASTNode#hasCaret()
  * @see RegexASTNode#hasDollar()
  * @see RegexASTNode#startsWithCaret()
@@ -120,13 +120,20 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
      * When processing a {@link Group}, these flags will be set in the group iff they are set in
      * <em>all</em> of its alternatives.
      */
-    private static final short AND_FLAGS = RegexASTNode.FLAG_STARTS_WITH_CARET | RegexASTNode.FLAG_ENDS_WITH_DOLLAR | RegexASTNode.FLAG_DEAD;
+    private static final int AND_FLAGS = RegexASTNode.FLAG_STARTS_WITH_CARET | RegexASTNode.FLAG_ENDS_WITH_DOLLAR | RegexASTNode.FLAG_DEAD;
     /**
      * When processing a {@link Group}, these flags will be set in the group iff they are set in
      * <em>any</em> of its alternatives.
      */
-    private static final short OR_FLAGS = RegexASTNode.FLAG_HAS_CARET | RegexASTNode.FLAG_HAS_DOLLAR | RegexASTNode.FLAG_HAS_LOOPS;
-    private static final short CHANGED_FLAGS = (short) (AND_FLAGS | OR_FLAGS);
+    private static final int OR_FLAGS = RegexASTNode.FLAG_HAS_CARET |
+                    RegexASTNode.FLAG_HAS_DOLLAR |
+                    RegexASTNode.FLAG_HAS_LOOPS |
+                    RegexASTNode.FLAG_HAS_QUANTIFIERS |
+                    RegexASTNode.FLAG_HAS_CAPTURE_GROUPS |
+                    RegexASTNode.FLAG_HAS_LOOK_AHEADS |
+                    RegexASTNode.FLAG_HAS_LOOK_BEHINDS |
+                    RegexASTNode.FLAG_HAS_BACK_REFERENCES;
+    private static final int CHANGED_FLAGS = AND_FLAGS | OR_FLAGS;
 
     private final RegexAST ast;
 
@@ -148,6 +155,18 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(BackReference backReference) {
+        backReference.setHasBackReferences();
+        backReference.getParent().setHasBackReferences();
+        if (backReference.hasQuantifier()) {
+            // TODO: maybe check if the referenced group can produce a zero-width match
+            setZeroWidthQuantifierIndex(backReference);
+        }
+        if (backReference.hasNotUnrolledQuantifier()) {
+            backReference.getParent().setHasQuantifiers();
+            setQuantifierIndex(backReference);
+        }
+        backReference.setMinPath(backReference.getParent().getMinPath());
+        backReference.setMaxPath(backReference.getParent().getMaxPath());
     }
 
     @Override
@@ -167,7 +186,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (group.isDead()) {
             return;
         }
-        int minPath = Short.MAX_VALUE;
+        int minPath = Integer.MAX_VALUE;
         int maxPath = 0;
         int flags = (group.isLoop() ? RegexASTNode.FLAG_HAS_LOOPS : 0) | AND_FLAGS;
         for (Sequence s : group.getAlternatives()) {
@@ -179,21 +198,49 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             maxPath = Math.max(maxPath, s.getMaxPath());
         }
         if (group.hasQuantifier()) {
-            if (group.getQuantifier().getMin() == 0) {
-                flags &= ~(RegexASTNode.FLAG_STARTS_WITH_CARET | RegexASTNode.FLAG_ENDS_WITH_DOLLAR);
+            if (!group.isExpandedQuantifier()) {
+                flags |= RegexASTNode.FLAG_HAS_QUANTIFIERS;
+                setQuantifierIndex(group);
+                if (group.getQuantifier().getMin() == 0) {
+                    flags &= ~(RegexASTNode.FLAG_STARTS_WITH_CARET | RegexASTNode.FLAG_ENDS_WITH_DOLLAR);
+                }
+                /*
+                 * group.minPath and group.maxPath are summed up from the beginning of the regex to
+                 * the beginning of the group. the min and max path of the sequences are further
+                 * summed up with min and max path of the group, so sequence.minPath - group.minPath
+                 * is the sequence's "own" minPath
+                 */
+                minPath = group.getMinPath() + ((minPath - group.getMinPath()) * group.getQuantifier().getMin());
+                if (group.getQuantifier().isInfiniteLoop()) {
+                    flags |= RegexASTNode.FLAG_HAS_LOOPS;
+                } else {
+                    maxPath = group.getMaxPath() + ((maxPath - group.getMaxPath()) * group.getQuantifier().getMax());
+                }
             }
-            // group.minPath and group.maxPath are summed up from the beginning of the regex to the
-            // beginning of the group.
-            // the min and max path of the sequences are further summed up with min and max path of
-            // the group, so sequence.minPath - group.minPath == the sequence's "own" minPath
-            minPath = group.getMinPath() + ((minPath - group.getMinPath()) * group.getQuantifier().getMin());
-            if (group.getQuantifier().isInfiniteLoop()) {
-                flags |= RegexASTNode.FLAG_HAS_LOOPS;
-            } else {
-                maxPath = group.getMaxPath() + ((maxPath - group.getMaxPath()) * group.getQuantifier().getMax());
+            if ((flags & (RegexASTNode.FLAG_HAS_BACK_REFERENCES | RegexASTNode.FLAG_HAS_LOOK_AHEADS | RegexASTNode.FLAG_HAS_LOOK_BEHINDS)) != 0) {
+                /*
+                 * If a quantifier can produce a zero-width match, we have to check this in
+                 * back-tracking mode.
+                 */
+                if (group.getFirstAlternative().isExpandedQuantifier()) {
+                    assert group.size() == 2;
+                    if (group.getLastAlternative().getMinPath() - group.getMinPath() == 0) {
+                        setZeroWidthQuantifierIndex(group);
+                    }
+                } else if (group.getLastAlternative().isExpandedQuantifier()) {
+                    assert group.size() == 2;
+                    if (group.getFirstAlternative().getMinPath() - group.getMinPath() == 0) {
+                        setZeroWidthQuantifierIndex(group);
+                    }
+                } else if (minPath - group.getMinPath() == 0) {
+                    setZeroWidthQuantifierIndex(group);
+                }
             }
         }
-        group.setFlags((short) flags, CHANGED_FLAGS);
+        if (group.isCapturing()) {
+            flags |= RegexASTNode.FLAG_HAS_CAPTURE_GROUPS;
+        }
+        group.setFlags(flags, CHANGED_FLAGS);
         group.setMinPath(minPath);
         group.setMaxPath(maxPath);
         if (group.getParent() instanceof Sequence) {
@@ -201,7 +248,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             group.getParent().setMaxPath(maxPath);
         }
         if (group.getParent() != null) {
-            group.getParent().setFlags((short) (group.getParent().getFlags(CHANGED_FLAGS) | flags), CHANGED_FLAGS);
+            group.getParent().setFlags(group.getParent().getFlags(CHANGED_FLAGS) | flags, CHANGED_FLAGS);
         }
     }
 
@@ -215,7 +262,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     protected void visit(PositionAssertion assertion) {
         switch (assertion.type) {
             case CARET:
-                if (!isReverse()) {
+                if (isForward()) {
                     assertion.getParent().setHasCaret();
                     if (assertion.getParent().getMinPath() > 0) {
                         assertion.markAsDead();
@@ -239,43 +286,47 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 }
                 break;
         }
+        assertion.setMinPath(assertion.getParent().getMinPath());
+        assertion.setMaxPath(assertion.getParent().getMaxPath());
     }
 
     @Override
     protected void visit(LookBehindAssertion assertion) {
+        assertion.getParent().setHasLookBehinds();
         assertion.setMinPath(assertion.getParent().getMinPath());
         assertion.setMaxPath(assertion.getParent().getMaxPath());
     }
 
     @Override
     protected void leave(LookBehindAssertion assertion) {
-        if (!isReverse() && !assertion.isDead()) {
-            ast.getLookBehinds().add(assertion);
-        }
         leaveLookAroundAssertion(assertion);
     }
 
     @Override
     protected void visit(LookAheadAssertion assertion) {
+        assertion.getParent().setHasLookAheads();
         assertion.setMinPath(assertion.getParent().getMinPath());
         assertion.setMaxPath(assertion.getParent().getMaxPath());
     }
 
     @Override
     protected void leave(LookAheadAssertion assertion) {
-        if (!isReverse() && !assertion.isDead()) {
-            ast.getLookAheads().add(assertion);
-        }
         leaveLookAroundAssertion(assertion);
     }
 
     public void leaveLookAroundAssertion(LookAroundAssertion assertion) {
-        assertion.getParent().setFlags((short) (assertion.getFlags(CHANGED_FLAGS) | assertion.getParent().getFlags(CHANGED_FLAGS)), CHANGED_FLAGS);
+        if (isForward() && !assertion.isDead()) {
+            ast.getLookArounds().add(assertion);
+        }
+        int flags = assertion.isNegated() || assertion.isLookBehindAssertion() ? assertion.getFlags(OR_FLAGS) : assertion.getFlags(CHANGED_FLAGS);
+        assertion.getParent().setFlags(flags | assertion.getParent().getFlags(CHANGED_FLAGS), CHANGED_FLAGS);
     }
 
     @Override
     protected void visit(CharacterClass characterClass) {
-        if (characterClass.hasQuantifier()) {
+        if (characterClass.hasNotUnrolledQuantifier()) {
+            characterClass.getParent().setHasQuantifiers();
+            setQuantifierIndex(characterClass);
             characterClass.getParent().incMinPath(characterClass.getQuantifier().getMin());
             if (characterClass.getQuantifier().isInfiniteLoop()) {
                 characterClass.setHasLoops();
@@ -292,6 +343,19 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (characterClass.getCharSet().matchesNothing()) {
             characterClass.markAsDead();
             characterClass.getParent().markAsDead();
+        }
+    }
+
+    private void setQuantifierIndex(QuantifiableTerm term) {
+        assert term.hasQuantifier();
+        if (isForward() && term.getQuantifier().getIndex() < 0) {
+            term.getQuantifier().setIndex(ast.getQuantifierCount().inc());
+        }
+    }
+
+    private void setZeroWidthQuantifierIndex(QuantifiableTerm term) {
+        if (isForward() && term.getQuantifier().getZeroWidthIndex() < 0) {
+            term.getQuantifier().setZeroWidthIndex(ast.getZeroWidthQuantifierCount().inc());
         }
     }
 }

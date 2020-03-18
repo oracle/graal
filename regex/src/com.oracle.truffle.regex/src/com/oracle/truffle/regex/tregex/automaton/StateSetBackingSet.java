@@ -43,7 +43,7 @@ package com.oracle.truffle.regex.tregex.automaton;
 import java.util.PrimitiveIterator;
 
 /**
- * A set of short values to be used as backing set by {@link StateSetImpl}.
+ * A set of int values to be used as backing set by {@link StateSetImpl}.
  */
 public interface StateSetBackingSet extends Iterable<Integer> {
 
@@ -55,12 +55,12 @@ public interface StateSetBackingSet extends Iterable<Integer> {
     /**
      * Analogous to {@link java.util.Set#contains(Object)}.
      */
-    boolean contains(short id);
+    boolean contains(int id);
 
     /**
      * Analogous to {@link java.util.Set#add(Object)}.
      */
-    boolean add(short id);
+    boolean add(int id);
 
     /**
      * Add a value in batch mode. After calling this method, the set is in "add batch mode" until
@@ -70,7 +70,7 @@ public interface StateSetBackingSet extends Iterable<Integer> {
      *
      * @param id the id to add to the set.
      */
-    void addBatch(short id);
+    void addBatch(int id);
 
     /**
      * Stop "add batch mode". This method will restore the set to a sane state after a batch add
@@ -85,12 +85,12 @@ public interface StateSetBackingSet extends Iterable<Integer> {
      * @param oldId id to remove. Assumed to be contained in the set.
      * @param newId id to add. Assumed to be absent in the set.
      */
-    void replace(short oldId, short newId);
+    void replace(int oldId, int newId);
 
     /**
      * Analogous to {@link java.util.Set#remove(Object)}.
      */
-    boolean remove(short id);
+    boolean remove(int id);
 
     /**
      * Analogous to {@link java.util.Set#clear()} .

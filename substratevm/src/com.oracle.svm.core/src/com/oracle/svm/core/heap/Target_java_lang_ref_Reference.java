@@ -79,7 +79,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @TargetClass(Reference.class)
 @Substitute
 public final class Target_java_lang_ref_Reference<T> {
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "rawReferent", declClass = Target_java_lang_ref_Reference.class) //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = ReferenceInternals.REFERENT_FIELD_NAME, declClass = Target_java_lang_ref_Reference.class) //
     static long rawReferentFieldOffset;
 
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "nextDiscovered", declClass = Target_java_lang_ref_Reference.class) //

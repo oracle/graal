@@ -51,14 +51,14 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
+/**
+ * A specialized set for sequentially indexed objects. Uses an {@link StateIndex index} for mapping
+ * indices to actual objects.
+ */
 public interface StateSet<S> extends Set<S>, Iterable<S>, JsonConvertible {
 
-    static <T> StateSet<T> create(StateIndex<? super T> stateIndex, StateSetBackingSetFactory backingSetFactory) {
-        return stateIndex.getNumberOfStates() > 64 ? new StateSetImpl<>(stateIndex, backingSetFactory) : new SmallStateSetImpl<>(stateIndex);
-    }
-
     static <T> StateSet<T> create(StateIndex<? super T> stateIndex) {
-        return create(stateIndex, StateSetBackingSetFactory.BIT_SET);
+        return stateIndex.getNumberOfStates() > 64 ? new StateSetImpl.StateSetImplBitSet<>(stateIndex) : new SmallStateSetImpl<>(stateIndex);
     }
 
     static <T> StateSet<T> create(StateIndex<? super T> stateIndex, T initial) {
@@ -71,6 +71,10 @@ public interface StateSet<S> extends Set<S>, Iterable<S>, JsonConvertible {
         StateSet<T> s = create(stateIndex);
         s.addAll(initial);
         return s;
+    }
+
+    static <T> StateSet<T> createWithBackingSortedArray(StateIndex<? super T> stateIndex) {
+        return stateIndex.getNumberOfStates() > 64 ? new StateSetImpl.StateSetImplSortedArray<>(stateIndex) : new SmallStateSetImpl<>(stateIndex);
     }
 
     StateSet<S> copy();

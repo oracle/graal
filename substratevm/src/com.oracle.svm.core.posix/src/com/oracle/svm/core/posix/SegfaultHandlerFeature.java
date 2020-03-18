@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -36,6 +35,8 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -44,6 +45,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -52,7 +55,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
-import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets.IsolateCreationWatcher;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -69,6 +72,13 @@ import com.oracle.svm.core.thread.VMThreads;
 public class SegfaultHandlerFeature implements Feature {
 
     @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        if (SubstrateOptions.useLLVMBackend()) {
+            ImageSingletons.add(IsolateCreationWatcher.class, new SubstrateSegfaultHandler.SingleIsolateSegfaultIsolateSetup());
+        }
+    }
+
+    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSupport.getRuntimeSupport().addStartupHook(SubstrateSegfaultHandler::install);
     }
@@ -83,17 +93,12 @@ class SubstrateSegfaultHandler {
 
     private static volatile boolean dispatchInProgress = false;
 
-    @Fold
-    static boolean fixedRegisters() {
-        return !SubstrateOptions.CompilerBackend.getValue().equals("llvm");
-    }
-
     @CEntryPoint
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints")
     private static void dispatch(int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
-        if (fixedRegisters()) {
+        if (!SubstrateOptions.useLLVMBackend()) {
             if (SubstrateOptions.SpawnIsolates.getValue()) {
                 PointerBase heapBase = ImageSingletons.lookup(UContextRegisterDumper.class).getHeapBase(uContext);
                 WriteHeapBaseNode.writeCurrentVMHeapBase(heapBase);
@@ -111,7 +116,7 @@ class SubstrateSegfaultHandler {
                 return;
             }
         } else {
-            Isolate isolate = CEntryPointSnippets.baseIsolate.get().readWord(0);
+            Isolate isolate = ((SingleIsolateSegfaultIsolateSetup) ImageSingletons.lookup(IsolateCreationWatcher.class)).getIsolate();
             if (isolate.rawValue() == -1) {
                 /*
                  * Multiple isolates registered, we can't know which one caused the segfault.
@@ -120,7 +125,6 @@ class SubstrateSegfaultHandler {
             }
             CEntryPointActions.enterIsolateFromCrashHandler(isolate);
         }
-
         dump(signalNumber, uContext);
     }
 
@@ -157,6 +161,31 @@ class SubstrateSegfaultHandler {
             structSigAction.sa_flags(Signal.SA_SIGINFO());
             structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
             Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, WordFactory.nullPointer());
+        }
+    }
+
+    static class SingleIsolateSegfaultIsolateSetup implements IsolateCreationWatcher {
+
+        /**
+         * Stores the address of the first isolate created. This is meant for the LLVM backend to
+         * attempt to detect the current isolate when entering the SVM segfault handler. The value
+         * is set to -1 when an additional isolate is created, as there is then no way of knowing in
+         * which isolate a subsequent segfault occurs.
+         */
+        private static final CGlobalData<Pointer> baseIsolate = CGlobalDataFactory.createWord();
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible method")
+        public void registerIsolate(Isolate isolate) {
+            PointerBase value = baseIsolate.get().compareAndSwapWord(0, WordFactory.zero(), isolate, LocationIdentity.ANY_LOCATION);
+            if (!value.isNull()) {
+                baseIsolate.get().writeWord(0, WordFactory.signed(-1));
+            }
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible method")
+        public Isolate getIsolate() {
+            return baseIsolate.get().readWord(0);
         }
     }
 }

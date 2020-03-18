@@ -62,12 +62,12 @@ public class StateSetBackingBitSet implements StateSetBackingSet {
     }
 
     @Override
-    public boolean contains(short id) {
+    public boolean contains(int id) {
         return bitSet.get(id);
     }
 
     @Override
-    public boolean add(short id) {
+    public boolean add(int id) {
         if (bitSet.get(id)) {
             return false;
         }
@@ -76,7 +76,7 @@ public class StateSetBackingBitSet implements StateSetBackingSet {
     }
 
     @Override
-    public void addBatch(short id) {
+    public void addBatch(int id) {
         bitSet.set(id);
     }
 
@@ -85,13 +85,13 @@ public class StateSetBackingBitSet implements StateSetBackingSet {
     }
 
     @Override
-    public void replace(short oldId, short newId) {
+    public void replace(int oldId, int newId) {
         bitSet.clear(oldId);
         bitSet.set(newId);
     }
 
     @Override
-    public boolean remove(short id) {
+    public boolean remove(int id) {
         if (bitSet.get(id)) {
             bitSet.clear(id);
             return true;

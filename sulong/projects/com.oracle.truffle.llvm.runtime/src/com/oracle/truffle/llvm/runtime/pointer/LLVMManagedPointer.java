@@ -59,6 +59,11 @@ public interface LLVMManagedPointer extends LLVMPointer {
     @Override
     LLVMManagedPointer copy();
 
+    @Override
+    @Deprecated
+    @SuppressWarnings("deprecation")
+    boolean equals(Object obj);
+
     /**
      * Increment this pointer. The result has the same {@link #getObject base object}, and the
      * {@link #getOffset offset} is incremented.

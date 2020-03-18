@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.api.debug;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -119,17 +124,10 @@ public abstract class DebugValue {
      * @return the converted Java type, or <code>null</code> when the conversion was not possible.
      * @throws DebugException when guest language code throws an exception
      * @since 0.17
+     * @deprecated Use {@link #toDisplayString()} instead.
      */
+    @Deprecated
     public abstract <T> T as(Class<T> clazz) throws DebugException;
-
-    /**
-     * Returns the {@link String} value if this value represents a string. This method returns
-     * <code>null</code> otherwise.
-     *
-     * @throws DebugException when guest language code throws an exception
-     * @since 19.0
-     */
-    public abstract String asString() throws DebugException;
 
     /**
      * Returns the name of this value as it is referred to from its origin. If this value is
@@ -144,7 +142,6 @@ public abstract class DebugValue {
     /**
      * Returns <code>true</code> if this value can be read else <code>false</code>.
      *
-     * @see #as(Class)
      * @since 0.17
      */
     public abstract boolean isReadable();
@@ -168,7 +165,6 @@ public abstract class DebugValue {
     /**
      * Returns <code>true</code> if this value can be written to, else <code>false</code>.
      *
-     * @see #as(Class)
      * @since 0.26
      */
     public abstract boolean isWritable();
@@ -204,14 +200,752 @@ public abstract class DebugValue {
     /**
      * Test if the value represents 'null'.
      *
+     * @throws DebugException when guest language code throws an exception
      * @since 19.0
      */
     public final boolean isNull() {
         if (!isReadable()) {
             return false;
         }
-        Object value = get();
-        return INTEROP.isNull(value);
+        try {
+            Object value = get();
+            return INTEROP.isNull(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if and only if this value represents a string.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @since 20.1.0
+     */
+    public boolean isString() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.isString(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns the {@link String} value if this value represents a string. This method returns
+     * <code>null</code> otherwise.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @since 19.0
+     */
+    public final String asString() throws DebugException {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object val = get();
+            if (INTEROP.isString(val)) {
+                return INTEROP.asString(val);
+            } else {
+                return null;
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this value represents a {@link #isNumber() number} and the value
+     * fits in <code>int</code>, else <code>false</code>.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @see #asInt()
+     * @since 20.1.0
+     */
+    public boolean fitsInInt() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.fitsInInt(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns an <code>int</code> representation of this value if it is {@link #isNumber() number}
+     * and the value {@link #fitsInInt() fits}.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #fitsInInt()
+     * @since 20.1.0
+     */
+    public int asInt() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asInt(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not an int", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if and only if this value represents a boolean value.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @see #asBoolean()
+     * @since 20.1.0
+     */
+    public boolean isBoolean() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.isBoolean(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns a <code>boolean</code> representation of this value if it is {@link #isBoolean()
+     * boolean}.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #isBoolean()
+     * @since 20.1.0
+     */
+    public boolean asBoolean() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asBoolean(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a boolean", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if and only if this value represents a number. The number value may
+     * be accessed as {@link #asByte() byte}, {@link #asShort() short}, {@link #asInt() int},
+     * {@link #asLong() long}, {@link #asFloat() float} or {@link #asDouble() double} value.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @since 20.1.0
+     */
+    public boolean isNumber() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.isNumber(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this value represents a {@link #isNumber() number} and the value
+     * fits in <code>long</code>, else <code>false</code>.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @see #asLong()
+     * @since 20.1.0
+     */
+    public boolean fitsInLong() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.fitsInLong(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns a <code>long</code> representation of this value if it is {@link #isNumber() number}
+     * and the value {@link #fitsInLong() fits}.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #fitsInLong()
+     * @since 20.1.0
+     */
+    public long asLong() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asLong(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a long", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this value represents a {@link #isNumber() number} and the value
+     * fits in <code>double</code>, else <code>false</code>.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @see #asDouble()
+     * @since 20.1.0
+     */
+    public boolean fitsInDouble() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.fitsInDouble(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns a <code>double</code> representation of this value if it is {@link #isNumber()
+     * number} and the value {@link #fitsInDouble() fits}.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #fitsInDouble()
+     * @since 20.1.0
+     */
+    public double asDouble() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asDouble(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a double", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this value represents a {@link #isNumber() number} and the value
+     * fits in <code>float</code>, else <code>false</code>.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @see #asFloat()
+     * @since 20.1.0
+     */
+    public boolean fitsInFloat() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.fitsInFloat(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns a <code>float</code> representation of this value if it is {@link #isNumber() number}
+     * and the value {@link #fitsInFloat() fits}.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #fitsInFloat()
+     * @since 20.1.0
+     */
+    public float asFloat() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asFloat(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a float", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this value represents a {@link #isNumber() number} and the value
+     * fits in <code>byte</code>, else <code>false</code>.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @see #asByte()
+     * @since 20.1.0
+     */
+    public boolean fitsInByte() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.fitsInByte(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns a <code>byte</code> representation of this value if it is {@link #isNumber() number}
+     * and the value {@link #fitsInByte() fits}.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #fitsInByte()
+     * @since 20.1.0
+     */
+    public byte asByte() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asByte(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a byte", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this value represents a {@link #isNumber() number} and the value
+     * fits in <code>short</code>, else <code>false</code>.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @see #asShort()
+     * @since 20.1.0
+     */
+    public boolean fitsInShort() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.fitsInShort(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns a <code>short</code> representation of this value if it is {@link #isNumber() number}
+     * and the value {@link #fitsInShort() fits}.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #fitsInShort()
+     * @since 20.1.0
+     */
+    public short asShort() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asShort(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a short", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this value represents a date, else <code>false</code>. If this
+     * value is also a {@link #isTimeZone() timezone} then the date is aware, otherwise it is naive.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @see #asDate()
+     * @since 20.1.0
+     */
+    public boolean isDate() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.isDate(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns this value as date if it is a {@link #isDate() date}. The returned date is either
+     * aware if the value has a {@link #isTimeZone() timezone} otherwise it is naive.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #isDate()
+     * @since 20.1.0
+     */
+    public LocalDate asDate() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asDate(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a date", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this value represents a time, else <code>false</code>. If the
+     * value is also a {@link #isTimeZone() timezone} then the time is aware, otherwise it is naive.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @see #asTime()
+     * @since 20.1.0
+     */
+    public boolean isTime() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.isTime(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns this value as time if it is a {@link #isTime() time}. The returned time is either
+     * aware if the value has a {@link #isTimeZone() timezone} otherwise it is naive.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #isTime()
+     * @since 20.1.0
+     */
+    public LocalTime asTime() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asTime(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a time", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this value represents an instant. See
+     * {@link InteropLibrary#isInstant(Object)} for detailed description.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @see #isDate()
+     * @see #isTime()
+     * @see #isInstant()
+     * @see #asInstant()
+     * @since 20.1.0
+     */
+    public boolean isInstant() {
+        return isDate() && isTime() && isTimeZone();
+    }
+
+    /**
+     * Returns this value as instant if it is an {@link #isInstant() instant}. See
+     * {@link InteropLibrary#asInstant(Object)} for detailed description.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #isDate()
+     * @see #isTime()
+     * @see #isTimeZone()
+     * @since 20.1.0
+     */
+    public Instant asInstant() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asInstant(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not an instant", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this object represents a timezone, else <code>false</code>. See
+     * {@link InteropLibrary#isTimeZone(Object)} for detailed description.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #asTimeZone()
+     * @see #asInstant()
+     * @since 20.1.0
+     */
+    public boolean isTimeZone() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.isTimeZone(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns this value as timestamp if it represents a {@link #isTimeZone() timezone}.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #isTimeZone()
+     * @since 20.1.0
+     */
+    public ZoneId asTimeZone() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asTimeZone(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a time", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this object represents a duration, else <code>false</code>.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see Duration
+     * @see #asDuration()
+     * @since 20.1.0
+     */
+    public boolean isDuration() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.isDuration(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns this value as duration if this object represents a {@link #isDuration() duration}.
+     *
+     * @throws UnsupportedOperationException if this value could not be converted.
+     * @throws DebugException when guest language code throws an exception
+     * @see #isDuration()
+     * @since 20.1.0
+     */
+    public Duration asDuration() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asDuration(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a time", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if the value represents a metaobject. See
+     * {@link InteropLibrary#isMetaObject(Object)} for detailed description.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @see #getMetaQualifiedName()
+     * @see #getMetaSimpleName()
+     * @see #isMetaInstance(DebugValue)
+     * @see #getMetaObject()
+     * @since 20.1
+     */
+    public boolean isMetaObject() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.isMetaObject(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns the qualified name of a metaobject as {@link #isString() String}. See
+     * {@link InteropLibrary#getMetaQualifiedName(Object)} for detailed description.
+     *
+     * @throws UnsupportedOperationException if and only if {@link #isMetaObject()} returns
+     *             <code>false</code> for the same value.
+     * @throws DebugException when guest language code throws an exception
+     * @see #isMetaObject()
+     * @since 20.1.0
+     */
+    public String getMetaQualifiedName() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asString(INTEROP.getMetaQualifiedName(value));
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a metaobject", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns the simple name of a metaobject as {@link #isString() string}. See
+     * {@link InteropLibrary#getMetaSimpleName(Object)} for detailed description.
+     *
+     * @throws UnsupportedOperationException if and only if {@link #isMetaObject()} returns
+     *             <code>false</code> for the same value.
+     * @throws DebugException when guest language code throws an exception
+     * @see #isMetaObject()
+     * @since 20.1.0
+     */
+    public String getMetaSimpleName() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asString(INTEROP.getMetaSimpleName(value));
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a metaobject", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if the given instance is an instance of this value, else
+     * <code>false</code>. See {@link InteropLibrary#isMetaInstance(Object, Object)} for detailed
+     * description.
+     *
+     * @param instance the instance value to check.
+     * @throws UnsupportedOperationException if and only if {@link #isMetaObject()} returns
+     *             <code>false</code> for the same value.
+     * @throws DebugException when guest language code throws an exception
+     * @see #isMetaObject()
+     * @since 20.1.0
+     */
+    public boolean isMetaInstance(DebugValue instance) {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.isMetaInstance(value, instance.get());
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a metaobject", uex);
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
     }
 
     /**
@@ -363,6 +1097,37 @@ public abstract class DebugValue {
         return language != null && language.getClass() == languageClass ? get() : null;
     }
 
+    /**
+     * Converts the value to a language-specific string representation. Is the same as
+     * {@link #toDisplayString(boolean) toDisplayString(true)}.
+     *
+     * @see #toDisplayString(boolean)
+     * @since 20.1
+     */
+    public final String toDisplayString() {
+        return toDisplayString(true);
+    }
+
+    /**
+     * Converts the value to a language-specific string representation.
+     *
+     * @param allowSideEffects whether side-effects are allowed in the production of the string.
+     * @since 20.1
+     */
+    public final String toDisplayString(boolean allowSideEffects) throws DebugException {
+        if (!isReadable()) {
+            return "<not readable>";
+        }
+        try {
+            Object stringValue = INTEROP.toDisplayString(getLanguageView(), allowSideEffects);
+            return INTEROP.asString(stringValue);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
     final Object getLanguageView() {
         LanguageInfo language = resolveLanguage();
         Object value = get();
@@ -387,7 +1152,8 @@ public abstract class DebugValue {
 
     /**
      * Get a meta-object of this value, if any. The meta-object represents a description of the
-     * value, reveals it's kind and it's features.
+     * value, reveals it's kind and it's features. See {@link InteropLibrary#getMetaObject(Object)}
+     * for detailed description.
      *
      * @return a value representing the meta-object, or <code>null</code>
      * @throws DebugException when guest language code throws an exception
@@ -512,10 +1278,10 @@ public abstract class DebugValue {
 
     /**
      * Returns a debug value that presents itself as seen by the provided language. The language
-     * affects the output of {@link #as(java.lang.Class)}, {@link #getMetaObject()} and
-     * {@link #getSourceLocation()}. Properties, array elements and other attributes are not
-     * affected by a language. The {@link #getOriginalLanguage() original language} of the returned
-     * value remains the same as of this value.
+     * affects the output of {@link #toDisplayString()}, {@link #getMetaObject()},
+     * {@link #getSourceLocation()} and other methods that provide various representations of the
+     * value. The {@link #getOriginalLanguage() original language} of the returned value remains the
+     * same as of this value.
      *
      * @param language a language to get the value representation of
      * @return the value as represented in the language
@@ -543,7 +1309,7 @@ public abstract class DebugValue {
      */
     @Override
     public String toString() {
-        return "DebugValue(name=" + getName() + ", value = " + (isReadable() ? as(String.class) : "<not readable>") + ")";
+        return "DebugValue(name=" + getName() + ", value = " + (isReadable() ? toDisplayString() : "<not readable>") + ")";
     }
 
     abstract static class AbstractDebugValue extends DebugValue {
@@ -556,6 +1322,7 @@ public abstract class DebugValue {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public final <T> T as(Class<T> clazz) throws DebugException {
             if (!isReadable()) {
                 throw new IllegalStateException("Value is not readable");
@@ -580,25 +1347,6 @@ public abstract class DebugValue {
                 throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
             }
             throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public String asString() throws DebugException {
-            if (!isReadable()) {
-                throw new IllegalStateException("Value is not readable");
-            }
-            try {
-                Object val = get();
-                if (INTEROP.isString(val)) {
-                    return INTEROP.asString(val);
-                } else {
-                    return null;
-                }
-            } catch (ThreadDeath td) {
-                throw td;
-            } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
-            }
         }
 
         private <T> T convertToPrimitive(Class<T> clazz) {

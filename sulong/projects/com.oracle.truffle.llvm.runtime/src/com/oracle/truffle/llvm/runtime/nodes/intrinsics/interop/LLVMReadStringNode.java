@@ -135,7 +135,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
             }
         }
 
-        @Specialization(guards = {"cachedAddress.equals(address)", "isReadOnlyMemory(cachedAddress)"})
+        @Specialization(guards = {"cachedAddress.isSame(address)", "isReadOnlyMemory(cachedAddress)"})
         String doCachedPointer(@SuppressWarnings("unused") LLVMPointer address,
                         @Cached("address") @SuppressWarnings("unused") LLVMPointer cachedAddress,
                         @Cached("doReadString(cachedAddress)") String result) {

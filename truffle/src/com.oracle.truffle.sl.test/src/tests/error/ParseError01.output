@@ -1,2 +1,2 @@
 Error(s) parsing script:
--- line 2 col 10: extraneous input '-' expecting {'(', ';', IDENTIFIER, STRING_LITERAL, NUMERIC_LITERAL}
+-- line 7 col 10: extraneous input '-' expecting {'(', ';', IDENTIFIER, STRING_LITERAL, NUMERIC_LITERAL}

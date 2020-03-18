@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -109,8 +109,12 @@ final class FileSystems {
         return new LanguageHomeFileSystem();
     }
 
-    static boolean isDefaultFileSystem(FileSystem fileSystem) {
-        return fileSystem != null && fileSystem.getClass() == NIOFileSystem.class && FILE_SCHEME.equals(((NIOFileSystem) fileSystem).delegate.getScheme());
+    static boolean hasAllAccess(FileSystem fileSystem) {
+        return fileSystem instanceof InternalFileSystem && ((InternalFileSystem) fileSystem).hasAllAccess();
+    }
+
+    static boolean isInternal(FileSystem fileSystem) {
+        return fileSystem instanceof InternalFileSystem;
     }
 
     static boolean hasNoIOFileSystem(TruffleFile file) {
@@ -187,7 +191,7 @@ final class FileSystems {
         return true;
     }
 
-    static final class PreInitializeContextFileSystem implements FileSystem {
+    static final class PreInitializeContextFileSystem implements InternalFileSystem {
 
         private FileSystem delegate; // effectively final after patch context
         private Function<Path, PreInitializePath> factory;
@@ -232,6 +236,11 @@ final class FileSystems {
             if (ImageInfo.inImageBuildtimeCode()) {
                 throw new IllegalStateException("Reintroducing absolute path into an image heap.");
             }
+        }
+
+        @Override
+        public boolean hasAllAccess() {
+            return delegate instanceof InternalFileSystem && ((InternalFileSystem) delegate).hasAllAccess();
         }
 
         @Override
@@ -630,7 +639,7 @@ final class FileSystems {
         }
     }
 
-    private static final class NIOFileSystem implements FileSystem {
+    private static final class NIOFileSystem implements InternalFileSystem {
 
         private final FileSystemProvider delegate;
         private final boolean explicitUserDir;
@@ -650,6 +659,11 @@ final class FileSystems {
             this.delegate = fileSystemProvider;
             this.explicitUserDir = explicitUserDir;
             this.userDir = userDir;
+        }
+
+        @Override
+        public boolean hasAllAccess() {
+            return FILE_SCHEME.equals(delegate.getScheme());
         }
 
         @Override
@@ -845,9 +859,14 @@ final class FileSystems {
         }
     }
 
-    private static class DeniedIOFileSystem implements FileSystem {
+    private static class DeniedIOFileSystem implements InternalFileSystem {
 
         DeniedIOFileSystem() {
+        }
+
+        @Override
+        public boolean hasAllAccess() {
+            return false;
         }
 
         @Override
@@ -1057,7 +1076,12 @@ final class FileSystems {
         }
     }
 
-    private static final class InvalidFileSystem implements FileSystem {
+    private static final class InvalidFileSystem implements InternalFileSystem {
+
+        @Override
+        public boolean hasAllAccess() {
+            return false;
+        }
 
         @Override
         public Path parsePath(URI uri) {
@@ -1173,6 +1197,10 @@ final class FileSystems {
             }
             return detectors;
         }
+    }
+
+    private interface InternalFileSystem extends FileSystem {
+        boolean hasAllAccess();
     }
 
     private static SecurityException forbidden(final Path path) {

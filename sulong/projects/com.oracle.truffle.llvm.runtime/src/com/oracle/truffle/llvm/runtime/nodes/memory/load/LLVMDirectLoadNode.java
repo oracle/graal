@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVM80BitFloatDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMIVarBitDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
@@ -51,7 +52,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public abstract class LLVMDirectLoadNode {
 
     @NodeField(name = "bitWidth", type = int.class)
-    public abstract static class LLVMIVarBitDirectLoadNode extends LLVMAbstractLoadNode {
+    public abstract static class LLVMIVarBitDirectLoadNode extends LLVMLoadNode {
 
         protected abstract LLVMIVarBit executeManaged(LLVMManagedPointer addr);
 
@@ -93,7 +94,7 @@ public abstract class LLVMDirectLoadNode {
         }
     }
 
-    public abstract static class LLVM80BitFloatDirectLoadNode extends LLVMAbstractLoadNode {
+    public abstract static class LLVM80BitFloatDirectLoadNode extends LLVMLoadNode {
 
         static LLVM80BitFloatDirectLoadNode create() {
             return LLVM80BitFloatDirectLoadNodeGen.create((LLVMExpressionNode) null);
@@ -130,7 +131,7 @@ public abstract class LLVMDirectLoadNode {
     }
 
     @GenerateUncached
-    public abstract static class LLVMPointerDirectLoadNode extends LLVMAbstractLoadNode {
+    public abstract static class LLVMPointerDirectLoadNode extends LLVMLoadNode {
 
         public static LLVMPointerDirectLoadNode create() {
             return LLVMPointerDirectLoadNodeGen.create((LLVMExpressionNode) null);
@@ -157,7 +158,7 @@ public abstract class LLVMDirectLoadNode {
         }
     }
 
-    public abstract static class LLVMStructDirectLoadNode extends LLVMAbstractLoadNode {
+    public abstract static class LLVMStructDirectLoadNode extends LLVMLoadNode {
 
         @Specialization
         protected LLVMPointer doPointer(LLVMPointer addr) {

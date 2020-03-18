@@ -79,9 +79,19 @@ public final class JNIUtil {
         return env.getFunctions().getFindClass().call(env, name);
     }
 
+    public static JClass GetObjectClass(JNIEnv env, JObject object) {
+        traceJNI("GetObjectClass");
+        return env.getFunctions().getGetObjectClass().call(env, object);
+    }
+
     public static JMethodID GetStaticMethodID(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig) {
         traceJNI("GetStaticMethodID");
         return env.getFunctions().getGetStaticMethodID().call(env, clazz, name, sig);
+    }
+
+    public static JMethodID GetMethodID(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig) {
+        traceJNI("GetMethodID");
+        return env.getFunctions().getGetMethodID().call(env, clazz, name, sig);
     }
 
     public static JObjectArray NewObjectArray(JNIEnv env, int len, JClass componentClass, JObject initialElement) {

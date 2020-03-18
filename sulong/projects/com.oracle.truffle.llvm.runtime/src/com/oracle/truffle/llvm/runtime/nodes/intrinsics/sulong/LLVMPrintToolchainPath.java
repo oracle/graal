@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMPrintToolchainPath extends LLVMIntrinsic {
 
@@ -44,10 +45,10 @@ public abstract class LLVMPrintToolchainPath extends LLVMIntrinsic {
 
     @CompilerDirectives.TruffleBoundary
     @Specialization
-    protected int doOp(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+    protected LLVMNativePointer doOp(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         Toolchain toolchain = ctx.getToolchain();
         TruffleFile path = toolchain.getToolPath("PATH");
         System.out.println(path.getAbsoluteFile().getPath());
-        return 0;
+        return LLVMNativePointer.createNull();
     }
 }

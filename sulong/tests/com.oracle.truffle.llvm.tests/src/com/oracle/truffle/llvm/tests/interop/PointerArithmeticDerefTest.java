@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -50,7 +50,7 @@ public class PointerArithmeticDerefTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadLibrary() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("pointerArithmetic");
+        testLibrary = loadTestBitcodeInternal("pointerArithmetic.c");
     }
 
     public static class DerefPointerNode extends SulongTestNode {

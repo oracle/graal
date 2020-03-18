@@ -47,24 +47,25 @@ final class Target_com_oracle_svm_core_util_VMError {
      * VMError, which let the svm just print the type name of VMError.
      */
 
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true)
     @Substitute
     private static RuntimeException shouldNotReachHere() {
-        return shouldNotReachHere(null, null);
+        throw shouldNotReachHere(null, null);
     }
 
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true)
     @Substitute
     private static RuntimeException shouldNotReachHere(String msg) {
-        return shouldNotReachHere(msg, null);
+        throw shouldNotReachHere(msg, null);
     }
 
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true)
     @Substitute
     private static RuntimeException shouldNotReachHere(Throwable ex) {
-        return shouldNotReachHere(null, ex);
+        throw shouldNotReachHere(null, ex);
     }
 
+    @NeverInline("Prevent change of safepoint status and disabling of stack overflow check to leak into caller, especially when caller is not uninterruptible")
     @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
     @Substitute
     private static RuntimeException shouldNotReachHere(String msg, Throwable ex) {
@@ -73,22 +74,6 @@ final class Target_com_oracle_svm_core_util_VMError {
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
         VMErrorSubstitutions.shutdown(msg, ex);
         return null;
-    }
-
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
-    @Substitute
-    private static void guarantee(boolean condition) {
-        if (!condition) {
-            throw shouldNotReachHere("guarantee failed");
-        }
-    }
-
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
-    @Substitute
-    private static void guarantee(boolean condition, String msg) {
-        if (!condition) {
-            throw shouldNotReachHere(msg);
-        }
     }
 
     @Substitute
@@ -126,24 +111,7 @@ public class VMErrorSubstitutions {
                 log.string(": ").string(msg);
             }
             if (ex != null) {
-                /*
-                 * We do not want to call getMessage(), since it can be overridden by subclasses of
-                 * Throwable. So we access the raw detailMessage directly from the field in
-                 * Throwable. That is better than printing nothing.
-                 */
-                String detailMessage = JDKUtils.getRawMessage(ex);
-                StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(ex);
-
-                log.string(": ").string(ex.getClass().getName()).string(": ").string(detailMessage);
-                if (stackTrace != null) {
-                    for (StackTraceElement element : stackTrace) {
-                        if (element != null) {
-                            log.newline();
-                            log.string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
-                            log.string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
-                        }
-                    }
-                }
+                log.string(": ").exception(ex);
             }
             log.newline();
 

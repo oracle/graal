@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -95,6 +96,7 @@ public abstract class LLVMSymbol {
         if (symbolIndex >= 0 || illegalOK) {
             return symbolIndex;
         }
+        CompilerDirectives.transferToInterpreter();
         throw new LLVMIllegalSymbolIndexException("Invalid function index: " + symbolIndex);
     }
 
@@ -109,6 +111,7 @@ public abstract class LLVMSymbol {
         if (moduleId >= 0 || illegalOK) {
             return moduleId;
         }
+        CompilerDirectives.transferToInterpreter();
         throw new LLVMIllegalSymbolIndexException("Invalid function ID: " + moduleId);
     }
 

@@ -38,11 +38,12 @@ import com.oracle.truffle.api.profiles.DoubleValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @GenerateUncached
-public abstract class LLVMDoubleLoadNode extends LLVMAbstractLoadNode {
+public abstract class LLVMDoubleLoadNode extends LLVMLoadNode {
 
     public static LLVMDoubleLoadNode create() {
         return LLVMDoubleLoadNodeGen.create((LLVMExpressionNode) null);

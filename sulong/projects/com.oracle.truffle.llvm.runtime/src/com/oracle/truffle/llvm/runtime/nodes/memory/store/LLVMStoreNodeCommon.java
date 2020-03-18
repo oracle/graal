@@ -29,29 +29,13 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
 
     protected static LLVMObjectWriteNode createForeignWrite() {
         return LLVMObjectAccessFactory.createWrite();
-    }
-
-    protected static boolean isAutoDerefHandle(LLVMLanguage language, LLVMNativePointer addr) {
-        return isAutoDerefHandle(language, addr.asNative());
-    }
-
-    protected static boolean isAutoDerefHandle(LLVMLanguage language, long addr) {
-        // checking the bit is cheaper than getting the assumption in interpreted mode
-        if (CompilerDirectives.inCompiledCode() && language.getNoDerefHandleAssumption().isValid()) {
-            return false;
-        }
-        return LLVMNativeMemory.isDerefHandleMemory(addr);
     }
 }

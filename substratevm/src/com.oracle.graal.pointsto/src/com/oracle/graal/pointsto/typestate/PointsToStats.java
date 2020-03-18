@@ -551,13 +551,13 @@ public class PointsToStats {
             return "ArrayElements(" + (arrayFlow.object() != null ? arrayFlow.object().type().toJavaName(false) : "?") + ")";
         } else if (flow instanceof NullCheckTypeFlow) {
             NullCheckTypeFlow nullCheck = (NullCheckTypeFlow) flow;
-            return "NullCheck(" + (nullCheck.isFilterNull() ? "not-null" : "only-null") + ")@" + formatSource(flow);
+            return "NullCheck(" + (nullCheck.isBlockingNull() ? "not-null" : "only-null") + ")@" + formatSource(flow);
         } else if (flow instanceof FilterTypeFlow) {
             FilterTypeFlow filter = (FilterTypeFlow) flow;
             String properties = filter.isExact() ? "exact" : "not-exact";
             properties += ", " + (filter.isAssignable() ? "assignable" : "not-assignable");
             properties += ", " + (filter.includeNull() ? "include-null" : "not-include-null");
-            return "Filter(" + properties + ", " + formatType(filter.getType(), true) + ")@" + formatSource(flow);
+            return "Filter(" + properties + ", " + formatType(filter.getDeclaredType(), true) + ")@" + formatSource(flow);
         } else if (flow instanceof FieldFilterTypeFlow) {
             FieldFilterTypeFlow filter = (FieldFilterTypeFlow) flow;
             return "FieldFilter(" + formatField(filter.getSource()) + ")";

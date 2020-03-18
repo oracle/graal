@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -143,7 +143,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMStatementNode {
             boolean carry = Long.compareUnsigned(a.asNative(), dst.asNative()) < 0;
             boolean adjust = (((a.asNative() ^ dst.asNative()) ^ result) & 0x10) != 0;
             flags.execute(frame, false, carry, adjust, result);
-            if (profile.profile(a.equals(dst))) {
+            if (profile.profile(a.isSame(dst))) {
                 out1.execute(frame, src);
             } else {
                 out2.execute(frame, dst);
@@ -161,7 +161,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMStatementNode {
             boolean carry = Long.compareUnsigned(a, dst) < 0;
             boolean adjust = (((a ^ dst) ^ result) & 0x10) != 0;
             flags.execute(frame, false, carry, adjust, result);
-            if (profile.profile(pointerA.equals(pointerDst))) {
+            if (profile.profile(pointerA.isSame(pointerDst))) {
                 out1.execute(frame, pointerSrc);
             } else {
                 out2.execute(frame, pointerDst);

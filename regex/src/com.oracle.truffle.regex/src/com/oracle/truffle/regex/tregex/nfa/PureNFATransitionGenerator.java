@@ -40,21 +40,22 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
-import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
 
+/**
+ * Calculates the successor transitions of a given {@link PureNFAState}.
+ */
 public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisitor {
 
     private final PureNFAGenerator nfaGen;
-    private final ObjectArrayBuffer transitionBuffer = new ObjectArrayBuffer(8);
+    private final ObjectArrayBuffer<PureNFATransition> transitionBuffer = new ObjectArrayBuffer<>(8);
     private PureNFAState curState;
 
     public PureNFATransitionGenerator(RegexAST ast, PureNFAGenerator nfaGen) {
@@ -65,7 +66,7 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
     public void generateTransitions(PureNFAState state) {
         this.curState = state;
         Term root = (Term) ast.getState(state.getAstNodeId());
-        setCanTraverseCaret(root instanceof PositionAssertion && ast.getNfaAnchoredInitialStates().contains(root));
+        setCanTraverseCaret(state.isAnchoredInitialState() || state.canMatchZeroWidth());
         transitionBuffer.clear();
         run(root);
         curState.setSuccessors(transitionBuffer.toArray(new PureNFATransition[transitionBuffer.length()]));
@@ -73,6 +74,12 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
 
     @Override
     protected void visit(RegexASTNode target) {
+        // Optimization: eagerly remove transitions that cannot match with their respective
+        // look-around assertions
+        if (pruneLookarounds(target)) {
+            return;
+        }
+
         PureNFAState targetState;
         if (target instanceof MatchFound) {
             targetState = dollarsOnPath() ? nfaGen.getAnchoredFinalState() : nfaGen.getUnAnchoredFinalState();
@@ -80,14 +87,9 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
             targetState = nfaGen.getOrCreateState((Term) target);
         }
         targetState.incPredecessors();
-        QuantifierGuard[] quantifiers = getQuantifierGuardsOnPath();
-        transitionBuffer.add(new PureNFATransition((short) nfaGen.getTransitionIdCounter().inc(),
-                        curState,
-                        targetState,
-                        getGroupBoundaries(),
-                        getLookAheadsOnPath(),
-                        getLookBehindsOnPath(),
-                        quantifiers.length == 0 ? QuantifierGuard.NO_GUARDS : Arrays.copyOf(quantifiers, quantifiers.length)));
+        transitionBuffer.add(new PureNFATransition(nfaGen.getTransitionIdCounter().inc(), curState, targetState, getGroupBoundaries(),
+                        curState.canMatchZeroWidth() || target.isGroup() ? caretsOnPath() : false,
+                        target.isCharacterClass() ? false : dollarsOnPath(), getQuantifierGuardsOnPath()));
     }
 
     @Override
@@ -96,5 +98,25 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
 
     @Override
     protected void leaveLookAhead(LookAheadAssertion assertion) {
+    }
+
+    private boolean pruneLookarounds(RegexASTNode target) {
+        if (curState.isLookAhead(ast) && target.isCharacterClass()) {
+            LookAheadAssertion la = ast.getState(curState.getAstNodeId()).asLookAheadAssertion();
+            if (!la.isNegated() && la.startsWithCharClass()) {
+                return !la.getGroup().getFirstAlternative().getFirstTerm().asCharacterClass().getCharSet().intersects(target.asCharacterClass().getCharSet());
+            }
+        } else if (curState.isCharacterClass() && target instanceof LookBehindAssertion) {
+            LookBehindAssertion lb = (LookBehindAssertion) target;
+            if (!lb.isNegated() && lb.endsWithCharClass()) {
+                return !lb.getGroup().getFirstAlternative().getLastTerm().asCharacterClass().getCharSet().intersects(curState.getCharSet());
+            }
+        }
+        return false;
+    }
+
+    @Override
+    protected boolean canTraverseLookArounds() {
+        return false;
     }
 }

@@ -332,6 +332,13 @@ final class Runner {
         ExternalLibrary[] sulongLibraries = parseDependencies(parseContext);
         assert parseContext.dependencyQueueIsEmpty();
 
+        for (LLVMParserResult parserResult : parseContext.getParserResults()) {
+            if (context.isInternalLibrary(parserResult.getRuntime().getLibrary())) {
+                // renaming is attempted only for internal libraries.
+                resolveRenamedSymbols(parserResult, parseContext);
+            }
+        }
+
         List<LLVMParserResult> parserResults = parseContext.getParserResults();
         addExternalSymbolsToScopes(parserResults);
 
@@ -378,11 +385,16 @@ final class Runner {
             super(function);
         }
 
-        @Override
         @TruffleBoundary
-        LLVMPointer allocate(LLVMContext context) {
+        private LLVMFunctionDescriptor createAndResolve(LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(function);
             functionDescriptor.getFunctionCode().resolveIfLazyLLVMIRFunction();
+            return functionDescriptor;
+        }
+
+        @Override
+        LLVMPointer allocate(LLVMContext context) {
+            LLVMFunctionDescriptor functionDescriptor = createAndResolve(context);
             return LLVMManagedPointer.create(functionDescriptor);
         }
     }
@@ -396,16 +408,22 @@ final class Runner {
             this.nodeFactory = nodeFactory;
         }
 
-        @Override
-        LLVMPointer allocate(LLVMContext context) {
+        @TruffleBoundary
+        private LLVMFunctionDescriptor createAndDefine(LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(function);
             LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
 
             if (intrinsicProvider.isIntrinsified(function.getName())) {
                 functionDescriptor.getFunctionCode().define(intrinsicProvider, nodeFactory);
-                return LLVMManagedPointer.create(functionDescriptor);
+                return functionDescriptor;
             }
             throw new IllegalStateException("Failed to allocate intrinsic function " + function.getName());
+        }
+
+        @Override
+        LLVMPointer allocate(LLVMContext context) {
+            LLVMFunctionDescriptor functionDescriptor = createAndDefine(context);
+            return LLVMManagedPointer.create(functionDescriptor);
         }
     }
 
@@ -686,7 +704,7 @@ final class Runner {
         String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
         ExternalLibrary[] sulongLibraries = new ExternalLibrary[sulongLibraryNames.length];
         for (int i = 0; i < sulongLibraries.length; i++) {
-            sulongLibraries[i] = context.addInternalLibrary(sulongLibraryNames[i], false);
+            sulongLibraries[i] = context.addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>");
         }
 
         // parse all libraries that were passed on the command-line
@@ -714,7 +732,6 @@ final class Runner {
         }
 
         updateOverriddenSymbols(sulongLibraryResults);
-        resolveRenamedSymbols(sulongLibraryResults);
         return sulongLibraries;
     }
 
@@ -766,41 +783,46 @@ final class Runner {
     private static final String SULONG_RENAME_MARKER = "___sulong_import_";
     public static final int SULONG_RENAME_MARKER_LEN = SULONG_RENAME_MARKER.length();
 
-    private static void resolveRenamedSymbols(LLVMParserResult[] sulongLibraryResults) {
-        EconomicMap<String, LLVMScope> scopes = EconomicMap.create();
-
-        for (LLVMParserResult parserResult : sulongLibraryResults) {
-            scopes.put(parserResult.getRuntime().getLibrary().getName(), parserResult.getRuntime().getFileScope());
+    private static void resolveRenamedSymbols(LLVMParserResult parserResult, ParseContext parseContext) {
+        EconomicMap<ExternalLibrary, LLVMParserResult> libToRes = EconomicMap.create();
+        for (LLVMParserResult res : parseContext.getParserResults()) {
+            libToRes.put(res.getRuntime().getLibrary(), res);
         }
-
-        for (LLVMParserResult parserResult : sulongLibraryResults) {
-            ListIterator<FunctionSymbol> it = parserResult.getExternalFunctions().listIterator();
-            while (it.hasNext()) {
-                FunctionSymbol external = it.next();
-                String name = external.getName();
-                /*
-                 * An unresolved name has the form defined by the {@code
-                 * _SULONG_IMPORT_SYMBOL(libName, symbolName)} macro defined in the {@code
-                 * sulong-internal.h} header file. Check whether we have a symbol named "symbolName"
-                 * in the library "libName". If it exists, introduce an alias. This can be used to
-                 * explicitly call symbols from a certain standard library, in case the symbol is
-                 * hidden (either using the "hidden" attribute, or because it is overridden).
-                 */
-                if (name.startsWith(SULONG_RENAME_MARKER)) {
-                    int idx = name.indexOf('_', SULONG_RENAME_MARKER_LEN);
-                    if (idx > 0) {
-                        String lib = name.substring(SULONG_RENAME_MARKER_LEN, idx);
-                        LLVMScope scope = scopes.get(lib);
-                        if (scope != null) {
-                            String originalName = name.substring(idx + 1);
-                            LLVMFunction originalSymbol = scope.getFunction(originalName);
-                            assert originalSymbol != null;
-                            LLVMAlias alias = new LLVMAlias(parserResult.getRuntime().getLibrary(), name, originalSymbol);
-                            parserResult.getRuntime().getFileScope().register(alias);
-                            it.remove();
-                        } else {
-                            throw new LLVMLinkerException(String.format("The %s could not be imported because library %s was not found.", external.getName(), lib));
-                        }
+        EconomicMap<String, LLVMScope> scopes = EconomicMap.create();
+        // TODO (je) we should probably do this in symbol resolution order - let's fix that when we
+        // fix symbol resolution [GR-21400]
+        for (ExternalLibrary dep : parserResult.getDependencies()) {
+            LLVMParserResult depResult = libToRes.get(dep);
+            if (depResult != null) {
+                scopes.put(dep.getName(), depResult.getRuntime().getFileScope());
+            }
+        }
+        ListIterator<FunctionSymbol> it = parserResult.getExternalFunctions().listIterator();
+        while (it.hasNext()) {
+            FunctionSymbol external = it.next();
+            String name = external.getName();
+            /*
+             * An unresolved name has the form defined by the {@code _SULONG_IMPORT_SYMBOL(libName,
+             * symbolName)} macro defined in the {@code sulong-internal.h} header file. Check
+             * whether we have a symbol named "symbolName" in the library "libName". If it exists,
+             * introduce an alias. This can be used to explicitly call symbols from a certain
+             * standard library, in case the symbol is hidden (either using the "hidden" attribute,
+             * or because it is overridden).
+             */
+            if (name.startsWith(SULONG_RENAME_MARKER)) {
+                int idx = name.indexOf('_', SULONG_RENAME_MARKER_LEN);
+                if (idx > 0) {
+                    String lib = name.substring(SULONG_RENAME_MARKER_LEN, idx);
+                    LLVMScope scope = scopes.get(lib);
+                    if (scope != null) {
+                        String originalName = name.substring(idx + 1);
+                        LLVMFunction originalSymbol = scope.getFunction(originalName);
+                        assert originalSymbol != null;
+                        LLVMAlias alias = new LLVMAlias(parserResult.getRuntime().getLibrary(), name, originalSymbol);
+                        parserResult.getRuntime().getFileScope().register(alias);
+                        it.remove();
+                    } else {
+                        throw new LLVMLinkerException(String.format("The %s could not be imported because library %s was not found.", external.getName(), lib));
                     }
                 }
             }
@@ -879,6 +901,7 @@ final class Runner {
     @SuppressWarnings("unchecked")
     private void loadDefaults(Path internalLibraryPath) {
         ExternalLibrary polyglotMock = ExternalLibrary.createFromPath(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()), false, true);
+        // TODO (je) maybe add the polyglotMock to the context already?
         LLVMParserResult polyglotMockResult = parseLibrary(polyglotMock, ParseContext.create());
         // We use the global scope here to avoid trying to intrinsify functions in the file scope.
         // However, this is based on the assumption that polyglot-mock is the first loaded library!
@@ -952,9 +975,9 @@ final class Runner {
      * implicit dependencies of {@code lib} are added to the
      * {@link ParseContext#dependencyQueueAddLast dependency queue}. The returned
      * {@link LLVMParserResult} is also added to the {@link ParseContext#parserResultsAdd parser
-     * results}. This method adds {@code library} parameter to the
-     * {@link LLVMContext#addExternalLibrary context}.
-     *
+     * results}. This method ensures that the {@code library} parameter is added to the
+     * {@link LLVMContext#ensureExternalLibraryAdded context}.
+     * 
      * @param source the {@link Source} of the library to be parsed
      * @param library the {@link ExternalLibrary} corresponding to the library to be parsed
      * @param bytes the bytes of the library to be parsed
@@ -965,7 +988,7 @@ final class Runner {
         BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context);
         if (binaryParserResult != null) {
             library.makeBitcodeLibrary();
-            context.addExternalLibrary(library);
+            context.ensureExternalLibraryAdded(library);
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
             ArrayList<ExternalLibrary> dependencies = processDependencies(binaryParserResult, parseContext, library);
             LLVMParserResult parserResult = parseBinary(binaryParserResult, library);

@@ -188,11 +188,11 @@ public final class NFATraceFinderGenerator {
         }
 
         public boolean hasNextTransition() {
-            return i < transition.getTarget().getNext().length;
+            return i < transition.getTarget().getSuccessors().length;
         }
 
         public NFAStateTransition getNextTransition() {
-            return transition.getTarget().getNext()[i++];
+            return transition.getTarget().getSuccessors()[i++];
         }
     }
 
@@ -200,10 +200,10 @@ public final class NFATraceFinderGenerator {
         NFAState dummyInitialState = copy(originalNFA.getDummyInitialState());
         NFAStateTransition newAnchoredEntry = copyEntry(dummyInitialState, originalNFA.getReverseAnchoredEntry());
         NFAStateTransition newUnAnchoredEntry = copyEntry(dummyInitialState, originalNFA.getReverseUnAnchoredEntry());
-        dummyInitialState.setPrev(new NFAStateTransition[]{newAnchoredEntry, newUnAnchoredEntry});
+        dummyInitialState.setPredecessors(new NFAStateTransition[]{newAnchoredEntry, newUnAnchoredEntry});
         ArrayList<PathElement> graphPath = new ArrayList<>();
         for (NFAStateTransition entry : new NFAStateTransition[]{originalNFA.getAnchoredEntry()[0], originalNFA.getUnAnchoredEntry()[0]}) {
-            for (NFAStateTransition t : entry.getTarget().getNext()) {
+            for (NFAStateTransition t : entry.getTarget().getSuccessors()) {
                 // All paths start from the original initial states, which will be duplicated and
                 // become leaf nodes in the tree.
                 PathElement curElement = new PathElement(t);
@@ -241,12 +241,12 @@ public final class NFATraceFinderGenerator {
                         // traverse the existing tree to the root to complete the pre-calculated
                         // result.
                         NFAState treeNode = duplicate;
-                        while (!treeNode.isForwardFinalState()) {
+                        while (!treeNode.isFinalState()) {
                             i++;
-                            assert treeNode.getNext().length == 1;
+                            assert treeNode.getSuccessors().length == 1;
                             treeNode.addPossibleResult(resultID);
-                            treeNode.getNext()[0].getGroupBoundaries().applyToResultFactory(result, i);
-                            treeNode = treeNode.getNext()[0].getTarget();
+                            treeNode.getSuccessors()[0].getGroupBoundaries().applyToResultFactory(result, i);
+                            treeNode = treeNode.getSuccessors()[0].getTarget();
                         }
                         treeNode.addPossibleResult(resultID);
                         result.setLength(i);
@@ -279,7 +279,7 @@ public final class NFATraceFinderGenerator {
             preCalculatedResults = resultList.toArray(new PreCalculatedResultFactory[0]);
         }
         for (NFAState s : states) {
-            s.linkPrev();
+            s.linkPredecessors();
         }
         return new NFA(originalNFA.getAst(), dummyInitialState, null, null, newAnchoredEntry, newUnAnchoredEntry, states, stateID, transitionID, preCalculatedResults);
     }
@@ -287,7 +287,7 @@ public final class NFATraceFinderGenerator {
     private void createTransition(NFAState source, NFAState target, NFAStateTransition originalTransition,
                     PreCalculatedResultFactory preCalcResult, int preCalcResultIndex) {
         originalTransition.getGroupBoundaries().applyToResultFactory(preCalcResult, preCalcResultIndex);
-        source.setNext(new NFAStateTransition[]{new NFAStateTransition((short) transitionID.inc(), source, target, originalTransition.getGroupBoundaries())}, true);
+        source.setSuccessors(new NFAStateTransition[]{new NFAStateTransition((short) transitionID.inc(), source, target, originalTransition.getGroupBoundaries())}, true);
     }
 
     private PreCalculatedResultFactory resultFactory() {

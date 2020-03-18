@@ -580,7 +580,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
         setupReleaseCatalog();
         args.add("avail");
 
-        URL u = getClass().getResource("remote/catalog");
+        URL u = getClass().getResource("remote/catalog.properties");
         String urlString = releaseURL + "_2";
         Handler.bind(urlString, u);
         // note: the releaseURL is NOT bound, FileNotFoundException will be thrown

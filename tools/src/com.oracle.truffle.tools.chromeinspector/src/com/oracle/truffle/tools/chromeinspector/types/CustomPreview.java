@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -108,7 +108,7 @@ public final class CustomPreview {
                 hasBodyFunction = formatter.getProperty(HAS_BODY);
                 if (hasBodyFunction != null && hasBodyFunction.canExecute()) {
                     DebugValue hasBodyValue = (config != null) ? hasBodyFunction.execute(debugValue, config) : hasBodyFunction.execute(debugValue);
-                    hasBody = hasBodyValue.as(Boolean.class);
+                    hasBody = hasBodyValue.isBoolean() ? hasBodyValue.asBoolean() : false;
                 }
             } catch (DebugException ex) {
                 PrintWriter err = context.getErr();
@@ -212,13 +212,16 @@ public final class CustomPreview {
     }
 
     private static Object getPrimitiveValue(DebugValue value) {
-        Object rawValue = value.as(Boolean.class);
-        if (rawValue == null) {
-            rawValue = value.as(Number.class);
-            if (rawValue == null) {
-                rawValue = value.asString();
-            }
+        if (value.isBoolean()) {
+            return value.asBoolean();
         }
-        return rawValue;
+        if (value.isNumber()) {
+            return TypeInfo.toNumber(value);
+        }
+        if (value.isString()) {
+            return value.asString();
+        }
+        return null;
     }
+
 }

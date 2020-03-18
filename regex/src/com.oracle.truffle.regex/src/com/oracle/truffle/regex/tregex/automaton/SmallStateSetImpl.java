@@ -46,6 +46,10 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+/**
+ * Specialized implementation of {@link StateSet} for {@link StateIndex state indices} with less
+ * than 65 elements. Uses a single {@code long} value as a bit set.
+ */
 final class SmallStateSetImpl<S> implements StateSet<S> {
 
     private final StateIndex<? super S> stateIndex;
@@ -83,7 +87,10 @@ final class SmallStateSetImpl<S> implements StateSet<S> {
 
     @SuppressWarnings("unchecked")
     private long toBit(Object o) {
-        short id = stateIndex.getId((S) o);
+        return toBit(stateIndex.getId((S) o));
+    }
+
+    private static long toBit(int id) {
         assert 0 <= id && id < 64;
         return 1L << id;
     }
@@ -99,6 +106,11 @@ final class SmallStateSetImpl<S> implements StateSet<S> {
         boolean notPresent = (set & bit) == 0;
         set |= bit;
         return notPresent;
+    }
+
+    private void removeId(int id) {
+        assert (set & toBit(id)) != 0;
+        set &= ~toBit(id);
     }
 
     @Override
@@ -210,19 +222,22 @@ final class SmallStateSetImpl<S> implements StateSet<S> {
         return defaultToString();
     }
 
+    /**
+     * Yields all elements in this set, ordered by their {@link StateIndex#getId(Object) ID}.
+     */
     @Override
     public Iterator<S> iterator() {
-        return new SmallStateSetIterator<>(stateIndex, set);
+        return new SmallStateSetIterator<>(this, set);
     }
 
     static final class SmallStateSetIterator<T> implements Iterator<T> {
 
-        private final StateIndex<? super T> stateIndex;
+        private final SmallStateSetImpl<T> stateSet;
         private byte bitIndex = 0;
         private long set;
 
-        private SmallStateSetIterator(StateIndex<? super T> stateIndex, long set) {
-            this.stateIndex = stateIndex;
+        private SmallStateSetIterator(SmallStateSetImpl<T> stateSet, long set) {
+            this.stateSet = stateSet;
             this.set = set;
         }
 
@@ -239,7 +254,13 @@ final class SmallStateSetImpl<S> implements StateSet<S> {
             set >>>= trailingZeros;
             set >>>= 1;
             bitIndex += trailingZeros;
-            return (T) stateIndex.getState(bitIndex++);
+            return (T) stateSet.getStateIndex().getState(bitIndex++);
+        }
+
+        @Override
+        public void remove() {
+            assert bitIndex > 0;
+            stateSet.removeId(bitIndex - 1);
         }
     }
 }

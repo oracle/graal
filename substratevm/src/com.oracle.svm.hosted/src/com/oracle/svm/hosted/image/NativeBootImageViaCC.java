@@ -102,14 +102,14 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
              */
             if (!SubstrateOptions.StaticExecutable.getValue()) {
                 try {
-                    List<String> exportedSymbols = new ArrayList<>();
-                    exportedSymbols.add("{");
-                    codeCache.getGlobalSymbols(getOrCreateDebugObjectFile()).stream()
-                                    .map(symbol -> "\"" + symbol.getName() + "\";")
-                                    .forEachOrdered(exportedSymbols::add);
-                    exportedSymbols.add("};");
+                    StringBuilder exportedSymbols = new StringBuilder();
+                    exportedSymbols.append("{\n");
+                    for (String symbol : getImageSymbols(true)) {
+                        exportedSymbols.append('\"').append(symbol).append("\";\n");
+                    }
+                    exportedSymbols.append("};");
                     Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                    Files.write(exportedSymbolsPath, exportedSymbols);
+                    Files.write(exportedSymbolsPath, Collections.singleton(exportedSymbols.toString()));
                     additionalPreOptions.add("-Wl,--dynamic-list");
                     additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
 
@@ -126,6 +126,13 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
             LibCBase currentLibc = ImageSingletons.lookup(LibCBase.class);
             additionalPreOptions.addAll(currentLibc.getLinkerPreOptions());
+        }
+
+        @Override
+        public List<String> getImageSymbols(boolean onlyGlobal) {
+            return codeCache.getSymbols(getOrCreateDebugObjectFile(), onlyGlobal).stream()
+                            .map(ObjectFile.Symbol::getName)
+                            .collect(Collectors.toList());
         }
 
         @Override
@@ -149,7 +156,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
 
         DarwinCCLinkerInvocation() {
-            if (!SubstrateOptions.CompilerBackend.getValue().equals("llvm")) {
+            if (!SubstrateOptions.useLLVMBackend()) {
                 additionalPreOptions.add("-Wl,-no_compact_unwind");
             }
 
@@ -163,11 +170,8 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
              * as global symbols in the dynamic symbol table of the image.
              */
             try {
-                List<ObjectFile.Symbol> exportedSymbols = codeCache.getGlobalSymbols(getOrCreateDebugObjectFile());
                 Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                Files.write(exportedSymbolsPath, exportedSymbols.stream()
-                                .map(symbol -> ((MachOSymtab.Entry) symbol).getNameInObject())
-                                .collect(Collectors.toList()));
+                Files.write(exportedSymbolsPath, getImageSymbols(true));
                 additionalPreOptions.add("-Wl,-exported_symbols_list");
                 additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
             } catch (IOException e) {
@@ -184,6 +188,13 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             } else if (Platform.includedIn(Platform.AARCH64.class)) {
                 additionalPreOptions.add("arm64");
             }
+        }
+
+        @Override
+        public List<String> getImageSymbols(boolean onlyGlobal) {
+            return codeCache.getSymbols(getOrCreateDebugObjectFile(), onlyGlobal).stream()
+                            .map(symbol -> ((MachOSymtab.Entry) symbol).getNameInObject())
+                            .collect(Collectors.toList());
         }
 
         @Override
@@ -220,6 +231,13 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 default:
                     VMError.shouldNotReachHere();
             }
+        }
+
+        @Override
+        public List<String> getImageSymbols(boolean onlyGlobal) {
+            return codeCache.getSymbols(getOrCreateDebugObjectFile(), onlyGlobal).stream()
+                            .map(ObjectFile.Symbol::getName)
+                            .collect(Collectors.toList());
         }
 
         @Override

@@ -57,7 +57,7 @@ enum MarkId {
     INLINE_CONTIGUOUS_ALLOCATION_SUPPORTED("CodeInstaller::INLINE_CONTIGUOUS_ALLOCATION_SUPPORTED");
 
     private final int value;
-    private static HashMap<Integer, MarkId> lookup = new HashMap<Integer, MarkId>();
+    private static HashMap<Integer, MarkId> lookup = new HashMap<>();
 
     static {
         for (MarkId e : values()) {

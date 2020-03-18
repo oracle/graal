@@ -345,8 +345,9 @@ public final class GenerateCatalog {
                 vprefix = graalVersionPrefix;
                 n = graalVersionName;
             } else {
-                vprefix = String.format(graalVersionFormatString, ver.version, ver.os, ver.arch);
-                n = String.format(graalNameFormatString, ver.version, ver.os, ver.arch);
+                // do not use serial for releases.
+                vprefix = String.format(graalVersionFormatString, ver.version, ver.os, ver.arch, "");
+                n = String.format(graalNameFormatString, ver.version, ver.os, ver.arch, "");
             }
             catalogHeader.append(GRAALVM_CAPABILITY).append('.').append(vprefix).append('=').append(n).append('\n');
             if (ver.os == null) {
@@ -359,8 +360,9 @@ public final class GenerateCatalog {
         for (Spec spec : componentSpecs) {
             File f = spec.f;
             byte[] hash = computeHash(f);
+            String hashString = digest2String(hash);
             try (JarFile jf = new JarFile(f)) {
-                ComponentPackageLoader ldr = new JarMetaLoader(jf, env);
+                ComponentPackageLoader ldr = new JarMetaLoader(jf, hashString, env);
                 ComponentInfo info = ldr.createComponentInfo();
                 String prefix = findComponentPrefix(info);
                 if (!graalVMReleases.containsKey(prefix)) {
@@ -369,6 +371,14 @@ public final class GenerateCatalog {
                 Manifest mf = jf.getManifest();
                 if (mf == null) {
                     throw new IOException("No manifest in " + spec);
+                }
+                String tagString;
+
+                if (formatVer < 2 || info.getTag() == null || info.getTag().isEmpty()) {
+                    tagString = "";
+                } else {
+                    // include hash of the file in property prefix.
+                    tagString = "/" + hashString; // NOI18N
                 }
                 Attributes atts = mf.getMainAttributes();
                 String bid = atts.getValue(BundleConstants.BUNDLE_ID).toLowerCase().replace("-", "_");
@@ -381,7 +391,7 @@ public final class GenerateCatalog {
                     throw new IOException("Missing bundle name in " + spec);
                 }
                 String name;
-
+                prefix += tagString;
                 if (spec.u != null) {
                     name = spec.u.toString();
                 } else {
@@ -438,7 +448,7 @@ public final class GenerateCatalog {
                 catalogContents.append(MessageFormat.format(
                                 sel + "={2}\n", prefix, bid, url));
                 catalogContents.append(MessageFormat.format(
-                                sel + hashSuffix + "={2}\n", prefix, bid, digest2String(hash)));
+                                sel + hashSuffix + "={2}\n", prefix, bid, hashString));
 
                 for (Object a : atts.keySet()) {
                     String key = a.toString();

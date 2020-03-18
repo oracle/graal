@@ -317,7 +317,7 @@ public class CompileQueue {
         this.runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
         this.deoptimizeAll = deoptimizeAll;
         this.dataCache = new ConcurrentHashMap<>();
-        this.executor = new CompletionExecutor(universe.getBigBang(), executorService);
+        this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
 
@@ -341,7 +341,7 @@ public class CompileQueue {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
-            UninterruptibleAnnotationChecker.check(debug, universe.getMethods());
+            new UninterruptibleAnnotationChecker(universe.getMethods()).check();
             // Checking @RestrictHeapAccess annotations does not take long enough to justify a
             // timer.
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
