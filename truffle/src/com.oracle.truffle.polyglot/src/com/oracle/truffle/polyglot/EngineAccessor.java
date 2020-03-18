@@ -1090,6 +1090,19 @@ final class EngineAccessor extends Accessor {
             Path path = EngineAccessor.LANGUAGE.getPath(truffleFile);
             return ((FileSystems.PreInitializeContextFileSystem) fs).absolutePathtoURI(path);
         }
+
+        @Override
+        public boolean initializeLanguage(Object polyglotLanguageContext, LanguageInfo targetLanguage) {
+            PolyglotLanguage targetPolyglotLanguage = (PolyglotLanguage) NODES.getPolyglotLanguage(targetLanguage);
+            PolyglotLanguageContext targetLanguageContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getContext(targetPolyglotLanguage);
+            PolyglotLanguage accessingPolyglotLanguage = ((PolyglotLanguageContext) polyglotLanguageContext).language;
+            try {
+                targetLanguageContext.checkAccess(accessingPolyglotLanguage);
+            } catch (PolyglotIllegalArgumentException notAccessible) {
+                throw new SecurityException(notAccessible.getMessage());
+            }
+            return targetLanguageContext.ensureInitialized(accessingPolyglotLanguage);
+        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {

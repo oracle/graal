@@ -439,6 +439,8 @@ public abstract class Accessor {
         public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
 
         public abstract Object getScopedView(LanguageInfo viewLanguage, Node location, Frame frame, Object value);
+
+        public abstract boolean initializeLanguage(Object polyglotLanguageContext, LanguageInfo targetLanguage);
     }
 
     public abstract static class LanguageSupport {
