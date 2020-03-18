@@ -236,12 +236,16 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     private WasmTestStatus runTestCase(WasmCase testCase) {
         try {
             Context.Builder contextBuilder = Context.newBuilder("wasm");
+            contextBuilder.allowExperimentalOptions(true);
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
             }
 
-            contextBuilder.allowExperimentalOptions(true);
+            if (WasmTestOptions.STORE_CONSTANTS_POLICY != null && !WasmTestOptions.STORE_CONSTANTS_POLICY.equals("")) {
+                contextBuilder.option("wasm.StoreConstantsPolicy", WasmTestOptions.STORE_CONSTANTS_POLICY);
+            }
+
             contextBuilder.option("wasm.Builtins", includedExternalModules());
             String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {

@@ -55,7 +55,7 @@ import org.graalvm.wasm.predefined.testutil.TestutilModule;
 public class EmscriptenModule extends BuiltinModule {
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
-        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsInPool.getValue(context.environment().getOptions());
+        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
         WasmModule module = new WasmModule(name, null, storeConstantsPolicy);
         importMemory(context, module, "memory", "memory", 32, 4096);
         exportMemory(context, module, "memory");

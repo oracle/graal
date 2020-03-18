@@ -64,7 +64,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final WasmContext context = getCurrentContext();
         final String moduleName = request.getSource().getName();
         final byte[] data = request.getSource().getBytes().toByteArray();
-        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsInPool.getValue(context.environment().getOptions());
+        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
         final WasmModule module = new WasmModule(moduleName, data, storeConstantsPolicy);
         readModule(context, module, data);
         context.registerModule(module);

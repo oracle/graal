@@ -85,7 +85,7 @@ public class TestutilModule extends BuiltinModule {
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
         final Path temporaryDirectory = createTemporaryDirectory();
-        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsInPool.getValue(context.environment().getOptions());
+        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
         WasmModule module = new WasmModule(name, null, storeConstantsPolicy);
 
         // Note: in the following methods, the types are not important here, since these methods

@@ -82,6 +82,7 @@ microbenchmarks = [
 class GraalWasmDefaultTags:
     buildall = "buildall"
     wasmtest = "wasmtest"
+    wasmconstantspolicytest = "wasmconstantspolicytest"
     wasmextratest = "wasmextratest"
     wasmbenchtest = "wasmbenchtest"
 
@@ -93,6 +94,10 @@ def graal_wasm_gate_runner(args, tasks):
     with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest]) as t:
         if t:
             unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, "wat2wasm"), "WasmTestSuite"])
+    with Task("ConstantsPolicyUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicytest]) as t:
+        if t:
+            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, "wat2wasm"),
+                      "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WasmTestSuite"])
     with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest]) as t:
         if t:
             unittest(["CSuite"])

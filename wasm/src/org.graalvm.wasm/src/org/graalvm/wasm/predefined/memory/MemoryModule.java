@@ -49,7 +49,7 @@ import org.graalvm.wasm.predefined.BuiltinModule;
 public class MemoryModule extends BuiltinModule {
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
-        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsInPool.getValue(context.environment().getOptions());
+        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
         WasmModule module = new WasmModule(name, null, storeConstantsPolicy);
         defineMemory(context, module, "memory", 32, 4096);
         return module;
