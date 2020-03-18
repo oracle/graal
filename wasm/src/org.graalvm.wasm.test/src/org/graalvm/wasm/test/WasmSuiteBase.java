@@ -244,6 +244,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
             if (WasmTestOptions.STORE_CONSTANTS_POLICY != null && !WasmTestOptions.STORE_CONSTANTS_POLICY.equals("")) {
                 contextBuilder.option("wasm.StoreConstantsPolicy", WasmTestOptions.STORE_CONSTANTS_POLICY);
+                System.out.println("wasm.StoreConstantsPolicy: " + WasmTestOptions.STORE_CONSTANTS_POLICY);
             }
 
             contextBuilder.option("wasm.Builtins", includedExternalModules());
