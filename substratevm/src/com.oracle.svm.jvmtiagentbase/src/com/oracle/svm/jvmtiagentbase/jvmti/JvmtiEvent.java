@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.jvmti;
+package com.oracle.svm.jvmtiagentbase.jvmti;
 
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.struct.CField;
-import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.word.PointerBase;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
 
-@CStruct(value = "_jvmtiEnv", addStructKeyword = true)
+@CEnum("jvmtiEvent")
 @CContext(JvmtiDirectives.class)
-public interface JvmtiEnv extends PointerBase {
-    @CField("functions")
-    JvmtiInterface getFunctions();
+public enum JvmtiEvent {
+    JVMTI_EVENT_VM_START,
+    JVMTI_EVENT_VM_INIT,
+    JVMTI_EVENT_VM_DEATH,
+    JVMTI_EVENT_BREAKPOINT,
+    JVMTI_EVENT_THREAD_END,
+    JVMTI_EVENT_NATIVE_METHOD_BIND,
+    JVMTI_EVENT_CLASS_PREPARE,
+    JVMTI_EVENT_CLASS_FILE_LOAD_HOOK;
+
+    @CEnumValue
+    public native int getCValue();
 }

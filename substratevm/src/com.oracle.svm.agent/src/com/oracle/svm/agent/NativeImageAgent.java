@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,17 +23,6 @@
  * questions.
  */
 package com.oracle.svm.agent;
-
-import static com.oracle.svm.agent.Support.check;
-import static com.oracle.svm.agent.Support.checkJni;
-import static com.oracle.svm.agent.Support.fromCString;
-import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_THREAD_END;
-import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_VM_DEATH;
-import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_VM_INIT;
-import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_VM_START;
-import static com.oracle.svm.agent.jvmti.JvmtiEventMode.JVMTI_ENABLE;
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
-import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.io.File;
 import java.io.FileReader;
@@ -63,23 +52,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import com.oracle.svm.configure.json.JsonPrintable;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ProcessProperties;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.agent.jvmti.JvmtiEnv;
-import com.oracle.svm.agent.jvmti.JvmtiEventCallbacks;
-import com.oracle.svm.agent.jvmti.JvmtiInterface;
+import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
+import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
+import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 import com.oracle.svm.agent.restrict.JniAccessVerifier;
 import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
 import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
@@ -88,29 +69,23 @@ import com.oracle.svm.agent.restrict.TypeAccessChecker;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.RuleNode;
+import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.driver.NativeImage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIErrors;
 import com.oracle.svm.jni.nativeapi.JNIJavaVM;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-import com.oracle.svm.jni.nativeapi.JNIVersion;
+import org.graalvm.nativeimage.hosted.Feature;
 
-public final class Agent {
-    public static final String AGENT_NAME = "native-image-agent";
+public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHandleSet> {
+    private static final String AGENT_NAME = "native-image-agent";
     public static final String MESSAGE_PREFIX = AGENT_NAME + ": ";
-    public static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
-
-    private static <T> String oH(OptionKey<T> option) {
-        return NativeImage.oH + option.getName();
-    }
+    private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
 
     private static final String oHJNIConfigurationResources = oH(ConfigurationFiles.Options.JNIConfigurationResources);
     private static final String oHReflectionConfigurationResources = oH(ConfigurationFiles.Options.ReflectionConfigurationResources);
@@ -118,23 +93,34 @@ public final class Agent {
     private static final String oHResourceConfigurationResources = oH(ConfigurationFiles.Options.ResourceConfigurationResources);
     private static final String oHConfigurationResourceRoots = oH(ConfigurationFiles.Options.ConfigurationResourceRoots);
 
-    private static ScheduledThreadPoolExecutor periodicConfigWriterExecutor = null;
+    private static <T> String oH(OptionKey<T> option) {
+        return NativeImage.oH + option.getName();
+    }
 
-    private static TraceWriter traceWriter;
+    private ScheduledThreadPoolExecutor periodicConfigWriterExecutor = null;
 
-    private static Path configOutputDirPath;
+    private TraceWriter traceWriter;
 
-    private static AccessAdvisor accessAdvisor;
+    private Path configOutputDirPath;
+
+    private AccessAdvisor accessAdvisor;
 
     private static String getTokenValue(String token) {
         return token.substring(token.indexOf('=') + 1);
     }
 
-    @CEntryPoint(name = "Agent_OnLoad")
-    @CEntryPointOptions(prologue = CEntryPointSetup.EnterCreateIsolatePrologue.class, epilogue = AgentIsolate.Epilogue.class)
-    public static int onLoad(JNIJavaVM vm, CCharPointer options, @SuppressWarnings("unused") PointerBase reserved) {
-        AgentIsolate.setGlobalIsolate(CurrentIsolate.getIsolate());
+    @Override
+    protected int getRequiredJvmtiVersion() {
+        return JvmtiInterface.JVMTI_VERSION_1_2;
+    }
 
+    @Override
+    protected JNIHandleSet constructJavaHandles(JNIEnvironment env) {
+        return new NativeImageAgentJNIHandleSet(env);
+    }
+
+    @Override
+    protected int onLoadCallback(JNIJavaVM vm, JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, String options) {
         String traceOutputFile = null;
         String configOutputDir = null;
         ConfigurationSet restrictConfigs = new ConfigurationSet();
@@ -148,73 +134,70 @@ public final class Agent {
         int configWritePeriod = -1; // in seconds
         int configWritePeriodInitialDelay = 1; // in seconds
 
-        if (options.isNonNull()) {
-            String[] optionTokens = fromCString(options).split(",");
-            if (optionTokens.length == 0) {
-                System.err.println(MESSAGE_PREFIX + "invalid option string. Please read CONFIGURE.md.");
-                return 1;
-            }
-            for (String token : optionTokens) {
-                if (token.startsWith("trace-output=")) {
-                    if (traceOutputFile != null) {
-                        System.err.println(MESSAGE_PREFIX + "cannot specify trace-output= more than once.");
-                        return 1;
-                    }
-                    traceOutputFile = getTokenValue(token);
-                } else if (token.startsWith("config-output-dir=") || token.startsWith("config-merge-dir=")) {
-                    if (configOutputDir != null) {
-                        System.err.println(MESSAGE_PREFIX + "cannot specify more than one of config-output-dir= or config-merge-dir=.");
-                        return 1;
-                    }
-                    configOutputDir = transformPath(getTokenValue(token));
-                    if (token.startsWith("config-merge-dir=")) {
-                        mergeConfigs.addDirectory(Paths.get(configOutputDir));
-                    }
-                } else if (token.startsWith("restrict-all-dir")) {
-                    /* Used for testing */
-                    restrictConfigs.addDirectory(Paths.get(getTokenValue(token)));
-                } else if (token.equals("restrict")) {
-                    restrict = true;
-                } else if (token.startsWith("restrict=")) {
-                    restrict = Boolean.parseBoolean(getTokenValue(token));
-                } else if (token.equals("no-builtin-caller-filter")) {
-                    builtinCallerFilter = false;
-                } else if (token.startsWith("builtin-caller-filter=")) {
-                    builtinCallerFilter = Boolean.parseBoolean(getTokenValue(token));
-                } else if (token.equals("no-builtin-heuristic-filter")) {
-                    builtinHeuristicFilter = false;
-                } else if (token.startsWith("builtin-heuristic-filter=")) {
-                    builtinHeuristicFilter = Boolean.parseBoolean(getTokenValue(token));
-                } else if (token.equals("no-filter")) { // legacy
-                    builtinCallerFilter = false;
-                    builtinHeuristicFilter = false;
-                } else if (token.startsWith("no-filter=")) { // legacy
-                    builtinCallerFilter = !Boolean.parseBoolean(getTokenValue(token));
-                    builtinHeuristicFilter = builtinCallerFilter;
-                } else if (token.startsWith("caller-filter-file=")) {
-                    callerFilterFiles.add(getTokenValue(token));
-                } else if (token.equals("experimental-class-loader-support")) {
-                    experimentalClassLoaderSupport = true;
-                } else if (token.startsWith("config-write-period-secs=")) {
-                    configWritePeriod = parseIntegerOrNegative(getTokenValue(token));
-                    if (configWritePeriod <= 0) {
-                        System.err.println(MESSAGE_PREFIX + "config-write-period-secs can only be an integer greater than 0");
-                        return 1;
-                    }
-                } else if (token.startsWith("config-write-initial-delay-secs=")) {
-                    configWritePeriodInitialDelay = parseIntegerOrNegative(getTokenValue(token));
-                    if (configWritePeriodInitialDelay < 0) {
-                        System.err.println(MESSAGE_PREFIX + "config-write-initial-delay-secs can only be an integer greater or equal to 0");
-                        return 1;
-                    }
-                } else if (token.equals("build")) {
-                    build = true;
-                } else if (token.startsWith("build=")) {
-                    build = Boolean.parseBoolean(getTokenValue(token));
-                } else {
-                    System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read CONFIGURE.md.");
+        if (options.length() == 0) {
+            System.err.println(MESSAGE_PREFIX + "invalid option string. Please read CONFIGURE.md.");
+            return 1;
+        }
+        for (String token : options.split(",")) {
+            if (token.startsWith("trace-output=")) {
+                if (traceOutputFile != null) {
+                    System.err.println(MESSAGE_PREFIX + "cannot specify trace-output= more than once.");
                     return 1;
                 }
+                traceOutputFile = getTokenValue(token);
+            } else if (token.startsWith("config-output-dir=") || token.startsWith("config-merge-dir=")) {
+                if (configOutputDir != null) {
+                    System.err.println(MESSAGE_PREFIX + "cannot specify more than one of config-output-dir= or config-merge-dir=.");
+                    return 1;
+                }
+                configOutputDir = transformPath(getTokenValue(token));
+                if (token.startsWith("config-merge-dir=")) {
+                    mergeConfigs.addDirectory(Paths.get(configOutputDir));
+                }
+            } else if (token.startsWith("restrict-all-dir")) {
+                /* Used for testing */
+                restrictConfigs.addDirectory(Paths.get(getTokenValue(token)));
+            } else if (token.equals("restrict")) {
+                restrict = true;
+            } else if (token.startsWith("restrict=")) {
+                restrict = Boolean.parseBoolean(getTokenValue(token));
+            } else if (token.equals("no-builtin-caller-filter")) {
+                builtinCallerFilter = false;
+            } else if (token.startsWith("builtin-caller-filter=")) {
+                builtinCallerFilter = Boolean.parseBoolean(getTokenValue(token));
+            } else if (token.equals("no-builtin-heuristic-filter")) {
+                builtinHeuristicFilter = false;
+            } else if (token.startsWith("builtin-heuristic-filter=")) {
+                builtinHeuristicFilter = Boolean.parseBoolean(getTokenValue(token));
+            } else if (token.equals("no-filter")) { // legacy
+                builtinCallerFilter = false;
+                builtinHeuristicFilter = false;
+            } else if (token.startsWith("no-filter=")) { // legacy
+                builtinCallerFilter = !Boolean.parseBoolean(getTokenValue(token));
+                builtinHeuristicFilter = builtinCallerFilter;
+            } else if (token.startsWith("caller-filter-file=")) {
+                callerFilterFiles.add(getTokenValue(token));
+            } else if (token.equals("experimental-class-loader-support")) {
+                experimentalClassLoaderSupport = true;
+            } else if (token.startsWith("config-write-period-secs=")) {
+                configWritePeriod = parseIntegerOrNegative(getTokenValue(token));
+                if (configWritePeriod <= 0) {
+                    System.err.println(MESSAGE_PREFIX + "config-write-period-secs can only be an integer greater than 0");
+                    return 1;
+                }
+            } else if (token.startsWith("config-write-initial-delay-secs=")) {
+                configWritePeriodInitialDelay = parseIntegerOrNegative(getTokenValue(token));
+                if (configWritePeriodInitialDelay < 0) {
+                    System.err.println(MESSAGE_PREFIX + "config-write-initial-delay-secs can only be an integer greater or equal to 0");
+                    return 1;
+                }
+            } else if (token.equals("build")) {
+                build = true;
+            } else if (token.startsWith("build=")) {
+                build = Boolean.parseBoolean(getTokenValue(token));
+            } else {
+                System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read CONFIGURE.md.");
+                return 1;
             }
         }
 
@@ -256,7 +239,7 @@ public final class Agent {
                 }
                 Function<IOException, Exception> handler = e -> {
                     if (e instanceof NoSuchFileException) {
-                        System.err.println(Agent.MESSAGE_PREFIX + "warning: file " + ((NoSuchFileException) e).getFile() + " for merging could not be found, skipping");
+                        System.err.println(NativeImageAgent.MESSAGE_PREFIX + "warning: file " + ((NoSuchFileException) e).getFile() + " for merging could not be found, skipping");
                         return null;
                     }
                     return e; // rethrow
@@ -282,10 +265,6 @@ public final class Agent {
             }
         }
 
-        WordPointer jvmtiPtr = StackValue.get(WordPointer.class);
-        checkJni(vm.getFunctions().getGetEnv().invoke(vm, jvmtiPtr, JvmtiInterface.JVMTI_VERSION_1_2));
-        JvmtiEnv jvmti = jvmtiPtr.read();
-
         if (build) {
             int status = buildImage(jvmti);
             System.exit(status);
@@ -296,12 +275,6 @@ public final class Agent {
             return 2;
         }
 
-        JvmtiEventCallbacks callbacks = UnmanagedMemory.calloc(SizeOf.get(JvmtiEventCallbacks.class));
-        callbacks.setVMInit(onVMInitLiteral.getFunctionPointer());
-        callbacks.setVMStart(onVMStartLiteral.getFunctionPointer());
-        callbacks.setVMDeath(onVMDeathLiteral.getFunctionPointer());
-        callbacks.setThreadEnd(onThreadEndLiteral.getFunctionPointer());
-
         accessAdvisor = new AccessAdvisor();
         accessAdvisor.setHeuristicsEnabled(builtinHeuristicFilter);
         TypeAccessChecker reflectAccessChecker = null;
@@ -309,7 +282,7 @@ public final class Agent {
             ReflectAccessVerifier verifier = null;
             if (!restrictConfigs.getReflectConfigPaths().isEmpty()) {
                 reflectAccessChecker = new TypeAccessChecker(restrictConfigs.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
-                verifier = new ReflectAccessVerifier(reflectAccessChecker, accessAdvisor);
+                verifier = new ReflectAccessVerifier(reflectAccessChecker, accessAdvisor, this);
             }
             ProxyAccessVerifier proxyVerifier = null;
             if (!restrictConfigs.getProxyConfigPaths().isEmpty()) {
@@ -319,7 +292,7 @@ public final class Agent {
             if (!restrictConfigs.getResourceConfigPaths().isEmpty()) {
                 resourceVerifier = new ResourceAccessVerifier(restrictConfigs.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION), accessAdvisor);
             }
-            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier, proxyVerifier, resourceVerifier, experimentalClassLoaderSupport);
+            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier, proxyVerifier, resourceVerifier, this, experimentalClassLoaderSupport);
         } catch (Throwable t) {
             System.err.println(MESSAGE_PREFIX + t);
             return 3;
@@ -328,9 +301,9 @@ public final class Agent {
             JniAccessVerifier verifier = null;
             if (!restrictConfigs.getJniConfigPaths().isEmpty()) {
                 TypeAccessChecker accessChecker = new TypeAccessChecker(restrictConfigs.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
-                verifier = new JniAccessVerifier(accessChecker, reflectAccessChecker, accessAdvisor);
+                verifier = new JniAccessVerifier(accessChecker, reflectAccessChecker, accessAdvisor, this);
             }
-            JniCallInterceptor.onLoad(traceWriter, verifier);
+            JniCallInterceptor.onLoad(traceWriter, verifier, this);
         } catch (Throwable t) {
             System.err.println(MESSAGE_PREFIX + t);
             return 4;
@@ -345,14 +318,6 @@ public final class Agent {
             }
         }
 
-        check(jvmti.getFunctions().SetEventCallbacks().invoke(jvmti, callbacks, SizeOf.get(JvmtiEventCallbacks.class)));
-        UnmanagedMemory.free(callbacks);
-
-        check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_VM_START, nullHandle()));
-        check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullHandle()));
-        check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_VM_DEATH, nullHandle()));
-        check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_THREAD_END, nullHandle()));
-
         setupExecutorServiceForPeriodicConfigurationCapture(configWritePeriod, configWritePeriodInitialDelay);
         return 0;
     }
@@ -365,7 +330,7 @@ public final class Agent {
         }
     }
 
-    private static void setupExecutorServiceForPeriodicConfigurationCapture(int writePeriod, int initialDelay) {
+    private void setupExecutorServiceForPeriodicConfigurationCapture(int writePeriod, int initialDelay) {
         if (traceWriter == null || configOutputDirPath == null) {
             return;
         }
@@ -383,9 +348,8 @@ public final class Agent {
         });
         periodicConfigWriterExecutor.setRemoveOnCancelPolicy(true);
         periodicConfigWriterExecutor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
-        periodicConfigWriterExecutor
-                        .scheduleAtFixedRate(Agent::writeConfigurationFiles,
-                                        initialDelay, writePeriod, TimeUnit.SECONDS);
+        periodicConfigWriterExecutor.scheduleAtFixedRate(this::writeConfigurationFiles,
+                        initialDelay, writePeriod, TimeUnit.SECONDS);
     }
 
     interface AddURI {
@@ -522,9 +486,8 @@ public final class Agent {
         return result;
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
-    public static void onVMInit(JvmtiEnv jvmti, JNIEnvironment jni, @SuppressWarnings("unused") JNIObjectHandle thread) {
+    @Override
+    protected void onVMInitCallback(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread) {
         accessAdvisor.setInLivePhase(true);
         BreakpointInterceptor.onVMInit(jvmti, jni);
         if (traceWriter != null) {
@@ -532,19 +495,16 @@ public final class Agent {
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
-    public static void onVMStart(JvmtiEnv jvmti, JNIEnvironment jni) {
-        Support.initialize(jvmti, jni);
+    @Override
+    protected void onVMStartCallback(JvmtiEnv jvmti, JNIEnvironment jni) {
         JniCallInterceptor.onVMStart(jvmti);
         if (traceWriter != null) {
             traceWriter.tracePhaseChange("start");
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
-    public static void onVMDeath(@SuppressWarnings("unused") JvmtiEnv jvmti, @SuppressWarnings("unused") JNIEnvironment jni) {
+    @Override
+    protected void onVMDeathCallback(JvmtiEnv jvmti, JNIEnvironment jni) {
         accessAdvisor.setInLivePhase(false);
         if (traceWriter != null) {
             traceWriter.tracePhaseChange("dead");
@@ -554,7 +514,7 @@ public final class Agent {
     private static final int MAX_WARNINGS_FOR_WRITING_CONFIGS_FAILURES = 5;
     private static int currentFailuresWritingConfigs = 0;
 
-    private static void writeConfigurationFiles() {
+    private void writeConfigurationFiles() {
         try {
             final Path tempDirectory = configOutputDirPath.toFile().exists()
                             ? Files.createTempDirectory(configOutputDirPath, "tempConfig-")
@@ -621,9 +581,8 @@ public final class Agent {
         }
     }
 
-    @CEntryPoint(name = "Agent_OnUnload")
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
-    public static void onUnload(@SuppressWarnings("unused") JNIJavaVM vm) {
+    @Override
+    protected int onUnloadCallback(JNIJavaVM vm) {
         if (periodicConfigWriterExecutor != null) {
             periodicConfigWriterExecutor.shutdown();
             try {
@@ -657,41 +616,22 @@ public final class Agent {
          * The epilogue of this method does not tear down our VM: we don't seem to observe all
          * threads that end and therefore can't detach them, so we would wait forever for them.
          */
+        return 0;
     }
 
     @SuppressWarnings("unused")
     private static void cleanupOnUnload(JNIJavaVM vm) {
-        WordPointer jniPtr = StackValue.get(WordPointer.class);
-        if (vm.getFunctions().getGetEnv().invoke(vm, jniPtr, JNIVersion.JNI_VERSION_1_6()) != JNIErrors.JNI_OK()) {
-            jniPtr.write(nullPointer());
-        }
-        JNIEnvironment env = jniPtr.read();
         JniCallInterceptor.onUnload();
         BreakpointInterceptor.onUnload();
-        Support.destroy(env);
-
-        // Don't allow more threads to attach
-        AgentIsolate.resetGlobalIsolate();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = AgentIsolate.EnterOrBailoutPrologue.class, epilogue = CEntryPointSetup.LeaveDetachThreadEpilogue.class)
     @SuppressWarnings("unused")
-    public static void onThreadEnd(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread) {
-        /*
-         * Track when threads end and detach them, which otherwise could cause a significant leak
-         * with applications that launch many short-lived threads which trigger events.
-         */
-    }
+    public static class RegistrationFeature implements Feature {
 
-    private static final CEntryPointLiteral<CFunctionPointer> onVMInitLiteral = CEntryPointLiteral.create(Agent.class, "onVMInit", JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class);
+        @Override
+        public void afterRegistration(AfterRegistrationAccess access) {
+            JvmtiAgentBase.registerAgent(new NativeImageAgent());
+        }
 
-    private static final CEntryPointLiteral<CFunctionPointer> onVMStartLiteral = CEntryPointLiteral.create(Agent.class, "onVMStart", JvmtiEnv.class, JNIEnvironment.class);
-
-    private static final CEntryPointLiteral<CFunctionPointer> onVMDeathLiteral = CEntryPointLiteral.create(Agent.class, "onVMDeath", JvmtiEnv.class, JNIEnvironment.class);
-
-    private static final CEntryPointLiteral<CFunctionPointer> onThreadEndLiteral = CEntryPointLiteral.create(Agent.class, "onThreadEnd", JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class);
-
-    private Agent() {
     }
 }

@@ -1057,9 +1057,11 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             destination="<lib:native-image-agent>",
             jvm_library=True,
             jar_distributions=[
+                'substratevm:JVMTI_AGENT_BASE',
                 'substratevm:SVM_AGENT',
             ],
             build_args=[
+                '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature'
             ],
         ),
     ],

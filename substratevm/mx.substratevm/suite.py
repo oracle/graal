@@ -767,6 +767,7 @@ suite = {
             "javaCompliance": "8+",
             "spotbugs": "false",
         },
+
         "com.oracle.svm.configure.jdk11": {
             "subDir": "src",
             "sourceDirs": [
@@ -785,6 +786,23 @@ suite = {
             "spotbugs": "false",
         },
 
+        "com.oracle.svm.jvmtiagentbase": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+            ],
+            "dependencies": [
+                "com.oracle.svm.jni",
+            ],
+            "checkstyle": "com.oracle.svm.driver",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+        },
+
         "com.oracle.svm.agent": {
             "subDir": "src",
             "sourceDirs": [
@@ -792,7 +810,7 @@ suite = {
                 "resources"
             ],
             "dependencies": [
-                "com.oracle.svm.jni",
+                "JVMTI_AGENT_BASE",
                 "com.oracle.svm.configure",
                 "com.oracle.svm.driver",
             ],
@@ -804,6 +822,7 @@ suite = {
             "javaCompliance": "8+",
             "spotbugs": "false",
         },
+
         "com.oracle.svm.truffle.tck" : {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -875,6 +894,18 @@ suite = {
             "exclude": [
             ],
             "maven": False
+        },
+
+        "JVMTI_AGENT_BASE": {
+            "subDir": "src",
+            "description": "Base framework for creating a JVMTI agent.",
+            "dependencies": [
+                "com.oracle.svm.jvmtiagentbase",
+            ],
+            "distDependencies": [
+                "LIBRARY_SUPPORT",
+                "SVM_DRIVER",
+            ],
         },
 
         "SVM_HOSTED": {
@@ -989,6 +1020,7 @@ suite = {
                 "com.oracle.svm.configure",
             ],
             "distDependencies": [
+                "JVMTI_AGENT_BASE",
                 "LIBRARY_SUPPORT",
                 "SVM_DRIVER",
             ],

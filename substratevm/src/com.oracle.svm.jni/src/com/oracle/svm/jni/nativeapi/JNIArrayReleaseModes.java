@@ -22,17 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.jvmti;
+package com.oracle.svm.jni.nativeapi;
 
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CEnum;
-import org.graalvm.nativeimage.c.constant.CEnumValue;
+import org.graalvm.nativeimage.c.constant.CConstant;
 
-@CEnum("jvmtiJlocationFormat")
-@CContext(JvmtiDirectives.class)
-public enum JvmtiLocationFormat {
-    JVMTI_JLOCATION_JVMBCI;
+@CContext(JNIHeaderDirectives.class)
+public class JNIArrayReleaseModes {
+    // Checkstyle: stop
 
-    @CEnumValue
-    public native int getCValue();
+    // This mode has no associated symbolic name
+    public static final int DEFAULT_MODE = 0;
+
+    @CConstant
+    public static native int JNI_COMMIT();
+
+    @CConstant
+    public static native int JNI_ABORT();
+
+    // Checkstyle: resume
 }
