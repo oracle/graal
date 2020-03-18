@@ -228,7 +228,11 @@ public abstract class NativeEnv {
         return StaticObject.NULL;
     }
 
-    public static @Pointer TruffleObject loadLibrary(List<Path> searchPaths, String name) {
+    public static @Pointer TruffleObject loadLibraryInternal(List<Path> searchPaths, String name) {
+        return loadLibraryInternal(searchPaths, name, true);
+    }
+
+    public static @Pointer TruffleObject loadLibraryInternal(List<Path> searchPaths, String name, boolean notFoundIsFatal) {
         for (Path path : searchPaths) {
             Path libPath = path.resolve(System.mapLibraryName(name));
             try {
@@ -237,7 +241,10 @@ public abstract class NativeEnv {
                 // continue
             }
         }
-        throw EspressoError.shouldNotReachHere("Cannot load library: " + name);
+        if (notFoundIsFatal) {
+            throw EspressoError.shouldNotReachHere("Cannot load library: " + name);
+        }
+        return null;
     }
 
     public static String fromUTF8Ptr(@Pointer TruffleObject buffPtr) {

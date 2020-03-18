@@ -129,7 +129,18 @@ suite = {
             "buildDependencies": [
                 "com.oracle.truffle.espresso.playground",
             ],
-            "cflags": ["-Wall", "-Werror"],
+            "os_arch": {
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-Wall"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
+                    },
+                },
+            },
         },
 
         # Native library for Espresso native interface
@@ -142,7 +153,18 @@ suite = {
             "buildDependencies": [
                 "truffle:TRUFFLE_NFI_NATIVE",
             ],
-            "cflags": ["-Wall", "-Werror"],
+            "os_arch": {
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-Wall"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
+                    },
+                },
+            },
         },
 
         "com.oracle.truffle.espresso.test": {
@@ -183,23 +205,34 @@ suite = {
             "buildDependencies": [
                 "com.oracle.truffle.espresso.test",
             ],
-            "cflags": ["-Wall", "-Werror"],
+            "os_arch": {
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-Wall"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
+                    },
+                },
+            },
         },
 
         # libjvm Espresso implementation
         "com.oracle.truffle.espresso.mokapot": {
             "subDir": "src",
             "native": "shared_lib",
-            "deliverable": "mokapot",
+            "deliverable": "jvm",
             "platformDependent": True,
             "use_jdk_headers": True,
             "buildDependencies": [
                 "truffle:TRUFFLE_NFI_NATIVE",
             ],
-            "cflags": ["-Wall", "-Werror"],
             "os_arch": {
                 "darwin": {
                     "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
                         "ldflags": [
                             "-Wl,-install_name,@rpath/libjvm.dylib",
                             "-Wl,-rpath,@loader_path/.",
@@ -211,12 +244,18 @@ suite = {
                 },
                 "linux": {
                     "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
                         ],
                     },
                 },
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-Wall"],
+                    },
+                }
             },
         },
     },
@@ -292,11 +331,9 @@ suite = {
                     "file:mx.espresso/reflectconfig.json",
                 ],
                 "lib/": [
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:mokapot>",
-                    "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>"
+                    "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],
-                # On MacOS -install_name (Linux's -soname counterpart) is not enough to fool the dynamic linker.
-                "lib/<lib:jvm>": "link:<lib:mokapot>",
             },
         },
 

@@ -140,11 +140,11 @@ public final class VM extends NativeEnv implements ContextAccess {
     private @Pointer TruffleObject managementPtr;
     private @Pointer TruffleObject vmPtr;
 
-    // mokapot.dll (Windows) or libmokapot.so (Unixes) is the Espresso implementation of the VM
+    // jvm.dll (Windows) or libjvm.so (Unixes) is the Espresso implementation of the VM
     // interface (libjvm).
     // Espresso loads all shared libraries in a private namespace (e.g. using dlmopen on Linux).
-    // libmokapot must be loaded strictly before any other library in the private namespace to
-    // avoid linking with HotSpot libjvm, then libjava is loaded and further system libraries,
+    // Espresso's libjvm must be loaded strictly before any other library in the private namespace
+    // to avoid linking with HotSpot libjvm, then libjava is loaded and further system libraries,
     // libzip, libnet, libnio ...
     private final @Pointer TruffleObject mokapotLibrary;
 
@@ -191,19 +191,39 @@ public final class VM extends NativeEnv implements ContextAccess {
         return javaLibrary;
     }
 
+    private @Pointer TruffleObject loadJavaLibrary(List<Path> bootLibraryPath) {
+        // Comment from HotSpot:
+        // Try to load verify dll first. In 1.3 java dll depends on it and is not
+        // always able to find it when the loading executable is outside the JDK.
+        // In order to keep working with 1.2 we ignore any loading errors.
+        /* verifyLibrary = */ loadLibraryInternal(bootLibraryPath, "verify", false);
+        TruffleObject libJava = loadLibraryInternal(bootLibraryPath, "java");
+
+        // The JNI_OnLoad handling is normally done by method load in
+        // java.lang.ClassLoader$NativeLibrary, but the VM loads the base library
+        // explicitly so we have to check for JNI_OnLoad as well
+        // libjava is initialized after libjvm (Espresso VM native context).
+        try {
+            // TODO(peterssen): Use JVM_FindLibraryEntry.
+            TruffleObject jniOnLoad = NativeLibrary.lookupAndBind(libJava, "JNI_OnLoad", "(pointer, pointer): sint32");
+            getUncached().execute(jniOnLoad, vmPtr, RawPointer.nullInstance());
+        } catch (UnknownIdentifierException e) {
+            // ignore
+        } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+
+        return libJava;
+    }
+
     private VM(JniEnv jniEnv) {
         this.jniEnv = jniEnv;
         try {
             EspressoProperties props = getContext().getVmProperties();
 
-            List<Path> libjavaSearchPaths = new ArrayList<>();
-            libjavaSearchPaths.addAll(props.bootLibraryPath());
-            libjavaSearchPaths.addAll(props.javaLibraryPath());
-
-            mokapotLibrary = loadLibrary(Collections.singletonList(props.espressoLibraryPath()), "mokapot");
-
+            // Load Espresso's libjvm.
+            mokapotLibrary = loadLibraryInternal(Collections.singletonList(props.espressoLibraryPath()), "jvm");
             assert mokapotLibrary != null;
-            javaLibrary = loadLibrary(libjavaSearchPaths, "java");
 
             initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "initializeMokapotContext", "(env, pointer, (pointer): pointer): pointer");
@@ -229,9 +249,10 @@ public final class VM extends NativeEnv implements ContextAccess {
                             "(env): pointer");
 
             this.vmPtr = (TruffleObject) getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
-
             assert getUncached().isPointer(this.vmPtr);
             assert !getUncached().isNull(this.vmPtr);
+
+            javaLibrary = loadJavaLibrary(props.bootLibraryPath());
 
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
             throw EspressoError.shouldNotReachHere(e);
