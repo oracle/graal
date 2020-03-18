@@ -26,6 +26,12 @@
 
 #include <jni.h>
 
+#if defined(_WIN32)
+# include "jvm_windows.h"
+#else
+# include "jvm_posix.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

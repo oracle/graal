@@ -25,16 +25,10 @@
 #ifndef _OS_H
 #define _OS_H
 
-#include <jni.h>
+#include "jvm.h"
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
-
-#if defined(_WIN32)
-# include "jvm_windows.h"
-#else
-# include "jvm_posix.h"
-#endif
 
 // Additional Java basic types
 
