@@ -102,7 +102,7 @@ public class FileDownloaderTest extends NetworkTestBase {
         dn.download();
 
         byte[] check = SystemUtils.toHashBytes("b649fe3b9309d1b3ae4d2dbae70eebd4d2978af32cd1ce7d262ebf7e0f0f53fa");
-        assertArrayEquals(check, dn.getDigest());
+        assertArrayEquals(check, dn.getReceivedDigest());
     }
 
     class Check extends FA {

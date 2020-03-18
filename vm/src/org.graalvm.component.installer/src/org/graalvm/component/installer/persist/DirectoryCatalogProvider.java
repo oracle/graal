@@ -41,6 +41,7 @@ import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.remote.FileDownloader;
@@ -142,6 +143,7 @@ public class DirectoryCatalogProvider implements ComponentStorage, SoftwareChann
 
     private ComponentInfo maybeCreateComponent(Path localFile) throws IOException {
         byte[] fileStart = null;
+        String serial;
 
         if (Files.isRegularFile(localFile)) {
             try (ReadableByteChannel ch = FileChannel.open(localFile, StandardOpenOption.READ)) {
@@ -149,13 +151,15 @@ public class DirectoryCatalogProvider implements ComponentStorage, SoftwareChann
                 ch.read(bb);
                 fileStart = bb.array();
             }
+            serial = SystemUtils.fingerPrint(SystemUtils.computeFileDigest(localFile, null));
         } else {
             fileStart = new byte[]{0, 0, 0, 0, 0, 0, 0, 0};
+            serial = SystemUtils.digestString(localFile.toString(), false);
         }
         MetadataLoader ldr = null;
         try {
             for (ComponentArchiveReader provider : ServiceLoader.load(ComponentArchiveReader.class)) {
-                ldr = provider.createLoader(localFile, fileStart, feedback, verifyJars);
+                ldr = provider.createLoader(localFile, fileStart, serial, feedback, verifyJars);
                 if (ldr != null) {
                     ComponentInfo info = ldr.getComponentInfo();
                     info.setRemoteURL(localFile.toUri().toURL());

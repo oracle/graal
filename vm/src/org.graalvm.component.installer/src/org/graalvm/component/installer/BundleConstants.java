@@ -40,6 +40,12 @@ public class BundleConstants {
     public static final String BUNDLE_LICENSE_PATH = "x-GraalVM-License-Path"; // NOI18N
 
     /**
+     * In manifests, can specify the serial/hashtag for a component. Used mainly in installed
+     * component storage, copied from download hash or ComponentInfo.
+     */
+    public static final String BUNDLE_SERIAL = "x-GraalVM-Serial"; // NOI18N
+
+    /**
      * Extended optional attribute; marks directories, which should be removed completely without
      * checking for emptiness.
      */
