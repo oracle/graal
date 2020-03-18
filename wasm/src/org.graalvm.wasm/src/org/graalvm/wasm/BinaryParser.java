@@ -619,7 +619,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I64_LOAD32_S:
                 case Instructions.I64_LOAD32_U: {
                     // We don't store the `align` literal, as our implementation does not make use
-                    // of it, but we need to store it's byte length, so that we can skip it
+                    // of it, but we need to store its byte length, so that we can skip it
                     // during execution.
                     if (storeLeb128InPool()) {
                         state.useByteConstant(peekLeb128Length(data, offset));
@@ -641,7 +641,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I64_STORE_16:
                 case Instructions.I64_STORE_32: {
                     // We don't store the `align` literal, as our implementation does not make use
-                    // of it, but we need to store it's byte length, so that we can skip it
+                    // of it, but we need to store its byte length, so that we can skip it
                     // during the execution.
                     if (storeLeb128InPool()) {
                         state.useByteConstant(peekLeb128Length(data, offset));
