@@ -179,6 +179,7 @@ public abstract class BinaryStreamParser {
         return data[offset];
     }
 
+    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
     public static int peek4(byte[] data, int offset) {
         int result = 0;
         for (int i = 0; i != 4; ++i) {
@@ -188,6 +189,7 @@ public abstract class BinaryStreamParser {
         return result;
     }
 
+    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
     public static long peek8(byte[] data, int offset) {
         long result = 0;
         for (int i = 0; i != 8; ++i) {
