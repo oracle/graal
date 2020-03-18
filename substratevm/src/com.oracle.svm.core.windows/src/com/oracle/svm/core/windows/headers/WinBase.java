@@ -24,13 +24,10 @@
  */
 package com.oracle.svm.core.windows.headers;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
@@ -46,7 +43,6 @@ import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
 // Checkstyle: stop
 
 @CContext(WindowsDirectives.class)
-@Platforms(Platform.WINDOWS.class)
 public class WinBase {
 
     public static final int MAX_PATH = 260;
@@ -75,104 +71,6 @@ public class WinBase {
 
         public void write(HMODULE value);
     }
-
-    /**
-     * Structure containing information about physical and virtual memory.
-     */
-    @CStruct(addStructKeyword = false)
-    public interface MEMORYSTATUSEX extends PointerBase {
-        @CField
-        @AllowWideningCast
-        int dwLength();
-
-        @CField
-        void set_dwLength(int value);
-
-        @CField
-        @AllowWideningCast
-        int dwMemoryLoad();
-
-        @CField
-        long ullTotalPhys();
-
-        @CField
-        long ullAvailPhys();
-
-        @CField
-        long ullTotalPageFile();
-
-        @CField
-        long ullAvailPageFile();
-
-        @CField
-        long ullTotalVirtual();
-
-        @CField
-        long ullAvailVirtual();
-
-        @CField
-        long ullAvailExtendedVirtual();
-    }
-
-    /**
-     * Return information about physical and virtual memory.
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native boolean GlobalMemoryStatusEx(MEMORYSTATUSEX lpBuffer);
-
-    /**
-     * Structure containing information about the current computer system.
-     */
-    @CStruct(addStructKeyword = false)
-    public interface SYSTEM_INFO extends PointerBase {
-        @CField
-        @AllowWideningCast
-        int wProcessorArchitecture();
-
-        @CField
-        @AllowWideningCast
-        int wReserved();
-
-        @CField
-        @AllowWideningCast
-        int dwPageSize();
-
-        @CField
-        Pointer lpMinimumApplicationAddress();
-
-        @CField
-        Pointer lpMaximumApplicationAddress();
-
-        @CField
-        @AllowWideningCast
-        long dwActiveProcessorMask();
-
-        @CField
-        @AllowWideningCast
-        int dwNumberOfProcessors();
-
-        @CField
-        @AllowWideningCast
-        int dwProcessorType();
-
-        @CField
-        @AllowWideningCast
-        int dwAllocationGranularity();
-
-        @CField
-        @AllowWideningCast
-        short wProcessorLevel();
-
-        @CField
-        @AllowWideningCast
-        short wProcessorRevision();
-    }
-
-    /**
-     * Return information about the current computer system.
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native void GetSystemInfo(SYSTEM_INFO lpSystemInfo);
 
     /**
      * CreateFileMapping - reserve, commit or change states of a region of pages.
@@ -392,9 +290,6 @@ public class WinBase {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native UnsignedWord VirtualQuery(PointerBase lpAddress, MEMORY_BASIC_INFORMATION lpBuffer, UnsignedWord dwLength);
-
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int GetVersion();
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int GetCurrentDirectoryW(int nBufferLength, WCharPointer lpBuffer);
