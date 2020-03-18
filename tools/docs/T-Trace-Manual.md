@@ -138,7 +138,7 @@ agent.on('enter', function(ev) {
 });
 ```
 
-and run it on top of [sieve.js](../../vm/tests/all/agentscript/sieve.js) - 
+and run it on top of [sieve.js](../../vm/benchmarks/agentscript/sieve.js) -
 a sample script which uses a variant of the Sieve of Erathostenes to compute one hundred
 thousand of prime numbers:
 
@@ -221,7 +221,7 @@ agent.on('enter', function(ev) {
 agent.on('close', dumpCount);
 ```
 
-Let's use the script on fifty iterations of [sieve.js](../../vm/tests/all/agentscript/sieve.js)
+Let's use the script on fifty iterations of [sieve.js](../../vm/benchmarks/agentscript/sieve.js)
 sample which uses a variant of the Sieve of Erathostenes to compute one hundred
 thousand of prime numbers. Repeating the computation fifty times gives the
 runtime a chance to warm up and properly optimize. Here is the optimal run:
@@ -550,7 +550,7 @@ C, C++, Fortran, Rust and inspect with JavaScript, Ruby & co.!
 or is there an inherent slowdown associated with each variable access? The answer
 is: **it depends**!
 
-Let's demonstrate the issue on [sieve.js](../../vm/tests/all/agentscript/sieve.js) -
+Let's demonstrate the issue on [sieve.js](../../vm/benchmarks/agentscript/sieve.js) -
 an algorithm to compute hundred thousand of prime numbers. It keeps the
 so far found prime numbers in a linked list constructed via following
 function:
