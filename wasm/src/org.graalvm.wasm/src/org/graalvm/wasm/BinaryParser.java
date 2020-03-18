@@ -585,14 +585,14 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.GLOBAL_GET: {
-                    int index = readLocalIndex(state);
+                    int index = readGlobalIndex(state);
                     Assert.assertIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(),
                                     "Invalid global index for global.get.");
                     state.push();
                     break;
                 }
                 case Instructions.GLOBAL_SET: {
-                    int index = readLocalIndex(state);
+                    int index = readGlobalIndex(state);
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(),
                                     "Invalid global index for global.set.");
@@ -1235,6 +1235,10 @@ public class BinaryParser extends BinaryStreamParser {
 
     private int readGlobalIndex() {
         return readUnsignedInt32();
+    }
+
+    private int readGlobalIndex(ExecutionState state) {
+        return readUnsignedInt32(state);
     }
 
     private int readLocalIndex(ExecutionState state) {
