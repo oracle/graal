@@ -188,7 +188,7 @@ final class InstrumentationHandler {
                     Set<Class<?>> previousProvidedTags = visitor.providedTags;
                     SourceSection previousRootSourceSection = visitor.rootSourceSection;
                     int previousRootBits = visitor.rootBits;
-                    visitRoot(root, root, visitor, false);
+                    visitRoot(root, root, visitor, false, true);
                     rootSources = visitor.getSources();
                     visitor.root = previousRoot;
                     visitor.providedTags = previousProvidedTags;
@@ -219,7 +219,7 @@ final class InstrumentationHandler {
 
         // fast path no bindings attached
         if (!sourceSectionBindings.isEmpty()) {
-            visitRoot(root, root, new NotifyLoadedListenerVisitor(sourceSectionBindings), false);
+            visitRoot(root, root, new NotifyLoadedListenerVisitor(sourceSectionBindings), false, true);
         }
 
     }
@@ -318,7 +318,7 @@ final class InstrumentationHandler {
                             Set<Class<?>> previousProvidedTags = visitor.providedTags;
                             SourceSection previousRootSourceSection = visitor.rootSourceSection;
                             int previousRootBits = visitor.rootBits;
-                            visitRoot(root, root, visitor, false);
+                            visitRoot(root, root, visitor, false, true);
                             visitor.root = previousRoot;
                             visitor.providedTags = previousProvidedTags;
                             visitor.rootSourceSection = previousRootSourceSection;
@@ -351,7 +351,7 @@ final class InstrumentationHandler {
 
         // fast path no bindings attached
         if (!executionBindings.isEmpty()) {
-            visitRoot(root, root, new InsertWrappersVisitor(executionBindings, true), false);
+            visitRoot(root, root, new InsertWrappersVisitor(executionBindings), false, true);
         }
     }
 
@@ -649,7 +649,7 @@ final class InstrumentationHandler {
                                 if (sourceSection != null) {
                                     visitor.adoptSource(sourceSection.getSource());
                                 }
-                                visitRoot(root, root, visitor, false);
+                                visitRoot(root, root, visitor, false, false);
                                 Source[] visitedSources = visitor.getSources();
                                 if (visitedSources != null) {
                                     for (Source source : visitedSources) {
@@ -695,7 +695,7 @@ final class InstrumentationHandler {
                                 if (sourceSection != null) {
                                     visitor.adoptSource(sourceSection.getSource());
                                 }
-                                visitRoot(root, root, visitor, false);
+                                visitRoot(root, root, visitor, false, false);
                                 Source[] visitedSources = visitor.getSources();
                                 if (visitedSources != null) {
                                     for (Source source : visitedSources) {
@@ -717,7 +717,7 @@ final class InstrumentationHandler {
 
     private void visitRoots(Collection<RootNode> roots, AbstractNodeVisitor addBindingsVisitor) {
         for (RootNode root : roots) {
-            visitRoot(root, root, addBindingsVisitor, false);
+            visitRoot(root, root, addBindingsVisitor, false, false);
         }
     }
 
@@ -852,10 +852,10 @@ final class InstrumentationHandler {
         assert parentInstrumentable != null;
 
         if (!sourceSectionBindings.isEmpty()) {
-            visitRoot(rootNode, parentInstrumentable, new NotifyLoadedListenerVisitor(sourceSectionBindings), true);
+            visitRoot(rootNode, parentInstrumentable, new NotifyLoadedListenerVisitor(sourceSectionBindings), true, false);
         }
         if (!executionBindings.isEmpty()) {
-            visitRoot(rootNode, parentInstrumentable, new InsertWrappersVisitor(executionBindings, false), true);
+            visitRoot(rootNode, parentInstrumentable, new InsertWrappersVisitor(executionBindings), true, false);
         }
     }
 
@@ -1133,11 +1133,12 @@ final class InstrumentationHandler {
         out.printf(message, args);
     }
 
-    private void visitRoot(RootNode root, final Node node, final AbstractNodeVisitor visitor, boolean forceRootBitComputation) {
+    private void visitRoot(RootNode root, final Node node, final AbstractNodeVisitor visitor, boolean forceRootBitComputation, boolean firstExecution) {
         if (TRACE) {
             trace("BEGIN: Visit root %s for %s%n", root.toString(), visitor);
         }
 
+        visitor.firstExecution = firstExecution;
         visitor.root = root;
         visitor.providedTags = getProvidedTags(root);
         visitor.rootSourceSection = root.getSourceSection();
@@ -1554,9 +1555,8 @@ final class InstrumentationHandler {
 
     private final class InsertWrappersVisitor extends AbstractBindingsVisitor {
 
-        InsertWrappersVisitor(Collection<EventBinding.Source<?>> bindings, boolean firstExecution) {
+        InsertWrappersVisitor(Collection<EventBinding.Source<?>> bindings) {
             super(bindings, false);
-            this.firstExecution = firstExecution;
         }
 
         @Override
