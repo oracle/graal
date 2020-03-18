@@ -70,7 +70,7 @@
     V(SetDiagnosticFrameworkNotificationEnabled)
 
 
-JNIEXPORT jlong initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
+JNIEXPORT JmmInterface* JNICALL initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
 
   struct jmmInterface_1_ *management = (JmmInterface*) malloc(sizeof(struct jmmInterface_1_));
 
@@ -83,10 +83,10 @@ JNIEXPORT jlong initializeManagementContext(TruffleEnv *truffle_env, void* (*fet
   MANAGEMENT_METHOD_LIST(INIT__)
   #undef INIT_
 
-  return (jlong) management;
+  return management;
 }
 
-JNIEXPORT void disposeManagementContext(TruffleEnv *truffle_env, jlong management_ptr) {
+JNIEXPORT void JNICALL disposeManagementContext(TruffleEnv *truffle_env, JmmInterface *management_ptr) {
   struct jmmInterface_1_ *management = (struct jmmInterface_1_*) management_ptr;
 
   #define DISPOSE__(name) \

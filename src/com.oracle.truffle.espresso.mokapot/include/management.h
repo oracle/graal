@@ -28,8 +28,8 @@
 #include <trufflenfi.h>
 #include <jni.h>
 
-JNIEXPORT jlong JNICALL initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+JNIEXPORT JmmInterface* JNICALL initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
 
-JNIEXPORT void JNICALL disposeManagementContext(TruffleEnv *truffle_env, jlong management_ptr);
+JNIEXPORT void JNICALL disposeManagementContext(TruffleEnv *truffle_env, JmmInterface *management_ptr);
 
 #endif // _MANAGEMENT_H
