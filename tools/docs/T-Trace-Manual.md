@@ -639,7 +639,7 @@ Faster. That confirms our expectations - the access to `frame.number` isn't
 inlined - e.g. it is not optimized enough right now. If we just could get
 better inlining!
 
-Luckily we can. [GraalVM EE](http://graalvm.org/downloads) is known for having better inlining characteristics
+Luckily we can. [GraalVM EE](https://www.graalvm.org/downloads/) is known for having better inlining characteristics
 than GraalVM CE. Let's try to use it:
 
 ```bash
