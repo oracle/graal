@@ -318,7 +318,7 @@
 	"dependencies": {
 		"tar": "^4.4.8",
 		"sax": "^1.2.4",
-		"vscode-chrome-debug-core": "^6.7.53"
+		"vscode-chrome-debug-core": "^6.8.8"
 	},
 	"devDependencies": {
 		"@types/mocha": "^2.2.42",
