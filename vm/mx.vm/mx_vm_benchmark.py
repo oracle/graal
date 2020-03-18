@@ -417,7 +417,7 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def rules(self, out, benchmarks, bmSuiteArgs):
         assert len(benchmarks) == 1
         return [
-            mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms', {
+            mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms\n$', {
                 "bench-suite": self.name(),
                 "benchmark": (benchmarks[0], str),
                 "metric.name": "time",
