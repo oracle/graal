@@ -544,7 +544,8 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
         patched_java_base = join(build_dir, 'java.base.jmod')
         with open(join(jmods_dir, 'java.base.jmod'), 'rb') as src_f, open(patched_java_base, 'wb') as dst_f:
             jmod_header = src_f.read(4)
-            assert len(jmod_header) == 4 and jmod_header == 'JM\x01\x00', "Unexpected jmod header:" + b2a_hex(jmod_header)
+            if len(jmod_header) != 4 or jmod_header != b'JM\x01\x00':
+                raise mx.abort("Unexpected jmod header: " + b2a_hex(jmod_header).decode('ascii'))
             dst_f.write(jmod_header)
             policy_result = 'not found'
             with ZipFile(src_f, 'r') as src_zip, ZipFile(dst_f, 'w', src_zip.compression) as dst_zip:
@@ -553,7 +554,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
                         continue
                     src_member = src_zip.read(i)
                     if i.filename == 'lib/security/default.policy':
-                        if 'grant codeBase "jrt:/com.oracle.graal.graal_enterprise"' in src_member:
+                        if 'grant codeBase "jrt:/com.oracle.graal.graal_enterprise"'.encode('utf-8') in src_member:
                             policy_result = 'unmodified'
                         else:
                             policy_result = 'modified'
@@ -561,7 +562,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
 grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
     permission java.security.AllPermission;
 };
-"""
+""".encode('utf-8')
                     dst_zip.writestr(i, src_member)
             if policy_result == 'not found':
                 raise mx.abort("Couldn't find `lib/security/default.policy` in " + join(jmods_dir, 'java.base.jmod'))
