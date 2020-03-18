@@ -64,6 +64,7 @@ public class WasmOptions {
     }
 
     public static OptionType<StoreConstantsPolicyEnum> StoreConstantsPolicyOptionType = new OptionType<>("StoreConstantsPolicy", StoreConstantsPolicyEnum::valueOf);
+
     @Option(help = "Whenever to store the constants in a pool or not.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL)//
     public static final OptionKey<StoreConstantsPolicyEnum> StoreConstantsInPool = new OptionKey<>(StoreConstantsPolicyEnum.NONE, StoreConstantsPolicyOptionType);
 }
