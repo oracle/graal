@@ -433,12 +433,15 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         return self.vmArgs(bmSuiteArgs) + super(AgentScriptJsBenchmarkSuite, self).createCommandLineArgs(benchmarks, bmSuiteArgs)
 
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        return join(_suite.dir, 'benchmarks', 'agentscript')
+
     def createVmCommandLineArgs(self, benchmarks, runArgs):
         if not benchmarks:
             raise mx.abort("Benchmark suite '{}' cannot run multiple benchmarks in the same VM process".format(self.name()))
         if len(benchmarks) != 1:
             raise mx.abort("Benchmark suite '{}' can run only one benchmark at a time".format(self.name()))
-        return self._benchmarks[benchmarks[0]] + ['-e', 'count=50'] + runArgs + [join(_suite.dir, 'benchmarks', 'agentscript', 'sieve.js')]
+        return self._benchmarks[benchmarks[0]] + ['-e', 'count=50'] + runArgs + ['sieve.js']
 
     def get_vm_registry(self):
         return mx_benchmark.js_vm_registry
