@@ -1092,7 +1092,7 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public void initializeLanguage(Object polyglotLanguageContext, LanguageInfo targetLanguage) {
+        public boolean initializeLanguage(Object polyglotLanguageContext, LanguageInfo targetLanguage) {
             PolyglotLanguage targetPolyglotLanguage = (PolyglotLanguage) NODES.getPolyglotLanguage(targetLanguage);
             PolyglotLanguageContext targetLanguageContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getContext(targetPolyglotLanguage);
             PolyglotLanguage accessingPolyglotLanguage = ((PolyglotLanguageContext) polyglotLanguageContext).language;
@@ -1101,7 +1101,7 @@ final class EngineAccessor extends Accessor {
             } catch (PolyglotIllegalArgumentException notAccessible) {
                 throw new SecurityException(notAccessible.getMessage());
             }
-            targetLanguageContext.ensureInitialized(accessingPolyglotLanguage);
+            return targetLanguageContext.ensureInitialized(accessingPolyglotLanguage);
         }
     }
 

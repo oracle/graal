@@ -2223,9 +2223,9 @@ public abstract class TruffleLanguage<C> {
          * @since 20.1.0
          */
         @TruffleBoundary
-        public void initializeLanguage(LanguageInfo targetLanguage) {
+        public boolean initializeLanguage(LanguageInfo targetLanguage) {
             Objects.requireNonNull(targetLanguage, "TargetLanguage must be non null.");
-            LanguageAccessor.engineAccess().initializeLanguage(polyglotLanguageContext, targetLanguage);
+            return LanguageAccessor.engineAccess().initializeLanguage(polyglotLanguageContext, targetLanguage);
         }
 
         /**

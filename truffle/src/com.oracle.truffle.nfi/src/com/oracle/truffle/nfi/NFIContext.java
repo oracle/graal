@@ -42,10 +42,8 @@ package com.oracle.truffle.nfi;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.nfi.spi.NFIBackend;
 import com.oracle.truffle.nfi.spi.NFIBackendFactory;
 import com.oracle.truffle.nfi.spi.NFIBackendTools;
