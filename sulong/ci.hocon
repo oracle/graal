@@ -144,7 +144,7 @@ sulong-coverage-linux: ${sulong-gateTestLLVMorg-linux} ${requireGCC} ${sulong-we
         [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", coverage-upload]
     ]
     targets: [weekly]
-    timelimit: "1:00:00"
+    timelimit: "1:45:00"
 }
 
 sulong-labsjdk-ce-11-only: ${labsjdk-ce-11} {
@@ -170,7 +170,7 @@ builds += [
   ] ${sulong-test-toolchain} }
   ${sulong-gateTestLLVMorg-linux} ${requireGCC} { name: gate-sulong-parser, run: [[mx, gate, --tags, "build,parser"]] }
   ${sulong-gateTestLLVMorg-linux} { name: gate-sulong-gcc_c, run: [[mx, gate, --tags, "build,gcc_c"]], timelimit: "45:00" }
-  ${sulong-gateTestLLVMorg-linux} { name: gate-sulong-gcc_cpp, run: [[mx, gate, --tags, "build,gcc_cpp"]] }
+  ${sulong-gateTestLLVMorg-linux} { name: gate-sulong-gcc_cpp, run: [[mx, gate, --tags, "build,gcc_cpp"]], timelimit: "45:00" }
   ${sulong-gateTestLLVMorg-linux} ${requireGCC} { name: gate-sulong-gcc_fortran, run: [[mx, gate, --tags, "build,gcc_fortran"]] }
   # No more testing on llvm 3.8 [GR-21735]
   # ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-basic_v38, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }

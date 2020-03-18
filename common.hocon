@@ -1,6 +1,8 @@
 # overlay version
 overlay = 342aa921cb7cc26612d0be82f6141a6d6ff8e41d
 
+specVersion = "2"
+
 # oraclejdk* are released OracleJDK binaries
 # oraclejdk* are JDKs based on OracleJDK binaries
 # openjdk8 JDKs on Linux are built by Oracle Labs

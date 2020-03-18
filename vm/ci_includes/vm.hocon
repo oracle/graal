@@ -81,6 +81,7 @@ builds += [
       ${maven_base_8_11.deploy_svm_plugin} ["lafo-maven"]
     ]
     name: deploy-vm-maven-linux-amd64
+    timelimit: "45:00"
   }
   ${deploy_vm_linux_aarch64} ${linux-deploy} ${maven_base_8_native} {
     downloads: {
