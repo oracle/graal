@@ -470,7 +470,12 @@ def jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable
         setattr(jdk, '.omits_ThreadPriorityPolicy_warning', '-XX:ThreadPriorityPolicy=1 may require system level permission' not in out.data)
     return getattr(jdk, '.omits_ThreadPriorityPolicy_warning')
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True, vendor_info=None):
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
+                  root_module_names=None,
+                  missing_export_target_action='create',
+                  with_source=lambda x: True,
+                  vendor_info=None,
+                  dedup_legal_notices=True):
     """
     Uses jlink from `jdk` to create a new JDK image in `dst_jdk_dir` with `module_dists` and
     their dependencies added to the JDK image, replacing any existing modules of the same name.
@@ -636,10 +641,11 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
         jlink.append('--module-path=' + module_path)
         jlink.append('--output=' + dst_jdk_dir)
 
-        # These options are inspired by how OpenJDK runs jlink to produce the final runtime image.
+        # These options are derived from how OpenJDK runs jlink to produce the final runtime image.
         jlink.extend(['-J-XX:+UseSerialGC', '-J-Xms32M', '-J-Xmx512M', '-J-XX:TieredStopAtLevel=1'])
         jlink.append('-J-Dlink.debug=true')
-        jlink.append('--dedup-legal-notices=error-if-not-same-content')
+        if dedup_legal_notices:
+            jlink.append('--dedup-legal-notices=error-if-not-same-content')
         jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
 
         if jdk_has_new_jlink_options(jdk):
