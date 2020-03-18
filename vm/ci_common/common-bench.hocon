@@ -1,17 +1,15 @@
 bench_vm_linux_base: ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${common_vm_linux} { # repeat 'common_vm_linux' to override packages loaded by 'svm-common-linux'
-  resultFile: results.json
+  result_file: results.json
   setup: ${common_vm.setup} [
-    [mx, --strip-jars, --no-sources, --env, "${VM_ENV}", build]
+    ${mx_vm_common} [build]
   ]
-  on_success: [
-    [bench-uploader.py, ${bench_vm_linux_base.resultFile}]
-  ]
-  logs: [${bench_vm_linux_base.resultFile}]
+  upload: [bench-uploader.py, ${bench_vm_linux_base.result_file}]
+  logs: [${bench_vm_linux_base.result_file}]
   capabilities: [no_frequency_scaling, tmpfs25g, x52, linux, amd64]
 }
 
 bench_js_octane_linux: ${bench_vm_linux_base} {
-  cmd_base:  [mx, --strip-jars, --no-sources, --env, "${VM_ENV}", --dynamicimports, js-benchmarks, benchmark, --results-file, ${bench_vm_linux_base.resultFile}]
+  cmd_base: ${mx_vm_common} [--dynamicimports, js-benchmarks, benchmark, --results-file, ${bench_vm_linux_base.result_file}]
   config_base: ["--js-vm=graal-js", "--js-vm-config=default", "--jvm=graalvm-${VM_ENV}"]
   cmd: ${bench_js_octane_linux.cmd_base} ["octane:*", --] ${bench_js_octane_linux.config_base}
   setup: ${bench_vm_linux_base.setup} [
@@ -21,18 +19,24 @@ bench_js_octane_linux: ${bench_vm_linux_base} {
 }
 
 builds += [
-  ${bench_vm_linux} ${bench_js_octane_linux} {
-    run: [
-      ${bench_js_octane_linux.cmd} ["--jvm-config=native"]
-    ]
-    name: bench-vm-js-linux
-    timelimit: "1:30:00"
-  }
-  ${bench_vm_linux} ${bench_js_octane_linux} {
+  ${bench_vm_linux} ${bench_vm_linux_base} ${bench_js_octane_linux} {
     run: [
       ${bench_js_octane_linux.cmd} ["--jvm-config=jvm"]
+      ${bench_vm_linux_base.upload}
+      ${bench_js_octane_linux.cmd} ["--jvm-config=native"]
+      ${bench_vm_linux_base.upload}
     ]
-    name: bench-vm-js-jvm-linux
+    name: bench-vm-${vm_setup.short_name}-js-linux
     timelimit: "1:30:00"
+  }
+  ${bench_daily_vm_linux} ${bench_vm_linux_base} {
+    run: [
+      ${mx_vm_common} [benchmark, --results-file, ${bench_vm_linux_base.result_file}, "agentscript-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=jvm", "--js=graal-js", "--js-config=default"]
+      ${bench_vm_linux_base.upload}
+      ${mx_vm_common} [benchmark, --results-file, ${bench_vm_linux_base.result_file}, "agentscript-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=native", "--js=graal-js", "--js-config=default"]
+      ${bench_vm_linux_base.upload}
+    ]
+    timelimit: "45:00"
+    name: bench-vm-${vm_setup.short_name}-agentscript-js-java8-linux-amd64
   }
 ]

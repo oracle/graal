@@ -272,7 +272,9 @@ full_vm_build_linux_aarch64: ${svm-common-linux-aarch64} ${sulong_linux} ${custo
 full_vm_build_darwin: ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin} ${fastr_darwin} ${graalpython_darwin} ${custom_vm_darwin}
 
 builds += [
+  #
   # Gates
+  #
   ${vm_java_8} ${eclipse} ${jdt} ${gate_vm_linux} {
     run: [
       [mx, gate, "-B=--force-deprecation-as-warning", --tags, "style,fullbuild"]
