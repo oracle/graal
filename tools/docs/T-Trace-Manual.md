@@ -589,7 +589,7 @@ agent.on('enter', (ctx, frame) => {
 });
 
 agent.on('return', (ctx, frame) => {
-    log(`Hundred thousand prime numbers from 2 to ${max} is sum ${sum}`);
+    log(`Hundred thousand prime numbers from 2 to ${max} has sum ${sum}`);
     sum = 0;
     max = 0;
 }, {
@@ -600,12 +600,12 @@ agent.on('return', (ctx, frame) => {
 
 Everytime a `new Filter(number)` is allocated, we capture the maximum value
 of `number` (e.g. the highest prime number found) and also `sum` of all prime
-numbers found so far. When the main loop in 'measure' is over - e.g. we have
+numbers found so far. When the main loop in `measure` is over - e.g. we have
 all hundred thousand prime numbers, we print the result. Let's try it:
 
 ```bash
 $ graalvm/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
-Hundred thousand prime numbers from 2 to 1299709 is sum 62260698721
+Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
 Hundred thousand prime numbers in 288 ms
 ```
 
@@ -631,7 +631,7 @@ performance results:
 
 ```bash
 $ graalvm/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter2.js --file sieve.js | grep Hundred | tail -n 2
-Hundred thousand prime numbers from 2 to 1299709 is sum 62260698721
+Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
 Hundred thousand prime numbers in 151 ms
 ```
 
@@ -639,12 +639,12 @@ Faster. That confirms our expectations - the access to `frame.number` isn't
 inlined - e.g. it is not optimized enough right now. If we just could get
 better inlining!
 
-Luckily we can. GraalVM EE is known for having better inlining characteristics
+Luckily we can. [GraalVM EE](http://graalvm.org/downloads) is known for having better inlining characteristics
 than GraalVM CE. Let's try to use it:
 
 ```bash
 $ graalvm-ee/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
-Hundred thousand prime numbers from 2 to 1299709 is sum 62260698721
+Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
 Hundred thousand prime numbers in 76 ms
 ```
 

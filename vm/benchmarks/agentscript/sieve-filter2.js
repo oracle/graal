@@ -15,7 +15,7 @@ agent.on('enter', (ctx, frame) => {
 });
 
 agent.on('return', (ctx, frame) => {
-    log(`Hundred thousand prime numbers from 2 to ${max} is sum ${sum}`);
+    log(`Hundred thousand prime numbers from 2 to ${max} has sum ${sum}`);
     sum = 0;
     max = 0;
 }, {
