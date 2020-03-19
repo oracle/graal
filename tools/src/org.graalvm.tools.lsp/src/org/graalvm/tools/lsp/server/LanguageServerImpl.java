@@ -126,9 +126,7 @@ public final class LanguageServerImpl extends LanguageServer {
     }
 
     public static LanguageServerImpl create(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
-        LanguageServerImpl server = new LanguageServerImpl(adapter, info, err);
-        adapter.initialize();
-        return server;
+        return new LanguageServerImpl(adapter, info, err);
     }
 
     @Override
