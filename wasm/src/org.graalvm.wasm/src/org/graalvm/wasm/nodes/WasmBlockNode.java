@@ -2498,7 +2498,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             case ALL:
                 return codeEntry().intConstant(intConstantOffset);
             case LARGE_ONLY:
-                return isLargeConstant(offset) ? codeEntry().intConstant(intConstantOffset) : BinaryStreamParser.peekSignedInt32(codeEntry().data(), offset);
+                if (isLargeConstant(offset)) {
+                    return codeEntry().intConstant(intConstantOffset);
+                } else {
+                    int result = codeEntry().data()[offset];
+                    return (result & 0x40) == 0 ? result : result | 0xffff_ff80;
+                }
             case NONE:
                 return BinaryStreamParser.peekSignedInt32(codeEntry().data(), offset);
             default:
@@ -2511,7 +2516,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             case ALL:
                 return codeEntry().longConstant(longConstantOffset);
             case LARGE_ONLY:
-                return isLargeConstant(offset) ? codeEntry().longConstant(longConstantOffset) : BinaryStreamParser.peekSignedInt64(codeEntry().data(), offset);
+                if (isLargeConstant(offset)) {
+                    return codeEntry().longConstant(longConstantOffset);
+                } else {
+                    long result = codeEntry().data()[offset];
+                    return (result & 0x40) == 0 ? result : result | 0xffff_ffff_ffff_ff80L;
+                }
             case NONE:
                 return BinaryStreamParser.peekSignedInt64(codeEntry().data(), offset);
             default:
