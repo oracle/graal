@@ -208,6 +208,7 @@ public final class Meta implements ContextAccess {
         java_lang_ClassLoader_findNative = java_lang_ClassLoader.lookupDeclaredMethod(Name.findNative, Signature._long_ClassLoader_String);
         java_lang_ClassLoader_getSystemClassLoader = java_lang_ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
         java_lang_ClassLoader_parent = java_lang_ClassLoader.lookupDeclaredField(Name.parent, Type.java_lang_ClassLoader);
+        HIDDEN_CLASS_LOADER_REGISTRY = java_lang_ClassLoader.lookupHiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY);
 
         // Guest reflection.
         java_lang_reflect_Executable = knownKlass(Type.java_lang_reflect_Executable);
@@ -486,6 +487,7 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_ClassLoader$NativeLibrary_getFromClass;
     public final Method java_lang_ClassLoader_findNative;
     public final Method java_lang_ClassLoader_getSystemClassLoader;
+    public final Field HIDDEN_CLASS_LOADER_REGISTRY;
 
     public final ObjectKlass java_lang_AssertionStatusDirectives;
     public final Field java_lang_AssertionStatusDirectives_classes;
