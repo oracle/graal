@@ -262,7 +262,7 @@ public final class Target_java_lang_Thread {
             context.registerThread(hostThread, self);
             hostThread.start();
         } else {
-            EspressoLanguage.EspressoLogger.warning(
+            EspressoLanguage.getCurrentContext().getLogger().warning(
                             "Thread.start() called on " + self.getKlass() + " but thread support is disabled. Use --java.MultiThreaded=true to enable thread support.");
         }
     }

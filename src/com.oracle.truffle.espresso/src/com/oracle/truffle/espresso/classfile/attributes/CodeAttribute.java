@@ -30,9 +30,11 @@ import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
+import java.io.PrintStream;
 import java.util.Arrays;
 
 public final class CodeAttribute extends Attribute {
@@ -147,15 +149,15 @@ public final class CodeAttribute extends Attribute {
         return new CodeAttribute(getName(), maxStack, maxLocals, code.clone(), exceptionHandlerEntries, attributes, majorVersion);
     }
 
-    public void print(Klass klass) {
+    public void print(Klass klass, PrintStream out) {
         try {
-            new BytecodeStream(code).printBytecode(klass);
-            System.err.println("\n");
+            new BytecodeStream(code).printBytecode(klass, out);
+            out.println("\n");
             if (getStackMapFrame() != null) {
-                getStackMapFrame().print(klass);
+                getStackMapFrame().print(klass, out);
             }
         } catch (Throwable e) {
-            System.err.println("Throw during printing. Aborting...");
+            throw EspressoError.unexpected("Throw during printing. Aborting...", e);
         }
     }
 

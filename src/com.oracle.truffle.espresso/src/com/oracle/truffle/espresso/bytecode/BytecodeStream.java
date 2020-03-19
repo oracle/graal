@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.bytecode;
 
+import java.io.PrintStream;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -257,7 +258,7 @@ public final class BytecodeStream {
         throw EspressoError.shouldNotReachHere("unknown variable-length bytecode: " + opcode);
     }
 
-    public void printBytecode(Klass klass) {
+    public void printBytecode(Klass klass, PrintStream out) {
         try {
             ConstantPool pool = klass.getConstantPool();
             int bci = 0;
@@ -337,14 +338,14 @@ public final class BytecodeStream {
                         str.append(readInt(bci + 1));
                     }
                 }
-                System.err.println(str.toString());
+                out.println(str.toString());
             }
         } catch (Throwable e) {
-            System.err.println("Exception arised during bytecode printing, aborting...");
+            throw EspressoError.unexpected("Exception thrown during bytecode printing, aborting...", e);
         }
     }
 
-    public void printRawBytecode() {
-        System.err.println(Arrays.toString(code));
+    public void printRawBytecode(PrintStream out) {
+        out.println(Arrays.toString(code));
     }
 }

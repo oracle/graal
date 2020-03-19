@@ -29,6 +29,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
+import java.io.PrintStream;
+
 public class StackMapTableAttribute extends Attribute {
 
     public static final Symbol<Name> NAME = Symbol.Name.StackMapTable;
@@ -45,12 +47,12 @@ public class StackMapTableAttribute extends Attribute {
         this.entries = entries;
     }
 
-    public void print(Klass klass) {
-        System.err.println("    StackMapTable {");
+    public void print(Klass klass, PrintStream out) {
+        out.println("    StackMapTable {");
         for (StackMapFrame sme : entries) {
-            sme.print(klass);
+            sme.print(klass, out);
         }
-        System.err.println("    }");
+        out.println("    }");
     }
 
     public boolean isTruncated() {

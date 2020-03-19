@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.util.Objects;
+import java.util.logging.Level;
 
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -129,7 +130,7 @@ public interface FieldRefConstant extends MemberRefConstant {
 
             if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, field)) {
                 Meta meta = pool.getContext().getMeta();
-                System.err.println(EspressoOptions.INCEPTION_NAME + " Field access check of: " + field.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
+                meta.getContext().getLogger().log(Level.WARNING, EspressoOptions.INCEPTION_NAME + " Field access check of: " + field.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
                                 " throws IllegalAccessError");
                 throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(name));
             }

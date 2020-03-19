@@ -26,6 +26,8 @@ package com.oracle.truffle.espresso.classfile;
 import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
 
+import java.io.PrintStream;
+
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
@@ -59,9 +61,9 @@ public abstract class StackMapFrame {
     public abstract int getOffset();
 
     @SuppressWarnings("unused")
-    public void print(Klass klass) {
-        System.err.println("        " + this.getClass().getSimpleName() + " {");
-        System.err.println("            Offset: " + getOffset());
+    public void print(Klass klass, PrintStream out) {
+        out.println("        " + this.getClass().getSimpleName() + " {");
+        out.println("            Offset: " + getOffset());
     }
 }
 
@@ -77,10 +79,10 @@ final class SameFrame extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass) {
-        System.err.println("        " + this.getClass().getSimpleName() + " {");
-        System.err.println("            Offset: " + getOffset());
-        System.err.println("        }");
+    public void print(Klass klass, PrintStream out) {
+        out.println("        " + this.getClass().getSimpleName() + " {");
+        out.println("            Offset: " + getOffset());
+        out.println("        }");
     }
 }
 
@@ -103,10 +105,10 @@ final class SameLocals1StackItemFrame extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass) {
-        super.print(klass);
-        System.err.println("            Stack: " + stackItem.toString(klass));
-        System.err.println("        }");
+    public void print(Klass klass, PrintStream out) {
+        super.print(klass, out);
+        out.println("            Stack: " + stackItem.toString(klass));
+        out.println("        }");
     }
 
 }
@@ -132,10 +134,10 @@ final class SameLocals1StackItemFrameExtended extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass) {
-        super.print(klass);
-        System.err.println("            Stack: " + stackItem.toString(klass));
-        System.err.println("        }");
+    public void print(Klass klass, PrintStream out) {
+        super.print(klass, out);
+        out.println("            Stack: " + stackItem.toString(klass));
+        out.println("        }");
     }
 }
 
@@ -158,10 +160,10 @@ final class ChopFrame extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass) {
-        super.print(klass);
-        System.err.println("            cut locals: " + getChopped());
-        System.err.println("        }");
+    public void print(Klass klass, PrintStream out) {
+        super.print(klass, out);
+        out.println("            cut locals: " + getChopped());
+        out.println("        }");
     }
 }
 
@@ -179,9 +181,9 @@ final class SameFrameExtended extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass) {
-        super.print(klass);
-        System.err.println("        }");
+    public void print(Klass klass, PrintStream out) {
+        super.print(klass, out);
+        out.println("        }");
     }
 }
 
@@ -206,14 +208,14 @@ final class AppendFrame extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass) {
-        super.print(klass);
-        System.err.println("            Add Locals: [");
+    public void print(Klass klass, PrintStream out) {
+        super.print(klass, out);
+        out.println("            Add Locals: [");
         for (VerificationTypeInfo vti : newLocals) {
-            System.err.println("                " + vti.toString(klass));
+            out.println("                " + vti.toString(klass));
         }
-        System.err.println("            ]");
-        System.err.println("        }");
+        out.println("            ]");
+        out.println("        }");
     }
 
 }
@@ -246,18 +248,18 @@ final class FullFrame extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass) {
-        super.print(klass);
-        System.err.println("            Locals: [");
+    public void print(Klass klass, PrintStream out) {
+        super.print(klass, out);
+        out.println("            Locals: [");
         for (VerificationTypeInfo vti : locals) {
-            System.err.println("                " + vti.toString(klass));
+            out.println("                " + vti.toString(klass));
         }
-        System.err.println("            ]");
-        System.err.println("            Stack: [");
+        out.println("            ]");
+        out.println("            Stack: [");
         for (VerificationTypeInfo vti : stack) {
-            System.err.println("                " + vti.toString(klass));
+            out.println("                " + vti.toString(klass));
         }
-        System.err.println("            ]");
-        System.err.println("        }");
+        out.println("            ]");
+        out.println("        }");
     }
 }
