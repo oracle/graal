@@ -40,7 +40,7 @@ _suite = mx.suite('espresso')
 def _espresso_launcher_command(args):
     """Espresso launcher embedded in GraalVM + arguments"""
     import mx_sdk_vm_impl
-    return [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'espresso')] + args
+    return [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', mx.cmd_suffix('espresso'))] + args
 
 def _espresso_standalone_command(args):
     """Espresso standalone command from distribution jars + arguments"""
