@@ -118,6 +118,13 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     :type register_project: (mx.Project) -> None
     :type register_distribution: (mx.Distribution) -> None
     """
+    if mx_sdk_vm_impl.has_component('FastR'):
+        fastr_release_env = mx.get_env('FASTR_RELEASE', None)
+        if fastr_release_env != 'true':
+            mx.abort(('When including FastR, please set FASTR_RELEASE to \'true\' (env FASTR_RELEASE=true mx ...). Got FASTR_RELEASE={}. '
+                      'For local development, you may also want to disable recommended packages build (FASTR_NO_RECOMMENDED=true) and '
+                      'capturing of system libraries (export FASTR_CAPTURE_DEPENDENCIES set to an empty value). '
+                      'See building.md in FastR documentation for more details.').format(fastr_release_env))
     if register_project:
         register_project(GraalVmSymlinks())
 
