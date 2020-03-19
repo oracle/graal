@@ -67,7 +67,7 @@ public abstract class BinaryStreamParser {
             offset++;
             result |= ((b & 0x7F) << shift);
             shift += 7;
-        } while ((b & 0x80) != 0 && shift < 35);
+        } while ((b & 0x80) != 0);
 
         if ((shift < 32) && (b & 0x40) != 0) {
             result |= (~0 << shift);
