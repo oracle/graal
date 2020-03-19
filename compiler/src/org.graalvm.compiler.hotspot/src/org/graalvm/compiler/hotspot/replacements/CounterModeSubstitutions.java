@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_INTRINSIC_CONTEXT;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_METAACCESS;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_INTRINSIC_CONTEXT;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_METAACCESS;
 import static org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions.aesCryptType;
 import static org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions.embeddedCipherOffset;
 import static org.graalvm.compiler.nodes.PiNode.piCastNonNull;

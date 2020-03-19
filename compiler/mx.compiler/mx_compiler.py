@@ -430,7 +430,7 @@ class UnitTestRun:
                     extra_args = ['--verbose', '--enable-timing']
                 else:
                     extra_args = []
-                if 'coverage' not in self.tags:
+                if 'coverage' not in Task.tags:
                     # If this is a coverage execution, we want maximal coverage
                     # and thus must not fail fast.
                     extra_args += ['--fail-fast']
@@ -1283,7 +1283,9 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
             module_dists = _graal_config().dists
             _check_using_latest_jars(module_dists)
             vendor_info = {'vendor-version' : vm_name}
-            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names, vendor_info=vendor_info)
+            # Setting dedup_legal_notices=False avoids due to license files conflicting
+            # when switching JAVA_HOME from an OpenJDK to an OracleJDK or vice versa between executions.
+            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names, vendor_info=vendor_info, dedup_legal_notices=False)
             jre_dir = tmp_dst_jdk_dir
             jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
             if export_truffle:

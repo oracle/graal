@@ -250,7 +250,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         public boolean isSelected(GraalHotSpotVMConfig config) {
             for (String flag : flags) {
                 final boolean notPresent = false;
-                if (config.getFlag(flag, Boolean.class, notPresent)) {
+                if (config.getFlag(flag, Boolean.class, notPresent, false)) {
                     return true;
                 }
             }
