@@ -83,6 +83,7 @@ class GraalWasmDefaultTags:
     buildall = "buildall"
     wasmtest = "wasmtest"
     wasmconstantspolicytest = "wasmconstantspolicytest"
+    wasmconstantspolicyextratest = "wasmconstantspolicyextratest"
     wasmextratest = "wasmextratest"
     wasmbenchtest = "wasmbenchtest"
 
@@ -102,6 +103,10 @@ def graal_wasm_gate_runner(args, tasks):
         if t:
             unittest(["CSuite"])
             unittest(["WatSuite"])
+    with Task("ConstantsPolicyExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicyextratest]) as t:
+        if t:
+            unittest(["-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "CSuite"])
+            unittest(["-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WatSuite"])
     # This is a gate used to test that all the benchmarks return the correct results. It does not upload anything,
     # and does not run on a dedicated machine.
     with Task("BenchTest", tasks, tags=[GraalWasmDefaultTags.wasmbenchtest]) as t:
