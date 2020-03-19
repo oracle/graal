@@ -520,11 +520,19 @@ class BaseDaCapoNativeImageBenchmarkSuite():
 
 
 _DACAPO_EXTRA_VM_ARGS = {
-    'avrora' :     ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.derby.jdbc.ClientDriver,'
+    'avrora':     ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.derby.jdbc.ClientDriver,'
                     'org.h2.Driver,org.apache.derby.jdbc.AutoloadedDriver,'
                     'org.apache.derby.client.am.Configuration,org.apache.derby.iapi.services.info.ProductVersionHolder'],
-    'h2' :         ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=java.sql.DriverManager,org.apache.derby.jdbc.AutoloadedDriver,org.h2.Driver'],
-    'pmd' :        ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.derby.jdbc.ClientDriver,org.h2.Driver,java.sql.DriverManager,org.apache.derby.jdbc.AutoloadedDriver'],
+    'h2':         ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=java.sql.DriverManager,org.apache.derby.jdbc.AutoloadedDriver,org.h2.Driver,org.apache.derby.jdbc.ClientDriver',
+                    '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
+    'pmd':        ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=org.apache.derby.jdbc.ClientDriver,org.h2.Driver,java.sql.DriverManager,org.apache.derby.jdbc.AutoloadedDriver,'
+                    'org.apache.derby.iapi.services.info.ProductVersionHolder', '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
+    'xalan':      ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.xml.utils.res.CharArrayWrapper', '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'],
+    'sunflow':    ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=sun.awt.dnd.SunDropTargetContextPeer$EventDispatcher'],
+    'fop':        ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=com.sun.proxy.$Proxy188,com.sun.proxy.$Proxy187',
+                   '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.fop.render.RendererEventProducer,org.apache.fop.layoutmgr.BlockLevelEventProducer',
+                   '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=sun.awt.dnd.SunDropTargetContextPeer$EventDispatcher',
+                   '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
     # GR-19371
     'batik':       ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath']
 }
@@ -565,21 +573,20 @@ _dacapo_resources = {
 
 _daCapo_iterations = {
     'avrora'     : 20,
-    'batik'      : 40, # GR-17645
+    'batik'      : 40, # GR-21832
     'eclipse'    : -1, # Not supported on Hotspot
-    'fop'        : 40, # GR-17645
-    'h2'         : 25, # GR-17919
+    'fop'        : 40, # GR-21831, GR-21832
+    'h2'         : 25,
     'jython'     : -1, # Dynamically generates classes, hence can't be supported on SVM for now
     'luindex'    : 15, # GR-17943
     'lusearch'   : 40, # GR-17943
-    'pmd'        : 30, # GR-17919
+    'pmd'        : 30,
     'sunflow'    : 35,
     'tomcat'     : -1, # Not supported on Hotspot
     'tradebeans' : -1, # Not supported on Hotspot
     'tradesoap'  : -1, # Not supported on Hotspot
-    'xalan'      : 30, # GR-17891
+    'xalan'      : 30, # Needs both xalan.jar and xalan-2.7.2.jar. Different library versions on classpath aren't supported.
 }
-
 
 class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors
     def name(self):
