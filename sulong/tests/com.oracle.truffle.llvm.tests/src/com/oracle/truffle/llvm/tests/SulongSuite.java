@@ -58,11 +58,11 @@ public class SulongSuite extends BaseSuiteHarness {
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
         Path suitesPath = new File(TestOptions.TEST_SUITE_PATH).toPath();
-        return getData(suitesPath);
+        Set<String> blacklist = getBlacklist();
+        return getData(suitesPath, blacklist);
     }
 
-    protected static Collection<Object[]> getData(Path suitesPath) {
-
+    protected static Set<String> getBlacklist() {
         Set<String> filenameBlacklist = new HashSet<>();
 
         if (Platform.isAArch64()) {
@@ -98,12 +98,14 @@ public class SulongSuite extends BaseSuiteHarness {
                             "libc/errno/errno.c"));
         }
 
-        Set<String> directoryBlacklist = filenameBlacklist.stream().map((s) -> s.concat(".dir")).collect(Collectors.toSet());
+        return filenameBlacklist.stream().map((s) -> s.concat(".dir")).collect(Collectors.toSet());
+    }
 
+    protected static Collection<Object[]> getData(Path suitesPath, Set<String> blacklist) {
         try (Stream<Path> files = Files.walk(suitesPath)) {
             Stream<Path> destDirs = files.filter(SulongSuite::isReference).map(Path::getParent);
             Collection<Object[]> collection = destDirs.map(testPath -> new Object[]{testPath, suitesPath.relativize(testPath).toString()}).collect(Collectors.toList());
-            collection.removeIf(d -> directoryBlacklist.contains(d[1]));
+            collection.removeIf(d -> blacklist.contains(d[1]));
             return collection;
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);

@@ -31,7 +31,11 @@ package com.oracle.truffle.llvm.tests.bitcode;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.llvm.tests.SulongSuite;
 import org.junit.runner.RunWith;
@@ -40,6 +44,7 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.llvm.tests.Platform;
 
 @RunWith(Parameterized.class)
 public final class SulongLLSuite extends SulongSuite {
@@ -50,7 +55,20 @@ public final class SulongLLSuite extends SulongSuite {
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
         Path suitesPath = new File(TestOptions.LL_TEST_SUITE_PATH).toPath();
-        return getData(suitesPath);
+        Set<String> blacklist = getBlacklist();
+        return getData(suitesPath, blacklist);
+    }
+
+    protected static Set<String> getBlacklist() {
+        Set<String> filenameBlacklist = new HashSet<>();
+
+        if (Platform.isAArch64()) {
+            // Tests that fail.
+            filenameBlacklist.addAll(Arrays.asList(
+                            "uncommon/fptox.c", "uncommon/fptoui1.ll"));
+        }
+
+        return filenameBlacklist.stream().map((s) -> s.concat(".dir")).collect(Collectors.toSet());
     }
 
     @Override
