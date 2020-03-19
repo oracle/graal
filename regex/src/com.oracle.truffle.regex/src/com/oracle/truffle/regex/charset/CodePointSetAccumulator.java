@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,94 +38,73 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.automaton;
+package com.oracle.truffle.regex.charset;
 
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import java.util.Iterator;
 
-import java.util.PrimitiveIterator;
+import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 
-public class StateSetBackingBitSet implements StateSetBackingSet {
+public class CodePointSetAccumulator implements Iterable<Range> {
 
-    private final CompilationFinalBitSet bitSet;
+    private IntRangesBuffer acc = new IntRangesBuffer();
+    private IntRangesBuffer tmp;
 
-    public StateSetBackingBitSet(int stateIndexSize) {
-        bitSet = new CompilationFinalBitSet(stateIndexSize);
+    public CodePointSetAccumulator() {
     }
 
-    private StateSetBackingBitSet(StateSetBackingBitSet copy) {
-        bitSet = copy.bitSet.copy();
+    public IntRangesBuffer get() {
+        return acc;
     }
 
-    @Override
-    public StateSetBackingSet copy() {
-        return new StateSetBackingBitSet(this);
-    }
-
-    @Override
-    public boolean contains(int id) {
-        return bitSet.get(id);
-    }
-
-    @Override
-    public boolean add(int id) {
-        if (bitSet.get(id)) {
-            return false;
+    private IntRangesBuffer getTmp() {
+        if (tmp == null) {
+            tmp = new IntRangesBuffer();
         }
-        bitSet.set(id);
-        return true;
+        return tmp;
     }
 
-    @Override
-    public void addBatch(int id) {
-        bitSet.set(id);
+    public void addRange(int lo, int hi) {
+        acc.addRange(lo, hi);
     }
 
-    @Override
-    public void addBatchFinish() {
+    public void appendRange(Range r) {
+        appendRange(r.lo, r.hi);
     }
 
-    @Override
-    public void replace(int oldId, int newId) {
-        bitSet.clear(oldId);
-        bitSet.set(newId);
+    public void appendRange(int lo, int hi) {
+        acc.appendRange(lo, hi);
     }
 
-    @Override
-    public boolean remove(int id) {
-        if (bitSet.get(id)) {
-            bitSet.clear(id);
-            return true;
-        }
-        return false;
+    public void addSet(CodePointSet set) {
+        IntRangesBuffer t = getTmp();
+        tmp = acc;
+        acc = t;
+        SortedListOfRanges.union(tmp, set, acc);
     }
 
-    @Override
     public void clear() {
-        bitSet.clear();
+        acc.clear();
+    }
+
+    public boolean isEmpty() {
+        return acc.isEmpty();
+    }
+
+    public boolean matchesSingleChar() {
+        return acc.matchesSingleChar();
+    }
+
+    public void copyTo(CodePointSetAccumulator other) {
+        other.clear();
+        acc.appendRangesTo(other.acc, 0, acc.size());
+    }
+
+    public CodePointSet toCodePointSet() {
+        return CodePointSet.create(acc);
     }
 
     @Override
-    public boolean isDisjoint(StateSetBackingSet other) {
-        return bitSet.isDisjoint(((StateSetBackingBitSet) other).bitSet);
-    }
-
-    @Override
-    public boolean contains(StateSetBackingSet other) {
-        return bitSet.contains(((StateSetBackingBitSet) other).bitSet);
-    }
-
-    @Override
-    public PrimitiveIterator.OfInt iterator() {
-        return bitSet.iterator();
-    }
-
-    @Override
-    public int hashCode() {
-        return bitSet.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return this == obj || obj instanceof StateSetBackingBitSet && bitSet.equals(((StateSetBackingBitSet) obj).bitSet);
+    public Iterator<Range> iterator() {
+        return acc.rangesIterator();
     }
 }

@@ -54,6 +54,7 @@ import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -62,7 +63,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 final class ASTSuccessor implements JsonConvertible {
 
     private ASTTransition initialTransition;
-    private ArrayList<TransitionBuilder<Term, ASTTransition>> mergedStates = new ArrayList<>();
+    private ArrayList<TransitionBuilder<RegexAST, Term, ASTTransition>> mergedStates = new ArrayList<>();
     ObjectArrayBuffer<ASTTransition> mergedTransitions;
     private boolean lookAroundsMerged = false;
     private List<ASTStep> lookAheads = Collections.emptyList();
@@ -106,7 +107,7 @@ final class ASTSuccessor implements JsonConvertible {
         lookBehinds.addAll(addLookBehinds);
     }
 
-    public ArrayList<TransitionBuilder<Term, ASTTransition>> getMergedStates(ASTTransitionCanonicalizer canonicalizer, CompilationBuffer compilationBuffer) {
+    public ArrayList<TransitionBuilder<RegexAST, Term, ASTTransition>> getMergedStates(ASTTransitionCanonicalizer canonicalizer, CompilationBuffer compilationBuffer) {
         if (!lookAroundsMerged) {
             mergeLookArounds(canonicalizer, compilationBuffer);
             lookAroundsMerged = true;
@@ -127,31 +128,31 @@ final class ASTSuccessor implements JsonConvertible {
                 canonicalizer.addArgument(lb.getInitialTransition(), intersection);
             }
         }
-        TransitionBuilder<Term, ASTTransition>[] mergedLookBehinds = canonicalizer.run(compilationBuffer);
+        TransitionBuilder<RegexAST, Term, ASTTransition>[] mergedLookBehinds = canonicalizer.run(compilationBuffer);
         Collections.addAll(mergedStates, mergedLookBehinds);
-        ArrayList<TransitionBuilder<Term, ASTTransition>> newMergedStates = new ArrayList<>();
+        ArrayList<TransitionBuilder<RegexAST, Term, ASTTransition>> newMergedStates = new ArrayList<>();
         for (ASTStep lookAhead : lookAheads) {
-            for (TransitionBuilder<Term, ASTTransition> state : mergedStates) {
+            for (TransitionBuilder<RegexAST, Term, ASTTransition> state : mergedStates) {
                 addAllIntersecting(canonicalizer, state, lookAhead, newMergedStates, compilationBuffer);
             }
-            ArrayList<TransitionBuilder<Term, ASTTransition>> tmp = mergedStates;
+            ArrayList<TransitionBuilder<RegexAST, Term, ASTTransition>> tmp = mergedStates;
             mergedStates = newMergedStates;
             newMergedStates = tmp;
             newMergedStates.clear();
         }
     }
 
-    private void addAllIntersecting(ASTTransitionCanonicalizer canonicalizer, TransitionBuilder<Term, ASTTransition> state, ASTStep lookAround,
-                    ArrayList<TransitionBuilder<Term, ASTTransition>> result, CompilationBuffer compilationBuffer) {
+    private void addAllIntersecting(ASTTransitionCanonicalizer canonicalizer, TransitionBuilder<RegexAST, Term, ASTTransition> state, ASTStep lookAround,
+                    ArrayList<TransitionBuilder<RegexAST, Term, ASTTransition>> result, CompilationBuffer compilationBuffer) {
         for (ASTSuccessor successor : lookAround.getSuccessors()) {
-            for (TransitionBuilder<Term, ASTTransition> lookAroundState : successor.getMergedStates(canonicalizer, compilationBuffer)) {
+            for (TransitionBuilder<RegexAST, Term, ASTTransition> lookAroundState : successor.getMergedStates(canonicalizer, compilationBuffer)) {
                 CodePointSet intersection = state.getMatcherBuilder().createIntersection(lookAroundState.getMatcherBuilder(), compilationBuffer);
                 if (intersection.matchesSomething()) {
                     if (mergedTransitions == null) {
                         mergedTransitions = new ObjectArrayBuffer<>();
                     }
                     mergedTransitions.clear();
-                    StateSet<Term> mergedStateSet = state.getTransitionSet().getTargetStateSet().copy();
+                    StateSet<RegexAST, Term> mergedStateSet = state.getTransitionSet().getTargetStateSet().copy();
                     mergedTransitions.addAll(state.getTransitionSet().getTransitions());
                     for (int i = 0; i < lookAroundState.getTransitionSet().size(); i++) {
                         ASTTransition t = lookAroundState.getTransitionSet().getTransition(i);

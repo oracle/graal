@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,12 +110,12 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
      * immutable equivalent.
      */
     @SuppressWarnings("unchecked")
-    default <T extends ImmutableSortedListOfRanges> T createIntersection(T o, RangesBuffer target) {
-        target.clear();
+    default <T extends ImmutableSortedListOfRanges> T createIntersection(T o, RangesBuffer tmp) {
+        tmp.clear();
         for (int ia = 0; ia < size(); ia++) {
             int search = o.binarySearch(getLo(ia));
             if (o.binarySearchExactMatch(search, this, ia)) {
-                addRangeTo(target, ia);
+                addRangeTo(tmp, ia);
                 continue;
             }
             int firstIntersection = o.binarySearchGetFirstIntersecting(search, this, ia);
@@ -124,16 +124,16 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
                     break;
                 }
                 assert intersects(ia, o, ib);
-                target.appendRange(Math.max(getLo(ia), o.getLo(ib)), Math.min(getHi(ia), o.getHi(ib)));
+                tmp.appendRange(Math.max(getLo(ia), o.getLo(ib)), Math.min(getHi(ia), o.getHi(ib)));
             }
         }
-        if (equalsBuffer(target)) {
+        if (equalsBuffer(tmp)) {
             return (T) this;
         }
-        if (o.equalsBuffer(target)) {
+        if (o.equalsBuffer(tmp)) {
             return o;
         }
-        return create(target);
+        return create(tmp);
     }
 
     /**

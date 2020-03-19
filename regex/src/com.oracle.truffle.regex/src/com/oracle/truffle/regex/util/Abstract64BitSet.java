@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,62 +38,92 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nodesplitter;
+package com.oracle.truffle.regex.util;
 
-import com.oracle.truffle.regex.tregex.automaton.StateIndex;
+import java.util.PrimitiveIterator;
 
-import java.util.ArrayList;
+public final class Abstract64BitSet {
 
-/**
- * An abstract graph wrapper used by {@link DFANodeSplit}.
- */
-final class Graph implements StateIndex<GraphNode> {
-
-    private GraphNode start;
-    private final ArrayList<GraphNode> nodes;
-
-    Graph(int initialCapacity) {
-        this.nodes = new ArrayList<>(initialCapacity);
+    private static long toBit(int b) {
+        return 1L << b;
     }
 
-    public GraphNode getStart() {
-        return start;
+    public static boolean isEmpty(long bs) {
+        return bs == 0;
     }
 
-    public void setStart(GraphNode start) {
-        this.start = start;
+    public static boolean isFull(long bs) {
+        return bs == ~0L;
     }
 
-    public ArrayList<GraphNode> getNodes() {
-        return nodes;
+    public static int size(long bs) {
+        return Long.bitCount(bs);
     }
 
-    public GraphNode getNode(int id) {
-        return nodes.get(id);
+    public static boolean get(long bs, int b) {
+        return b < 64 && (bs & toBit(b)) != 0;
     }
 
-    public void addGraphNode(GraphNode graphNode) {
-        assert graphNode.getId() == nodes.size();
-        nodes.add(graphNode);
-        assert graphNode == nodes.get(graphNode.getId());
+    public static long set(long bs, int b) {
+        assert b < 64;
+        return bs | toBit(b);
     }
 
-    public int size() {
-        return nodes.size();
+    public static long clear(long bs, int b) {
+        assert b < 64;
+        return bs & ~toBit(b);
     }
 
-    @Override
-    public int getNumberOfStates() {
-        return size();
+    public static boolean intersects(long bs1, long bs2) {
+        return !isDisjoint(bs1, bs2);
     }
 
-    @Override
-    public int getId(GraphNode state) {
-        return state.getId();
+    public static boolean isDisjoint(long bs1, long bs2) {
+        return (bs1 & bs2) == 0;
     }
 
-    @Override
-    public GraphNode getState(int id) {
-        return getNode(id);
+    public static boolean contains(long bs1, long bs2) {
+        return (bs1 & bs2) == bs2;
+    }
+
+    /**
+     * Compatible with {@link BitSets#hashCode(long[])}.
+     */
+    public static int hashCode(long bs) {
+        long h = 1234 ^ bs;
+        return (int) ((h >> 32) ^ h);
+    }
+
+    public static boolean equals(long bs1, long bs2) {
+        return bs1 == bs2;
+    }
+
+    public static PrimitiveIterator.OfInt iterator(long bs) {
+        return new Abstract64BitSetIterator(bs);
+    }
+
+    private static final class Abstract64BitSetIterator implements PrimitiveIterator.OfInt {
+
+        private long bs;
+        private int i = -1;
+
+        Abstract64BitSetIterator(long bs) {
+            this.bs = bs;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return bs != 0;
+        }
+
+        @Override
+        public int nextInt() {
+            assert hasNext();
+            int trailingZeros = Long.numberOfTrailingZeros(bs);
+            bs >>>= trailingZeros;
+            bs >>>= 1;
+            i += trailingZeros + 1;
+            return i;
+        }
     }
 }

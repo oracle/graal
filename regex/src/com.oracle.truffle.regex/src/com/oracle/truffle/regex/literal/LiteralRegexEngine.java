@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.Equals;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.IndexOfString;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.RegionMatches;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.StartsWith;
+import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 
@@ -75,7 +76,8 @@ public final class LiteralRegexEngine {
          * Bail out if the search string would be huge. This can occur with expressions like
          * /a{1000000}/.
          */
-        if (ast.isLiteralString() && (!ast.getProperties().hasQuantifiers() || ast.getRoot().getMinPath() <= Short.MAX_VALUE)) {
+        RegexProperties props = ast.getProperties();
+        if (ast.isLiteralString() && props.isFixedCodePointWidthUTF16() && props.isFixedCodePointWidthUTF8() && (!props.hasQuantifiers() || ast.getRoot().getMinPath() <= Short.MAX_VALUE)) {
             return createLiteralNode(language, ast);
         } else {
             return null;

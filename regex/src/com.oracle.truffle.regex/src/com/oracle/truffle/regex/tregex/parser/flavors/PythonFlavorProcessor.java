@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,10 +55,9 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.charset.RangesAccumulator;
-import com.oracle.truffle.regex.charset.SortedListOfRanges;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
+import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
-import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
@@ -133,7 +132,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // the definition of the White_Space property, do the set subtraction and then list the
         // contents of the resulting set.
         CodePointSet unicodeSpaces = UnicodeProperties.getProperty("White_Space");
-        CodePointSet spaces = unicodeSpaces.union(CodePointSet.create('\u001c', '\u001f'));
+        CodePointSet spaces = unicodeSpaces.union(CodePointSet.createNoDedup('\u001c', '\u001f'));
         CodePointSet nonSpaces = spaces.createInverse();
         UNICODE_CHAR_CLASS_SETS.put('s', spaces);
         UNICODE_CHAR_CLASS_SETS.put('S', nonSpaces);
@@ -161,9 +160,9 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // Similarly as for \S, we will not be able to produce a replacement string for \W.
         // We will need to construct the set ourselves.
         CodePointSet alpha = UnicodeProperties.getProperty("General_Category=Letter");
-        CodePointSet numericExtras = CodePointSet.create(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
+        CodePointSet numericExtras = CodePointSet.createNoDedup(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
         CodePointSet numeric = UnicodeProperties.getProperty("General_Category=Number").union(numericExtras);
-        CodePointSet wordChars = alpha.union(numeric).union(CodePointSet.create('_', '_'));
+        CodePointSet wordChars = alpha.union(numeric).union(CodePointSet.create('_'));
         CodePointSet nonWordChars = wordChars.createInverse();
         UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
         UNICODE_CHAR_CLASS_SETS.put('W', nonWordChars);
@@ -237,7 +236,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * The (slightly modified) version of the XID_Start Unicode property used to check names of
      * capture groups.
      */
-    private static final CodePointSet XID_START = UnicodeProperties.getProperty("XID_Start").union(CodePointSet.create('_', '_'));
+    private static final CodePointSet XID_START = UnicodeProperties.getProperty("XID_Start").union(CodePointSet.create('_'));
     /**
      * The XID_Continue Unicode character property.
      */
@@ -311,7 +310,8 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      */
     private TermCategory lastTerm;
 
-    private final RangesAccumulator<IntRangesBuffer> curCharClass = new RangesAccumulator<>(new IntRangesBuffer());
+    private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
+    private final CodePointSetAccumulator charClassCaseFoldTmp = new CodePointSetAccumulator();
 
     @TruffleBoundary
     public PythonFlavorProcessor(RegexSource source, PythonREMode mode) {
@@ -527,7 +527,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                 curCharClass.clear();
                 curCharClass.addRange(codepoint, codepoint);
                 caseFold();
-                if (curCharClass.get().matchesSingleChar()) {
+                if (curCharClass.matchesSingleChar()) {
                     emitCharNoCasing(codepoint, inCharClass);
                 } else if (inCharClass) {
                     emitCharSetNoCasing();
@@ -566,21 +566,21 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     }
 
     private void emitCharSetNoCasing() {
-        emitCharSetNoCasing(curCharClass.get());
+        emitCharSetNoCasing(curCharClass);
     }
 
     /**
      * Like {@link #emitCharSet}, but it does not do any case-folding.
      */
-    private void emitCharSetNoCasing(SortedListOfRanges charSet) {
+    private void emitCharSetNoCasing(Iterable<Range> charSet) {
         if (!silent) {
-            for (int i = 0; i < charSet.size(); i++) {
-                if (charSet.isSingle(i)) {
-                    emitCharNoCasing(charSet.getLo(i), true);
+            for (Range r : charSet) {
+                if (r.isSingle()) {
+                    emitCharNoCasing(r.lo, true);
                 } else {
-                    emitCharNoCasing(charSet.getLo(i), true);
+                    emitCharNoCasing(r.lo, true);
                     emitSnippet("-");
-                    emitCharNoCasing(charSet.getHi(i), true);
+                    emitCharNoCasing(r.hi, true);
                 }
             }
         }
@@ -598,7 +598,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             bailOut("locale-specific case folding is not supported");
         }
         CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
-        CaseFoldTable.applyCaseFold(curCharClass, caseFolding);
+        CaseFoldTable.applyCaseFold(curCharClass, charClassCaseFoldTmp, caseFolding);
     }
 
     /// Error reporting

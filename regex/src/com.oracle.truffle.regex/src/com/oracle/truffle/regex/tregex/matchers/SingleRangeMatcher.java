@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,15 +42,15 @@ package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.regex.charset.SortedListOfRanges;
+import com.oracle.truffle.regex.charset.Range;
 
 /**
  * Matcher for a single character range.
  */
 public abstract class SingleRangeMatcher extends InvertibleCharMatcher {
 
-    private final char lo;
-    private final char hi;
+    private final int lo;
+    private final int hi;
 
     /**
      * Constructs a new {@link SingleRangeMatcher}.
@@ -59,27 +59,27 @@ public abstract class SingleRangeMatcher extends InvertibleCharMatcher {
      * @param lo inclusive lower bound of range to match.
      * @param hi inclusive upper bound of range to match.
      */
-    SingleRangeMatcher(boolean invert, char lo, char hi) {
+    SingleRangeMatcher(boolean invert, int lo, int hi) {
         super(invert);
         this.lo = lo;
         this.hi = hi;
     }
 
-    public static SingleRangeMatcher create(boolean invert, char lo, char hi) {
+    public static SingleRangeMatcher create(boolean invert, int lo, int hi) {
         return SingleRangeMatcherNodeGen.create(invert, lo, hi);
     }
 
     /**
      * @return inclusive lower bound of range to match.
      */
-    public char getLo() {
+    public int getLo() {
         return lo;
     }
 
     /**
      * @return inclusive upper bound of range to match.
      */
-    public char getHi() {
+    public int getHi() {
         return hi;
     }
 
@@ -96,6 +96,6 @@ public abstract class SingleRangeMatcher extends InvertibleCharMatcher {
     @Override
     @TruffleBoundary
     public String toString() {
-        return modifiersToString() + SortedListOfRanges.rangeToString(lo, hi);
+        return modifiersToString() + Range.toString(lo, hi);
     }
 }

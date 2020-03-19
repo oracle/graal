@@ -44,7 +44,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.charset.ImmutableSortedListOfRanges;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
@@ -59,23 +58,23 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  * @see TransitionBuilder
  * @see TransitionSet
  */
-public abstract class StateTransitionCanonicalizer<S extends AbstractState<S, T>, T extends AbstractTransition<S, T>, TB extends TransitionBuilder<S, T>> {
+public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super S>, S extends AbstractState<S, T>, T extends AbstractTransition<S, T>, TB extends TransitionBuilder<SI, S, T>> {
 
     private final ObjectArrayBuffer<T> argTransitions = new ObjectArrayBuffer<>();
     private final ObjectArrayBuffer<CodePointSet> argCharSets = new ObjectArrayBuffer<>();
 
     private static final int INITIAL_CAPACITY = 8;
     @SuppressWarnings("unchecked") private ObjectArrayBuffer<T>[] transitionLists = new ObjectArrayBuffer[INITIAL_CAPACITY];
-    @SuppressWarnings("unchecked") private StateSet<S>[] targetStateSets = new StateSet[INITIAL_CAPACITY];
+    @SuppressWarnings("unchecked") private StateSet<SI, S>[] targetStateSets = new StateSet[INITIAL_CAPACITY];
     private CodePointSet[] matcherBuilders = new CodePointSet[INITIAL_CAPACITY];
     private CompilationFinalBitSet leadsToFinalState = new CompilationFinalBitSet(INITIAL_CAPACITY);
     private int resultLength = 0;
 
-    private final StateIndex<? super S> stateIndex;
+    private final SI stateIndex;
     private final boolean forward;
     private final boolean prioritySensitive;
 
-    public StateTransitionCanonicalizer(StateIndex<? super S> stateIndex, boolean forward, boolean prioritySensitive) {
+    public StateTransitionCanonicalizer(SI stateIndex, boolean forward, boolean prioritySensitive) {
         this.stateIndex = stateIndex;
         this.forward = forward;
         this.prioritySensitive = prioritySensitive;
@@ -178,7 +177,7 @@ public abstract class StateTransitionCanonicalizer<S extends AbstractState<S, T>
             CodePointSet argCharSet = argCharSets.get(i);
             int currentResultLength = resultLength;
             for (int j = 0; j < currentResultLength; j++) {
-                ImmutableSortedListOfRanges.IntersectAndSubtractResult<CodePointSet> result = matcherBuilders[j].intersectAndSubtract(argCharSet, compilationBuffer);
+                CodePointSet.IntersectAndSubtractResult<CodePointSet> result = matcherBuilders[j].intersectAndSubtract(argCharSet, compilationBuffer);
                 CodePointSet rSubtractedMatcher = result.subtractedA;
                 CodePointSet eSubtractedMatcher = result.subtractedB;
                 CodePointSet intersection = result.intersection;
@@ -255,8 +254,8 @@ public abstract class StateTransitionCanonicalizer<S extends AbstractState<S, T>
             return resultBuffer1.toArray(createResultArray(resultBuffer1.length()));
         }
         resultBuffer1.sort((TB o1, TB o2) -> {
-            TransitionSet<S, T> t1 = o1.getTransitionSet();
-            TransitionSet<S, T> t2 = o2.getTransitionSet();
+            TransitionSet<SI, S, T> t1 = o1.getTransitionSet();
+            TransitionSet<SI, S, T> t2 = o2.getTransitionSet();
             int cmp = t1.size() - t2.size();
             if (cmp != 0) {
                 return cmp;
@@ -299,7 +298,7 @@ public abstract class StateTransitionCanonicalizer<S extends AbstractState<S, T>
         return resultBuffer2.toArray(createResultArray(resultBuffer2.length()));
     }
 
-    protected abstract TB createTransitionBuilder(T[] transitions, StateSet<S> targetStateSet, CodePointSet matcherBuilder);
+    protected abstract TB createTransitionBuilder(T[] transitions, StateSet<SI, S> targetStateSet, CodePointSet matcherBuilder);
 
     /**
      * Returns {@code true} if two DFA transitions are allowed to be merged into one.

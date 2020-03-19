@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,10 +44,11 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.StateTransitionCanonicalizer;
 import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
+import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 
-public final class DFATransitionCanonicalizer extends StateTransitionCanonicalizer<NFAState, NFAStateTransition, DFAStateTransitionBuilder> {
+public final class DFATransitionCanonicalizer extends StateTransitionCanonicalizer<NFA, NFAState, NFAStateTransition, DFAStateTransitionBuilder> {
 
     private final DFAGenerator dfaGen;
 
@@ -58,8 +59,8 @@ public final class DFATransitionCanonicalizer extends StateTransitionCanonicaliz
 
     @Override
     protected boolean canMerge(DFAStateTransitionBuilder a, DFAStateTransitionBuilder b) {
-        TransitionSet<NFAState, NFAStateTransition> tsA = a.getTransitionSet();
-        TransitionSet<NFAState, NFAStateTransition> tsB = b.getTransitionSet();
+        TransitionSet<NFA, NFAState, NFAStateTransition> tsA = a.getTransitionSet();
+        TransitionSet<NFA, NFAState, NFAStateTransition> tsB = b.getTransitionSet();
         if (isPrioritySensitive()) {
             if (tsA.size() != tsB.size()) {
                 return false;
@@ -82,7 +83,7 @@ public final class DFATransitionCanonicalizer extends StateTransitionCanonicaliz
     }
 
     @Override
-    protected DFAStateTransitionBuilder createTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFAState> targetStateSet, CodePointSet matcherBuilder) {
+    protected DFAStateTransitionBuilder createTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFA, NFAState> targetStateSet, CodePointSet matcherBuilder) {
         return dfaGen.isGenericCG() ? new DFACaptureGroupTransitionBuilder(transitions, targetStateSet, matcherBuilder, dfaGen)
                         : new DFAStateTransitionBuilder(transitions, targetStateSet, matcherBuilder);
     }

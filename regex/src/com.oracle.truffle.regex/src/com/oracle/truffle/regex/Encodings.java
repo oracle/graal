@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,44 +38,65 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.charset;
+package com.oracle.truffle.regex;
 
-public class RangesAccumulator<T extends RangesBuffer> {
+public final class Encodings {
 
-    private T acc;
-    private T tmp;
+    public static final Encoding UTF_8 = new Encoding.UTF8();
+    public static final Encoding UTF_16 = new Encoding.UTF16();
+    public static final Encoding UTF_32 = new Encoding.UTF32();
 
-    public RangesAccumulator(T acc) {
-        this.acc = acc;
-    }
+    public abstract static class Encoding {
 
-    public T get() {
-        return acc;
-    }
+        public abstract String getName();
 
-    public T getTmp() {
-        if (tmp == null) {
-            tmp = acc.create();
+        public abstract int getEncodedSize(int codepoint);
+
+        private static final class UTF32 extends Encoding {
+
+            @Override
+            public String getName() {
+                return "UTF-32";
+            }
+
+            @Override
+            public int getEncodedSize(int codepoint) {
+                return 1;
+            }
         }
-        return tmp;
-    }
 
-    public void addRange(int lo, int hi) {
-        acc.addRange(lo, hi);
-    }
+        private static final class UTF16 extends Encoding {
 
-    public void appendRange(int lo, int hi) {
-        acc.appendRange(lo, hi);
-    }
+            @Override
+            public String getName() {
+                return "UTF-16";
+            }
 
-    public void addSet(SortedListOfRanges set) {
-        T t = getTmp();
-        tmp = acc;
-        acc = t;
-        SortedListOfRanges.union(tmp, set, acc);
-    }
+            @Override
+            public int getEncodedSize(int codepoint) {
+                return codepoint < 0x10000 ? 1 : 2;
+            }
+        }
 
-    public void clear() {
-        acc.clear();
+        private static final class UTF8 extends Encoding {
+
+            @Override
+            public String getName() {
+                return "UTF-8";
+            }
+
+            @Override
+            public int getEncodedSize(int codepoint) {
+                if (codepoint < 0x80) {
+                    return 1;
+                } else if (codepoint < 0x800) {
+                    return 2;
+                } else if (codepoint < 0x10000) {
+                    return 3;
+                } else {
+                    return 4;
+                }
+            }
+        }
     }
 }

@@ -52,7 +52,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 /**
  * Represents a transition of a {@link PureNFA}.
  */
-public class PureNFATransition implements AbstractTransition<PureNFAState, PureNFATransition> {
+public final class PureNFATransition implements AbstractTransition<PureNFAState, PureNFATransition> {
 
     private final int id;
     private final PureNFAState source;

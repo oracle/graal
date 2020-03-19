@@ -45,8 +45,8 @@
 ;; https://github.com/boot-clj/boot#install or simply evaluate the code below in
 ;; any Clojure REPL and then call the `-main` function.
 
-;; This script assumes that the files NonUnicodeFoldTable.txt and
-;; UnicodeFoldTable.txt are in the current working directory.
+;; This script assumes that the current working directory contains a folder "dat"
+;; with the files NonUnicodeFoldTable.txt and UnicodeFoldTable.txt.
 
 (require '[clojure.set :as set]
          '[clojure.string :as str])
@@ -307,9 +307,9 @@
         item-sep    ",\n"
         footer      "};\n"
         show-class  (fn [class]
-                      (let [range-sep      ", "
-                            show-range     (fn [range]
-                                               (str (show-hex (:lo range)) ", " (show-hex (:hi range)) ))]
+                      (let [range-sep        ", "
+                            show-range       (fn [range]
+                                                 (str (show-hex6 (:lo range)) ", " (show-hex6 (:hi range)) ))]
                         (str "rangeSet(" (apply str (interpose ", " (map show-range class))) ")")))
         body        (apply str (interpose item-sep (map #(str item-prefix (show-class %)) classes)))]
     (str header body footer)))
@@ -355,9 +355,9 @@
   NB: The CHARACTER_SET_TABLE is shared among the two case fold tables because
   there is significant overlap between the two."
   []
-  (let [non-unicode-relation    (load-relation "NonUnicodeFoldTable.txt")
-        unicode-relation        (load-relation "UnicodeFoldTable.txt")
-        python-unicode-relation (load-relation "PythonFoldTable.txt")
+  (let [non-unicode-relation    (load-relation "dat/NonUnicodeFoldTable.txt")
+        unicode-relation        (load-relation "dat/UnicodeFoldTable.txt")
+        python-unicode-relation (load-relation "dat/PythonFoldTable.txt")
         num-classes             (atom 0)
         class-ids               (atom {})
         non-unicode-entries     (identify-classes (generate-entries non-unicode-relation) num-classes class-ids)

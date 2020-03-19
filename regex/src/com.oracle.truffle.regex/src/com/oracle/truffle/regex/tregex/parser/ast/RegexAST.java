@@ -71,7 +71,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
-public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
+public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
 
     /**
      * Original pattern as seen by the parser.
@@ -97,8 +97,8 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     private final LookAroundIndex lookArounds = new LookAroundIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
-    private StateSet<PositionAssertion> nfaAnchoredInitialStates;
-    private StateSet<RegexASTNode> hardPrefixNodes;
+    private StateSet<RegexAST, PositionAssertion> nfaAnchoredInitialStates;
+    private StateSet<RegexAST, RegexASTNode> hardPrefixNodes;
     private final EconomicMap<GroupBoundaries, GroupBoundaries> groupBoundariesDeduplicationMap = EconomicMap.create();
 
     private int negativeLookaheads = 0;
@@ -246,11 +246,11 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return reachableDollars;
     }
 
-    public StateSet<PositionAssertion> getNfaAnchoredInitialStates() {
+    public StateSet<RegexAST, PositionAssertion> getNfaAnchoredInitialStates() {
         return nfaAnchoredInitialStates;
     }
 
-    public StateSet<RegexASTNode> getHardPrefixNodes() {
+    public StateSet<RegexAST, RegexASTNode> getHardPrefixNodes() {
         return hardPrefixNodes;
     }
 
@@ -356,7 +356,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     public void invertNegativeLookAround(LookAroundAssertion assertion) {
         assert assertion.isNegated();
         assertion.setNegated(false);
-        if (assertion instanceof LookAheadAssertion) {
+        if (assertion.isLookAheadAssertion()) {
             assert negativeLookaheads > 0;
             if (--negativeLookaheads == 0) {
                 properties.setNegativeLookAheadAssertions(false);
