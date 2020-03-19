@@ -120,6 +120,20 @@ suite = {
         },
       },
     },
+    # This is a dummy library for amd64 support.
+    "AMD64_SUPPORT" : {
+      "os_arch" : {
+        "<others>" : {
+          "amd64" : {
+            "path": "tests/support.txt",
+            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+          },
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
   },
 
   "projects" : {
@@ -719,6 +733,24 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.bitcode.amd64.native" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ["O0"],
+      "buildRef" : True,
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CFLAGS" : "-O0",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "buildDependencies" : [
+        "AMD64_SUPPORT",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.sulongavx.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
@@ -1198,6 +1230,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.bitcode.amd64.native/*",
         ],
       },
       "license" : "BSD-new",
