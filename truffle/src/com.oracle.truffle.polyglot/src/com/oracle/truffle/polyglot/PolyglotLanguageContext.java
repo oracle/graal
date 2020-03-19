@@ -95,12 +95,12 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
      */
     final class Lazy {
 
-        @CompilationFinal PolyglotSourceCache sourceCache;
+        final PolyglotSourceCache sourceCache;
         final Set<PolyglotThread> activePolyglotThreads;
         final Object polyglotGuestBindings;
         final Map<Class<?>, PolyglotValue> valueCache;
         final Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
-        @CompilationFinal PolyglotLanguageInstance languageInstance;
+        final PolyglotLanguageInstance languageInstance;
         final Map<String, LanguageInfo> accessibleInternalLanguages;
         final Map<String, LanguageInfo> accessiblePublicLanguages;
 
@@ -499,10 +499,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void close() {
         assert Thread.holdsLock(context);
-        if (lazy != null) {
-            lazy.languageInstance = null;
-            lazy.sourceCache = null;
-        }
+        assert !context.isActive();
+        lazy = null;
         env = null;
     }
 
