@@ -1748,21 +1748,20 @@ public abstract class ObjectFile {
     private DebugContext debugContext = null;
 
     /**
-     * Allows a function to be executed with a specific debug context in a named subscope bound to
-     * the object file and accessible to code invoked during the lifetime of the function. Invoked
+     * Allows a task to be executed with a debug context in a named subscope bound to the
+     * object file and accessible to code executed during the lifetime of the task. Invoked
      * code may obtain access to the debug context using method {@link #debugContext}.
-     * @param context a context to be bound toin the object file for the duration of the function
+     * @param context a context to be bound to the object file for the duration of the task
      *        execution.
-     * @param scopeName a name to be used to define a subscope current while the function is being
+     * @param scopeName a name to be used to define a subscope current while the task is being
      *        executed.
-     * @param t a value to be injected into the function that performs the action.
-     * @param function a function to be executed while the context is bound to the object file.
+     * @param task a task to be executed while the context is bound to the object file.
      */
     @SuppressWarnings("try")
-    public <T, R> R withDebugContext(DebugContext context,  String scopeName, T t, Function<T, R> function) {
+    public void withDebugContext(DebugContext context,  String scopeName, Runnable task) {
         try (DebugContext.Scope s = context.scope(scopeName)) {
             this.debugContext = context;
-            return function.apply(t);
+            task.run();
         } catch (Throwable e) {
             throw debugContext.handle(e);
         } finally {
