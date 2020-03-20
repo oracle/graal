@@ -88,7 +88,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
          * Other info formats use their own format-specific prefix.
          */
         assert getSectionName().startsWith(".debug");
-        return "dwarf." + getSectionName();
+        return "dwarf" + getSectionName();
     }
 
     public void enableLog(DebugContext context, int pos) {
