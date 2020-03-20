@@ -44,6 +44,7 @@ import com.oracle.truffle.api.Option;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionType;
 
 @Option.Group("wasm")
 public class WasmOptions {
@@ -55,4 +56,15 @@ public class WasmOptions {
 
     @Option(help = "The stack size in kilobytes to use during async parsing, or zero to use defaults.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
     public static final OptionKey<Integer> AsyncParsingStackSize = new OptionKey<>(0);
+
+    public enum StoreConstantsPolicyEnum {
+        ALL,
+        LARGE_ONLY,
+        NONE
+    }
+
+    public static OptionType<StoreConstantsPolicyEnum> StoreConstantsPolicyOptionType = new OptionType<>("StoreConstantsPolicy", StoreConstantsPolicyEnum::valueOf);
+
+    @Option(help = "Whenever to store the constants in a pool or not.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL)//
+    public static final OptionKey<StoreConstantsPolicyEnum> StoreConstantsPolicy = new OptionKey<>(StoreConstantsPolicyEnum.NONE, StoreConstantsPolicyOptionType);
 }

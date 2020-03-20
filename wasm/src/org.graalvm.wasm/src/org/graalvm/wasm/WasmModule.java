@@ -69,12 +69,14 @@ public final class WasmModule implements TruffleObject {
     private final SymbolTable symbolTable;
     @CompilationFinal(dimensions = 1) private final byte[] data;
     private boolean isLinked;
+    public final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy;
 
-    public WasmModule(String name, byte[] data) {
+    public WasmModule(String name, byte[] data, WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy) {
         this.name = name;
         this.symbolTable = new SymbolTable(this);
         this.data = data;
         this.isLinked = false;
+        this.storeConstantsPolicy = storeConstantsPolicy;
     }
 
     public SymbolTable symbolTable() {
