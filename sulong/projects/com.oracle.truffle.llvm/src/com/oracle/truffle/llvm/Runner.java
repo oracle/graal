@@ -521,8 +521,9 @@ final class Runner {
 
             if (nativeFunction != null) {
                 functionDescriptor.getFunctionCode().define(nativeFunction.getLibrary(), new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
+                return functionDescriptor;
             }
-            return functionDescriptor;
+            return null;
         }
 
         @Override
@@ -1368,7 +1369,8 @@ final class Runner {
                     LLVMPointer pointer = allocSymbol.allocate(context);
                     // Currently native functions/globals that are not in the nfi context are
                     // not written into the symbol table. We will try another lookup when
-                    // someone tries to execute the function. The function will be taken from the scope.
+                    // someone tries to execute the function. The function will be taken from the
+                    // scope.
                     if (pointer == null) {
                         continue;
                     }
