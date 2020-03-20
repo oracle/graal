@@ -35,6 +35,7 @@ import java.util.List;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
@@ -130,15 +131,22 @@ public final class LLVMParser {
     private void defineGlobal(GlobalVariable global, List<String> importedSymbols) {
         assert !global.isExternal();
         // handle the file scope
-        LLVMGlobal descriptor = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID());
-        descriptor.define(global.getType(), library);
-        runtime.getFileScope().register(descriptor);
+        LLVMGlobal globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID(),
+                        global.getVisibility() == Visibility.HIDDEN);
+        globalSymbol.define(global.getType(), library);
+        runtime.getFileScope().register(globalSymbol);
 
         // handle the global scope
         if (global.isExported()) {
-            LLVMSymbol exportedDescriptor = runtime.getGlobalScope().get(global.getName());
+
+            LLVMSymbol exportedDescriptor = localScope.get(global.getName());
             if (exportedDescriptor == null) {
-                runtime.getGlobalScope().register(descriptor);
+                localScope.register(globalSymbol);
+            }
+
+            exportedDescriptor = runtime.getGlobalScope().get(global.getName());
+            if (exportedDescriptor == null) {
+                runtime.getGlobalScope().register(globalSymbol);
             } else if (exportedDescriptor.isGlobalVariable()) {
                 importedSymbols.add(global.getName());
             } else {
@@ -221,9 +229,9 @@ public final class LLVMParser {
 
     private void defineAlias(String existingName, boolean existingExported, String newName, boolean newExported, List<String> importedSymbols) {
         // handle the file scope
-        LLVMSymbol aliasTarget = runtime.lookupSymbol(existingName, existingExported);
-        LLVMAlias descriptor = new LLVMAlias(library, newName, aliasTarget);
-        runtime.getFileScope().register(descriptor);
+        LLVMSymbol aliasTarget = runtime.lookupSymbolWithExport(existingName, existingExported);
+        LLVMAlias aliasSymbol = new LLVMAlias(library, newName, aliasTarget);
+        runtime.getFileScope().register(aliasSymbol);
 
         if (existingExported && aliasTarget.getLibrary() != library) {
             importedSymbols.add(aliasTarget.getName());
@@ -231,10 +239,16 @@ public final class LLVMParser {
 
         // handle the global scope
         if (newExported) {
-            LLVMSymbol exportedDescriptor = runtime.getGlobalScope().get(newName);
+
+            LLVMSymbol exportedDescriptor = localScope.get(newName);
             if (exportedDescriptor == null) {
-                runtime.getGlobalScope().register(descriptor);
-            } else if (descriptor.isFunction() && exportedDescriptor.isFunction() || descriptor.isGlobalVariable() && exportedDescriptor.isGlobalVariable()) {
+                localScope.register(aliasSymbol);
+            }
+
+            exportedDescriptor = runtime.getGlobalScope().get(newName);
+            if (exportedDescriptor == null) {
+                runtime.getGlobalScope().register(aliasSymbol);
+            } else if (aliasSymbol.isFunction() && exportedDescriptor.isFunction() || aliasSymbol.isGlobalVariable() && exportedDescriptor.isGlobalVariable()) {
                 importedSymbols.add(newName);
             } else {
                 throw new LLVMLinkerException("The alias " + newName + " conflicts with another symbol that has a different type but the same name.");

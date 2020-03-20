@@ -921,6 +921,11 @@ public final class LLVMContext {
         globalsReverseMap.put(target, global);
     }
 
+    @TruffleBoundary
+    public void replaceGlobalReverseMap(LLVMGlobal oldGlobal, LLVMGlobal newGlobal, LLVMPointer target) {
+        globalsReverseMap.replace(target, oldGlobal, newGlobal);
+    }
+
     public void setCleanupNecessary(boolean value) {
         cleanupNecessary = value;
     }

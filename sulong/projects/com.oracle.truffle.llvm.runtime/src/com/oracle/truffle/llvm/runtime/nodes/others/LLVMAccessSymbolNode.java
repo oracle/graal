@@ -67,9 +67,9 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         CompilerAsserts.partialEvaluationConstant(descriptor);
         LLVMSymbol target = ((LLVMAlias) descriptor).getTarget();
-        do {
+        while (target.isAlias()) {
             target = ((LLVMAlias) target).getTarget();
-        } while (target.isAlias());
+        }
         AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(target.getBitcodeID(false));
         int index = target.getSymbolIndex(false);
         return symbols[index].get();
@@ -91,6 +91,6 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
             }
         }
         CompilerDirectives.transferToInterpreter();
-        throw new LLVMLinkerException(this, String.format("External %s %s cannot be found for symbol access.", descriptor.getKind(), descriptor.getName()));
+        throw new LLVMLinkerException(this, String.format("Cannot found symbol access for %s %s", descriptor.getKind(), descriptor.getName()));
     }
 }

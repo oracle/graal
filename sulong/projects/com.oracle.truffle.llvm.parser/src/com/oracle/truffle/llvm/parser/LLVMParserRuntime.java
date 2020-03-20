@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
@@ -82,18 +82,26 @@ public final class LLVMParserRuntime {
         if (symbol != null && symbol.isFunction()) {
             return symbol.asFunction();
         }
-        throw new IllegalStateException("Retrieving unknown function in LLVMParserRuntime: " + name);
+        throw new IllegalStateException("Retrieving unknown function symbol in LLVMParserRuntime: " + name);
     }
 
-    public LLVMGlobal lookupGlobal(String name, boolean preferGlobalScope) {
-        LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
+    public LLVMGlobal lookupGlobal(String name) {
+        LLVMSymbol symbol = fileScope.get(name);
         if (symbol != null && symbol.isGlobalVariable()) {
             return symbol.asGlobalVariable();
         }
-        throw new IllegalStateException("Unknown global: " + name);
+        throw new IllegalStateException("Retrieving unknown global symbol in LLVMParserRuntime: " + name);
     }
 
-    public LLVMSymbol lookupSymbol(String name, boolean preferGlobalScope) {
+    public LLVMSymbol lookupSymbol(String name) {
+        LLVMSymbol symbol = fileScope.get(name);
+        if (symbol != null) {
+            return symbol;
+        }
+        throw new IllegalStateException("Unknown symbol: " + name);
+    }
+
+    public LLVMSymbol lookupSymbolWithExport(String name, boolean preferGlobalScope) {
         LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
         if (symbol != null) {
             return symbol;
