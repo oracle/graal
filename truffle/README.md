@@ -77,14 +77,18 @@ and then it is possible to include the artifacts as dependencies to a `pom.xml`:
 
 ## Contributing
 
-You can contact the Truffle developers at graal-dev@openjdk.java.net mailing
-list. To contribute a change, verify it using
+To contribute a change, verify it using
 
 ```bash
 $ mx gate
 ```
 and start a [pull request](https://help.github.com/articles/using-pull-requests/).
 Detailed info can be found in the [contributing document](CONTRIBUTING.md).
+
+## Community
+
+To reach out to the Truffle community (as well as the wider GraalVM community) consider the information available at https://www.graalvm.org/community/.
+There is a dedicated Truffle channel (`#truffle`) on the GraalVM community slack (https://www.graalvm.org/slack-invitation/).
 
 ## License
 
