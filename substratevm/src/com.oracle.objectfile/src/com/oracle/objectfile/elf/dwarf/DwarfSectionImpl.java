@@ -82,7 +82,13 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     public String debugSectionLogName() {
-        return "DWARF_" + getSectionName().substring(1).toUpperCase();
+        /*
+         * Use prefix dwarf plus the section name (which already includes a dot separator) for the
+         * context key. For example messages for info section will be keyed using dwarf.debug_info.
+         * Other info formats use their own format-specific prefix.
+         */
+        assert getSectionName().startsWith(".debug");
+        return "dwarf." + getSectionName();
     }
 
     public void enableLog(DebugContext context, int pos) {
