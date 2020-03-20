@@ -47,7 +47,7 @@ public class SPARCAllocatorTest extends AllocatorTest {
 
     @Test
     public void test1() {
-        testAllocation("test1snippet", config.threadLocalHandshakes ? 1 : 2, 0, 0);
+        testAllocation("test1snippet", config.useThreadLocalPolling ? 1 : 2, 0, 0);
     }
 
     public static long test1snippet(long x) {
@@ -56,7 +56,7 @@ public class SPARCAllocatorTest extends AllocatorTest {
 
     @Test
     public void test2() {
-        testAllocation("test2snippet", config.threadLocalHandshakes ? 1 : 2, 0, 0);
+        testAllocation("test2snippet", config.useThreadLocalPolling ? 1 : 2, 0, 0);
     }
 
     public static long test2snippet(long x) {
@@ -65,7 +65,7 @@ public class SPARCAllocatorTest extends AllocatorTest {
 
     @Test
     public void test3() {
-        testAllocation("test3snippet", config.threadLocalHandshakes ? 3 : 4, 0, 0);
+        testAllocation("test3snippet", config.useThreadLocalPolling ? 3 : 4, 0, 0);
     }
 
     public static long test3snippet(long x) {

@@ -131,8 +131,17 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useAESCTRIntrinsics = getFlag("UseAESCTRIntrinsics", Boolean.class, false, (JDK == 8 && !IS_OPENJDK) || JDK >= 9);
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
     public final boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class, false, JDK >= 9); // JDK-8073583
-    public final boolean threadLocalHandshakes = getFlag("ThreadLocalHandshakes", Boolean.class, false, JDK >= 10 && JDK < 14); // JDK-8220049
-
+    public final boolean useThreadLocalPolling;
+    {
+        if (JDK >= 14) {
+            // JDK-8220049, JDK-8220051
+            useThreadLocalPolling = true;
+        } else if (JDK >= 10) {
+            useThreadLocalPolling = getFlag("ThreadLocalHandshakes", Boolean.class);
+        } else {
+            useThreadLocalPolling = false;
+        }
+    }
     private final boolean useMultiplyToLenIntrinsic = getFlag("UseMultiplyToLenIntrinsic", Boolean.class);
     private final boolean useSHA1Intrinsics = getFlag("UseSHA1Intrinsics", Boolean.class);
     private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
