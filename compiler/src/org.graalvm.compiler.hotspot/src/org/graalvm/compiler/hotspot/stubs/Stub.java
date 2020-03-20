@@ -28,7 +28,7 @@ import static java.util.Collections.singletonList;
 import static org.graalvm.compiler.core.GraalCompiler.emitFrontEnd;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.RegisterPressure;
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
+import static org.graalvm.compiler.debug.DebugContext.getDefaultLogStream;
 import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNCOMMON_TRAP;
 import static org.graalvm.util.CollectionsUtil.allMatch;
@@ -180,7 +180,7 @@ public abstract class Stub {
     private DebugContext openDebugContext(DebugContext outer) {
         if (DebugStubsAndSnippets.getValue(options)) {
             Description description = new Description(linkage, "Stub_" + nextStubId.incrementAndGet());
-            return DebugContext.create(options, description, outer.getGlobalMetrics(), DEFAULT_LOG_STREAM, singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection())));
+            return DebugContext.create(options, description, outer.getGlobalMetrics(), getDefaultLogStream(), singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection())));
         }
         return DebugContext.disabled(options);
     }
