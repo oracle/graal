@@ -93,9 +93,9 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     public void enableLog(DebugContext context, int pos) {
         /*
-         * debug output is disabled during the first pass where we size the buffer.
-         * this is called to enable it during the second pass where the buffer gets written,
-         * but only if the scope is enabled.
+         * debug output is disabled during the first pass where we size the buffer. this is called
+         * to enable it during the second pass where the buffer gets written, but only if the scope
+         * is enabled.
          */
         if (context.areScopesEnabled()) {
             debug = true;
@@ -355,7 +355,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         /*
          * ensure content byte[] has been written before calling super method.
          *
-         * we do this in a nested debug scope derived from the one set up under the object file write
+         * we do this in a nested debug scope derived from the one set up under the object file
+         * write
          */
         getOwner().debugContext(debugSectionLogName(), debugContext -> {
             writeContent(debugContext);

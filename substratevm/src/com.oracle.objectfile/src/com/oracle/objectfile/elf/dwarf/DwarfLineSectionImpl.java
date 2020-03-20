@@ -117,8 +117,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     /*
      * there is no extended opcode 0
      */
-    @SuppressWarnings("unused")
-    private static final byte DW_LNE_undefined = 0;
+    @SuppressWarnings("unused") private static final byte DW_LNE_undefined = 0;
     /*
      * end sequence of addresses
      */
@@ -460,7 +459,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              * set state for primary
              */
             log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] %s:%d", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(), primaryRange.getFullMethodName(),
-                primaryRange.getLine());
+                            primaryRange.getLine());
 
             /*
              * initialize and write a row for the start of the primary method
@@ -835,7 +834,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             debugAddress += opcodeAddress(opcode);
             debugLine += opcodeLine(opcode);
             verboseLog(context, "  [0x%08x] Special Opcode %d: advance Address by %d to 0x%08x and Line by %d to %d",
-                pos, opcodeId(opcode), opcodeAddress(opcode), debugAddress, opcodeLine(opcode), debugLine);
+                            pos, opcodeId(opcode), opcodeAddress(opcode), debugAddress, opcodeLine(opcode), debugLine);
             return putByte(opcode, buffer, pos);
         }
     }

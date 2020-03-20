@@ -1741,23 +1741,24 @@ public abstract class ObjectFile {
     }
 
     /**
-     * Temporary storage for a debug context installed in a nested scope under a call.
-     * to {@link #withDebugContext}
+     * Temporary storage for a debug context installed in a nested scope under a call. to
+     * {@link #withDebugContext}
      */
     private DebugContext debugContext = null;
 
     /**
-     * Allows a task to be executed with a debug context in a named subscope bound to the
-     * object file and accessible to code executed during the lifetime of the task. Invoked
-     * code may obtain access to the debug context using method {@link #debugContext}.
+     * Allows a task to be executed with a debug context in a named subscope bound to the object
+     * file and accessible to code executed during the lifetime of the task. Invoked code may obtain
+     * access to the debug context using method {@link #debugContext}.
+     * 
      * @param context a context to be bound to the object file for the duration of the task
-     *        execution.
+     *            execution.
      * @param scopeName a name to be used to define a subscope current while the task is being
-     *        executed.
+     *            executed.
      * @param task a task to be executed while the context is bound to the object file.
      */
     @SuppressWarnings("try")
-    public void withDebugContext(DebugContext context,  String scopeName, Runnable task) {
+    public void withDebugContext(DebugContext context, String scopeName, Runnable task) {
         try (DebugContext.Scope s = context.scope(scopeName)) {
             this.debugContext = context;
             task.run();
@@ -1769,8 +1770,9 @@ public abstract class ObjectFile {
     }
 
     /**
-     * Allows a consumer to retrieve the debug context currently bound to this object file. This method
-     * must only called underneath an invocation of method {@link #withDebugContext}.
+     * Allows a consumer to retrieve the debug context currently bound to this object file. This
+     * method must only called underneath an invocation of method {@link #withDebugContext}.
+     * 
      * @param scopeName a name to be used to define a subscope current while the consumer is active.
      * @param action an action parameterised by the debug context.
      */

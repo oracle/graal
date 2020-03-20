@@ -92,24 +92,19 @@ public class DwarfSections {
     public static final int DW_AT_hi_pc = 0x12;
     public static final int DW_AT_language = 0x13;
     public static final int DW_AT_external = 0x3f;
-    @SuppressWarnings("unused")
-    public static final int DW_AT_return_addr = 0x2a;
-    @SuppressWarnings("unused")
-    public static final int DW_AT_frame_base = 0x40;
+    @SuppressWarnings("unused") public static final int DW_AT_return_addr = 0x2a;
+    @SuppressWarnings("unused") public static final int DW_AT_frame_base = 0x40;
     /*
      * define all the Dwarf attribute forms we need for our DIEs
      */
     public static final int DW_FORM_null = 0x0;
-    @SuppressWarnings("unused")
-    private static final int DW_FORM_string = 0x8;
+    @SuppressWarnings("unused") private static final int DW_FORM_string = 0x8;
     public static final int DW_FORM_strp = 0xe;
     public static final int DW_FORM_addr = 0x1;
     public static final int DW_FORM_data1 = 0x0b;
     public static final int DW_FORM_data4 = 0x6;
-    @SuppressWarnings("unused")
-    public static final int DW_FORM_data8 = 0x7;
-    @SuppressWarnings("unused")
-    public static final int DW_FORM_block1 = 0x0a;
+    @SuppressWarnings("unused") public static final int DW_FORM_data8 = 0x7;
+    @SuppressWarnings("unused") public static final int DW_FORM_block1 = 0x0a;
     public static final int DW_FORM_flag = 0xc;
 
     /*
@@ -123,8 +118,7 @@ public class DwarfSections {
     /*
      * DW_FORM_flag attribute values
      */
-    @SuppressWarnings("unused")
-    public static final byte DW_FLAG_false = 0;
+    @SuppressWarnings("unused") public static final byte DW_FLAG_false = 0;
     public static final byte DW_FLAG_true = 1;
     /*
      * value for DW_AT_language attribute with form DATA1
@@ -136,21 +130,16 @@ public class DwarfSections {
      *
      * not needed until we make functions members
      */
-    @SuppressWarnings("unused")
-    public static final byte DW_ACCESS_public = 1;
-    @SuppressWarnings("unused")
-    public static final byte DW_ACCESS_protected = 2;
-    @SuppressWarnings("unused")
-    public static final byte DW_ACCESS_private = 3;
+    @SuppressWarnings("unused") public static final byte DW_ACCESS_public = 1;
+    @SuppressWarnings("unused") public static final byte DW_ACCESS_protected = 2;
+    @SuppressWarnings("unused") public static final byte DW_ACCESS_private = 3;
 
     /*
      * others not yet needed
      */
-    @SuppressWarnings("unused")
-    public static final int DW_AT_type = 0; // only present for non-void
+    @SuppressWarnings("unused") public static final int DW_AT_type = 0; // only present for non-void
     // functions
-    @SuppressWarnings("unused")
-    public static final int DW_AT_accessibility = 0;
+    @SuppressWarnings("unused") public static final int DW_AT_accessibility = 0;
 
     /*
      * CIE and FDE entries
@@ -158,36 +147,28 @@ public class DwarfSections {
 
     /* full byte/word values */
     public static final int DW_CFA_CIE_id = -1;
-    @SuppressWarnings("unused")
-    public static final int DW_CFA_FDE_id = 0;
+    @SuppressWarnings("unused") public static final int DW_CFA_FDE_id = 0;
 
     public static final byte DW_CFA_CIE_version = 1;
 
     /* values encoded in high 2 bits */
     public static final byte DW_CFA_advance_loc = 0x1;
     public static final byte DW_CFA_offset = 0x2;
-    @SuppressWarnings("unused")
-    public static final byte DW_CFA_restore = 0x3;
+    @SuppressWarnings("unused") public static final byte DW_CFA_restore = 0x3;
 
     /* values encoded in low 6 bits */
     public static final byte DW_CFA_nop = 0x0;
-    @SuppressWarnings("unused")
-    public static final byte DW_CFA_set_loc1 = 0x1;
+    @SuppressWarnings("unused") public static final byte DW_CFA_set_loc1 = 0x1;
     public static final byte DW_CFA_advance_loc1 = 0x2;
     public static final byte DW_CFA_advance_loc2 = 0x3;
     public static final byte DW_CFA_advance_loc4 = 0x4;
-    @SuppressWarnings("unused")
-    public static final byte DW_CFA_offset_extended = 0x5;
-    @SuppressWarnings("unused")
-    public static final byte DW_CFA_restore_extended = 0x6;
-    @SuppressWarnings("unused")
-    public static final byte DW_CFA_undefined = 0x7;
-    @SuppressWarnings("unused")
-    public static final byte DW_CFA_same_value = 0x8;
+    @SuppressWarnings("unused") public static final byte DW_CFA_offset_extended = 0x5;
+    @SuppressWarnings("unused") public static final byte DW_CFA_restore_extended = 0x6;
+    @SuppressWarnings("unused") public static final byte DW_CFA_undefined = 0x7;
+    @SuppressWarnings("unused") public static final byte DW_CFA_same_value = 0x8;
     public static final byte DW_CFA_register = 0x9;
     public static final byte DW_CFA_def_cfa = 0xc;
-    @SuppressWarnings("unused")
-    public static final byte DW_CFA_def_cfa_register = 0xd;
+    @SuppressWarnings("unused") public static final byte DW_CFA_def_cfa_register = 0xd;
     public static final byte DW_CFA_def_cfa_offset = 0xe;
 
     private ByteOrder byteOrder;
@@ -360,11 +341,6 @@ public class DwarfSections {
 
             Range primaryRange = new Range(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, primaryLine);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", className, methodName, filePath, fileName, primaryLine, lo, hi);
-            /*
-             * System.out.format("arange: [0x%08x,0x%08x) %s %s::%s(%s) %s", lo, hi,
-             * returnTypeName, className, methodName, paramNames, fileName); create an infoSection
-             * entry for the method
-             */
             addRange(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
             debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {
                 String fileNameAtLine = debugLineInfo.fileName();
