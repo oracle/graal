@@ -419,9 +419,14 @@ final class Runner {
             super(function);
         }
 
+        @TruffleBoundary
+        private LLVMFunctionDescriptor createAndResolve(LLVMContext context) {
+            return context.createFunctionDescriptor(symbol.asFunction());
+        }
+
         @Override
         LLVMPointer allocate(LLVMContext context) {
-            LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction());
+            LLVMFunctionDescriptor functionDescriptor = createAndResolve(context);
             return LLVMManagedPointer.create(functionDescriptor);
         }
     }
@@ -516,10 +521,8 @@ final class Runner {
 
             if (nativeFunction != null) {
                 functionDescriptor.getFunctionCode().define(nativeFunction.getLibrary(), new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
-                return functionDescriptor;
-
             }
-            return null;
+            return functionDescriptor;
         }
 
         @Override
@@ -550,6 +553,9 @@ final class Runner {
             LLVMGlobal global = symbol.asGlobalVariable();
             NativePointerIntoLibrary pointer = nfiContextExtension.getNativeHandle(context, global.getName());
             if (pointer != null) {
+                if (!symbol.isDefined()) {
+                    symbol.asGlobalVariable().define(pointer.getLibrary());
+                }
                 return pointer;
             }
             return null;
@@ -560,9 +566,6 @@ final class Runner {
             NativePointerIntoLibrary pointer = createAndDefine(context);
             if (pointer == null) {
                 return null;
-            }
-            if (!symbol.isDefined()) {
-                symbol.asGlobalVariable().define(pointer.getLibrary());
             }
             return LLVMNativePointer.create(pointer.getAddress());
         }
@@ -1355,13 +1358,20 @@ final class Runner {
         }
 
         // (PLi): Need to be careful of native functions/globals that are not in the nfi context
-        // (i.e. __xstat). Their entries in the table will be currently pointing to null.
+        // (i.e. __xstat). Ideally they will be added to the symbol table as unresolved/undefined
+        // functions/globals.
         @ExplodeLoop
         void execute(LLVMContext context) {
             synchronized (context) {
                 for (int i = 0; i < allocExternalSymbols.length; i++) {
                     AllocSymbolNode allocSymbol = allocExternalSymbols[i];
                     LLVMPointer pointer = allocSymbol.allocate(context);
+                    // Currently native functions/globals that are not in the nfi context are
+                    // not written into the symbol table. We will try another lookup when
+                    // someone tries to execute the function. The function will be taken from the scope.
+                    if (pointer == null) {
+                        continue;
+                    }
                     writeSymbols.execute(pointer, allocSymbol.symbol);
                 }
             }
