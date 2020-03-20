@@ -93,6 +93,9 @@ import java.lang.ref.WeakReference;
 import java.util.HashSet;
 import java.util.Set;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 
 public class ContextAPITest {
     private static HostAccess CONFIG;
@@ -742,6 +745,41 @@ public class ContextAPITest {
         assertEquals(ZoneId.systemDefault(), ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
         context.leave();
         context.close();
+    }
+
+    @Test
+    public void testClose() {
+        Context context = Context.newBuilder().allowAllAccess(true).build();
+        context.enter();
+        Value bindings = context.getBindings(ContextAPITestLanguage.ID);
+        Value polyglotBindings = context.getPolyglotBindings();
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("x", 1);
+        fields.put("y", 2);
+        Value object = context.asValue(ProxyObject.fromMap(fields));
+        Value array = context.asValue(ProxyArray.fromArray(1, 2));
+        Value fnc = context.asValue(new ProxyExecutable() {
+            @Override
+            public Object execute(Value... arguments) {
+                return true;
+            }
+        });
+        context.close();
+
+        assertFails(() -> context.asValue(1), IllegalStateException.class);
+        assertFails(() -> context.enter(), IllegalStateException.class);
+        assertFails(() -> context.eval(ContextAPITestLanguage.ID, ""), IllegalStateException.class);
+        assertFails(() -> context.initialize(ContextAPITestLanguage.ID), IllegalStateException.class);
+        assertFails(() -> context.getBindings(ContextAPITestLanguage.ID), IllegalStateException.class);
+        assertFails(() -> context.getPolyglotBindings(), IllegalStateException.class);
+
+        assertFails(() -> bindings.hasMembers(), IllegalStateException.class);
+        assertFails(() -> polyglotBindings.putMember("d", 1), IllegalStateException.class);
+        assertFails(() -> object.as(Map.class), IllegalStateException.class);
+        assertFails(() -> object.putMember("x", 0), IllegalStateException.class);
+        assertFails(() -> array.as(List.class), IllegalStateException.class);
+        assertFails(() -> array.setArrayElement(0, 3), IllegalStateException.class);
+        assertFails(() -> fnc.execute(), IllegalStateException.class);
     }
 
 }

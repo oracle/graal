@@ -908,6 +908,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     @Override
     public Value asValue(Object hostValue) {
+        checkClosed();
         try {
             PolyglotLanguageContext targetLanguageContext;
             if (hostValue instanceof Value) {
