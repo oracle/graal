@@ -255,6 +255,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -301,9 +302,9 @@ import jdk.vm.ci.meta.JavaMethod;
  */
 public final class BciBlockMapping implements JavaMethodContext {
     public static class Options {
-        @Option(help = "Determines whether to treat final fields with default values as constant.")//
+        @Option(help = "When enabled, some limited amount of duplication will be performed in order compile code containing irreducible loops.")//
         public static final OptionKey<Boolean> DuplicateIrreducibleLoops = new OptionKey<>(true);
-        @Option(help = "How much duplication can happen because of irreducible loops before bailing out.")//
+        @Option(help = "How much duplication can happen because of irreducible loops before bailing out.", type = OptionType.Expert)//
         public static final OptionKey<Double> MaxDuplicationFactor = new OptionKey<>(2.0);
     }
 
