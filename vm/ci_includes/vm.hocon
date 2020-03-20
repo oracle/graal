@@ -12,6 +12,7 @@ vm_profiles: []
 collect_profiles: []
 
 vm_setup: {
+  short_name: ce
   setup: [
     [set-export, VM_ENV, ce]
     [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog-java${BASE_JDK_VERSION}.properties"]
