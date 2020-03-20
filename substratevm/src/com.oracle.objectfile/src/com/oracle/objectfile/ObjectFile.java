@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.StreamSupport;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;

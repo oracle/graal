@@ -430,7 +430,7 @@ public class DwarfSections {
              * index the file entry by file path
              */
             filesIndex.put(fileAsPath, fileEntry);
-            if(!range.isPrimary()) {
+            if (!range.isPrimary()) {
                 /* check we have a file for the corresponding primary range */
                 Range primaryRange = range.getPrimary();
                 FileEntry primaryFileEntry = filesIndex.get(primaryRange.getFileAsPath());

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,16 +55,16 @@ import java.util.List;
 public abstract class SourceCache {
 
     /**
-     * A list of all entries in the classpath used by the native image classloader
+     * A list of all entries in the classpath used by the native image classloader.
      */
     protected static final List<String> classPathEntries = new ArrayList<>();
     /**
-     * A list of all entries in the classpath used by the native image classloader
+     * A list of all entries in the classpath used by the native image classloader.
      */
     protected static final List<String> sourcePathEntries = new ArrayList<>();
     /**
      * A list of root directories which may contain source files from which this cache can be
-     * populated
+     * populated.
      */
     protected List<Path> srcRoots;
 
@@ -77,7 +77,7 @@ public abstract class SourceCache {
     }
 
     /**
-     * Identify the specific type of this source cache
+     * Identify the specific type of this source cache.
      * 
      * @return the source cache type
      */
@@ -295,7 +295,7 @@ public abstract class SourceCache {
     }
 
     /**
-     * Add a path to the list of classpath entries
+     * Add a path to the list of classpath entries.
      * 
      * @param path The path to add.
      */
@@ -304,7 +304,7 @@ public abstract class SourceCache {
     }
 
     /**
-     * Add a path to the list of source path entries
+     * Add a path to the list of source path entries.
      * 
      * @param path The path to add.
      */
