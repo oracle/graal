@@ -54,7 +54,6 @@ import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
 import sun.nio.ch.DirectBuffer;
 import org.graalvm.compiler.debug.DebugContext;
-import sun.misc.Unsafe;
 
 /**
  * Abstract superclass for object files. An object file is a binary container for sections,
