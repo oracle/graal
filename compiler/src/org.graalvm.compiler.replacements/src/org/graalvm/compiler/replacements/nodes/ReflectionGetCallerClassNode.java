@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.replacements;
+package org.graalvm.compiler.replacements.nodes;
 
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.GraalError;
@@ -38,21 +38,20 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.replacements.nodes.MacroStateSplitNode;
 
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo
-public final class ReflectionGetCallerClassNode extends MacroStateSplitNode implements Canonicalizable, Lowerable {
+public abstract class ReflectionGetCallerClassNode extends MacroStateSplitNode implements Canonicalizable, Lowerable {
 
     public static final NodeClass<ReflectionGetCallerClassNode> TYPE = NodeClass.create(ReflectionGetCallerClassNode.class);
 
-    public ReflectionGetCallerClassNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode... arguments) {
-        super(TYPE, invokeKind, targetMethod, bci, returnStamp, arguments);
+    protected ReflectionGetCallerClassNode(NodeClass<? extends ReflectionGetCallerClassNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp,
+                    ValueNode... arguments) {
+        super(c, invokeKind, targetMethod, bci, returnStamp, arguments);
     }
 
     @Override
@@ -92,20 +91,20 @@ public final class ReflectionGetCallerClassNode extends MacroStateSplitNode impl
         // NOTE: Start the loop at depth 1 because the current frame state does
         // not include the Reflection.getCallerClass() frame.
         for (int n = 1; state != null; state = state.outerFrameState(), n++) {
-            HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) state.getMethod();
+            ResolvedJavaMethod method = state.getMethod();
             switch (n) {
                 case 0:
                     throw GraalError.shouldNotReachHere("current frame state does not include the Reflection.getCallerClass frame");
                 case 1:
                     // Frame 0 and 1 must be caller sensitive (see JVM_GetCallerClass).
-                    if (!method.isCallerSensitive()) {
+                    if (!isCallerSensitive(method)) {
                         return null;  // bail-out; let JVM_GetCallerClass do the work
                     }
                     break;
                 default:
-                    if (!method.ignoredBySecurityStackWalk()) {
+                    if (!ignoredBySecurityStackWalk(method)) {
                         // We have reached the desired frame; return the holder class.
-                        HotSpotResolvedObjectType callerClass = method.getDeclaringClass();
+                        ResolvedJavaType callerClass = method.getDeclaringClass();
                         return ConstantNode.forConstant(constantReflection.asJavaClass(callerClass), metaAccess);
                     }
                     break;
@@ -114,4 +113,7 @@ public final class ReflectionGetCallerClassNode extends MacroStateSplitNode impl
         return null;  // bail-out; let JVM_GetCallerClass do the work
     }
 
+    protected abstract boolean isCallerSensitive(ResolvedJavaMethod method);
+
+    protected abstract boolean ignoredBySecurityStackWalk(ResolvedJavaMethod method);
 }
