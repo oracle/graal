@@ -42,6 +42,11 @@ package com.oracle.truffle.api.instrumentation.test;
 
 import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -51,9 +56,11 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.Node;
 
 public class GradualInstrumentationTest {
     private Context context;
@@ -293,5 +300,46 @@ public class GradualInstrumentationTest {
         listener1.go("-L");
         t1.join();
         assertEquals("+C-C+C-C+C-C", listener4.getRecording());
+    }
+
+    @Test
+    public void unnecesaryWrappersWithReferencesToOldTreeAreRemovedWhenOldTreeIsNoLongerExecuting() throws InterruptedException {
+        Source source = Source.create(ID, "ROOT(MATERIALIZE_CHILD_STATEMENT(LOOP(0, STATEMENT), LOOP(3, STATEMENT(CONSTANT(42)))))");
+        InstrumentationTestLanguage.RecordingExecutionEventListener listener1 = new InstrumentationTestLanguage.RecordingExecutionEventListener(true, false);
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.LoopTag.class).build(), listener1);
+        Thread t1 = new Thread(() -> {
+            listener1.start();
+            try {
+                context.eval(source);
+            } finally {
+                listener1.end();
+            }
+        });
+        t1.start();
+        listener1.go("$START", "+L");
+        listener1.disableSteppingWhileWaiting();
+        InstrumentationTestLanguage.RecordingExecutionEventListener listener2 = new InstrumentationTestLanguage.RecordingExecutionEventListener(false, true);
+        EventBinding<ExecutionEventListener> binding = instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(),
+                        listener2);
+        context.eval(source);
+        listener1.go("-L");
+        t1.join();
+        assertEquals("+S+S-S+S-S+S-S+S-S-S+S-S+S-S+S-S", listener2.getRecording());
+        List<Node> enteredStatementNodes = listener2.getEnteredNodes().stream().filter(node -> node instanceof InstrumentationTestLanguage.MaterializedChildStatementNode).collect(Collectors.toList());
+        // only the materialized node with reference to the old tree
+        assertEquals(1, enteredStatementNodes.size());
+        for (Node enteredNode : enteredStatementNodes) {
+            assertTrue(enteredNode.getParent() instanceof InstrumentableNode.WrapperNode);
+        }
+        // clear entered nodes before calling gc so that the old subtree root is no longer reachable
+        // via parents
+        listener2.clearEnteredNodes();
+        System.gc();
+        binding.dispose();
+        context.eval(source);
+        for (Node enteredNode : enteredStatementNodes) {
+            assertFalse(enteredNode.getParent() instanceof InstrumentableNode.WrapperNode);
+        }
+        assertEquals("+L+L-L+L-L-L+L-L+L-L+L-L", listener1.getRecording());
     }
 }

@@ -46,11 +46,15 @@ import static com.oracle.truffle.api.instrumentation.test.InstrumentationEventTe
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Test;
-
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Source;
+import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -81,11 +85,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Source;
 
 public class InstrumentableNodeTest extends InstrumentationEventTest {
 
@@ -334,7 +333,7 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
     }
 
     @TruffleLanguage.Registration(id = MaterializationLanguage.ID, name = "Materialization Test Language", version = "1.0")
-    @ProvidedTags({StandardTags.StatementTag.class})
+    @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
     public static class MaterializationLanguage extends ProxyLanguage {
 
         static final String ID = "truffle-materialization-test-language";

@@ -41,7 +41,9 @@
 package com.oracle.truffle.api.instrumentation;
 
 import java.io.PrintStream;
+import java.lang.ref.WeakReference;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -128,19 +130,29 @@ public final class ProbeNode extends Node {
     // returned from chain nodes whose bindings ignore the unwind
     private static final Object UNWIND_ACTION_IGNORED = new Object();
 
-    public static class OldNodeReference {
-        private volatile Node node;
-        private volatile Set<Class<? extends Tag>> materializeTags;
-        private volatile OldNodeReference next;
+    static class OldNodeReference {
+        private final WeakReference<Node> node;
+        private final Set<Class<? extends Tag>> materializeTags;
+        private final OldNodeReference next;
 
-        public OldNodeReference(Node node, Set<Class<? extends Tag>> materializeTags) {
-            this.node = node;
+        OldNodeReference(Node node, Set<Class<? extends Tag>> materializeTags, OldNodeReference next) {
+            this.node = new WeakReference<>(node);
             this.materializeTags = materializeTags;
+            this.next = next;
+        }
+
+        public Node getNode() {
+            return node.get();
+        }
+
+        public OldNodeReference getNext() {
+            return next;
         }
     }
 
     private final InstrumentationHandler handler;
     private volatile OldNodeReference oldNodeReference;
+    private Set<Class<? extends Tag>> allSeenMaterializatinTags;
     @CompilationFinal private volatile EventContext context;
 
     @Child private volatile ProbeNode.EventChainNode chain;
@@ -158,42 +170,33 @@ public final class ProbeNode extends Node {
         this.context = new EventContext(this, sourceSection);
     }
 
-    Node[] getOldNodes() {
-        OldNodeReference nodeRef = oldNodeReference;
-        int count = 0;
-        while (nodeRef != null) {
-            nodeRef = nodeRef.next;
-            count++;
-        }
-        nodeRef = oldNodeReference;
-        Node[] result = new Node[count];
-        int i = 0;
-        while (nodeRef != null) {
-            result[i] = nodeRef.node;
-            nodeRef = nodeRef.next;
-            i++;
-        }
-        return result;
+    OldNodeReference getOldNodeReference() {
+        return oldNodeReference;
     }
 
+    void clearOldNodeReference() {
+        oldNodeReference = null;
+    }
+
+    @SuppressWarnings("AssertWithSideEffects")
     void setOldNode(Node oldNode, Set<Class<? extends Tag>> materializeTags) {
         if (oldNodeReference == null) {
-            oldNodeReference = new OldNodeReference(oldNode, materializeTags);
+            oldNodeReference = new OldNodeReference(oldNode, materializeTags, null);
+            assert !(allSeenMaterializatinTags = new HashSet<>(materializeTags)).isEmpty() : "Materialization tags must not be empty!";
         } else {
             OldNodeReference nodeRef = oldNodeReference;
+            // The following check does not check all illegal materializations, because seen
+            // materialization tags are not recorded before the AST is first executed.
+            assert !allSeenMaterializatinTags.containsAll(materializeTags) : "There should always be some new materialization tag!";
             while (nodeRef != null) {
-                assert !nodeRef.materializeTags.equals(materializeTags) || nodeRef.node == oldNode;
-                if (nodeRef.node == oldNode) {
-                    assert nodeRef.materializeTags.equals(materializeTags);
-                    return;
-                }
+                Node nodeRefNode = nodeRef.getNode();
+                assert nodeRefNode == null || nodeRefNode != oldNode : "The same old node must not be set more than once!";
+                assert !nodeRef.materializeTags.equals(materializeTags) : "Old node must be set at most once for the same set of tags!";
                 nodeRef = nodeRef.next;
             }
-            OldNodeReference lastOldNodeReference = oldNodeReference;
-            while (lastOldNodeReference.next != null) {
-                lastOldNodeReference = lastOldNodeReference.next;
-            }
-            lastOldNodeReference.next = new OldNodeReference(oldNode, materializeTags);
+            OldNodeReference previousOldNodeReference = oldNodeReference;
+            OldNodeReference newOldNodeReference = new OldNodeReference(oldNode, materializeTags, previousOldNodeReference);
+            oldNodeReference = newOldNodeReference;
         }
     }
 

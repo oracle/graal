@@ -253,6 +253,12 @@ public interface InstrumentableNode extends NodeInterface {
      * relies on the stability of materialized nodes. Use {@link Node#notifyInserted(Node)} when you
      * need to change the structure of instrumentable nodes.
      * <p>
+     * Node must return itself from this method when it has already seen all the materializedTags
+     * specified as an argument, i.e., not only if the set of tags is exactly the same as before,
+     * but also if the current set of tags is completely contained in the union of all the sets of
+     * tags specified in all the calls of this method that led to creation of this materialized
+     * node.
+     * <p>
      * The AST lock is acquired while this method is invoked. Therefore it is not allowed to run
      * guest language code while this method is invoked. This method might be called in parallel
      * from multiple threads even if the language is single threaded. The method may be invoked

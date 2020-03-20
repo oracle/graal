@@ -50,6 +50,7 @@ import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -209,15 +210,22 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         private volatile boolean error;
         private volatile String waiting = "";
         private boolean stepping;
+        private final boolean recordEnteredNodes;
         private final StringBuilder sb = new StringBuilder();
         private final Object sync = new Object();
+        private List<Node> enteredNodes = new ArrayList<>();
 
         public RecordingExecutionEventListener() {
-            this(false);
+            this(false, false);
         }
 
         public RecordingExecutionEventListener(boolean stepping) {
+            this(stepping, false);
+        }
+
+        public RecordingExecutionEventListener(boolean stepping, boolean recordEnteredNodes) {
             this.stepping = stepping;
+            this.recordEnteredNodes = recordEnteredNodes;
         }
 
         public void disableSteppingWhileWaiting() {
@@ -237,7 +245,18 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         private String getStepId(String prefix, EventContext c) {
+            if (recordEnteredNodes && "+".equals(prefix)) {
+                enteredNodes.add(c.getInstrumentedNode());
+            }
             return prefix + ((BaseNode) c.getInstrumentedNode()).getShortId();
+        }
+
+        public List<Node> getEnteredNodes() {
+            return Collections.unmodifiableList(enteredNodes);
+        }
+
+        public void clearEnteredNodes() {
+            enteredNodes.clear();
         }
 
         public void go(String... stepIds) {
@@ -2443,7 +2462,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         protected BaseNode copyUninitialized() {
             if (this instanceof InstrumentableNode.WrapperNode) {
                 InstrumentableNode.WrapperNode wrapperNode = (InstrumentableNode.WrapperNode) this;
-                return (BaseNode) ((InstrumentedNode) cloneUninitialized((BaseNode) wrapperNode.getDelegateNode())).createWrapper(wrapperNode.getProbeNode().copyUninitialized());
+                // return (BaseNode) ((InstrumentedNode) cloneUninitialized((BaseNode)
+                // wrapperNode.getDelegateNode())).createWrapper(wrapperNode.getProbeNode().copyUninitialized());
+                return cloneUninitialized((BaseNode) wrapperNode.getDelegateNode());
             }
 
             throw new UnsupportedOperationException();
