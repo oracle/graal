@@ -314,10 +314,18 @@ public class BinaryParser extends BinaryStreamParser {
         rootNode.codeEntry().initLocalSlots(rootNode.getFrameDescriptor());
 
         /* Initialize the Truffle-related components required for execution. */
-        rootNode.codeEntry().setByteConstants(state.byteConstants());
-        rootNode.codeEntry().setIntConstants(state.intConstants());
-        rootNode.codeEntry().setLongConstants(state.longConstants());
-        rootNode.codeEntry().setBranchTables(state.branchTables());
+        if (state.byteConstants().length > 0) {
+            rootNode.codeEntry().setByteConstants(state.byteConstants());
+        }
+        if (state.intConstants().length > 0) {
+            rootNode.codeEntry().setIntConstants(state.intConstants());
+        }
+        if (state.longConstants().length > 0) {
+            rootNode.codeEntry().setLongConstants(state.longConstants());
+        }
+        if (state.branchTables().length > 0) {
+            rootNode.codeEntry().setBranchTables(state.branchTables());
+        }
         rootNode.codeEntry().initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize());
     }
 
