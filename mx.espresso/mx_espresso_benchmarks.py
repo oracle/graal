@@ -24,35 +24,33 @@
 import mx
 import mx_benchmark
 import mx_espresso
-import mx_sdk_vm_impl
+
+from mx_benchmark import GuestVm
 
 _suite = mx.suite('espresso')
 
 
-class EspressoLauncherVM(mx_benchmark.JavaVm):
-    """
-    Espresso (launcher) within GraalVM.
-    """
-
-    def __init__(self, config_name):
-        super(EspressoLauncherVM, self).__init__()
+class EspressoVm(GuestVm):
+    def __init__(self, config_name, options, host_vm=None):
+        super(EspressoVm, self).__init__(host_vm=host_vm)
         self._config_name = config_name
-
-    def hosting_registry(self):
-        return mx_benchmark.java_vm_registry
+        self._options = options
 
     def name(self):
-        return "espresso"
+        return 'espresso'
 
     def config_name(self):
         return self._config_name
 
-    def run(self, cwd, args):
-        capture = mx.TeeOutputCapture(mx.OutputCapture())
-        ret_code = mx.run(mx_espresso._espresso_launcher_command(args),
-                          nonZeroIsFatal=False, out=capture, err=capture, cwd=cwd)
+    def hosting_registry(self):
+        return mx_benchmark.java_vm_registry
 
-        output = capture.underlying.data
-        graalvm_dist = mx_sdk_vm_impl.get_final_graalvm_distribution()
-        return [ret_code, output, {'vm.graalvm.config': graalvm_dist.vm_config_name,
-                                   'vm.graalvm.dist': graalvm_dist.name}]
+    def with_host_vm(self, host_vm):
+        return self.__class__(self.config_name(), self._options, host_vm)
+
+    def run(self, cwd, args):
+        args += self._options
+        if hasattr(self.host_vm(), 'run_launcher'):
+            return self.host_vm().run_launcher('espresso', args + self._options, cwd)
+        else:
+            return self.host_vm().run(cwd, mx_espresso._espresso_standalone_command(args))
