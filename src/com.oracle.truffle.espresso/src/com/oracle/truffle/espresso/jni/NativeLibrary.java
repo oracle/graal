@@ -57,7 +57,7 @@ public final class NativeLibrary {
         try {
             return (TruffleObject) target.call();
         } catch (IllegalArgumentException e) {
-            EspressoLanguage.EspressoLogger.log(Level.SEVERE, "TruffleNFI native library isolation is not supported.", e);
+            EspressoLanguage.getCurrentContext().getLogger().log(Level.SEVERE, "TruffleNFI native library isolation is not supported.", e);
             throw EspressoError.shouldNotReachHere(e);
         }
     }

@@ -216,7 +216,7 @@ public final class ClassfileParser {
         } catch (EspressoException e) {
             throw e;
         } catch (Throwable e) {
-            EspressoLanguage.EspressoLogger.severe("Unexpected host exception " + e + " thrown during class parsing.");
+            context.getLogger().severe("Unexpected host exception " + e + " thrown during class parsing.");
             throw e;
         }
     }

@@ -36,9 +36,11 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 import static com.oracle.truffle.espresso.jni.NativeEnv.word;
 
+import java.io.PrintStream;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.logging.Level;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -53,7 +55,6 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
@@ -441,7 +442,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                                  */
                                 this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
                             } else {
-                                EspressoLanguage.EspressoLogger.warning(String.format("Failed to link native method: %s", this.toString()));
+                                getContext().getLogger().log(Level.WARNING, "Failed to link native method: {0}", this.toString());
                                 throw Meta.throwException(meta.java_lang_UnsatisfiedLinkError);
                             }
                         }
@@ -831,8 +832,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     @SuppressWarnings("unused")
-    void printBytecodes() {
-        new BytecodeStream(getCode()).printBytecode(declaringKlass);
+    void printBytecodes(PrintStream out) {
+        new BytecodeStream(getCode()).printBytecode(declaringKlass, out);
     }
 
     public LineNumberTableAttribute getLineNumberTable() {
