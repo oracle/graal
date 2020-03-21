@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2019, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,28 +26,24 @@
 
 package org.graalvm.compiler.nodes.memory;
 
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
+@NodeInfo(nameTemplate = "VolatileWrite#{p#location/s}")
+public class VolatileWriteNode extends WriteNode implements Lowerable {
+    public static final NodeClass<VolatileWriteNode> TYPE = NodeClass.create(VolatileWriteNode.class);
 
-@NodeInfo(nameTemplate = "VolatileRead#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_1)
-public class VolatileReadNode extends ReadNode implements SingleMemoryKill, Lowerable, Simplifiable {
-    public static final NodeClass<VolatileReadNode> TYPE = NodeClass.create(VolatileReadNode.class);
-
-    public VolatileReadNode(AddressNode address, LocationIdentity location, Stamp stamp, BarrierType barrierType) {
-        super(TYPE, address, location, stamp, null, barrierType, false, null);
+    public VolatileWriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
+        super(TYPE, address, location, value, barrierType);
     }
 
     @Override
@@ -56,23 +52,13 @@ public class VolatileReadNode extends ReadNode implements SingleMemoryKill, Lowe
     }
 
     @Override
-    public void simplify(SimplifierTool tool) {
-        if (lastLocationAccess != null && hasOnlyUsagesOfType(Memory)) {
-            replaceAtUsages(Memory, lastLocationAccess.asNode());
-            assert hasNoUsages();
-            graph().removeFixed(this);
-        }
-    }
-
-    @SuppressWarnings("try")
-    @Override
-    public FloatingAccessNode asFloatingNode() {
-        throw new RuntimeException();
-    }
-
-    @Override
-    public boolean canFloat() {
+    public boolean canNullCheck() {
         return false;
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        return this;
     }
 
     @Override
@@ -81,13 +67,7 @@ public class VolatileReadNode extends ReadNode implements SingleMemoryKill, Lowe
     }
 
     @Override
-    public boolean canNullCheck() {
-        return false;
-    }
-
-    @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }
-
 }
