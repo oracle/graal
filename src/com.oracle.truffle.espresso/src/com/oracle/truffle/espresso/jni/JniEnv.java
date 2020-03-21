@@ -633,7 +633,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         if (methodName != null) {
             Symbol<Signature> methodSignature = getSignatures().lookupValidSignature(signature);
             if (methodSignature != null) {
+                // Throw a NoSuchMethodError exception if we have an instance of a
+                // primitive java.lang.Class
                 Klass klass = clazz.getMirrorKlass();
+                if (klass.isPrimitive()) {
+                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoSuchMethodError, String.format("static %s.%s%s", klass, name, signature));
+                }
+
                 klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
                 if (Name._clinit_.equals(methodName)) {
