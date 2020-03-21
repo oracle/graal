@@ -2473,8 +2473,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         protected BaseNode copyUninitialized() {
             if (this instanceof InstrumentableNode.WrapperNode) {
                 InstrumentableNode.WrapperNode wrapperNode = (InstrumentableNode.WrapperNode) this;
-                // return (BaseNode) ((InstrumentedNode) cloneUninitialized((BaseNode)
-                // wrapperNode.getDelegateNode())).createWrapper(wrapperNode.getProbeNode().copyUninitialized());
                 return cloneUninitialized((BaseNode) wrapperNode.getDelegateNode());
             }
 
