@@ -281,6 +281,17 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
         }
 
+        public void waitUntilStopped() {
+            synchronized (sync) {
+                while (waiting.isEmpty()) {
+                    try {
+                        sync.wait(1000);
+                    } catch (InterruptedException ie) {
+                    }
+                }
+            }
+        }
+
         public void start() {
             waitBeforeStep("$START");
         }

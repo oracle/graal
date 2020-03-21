@@ -96,9 +96,11 @@ public class GradualInstrumentationTest {
         });
         t.start();
         listener1.go("$START", "+S", "+S", "-S");
+        listener1.waitUntilStopped();
         InstrumentationTestLanguage.RecordingExecutionEventListener listener2 = new InstrumentationTestLanguage.RecordingExecutionEventListener();
         instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, listener2);
         listener1.go("+S", "-S");
+        listener1.waitUntilStopped();
         InstrumentationTestLanguage.RecordingExecutionEventListener listener3 = new InstrumentationTestLanguage.RecordingExecutionEventListener();
         instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, listener3);
         listener1.go("+S", "-S", "-S", "$END");

@@ -231,6 +231,7 @@ final class InstrumentationHandler {
         private final List<Source> rootSources = new ArrayList<>(5);
 
         FindSourcesVisitor(Map<Source, Void> sources, AtomicReference<SourceList> sourcesListRef) {
+            super(true);
             this.sources = sources;
             this.sourcesListRef = sourcesListRef;
         }
@@ -1262,6 +1263,12 @@ final class InstrumentationHandler {
         /* flag set on when visiting a new subtree that was created by materialization */
         boolean visitingNewNodes;
 
+        private final boolean shouldMaterializeSyntaxNodes;
+
+        AbstractNodeVisitor(boolean shouldMaterializeSyntaxNodes) {
+            this.shouldMaterializeSyntaxNodes = shouldMaterializeSyntaxNodes;
+        }
+
         abstract boolean shouldVisit();
 
         /**
@@ -1314,7 +1321,7 @@ final class InstrumentationHandler {
                 computeRootBits(sourceSection);
                 Node oldNode = node;
                 Set<Class<? extends Tag>> materializeTags = (Set<Class<? extends Tag>>) (materializeLimitedTags == null ? providedTags : materializeLimitedTags);
-                if (!visitingOldNodes) {
+                if (shouldMaterializeSyntaxNodes && !visitingOldNodes) {
                     node = materializeSyntaxNodes(node, sourceSection, materializeTags);
                     // TODO assert no materialization if visitingNewNodes == true, languages are not
                     // required to satisfy this yet.
@@ -1451,7 +1458,8 @@ final class InstrumentationHandler {
 
         protected final EventBinding.Source<?> binding;
 
-        AbstractBindingVisitor(EventBinding.Source<?> binding) {
+        AbstractBindingVisitor(EventBinding.Source<?> binding, boolean shouldMaterializeSyntaxNodes) {
+            super(shouldMaterializeSyntaxNodes);
             this.binding = binding;
             Set<Class<?>> limitedTags = binding.getLimitedTags();
             this.materializeLimitedTags = limitedTags != null ? Collections.unmodifiableSet(limitedTags) : null;
@@ -1493,7 +1501,8 @@ final class InstrumentationHandler {
         private final Collection<EventBinding.Source<?>> bindings;
         private final boolean visitForEachBinding;
 
-        AbstractBindingsVisitor(Collection<EventBinding.Source<?>> bindings, boolean visitForEachBinding) {
+        AbstractBindingsVisitor(Collection<EventBinding.Source<?>> bindings, boolean visitForEachBinding, boolean shouldMaterializeSyntaxNodes) {
+            super(shouldMaterializeSyntaxNodes);
             this.bindings = bindings;
             this.visitForEachBinding = visitForEachBinding;
 
@@ -1565,8 +1574,8 @@ final class InstrumentationHandler {
     }
 
     private abstract static class AbstractAllBindingsVisitor extends AbstractBindingsVisitor {
-        AbstractAllBindingsVisitor(Collection<EventBinding.Source<?>> bindings, boolean visitForEachBinding) {
-            super(bindings, visitForEachBinding);
+        AbstractAllBindingsVisitor(Collection<EventBinding.Source<?>> bindings, boolean visitForEachBinding, boolean shouldMaterializeSyntaxNodes) {
+            super(bindings, visitForEachBinding, shouldMaterializeSyntaxNodes);
         }
 
         @Override
@@ -1582,7 +1591,7 @@ final class InstrumentationHandler {
         private Boolean hasNewMaterializeTags;
 
         AbstractAllBindingsNewBindingVisitor(Collection<EventBinding.Source<?>> bindings, EventBinding.Source<?> newBinding, boolean visitForEachBinding) {
-            super(bindings, visitForEachBinding);
+            super(bindings, visitForEachBinding, true);
             Set<Class<?>> compoundOldTags = new HashSet<>();
             for (EventBinding.Source<?> sourceBinding : bindings) {
                 if (sourceBinding != newBinding) {
@@ -1625,7 +1634,7 @@ final class InstrumentationHandler {
     private static final class DisposeWrappersVisitor extends AbstractBindingVisitor {
 
         DisposeWrappersVisitor(EventBinding.Source<?> binding) {
-            super(binding);
+            super(binding, false);
         }
 
         @Override
@@ -1637,7 +1646,7 @@ final class InstrumentationHandler {
     private static final class InsertWrappersAllBindingsVisitor extends AbstractAllBindingsVisitor {
 
         InsertWrappersAllBindingsVisitor(Collection<EventBinding.Source<?>> bindings) {
-            super(bindings, false);
+            super(bindings, false, true);
         }
 
         @Override
@@ -1661,7 +1670,7 @@ final class InstrumentationHandler {
     private static final class DisposeWrappersWithBindingVisitor extends AbstractAllBindingsVisitor {
 
         DisposeWrappersWithBindingVisitor(Collection<EventBinding.Source<?>> bindings) {
-            super(bindings, false);
+            super(bindings, false, false);
         }
 
         @Override
@@ -1674,7 +1683,7 @@ final class InstrumentationHandler {
     private static final class NotifyLoadedWithBindingVisitor extends AbstractBindingVisitor {
 
         NotifyLoadedWithBindingVisitor(EventBinding.Source<?> binding) {
-            super(binding);
+            super(binding, true);
         }
 
         @Override
@@ -1687,7 +1696,7 @@ final class InstrumentationHandler {
     private static final class NotifyLoadedListenerVisitor extends AbstractAllBindingsVisitor {
 
         NotifyLoadedListenerVisitor(Collection<EventBinding.Source<?>> bindings) {
-            super(bindings, true);
+            super(bindings, true, true);
         }
 
         @Override
