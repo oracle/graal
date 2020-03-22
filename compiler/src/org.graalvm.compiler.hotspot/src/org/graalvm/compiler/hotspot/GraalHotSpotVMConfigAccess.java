@@ -168,7 +168,12 @@ public class GraalHotSpotVMConfigAccess {
         StackTraceElement[] trace = new Exception().getStackTrace();
         String message = name;
         for (StackTraceElement e : trace) {
-            if (!e.getClassName().equals(GraalHotSpotVMConfigAccess.class.getName())) {
+            if (e.getClassName().equals(GraalHotSpotVMConfigAccess.class.getName())) {
+                // Skip methods in GraalHotSpotVMConfigAccess
+                continue;
+            }
+            // Looking for the field assignment in a constructor
+            if (e.getMethodName().equals("<init>")) {
                 message += " at " + e;
                 break;
             }
