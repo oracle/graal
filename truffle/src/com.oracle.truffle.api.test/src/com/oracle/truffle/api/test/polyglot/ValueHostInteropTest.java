@@ -895,6 +895,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
+        @TruffleBoundary
         final void removeArrayElement(long index) {
             array.remove((int) index);
         }
