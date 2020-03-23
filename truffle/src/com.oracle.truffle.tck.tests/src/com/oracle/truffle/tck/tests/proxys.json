@@ -1,6 +1,3 @@
 [
-    ["java.util.function.Function"],
-    ["com.oracle.truffle.tck.tests.ValueAssert$IsFunctionalInterfaceVarArgs"],
-    ["com.oracle.truffle.tck.tests.ValueAssert$EmptyInterface"],
-    ["com.oracle.truffle.tck.tests.ValueAssert$NonFunctionalInterface"],
+    ["java.util.function.Function"]
 ]

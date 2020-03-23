@@ -1,7 +1,7 @@
 [
-    ["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$XYPlus"],
-    ["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$FunctionalWithDefaults"],
-    ["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$FunctionalWithObjectMethodOverrides"],
-    ["com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$TestExceptionFrames3"]
-    ["java.util.function.Function"],
+["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$XYPlus"],
+["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$FunctionalWithDefaults"],
+["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$FunctionalWithObjectMethodOverrides"],
+["com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$TestExceptionFrames3"],
+["java.util.function.Function"]
 ]
