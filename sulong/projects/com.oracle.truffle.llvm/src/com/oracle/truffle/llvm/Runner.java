@@ -725,7 +725,7 @@ final class Runner {
         LLVMParserResult[] sulongLibraryResults = new LLVMParserResult[sulongLibraries.length];
         for (int i = 0; i < sulongLibraries.length; i++) {
             sulongLibraryResults[i] = parseLibrary(sulongLibraries[i], parseContext);
-            if (sulongLibraries[i].getName().equalsIgnoreCase("libsulong")) {
+            if (sulongLibraries[i].getName().startsWith("libsulong.")) {
                 context.addLibsulongDataLayout(sulongLibraryResults[i].getDataLayout());
             }
         }
