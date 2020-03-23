@@ -479,7 +479,11 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         }
 
         if (result == 0 && (isSubstitution() || other.isSubstitution())) {
-            result = isSubstitution() ? 1 : -1;
+            System.out.printf("EGZ!");
+            System.out.println(this.toString());
+            System.out.println(other.toString());
+            System.out.println("-----");
+            //result = isSubstitution() ? 1 : -1;
         }
         assert result != 0;
         return result;
