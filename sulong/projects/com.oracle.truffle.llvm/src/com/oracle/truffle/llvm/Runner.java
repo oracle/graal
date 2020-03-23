@@ -1313,8 +1313,10 @@ final class Runner {
     private static final class InitializeExternalNode extends LLVMNode {
         @Child LLVMWriteSymbolNode writeSymbols;
         @Children final AllocSymbolNode[] allocExternalSymbols;
+        private final LLVMParserResult result;
 
         InitializeExternalNode(LLVMParserResult result, LLVMScope localScope) {
+            this.result = result;
             LLVMScope fileScope = result.getRuntime().getFileScope();
             ArrayList<AllocSymbolNode> allocExternalSymbolsList = new ArrayList<>();
             LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
@@ -1322,35 +1324,37 @@ final class Runner {
 
             // Bind all functions that are not defined/resolved as either a bitcode function
             // defined in another library, an intrinsic function or a native function.
-            for (FunctionSymbol symbol : result.getExternalFunctions()) {
-                String name = symbol.getName();
-                LLVMFunction function = fileScope.getFunction(name);
-                if (name.startsWith("llvm.") || name.startsWith("__builtin_") || name.equals("polyglot_get_arg") || name.equals("polyglot_get_arg_count")) {
-                    continue;
-                }
-                LLVMSymbol originalFunction = localScope.get(name);
-                if (originalFunction != null && originalFunction.isFunction()) {
-                    assert originalFunction.asFunction().isDefined();
-                    allocExternalSymbolsList.add(new AllocExistingSymbolNode(function, originalFunction, LLVMAccessSymbolNodeGen.create(originalFunction)));
-                } else if (!function.isDefined()) {
-                    if (intrinsicProvider.isIntrinsified(function.getName())) {
-                        allocExternalSymbolsList.add(new AllocIntrinsicFunctionNode(function, result.getRuntime().getNodeFactory(), intrinsicProvider));
-                    } else if (nfiContextExtension != null) {
-                        allocExternalSymbolsList.add(new AllocNativeFunctionNode(function));
-                    }
-                }
-            }
 
-            for (GlobalSymbol symbol : result.getExternalGlobals()) {
-                String name = symbol.getName();
-                LLVMGlobal global = fileScope.getGlobalVariable(name);
-                LLVMSymbol localGlobal = localScope.get(name);
-                if (localGlobal != null && localGlobal.isGlobalVariable() && !(global.equals(localGlobal))) {
-                    assert localGlobal.asGlobalVariable().isDefined();
-                    allocExternalSymbolsList.add(new AllocExistingSymbolNode(global, localGlobal, LLVMAccessSymbolNodeGen.create(localGlobal)));
-                } else if (!global.isDefined()) {
-                    if (nfiContextExtension != null) {
-                        allocExternalSymbolsList.add(new AllocNativeGlobalNode(global));
+            for (LLVMSymbol symbol : fileScope.values()) {
+                if (!symbol.isDefined()) {
+                    String name = symbol.getName();
+                    LLVMSymbol localSymbol = localScope.get(name);
+
+                    if (symbol.isFunction()) {
+                        LLVMFunction function = symbol.asFunction();
+                        if (name.startsWith("llvm.") || name.startsWith("__builtin_") || name.equals("polyglot_get_arg") || name.equals("polyglot_get_arg_count")) {
+                            continue;
+                        }
+                        if (localSymbol != null && localSymbol.isFunction()) {
+                            assert localSymbol.asFunction().isDefined();
+                            allocExternalSymbolsList.add(new AllocExistingSymbolNode(function, localSymbol, LLVMAccessSymbolNodeGen.create(localSymbol)));
+                        } else if (!function.isDefined()) {
+                            if (intrinsicProvider.isIntrinsified(function.getName())) {
+                                allocExternalSymbolsList.add(new AllocIntrinsicFunctionNode(function, result.getRuntime().getNodeFactory(), intrinsicProvider));
+                            } else if (nfiContextExtension != null) {
+                                allocExternalSymbolsList.add(new AllocNativeFunctionNode(function));
+                            }
+                        }
+                    } else if (symbol.isGlobalVariable()) {
+                        LLVMGlobal global = symbol.asGlobalVariable();
+                        if (localSymbol != null && localSymbol.isGlobalVariable() && !(global.equals(localSymbol))) {
+                            assert localSymbol.asGlobalVariable().isDefined();
+                            allocExternalSymbolsList.add(new AllocExistingSymbolNode(global, localSymbol, LLVMAccessSymbolNodeGen.create(localSymbol)));
+                        } else if (!global.isDefined()) {
+                            if (nfiContextExtension != null) {
+                                allocExternalSymbolsList.add(new AllocNativeGlobalNode(global));
+                            }
+                        }
                     }
                 }
             }
@@ -1377,6 +1381,48 @@ final class Runner {
                     writeSymbols.execute(pointer, allocSymbol.symbol);
                 }
             }
+        }
+
+        @SuppressWarnings("unused")
+        private boolean fileIsCorrect() {
+            LLVMScope fileScope = result.getRuntime().getFileScope();
+            List<GlobalVariable> defGV = result.getDefinedGlobals();
+            List<GlobalVariable> exGV = result.getExternalGlobals();
+            List<FunctionSymbol> defFS = result.getDefinedFunctions();
+            List<FunctionSymbol> exFS = result.getExternalFunctions();
+            for (LLVMSymbol symbol : fileScope.values()) {
+                if (symbol.isGlobalVariable()) {
+                    if (containsGlobal(symbol.asGlobalVariable(), defGV) || containsGlobal(symbol.asGlobalVariable(), exGV)) {
+                        return false;
+                    }
+                } else if (symbol.isFunction()) {
+                    if (containsFunctions(symbol.asFunction(), defFS) || containsFunctions(symbol.asFunction(), exFS)) {
+                        return false;
+                    }
+                } else if (symbol.isAlias()) {
+                } else {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean containsGlobal(LLVMGlobal global, List<GlobalVariable> list) {
+            for (GlobalVariable globalVariable : list) {
+                if (globalVariable.getName().equalsIgnoreCase(global.getName())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static boolean containsFunctions(LLVMFunction global, List<FunctionSymbol> list) {
+            for (FunctionSymbol globalVariable : list) {
+                if (globalVariable.getName().equalsIgnoreCase(global.getName())) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
