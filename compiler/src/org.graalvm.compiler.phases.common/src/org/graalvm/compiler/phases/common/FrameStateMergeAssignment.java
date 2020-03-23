@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -40,30 +41,71 @@ import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
 /**
- * Utility class for snippet lowering that determines which framestate can be assigned to a merge
- * node, either the before state of the replacee, or one after an effect, which must be the after
- * one, if possible.
+ * Utility class for snippet lowering. Certain nodes in Graal IR can be lowered not to another node
+ * but to a (sub) graph of nodes, this is called snippet lowering for details see
+ * {@linkplain Snippet}.
+ *
+ * If a node is lowered to a snippet the snippet can have control flow, i.e., merge nodes. Merge
+ * nodes are problematic for deoptimization support in the compiler as they can cause missing
+ * interpreter state (i.e. framestate) information if improperly optimized. For example, a snippet
+ * lowering may create a merge node without a state, which can cause missing frame state information
+ * on deoptimization points later in the compiler since we cannot deterministically decide which
+ * frame state to take (which predecessor branch) if a deopt is inserted after a merge without a
+ * state. (see {@linkplain GraphUtil#mayRemoveSplit(org.graalvm.compiler.nodes.IfNode) for details}.
+ *
+ * Therefore, this phase, based on the effects of a snippet graph, determines which frame state can
+ * be assigned to a merge node.
+ *
+ * During lowering a node is replaced with the snippet which means there are only 2 possible states
+ * that can be used inside the snippet nodes: the before frame state of the snippet lowered node and
+ * the after state. Generally, if a side-effect is happening inside a snippet, only the after state
+ * is a valid state to deoptimize to.
  */
-public class FramestateMergeAssignment {
+public class FrameStateMergeAssignment {
 
+    /**
+     * Possible states to be used inside a snippet.
+     */
     public enum MergeStateAssignment {
+        /**
+         * The frame state before the snippet replacee.
+         */
         BEFORE_BCI,
+        /**
+         * The frame state after the snippet replacee.
+         */
         AFTER_BCI,
+        /**
+         * An invalid state setup (e.g. multiple subsequent effects inside a snippet)for a
+         * side-effecting node inside a snippet.
+         */
         INVALID
     }
 
-    public static class MergeFSAssignment extends NodeIteratorClosure<MergeStateAssignment> {
+    /**
+     * The iterator below visits a compiler graph in reverse post order and, based on the
+     * side-effecting nodes, decides which state can be used after snippet lowering for a merge
+     * node.
+     */
+    public static class FrameStateMergeAssignmentClosure extends NodeIteratorClosure<MergeStateAssignment> {
 
-        final NodeMap<MergeStateAssignment> mergeMaps;
+        /**
+         * Final assignment of states to merges.
+         */
+        private final NodeMap<MergeStateAssignment> mergeMaps;
 
         public NodeMap<MergeStateAssignment> getMergeMaps() {
             return mergeMaps;
         }
 
+        /**
+         * Debugging flag to run the phase again on error to find specific invalid merges.
+         */
         private static final boolean RUN_WITH_LOG_ON_ERROR = false;
 
         public boolean verify() {
@@ -74,7 +116,7 @@ public class FramestateMergeAssignment {
                 switch (fsRequirements) {
                     case INVALID:
                         if (RUN_WITH_LOG_ON_ERROR) {
-                            ReentrantNodeIterator.apply(new MergeFSAssignment((StructuredGraph) merge.graph(), true),
+                            ReentrantNodeIterator.apply(new FrameStateMergeAssignmentClosure((StructuredGraph) merge.graph(), true),
                                             ((StructuredGraph) merge.graph()).start(), MergeStateAssignment.BEFORE_BCI);
                         }
                         throw GraalError.shouldNotReachHere("Invalid snippet replacing a node before FS assignment with merge " + merge + " for graph " + merge.graph() + " other merges=" + mergeMaps);
@@ -85,13 +127,16 @@ public class FramestateMergeAssignment {
             return true;
         }
 
+        /**
+         * Flag to enable logging of invalid state assignments during processing.
+         */
         private final boolean logOnInvalid;
 
-        public MergeFSAssignment(StructuredGraph graph) {
+        public FrameStateMergeAssignmentClosure(StructuredGraph graph) {
             this(graph, false);
         }
 
-        public MergeFSAssignment(StructuredGraph graph, boolean logOnInvalid) {
+        public FrameStateMergeAssignmentClosure(StructuredGraph graph, boolean logOnInvalid) {
             mergeMaps = new NodeMap<>(graph);
             this.logOnInvalid = logOnInvalid;
         }
@@ -107,10 +152,6 @@ public class FramestateMergeAssignment {
                         node.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Node %s creating invalid assignment", node);
                     }
                     nextStateAssignment = MergeStateAssignment.INVALID;
-                    /*
-                     * Theoretically we must throw an error here, however if the snippet is inlined
-                     * in a leaf location without ever merging again an invalid state is fine
-                     */
                 }
             }
             return nextStateAssignment;
@@ -120,41 +161,39 @@ public class FramestateMergeAssignment {
         protected MergeStateAssignment merge(AbstractMergeNode merge, List<MergeStateAssignment> states) {
             /*
              * The state at a merge is either the before or after state, but if multiple effects
-             * exist predeceessing a merge we must have a merged state, and this state can only
-             * differ in its return values, TODO this is currently not supported nor needed
+             * exist preceding a merge we must have a merged state, and this state can only differ
+             * in its return values. This is currently not supported.
              */
-            MergeStateAssignment single = states.get(0);
-            for (int i = 1; i < states.size(); i++) {
-                if (states.get(i) != single) {
-                    single = null;
-                    break;
+            int beforeCount = 0;
+            int afterCount = 0;
+            int invalidCount = 0;
+
+            for (int i = 0; i < states.size(); i++) {
+                if (states.get(i) == MergeStateAssignment.BEFORE_BCI) {
+                    beforeCount++;
+                } else if (states.get(i) == MergeStateAssignment.AFTER_BCI) {
+                    afterCount++;
+                } else {
+                    invalidCount++;
                 }
             }
-            if (single == null) {
-                int afterSeen = 0;
-                // find out if just one was set
-                for (int i = 0; i < states.size(); i++) {
-                    if (states.get(i) == MergeStateAssignment.AFTER_BCI) {
-                        afterSeen++;
-                        if (afterSeen > 0) {
-                            break;
-                        }
-                    }
-                    if (states.get(i) == MergeStateAssignment.INVALID) {
-                        break;
-                    }
-                }
-                if (afterSeen == 1) {
-                    // next one is invalid
-                    mergeMaps.put(merge, MergeStateAssignment.AFTER_BCI);
-                    return MergeStateAssignment.INVALID;
-                }
-                assert afterSeen == 0 || afterSeen > 1;
+            if (invalidCount > 0) {
                 mergeMaps.put(merge, MergeStateAssignment.INVALID);
                 return MergeStateAssignment.INVALID;
+            } else {
+                if (afterCount == 0) {
+                    // only before states
+                    assert beforeCount == states.size();
+                    mergeMaps.put(merge, MergeStateAssignment.BEFORE_BCI);
+                    return MergeStateAssignment.BEFORE_BCI;
+                } else {
+                    // some before, and at least one after
+                    assert afterCount > 0;
+                    mergeMaps.put(merge, MergeStateAssignment.AFTER_BCI);
+                    return MergeStateAssignment.AFTER_BCI;
+                }
             }
-            mergeMaps.put(merge, single);
-            return single;
+
         }
 
         @Override

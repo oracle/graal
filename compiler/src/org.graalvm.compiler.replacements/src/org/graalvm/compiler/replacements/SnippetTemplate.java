@@ -141,9 +141,9 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase.MemoryMapImpl;
-import org.graalvm.compiler.phases.common.FramestateMergeAssignment;
-import org.graalvm.compiler.phases.common.FramestateMergeAssignment.MergeFSAssignment;
-import org.graalvm.compiler.phases.common.FramestateMergeAssignment.MergeStateAssignment;
+import org.graalvm.compiler.phases.common.FrameStateMergeAssignment;
+import org.graalvm.compiler.phases.common.FrameStateMergeAssignment.FrameStateMergeAssignmentClosure;
+import org.graalvm.compiler.phases.common.FrameStateMergeAssignment.MergeStateAssignment;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
@@ -845,6 +845,11 @@ public class SnippetTemplate {
                  * only access the init_location, therefore we might require a late schedule to get
                  * that. However, snippets are small so the compile time cost for this can be
                  * ignored.
+                 *
+                 * An example of a snippet doing allocation are the boxing snippets since they only
+                 * write to newly allocated memory which is not yet visible to the interpreter until
+                 * the entire allocation escapes. See LocationIdentity#INIT_LOCATION and
+                 * WriteNode#hasSideEffect for details.
                  */
                 new PartialEscapePhase(true, true, canonicalizer, null, options, SchedulingStrategy.LATEST).apply(snippetCopy, providers);
             }
@@ -993,11 +998,11 @@ public class SnippetTemplate {
             boolean needsMergeStateMap = !guardsStage.areFrameStatesAtDeopts() && containsMerge;
 
             if (needsMergeStateMap) {
-                framestateMergeAssignment = new MergeFSAssignment(snippetCopy);
-                ReentrantNodeIterator.apply(framestateMergeAssignment, snippetCopy.start(), MergeStateAssignment.BEFORE_BCI);
-                assert framestateMergeAssignment.verify() : info;
+                frameStateMergeAssignment = new FrameStateMergeAssignmentClosure(snippetCopy);
+                ReentrantNodeIterator.apply(frameStateMergeAssignment, snippetCopy.start(), MergeStateAssignment.BEFORE_BCI);
+                assert frameStateMergeAssignment.verify() : info;
             } else {
-                framestateMergeAssignment = null;
+                frameStateMergeAssignment = null;
             }
 
             assert verifyIntrinsicsProcessed(snippetCopy);
@@ -1145,10 +1150,10 @@ public class SnippetTemplate {
     private final ArrayList<DeoptimizingNode> deoptNodes;
 
     /**
-     * Mapping of merge nodes to framestate info determining if a merge node is required to have a
+     * Mapping of merge nodes to frame state info determining if a merge node is required to have a
      * framestate after the lowering, and if so which state (before,after).
      */
-    private FramestateMergeAssignment.MergeFSAssignment framestateMergeAssignment;
+    private FrameStateMergeAssignment.FrameStateMergeAssignmentClosure frameStateMergeAssignment;
 
     /**
      * Nodes that have a stamp originating from a {@link Placeholder}.
@@ -1493,7 +1498,7 @@ public class SnippetTemplate {
                 boolean replacementHasSideEffect = !sideEffectNodes.isEmpty();
 
                 /*
-                 * Following setups are correct: Either the replacee and replacement don't have
+                 * Following cases are allowed: Either the replacee and replacement don't have
                  * side-effects or the replacee has and the replacement hasn't (lowered to something
                  * without a side-effect which is fine regarding correctness) or both have
                  * side-effects, under which conditions also merges should have states.
@@ -1630,8 +1635,8 @@ public class SnippetTemplate {
             replaceeGraph.addAfterFixed(lastFixedNode, firstCFGNodeDuplicate);
 
             /*
-             * floating nodes are not state-splits not need to re-wire frame states, however
-             * snippets might contain merges for which we want proper framestates
+             * floating nodes that are not state-splits do not need to re-wire frame states, however
+             * snippets might contain merges for which we want proper frame states
              */
             assert !(replacee instanceof StateSplit);
             updateStamps(replacee, duplicates);
@@ -1706,16 +1711,16 @@ public class SnippetTemplate {
 
     protected void rewireFrameStates(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates, FixedNode replaceeGraphCFGPredecessor) {
         if (replacee.graph().getGuardsStage().areFrameStatesAtSideEffects() && (replacee instanceof StateSplit ||
-                        framestateMergeAssignment != null)) {
+                        frameStateMergeAssignment != null)) {
             if (replacee instanceof StateSplit && ((StateSplit) replacee).hasSideEffect() && ((StateSplit) replacee).stateAfter() != null) {
                 /*
                  * We have a side-effecting node that is lowered to a snippet that also contains
-                 * side-effecting nodes. Either of 2 cases applies: either there is a framestate
+                 * side-effecting nodes. Either of 2 cases applies: either there is a frame state
                  * merge assignment meaning there are merges in the snippet that require states,
                  * then those will be assigned based on a reverse post order iteration of the
                  * snippet examining effects and trying to find a proper state, or no merges are in
-                 * the graph, i.e., there is no complex CF so every side-effecting node in the
-                 * snippet can have the state after of the original node with the correct values
+                 * the graph, i.e., there is no complex control flow so every side-effecting node in
+                 * the snippet can have the state after of the original node with the correct values
                  * replaced (i.e. the replacee itself in the snippet)
                  */
                 for (StateSplit sideEffectNode : sideEffectNodes) {
@@ -1743,7 +1748,7 @@ public class SnippetTemplate {
                     }
                 }
             }
-            if (framestateMergeAssignment != null) {
+            if (frameStateMergeAssignment != null) {
                 FrameState stateAfter = null;
                 if (replacee instanceof StateSplit && ((StateSplit) replacee).hasSideEffect()) {
                     stateAfter = ((StateSplit) replacee).stateAfter();
@@ -1757,7 +1762,7 @@ public class SnippetTemplate {
                     assert stateAfter != null : "Must find a prev state (this can be transitively broken) for node " +
                                     replaceeGraphCFGPredecessor + " " + findLastFrameState(replaceeGraphCFGPredecessor, true);
                 }
-                NodeMap<MergeStateAssignment> mergeStates = framestateMergeAssignment.getMergeMaps();
+                NodeMap<MergeStateAssignment> mergeStates = frameStateMergeAssignment.getMergeMaps();
                 MapCursor<Node, MergeStateAssignment> stateAssignments = mergeStates.getEntries();
                 while (stateAssignments.advance()) {
                     Node merge = stateAssignments.getKey();
@@ -1781,11 +1786,11 @@ public class SnippetTemplate {
                             break;
                         case INVALID:
                             /*
-                             * We cannot assign a proper framestate for this snippet's merge since
+                             * We cannot assign a proper frame state for this snippet's merge since
                              * there are effects which cannot be represented by a single state at
                              * the merge
                              */
-                            throw GraalError.shouldNotReachHere("Invalid snippet replacing a node before FS assignment with merge " + merge + " for replacee " + replacee);
+                            throw GraalError.shouldNotReachHere("Invalid snippet replacing a node before frame state assignment with merge " + merge + " for replacee " + replacee);
                         default:
                             break;
                     }
