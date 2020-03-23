@@ -58,7 +58,6 @@ import org.graalvm.wasm.exception.WasmLinkerException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmBlockNode;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
-import org.graalvm.wasm.nodes.WasmEmptyNode;
 import org.graalvm.wasm.nodes.WasmIfNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmNode;
@@ -928,16 +927,12 @@ public class BinaryParser extends BinaryStreamParser {
         state.setStackSize(stackSizeAfterCondition);
 
         // Read false branch, if it exists.
-        WasmNode falseBranchBlock;
+        WasmNode falseBranchBlock = null;
         if (peek1(-1) == Instructions.ELSE) {
             falseBranchBlock = readBlockBody(codeEntry, state, blockTypeId, blockTypeId);
-        } else {
-            if (blockTypeId != ValueTypes.VOID_TYPE) {
-                Assert.fail("An if statement without an else branch block cannot return values.");
-            }
-            falseBranchBlock = new WasmEmptyNode(module, codeEntry, 0);
+        } else if (blockTypeId != ValueTypes.VOID_TYPE) {
+            Assert.fail("An if statement without an else branch block cannot return values.");
         }
-
         int stackSizeBeforeCondition = stackSizeAfterCondition + 1;
         return new WasmIfNode(module, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, stackSizeBeforeCondition);
     }
