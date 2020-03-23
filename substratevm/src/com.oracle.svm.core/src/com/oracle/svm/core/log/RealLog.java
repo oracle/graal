@@ -484,7 +484,7 @@ public class RealLog extends Log {
     }
 
     @Override
-    public Log exception(Throwable t) {
+    public Log exception(Throwable t, int maxFrames) {
         if (t == null) {
             return object(t);
         }
@@ -499,14 +499,20 @@ public class RealLog extends Log {
 
         string(t.getClass().getName()).string(": ").string(detailMessage);
         if (stackTrace != null) {
-            for (StackTraceElement element : stackTrace) {
+            int i;
+            for (i = 0; i < stackTrace.length && i < maxFrames; i++) {
+                StackTraceElement element = stackTrace[i];
                 if (element != null) {
                     newline();
                     string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
                     string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
                 }
             }
+            int remaining = stackTrace.length - i;
+            if (remaining > 0) {
+                newline().string("    ... ").unsigned(remaining).string(" more");
+            }
         }
-        return this;
+        return newline();
     }
 }
