@@ -513,15 +513,12 @@ public class ValueAssert {
                         assertNotEquals(0, value.as(STRING_OBJECT_MAP).hashCode());
                         assertNotNull(value.as(STRING_OBJECT_MAP).toString());
 
-                        assertContentEquals(expectedValues, value.as(STRING_OBJECT_MAP));
-
                         Set<String> keySet = value.as(Map.class).keySet();
                         assertEquals(value.getMemberKeys(), keySet);
                         for (String key : keySet) {
                             assertTrue(value.hasMember(key));
                         }
                     }
-                    assertContentEquals(expectedValues, value.as(Map.class));
                     assertEquals(value.toString(), value.as(Map.class).toString());
 
                     break;
@@ -595,18 +592,6 @@ public class ValueAssert {
         }
 
         assertUnsupported(value, expectedTypes);
-    }
-
-    private static void assertContentEquals(Map<? extends Object, ? extends Object> map1, Map<? extends Object, ? extends Object> map2) {
-        assertEquals(convertMap(map1), convertMap(map2));
-    }
-
-    private static Map<? extends Object, ? extends Object> convertMap(Map<? extends Object, ? extends Object> map) {
-        if (map instanceof HashMap) {
-            return map;
-        } else {
-            return new HashMap<>(map);
-        }
     }
 
     private static boolean isSameHostObject(Value a, Value b) {
