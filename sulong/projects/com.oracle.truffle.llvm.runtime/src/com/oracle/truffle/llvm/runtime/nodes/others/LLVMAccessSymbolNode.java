@@ -91,6 +91,6 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
             }
         }
         CompilerDirectives.transferToInterpreter();
-        throw new LLVMLinkerException(this, String.format("Cannot found symbol access for %s %s", descriptor.getKind(), descriptor.getName()));
+        throw new LLVMLinkerException(this, String.format("Cannot access %s %s in the symbol table", descriptor.getKind(), descriptor.getName()));
     }
 }
