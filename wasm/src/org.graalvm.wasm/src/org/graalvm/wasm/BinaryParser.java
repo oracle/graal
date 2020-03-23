@@ -314,10 +314,18 @@ public class BinaryParser extends BinaryStreamParser {
         rootNode.codeEntry().initLocalSlots(rootNode.getFrameDescriptor());
 
         /* Initialize the Truffle-related components required for execution. */
-        rootNode.codeEntry().setByteConstants(state.byteConstants());
-        rootNode.codeEntry().setIntConstants(state.intConstants());
-        rootNode.codeEntry().setLongConstants(state.longConstants());
-        rootNode.codeEntry().setBranchTables(state.branchTables());
+        if (state.byteConstants().length > 0) {
+            rootNode.codeEntry().setByteConstants(state.byteConstants());
+        }
+        if (state.intConstants().length > 0) {
+            rootNode.codeEntry().setIntConstants(state.intConstants());
+        }
+        if (state.longConstants().length > 0) {
+            rootNode.codeEntry().setLongConstants(state.longConstants());
+        }
+        if (state.branchTables().length > 0) {
+            rootNode.codeEntry().setBranchTables(state.branchTables());
+        }
         rootNode.codeEntry().initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize());
     }
 
@@ -363,8 +371,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private WasmBlockNode readBlockBody(WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId, byte continuationTypeId) {
-        ArrayList<Node> nestedControlTable = new ArrayList<>();
-        ArrayList<Node> callNodes = new ArrayList<>();
+        ArrayList<Node> children = new ArrayList<>();
         int startStackSize = state.stackSize();
         int startOffset = offset();
         int startByteConstantOffset = state.byteConstantOffset();
@@ -395,7 +402,7 @@ public class BinaryParser extends BinaryStreamParser {
                     int stackSize = state.stackSize();
                     state.pushStackState(stackSize);
                     WasmBlockNode nestedBlock = readBlock(codeEntry, state);
-                    nestedControlTable.add(nestedBlock);
+                    children.add(nestedBlock);
                     state.popStackState();
                     state.setReachable(reachable);
                     break;
@@ -407,7 +414,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // the nested block (continuation stack pointer).
                     state.pushStackState(state.stackSize());
                     LoopNode loopBlock = readLoop(codeEntry, state);
-                    nestedControlTable.add(loopBlock);
+                    children.add(loopBlock);
                     state.popStackState();
                     state.setReachable(reachable);
                     break;
@@ -423,7 +430,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // condition value that will be popped before executing the if statement.
                     state.pushStackState(state.stackSize());
                     WasmIfNode ifNode = readIf(codeEntry, state);
-                    nestedControlTable.add(ifNode);
+                    children.add(ifNode);
                     state.popStackState();
                     state.setReachable(reachable);
                     break;
@@ -532,8 +539,8 @@ public class BinaryParser extends BinaryStreamParser {
                     // then that other module might not have been parsed yet.
                     // Therefore, the call node will be created lazily during linking,
                     // after the call target from the other module exists.
-                    callNodes.add(new WasmCallStubNode(function));
-                    context.linker().resolveCallsite(module, currentBlock, callNodes.size() - 1, function);
+                    children.add(new WasmCallStubNode(function));
+                    context.linker().resolveCallsite(module, currentBlock, children.size() - 1, function);
 
                     break;
                 }
@@ -547,7 +554,7 @@ public class BinaryParser extends BinaryStreamParser {
                     state.pop();
                     state.pop(numArguments);
                     state.push(returnLength);
-                    callNodes.add(WasmIndirectCallNode.create());
+                    children.add(WasmIndirectCallNode.create());
                     Assert.assertIntEqual(read1(), CallIndirect.ZERO_TABLE, "CALL_INDIRECT: Instruction must end with 0x00");
                     break;
                 }
@@ -867,8 +874,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
             }
         } while (opcode != Instructions.END && opcode != Instructions.ELSE);
-        currentBlock.initialize(nestedControlTable.toArray(new Node[nestedControlTable.size()]),
-                        callNodes.toArray(new Node[callNodes.size()]),
+        currentBlock.initialize(toArray(children),
                         offset() - startOffset, state.byteConstantOffset() - startByteConstantOffset,
                         state.intConstantOffset() - startIntConstantOffset, state.longConstantOffset() - startLongConstantOffset,
                         state.branchTableOffset() - startBranchTableOffset);
@@ -881,6 +887,13 @@ public class BinaryParser extends BinaryStreamParser {
         state.popContinuationReturnLength();
 
         return currentBlock;
+    }
+
+    static Node[] toArray(ArrayList<Node> list) {
+        if (list.size() == 0) {
+            return null;
+        }
+        return list.toArray(new Node[list.size()]);
     }
 
     private LoopNode readLoop(WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId) {
