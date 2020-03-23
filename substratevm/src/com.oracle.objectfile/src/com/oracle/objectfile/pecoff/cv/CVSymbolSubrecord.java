@@ -40,7 +40,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 abstract class CVSymbolSubrecord {
 
-    private int initialPos;
+    private int subrecordStartPosition;
     private final short cmd;
     CVSections cvSections;
 
@@ -50,7 +50,7 @@ abstract class CVSymbolSubrecord {
     }
 
     int computeFullSize(int initialPos) {
-        this.initialPos = initialPos;
+        this.subrecordStartPosition = initialPos;
         int prologueLength = Short.BYTES * 2; /* room for length and subcommand */
         return computeSize(initialPos + prologueLength);
     }
@@ -67,7 +67,7 @@ abstract class CVSymbolSubrecord {
 
     @Override
     public String toString() {
-        return String.format("CVSymbolSubrecord(cmd=0x%04x pos=0x%06x)", cmd, initialPos);
+        return String.format("CVSymbolSubrecord(cmd=0x%04x pos=0x%06x)", cmd, subrecordStartPosition);
     }
 
     protected abstract int computeSize(int pos);
@@ -106,15 +106,15 @@ abstract class CVSymbolSubrecord {
         }
 
         @Override
-        protected int computeSize(int pos) {
-            pos += Integer.BYTES; /* signature = 0; */
+        protected int computeSize(int initialPos) {
+            int pos = initialPos + Integer.BYTES; /* signature = 0; */
             pos += objName.getBytes(UTF_8).length + 1;  /* inline null terminated */
             return pos;
         }
 
         @Override
-        protected int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(0, buffer, pos);  /* signature = 0 */
+        protected int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(0, buffer, initialPos);  /* signature = 0 */
             pos = CVUtil.putUTF8StringBytes(objName, buffer, pos);  /* inline null terminated */
             return pos;
         }
@@ -159,13 +159,13 @@ abstract class CVSymbolSubrecord {
         }
 
         @Override
-        protected int computeSize(int pos) {
-            return computeContents(null, pos);
+        protected int computeSize(int initialPos) {
+            return computeContents(null, initialPos);
         }
 
         @Override
-        protected int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putByte(language, buffer, pos);
+        protected int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putByte(language, buffer, initialPos);
             pos = CVUtil.putByte(cf1, buffer, pos);
             pos = CVUtil.putByte(cf2, buffer, pos);
             pos = CVUtil.putByte(padding, buffer, pos);
@@ -232,14 +232,14 @@ abstract class CVSymbolSubrecord {
         }
 
         @Override
-        protected int computeSize(int pos) {
-            return computeContents(null, pos);
+        protected int computeSize(int initialPos) {
+            return computeContents(null, initialPos);
         }
 
         @Override
-        protected int computeContents(byte[] buffer, int pos) {
+        protected int computeContents(byte[] buffer, int initialPos) {
             /* flags */
-            pos = CVUtil.putByte((byte) 0, buffer, pos);
+            int pos = CVUtil.putByte((byte) 0, buffer, initialPos);
 
             /* key/value pairs */
             for (Map.Entry<String, String> entry : map.entrySet()) {
@@ -294,13 +294,13 @@ abstract class CVSymbolSubrecord {
         }
 
         @Override
-        protected int computeSize(int pos) {
-            return computeContents(null, pos);
+        protected int computeSize(int initialPos) {
+            return computeContents(null, initialPos);
         }
 
         @Override
-        protected int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(pparent, buffer, pos);
+        protected int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(pparent, buffer, initialPos);
             pos = CVUtil.putInt(pend, buffer, pos);
             pos = CVUtil.putInt(pnext, buffer, pos);
             pos = CVUtil.putInt(proclen, buffer, pos);
@@ -382,13 +382,13 @@ abstract class CVSymbolSubrecord {
         }
 
         @Override
-        protected int computeSize(int pos) {
-            return computeContents(null, pos);
+        protected int computeSize(int initialPos) {
+            return computeContents(null, initialPos);
         }
 
         @Override
-        protected int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(framelen, buffer, pos);
+        protected int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(framelen, buffer, initialPos);
             pos = CVUtil.putInt(padLen, buffer, pos);
             pos = CVUtil.putInt(padOffset, buffer, pos);
             pos = CVUtil.putInt(saveRegsCount, buffer, pos);
@@ -415,14 +415,14 @@ abstract class CVSymbolSubrecord {
         }
 
         @Override
-        protected int computeSize(int pos) {
-            return computeContents(null, pos);
+        protected int computeSize(int initialPos) {
+            return computeContents(null, initialPos);
         }
 
         @Override
-        protected int computeContents(byte[] buffer, int pos) {
+        protected int computeContents(byte[] buffer, int initialPos) {
             // nothing
-            return pos;
+            return initialPos;
         }
 
         @Override
@@ -446,13 +446,13 @@ abstract class CVSymbolSubrecord {
         }
 
         @Override
-        protected int computeSize(int pos) {
-            return computeContents(null, pos);
+        protected int computeSize(int initialPos) {
+            return computeContents(null, initialPos);
         }
 
         @Override
-        protected int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(offset, buffer, pos);
+        protected int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(offset, buffer, initialPos);
             pos = CVUtil.putInt(typeIndex, buffer, pos);
             pos = CVUtil.putShort(reg, buffer, pos);
             pos = CVUtil.putUTF8StringBytes(name, buffer, pos);
@@ -485,13 +485,13 @@ abstract class CVSymbolSubrecord {
         }
 
         @Override
-        protected int computeSize(int pos) {
-            return computeContents(null, pos);
+        protected int computeSize(int initialPos) {
+            return computeContents(null, initialPos);
         }
 
         @Override
-        protected int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(typeIndex, buffer, pos);
+        protected int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(typeIndex, buffer, initialPos);
             pos = CVUtil.putShort(leaf, buffer, pos);
             pos = CVUtil.putUTF8StringBytes(name, buffer, pos);
             return pos;
@@ -519,13 +519,13 @@ abstract class CVSymbolSubrecord {
         }
 
         @Override
-        protected int computeSize(int pos) {
-            return computeContents(null, pos);
+        protected int computeSize(int initialPos) {
+            return computeContents(null, initialPos);
         }
 
         @Override
-        protected int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(typeIndex, buffer, pos);
+        protected int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(typeIndex, buffer, initialPos);
             pos = CVUtil.putInt(offset, buffer, pos);
             pos = CVUtil.putShort(segment, buffer, pos);
             pos = CVUtil.putUTF8StringBytes(name, buffer, pos);
@@ -576,8 +576,8 @@ abstract class CVSymbolSubrecord {
         }
 
         @Override
-        protected int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(offset, buffer, pos);
+        protected int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(offset, buffer, initialPos);
             pos = CVUtil.putShort(segment, buffer, pos);
             return pos;
         }
@@ -600,13 +600,13 @@ abstract class CVSymbolSubrecord {
         }
 
         @Override
-        protected int computeSize(int pos) {
-            return computeContents(null, pos);
+        protected int computeSize(int initialPos) {
+            return computeContents(null, initialPos);
         }
 
         @Override
-        protected int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(typeIndex, buffer, pos);
+        protected int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(typeIndex, buffer, initialPos);
             pos = CVUtil.putUTF8StringBytes(name, buffer, pos);
             return pos;
         }

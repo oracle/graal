@@ -47,7 +47,8 @@ class CVSymbolSubsection extends CVSymbolRecord {
     void addSubrecords() { }
 
     @Override
-    protected int computeSize(int pos) {
+    protected int computeSize(int initialPos) {
+        int pos = initialPos;
         addSubrecords();
         for (CVSymbolSubrecord subcmd : subcmds) {
             pos = subcmd.computeFullSize(pos);
@@ -56,7 +57,8 @@ class CVSymbolSubsection extends CVSymbolRecord {
     }
 
     @Override
-    protected int computeContents(byte[] buffer, int pos) {
+    protected int computeContents(byte[] buffer, int initialPos) {
+        int pos = initialPos;
         for (CVSymbolSubrecord subcmd : subcmds) {
             pos = subcmd.computeFullContents(buffer, pos);
         }
@@ -65,6 +67,6 @@ class CVSymbolSubsection extends CVSymbolRecord {
 
     @Override
     public String toString() {
-        return String.format("CVSymbolSubsection(type=0x%04x pos=0x%05x count=%d)", type, pos, subcmds.size());
+        return String.format("CVSymbolSubsection(type=0x%04x pos=0x%05x count=%d)", type, recordStartPosition, subcmds.size());
     }
 }

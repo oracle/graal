@@ -56,17 +56,17 @@ abstract class CVTypeRecord implements CVTypeConstants {
         this.sequenceNumber = sequenceNumber;
     }
 
-    int computeFullSize(int pos) {
-        this.startPosition = pos;
-        pos += Short.BYTES * 2; /* save room for length and leaf type */
+    int computeFullSize(int initialPos) {
+        this.startPosition = initialPos;
+        int pos = initialPos + Short.BYTES * 2; /* save room for length and leaf type */
         pos = computeSize(pos);
         pos = alignPadded4(null, pos);
         return pos;
     }
 
-    int computeFullContents(byte[] buffer, int pos) {
-        int lenPos = pos;   /* save position of length short */
-        pos += Short.BYTES; /* save room for length short */
+    int computeFullContents(byte[] buffer, int initialPos) {
+        int lenPos = initialPos;   /* save position of length short */
+        int pos = initialPos + Short.BYTES; /* save room for length short */
         pos = CVUtil.putShort(type, buffer, pos);
         pos = computeContents(buffer, pos);
         /* length does not include record length (2 bytes)) but does include end padding */
@@ -76,8 +76,8 @@ abstract class CVTypeRecord implements CVTypeConstants {
         return pos;
     }
 
-    protected abstract int computeSize(int pos);
-    protected abstract int computeContents(byte[] buffer, int pos);
+    protected abstract int computeSize(int initialPos);
+    protected abstract int computeContents(byte[] buffer, int initialPos);
 
     @Override
     public String toString() {
@@ -88,7 +88,7 @@ abstract class CVTypeRecord implements CVTypeConstants {
         out.format("%s\n", this);
     }
 
-    private int alignPadded4(byte[] buffer, int originalpos) {
+    private static int alignPadded4(byte[] buffer, int originalpos) {
         int pos = originalpos;
         int align = pos & 3;
         if (align == 1) {
@@ -139,13 +139,13 @@ abstract class CVTypeRecord implements CVTypeConstants {
             return (short) ((addConst ? 0x01 : 0x00) | (addVolatile ? 0x02 : 0x00) | (addUnaligned ? 0x04 : 0));
         }
         @Override
-        public int computeSize(int pos) {
-            return pos + Integer.BYTES + Short.BYTES;
+        public int computeSize(int initialPos) {
+            return initialPos + Integer.BYTES + Short.BYTES;
         }
 
         @Override
-        public int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(originalLeaf, buffer, pos);
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(originalLeaf, buffer, initialPos);
             pos = CVUtil.putShort(computeFlags(), buffer, pos);
             return pos;
         }
@@ -207,13 +207,13 @@ abstract class CVTypeRecord implements CVTypeConstants {
         }
 
         @Override
-        public int computeSize(int pos) {
-            return pos + Integer.BYTES * 2;
+        public int computeSize(int initialPos) {
+            return initialPos + Integer.BYTES * 2;
         }
 
         @Override
-        public int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(originalLeaf, buffer, pos);
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(originalLeaf, buffer, initialPos);
             pos = CVUtil.putInt(computeAttributes(), buffer, pos);
             return pos;
         }
@@ -257,13 +257,13 @@ abstract class CVTypeRecord implements CVTypeConstants {
         }
 
         @Override
-        public int computeSize(int pos) {
-            return pos + Integer.BYTES + Byte.BYTES + Byte.BYTES + Short.BYTES + Integer.BYTES;
+        public int computeSize(int initialPos) {
+            return initialPos + Integer.BYTES + Byte.BYTES + Byte.BYTES + Short.BYTES + Integer.BYTES;
         }
 
         @Override
-        public int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(returnType, buffer, pos);
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(returnType, buffer, initialPos);
             pos = CVUtil.putByte((byte) 0, buffer, pos); // callType
             pos = CVUtil.putByte((byte) 0, buffer, pos); // funcAttr
             pos = CVUtil.putShort((short) argList.getSize(), buffer, pos);
@@ -305,13 +305,13 @@ abstract class CVTypeRecord implements CVTypeConstants {
         }
 
         @Override
-        public int computeSize(int pos) {
-            return pos + Integer.BYTES + Integer.BYTES * args.size();
+        public int computeSize(int initialPos) {
+            return initialPos + Integer.BYTES + Integer.BYTES * args.size();
         }
 
         @Override
-        public int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(args.size(), buffer, pos);
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(args.size(), buffer, initialPos);
             for (Integer at : args) {
                 pos = CVUtil.putInt(at, buffer, pos);
             }
@@ -356,13 +356,13 @@ abstract class CVTypeRecord implements CVTypeConstants {
         }
 
         @Override
-        public int computeSize(int pos) {
-            return pos + Short.BYTES + Integer.BYTES; /* + TODO */
+        public int computeSize(int initialPos) {
+            return initialPos + Short.BYTES + Integer.BYTES; /* + TODO */
         }
 
         @Override
-        public int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putShort(propertyAttributes, buffer, pos);
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putShort(propertyAttributes, buffer, initialPos);
             pos = CVUtil.putInt(fieldIndex, buffer, pos);
             /* TODO */
             return pos;
@@ -399,13 +399,13 @@ abstract class CVTypeRecord implements CVTypeConstants {
         }
 
         @Override
-        public int computeSize(int pos) {
-            return pos + Short.BYTES + Integer.BYTES; // + TODO
+        public int computeSize(int initialPos) {
+            return initialPos + Short.BYTES + Integer.BYTES; // + TODO
         }
 
         @Override
-        public int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putShort(propertyAttributes, buffer, pos);
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putShort(propertyAttributes, buffer, initialPos);
             pos = CVUtil.putInt(fieldIndex, buffer, pos);
             // TODO
             return pos;
@@ -465,13 +465,13 @@ abstract class CVTypeRecord implements CVTypeConstants {
         }
 
         @Override
-        public int computeSize(int pos) {
-            return pos + Short.BYTES + Short.BYTES + Integer.BYTES + Integer.BYTES + Integer.BYTES; // + TODO
+        public int computeSize(int initialPos) {
+            return initialPos + Short.BYTES + Short.BYTES + Integer.BYTES + Integer.BYTES + Integer.BYTES; // + TODO
         }
 
         @Override
-        public int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putShort(count, buffer, pos);
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putShort(count, buffer, initialPos);
             pos = CVUtil.putShort(propertyAttributes, buffer, pos);
             pos = CVUtil.putInt(fieldIndex, buffer, pos);
             pos = CVUtil.putInt(derivedFromIndex, buffer, pos);
@@ -537,13 +537,13 @@ abstract class CVTypeRecord implements CVTypeConstants {
         }
 
         @Override
-        public int computeSize(int pos) {
-            return pos + Integer.BYTES + Byte.BYTES + Byte.BYTES;
+        public int computeSize(int initialPos) {
+            return initialPos + Integer.BYTES + Byte.BYTES + Byte.BYTES;
         }
 
         @Override
-        public int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(typeIndex, buffer, pos);
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(typeIndex, buffer, initialPos);
             pos = CVUtil.putByte(length, buffer, pos);
             pos = CVUtil.putByte(position, buffer, pos);
             return pos;
@@ -592,13 +592,13 @@ abstract class CVTypeRecord implements CVTypeConstants {
         }
 
         @Override
-        public int computeSize(int pos) {
-            return pos + Integer.BYTES * 3;
+        public int computeSize(int initialPos) {
+            return initialPos + Integer.BYTES * 3;
         }
 
         @Override
-        public int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putInt(elementType, buffer, pos);
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(elementType, buffer, initialPos);
             pos = CVUtil.putInt(indexType, buffer, pos);
             pos = CVUtil.putInt(length, buffer, pos);
             return pos;
@@ -645,13 +645,13 @@ abstract class CVTypeRecord implements CVTypeConstants {
         }
 
         @Override
-        public int computeSize(int pos) {
-            return computeContents(null, pos);
+        public int computeSize(int initialPos) {
+            return computeContents(null, initialPos);
         }
 
         @Override
-        public int computeContents(byte[] buffer, int pos) {
-            pos = CVUtil.putBytes(guid, buffer, pos);
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putBytes(guid, buffer, initialPos);
             pos = CVUtil.putInt(age, buffer, pos);
             pos = CVUtil.putUTF8StringBytes(fileName, buffer, pos);
             return pos;
@@ -671,7 +671,7 @@ abstract class CVTypeRecord implements CVTypeConstants {
             return h;
         }
 
-        private void swap(byte[] b, int idx1, int idx2) {
+        private static void swap(byte[] b, int idx1, int idx2) {
             byte tmp = b[idx1];
             b[idx1] = b[idx2];
             b[idx2] = tmp;

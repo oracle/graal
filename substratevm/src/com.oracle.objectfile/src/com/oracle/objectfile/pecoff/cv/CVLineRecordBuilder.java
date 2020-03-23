@@ -40,7 +40,6 @@ public class CVLineRecordBuilder {
 
     private CVSections cvSections;
     private CVLineRecord lineRecord;
-    private Range previousRange = null;
     private PrimaryEntry primaryEntry;
 
     CVLineRecordBuilder(CVSections cvSections) {
@@ -62,15 +61,15 @@ public class CVLineRecordBuilder {
      * @param primaryEntry function to build line number table for
      * @return CVLineRecord containing any entries generated, or null if no entries generated
      */
-    CVLineRecord build(PrimaryEntry primaryEntry, String methodName) {
+    CVLineRecord build(PrimaryEntry entry, String methodName) {
    //     long lowAddr = Long.MAX_VALUE;
    //     long highAddr = 0;
-        this.primaryEntry = primaryEntry;
+        this.primaryEntry = entry;
 
         assert (!HAS_COLUMNS); /* can't handle columns yet */
 
         Range primaryRange = primaryEntry.getPrimary();
-        previousRange = null;
+        Range previousRange = null;
         /* option to not even bother with debug code for Graal */
         if (skipGraalInternals && CVRootPackages.isGraalClass(primaryRange.getClassName())) {
             CVUtil.debug("  skipping Graal internal class %s\n", primaryRange);
@@ -79,7 +78,7 @@ public class CVLineRecordBuilder {
         CVUtil.debug("  DEBUG_S_LINES linerecord for 0x%05x file: %s:%d\n", primaryRange.getLo(), primaryRange.getFileName(), primaryRange.getLine());
         this.lineRecord = new CVLineRecord(cvSections, methodName, primaryEntry);
         CVUtil.debug("     CVLineRecord.computeContents: processing primary range %s\n", primaryRange);
-        processRange(primaryRange);
+        previousRange = processRange(primaryRange, previousRange);
      //   lowAddr = Math.min(lowAddr, primaryRange.getLo());
       //  highAddr = Math.max(highAddr, primaryRange.getHi());
 
@@ -89,7 +88,7 @@ public class CVLineRecordBuilder {
             if (subFileEntry == null) {
                 continue;
             }
-            processRange(subRange);
+            previousRange = processRange(subRange, previousRange);
       //      lowAddr = Math.min(lowAddr, subRange.getLo());
       //      highAddr = Math.max(highAddr, subRange.getHi());
         }
@@ -105,18 +104,20 @@ public class CVLineRecordBuilder {
      *  - if a range has the same line number, source file and function
      *
      * @param range to be merged or added to line number record
+     * @param previousRange the previously processed Range
+     * @return new value for previousRange in caller
      */
-    private void processRange(Range range) {
+    private Range processRange(Range range, Range previousRange) {
 
         /* should we merge this range with the previous entry? */
         /* i.e. same line in same file, same class and function */
-        if (shouldMerge(previousRange, range)) {
+        if (shouldMerge(range, previousRange)) {
             CVUtil.debug("     processRange: merging with previous\n");
-            return;
+            return previousRange;
             //range = new Range(previousRange, range.getLo(), range.getHi());
         } /*else if (range.getLine() == -1) {
             CVUtil.debug("     processRange: ignoring: bad line number\n");
-            return;
+            return previousRange;
         }*/
 
         /* is this a new file? if so we emit a new file record */
@@ -129,17 +130,18 @@ public class CVLineRecordBuilder {
                 lineRecord.addNewFile(file);
             } else {
                 CVUtil.debug("     processRange: range has no file: %s\n", range);
-                return;
+                return previousRange;
             }
         }
 
-        if (wantNewRange(previousRange, range)) {
+        if (wantNewRange(range, previousRange)) {
             previousRange = range;
             int lineLoAddr = range.getLo() - primaryEntry.getPrimary().getLo();
             int line = range.getLine() < 1 ? 1 : range.getLine();
             CVUtil.debug("     processRange:   addNewLine: 0x%05x %s\n", lineLoAddr, line);
             lineRecord.addNewLine(lineLoAddr, line);
         }
+        return previousRange;
     }
 
     /**
@@ -148,7 +150,7 @@ public class CVLineRecordBuilder {
      * @param range the second range (higher address)
      * @return true if the two ranges can be combined
      */
-    private boolean shouldMerge(Range previousRange, Range range) {
+    private boolean shouldMerge(Range range, Range previousRange) {
         if (!mergeAdjacentLineRecords) {
             return false;
         }
@@ -170,24 +172,24 @@ public class CVLineRecordBuilder {
      * @param range current range
      * @return true if the current range is on a different line or file from the previous one
      */
-    private boolean wantNewRange(Range previous, Range range) {
+    private static boolean wantNewRange(Range range, Range previousRange) {
         return true;
         /*if (debug) {
-            if (previous == null) {
+            if (previousRange == null) {
                 CVUtil.debug("wantNewRange() prevnull:true");
             } else {
-                CVUtil.debug("wantNewRange() prevnull:false" + " linesdiffer:" + (previous.getLine() != range.getLine())
-                        + " fndiffer:" + (previous.getFilePath() != range.getFilePath()) + " contig:" + (previous.getHi() < range.getLo()) + " delta:" + (range.getHi() - previousRange.getLo()));
+                CVUtil.debug("wantNewRange() prevnull:false" + " linesdiffer:" + (previousRange.getLine() != range.getLine())
+                        + " fndiffer:" + (previousRange.getFilePath() != range.getFilePath()) + " contig:" + (previousRange.getHi() < range.getLo()) + " delta:" + (range.getHi() - previousRange.getLo()));
             }
         }*
-        if (previous == null)
+        if (previousRange == null)
             return true;
-        if (previous.getLine() != range.getLine())
+        if (previousRange.getLine() != range.getLine())
             return true;
-        if (previous.getFilePath() != range.getFilePath())
+        if (previousRange.getFilePath() != range.getFilePath())
             return true;
         /* it might actually be fine to merge if there's a gap between ranges *
-        if (previous.getHi() < range.getLo())
+        if (previousRange.getHi() < range.getLo())
             return true;
         //long delta = range.getHi() - previousRange.getLo();
         //return delta >= 127;

@@ -47,7 +47,7 @@ final class CVLineRecord extends CVSymbolRecord {
     private static final short CB_HAS_NO_COLUMNS_FLAG = 0x00;
 
     private String symbolName;
-    private PrimaryEntry primaryEntry;
+    //private PrimaryEntry primaryEntry;
     private ArrayList<FileBlock> fileBlocks = new ArrayList<>(DEFAULT_LINE_BLOCK_COUNT);
 
     /*
@@ -59,11 +59,11 @@ final class CVLineRecord extends CVSymbolRecord {
 
         ArrayList<LineEntry> lineEntries = new ArrayList<>(DEFAULT_LINE_ENTRY_COUNT);
         int highAddr = 0;
-        FileEntry file;
+        //FileEntry file;
         int fileId;
 
         FileBlock(FileEntry file, int fileId) {
-            this.file = file;
+            //this.file = file;
             this.fileId = fileId;
         }
 
@@ -131,7 +131,7 @@ final class CVLineRecord extends CVSymbolRecord {
 
     CVLineRecord(CVSections cvSections, String symbolName, PrimaryEntry primaryEntry) {
         super(cvSections, DEBUG_S_LINES);
-        this.primaryEntry = primaryEntry;
+        //this.primaryEntry = primaryEntry;
         this.symbolName = symbolName;
     }
 
@@ -187,6 +187,6 @@ final class CVLineRecord extends CVSymbolRecord {
 
     @Override
     public String toString() {
-        return String.format("CVLineRecord(type=0x%04x pos=0x%05x size=0x%d)", type, pos, fileBlocks.size());
+        return String.format("CVLineRecord(type=0x%04x pos=0x%05x size=0x%d)", type, recordStartPosition, fileBlocks.size());
     }
 }

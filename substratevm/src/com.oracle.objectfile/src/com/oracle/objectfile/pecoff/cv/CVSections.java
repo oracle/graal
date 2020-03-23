@@ -44,12 +44,12 @@ import java.util.Set;
  */
 public final class CVSections extends DebugInfoBase {
 
-    private PECoffMachine machine;
+    //private PECoffMachine machine;
     private CVSymbolSectionImpl cvSymbolSection;
     private CVTypeSectionImpl cvTypeSection;
 
     public CVSections(PECoffMachine machine) {
-        this.machine = machine;
+        //this.machine = machine;
         cvSymbolSection = new CVSymbolSectionImpl(this);
         cvTypeSection   = new CVTypeSectionImpl();
     }

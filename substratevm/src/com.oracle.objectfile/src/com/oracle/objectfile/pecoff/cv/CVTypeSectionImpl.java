@@ -110,7 +110,7 @@ public final class CVTypeSectionImpl extends CVSectionImplBase implements CVType
         addClassRecords();
     }
 
-    private int computeHeaderSize() {
+    private static int computeHeaderSize() {
         return Integer.BYTES; /* CV_SIGNATURE_C13 = 4; */
     }
 

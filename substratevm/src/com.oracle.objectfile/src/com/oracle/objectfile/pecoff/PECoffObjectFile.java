@@ -708,8 +708,8 @@ public class PECoffObjectFile extends ObjectFile {
         CVTypeSectionImpl cvTypeSectionImpl = cvSections.getCVTypeSection();
 
         // now we can create the section elements with empty content
-        PECoffSection symbolSection = (PECoffSection) newDebugSection(cvSymbolSectionImpl.getSectionName(), cvSymbolSectionImpl);
-        PECoffSection typeSection = (PECoffSection) newDebugSection(cvTypeSectionImpl.getSectionName(), cvTypeSectionImpl);
+        newDebugSection(cvSymbolSectionImpl.getSectionName(), cvSymbolSectionImpl);
+        newDebugSection(cvTypeSectionImpl.getSectionName(), cvTypeSectionImpl);
 
         // the byte[] for each implementation's content are created and
         // written under getOrDecideContent. doing that ensures that all

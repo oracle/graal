@@ -128,7 +128,7 @@ final class CVSymbolRecordBuilder {
             noMainFound = false;
             methodName = range.getClassAndMethodName();
         } else if (functionNamesHashArgs) {
-            long hash = ((long) range.getParamNames().hashCode()) & 0xffffffffL;
+            long hash = range.getParamNames().hashCode() & 0xffffffffL;
             methodName = range.getClassAndMethodName() + "." + hash;
         } else {
             methodName = range.getFullMethodName();
@@ -155,7 +155,7 @@ final class CVSymbolRecordBuilder {
 
     /**
      * add type records for function
-     * (later add arglist, and arrlist and local types)
+     * (later add arglist, and return type and local types)
      *
      * @return type index of function type
      */

@@ -56,7 +56,7 @@ final class CVStringTableRecord extends CVSymbolRecord {
 
     @Override
     public String toString() {
-        return String.format("CVStringTableRecord(type=0x%04x pos=0x%06x size=%d)", type, pos, stringTable.size());
+        return String.format("CVStringTableRecord(type=0x%04x pos=0x%06x size=%d)", type, recordStartPosition, stringTable.size());
     }
 
     @Override

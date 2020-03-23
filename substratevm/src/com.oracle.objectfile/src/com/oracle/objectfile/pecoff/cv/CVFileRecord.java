@@ -66,7 +66,7 @@ final class CVFileRecord extends CVSymbolRecord {
      *
      * Currently, don't even try; use the SourceCache system
      */
-    private String fixPath(FileEntry fileEntry) {
+    private static String fixPath(FileEntry fileEntry) {
         final String fn;
         if (fileEntry.getDirEntry() == null) {
             fn = fileEntry.getFileName();
@@ -100,7 +100,8 @@ final class CVFileRecord extends CVSymbolRecord {
     }
 
     @Override
-    public int computeContents(byte[] buffer, int pos) {
+    public int computeContents(byte[] buffer, int initialPos) {
+        int pos = initialPos;
         CVUtil.debug("file computeContents(%d) nf=%d\n", pos, fileEntryToOffsetMap.size());
         for (FileEntry entry : fileEntryToOffsetMap.keySet()) {
             pos = put(entry, buffer, pos);
@@ -125,7 +126,7 @@ final class CVFileRecord extends CVSymbolRecord {
         return pos;
     }
 
-    private byte[] calculateMD5Sum(String fn) {
+    private static byte[] calculateMD5Sum(String fn) {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
             md.update(Files.readAllBytes(Paths.get(fn)));
@@ -140,7 +141,7 @@ final class CVFileRecord extends CVSymbolRecord {
 
     @Override
     public String toString() {
-        return "CVFileRecord(type=" + type + ",pos=" + pos + ", size=" + 999 + ")";
+        return "CVFileRecord(type=" + type + ",pos=" + recordStartPosition + ", size=" + 999 + ")";
     }
 
     @Override

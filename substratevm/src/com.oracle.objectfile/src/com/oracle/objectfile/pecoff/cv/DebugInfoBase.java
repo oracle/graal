@@ -54,7 +54,7 @@ import java.util.LinkedList;
  */
 public abstract class DebugInfoBase {
 
-    private boolean isWanted(DebugInfoProvider.DebugCodeInfo debugCodeInfo) {
+    private static boolean isWanted(DebugInfoProvider.DebugCodeInfo debugCodeInfo) {
         /* TODO: be much more clever; this is merely proof of concept */
         //return !(CVConstants.skipGraalInternals && debugCodeInfo.className().startsWith("com.oracle"));
         return true;
@@ -176,7 +176,7 @@ public abstract class DebugInfoBase {
     private void addRange(Range primaryRange, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         assert primaryRange.isPrimary();
         ClassEntry classEntry = ensureClassEntry(primaryRange);
-        PrimaryEntry entry = classEntry.addPrimary(primaryRange, frameSizeInfos, frameSize);
+        /*PrimaryEntry entry =*/ classEntry.addPrimary(primaryRange, frameSizeInfos, frameSize);
     }
 
     private void addSubRange(Range primaryRange, Range subrange) {

@@ -34,7 +34,7 @@ import java.io.PrintStream;
 abstract class CVSymbolRecord implements CVDebugConstants {
 
     CVSections cvSections;
-    protected int pos;
+    protected int recordStartPosition;
     protected final int type;
 
     CVSymbolRecord(CVSections cvSections, int type) {
@@ -42,14 +42,14 @@ abstract class CVSymbolRecord implements CVDebugConstants {
         this.type = type;
     }
 
-    int computeFullSize(int pos) {
-        this.pos = pos;
-        pos += Integer.BYTES * 2;
+    int computeFullSize(int initialPos) {
+        this.recordStartPosition = initialPos;
+        int pos = initialPos + Integer.BYTES * 2;
         return computeSize(pos);
     }
 
-    int computeFullContents(byte[] buffer, int pos) {
-        pos = CVUtil.putInt(type, buffer, pos);
+    int computeFullContents(byte[] buffer, int initialPos) {
+        int pos = CVUtil.putInt(type, buffer, initialPos);
         int lenPos = pos;
         pos = computeContents(buffer, pos + Integer.BYTES);
         /* length does not include debug record header (4 bytes record id + 4 bytes length) */
@@ -62,7 +62,7 @@ abstract class CVSymbolRecord implements CVDebugConstants {
 
     @Override
     public String toString() {
-        return "CVSymbolRecord(type=" + type + ",pos=" + pos + ")";
+        return "CVSymbolRecord(type=" + type + ",pos=" + recordStartPosition + ")";
     }
 
     public void dump(PrintStream out) {

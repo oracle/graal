@@ -30,6 +30,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 abstract class CVUtil {
 
+    private static final boolean DEBUG_ON = false;
+
     /* base level put methods that assume a non-null buffer */
     static int putByte(byte b, byte[] buffer, int initialPos) {
         if (buffer == null) {
@@ -161,6 +163,8 @@ abstract class CVUtil {
     }
 
     public static void debug(String format, Object ... args) {
-        //System.out.format(format, args);
+        if (DEBUG_ON) {
+            System.out.format(format, args);
+        }
     }
 }
