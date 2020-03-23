@@ -80,6 +80,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -277,7 +278,8 @@ public class ValueAssert {
                     break;
                 case INSTANTIABLE:
                     assertFalse(value.canInstantiate());
-                    assertFails(() -> value.newInstance(), UnsupportedOperationException.class);
+                    // TODO remove PolyglotException if GR-21743 and GR-21744 is fixed.
+                    assertFails(() -> value.newInstance(), UnsupportedOperationException.class, PolyglotException.class);
                     if (value.isNull()) {
                         assertNull(value.as(Function.class));
                         assertNull(value.as(IsFunctionalInterfaceVarArgs.class));
@@ -682,23 +684,39 @@ public class ValueAssert {
         }
     }
 
-    private static void assertFails(Runnable runnable, Class<? extends Throwable> exceptionType) {
+    @SafeVarargs
+    private static void assertFails(Runnable runnable, Class<? extends Throwable>... exceptionType) {
         assertFails(() -> {
             runnable.run();
             return null;
         }, exceptionType);
     }
 
-    private static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
+    @SafeVarargs
+    private static void assertFails(Callable<?> callable, Class<? extends Throwable>... exceptionTypes) {
         try {
             callable.call();
         } catch (Throwable t) {
-            if (!exceptionType.isInstance(t)) {
-                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+            boolean found = false;
+            for (Class<? extends Throwable> exceptionType : exceptionTypes) {
+                if (exceptionType.isInstance(t)) {
+                    found = true;
+                }
+            }
+            if (!found) {
+                Set<String> names = new LinkedHashSet<>();
+                for (Class<? extends Throwable> exceptionType : exceptionTypes) {
+                    names.add(exceptionType.getName());
+                }
+                throw new AssertionError("expected instanceof " + names + " was " + t.getClass().getName(), t);
             }
             return;
         }
-        fail("expected " + exceptionType.getName() + " but no exception was thrown");
+        Set<String> names = new LinkedHashSet<>();
+        for (Class<? extends Throwable> exceptionType : exceptionTypes) {
+            names.add(exceptionType.getName());
+        }
+        fail("expected " + names + " but no exception was thrown");
     }
 
     private static void assertValueNumber(Value value) {
