@@ -746,7 +746,8 @@ suite = {
         "SULONG_TEST",
       ],
       "buildDependencies" : [
-        "AMD64_SUPPORT",
+        # "AMD64_SUPPORT" currently not working on darwin GR-21946,
+        "LINUX_AMD64_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,
