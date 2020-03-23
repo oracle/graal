@@ -1,8 +1,9 @@
 builds += [
   ${bench_vm_linux} ${bench_vm_linux_base} {
-    setup: [
+    setup: ${common_vm.setup} [
       [set-export, VM_ENV, "${VM_ENV}-no_native"]
-    ] ${bench_vm_linux_base.setup}
+      ${mx_vm_common} [build]
+    ]
     run: [
       ${mx_vm_common} [benchmark, --results-file, ${bench_vm_linux_base.result_file}, "gu:*"]
       ${bench_vm_linux_base.upload}
