@@ -303,6 +303,16 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         builder.positionAtEnd(getBlock(block));
     }
 
+    void resumeBlock(Block block) {
+        currentBlock = block;
+        builder.positionAtEnd(getBlockEnd(block));
+    }
+
+    void editBlock(Block block) {
+        currentBlock = block;
+        builder.positionBeforeTerminator(getBlockEnd(block));
+    }
+
     @Override
     public AbstractBlockBase<?> getCurrentBlock() {
         return currentBlock;

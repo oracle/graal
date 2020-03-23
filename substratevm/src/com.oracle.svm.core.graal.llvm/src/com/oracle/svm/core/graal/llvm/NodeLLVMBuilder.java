@@ -203,7 +203,19 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                     for (Block predecessor : block.getPredecessors()) {
                         if (processedBlocks.contains(predecessor)) {
                             ValueNode phiValue = phiNode.valueAt((AbstractEndNode) predecessor.getEndNode());
-                            LLVMValueRef value = llvmOperand(phiValue);
+                            LLVMValueRef value;
+                            if (operand(phiValue) instanceof LLVMPendingSpecialRegisterRead) {
+                                /*
+                                 * The pending read may need to perform instructions to load the
+                                 * value, so we put them at the end of the predecessor block
+                                 */
+                                Block currentBlock = (Block) gen.getCurrentBlock();
+                                gen.editBlock(predecessor);
+                                value = llvmOperand(phiValue);
+                                gen.resumeBlock(currentBlock);
+                            } else {
+                                value = llvmOperand(phiValue);
+                            }
                             LLVMBasicBlockRef parentBlock = gen.getBlockEnd(predecessor);
 
                             forwardPhis.add(value);

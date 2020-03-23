@@ -236,6 +236,10 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVM.LLVMPositionBuilderAtEnd(builder, block);
     }
 
+    public void positionBeforeTerminator(LLVMBasicBlockRef block) {
+        LLVM.LLVMPositionBuilderBefore(builder, blockTerminator(block));
+    }
+
     public LLVMValueRef blockTerminator(LLVMBasicBlockRef block) {
         return LLVM.LLVMGetBasicBlockTerminator(block);
     }
