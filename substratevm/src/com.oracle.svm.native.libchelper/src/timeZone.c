@@ -618,7 +618,8 @@ char *customFindJavaTZmd(const char *tzmappings)
     return std_timezone;
 }
 #else
+extern char* findJavaTZ_md(const char *);
 char *customFindJavaTZmd(const char *tzmappings) {
-    return ((void*)0);
+    return findJavaTZ_md("");
 }
 #endif // _WIN64

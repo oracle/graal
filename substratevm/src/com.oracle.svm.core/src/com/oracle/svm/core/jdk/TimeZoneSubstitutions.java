@@ -30,7 +30,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
@@ -42,16 +41,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.hosted.Feature;
-//Checkstyle: stop
-import sun.security.action.GetPropertyAction;
-//Checkstyle: resume
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.AccessController;
-import java.util.Properties;
 import java.util.TimeZone;
 
 @TargetClass(java.util.TimeZone.class)
@@ -60,83 +54,19 @@ final class Target_java_util_TimeZone {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) private static volatile TimeZone defaultTimeZone;
 
-    @Alias
-    // Checkstyle: stop
-    private static String GMT_ID;
-    // Checkstyle: resume
-
-    @Alias
-    private static native TimeZone getTimeZone(String id, boolean fallback);
-
-    @Alias
-    private static native String getSystemGMTOffsetID();
-
-    @Alias
-    @TargetElement(name = "getSystemTimeZoneID", onlyWith = OSTargets.UnixLike.class)
-    private static native String getSystemTimeZoneID(String javaHome);
-
     @Substitute
-    @TargetElement(name = "getSystemTimeZoneID", onlyWith = {OSTargets.Windows.class})
-    private static String getSystemTimeZoneIDWindows(String javaHome) {
-        TimeZoneSupport timeZoneSupport = ImageSingletons.lookup(TimeZoneSupport.class);
-        byte[] content = timeZoneSupport.getTzMappingsContent();
-        String tzmappings = new String(content);
+    private static String getSystemTimeZoneID(String javaHome) {
+        String tzmappings = "";
+        if (OS.getCurrent() == OS.WINDOWS) {
+            TimeZoneSupport timeZoneSupport = ImageSingletons.lookup(TimeZoneSupport.class);
+            byte[] content = timeZoneSupport.getTzMappingsContent();
+            tzmappings = new String(content);
+        }
         try (CTypeConversion.CCharPointerHolder tzMappingsHolder = CTypeConversion.toCString(tzmappings)) {
             CCharPointer tzMappings = tzMappingsHolder.get();
             CCharPointer tzId = LibCHelper.customFindJavaTZmd(tzMappings);
             return CTypeConversion.toJavaString(tzId);
         }
-    }
-
-    @Substitute
-    // Checkstyle: stop
-    private static synchronized TimeZone setDefaultZone() {
-        // Checkstyle: resume
-        TimeZone tz;
-        // get the time zone ID from the system properties
-        Properties props = System.getProperties();
-        String zoneID = AccessController.doPrivileged(
-                        new GetPropertyAction("user.timezone"));
-
-        // if the time zone ID is not set (yet), perform the
-        // platform to Java time zone ID mapping.
-        if (zoneID == null || zoneID.isEmpty()) {
-            try {
-                // Send empty for as java home as opposed to null
-                if (OS.getCurrent() == OS.WINDOWS) {
-                    zoneID = getSystemTimeZoneIDWindows("");
-                } else {
-                    zoneID = getSystemTimeZoneID("");
-                }
-                if (zoneID == null) {
-                    zoneID = GMT_ID;
-                }
-            } catch (NullPointerException e) {
-                zoneID = GMT_ID;
-            }
-        }
-
-        // Get the time zone for zoneID. But not fall back to
-        // "GMT" here.
-        tz = getTimeZone(zoneID, false);
-
-        if (tz == null) {
-            // If the given zone ID is unknown in Java, try to
-            // get the GMT-offset-based time zone ID,
-            // a.k.a. custom time zone ID (e.g., "GMT-08:00").
-            String gmtOffsetID = getSystemGMTOffsetID();
-            if (gmtOffsetID != null) {
-                zoneID = gmtOffsetID;
-            }
-            tz = getTimeZone(zoneID, true);
-        }
-        assert tz != null;
-
-        final String id = zoneID;
-        props.setProperty("user.timezone", id);
-
-        defaultTimeZone = tz;
-        return tz;
     }
 }
 
