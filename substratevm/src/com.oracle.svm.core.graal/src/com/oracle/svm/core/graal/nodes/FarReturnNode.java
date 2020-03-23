@@ -27,7 +27,7 @@ package com.oracle.svm.core.graal.nodes;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
@@ -59,7 +59,7 @@ public final class FarReturnNode extends ControlSinkNode implements LIRLowerable
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        LIRGeneratorTool lirGenTool = gen.getLIRGeneratorTool();
+        LIRGenerator lirGenTool = (LIRGenerator) gen.getLIRGeneratorTool();
         AllocatableValue resultOperand = lirGenTool.resultOperandFor(result.getStackKind(), LIRKind.fromJavaKind(lirGenTool.target().arch, result.getStackKind()));
         lirGenTool.emitMove(resultOperand, gen.operand(result));
 

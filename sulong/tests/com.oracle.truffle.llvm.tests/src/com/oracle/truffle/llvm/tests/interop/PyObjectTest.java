@@ -44,7 +44,7 @@ public class PyObjectTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        Value testLibrary = InteropTestBase.loadTestBitcodeValue("pyobject");
+        Value testLibrary = loadTestBitcodeValue("pyobject.c");
         getPyObjectImplicitType = testLibrary.getMember("getPyObjectImplicitType");
         getPyObjectExplicitType = testLibrary.getMember("getPyObjectExplicitType");
         freePyObject = testLibrary.getMember("freePyObject");

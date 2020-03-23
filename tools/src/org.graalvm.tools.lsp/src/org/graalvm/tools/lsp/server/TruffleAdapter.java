@@ -108,15 +108,12 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     public void register(Env environment, ContextAwareExecutor executor) {
         this.envInternal = environment;
         this.contextAwareExecutor = executor;
+        initSurrogateMap();
+        createLSPRequestHandlers();
     }
 
     public TruffleLogger getLogger() {
         return logger;
-    }
-
-    public void initialize() {
-        initSurrogateMap();
-        createLSPRequestHandlers();
     }
 
     private void createLSPRequestHandlers() {
@@ -272,10 +269,19 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
         if (doc != null) {
             return doc.getLanguageId();
         }
+
+        Future<String> future = contextAwareExecutor.executeWithDefaultContext(() -> {
+            try {
+                return Source.findLanguage(envInternal.getTruffleFile(uri));
+            } catch (IOException ex) {
+                return null;
+            }
+        });
+
         try {
-            return Source.findLanguage(envInternal.getTruffleFile(uri));
-        } catch (IOException ex) {
-            return null;
+            return future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
         }
     }
 

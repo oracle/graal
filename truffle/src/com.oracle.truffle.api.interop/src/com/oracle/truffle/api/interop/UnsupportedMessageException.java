@@ -43,7 +43,9 @@ package com.oracle.truffle.api.interop;
 import com.oracle.truffle.api.CompilerDirectives;
 
 /**
- * An exception thrown if a {@link TruffleObject} does not support a interop message.
+ * An exception thrown if a {@link TruffleObject} does not support a interop message. If this
+ * exception is thrown then the receiver does not support the message at all and it is not supported
+ * for any arguments given to the message.
  *
  * @since 0.11
  */

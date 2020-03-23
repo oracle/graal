@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,8 +54,6 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
 
     @CompilationFinal private LanguageReference<LLVMLanguage> languageRef;
 
-    @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
-
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"isSameObject(pointer.getObject(), cachedDescriptor)", "cachedDescriptor != null", "pointer.getOffset() == 0"})
     protected static LLVMFunctionDescriptor doDirectCached(@SuppressWarnings("unused") LLVMManagedPointer pointer,
                     @Cached("asFunctionDescriptor(pointer.getObject())") LLVMFunctionDescriptor cachedDescriptor) {
@@ -102,8 +100,9 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(pointer.asNative())")
-    protected LLVMTypedForeignObject doDerefHandle(LLVMNativePointer pointer) {
-        LLVMManagedPointer foreignFunction = getDerefHandleGetReceiverNode().execute(pointer);
+    protected LLVMTypedForeignObject doDerefHandle(LLVMNativePointer pointer,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver) {
+        LLVMManagedPointer foreignFunction = getReceiver.execute(pointer);
         return doForeign(foreignFunction);
     }
 
@@ -125,13 +124,5 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
             return false;
         }
         return LLVMNativeMemory.isDerefHandleMemory(addr);
-    }
-
-    protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
-        if (derefHandleGetReceiverNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            derefHandleGetReceiverNode = insert(LLVMDerefHandleGetReceiverNode.create());
-        }
-        return derefHandleGetReceiverNode;
     }
 }

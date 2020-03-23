@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,9 @@
 package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -42,30 +44,27 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
+@GenerateUncached
 @NodeChild(type = LLVMExpressionNode.class)
+@NodeField(name = "allowNonForeign", type = boolean.class)
 public abstract class LLVMAsForeignNode extends LLVMNode {
-
-    final boolean allowNonForeign;
-
-    protected LLVMAsForeignNode(boolean allowNonForeign) {
-        this.allowNonForeign = allowNonForeign;
-    }
-
     public abstract Object execute(VirtualFrame frame);
 
     public abstract Object execute(LLVMManagedPointer pointer);
 
     public static LLVMAsForeignNode create() {
-        return LLVMAsForeignNodeGen.create(false, null);
+        return LLVMAsForeignNodeGen.create(null, false);
     }
 
     public static LLVMAsForeignNode create(LLVMExpressionNode arg) {
-        return LLVMAsForeignNodeGen.create(false, arg);
+        return LLVMAsForeignNodeGen.create(arg, false);
     }
 
     public static LLVMAsForeignNode createOptional() {
-        return LLVMAsForeignNodeGen.create(true, null);
+        return LLVMAsForeignNodeGen.create(null, true);
     }
+
+    protected abstract boolean isAllowNonForeign();
 
     @Specialization
     Object doForeign(Object pointer,
@@ -84,10 +83,10 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
             }
         }
         nonForeignProfile.enter();
-        if (allowNonForeign) {
+        if (isAllowNonForeign()) {
             return null;
         } else {
-            throw new LLVMPolyglotException(this, "Pointer does not point to a polyglot value.");
+            throw new LLVMPolyglotException(this, "Pointer does not point to a polyglot value");
         }
     }
 }

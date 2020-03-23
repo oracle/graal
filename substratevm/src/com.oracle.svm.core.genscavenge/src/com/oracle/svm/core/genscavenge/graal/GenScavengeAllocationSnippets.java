@@ -97,18 +97,17 @@ public final class GenScavengeAllocationSnippets extends SubstrateAllocationSnip
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
-        return formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, getFillStartOffset(), emitMemoryBarrier, false, supportsBulkZeroing,
+        return formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, getArrayZeroingStartOffset(), emitMemoryBarrier, false, supportsBulkZeroing,
                         snippetCounters);
     }
 
     private static Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
-        return ObjectHeaderImpl.getObjectHeaderImpl().encodeAsObjectHeader(hub, rememberedSet, unaligned);
+        return ObjectHeaderImpl.encodeAsObjectHeader(hub, rememberedSet, unaligned);
     }
 
     @Override
     protected void initializeObjectHeader(Word memory, Word objectHeader, Word prototypeMarkWord, boolean isArray) {
-        ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        ohi.initializeHeaderOfNewObject(memory, objectHeader);
+        ObjectHeaderImpl.initializeHeaderOfNewObject(memory, objectHeader);
     }
 
     @Override

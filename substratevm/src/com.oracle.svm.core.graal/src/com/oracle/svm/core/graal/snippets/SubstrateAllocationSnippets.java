@@ -137,8 +137,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsBulkZeroing,
                     @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedHub = checkHub(hub);
-        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), length, headerSize, log2ElementSize, fillContents, getFillStartOffset(), emitMemoryBarrier,
-                        maybeUnroll, supportsBulkZeroing, profilingData);
+        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), length, headerSize, log2ElementSize, fillContents, getArrayZeroingStartOffset(),
+                        emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
 
@@ -160,7 +160,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         int headerSize = getArrayHeaderSize(layoutEncoding);
         int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
 
-        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedArrayHub), WordFactory.nullPointer(), length, headerSize, log2ElementSize, fillContents, getFillStartOffset(),
+        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedArrayHub), WordFactory.nullPointer(), length, headerSize, log2ElementSize, fillContents, getArrayZeroingStartOffset(),
                         emitMemoryBarrier, false, supportsBulkZeroing, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -350,9 +350,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Fold
-    protected static int getFillStartOffset() {
-        // The array hashcode must be included in the zeroing.
-        return ConfigurationValues.getObjectLayout().getArrayHashCodeOffset();
+    protected static int getArrayZeroingStartOffset() {
+        return ConfigurationValues.getObjectLayout().getArrayZeroingStartOffset();
     }
 
     private static Word encodeAsTLABObjectHeader(DynamicHub hub) {

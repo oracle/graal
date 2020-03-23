@@ -2,7 +2,7 @@
 	"name": "graalvm-ruby",
 	"displayName": "GraalVM Ruby",
 	"description": "Support for GraalVM Ruby",
-	"version": "0.0.5",
+	"version": "0.0.7",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "oracle-labs-graalvm",
 	"author": {
@@ -100,21 +100,21 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "webpack --mode production",
-		"compile": "webpack --mode none",
+		"compile": "webpack --mode development",
 		"info": "webpack --display-modules",
-		"watch": "webpack --mode none --watch",
+		"watch": "webpack --mode development --watch",
 		"test-compile": "tsc -p ./",
-		"postinstall": "node ./node_modules/vscode/bin/install"
+		"lint": "tslint -p ./"
 	},
 	"devDependencies": {
-		"@types/mocha": "^5.2.7",
-		"@types/node": "^12.11.7",
+		"@types/mocha": "^7.0.2",
+		"@types/node": "^12.12.30",
+		"@types/vscode": "1.33.0",
 		"ts-loader": "^6.2.1",
-		"tslint": "^5.20.1",
-		"typescript": "^3.7.2",
-		"vscode": "^1.1.36",
-		"webpack": "^4.41.2",
-		"webpack-cli": "^3.3.10"
+		"tslint": "^6.1.0",
+		"typescript": "^3.8.3",
+		"webpack": "^4.42.0",
+		"webpack-cli": "^3.3.11"
 	},
 	"extensionDependencies": [
 		"oracle-labs-graalvm.graalvm",

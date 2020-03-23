@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.nfi;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -116,6 +117,7 @@ public final class LLVMNativeWrapper implements TruffleObject {
              * a separate CallTarget for every distinct callback object, so we should never see more
              * than one distinct LLVMFunctionDescriptor.
              */
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("unexpected generic case in LLVMNativeCallback");
         }
 

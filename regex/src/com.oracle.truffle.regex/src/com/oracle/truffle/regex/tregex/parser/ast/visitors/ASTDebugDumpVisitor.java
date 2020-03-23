@@ -108,7 +108,7 @@ public final class ASTDebugDumpVisitor extends DepthFirstTraversalRegexASTVisito
 
     @Override
     protected void visit(Sequence sequence) {
-        if (sequence != sequence.getParent().getAlternatives().get(0)) {
+        if (sequence != sequence.getParent().getFirstAlternative()) {
             dump.append("|");
         }
     }

@@ -199,4 +199,5 @@ public class InstallVersionsTest extends CommandTestBase {
         exception.expectMessage("VERIFY_UpdateGraalVM");
         cmd.prepareInstallation();
     }
+
 }

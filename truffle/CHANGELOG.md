@@ -35,6 +35,11 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `TruffleInstrument.Env.getScopedView` and `TruffleInstrument.Env.getLanguageView` to access language and scoped views from instruments.
 * Added `TruffleInstrument.Env.getLanguageInfo` to convert language classes to `LanguageInfo`.
 * Deprecated `TruffleLanguage.findMetaObject`, `TruffleLanguage.findSourceLocation`, `TruffleLanguage.toString` and `TruffleLanguage.isObjectOfLanguage`. Use the new interop APIs and language views as replacement.
+* Added support for the value conversions of [DebugValue](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html) that provide the same functionality as value conversions on [Value](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html).
+* Added [DebugValue#toDisplayString](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#toDisplayString--) to convert the value to a language-specific string representation.
+* Deprecated `DebugValue#as`, other conversion methods should be used instead.
+* Clarify [InteropLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html) javadoc documentation of message exceptions. [UnsupportedMessageException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/UnsupportedMessageException.html) is thrown when the operation is never supported for the given receiver type. In other cases [UnknownIdentifierException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/UnknownIdentifierException.html) or [InvalidArrayIndexException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InvalidArrayIndexException.html) are thrown.
+* Added [TruffleLanguage.Env.initializeLanguage](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#initializeLanguage-com.oracle.truffle.api.nodes.LanguageInfo-) method to force language initialization.
 
 
 ## Version 20.0.0

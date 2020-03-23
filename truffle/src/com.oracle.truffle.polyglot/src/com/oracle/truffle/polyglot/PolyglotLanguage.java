@@ -268,12 +268,12 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     void freeInstance(PolyglotLanguageInstance instance) {
         synchronized (engine) {
+            profile.notifyLanguageFreed();
             switch (cache.getPolicy()) {
                 case EXCLUSIVE:
                     // nothing to do
                     break;
                 case REUSE:
-                    profile.notifyLanguageFreed();
                     instancePool.addFirst(instance);
                     break;
                 case SHARED:
@@ -283,6 +283,11 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                     throw new AssertionError("Unknown context cardinality.");
             }
         }
+    }
+
+    void close() {
+        assert Thread.holdsLock(engine);
+        instancePool.clear();
     }
 
     /**

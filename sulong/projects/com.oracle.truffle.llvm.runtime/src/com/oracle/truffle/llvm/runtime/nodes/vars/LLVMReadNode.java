@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -119,7 +118,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         @Specialization
         protected Object readGeneric(VirtualFrame frame) {
-            if (frame.getFrameDescriptor().getFrameSlotKind(slot) == FrameSlotKind.Long) {
+            if (frame.isLong(slot)) {
                 return FrameUtil.getLongSafe(frame, slot);
             } else {
                 return FrameUtil.getObjectSafe(frame, slot);

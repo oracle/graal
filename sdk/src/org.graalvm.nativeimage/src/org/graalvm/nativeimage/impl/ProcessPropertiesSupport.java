@@ -66,4 +66,10 @@ public interface ProcessPropertiesSupport {
     int waitForProcessExit(long processID);
 
     void exec(Path executable, String[] args);
+
+    int getArgumentVectorBlockSize();
+
+    String getArgumentVectorProgramName();
+
+    boolean setArgumentVectorProgramName(String name);
 }

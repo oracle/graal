@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,8 +36,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNode.LLVMPointerDirectLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -63,10 +63,10 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
         this.overflowArgAreaStore = LLVMPointerStoreNodeGen.create(null, null);
         this.regSaveAreaStore = LLVMPointerStoreNodeGen.create(null, null);
 
-        this.gpOffsetLoad = LLVMI32LoadNodeGen.create(null);
-        this.fpOffsetLoad = LLVMI32LoadNodeGen.create(null);
-        this.overflowArgAreaLoad = LLVMPointerDirectLoadNodeGen.create(null);
-        this.regSaveAreaLoad = LLVMPointerDirectLoadNodeGen.create(null);
+        this.gpOffsetLoad = LLVMI32LoadNode.create();
+        this.fpOffsetLoad = LLVMI32LoadNode.create();
+        this.overflowArgAreaLoad = LLVMPointerDirectLoadNode.create();
+        this.regSaveAreaLoad = LLVMPointerDirectLoadNode.create();
     }
 
     private void setGPOffset(LLVMPointer address, int value) {

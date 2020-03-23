@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,7 +44,7 @@ abstract class LLVMDebugValue {
 
     private static String getActualType(DebugValue value) {
         final DebugValue typeValue = value.getMetaObject();
-        return typeValue != null ? typeValue.as(String.class) : null;
+        return typeValue != null ? typeValue.getMetaQualifiedName() : null;
     }
 
     private final String kind;
@@ -117,7 +117,7 @@ abstract class LLVMDebugValue {
 
         @Override
         void checkValue(DebugValue value) {
-            assertEquals(UNAVAILABLE, value.as(String.class));
+            assertEquals(UNAVAILABLE, value.toDisplayString());
         }
     }
 
@@ -137,7 +137,7 @@ abstract class LLVMDebugValue {
 
         @Override
         void checkValue(DebugValue value) {
-            final String val = value.as(String.class);
+            final String val = value.toDisplayString();
             if (val == null || val.length() != 1) {
                 throw new AssertionError(String.format("Expected character '%s', but was %s", expected, val));
             }
@@ -162,7 +162,7 @@ abstract class LLVMDebugValue {
         @Override
         void checkValue(DebugValue value) {
             try {
-                final String val = value.as(String.class);
+                final String val = value.toDisplayString();
                 final BigInteger actual = new BigInteger(val);
                 assertEquals(expected, actual);
             } catch (NumberFormatException nfe) {
@@ -188,7 +188,7 @@ abstract class LLVMDebugValue {
         @Override
         void checkValue(DebugValue value) {
             try {
-                final String val = value.as(String.class);
+                final String val = value.toDisplayString();
                 final float actual = Float.parseFloat(val);
                 assertEquals(expected, actual, 0.000001);
             } catch (NumberFormatException nfe) {
@@ -214,7 +214,7 @@ abstract class LLVMDebugValue {
         @Override
         void checkValue(DebugValue value) {
             try {
-                final String val = value.as(String.class);
+                final String val = value.toDisplayString();
                 final double actual = Double.parseDouble(val);
                 assertEquals(expected, actual, 0.000001);
             } catch (NumberFormatException nfe) {
@@ -239,7 +239,7 @@ abstract class LLVMDebugValue {
 
         @Override
         void checkValue(DebugValue value) {
-            final String actual = value.as(String.class).toLowerCase();
+            final String actual = value.toDisplayString().toLowerCase();
             assertEquals(expected, actual);
         }
     }
@@ -260,7 +260,7 @@ abstract class LLVMDebugValue {
 
         @Override
         void checkValue(DebugValue value) {
-            final String actual = value.as(String.class);
+            final String actual = value.toDisplayString();
             assertEquals(expected, actual);
         }
     }

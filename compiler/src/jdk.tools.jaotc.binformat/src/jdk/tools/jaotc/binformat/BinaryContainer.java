@@ -300,7 +300,7 @@ public final class BinaryContainer implements SymbolTable {
 
         this.codeEntryAlignment = graalHotSpotVMConfig.codeEntryAlignment;
 
-        this.threadLocalHandshakes = graalHotSpotVMConfig.threadLocalHandshakes;
+        this.threadLocalHandshakes = graalHotSpotVMConfig.useThreadLocalPolling;
 
         // Section unique name is limited to 8 characters due to limitation on Windows.
         // Name could be longer but only first 8 characters are stored on Windows.
@@ -354,7 +354,7 @@ public final class BinaryContainer implements SymbolTable {
                                               graphBuilderConfig.omitAssertions()));
         if (JavaVersionUtil.JAVA_SPEC < 14) {
             // See JDK-8220049. Thread local handshakes are on by default since JDK14, the command line option has been removed.
-            booleanFlagsList.add(graalHotSpotVMConfig.threadLocalHandshakes);
+            booleanFlagsList.add(graalHotSpotVMConfig.useThreadLocalPolling);
         }
 
         ArrayList<Integer> intFlagsList = new ArrayList<>();

@@ -70,31 +70,23 @@ suite = {
     # ------------- Libraries -------------
 
     "DACAPO" : {
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach-patched.jar",
-      ],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach-patched.jar"],
       "sha1" : "e39957904b7e79caf4fa54f30e8e4ee74d4e9e37",
     },
 
     "DACAPO_SCALA" : {
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar",
-      ],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar"],
       "sha1" : "59b64c974662b5cf9dbd3cf9045d293853dd7a51",
     },
 
     "DACAPO_D3S" : {
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-d3s.jar",
-        "https://d3s.mff.cuni.cz/software/benchmarking/files/dacapo-9.12-d3s.jar",
-      ],
+      # original: https://d3s.mff.cuni.cz/software/benchmarking/files/dacapo-9.12-d3s.jar
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-d3s.jar"],
       "sha1" : "b072de027141ac81ab5d48706949fda86de62468",
     },
 
     "RENAISSANCE" : {
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.10.0.jar"
-      ],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.10.0.jar"],
       "sha1" : "5f58e281bb5aae161854b036c7e49e593a81186a",
     },
 
@@ -184,52 +176,6 @@ suite = {
       },
       "dependencies": ["JAXB_API_2.1", "ACTIVATION_1.1.1"]
     },
-    "LLVM_WRAPPER_SHADOWED": {
-      "sha1" : "f2d365a8d432d6b2127acda19c5d3418126db9b0",
-      "sourceSha1" : "0801daf22b189bbd9d515614a2b79c92af225d56",
-      "dependencies" : ["JAVACPP_SHADOWED"],
-      "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
-      "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2.jar"],
-      "sourceUrls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-sources.jar"],
-      "license" : "GPLv2-CPE"
-    },
-    "JAVACPP_SHADOWED": {
-      "sha1" : "212aaddcd73448c7b6da781fb6cde934c667dc2c",
-      "sourceSha1" : "3e9cfc02750ba8ea3babc1b8546a50ec36b849a2",
-      "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
-      "urls": ["{urlbase}/javacpp-shadowed-1.5.2.jar"],
-      "sourceUrls": ["{urlbase}/javacpp-shadowed-1.5.2-sources.jar"],
-      "license" : "GPLv2-CPE"
-    },
-    "LLVM_PLATFORM_SPECIFIC_SHADOWED": {
-      "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
-      "os_arch": {
-        "linux": {
-          "amd64": {
-            "sha1": "53acc3692e0f67f3b4a4e5fa5b4a5a1de1aa7947",
-            "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-linux-x86_64.jar"],
-          },
-          "aarch64": {
-            "sha1": "49b2bff3ab0ecea436bd0f8ed64af28e5bdbd03a",
-            "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-linux-arm64.jar"],
-          },
-          "<others>": {
-            "optional": True,
-          },
-        },
-        "darwin": {
-          "amd64": {
-            "sha1": "d1082bfd227b8f084682a2cd3b06e36f5d046e5e",
-            "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-macosx-x86_64.jar"],
-          },
-        },
-        "<others>": {
-          "<others>": {
-            "optional": True,
-          }
-        }
-      },
-    }
   },
 
   "projects" : {
@@ -668,23 +614,6 @@ suite = {
       "multiReleaseJarVersion" : "14",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "14+",
-      "workingSets" : "Graal,HotSpot",
-    },
-
-    "org.graalvm.compiler.hotspot.jdk15" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies": ["org.graalvm.compiler.hotspot"],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.hotspot",
-          "jdk.vm.ci.meta"
-        ],
-      },
-      "overlayTarget" : "org.graalvm.compiler.hotspot",
-      "multiReleaseJarVersion" : "15",
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "15+",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -1138,21 +1067,6 @@ suite = {
       "workingSets" : "Graal,Replacements",
     },
 
-    "org.graalvm.compiler.replacements.llvm" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.core.llvm",
-        "org.graalvm.compiler.replacements",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
-      "annotationProcessors" : [
-        "GRAAL_PROCESSOR",
-      ],
-      "workingSets" : "Graal,Replacements,LLVM",
-    },
-
     "org.graalvm.compiler.replacements.aarch64" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1532,22 +1446,6 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,SPARC,Test",
-    },
-
-    "org.graalvm.compiler.core.llvm" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.core",
-        "LLVM_WRAPPER_SHADOWED",
-        "LLVM_PLATFORM_SPECIFIC_SHADOWED",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "annotationProcessors" : [
-        "GRAAL_PROCESSOR",
-      ],
-      "javaCompliance" : "8+",
-      "workingSets" : "Graal,LLVM",
     },
 
     "org.graalvm.compiler.runtime" : {
@@ -2435,7 +2333,11 @@ suite = {
         "JVMCI_API",
         "JVMCI_HOTSPOT",
       ],
-      "maven": False,
+      "allowsJavadocWarnings": True,
+      "description":  "The GraalVM compiler Management Bean.",
+      "maven" : {
+        "artifactId" : "compiler-management",
+      },
     },
 
     "GRAAL_MANAGEMENT_LIBGRAAL": {
@@ -2508,22 +2410,5 @@ suite = {
       "testDistribution" : True,
       "maven": False,
     },
-
-    "GRAAL_LLVM" : {
-      "subDir" : "src",
-      "description" : "LLVM compiler backend",
-      "dependencies" : [
-        "org.graalvm.compiler.core.llvm",
-        "org.graalvm.compiler.replacements.llvm",
-      ],
-      "distDependencies" : [
-        "GRAAL",
-      ],
-      "exclude": [
-        "LLVM_WRAPPER_SHADOWED",
-        "LLVM_PLATFORM_SPECIFIC_SHADOWED",
-      ],
-      "maven" : False,
-    }
   },
 }

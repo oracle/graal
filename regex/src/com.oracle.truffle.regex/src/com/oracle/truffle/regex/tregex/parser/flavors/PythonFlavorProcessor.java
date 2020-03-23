@@ -170,10 +170,10 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
         // This is the snippet that we want to build, but with Python's definitions of \w and \W:
         // "(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$)"
-        UNICODE_WORD_BOUNDARY_SNIPPET = "(?:^|(?<=[^" + wordCharsStr + "]))(?=[" + wordCharsStr + "])|(?<=[" + wordCharsStr + "])(?:(?=[^" + wordCharsStr + "])|$)";
+        UNICODE_WORD_BOUNDARY_SNIPPET = "(?:(?:^|(?<=[^" + wordCharsStr + "]))(?=[" + wordCharsStr + "])|(?<=[" + wordCharsStr + "])(?:(?=[^" + wordCharsStr + "])|$))";
 
         // "(?:^|(?<=\W))(?:(?=\W)|$)|(?<=\w)(?=\w)"
-        UNICODE_WORD_NON_BOUNDARY_SNIPPET = "(?:^|(?<=[^" + wordCharsStr + "]))(?:(?=[^" + wordCharsStr + "])|$)|(?<=[" + wordCharsStr + "])(?=[" + wordCharsStr + "])";
+        UNICODE_WORD_NON_BOUNDARY_SNIPPET = "(?:(?:^|(?<=[^" + wordCharsStr + "]))(?:(?=[^" + wordCharsStr + "])|$)|(?<=[" + wordCharsStr + "])(?=[" + wordCharsStr + "]))";
     }
 
     /**

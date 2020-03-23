@@ -82,12 +82,13 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
+import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import com.oracle.svm.util.ImageGeneratorThreadMarker;
+import jdk.vm.ci.meta.JavaType;
 
 public abstract class BigBang {
 
@@ -114,6 +115,7 @@ public abstract class BigBang {
      * Processing queue.
      */
     private final CompletionExecutor executor;
+    private final Runnable heartbeatCallback;
 
     private ConcurrentMap<AbstractUnsafeLoadTypeFlow, Boolean> unsafeLoads;
     private ConcurrentMap<AbstractUnsafeStoreTypeFlow, Boolean> unsafeStores;
@@ -124,7 +126,7 @@ public abstract class BigBang {
     public final Timer typeFlowTimer;
     public final Timer checkObjectsTimer;
 
-    public BigBang(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService,
+    public BigBang(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures) {
         this.options = options;
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
@@ -150,7 +152,7 @@ public abstract class BigBang {
         unknownTypeFlow = new UnknownTypeFlow();
 
         trackTypeFlowInputs = PointstoOptions.TrackInputFlows.getValue(options);
-        reportAnalysisStatistics = PointstoOptions.ReportAnalysisStatistics.getValue(options);
+        reportAnalysisStatistics = PointstoOptions.PrintPointsToStatistics.getValue(options);
         if (reportAnalysisStatistics) {
             PointsToStats.init(this);
         }
@@ -159,8 +161,13 @@ public abstract class BigBang {
         unsafeStores = new ConcurrentHashMap<>();
 
         timing = PointstoOptions.ProfileAnalysisOperations.getValue(options) ? new AnalysisTiming() : null;
-        executor = new CompletionExecutor(this, executorService);
+        executor = new CompletionExecutor(this, executorService, heartbeatCallback);
         executor.init(timing);
+        this.heartbeatCallback = heartbeatCallback;
+    }
+
+    public Runnable getHeartbeatCallback() {
+        return heartbeatCallback;
     }
 
     public boolean trackTypeFlowInputs() {
@@ -257,6 +264,7 @@ public abstract class BigBang {
         unsafeLoads = null;
         unsafeStores = null;
         unknownTypeFlow = null;
+        scannedObjects = null;
 
         ConstantObjectsProfiler.constantTypes.clear();
 
@@ -291,6 +299,10 @@ public abstract class BigBang {
 
     public UnsupportedFeatures getUnsupportedFeatures() {
         return unsupportedFeatures;
+    }
+
+    public AnalysisType lookup(JavaType type) {
+        return universe.lookup(type);
     }
 
     public AnalysisType getObjectType() {

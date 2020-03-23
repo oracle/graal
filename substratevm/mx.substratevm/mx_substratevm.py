@@ -364,7 +364,6 @@ GraalTags = Tags([
     'js',
     'build',
     'benchmarktest',
-    'truffletck',
     'relocations',
     "nativeimagehelp"
 ])
@@ -487,31 +486,8 @@ def svm_gate_body(args, tasks):
             if t:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
                 native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--language:nfi',
-                                        '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
+                                        '-H:MaxRuntimeCompileMethods=1700', '--run-args', testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
-
-        with Task('Truffle TCK', tasks, tags=[GraalTags.truffletck]) as t:
-            if t:
-                junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
-                mkpath(junit_native_dir)
-                junit_tmp_dir = tempfile.mkdtemp(dir=junit_native_dir)
-                try:
-                    unittest_deps = []
-                    unittest_file = join(junit_tmp_dir, 'truffletck.tests')
-                    _run_tests([], lambda deps, vm_launcher, vm_args: unittest_deps.extend(deps), _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, [], [re.compile('com.oracle.truffle.tck.tests')], None, mx.suite('truffle'))
-                    if not exists(unittest_file):
-                        mx.abort('TCK tests not found.')
-                    unittest_deps.append(mx.dependency('truffle:TRUFFLE_SL_TCK'))
-                    vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-                    tests_image = native_image(vm_image_args + ['--macro:truffle',
-                                                                '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature',
-                                                                '-H:Class=org.junit.runner.JUnitCore', '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*',
-                                                                '-H:MaxRuntimeCompileMethods=3000'])
-                    with open(unittest_file) as f:
-                        test_classes = [l.rstrip() for l in f.readlines()]
-                    mx.run([tests_image, '-Dtck.inlineVerifierInstrument=false'] + test_classes)
-                finally:
-                    remove_tree(junit_tmp_dir)
 
         with Task('Relocations in generated object file on Linux', tasks, tags=[GraalTags.relocations]) as t:
             if t:
@@ -1116,10 +1092,9 @@ if not mx.is_windows():
         dependencies=['SubstrateVM'],
         builder_jar_distributions=[
             'substratevm:SVM_LLVM',
-            'compiler:GRAAL_LLVM',
-            'compiler:LLVM_WRAPPER_SHADOWED',
-            'compiler:JAVACPP_SHADOWED',
-            'compiler:LLVM_PLATFORM_SPECIFIC_SHADOWED',
+            'substratevm:LLVM_WRAPPER_SHADOWED',
+            'substratevm:JAVACPP_SHADOWED',
+            'substratevm:LLVM_PLATFORM_SPECIFIC_SHADOWED',
         ],
     ))
 
@@ -1145,9 +1120,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     polyglot_lib_jar_dependencies=[
         "substratevm:POLYGLOT_NATIVE_API",
-    ],
-    polyglot_lib_build_dependencies=[
-        "substratevm:POLYGLOT_NATIVE_API_HEADERS"
     ],
     has_polyglot_lib_entrypoints=True,
 ))
@@ -1242,7 +1214,7 @@ if is_musl_building_supported:
         license_files=[],
         third_party_license_files=[],
         dependencies=['svm'],
-        support_distributions=['substratevm:JDK11_NATIVE_IMAGE_MUSL_SUPPORT'],
+        support_distributions=['substratevm:JDK11_NATIVE_IMAGE_MUSL_SUPPORT_CE'],
         priority=5
     ))
 

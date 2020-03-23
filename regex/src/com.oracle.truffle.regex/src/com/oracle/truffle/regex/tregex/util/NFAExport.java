@@ -120,8 +120,8 @@ public final class NFAExport {
         writer.newLine();
         for (NFAState state : nfa.getStates()) {
             if (showState(state)) {
-                for (int i = 0; i < state.getNext(forward).length; i++) {
-                    NFAStateTransition transition = state.getNext(forward)[i];
+                for (int i = 0; i < state.getSuccessors(forward).length; i++) {
+                    NFAStateTransition transition = state.getSuccessors(forward)[i];
                     DotExport.printConnection(writer,
                                     labelState(transition.getSource(forward), true),
                                     labelState(transition.getTarget(forward), true),
@@ -219,7 +219,7 @@ public final class NFAExport {
         entryOffset--;
         while (!curStates.isEmpty()) {
             for (NFAState s : curStates) {
-                for (NFAStateTransition t : s.getNext()) {
+                for (NFAStateTransition t : s.getSuccessors()) {
                     if (!(mergeFinalStates && t.getTarget().isFinalState(forward)) && visited.add(t.getTarget())) {
                         nextStates.add(t.getTarget());
                     }
@@ -253,8 +253,8 @@ public final class NFAExport {
             if (s == null) {
                 continue;
             }
-            for (int i = 0; i < s.getNext().length; i++) {
-                NFAStateTransition t = s.getNext()[i];
+            for (int i = 0; i < s.getSuccessors().length; i++) {
+                NFAStateTransition t = s.getSuccessors()[i];
                 if (visited.contains(s) && visited.contains(t.getTarget())) {
                     printLaTexTransition(t, i);
                 }
@@ -326,10 +326,10 @@ public final class NFAExport {
             return false;
         }
         if (nfa.isEntry(state, forward)) {
-            return state.getNext(forward).length > 0;
+            return state.getSuccessors(forward).length > 0;
         }
         if (state.isFinalState(forward)) {
-            return state.getPrev(forward).length > 0;
+            return state.getPredecessors(forward).length > 0;
         }
         return true;
     }

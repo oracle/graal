@@ -134,7 +134,6 @@ public abstract class TruffleLSPTest {
         };
 
         truffleAdapter.register(envProvider.getEnvironment(), executorWrapper);
-        truffleAdapter.initialize();
     }
 
     @After

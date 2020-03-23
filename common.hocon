@@ -106,7 +106,7 @@ LARGE_YOUNG_GEN_SIZE : "27G"
 
 eclipse : {
   downloads : {
-    ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
+    ECLIPSE : {name: eclipse, version: "4.14.0", platformspecific: true}
   }
   environment : {
     ECLIPSE_EXE : "$ECLIPSE/eclipse"
@@ -115,7 +115,7 @@ eclipse : {
 
 jdt : {
   downloads : {
-    JDT : {name: ecj, version: "4.5.1", platformspecific: false}
+    JDT : {name: ecj, version: "4.14.0", platformspecific: false}
   }
 }
 
@@ -155,6 +155,7 @@ svm-common: ${mx} {
     "*/*/stripped/*.map"
     "*/callgrind.*"
     "*.bgv"
+    "*.log"
   ]
 }
 

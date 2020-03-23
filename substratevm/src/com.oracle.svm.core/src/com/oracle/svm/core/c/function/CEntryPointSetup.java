@@ -78,7 +78,7 @@ public class CEntryPointSetup {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to create a new Isolate.");
 
-        static void enter() {
+        public static void enter() {
             int code = CEntryPointActions.enterCreateIsolate(WordFactory.nullPointer());
             if (code != 0) {
                 CEntryPointActions.failFatally(code, errorMessage.get());

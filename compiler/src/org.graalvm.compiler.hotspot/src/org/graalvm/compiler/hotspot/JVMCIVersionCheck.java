@@ -48,6 +48,13 @@ public final class JVMCIVersionCheck {
     public interface Version {
         boolean isLessThan(Version other);
 
+        default boolean isGreaterThan(Version other) {
+            if (!isLessThan(other)) {
+                return !equals(other);
+            }
+            return false;
+        }
+
         static Version parse(String vmVersion) {
             Matcher m = Pattern.compile(".*-jvmci-(\\d+)\\.(\\d+)-b(\\d+).*").matcher(vmVersion);
             if (m.matches()) {
@@ -99,6 +106,20 @@ public final class JVMCIVersionCheck {
         }
 
         @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof Version2) {
+                Version2 that = (Version2) obj;
+                return this.major == that.major && this.minor == that.minor;
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return this.major ^ this.minor;
+        }
+
+        @Override
         public String toString() {
             if (major >= 19) {
                 return String.format("%d-b%02d", major, minor);
@@ -137,6 +158,20 @@ public final class JVMCIVersionCheck {
                 }
             }
             return false;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof Version3) {
+                Version3 that = (Version3) obj;
+                return this.major == that.major && this.minor == that.minor && this.build == that.build;
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return this.major ^ this.minor ^ this.build;
         }
 
         @Override

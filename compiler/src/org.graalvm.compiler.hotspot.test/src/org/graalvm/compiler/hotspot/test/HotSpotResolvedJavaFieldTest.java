@@ -80,8 +80,8 @@ public class HotSpotResolvedJavaFieldTest extends HotSpotGraalCompilerTest {
      */
     private int jvmFieldModifiers() {
         GraalHotSpotVMConfig config = runtime().getVMConfig();
-        int accEnum = config.getConstant("JVM_ACC_ENUM", Integer.class, 0x4000);
-        int accSynthetic = config.getConstant("JVM_ACC_SYNTHETIC", Integer.class, 0x1000);
+        int accEnum = config.getConstant("JVM_ACC_ENUM", Integer.class, 0x4000, false);
+        int accSynthetic = config.getConstant("JVM_ACC_SYNTHETIC", Integer.class, 0x1000, false);
         return PUBLIC | PRIVATE | PROTECTED | STATIC | FINAL | VOLATILE | TRANSIENT | accEnum | accSynthetic;
     }
 

@@ -40,19 +40,39 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import java.util.Arrays;
+
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.StateTransitionCanonicalizer;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.parser.ast.Term;
 
-public class ASTTransitionCanonicalizer extends StateTransitionCanonicalizer<ASTTransitionSet, TransitionBuilder<ASTTransitionSet>> {
+public final class ASTTransitionCanonicalizer extends StateTransitionCanonicalizer<Term, ASTTransition, TransitionBuilder<Term, ASTTransition>> {
+
+    public ASTTransitionCanonicalizer(RegexAST stateIndex, boolean forward, boolean prioritySensitive) {
+        super(stateIndex, forward, prioritySensitive);
+    }
 
     @Override
-    protected boolean isSameTargetMergeAllowed(TransitionBuilder<ASTTransitionSet> a, TransitionBuilder<ASTTransitionSet> b) {
-        return true;
+    protected boolean canMerge(TransitionBuilder<Term, ASTTransition> a, TransitionBuilder<Term, ASTTransition> b) {
+        return Arrays.equals(a.getTransitionSet().getTransitions(), b.getTransitionSet().getTransitions());
+    }
+
+    @Override
+    protected TransitionBuilder<Term, ASTTransition> createTransitionBuilder(ASTTransition[] transitions, StateSet<Term> targetStateSet, CodePointSet matcherBuilder) {
+        return new TransitionBuilder<>(transitions, targetStateSet, matcherBuilder);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    protected TransitionBuilder<ASTTransitionSet>[] createResultArray(int size) {
+    protected TransitionBuilder<Term, ASTTransition>[] createResultArray(int size) {
         return new TransitionBuilder[size];
+    }
+
+    @Override
+    protected ASTTransition[] createTransitionArray(int size) {
+        return new ASTTransition[size];
     }
 }

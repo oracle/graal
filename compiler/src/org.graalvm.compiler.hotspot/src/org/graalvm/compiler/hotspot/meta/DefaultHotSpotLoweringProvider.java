@@ -40,7 +40,6 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION;
 import static org.graalvm.word.LocationIdentity.any;
 
-import java.lang.ref.Reference;
 import java.util.EnumMap;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -89,7 +88,6 @@ import org.graalvm.compiler.hotspot.replacements.ObjectCloneSnippets;
 import org.graalvm.compiler.hotspot.replacements.ObjectSnippets;
 import org.graalvm.compiler.hotspot.replacements.StringToBytesSnippets;
 import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
-import org.graalvm.compiler.hotspot.replacements.UnsafeLoadSnippets;
 import org.graalvm.compiler.hotspot.replacements.UnsafeSnippets;
 import org.graalvm.compiler.hotspot.replacements.aot.ResolveConstantSnippets;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
@@ -159,6 +157,7 @@ import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -198,7 +197,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected HotSpotSerialWriteBarrierSnippets.Templates serialWriteBarrierSnippets;
     protected HotSpotG1WriteBarrierSnippets.Templates g1WriteBarrierSnippets;
     protected LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
-    protected UnsafeLoadSnippets.Templates unsafeLoadSnippets;
     protected AssertionSnippets.Templates assertionSnippets;
     protected ArrayCopySnippets.Templates arraycopySnippets;
     protected StringToBytesSnippets.Templates stringToBytesSnippets;
@@ -211,8 +209,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected ForeignCallSnippets.Templates foreignCallSnippets;
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
-                    HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
-        super(metaAccess, foreignCalls, target, runtime.getVMConfig().useCompressedOops);
+                    HotSpotConstantReflectionProvider constantReflection, PlatformConfigurationProvider platformConfig, TargetDescription target) {
+        super(metaAccess, foreignCalls, platformConfig, target, runtime.getVMConfig().useCompressedOops);
         this.runtime = runtime;
         this.registers = registers;
         this.constantReflection = constantReflection;
@@ -230,7 +228,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         g1WriteBarrierSnippets = new HotSpotG1WriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
         serialWriteBarrierSnippets = new HotSpotSerialWriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(options, factories, providers, target);
-        unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(options, factories, providers, target);
         assertionSnippets = new AssertionSnippets.Templates(options, factories, providers, target);
         arraycopySnippets = new ArrayCopySnippets.Templates(new HotSpotArraycopySnippets(), options, factories, runtime, providers, providers.getSnippetReflection(), target);
         stringToBytesSnippets = new StringToBytesSnippets.Templates(options, factories, providers, target);
@@ -652,7 +649,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
                 // write the displaced mark to the correct stack slot
                 AddressNode addressDisplacedMark = createOffsetAddress(graph, beginLockScope, runtime.getVMConfig().basicLockDisplacedHeaderOffset);
-                WriteNode writeStackSlot = graph.add(new WriteNode(addressDisplacedMark, DISPLACED_MARK_WORD_LOCATION, loadDisplacedHeader, BarrierType.NONE, false));
+                WriteNode writeStackSlot = graph.add(new WriteNode(addressDisplacedMark, DISPLACED_MARK_WORD_LOCATION, loadDisplacedHeader, BarrierType.NONE));
                 graph.addBeforeFixed(migrationEnd, writeStackSlot);
 
                 // load the lock object from the osr buffer
@@ -777,17 +774,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         }
 
         AddressNode address = createOffsetAddress(graph, object, runtime.getVMConfig().hubOffset);
-        return graph.add(new WriteNode(address, HUB_WRITE_LOCATION, writeValue, BarrierType.NONE, false));
-    }
-
-    @Override
-    public BarrierType fieldLoadBarrierType(ResolvedJavaField f) {
-        HotSpotResolvedJavaField loadField = (HotSpotResolvedJavaField) f;
-        if (loadField.getJavaKind() == JavaKind.Object && metaAccess.lookupJavaType(Reference.class).equals(loadField.getDeclaringClass()) &&
-                        loadField.getName().equals("referent")) {
-            return BarrierType.WEAK_FIELD;
-        }
-        return super.fieldLoadBarrierType(f);
+        return graph.add(new WriteNode(address, HUB_WRITE_LOCATION, writeValue, BarrierType.NONE));
     }
 
     @Override
@@ -801,7 +788,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    protected final JavaKind getStorageKind(ResolvedJavaField field) {
+    public final JavaKind getStorageKind(ResolvedJavaField field) {
         return field.getJavaKind();
     }
 

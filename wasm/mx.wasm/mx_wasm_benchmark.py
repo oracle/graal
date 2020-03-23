@@ -227,7 +227,7 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
         parser = argparse.ArgumentParser()
         parser.add_argument("--jvm-config")
         jvm_config = parser.parse_known_args(bmSuiteArgs)[0].jvm_config
-        return jvm_config == "node" or jvm_config == "native"
+        return jvm_config in ("node", "native")
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         if self.isWasmBenchmarkVm(bmSuiteArgs):
@@ -236,3 +236,68 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
 
 
 add_bm_suite(WasmBenchmarkSuite())
+
+
+_suite = mx.suite("wasm")
+
+
+MEMORY_PROFILER_CLASS_NAME = "org.graalvm.wasm.benchmark.MemoryFootprintBenchmarkRunner"
+MEMORY_WARMUP_ITERATIONS = 10
+BENCHMARKCASES_DISTRIBUTION = "WASM_BENCHMARKCASES"
+
+
+class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
+    """
+    Example suite used for testing and as a subclassing template.
+    """
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "wasm"
+
+    def name(self):
+        return "wasm-memory"
+
+    def benchmarkList(self, _):
+        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
+        jvm_args = mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
+        args = jvm_args + [MEMORY_PROFILER_CLASS_NAME, "--list"]
+
+        out = mx.OutputCapture()
+        jdk.run_java(args, out=out)
+        return out.data.split()
+
+    def createCommandLineArgs(self, benchmarks, bm_suite_args):
+        benchmarks = benchmarks if benchmarks is not None else self.benchmarkList(bm_suite_args)
+        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
+        vm_args = self.vmArgs(bm_suite_args) + mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
+        run_args = ["--warmup-iterations", str(MEMORY_WARMUP_ITERATIONS),
+                    "--result-iterations", str(self.getExtraIterationCount(MEMORY_WARMUP_ITERATIONS))]
+        return vm_args + [MEMORY_PROFILER_CLASS_NAME] + run_args + benchmarks
+
+    def rules(self, out, benchmarks, bm_suite_args):
+        return [
+            # We collect all our measures as "warmup"s. `AveragingBenchmarkMixin.addAverageAcrossLatestResults` then
+            # takes care of creating one final "memory" point which is the average of the last N points, where N is
+            # obtained from `AveragingBenchmarkMixin.getExtraIterationCount`.
+            mx_benchmark.StdOutRule(r"(?P<path>.*): (warmup )?iteration\[(?P<iteration>.*)\]: (?P<value>.*) MB", {
+                "benchmark": ("<path>", str),
+                "metric.better": "lower",
+                "metric.name": "warmup",
+                "metric.unit": "MB",
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": ("<iteration>", int)
+            })
+        ]
+
+    def run(self, benchmarks, bmSuiteArgs):
+        results = super(MemoryBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        self.addAverageAcrossLatestResults(results, "memory")
+        return results
+
+
+add_bm_suite(MemoryBenchmarkSuite())

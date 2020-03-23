@@ -111,6 +111,7 @@ import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewArrayNode;
 import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewInstanceNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
+import com.oracle.svm.core.graal.nodes.SubstrateReflectionGetCallerClassNode;
 import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
@@ -153,6 +154,7 @@ public class SubstrateGraphBuilderPlugins {
 
         // register the substratevm plugins
         registerSystemPlugins(metaAccess, plugins);
+        registerReflectionPlugins(plugins, replacements, analysis);
         registerImageInfoPlugins(metaAccess, plugins);
         registerProxyPlugins(snippetReflection, annotationSubstitutions, plugins, analysis);
         registerAtomicUpdaterPlugins(metaAccess, snippetReflection, plugins, analysis);
@@ -184,6 +186,39 @@ public class SubstrateGraphBuilderPlugins {
                 }
             });
         }
+    }
+
+    private static final String reflectionClass;
+
+    static {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            reflectionClass = "sun.reflect.Reflection";
+        } else {
+            reflectionClass = "jdk.internal.reflect.Reflection";
+        }
+    }
+
+    private static void registerReflectionPlugins(InvocationPlugins plugins, Replacements replacements, boolean analysis) {
+        Registration r = new Registration(plugins, reflectionClass, replacements);
+        r.register0("getCallerClass", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                if (analysis) {
+                    /*
+                     * During static analysis, we do not intrinsify so that we see the method and
+                     * its callees as invoked.
+                     */
+                    return false;
+                }
+                b.addPush(JavaKind.Object, new SubstrateReflectionGetCallerClassNode(b.getMetaAccess(), b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions())));
+                return true;
+            }
+
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+        });
     }
 
     private static void registerImageInfoPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {

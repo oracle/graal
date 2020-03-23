@@ -22,3 +22,10 @@ do
   ${UPLOAD_CMD} "${RESULTS_FILE_PATH}"
 done
 
+# Memory footprint benchmarks
+mx --dy /compiler --kill-with-sigquit benchmark \
+  "--machine-name=${MACHINE_NAME}" \
+  "--results-file=${RESULTS_FILE_PATH}" \
+  wasm-memory:* -- --jvm ${VM} --jvm-config ${VM_CONFIG}
+
+${UPLOAD_CMD} "${RESULTS_FILE_PATH}"

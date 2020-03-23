@@ -97,10 +97,12 @@ public final class SetSourceSectionVisitor extends DepthFirstTraversalRegexASTVi
 
     @Override
     protected void visit(LookBehindAssertion assertion) {
+        ast.addSourceSection(assertion, token);
     }
 
     @Override
     protected void visit(LookAheadAssertion assertion) {
+        ast.addSourceSection(assertion, token);
     }
 
     @Override

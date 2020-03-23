@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,7 +48,7 @@ public class PolyglotScopeTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("polyglotScopeTest");
+        testLibrary = loadTestBitcodeInternal("polyglotScopeTest.c");
     }
 
     public static class TestImportConstNode extends SulongTestNode {

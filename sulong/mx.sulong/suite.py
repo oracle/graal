@@ -28,24 +28,18 @@ suite = {
     },
     "GCC_SOURCE" : {
       "packedResource" : True,
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-5.2.0.tar.gz",
-        "https://mirrors-usa.go-parts.com/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz",
-      ],
+      # original: https://mirrors-usa.go-parts.com/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-5.2.0.tar.gz"],
       "sha1" : "713211883406b3839bdba4a22e7111a0cff5d09b",
     },
     "SHOOTOUT_SUITE" : {
       "packedResource" : True,
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/benchmarksgame-scm-latest.tar.gz",
-      ],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/benchmarksgame-scm-latest.tar.gz"],
       "sha1" : "9684ca5aaa38ff078811f9b42f15ee65cdd259fc",
     },
     "NWCC_SUITE" : {
       "packedResource" : True,
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/nwcc_0.8.3.tar.gz",
-      ],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/nwcc_0.8.3.tar.gz"],
       "sha1" : "2ab1825dc1f8bd5258204bab19e8fafad93fef26",
     },
     # Support Libraries.
@@ -108,7 +102,7 @@ suite = {
       },
     },
     # This is a dummy library for linux amd64 support.
-    "LINUX_AMD64_SYSCALL_SUPPORT" : {
+    "LINUX_AMD64_SUPPORT" : {
       "os_arch" : {
         "linux" : {
           "amd64" : {
@@ -120,6 +114,20 @@ suite = {
           }
         },
         "<others>": {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
+    # This is a dummy library for amd64 support.
+    "AMD64_SUPPORT" : {
+      "os_arch" : {
+        "<others>" : {
+          "amd64" : {
+            "path": "tests/support.txt",
+            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+          },
           "<others>": {
             "optional": True,
           }
@@ -434,6 +442,12 @@ suite = {
     "com.oracle.truffle.llvm.tests.llirtestgen" : {
       "subDir" : "tests",
       "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.llvm.tests",
+      ],
+      "javaProperties" : {
+        "llirtestgen.prelude": "prelude.ll",
+      },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
       "license" : "BSD-new",
@@ -452,7 +466,7 @@ suite = {
       ],
       "buildEnv" : {
         "LDFLAGS": "-lm",
-        "LLIR_TEST_GEN_JAR" : "<path:LLIR_TEST_GEN>",
+        "LLIRTESTGEN_CMD" : "<get_jvm_cmd_line:LLIR_TEST_GEN>",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -606,7 +620,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.interop.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ["O0_MEM2REG"],
+      "variants" : ["O1"],
       "buildRef" : False,
       "buildSharedObject" : True,
       "buildEnv" : {
@@ -719,6 +733,24 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.bitcode.amd64.native" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ["O0"],
+      "buildRef" : True,
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CFLAGS" : "-O0",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "buildDependencies" : [
+        "AMD64_SUPPORT",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.sulongavx.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
@@ -730,6 +762,9 @@ suite = {
       },
       "dependencies" : [
         "SULONG_TEST",
+      ],
+      "buildDependencies" : [
+        "LINUX_AMD64_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -772,7 +807,7 @@ suite = {
         "SULONG_TEST_SUITES",
       ],
       "buildDependencies" : [
-        "LINUX_AMD64_SYSCALL_SUPPORT",
+        "LINUX_AMD64_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -1150,8 +1185,12 @@ suite = {
 
     "LLIR_TEST_GEN" : {
       "relpath" : True,
+      "mainClass" : "com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen",
       "dependencies" : [
         "com.oracle.truffle.llvm.tests.llirtestgen",
+      ],
+      "distDependencies" : [
+        "SULONG_TEST",
       ],
       "license" : "BSD-new",
       "testDistribution" : True,
@@ -1191,6 +1230,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.bitcode.amd64.native/*",
         ],
       },
       "license" : "BSD-new",

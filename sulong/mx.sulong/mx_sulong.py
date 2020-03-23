@@ -578,6 +578,16 @@ def get_jacoco_setting():
 mx_subst.path_substitutions.register_no_arg('jacoco', get_jacoco_setting)
 
 
+def _subst_get_jvm_args(dep):
+    java = mx.get_jdk().java
+    main_class = mx.distribution(dep).mainClass
+    jvm_args = [pipes.quote(arg) for arg in mx.get_runtime_jvm_args([dep])]
+    cmd = [java] + jvm_args + [main_class]
+    return " ".join(cmd)
+
+
+mx_subst.path_substitutions.register_with_arg('get_jvm_cmd_line', _subst_get_jvm_args)
+
 mx.add_argument('--jacoco-exec-file', help='the coverage result file of JaCoCo', default='jacoco.exec')
 
 

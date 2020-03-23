@@ -31,6 +31,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.RemNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfDispatchNode;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
@@ -42,8 +43,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvider implements AMD64LoweringProviderMixin {
 
-    public SubstrateAMD64LoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, TargetDescription target) {
-        super(metaAccess, foreignCalls, target);
+    public SubstrateAMD64LoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig, TargetDescription target) {
+        super(metaAccess, foreignCalls, platformConfig, target);
     }
 
     @SuppressWarnings("unchecked")

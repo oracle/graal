@@ -47,15 +47,15 @@ public final class DFACaptureGroupTrackingData {
     public final int[] currentResultOrder;
     public final int[] currentResult;
 
-    public DFACaptureGroupTrackingData(int maxNumberOfNFAStates, TRegexDFAExecutorProperties props) {
+    public DFACaptureGroupTrackingData(int maxNumberOfNFAStates, int getNumberOfCaptureGroups, TRegexDFAExecutorProperties props) {
         if (props.isSimpleCG()) {
-            results = new int[props.getNumberOfCaptureGroups() * 2];
+            results = new int[getNumberOfCaptureGroups * 2];
             currentResultOrder = null;
-            currentResult = props.isSimpleCGMustCopy() ? new int[props.getNumberOfCaptureGroups() * 2] : null;
+            currentResult = props.isSimpleCGMustCopy() ? new int[getNumberOfCaptureGroups * 2] : null;
         } else {
-            results = new int[maxNumberOfNFAStates * props.getNumberOfCaptureGroups() * 2];
+            results = new int[maxNumberOfNFAStates * getNumberOfCaptureGroups * 2];
             currentResultOrder = new int[maxNumberOfNFAStates];
-            currentResult = new int[props.getNumberOfCaptureGroups() * 2];
+            currentResult = new int[getNumberOfCaptureGroups * 2];
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,13 +42,19 @@ public final class FunctionParameter implements SSAValue, ValueSymbol {
     private final Type type;
     private int frameIdentifier = -1;
     private final AttributesGroup parameterAttribute;
+    private final int argIndex;
 
     // this name is only used for IR debugging
     private String name = LLVMIdentifier.UNKNOWN;
 
-    FunctionParameter(Type type, AttributesGroup parameterAttribute) {
+    FunctionParameter(Type type, AttributesGroup parameterAttribute, int argIndex) {
         this.type = type;
         this.parameterAttribute = parameterAttribute;
+        this.argIndex = argIndex;
+    }
+
+    public int getArgIndex() {
+        return argIndex;
     }
 
     @Override

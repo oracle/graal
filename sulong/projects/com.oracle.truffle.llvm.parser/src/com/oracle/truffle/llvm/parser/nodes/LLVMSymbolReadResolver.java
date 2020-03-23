@@ -73,11 +73,7 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen.IndexVectorBroadcastNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen.ResultVectorBroadcastNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
@@ -327,11 +323,7 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(GetElementPointerConstant constant) {
-            try {
-                resolvedNode = resolveElementPointer(constant.getBasePointer(), constant.getIndices(), (symbol, excludeOtherIndex, other, others) -> resolve(symbol));
-            } catch (TypeOverflowException e) {
-                resolvedNode = Type.handleOverflowExpression(e);
-            }
+            resolvedNode = resolveElementPointer(constant.getBasePointer(), constant.getIndices(), (symbol, excludeOtherIndex, other, others) -> resolve(symbol));
         }
 
         @Override
@@ -500,79 +492,20 @@ public final class LLVMSymbolReadResolver {
     }
 
     /**
-     * The rules for whether to build a scalar-getelementptr or vector-getelementptr node:
-     *
-     * S = scalar node
-     *
-     * V = vector node
-     *
-     * BC = broadcast node
-     *
-     * GEP = scalar getelementptr node
-     *
-     * VGEP = vector getelementptr node
-     *
-     * The BasePointer (BP) could either be a scalar, vector or GEP/VGEP node coming from the
-     * previous indexing dimension. The Index can only either be a scalar or a vector.
-     *
-     * Pointers, arrays and structures are considered scalars.
-     *
-     * (BP, Idx) --> Next OP(PTR, IDX)
-     *
-     * -------------------------------
-     *
-     * 0: (S, S) --> GEP(S, S)
-     *
-     * 1: (S, V) --> VGEP(BC(S), V)
-     *
-     * 2: (V, S) --> VGEP(V, BC(S))
-     *
-     * 3: (V, V) --> VGEP(V, V)
-     *
-     * 4: (GEP, S) --> GEP(GEP, S)
-     *
-     * 5: (GEP, V) --> VGEP(BC(GEP), V)
-     *
-     * 6: (VGEP, S) --> VGEP(VGEP, BC(S))
-     *
-     * 7: (VGEP, V) --> VGEP(VGEP, V)
-     */
-    private LLVMExpressionNode createElementPointer(long indexedTypeLength, Type currentType, LLVMExpressionNode currentAddress, LLVMExpressionNode indexNode, Type indexType,
-                    final boolean wasVectorized) {
-        if (wasVectorized) {
-            // Cases 2, 3, 6, 7
-            if (indexType instanceof VectorType) {
-                // Cases 3, 7
-                return nodeFactory.createVectorizedTypedElementPointer(indexedTypeLength, currentType, currentAddress, indexNode);
-            } else {
-                // Cases 2, 6
-                int length = ((VectorType) currentType).getNumberOfElementsInt();
-                return nodeFactory.createVectorizedTypedElementPointer(indexedTypeLength, currentType, currentAddress, IndexVectorBroadcastNodeGen.create(length, indexNode));
-            }
-        } else {
-            // Cases 0, 1, 4, 5
-            if (indexType instanceof VectorType) {
-                // Cases 1, 5
-                int length = ((VectorType) indexType).getNumberOfElementsInt();
-                return nodeFactory.createVectorizedTypedElementPointer(indexedTypeLength, currentType, ResultVectorBroadcastNodeGen.create(length, currentAddress), indexNode);
-            } else {
-                // Cases 0, 4
-                return nodeFactory.createTypedElementPointer(indexedTypeLength, currentType, currentAddress, indexNode);
-            }
-        }
-    }
-
-    /**
      * Turns a base value and a list of indices into a list of "get element pointer" operations, and
      * allows callers to intercept the resolution of values to nodes (used for frame slot
      * optimization in LLVMBitcodeInstructionVisitor).
      */
-    public LLVMExpressionNode resolveElementPointer(SymbolImpl base, SymbolImpl[] indices, OptimizedResolver resolver) throws TypeOverflowException {
+    public LLVMExpressionNode resolveElementPointer(SymbolImpl base, SymbolImpl[] indices, OptimizedResolver resolver) {
         LLVMExpressionNode[] indexNodes = new LLVMExpressionNode[indices.length];
+        Long[] indexConstants = new Long[indices.length];
+        Type[] indexTypes = new Type[indices.length];
 
         for (int i = indices.length - 1; i >= 0; i--) {
             SymbolImpl indexSymbol = indices[i];
-            if (evaluateLongIntegerConstant(indexSymbol) == null) {
+            indexConstants[i] = evaluateLongIntegerConstant(indexSymbol);
+            indexTypes[i] = indexSymbol.getType();
+            if (indexConstants[i] == null) {
                 indexNodes[i] = resolver.resolve(indexSymbol, i, base, indices);
             }
         }
@@ -580,52 +513,7 @@ public final class LLVMSymbolReadResolver {
         LLVMExpressionNode currentAddress = resolver.resolve(base, -1, null, indices);
         Type currentType = base.getType();
 
-        boolean wasVectorized = currentType instanceof VectorType;
-        if (wasVectorized) {
-            VectorType vectorType = (VectorType) currentType;
-            currentType = vectorType.getElementType();
-        }
-
-        for (int i = 0; i < indices.length; i++) {
-            SymbolImpl indexSymbol = indices[i];
-            Type indexType = indexSymbol.getType();
-
-            Long indexInteger = evaluateLongIntegerConstant(indexSymbol);
-            if (indexInteger == null) {
-                // the index is determined at runtime
-                if (currentType instanceof StructureType) {
-                    // according to http://llvm.org/docs/LangRef.html#getelementptr-instruction
-                    throw new LLVMParserException("Indices on structs must be constant integers!");
-                }
-                AggregateType aggregate = (AggregateType) currentType;
-                long indexedTypeLength = aggregate.getOffsetOf(1, dataLayout);
-                currentType = aggregate.getElementType(1);
-                currentAddress = createElementPointer(indexedTypeLength, currentType, currentAddress, indexNodes[i], indexType, wasVectorized);
-                wasVectorized = currentAddress instanceof LLVMVectorizedGetElementPtrNodeGen;
-            } else {
-                // the index is a constant integer
-                AggregateType aggregate = (AggregateType) currentType;
-                long addressOffset = aggregate.getOffsetOf(indexInteger, dataLayout);
-                currentType = aggregate.getElementType(indexInteger);
-
-                // creating a pointer inserts type information, this needs to happen for the address
-                // computed by getelementptr even if it is the same as the basepointer
-                if (addressOffset != 0 || i == indices.length - 1) {
-                    LLVMExpressionNode indexNode;
-                    if (indexType == PrimitiveType.I32) {
-                        indexNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
-                    } else if (indexType == PrimitiveType.I64) {
-                        indexNode = nodeFactory.createLiteral(1L, PrimitiveType.I64);
-                    } else {
-                        throw new AssertionError(indexType);
-                    }
-                    currentAddress = createElementPointer(addressOffset, currentType, currentAddress, indexNode, indexType, wasVectorized);
-                    wasVectorized = currentAddress instanceof LLVMVectorizedGetElementPtrNodeGen;
-                }
-            }
-        }
-
-        return currentAddress;
+        return CommonNodeFactory.createNestedElementPointerNode(nodeFactory, dataLayout, indexNodes, indexConstants, indexTypes, currentAddress, currentType);
     }
 
     public LLVMExpressionNode resolve(SymbolImpl symbol) {

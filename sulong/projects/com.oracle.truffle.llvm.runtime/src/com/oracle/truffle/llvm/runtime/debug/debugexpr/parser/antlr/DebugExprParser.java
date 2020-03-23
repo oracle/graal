@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,7 +55,7 @@ public class DebugExprParser {
         @Override
         public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
             String location = "-- line " + line + " col " + (charPositionInLine + 1) + ": ";
-            throw DebugExprException.create(null, String.format("Debug Expression error in %s:\n%s%s", snippet, location, msg));
+            throw DebugExprException.create(null, "Debug Expression error in %s:\n%s%s", snippet, location, msg);
         }
     }
 
