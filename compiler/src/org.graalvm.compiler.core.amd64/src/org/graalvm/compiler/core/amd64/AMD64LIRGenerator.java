@@ -681,21 +681,17 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        append(new TableSwitchOp(lowKey, defaultTarget, targets, key, newVariable(LIRKind.value(target().arch.getWordKind())), newVariable(key.getValueKind())));
+    protected void emitTableSwitch(Constant[] keyConstants, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
+        append(new TableSwitchOp(keyConstants, lowKey, defaultTarget, targets, key, newVariable(LIRKind.value(target().arch.getWordKind())), newVariable(key.getValueKind())));
     }
 
     @Override
-    protected Optional<IntHasher> hasherFor(JavaConstant[] keyConstants, double minDensity) {
-        int[] keys = new int[keyConstants.length];
-        for (int i = 0; i < keyConstants.length; i++) {
-            keys[i] = keyConstants[i].asInt();
-        }
-        return IntHasher.forKeys(keys);
+    protected Optional<IntHasher> hasherFor(int[] keyPrimitives) {
+        return IntHasher.forKeys(keyPrimitives);
     }
 
     @Override
-    protected void emitHashTableSwitch(IntHasher hasher, JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, Value value) {
+    protected void emitHashTableSwitch(IntHasher hasher, Constant[] keyConstants, int[] keyPrimitives, LabelRef defaultTarget, LabelRef[] targets, Value value) {
         Value hash = value;
         if (hasher.factor > 1) {
             Value factor = emitJavaConstant(JavaConstant.forShort(hasher.factor));
@@ -710,7 +706,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
         Variable scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
         Variable entryScratch = newVariable(LIRKind.value(target().arch.getWordKind()));
-        append(new HashTableSwitchOp(keys, defaultTarget, targets, value, hash, scratch, entryScratch));
+        append(new HashTableSwitchOp(keyConstants, keyPrimitives, defaultTarget, targets, value, hash, scratch, entryScratch));
     }
 
     @Override

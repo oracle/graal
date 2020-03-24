@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodeinfo.InputType.Guard;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
@@ -181,9 +182,14 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     }
 
     @Override
-    public int intKeyAt(int i) {
+    public JavaConstant keyAt(int i) {
         assert i == 0;
-        return ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
+        return ((IntegerEqualsNode) condition()).getY().asJavaConstant();
+    }
+
+    @Override
+    public int intKeyAt(int i) {
+        return keyAt(i).asInt();
     }
 
     @Override

@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import jdk.vm.ci.meta.Constant;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -2092,7 +2093,7 @@ class LoopDetector implements Runnable {
              * into our temporary data structures for the new, larger, switch node.
              */
             for (int i = 0; i < irreducibleLoopSwitch.keyCount(); i++) {
-                int key = irreducibleLoopSwitch.keyAt(i).asInt();
+                int key = irreducibleLoopSwitch.intKeyAt(i);
                 dispatchTable.put(key, irreducibleLoopSwitch.successorAtKey(key));
             }
             unreachableDefaultSuccessor = irreducibleLoopSwitch.defaultSuccessor();
@@ -2143,14 +2144,16 @@ class LoopDetector implements Runnable {
         int numSuccessors = numKeys + 1;
 
         AbstractBeginNode[] switchSuccessors = new AbstractBeginNode[numSuccessors];
-        int[] switchKeys = new int[numKeys];
+        Constant[] switchKeyConstants = new Constant[numKeys];
+        int[] switchKeyPrimitives = new int[numKeys];
         double[] switchKeyProbabilities = new double[numSuccessors];
         int[] switchKeySuccessors = new int[numSuccessors];
 
         int idx = 0;
         for (Map.Entry<Integer, AbstractBeginNode> entry : dispatchTable.entrySet()) {
             switchSuccessors[idx] = entry.getValue();
-            switchKeys[idx] = entry.getKey();
+            switchKeyConstants[idx] = JavaConstant.forInt(entry.getKey());
+            switchKeyPrimitives[idx] = entry.getKey();
             switchKeyProbabilities[idx] = 1d / numKeys;
             switchKeySuccessors[idx] = idx;
             idx++;
@@ -2160,7 +2163,7 @@ class LoopDetector implements Runnable {
         switchKeyProbabilities[idx] = 0;
         switchKeySuccessors[idx] = idx;
 
-        return new IntegerSwitchNode(switchedValue, switchSuccessors, switchKeys, switchKeyProbabilities, switchKeySuccessors);
+        return new IntegerSwitchNode(switchedValue, switchSuccessors, switchKeyConstants, switchKeyPrimitives, switchKeyProbabilities, switchKeySuccessors);
     }
 
     /**
@@ -2174,7 +2177,7 @@ class LoopDetector implements Runnable {
                 StringBuilder msg = new StringBuilder("Inserted state machine to remove irreducible loops. Dispatching to the following states: ");
                 String sep = "";
                 for (int i = 0; i < irreducibleLoopSwitch.keyCount(); i++) {
-                    msg.append(sep).append(irreducibleLoopSwitch.keyAt(i).asInt());
+                    msg.append(sep).append(irreducibleLoopSwitch.intKeyAt(i));
                     sep = ", ";
                 }
                 debug.log(DebugContext.BASIC_LEVEL, "%s", msg);

@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import jdk.vm.ci.meta.Constant;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -56,7 +57,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
  */
 @SuppressFBWarnings(value = {"UCF"}, justification = "javac spawns useless control flow in static initializer when using assert(asNode().isAlive())")
 public interface SwitchFoldable extends ValueNodeInterface {
-    Comparator<KeyData> SORTER = Comparator.comparingInt((KeyData k) -> k.key);
+    Comparator<KeyData> SORTER = Comparator.comparingInt((KeyData k) -> k.keyPrimitive);
 
     /**
      * Returns the direct successor in the branch to check for SwitchFoldability.
@@ -93,6 +94,8 @@ public interface SwitchFoldable extends ValueNodeInterface {
      * Completely removes all successors from this node.
      */
     void cutOffLowestCascadeNode();
+
+    Constant keyAt(int i);
 
     /**
      * Returns the value of the i-th key of this node.
@@ -228,13 +231,14 @@ public interface SwitchFoldable extends ValueNodeInterface {
         private static void updateSwitchData(SwitchFoldable node, QuickQueryKeyData keyData, QuickQueryList<AbstractBeginNode> newSuccessors, double[] cumulative, double[] totalProbabilities,
                         QuickQueryList<AbstractBeginNode> duplicates) {
             for (int i = 0; i < node.keyCount(); i++) {
-                int key = node.intKeyAt(i);
+                Constant keyConstant = node.keyAt(i);
+                int keyPrimitive = node.intKeyAt(i);
                 double keyProbability = cumulative[0] * node.keyProbability(i);
                 KeyData data;
                 AbstractBeginNode keySuccessor = node.keySuccessor(i);
-                if (isDuplicateKey(key, keyData)) {
+                if (isDuplicateKey(keyPrimitive, keyData)) {
                     // Key was already seen
-                    data = keyData.fromKey(key);
+                    data = keyData.fromKey(keyPrimitive);
                     if (data.keySuccessor != KeyData.KEY_UNKNOWN) {
                         // Unreachable key: kill it manually at the end
                         if (!newSuccessors.contains(keySuccessor) && !duplicates.contains(keySuccessor) && keySuccessor.isAlive()) {
@@ -251,7 +255,7 @@ public interface SwitchFoldable extends ValueNodeInterface {
                      * of the folding.
                      */
                 } else {
-                    data = new KeyData(key, keyProbability, KeyData.KEY_UNKNOWN);
+                    data = new KeyData(keyConstant, keyPrimitive, keyProbability, KeyData.KEY_UNKNOWN);
                     totalProbabilities[0] += keyProbability;
                     keyData.add(data);
                 }
@@ -277,12 +281,14 @@ public interface SwitchFoldable extends ValueNodeInterface {
     final class KeyData {
         private static final int KEY_UNKNOWN = -2;
 
-        private final int key;
+        private final Constant keyConstant;
+        private final int keyPrimitive;
         private final double keyProbability;
         private int keySuccessor;
 
-        KeyData(int key, double keyProbability, int keySuccessor) {
-            this.key = key;
+        KeyData(Constant keyConstant, int keyPrimitive, double keyProbability, int keySuccessor) {
+            this.keyConstant = keyConstant;
+            this.keyPrimitive = keyPrimitive;
             this.keyProbability = keyProbability;
             this.keySuccessor = keySuccessor;
         }
@@ -331,9 +337,9 @@ public interface SwitchFoldable extends ValueNodeInterface {
         private final EconomicMap<Integer, KeyData> map = EconomicMap.create();
 
         private void add(KeyData key) {
-            assert !map.containsKey(key.key);
+            assert !map.containsKey(key.keyPrimitive);
             list.add(key);
-            map.put(key.key, key);
+            map.put(key.keyPrimitive, key);
         }
 
         private boolean contains(int key) {
@@ -435,7 +441,8 @@ public interface SwitchFoldable extends ValueNodeInterface {
 
         // Spawn the required data structures
         int newKeyCount = keyData.list.size();
-        int[] keys = new int[newKeyCount];
+        Constant[] keyConstants = new Constant[newKeyCount];
+        int[] keyPrimitives = new int[newKeyCount];
         double[] keyProbabilities = new double[newKeyCount + 1];
         int[] keySuccessors = new int[newKeyCount + 1];
         int nonDeoptSuccessorCount = Helper.countNonDeoptSuccessors(keyData) + (cumulative[0] > 0.0d ? 1 : 0);
@@ -448,7 +455,8 @@ public interface SwitchFoldable extends ValueNodeInterface {
         // Add branches.
         for (int i = 0; i < newKeyCount; i++) {
             SwitchFoldable.KeyData data = keyData.get(i);
-            keys[i] = data.key;
+            keyConstants[i] = data.keyConstant;
+            keyPrimitives[i] = data.keyPrimitive;
             keyProbabilities[i] = uninitializedProfiles && data.keyProbability > 0.0d ? uniform : normalizationFactor * data.keyProbability;
             keySuccessors[i] = data.keySuccessor != KeyData.KEY_UNKNOWN ? data.keySuccessor : keySuccessors[newKeyCount];
         }
@@ -462,7 +470,7 @@ public interface SwitchFoldable extends ValueNodeInterface {
         }
 
         // Spawn the switch node
-        IntegerSwitchNode toInsert = new IntegerSwitchNode(adapter, successors.size(), keys, keyProbabilities, keySuccessors);
+        IntegerSwitchNode toInsert = new IntegerSwitchNode(adapter, successors.size(), keyConstants, keyPrimitives, keyProbabilities, keySuccessors);
         graph.add(toInsert);
 
         // Detach the cascade from the graph

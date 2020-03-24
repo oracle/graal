@@ -667,16 +667,16 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             } else if (x instanceof IntegerSwitchNode && x.isSorted()) {
                 IntegerSwitchNode intSwitch = (IntegerSwitchNode) x;
                 LabelRef[] keyTargets = new LabelRef[keyCount];
-                JavaConstant[] keyConstants = new JavaConstant[keyCount];
+                Constant[] keyConstants = new Constant[keyCount];
+                int[] keyPrimitives = new int[keyCount];
                 double[] keyProbabilities = new double[keyCount];
-                JavaKind keyKind = intSwitch.keyAt(0).getJavaKind();
                 for (int i = 0; i < keyCount; i++) {
                     keyTargets[i] = getLIRBlock(intSwitch.keySuccessor(i));
+                    keyPrimitives[i] = intSwitch.intKeyAt(i);
                     keyConstants[i] = intSwitch.keyAt(i);
                     keyProbabilities[i] = intSwitch.keyProbability(i);
-                    assert keyConstants[i].getJavaKind() == keyKind;
                 }
-                gen.emitStrategySwitch(keyConstants, keyProbabilities, keyTargets, defaultTarget, value);
+                gen.emitStrategySwitch(keyConstants, keyPrimitives, keyProbabilities, keyTargets, defaultTarget, value);
             } else {
                 // keyKind != JavaKind.Int || !x.isSorted()
                 LabelRef[] keyTargets = new LabelRef[keyCount];

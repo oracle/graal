@@ -477,15 +477,15 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
     }
 
-    public void emitStrategySwitch(JavaConstant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
-        SwitchStrategy strategy = SwitchStrategy.getBestStrategy(keyProbabilities, keyConstants, keyTargets);
+    public void emitStrategySwitch(Constant[] keyConstants, int[] keyPrimitives, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
+        SwitchStrategy strategy = SwitchStrategy.getBestStrategy(keyProbabilities, keyConstants, keyPrimitives, keyTargets);
 
         int keyCount = keyConstants.length;
         double minDensity = 1 / Math.sqrt(strategy.getAverageEffort());
-        Optional<IntHasher> hasher = hasherFor(keyConstants, minDensity);
+        Optional<IntHasher> hasher = hasherFor(keyPrimitives);
         double hashTableSwitchDensity = hasher.map(h -> (double) keyCount / h.cardinality).orElse(0d);
         // The value range computation below may overflow, so compute it as a long.
-        long valueRange = (long) keyConstants[keyCount - 1].asInt() - (long) keyConstants[0].asInt() + 1;
+        long valueRange = (long) keyPrimitives[keyCount - 1] - (long) keyPrimitives[0] + 1;
         double tableSwitchDensity = keyCount / (double) valueRange;
 
         /*
@@ -500,43 +500,46 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             if (hashTableSwitchDensity > tableSwitchDensity) {
                 IntHasher h = hasher.get();
                 LabelRef[] targets = new LabelRef[h.cardinality];
-                JavaConstant[] keys = new JavaConstant[h.cardinality];
+                Constant[] constants = new Constant[h.cardinality];
+                int[] primitives = new int[h.cardinality];
                 for (int i = 0; i < h.cardinality; i++) {
-                    keys[i] = JavaConstant.INT_0;
+                    constants[i] = JavaConstant.INT_0;
+                    primitives[i] = 0;
                     targets[i] = defaultTarget;
                 }
                 for (int i = 0; i < keyCount; i++) {
-                    int idx = h.hash(keyConstants[i].asInt());
-                    keys[idx] = keyConstants[i];
+                    int idx = h.hash(keyPrimitives[i]);
+                    constants[idx] = keyConstants[i];
+                    primitives[idx] = keyPrimitives[i];
                     targets[idx] = keyTargets[i];
                 }
-                emitHashTableSwitch(h, keys, defaultTarget, targets, value);
+                emitHashTableSwitch(h, constants, primitives, defaultTarget, targets, value);
             } else {
-                int minValue = keyConstants[0].asInt();
+                int minValue = keyPrimitives[0];
                 assert valueRange < Integer.MAX_VALUE;
                 LabelRef[] targets = new LabelRef[(int) valueRange];
                 for (int i = 0; i < valueRange; i++) {
                     targets[i] = defaultTarget;
                 }
                 for (int i = 0; i < keyCount; i++) {
-                    targets[keyConstants[i].asInt() - minValue] = keyTargets[i];
+                    targets[keyPrimitives[i] - minValue] = keyTargets[i];
                 }
-                emitTableSwitch(minValue, defaultTarget, targets, value);
+                emitTableSwitch(keyConstants, minValue, defaultTarget, targets, value);
             }
         }
     }
 
     public abstract void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget);
 
-    protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
+    protected abstract void emitTableSwitch(Constant[] keyConstants, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
 
     @SuppressWarnings("unused")
-    protected Optional<IntHasher> hasherFor(JavaConstant[] keyConstants, double minDensity) {
+    protected Optional<IntHasher> hasherFor(int[] keyPrimitives) {
         return Optional.empty();
     }
 
     @SuppressWarnings("unused")
-    protected void emitHashTableSwitch(IntHasher hasher, JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, Value value) {
+    protected void emitHashTableSwitch(IntHasher hasher, Constant[] keyConstants, int[] keyPrimitives, LabelRef defaultTarget, LabelRef[] targets, Value value) {
         throw new UnsupportedOperationException(getClass().getSimpleName() + " doesn't support hash table switches");
     }
 

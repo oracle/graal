@@ -584,14 +584,16 @@ public class SPARCControlFlow {
     public static final class TableSwitchOp extends SPARCBlockEndOp {
         public static final LIRInstructionClass<TableSwitchOp> TYPE = LIRInstructionClass.create(TableSwitchOp.class);
 
+        private final Constant[] keyConstants;
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
         @Alive protected Value index;
         @Temp protected Value scratch;
 
-        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Variable index, Variable scratch) {
+        public TableSwitchOp(final Constant[] keyConstants, final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Variable index, Variable scratch) {
             super(TYPE);
+            this.keyConstants = keyConstants;
             this.lowKey = lowKey;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
@@ -644,6 +646,8 @@ public class SPARCControlFlow {
                 masm.jmpl(scratch2, scratchReg, g0);
             }
             masm.nop();
+
+            // TODO register constant pointers
 
             // Emit jump table entries
             for (LabelRef target : targets) {

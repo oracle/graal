@@ -36,6 +36,14 @@ public final class CompressEncoding {
         this.shift = shift;
     }
 
+    public int compress(long ptr) {
+        if (ptr == 0L) {
+            return 0;
+        } else {
+            return (int) ((ptr - base) >>> shift) & 0xFFFFFFFF;
+        }
+    }
+
     public boolean hasBase() {
         return base != 0;
     }
