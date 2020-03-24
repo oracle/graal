@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -254,6 +255,8 @@ public interface EspressoProperties {
                 return new LinuxBuilder();
             case Darwin:
                 return new DarwinBuilder();
+            case Windows:
+                return new WindowsBuilder();
             default:
                 throw EspressoError.shouldNotReachHere(os + " not supported");
         }
@@ -411,5 +414,70 @@ final class DarwinBuilder extends PlatformBuilder {
         paths.add(javaHome().resolve(EXTENSIONS_DIR));
         paths.addAll(SYS_EXTENSIONS_DIRS);
         return paths;
+    }
+}
+
+final class WindowsBuilder extends PlatformBuilder {
+
+    private final Path windowsRoot = Paths.get(System.getenv("SystemRoot"));
+
+    private static final Path PACKAGE_DIR = Paths.get("Sun", "Java");
+
+    @Override
+    List<Path> defaultJavaLibraryPath() {
+        // Win32 library search order (See the documentation for LoadLibrary):
+        //
+        // 1. The directory from which application is loaded.
+        // 2. The system wide Java Extensions directory (Java only)
+        // 3. System directory (GetSystemDirectory)
+        // 4. Windows directory (GetWindowsDirectory)
+        // 5. The PATH environment variable
+        // 6. The current directory
+        List<Path> libraryPath = new ArrayList<>();
+
+        // 1. The directory from which application is loaded.
+        // HotSpot's uses the following snippet:
+        // GetModuleFileName(NULL, tmp, sizeof(tmp));
+        // *(strrchr(tmp, '\\')) = '\0';
+        // strcat(library_path, tmp);
+        //
+        // Since Espresso may run standalone, we point to the "would be" path as if Espresso was the
+        // "java.exe" executable e.g. "jre/bin"
+        libraryPath.add(javaHome().resolve("bin"));
+
+        // 2. The system wide Java Extensions directory (Java only)
+        libraryPath.add(windowsRoot.resolve(PACKAGE_DIR).resolve("bin"));
+
+        // 3. System directory (GetSystemDirectory)
+        libraryPath.add(windowsRoot.resolve("system32"));
+
+        // 4. Windows directory (GetWindowsDirectory)
+        libraryPath.add(windowsRoot);
+
+        // 5. The PATH environment variable
+        String envPath = System.getenv("PATH");
+        if (envPath != null) {
+            String[] paths = envPath.split(File.pathSeparator);
+            for (String p : paths) {
+                libraryPath.add(Paths.get(p));
+            }
+        }
+
+        // 6. The current directory
+        libraryPath.add(Paths.get("."));
+
+        return libraryPath;
+    }
+
+    @Override
+    List<Path> defaultBootLibraryPath() {
+        return Collections.singletonList(javaHome().resolve("bin"));
+    }
+
+    @Override
+    List<Path> defaultExtDirs() {
+        return Arrays.asList(
+                        javaHome().resolve(EXTENSIONS_DIR),
+                        windowsRoot.resolve(PACKAGE_DIR).resolve(EXTENSIONS_DIR));
     }
 }

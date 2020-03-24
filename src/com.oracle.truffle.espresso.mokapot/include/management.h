@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jni;
+#ifndef _MANAGEMENT_H
+#define _MANAGEMENT_H
 
-import com.oracle.truffle.espresso.runtime.StaticObject;
+#include "jmm.h"
 
-/**
- * Retains one exception per thread that is pending to be handled in that thread (or none).
- */
-public final class JniThreadLocalPendingException {
-    private ThreadLocal<StaticObject> pendingException = new ThreadLocal<>();
+#include <trufflenfi.h>
+#include <jni.h>
 
-    public StaticObject get() {
-        return pendingException.get();
-    }
+JNIEXPORT JmmInterface* JNICALL initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
 
-    public void set(StaticObject t) {
-        // TODO(peterssen): Warn about overwritten pending exceptions.
-        pendingException.set(t);
-    }
+JNIEXPORT void JNICALL disposeManagementContext(TruffleEnv *truffle_env, JmmInterface *management_ptr);
 
-    public void clear() {
-        set(null);
-    }
-
-    public void dispose() {
-        pendingException.remove();
-        pendingException = null;
-    }
-}
+#endif // _MANAGEMENT_H

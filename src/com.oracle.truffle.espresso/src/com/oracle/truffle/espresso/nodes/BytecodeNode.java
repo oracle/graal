@@ -231,6 +231,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
+import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -364,7 +365,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
     public BytecodeNode(BytecodeNode copy) {
         this(copy.getMethodVersion(), copy.getRootNode().getFrameDescriptor(), copy.bciSlot);
-        System.err.println("Copying node for " + getMethod());
+        getContext().getLogger().log(Level.FINE, "Copying node for {}", getMethod());
     }
 
     public SourceSection getSourceSectionAtBCI(int bci) {

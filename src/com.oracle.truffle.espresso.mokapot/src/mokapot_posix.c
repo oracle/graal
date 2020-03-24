@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,32 +19,20 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
-package com.oracle.truffle.espresso.jni;
 
-import com.oracle.truffle.espresso.runtime.StaticObject;
+#if !defined(_WIN32)
 
-/**
- * Retains one exception per thread that is pending to be handled in that thread (or none).
- */
-public final class JniThreadLocalPendingException {
-    private ThreadLocal<StaticObject> pendingException = new ThreadLocal<>();
+#include "jvm_posix.h"
+#include "mokapot.h"
 
-    public StaticObject get() {
-        return pendingException.get();
-    }
-
-    public void set(StaticObject t) {
-        // TODO(peterssen): Warn about overwritten pending exceptions.
-        pendingException.set(t);
-    }
-
-    public void clear() {
-        set(null);
-    }
-
-    public void dispose() {
-        pendingException.remove();
-        pendingException = null;
-    }
+JNIEXPORT int JNICALL JVM_handle_linux_signal(int sig,
+                          siginfo_t* info,
+                          void* ucVoid,
+                          int abort_if_unrecognized) {
+  UNIMPLEMENTED(JVM_handle_linux_signal);
+  return 0;
 }
+
+#endif // !defined(_WIN32)
