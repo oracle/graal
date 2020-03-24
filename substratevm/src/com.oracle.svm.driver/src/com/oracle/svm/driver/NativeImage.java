@@ -1729,28 +1729,4 @@ public class NativeImage {
             }
         }
     }
-
-    /**
-     * Command line entry point when running on JDK9+. This is required to dynamically export Graal
-     * to SVM and it requires {@code --add-exports=java.base/jdk.internal.module=ALL-UNNAMED} to be
-     * on the VM command line.
-     *
-     * Note: This is a workaround until GR-16855 is resolved.
-     */
-    public static class JDK9Plus {
-
-        // Must be distinct from NativeImage.IS_AOT since the module
-        // exporting must be executed prior to NativeImage being loaded.
-        private static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
-
-        public static void main(String[] args) {
-            if (!IS_AOT) {
-                ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
-                ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler.management", true);
-                ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
-                ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.xml", false);
-            }
-            NativeImage.main(args);
-        }
-    }
 }

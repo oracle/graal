@@ -108,4 +108,13 @@ if [[ "${VERBOSE_GRAALVM_LAUNCHERS}" == "true" ]]; then
     set -x
 fi
 
-exec "${location}/<jre_bin>/java" <extra_jvm_args> "${jvm_args[@]}" -cp "${cp}" '<main_class>' "${launcher_args[@]}"
+module_launcher="<module_launcher>"
+if [[ "${module_launcher}" == "True" ]]; then
+    app_path_arg="--module-path"
+else
+    app_path_arg="-cp"
+fi
+
+echo "Launcher: $source"
+echo "${location}/<jre_bin>/java" <extra_jvm_args> "${jvm_args[@]}" ${app_path_arg} "${cp}" '<main_class>' "${launcher_args[@]}"
+exec "${location}/<jre_bin>/java" <extra_jvm_args> "${jvm_args[@]}" ${app_path_arg} "${cp}" '<main_class>' "${launcher_args[@]}"

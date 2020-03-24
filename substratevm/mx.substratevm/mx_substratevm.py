@@ -816,7 +816,7 @@ def _native_image_launcher_main_class():
     """
     Gets the name of the entry point for running com.oracle.svm.driver.NativeImage.
     """
-    return "com.oracle.svm.driver.NativeImage" + ("" if svm_java8() else "$JDK9Plus")
+    return "com.oracle.svm.driver.NativeImage"
 
 def _native_image_launcher_extra_jvm_args():
     """
@@ -824,9 +824,9 @@ def _native_image_launcher_extra_jvm_args():
     """
     if svm_java8():
         return []
+    # Support for running as Java module
+    res = ['--add-exports=java.base/jdk.internal.module=org.graalvm.nativeimage.pointsto']
     jdk = mx.get_jdk(tag='default')
-    # Support for com.oracle.svm.driver.NativeImage$JDK9Plus
-    res = ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(jdk):
         res.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
     return res
@@ -843,6 +843,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
+            is_module_launcher=not svm_java8(),
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
             main_class=_native_image_launcher_main_class(),

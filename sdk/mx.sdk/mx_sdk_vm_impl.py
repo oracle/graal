@@ -1758,6 +1758,9 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         def _get_main_class():
             return self.subject.native_image_config.main_class
 
+        def _is_module_launcher():
+            return 'True' if self.subject.native_image_config.module_launcher else 'False'
+
         def _get_extra_jvm_args():
             image_config = self.subject.native_image_config
             return mx.list_to_cmd_line(image_config.extra_jvm_args)
@@ -1767,6 +1770,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             return ' '.join(image_config.option_vars)
 
         _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
+        _template_subst.register_no_arg('module_launcher', _is_module_launcher)
         _template_subst.register_no_arg('classpath', _get_classpath)
         _template_subst.register_no_arg('jre_bin', _get_jre_bin)
         _template_subst.register_no_arg('main_class', _get_main_class)

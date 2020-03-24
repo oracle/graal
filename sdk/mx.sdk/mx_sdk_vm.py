@@ -135,17 +135,19 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
                  default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None,
-                 option_vars=None, **kwargs):
+                 is_module_launcher=False, option_vars=None, **kwargs):
         """
         :param str main_class
         :param bool is_main_launcher
         :param bool default_symlinks
         :param bool is_sdk_launcher: Whether it uses org.graalvm.launcher.Launcher
+        :param bool is_module_launcher: Whether it uses classpath or module-path for the application
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, **kwargs)
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
+        self.module_launcher = is_module_launcher
         self.default_symlinks = default_symlinks
         self.is_sdk_launcher = is_sdk_launcher
         self.custom_launcher_script = custom_launcher_script
@@ -576,6 +578,9 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
 
             extra_modules = []
             for name, requires in target_requires.items():
+                if name.startswith('org.graalvm.nativeimage.'):
+                    print('Skip jlink for ' + name)
+                    continue
                 module_jar = join(build_dir, name + '.jar')
                 jmd = JavaModuleDescriptor(name, {}, requires={module: [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
                 extra_modules.append(jmd)
