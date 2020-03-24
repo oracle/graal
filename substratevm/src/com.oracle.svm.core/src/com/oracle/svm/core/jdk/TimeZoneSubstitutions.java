@@ -38,9 +38,11 @@ import org.graalvm.compiler.options.OptionKey;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.option.HostedOptionKey;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -48,6 +50,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.TimeZone;
 
+@Platforms(InternalPlatform.PLATFORM_JNI.class)
 @TargetClass(java.util.TimeZone.class)
 @SuppressWarnings("unused")
 final class Target_java_util_TimeZone {
@@ -84,6 +87,7 @@ final class TimeZoneSupport {
 }
 
 @AutomaticFeature
+@Platforms(InternalPlatform.PLATFORM_JNI.class)
 final class TimeZoneFeature implements Feature {
     static class Options {
         @Option(help = "When true, all time zones will be pre-initialized in the image.")//
