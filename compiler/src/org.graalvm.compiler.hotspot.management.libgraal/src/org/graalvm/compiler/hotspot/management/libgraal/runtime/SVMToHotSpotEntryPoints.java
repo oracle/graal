@@ -46,9 +46,9 @@ final class SVMToHotSpotEntryPoints {
     }
 
     /**
-     * @see Factory#signal()
+     * @see Factory#signal(long)
      */
-    static void signal(Factory factory) {
-        factory.signal();
+    static void signal(Factory factory, long isolate) {
+        factory.signal(isolate);
     }
 }

@@ -660,7 +660,7 @@ suite = {
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
       ],
-      "javaCompliance" : "8",
+      "javaCompliance" : "8,11+",
       "workingSets" : "Graal,HotSpot",
     },
 

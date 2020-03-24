@@ -701,6 +701,16 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy {
     private static byte[] HS_BEAN_FACTORY_CLASS;
 
     @Alias
+    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMMBean$IsolateThreadScope")
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassNameComputer.class, isFinal = true)
+    private static String HS_ISOLATE_THREAD_SCOPE_CLASS_NAME;
+
+    @Alias
+    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMMBean$IsolateThreadScope")
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassDataComputer.class, isFinal = true)
+    private static byte[] HS_ISOLATE_THREAD_SCOPE_CLASS;
+
+    @Alias
     @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMMBean$PushBackIterator")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassNameComputer.class, isFinal = true)
     private static String HS_PUSHBACK_ITER_CLASS_NAME;

@@ -38,6 +38,7 @@ import javax.management.MBeanParameterInfo;
 import javax.management.ReflectionException;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
@@ -55,6 +56,23 @@ import org.graalvm.word.WordFactory;
 final class HotSpotToSVMEntryPoints {
 
     private HotSpotToSVMEntryPoints() {
+    }
+
+    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_attachThread", builtin = CEntryPoint.Builtin.ATTACH_THREAD)
+    static native long attachThread(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateContext long isolateId);
+
+    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_detachThread", builtin = CEntryPoint.Builtin.DETACH_THREAD)
+    static native void detachThread(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId);
+
+    /**
+     * Logs a message into stream configured by the {@code HotSpotTTYStreamProvider}.
+     */
+    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_log")
+    @SuppressWarnings({"try", "unused"})
+    static void log(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JNI.JString message) {
+        try (HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.Log, env)) {
+            TTY.println(JNIUtil.createString(env, message));
+        }
     }
 
     /**
@@ -331,7 +349,9 @@ enum Id {
     GetMBeanInfo,
     GetObjectName,
     Invoke,
+    Log,
     NewMBean,
     PollRegistrations,
+    RegisterNatives,
     SetAttributes
 }
