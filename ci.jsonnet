@@ -168,7 +168,7 @@ local espresso_configs = ['jvm-ce', 'jvm-ee', 'native-ce', 'native-ee'];
 local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
 // Skip benchmakrs that fail in jvm mode due to dlmopen limitations.
-local scala_dacapo = 'scala-dacapo:~tmt,apparat,scalatest,actors,specs';
+local scala_dacapo = 'scala-dacapo:*[scalap,scalac,scaladoc,kiama]';
 
 {
   builds: [
