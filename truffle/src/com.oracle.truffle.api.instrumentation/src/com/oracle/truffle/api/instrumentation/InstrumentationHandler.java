@@ -1323,8 +1323,8 @@ final class InstrumentationHandler {
                 Set<Class<? extends Tag>> materializeTags = (Set<Class<? extends Tag>>) (materializeLimitedTags == null ? providedTags : materializeLimitedTags);
                 if (shouldMaterializeSyntaxNodes && !visitingOldNodes) {
                     node = materializeSyntaxNodes(node, sourceSection, materializeTags);
-                    // TODO assert no materialization if visitingNewNodes == true, languages are not
-                    // required to satisfy this yet.
+                    // TODO uncomment the following, languages are not required to satisfy this yet.
+                    // assert !visitingNewNodes || node == oldNode : "New tree should be fully materialized!";
                     assert hasNewMaterializeTags() || node == oldNode : "Node must not materialize if no new tag is specified!";
                     // Assert no repeated materialization with the same tags
                     assert node == materializeSyntaxNodes(node, sourceSection, materializeTags) : "Node must not be materialized multiple times for the same set of tags!";
@@ -1378,10 +1378,6 @@ final class InstrumentationHandler {
                         }
                     }
                 }
-                // Here, oldNode is the root of the old tree only if materialization happened. If
-                // the root of the old tree was obtained from the probe node, then oldNode == node
-                // here, because we don't need to set the old tree reference to the ProbeNode in
-                // this case.
                 visitInstrumentable(this.savedParent, this.savedParentSourceSection, node, sourceSection);
                 if (!firstExecution && node != oldNode) {
                     // If node is not the same as the oldNode and a wrapper was not created or it
