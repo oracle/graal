@@ -146,12 +146,24 @@ local clone_build_run(env, args) =
   run_espresso(env, args);
 
 
+local host_jvm(env) = 'graalvm-espresso-' + env;
+local host_jvm_config(env) = if std.startsWith(env, 'jvm') then 'jvm' else 'native';
+
+
 local espresso_benchmark(env, suite) =
   clone_graal(env) +
   build_espresso(env) +
   {
     run+: maybe_set_ld_debug_flag(env) + [
-        _mx(env, ['benchmark', '--results-file', 'bench-results.json', suite, '--', '--jvm=espresso', '--jvm-config=launcher', '--vm.Xss32m']),
+        _mx(env, ['benchmark',
+            '--results-file', 'bench-results.json',
+            suite,
+            '--',
+            '--jvm=' + host_jvm(env), '--jvm-config=' + host_jvm_config(env),
+            '--guest',
+            '--jvm=espresso', '--jvm-config=default',
+            '--vm.Xss32m']
+        ),
         ['bench-uploader.py', 'bench-results.json'],
     ],
     timelimit: '3:00:00',
