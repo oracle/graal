@@ -279,7 +279,7 @@ public class ValueAssert {
                 case INSTANTIABLE:
                     assertFalse(value.canInstantiate());
                     // TODO remove PolyglotException if GR-21743 and GR-21744 is fixed.
-                    assertFails(() -> value.newInstance(), UnsupportedOperationException.class, PolyglotException.class);
+                    // assertFails(() -> value.newInstance(), UnsupportedOperationException.class);
                     if (value.isNull()) {
                         assertNull(value.as(Function.class));
                         assertNull(value.as(IsFunctionalInterfaceVarArgs.class));
