@@ -122,8 +122,9 @@ public class DebugOptions {
     public static final OptionKey<Boolean> DebugStubsAndSnippets = new OptionKey<>(false);
     @Option(help = "Send compiler IR to dump handlers on error.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DumpOnError = new OptionKey<>(false);
-    @Option(help = "Dump level used when DumpOnError=true.", type = OptionType.Debug)
-    public static final OptionKey<Integer> DumpOnErrorLevel = new OptionKey<>(DebugContext.VERBOSE_LEVEL);
+    @Option(help = "Specify the DumpLevel if CompilationFailureAction#Diagnose is used." +
+                    "See CompilationFailureAction for details. file:doc-files/CompilationFailureActionHelp.txt", type = OptionType.Debug)
+    public static final OptionKey<Integer> DiagnoseDumpLevel = new OptionKey<>(DebugContext.VERBOSE_LEVEL);
     @Option(help = "Disable intercepting exceptions in debug scopes.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DisableIntercept = new OptionKey<>(false);
     @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)

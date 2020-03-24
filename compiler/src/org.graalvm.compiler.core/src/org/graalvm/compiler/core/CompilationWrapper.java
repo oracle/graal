@@ -276,7 +276,7 @@ public abstract class CompilationWrapper<T> {
                 }
 
                 OptionValues retryOptions = new OptionValues(initialOptions,
-                                Dump, ":" + DebugOptions.DumpOnErrorLevel.getValue(initialOptions),
+                                Dump, ":" + DebugOptions.DiagnoseDumpLevel.getValue(initialOptions),
                                 MethodFilter, null,
                                 DumpPath, dumpPath.getPath(),
                                 TrackNodeSourcePosition, true);
