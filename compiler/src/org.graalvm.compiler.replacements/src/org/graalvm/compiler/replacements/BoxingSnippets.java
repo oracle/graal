@@ -261,7 +261,7 @@ public class BoxingSnippets implements Snippets {
                 try {
                     cacheLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(innerClasses[0].getDeclaredField("cache")));
                 } catch (NoSuchFieldException | SecurityException e) {
-                    e.printStackTrace();
+                    throw GraalError.shouldNotReachHere(e);
                 }
             }
 

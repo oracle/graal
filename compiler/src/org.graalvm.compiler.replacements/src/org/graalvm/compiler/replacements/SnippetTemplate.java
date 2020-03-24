@@ -1792,7 +1792,7 @@ public class SnippetTemplate {
                              */
                             throw GraalError.shouldNotReachHere("Invalid snippet replacing a node before frame state assignment with merge " + merge + " for replacee " + replacee);
                         default:
-                            break;
+                            throw GraalError.shouldNotReachHere("Unknown MergeStateAssigment");
                     }
                     replacee.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL,
                                     replacee.graph(), "After duplicating after state for merge %s in snippet", duplicates.get(merge));

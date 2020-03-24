@@ -46,23 +46,20 @@ import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
 /**
- * Utility class for snippet lowering. Certain nodes in Graal IR can be lowered not to another node
- * but to a (sub) graph of nodes, this is called snippet lowering for details see
- * {@linkplain Snippet}.
+ * Utility class for snippet lowering.
  *
- * If a node is lowered to a snippet the snippet can have control flow, i.e., merge nodes. Merge
- * nodes are problematic for deoptimization support in the compiler as they can cause missing
- * interpreter state (i.e. framestate) information if improperly optimized. For example, a snippet
- * lowering may create a merge node without a state, which can cause missing frame state information
- * on deoptimization points later in the compiler since we cannot deterministically decide which
- * frame state to take (which predecessor branch) if a deopt is inserted after a merge without a
- * state. (see {@linkplain GraphUtil#mayRemoveSplit(org.graalvm.compiler.nodes.IfNode) for details}.
+ * Certain nodes in Graal IR can be lowered to a (sub) graph of nodes by a process called snippet
+ * lowering. For details see {@linkplain Snippet}.
  *
- * Therefore, this phase, based on the effects of a snippet graph, determines which frame state can
- * be assigned to a merge node.
+ * For example, a snippet lowering can create a merge node without a frame state. Any deoptimization
+ * point dominated by this merge will be missing frame state information since we cannot decide
+ * which frame state to use for the deoptimization point. See {@link GraphUtil#mayRemoveSplit} for
+ * more details.
+ *
+ * This utility determines which frame state can be assigned to each merge node in a snippet graph.
  *
  * During lowering a node is replaced with the snippet which means there are only 2 possible states
- * that can be used inside the snippet nodes: the before frame state of the snippet lowered node and
+ * that can be used inside the snippet graph: the before frame state of the snippet lowered node and
  * the after state. Generally, if a side-effect is happening inside a snippet all code after that
  * particular side-effect must not deopt to the before state but only to the after state. All code
  * before the side-effect is allowed to use the before state
@@ -73,19 +70,19 @@ public class FrameStateMergeAssignment {
      * Possible states to be used inside a snippet.
      */
     public enum MergeStateAssignment {
-    /**
-     * The frame state before the snippet replacee.
-     */
-    BEFORE_BCI,
-    /**
-     * The frame state after the snippet replacee.
-     */
-    AFTER_BCI,
-    /**
-     * An invalid state setup (e.g. multiple subsequent effects inside a snippet)for a
-     * side-effecting node inside a snippet.
-     */
-    INVALID
+        /**
+         * The frame state before the snippet replacee.
+         */
+        BEFORE_BCI,
+        /**
+         * The frame state after the snippet replacee.
+         */
+        AFTER_BCI,
+        /**
+         * An invalid state setup (e.g. multiple subsequent effects inside a snippet)for a
+         * side-effecting node inside a snippet.
+         */
+        INVALID
     }
 
     /**
@@ -163,7 +160,8 @@ public class FrameStateMergeAssignment {
             /*
              * The state at a merge is either the before or after state, but if multiple effects
              * exist preceding a merge we must have a merged state, and this state can only differ
-             * in its return values. This is currently not supported.
+             * in its return values. If such a snippet is encountered the subsequent logic will
+             * assign an invalid state to the merge.
              */
             int beforeCount = 0;
             int afterCount = 0;
