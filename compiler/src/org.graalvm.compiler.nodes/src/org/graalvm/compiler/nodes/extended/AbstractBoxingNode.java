@@ -61,6 +61,10 @@ public abstract class AbstractBoxingNode extends FixedWithNextNode implements Vi
         this.accessedLocation = accessedLocation;
     }
 
+    public AbstractBoxingNode(NodeClass<? extends AbstractBoxingNode> c, ValueNode value, JavaKind boxingKind, Stamp s, MetaAccessProvider metaAccess) {
+        this(c, value, boxingKind, s, createLocationIdentity(metaAccess, boxingKind));
+    }
+
     @Override
     public ValueNode getValue() {
         return value;
@@ -88,7 +92,7 @@ public abstract class AbstractBoxingNode extends FixedWithNextNode implements Vi
         return accessedLocation;
     }
 
-    public static FieldLocationIdentity createLocationIdentity(MetaAccessProvider metaAccess, JavaKind boxingKind) {
+    private static FieldLocationIdentity createLocationIdentity(MetaAccessProvider metaAccess, JavaKind boxingKind) {
         try {
             switch (boxingKind) {
                 case Byte:

@@ -143,7 +143,7 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ValueNode createUnboxing(ValueNode boxed, JavaKind targetKind, MetaAccessProvider metaAccess) {
-        return append(new UnboxNode(boxed, targetKind, BoxNode.createLocationIdentity(metaAccess, targetKind)));
+        return append(new UnboxNode(boxed, targetKind, metaAccess));
     }
 
     public ValueNode createInvokeWithExceptionAndUnwind(Class<?> declaringClass, String name, InvokeKind invokeKind, ValueNode... args) {

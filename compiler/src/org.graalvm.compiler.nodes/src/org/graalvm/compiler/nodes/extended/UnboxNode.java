@@ -58,12 +58,16 @@ public final class UnboxNode extends AbstractBoxingNode implements Virtualizable
         super(TYPE, value, boxingKind, StampFactory.forKind(boxingKind.getStackKind()), location);
     }
 
+    public UnboxNode(ValueNode value, JavaKind boxingKind, MetaAccessProvider metaAccess) {
+        super(TYPE, value, boxingKind, StampFactory.forKind(boxingKind.getStackKind()), metaAccess);
+    }
+
     public static ValueNode create(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode value, JavaKind boxingKind) {
         ValueNode synonym = findSynonym(metaAccess, constantReflection, value, boxingKind);
         if (synonym != null) {
             return synonym;
         }
-        return new UnboxNode(value, boxingKind, AbstractBoxingNode.createLocationIdentity(metaAccess, boxingKind));
+        return new UnboxNode(value, boxingKind, metaAccess);
     }
 
     @Override

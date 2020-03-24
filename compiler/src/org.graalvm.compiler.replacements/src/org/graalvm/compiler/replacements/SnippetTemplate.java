@@ -72,7 +72,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Node;
@@ -92,8 +91,8 @@ import org.graalvm.compiler.nodes.BCISupplier;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
-import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -1710,155 +1709,163 @@ public class SnippetTemplate {
     }
 
     protected void rewireFrameStates(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates, FixedNode replaceeGraphCFGPredecessor) {
-        if (replacee.graph().getGuardsStage().areFrameStatesAtSideEffects() && (replacee instanceof StateSplit ||
-                        frameStateMergeAssignment != null)) {
-            if (replacee instanceof StateSplit && ((StateSplit) replacee).hasSideEffect() && ((StateSplit) replacee).stateAfter() != null) {
-                /*
-                 * We have a side-effecting node that is lowered to a snippet that also contains
-                 * side-effecting nodes. Either of 2 cases applies: either there is a frame state
-                 * merge assignment meaning there are merges in the snippet that require states,
-                 * then those will be assigned based on a reverse post order iteration of the
-                 * snippet examining effects and trying to find a proper state, or no merges are in
-                 * the graph, i.e., there is no complex control flow so every side-effecting node in
-                 * the snippet can have the state after of the original node with the correct values
-                 * replaced (i.e. the replacee itself in the snippet)
-                 */
-                for (StateSplit sideEffectNode : sideEffectNodes) {
-                    assert ((StateSplit) replacee).hasSideEffect();
-                    Node sideEffectDup = duplicates.get(sideEffectNode.asNode());
-                    assert sideEffectDup != null : sideEffectNode;
-                    FrameState stateAfter = ((StateSplit) replacee).stateAfter();
-                    assert stateAfter != null : "Replacee " + replacee + " has no state after";
-
-                    if (sideEffectDup instanceof ForeignCallNode) {
-                        if (replacee instanceof BCISupplier) {
-                            ((ForeignCallNode) sideEffectDup).setBci(((BCISupplier) replacee).bci());
-                        }
-                    }
-                    if (stateAfter.values().contains(replacee)) {
-                        FrameState duplicated = stateAfter.duplicateWithVirtualState();
-                        ValueNode valueInReplacement = (ValueNode) duplicates.get(returnNode.result());
-                        if (valueInReplacement instanceof ValuePhiNode) {
-                            valueInReplacement = (ValueNode) sideEffectDup;
-                        }
-                        duplicated.replaceAllInputs(replacee, valueInReplacement);
-                        ((StateSplit) sideEffectDup).setStateAfter(duplicated);
-                    } else {
-                        ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
-                    }
-                }
-            }
-            if (frameStateMergeAssignment != null) {
-                FrameState stateAfter = null;
-                if (replacee instanceof StateSplit && ((StateSplit) replacee).hasSideEffect()) {
-                    stateAfter = ((StateSplit) replacee).stateAfter();
-                    assert stateAfter != null : "Statesplit with side-effect needs a framestate " + replacee;
-                } else {
-                    /*
-                     * We dont have a state split as a replacee, thus we take the prev state as the
-                     * state after for the merges in the snippet.
-                     */
-                    stateAfter = findLastFrameState(replaceeGraphCFGPredecessor);
-                    assert stateAfter != null : "Must find a prev state (this can be transitively broken) for node " +
-                                    replaceeGraphCFGPredecessor + " " + findLastFrameState(replaceeGraphCFGPredecessor, true);
-                }
-                NodeMap<MergeStateAssignment> mergeStates = frameStateMergeAssignment.getMergeMaps();
-                MapCursor<Node, MergeStateAssignment> stateAssignments = mergeStates.getEntries();
-                while (stateAssignments.advance()) {
-                    Node merge = stateAssignments.getKey();
-                    MergeStateAssignment fsRequirements = stateAssignments.getValue();
-                    switch (fsRequirements) {
-                        case AFTER_BCI:
-                            FrameState newState = stateAfter.duplicateWithVirtualState();
-                            if (stateAfter.values().contains(replacee)) {
-                                ValueNode valueInReplacement = (ValueNode) duplicates.get(returnNode.result());
-                                newState.replaceAllInputs(replacee, valueInReplacement);
-                            }
-                            ((AbstractMergeNode) duplicates.get(merge)).setStateAfter(newState);
-                            break;
-                        case BEFORE_BCI:
-                            FrameState stateBeforeSnippet = findLastFrameState(replaceeGraphCFGPredecessor);
-                            assert stateBeforeSnippet != null : "Must find a prev state (this can be transitively broken) for node " +
-                                            replaceeGraphCFGPredecessor;
-                            if (stateBeforeSnippet != null) {
-                                ((AbstractMergeNode) duplicates.get(merge)).setStateAfter(stateBeforeSnippet.duplicateWithVirtualState());
-                            }
-                            break;
-                        case INVALID:
-                            /*
-                             * We cannot assign a proper frame state for this snippet's merge since
-                             * there are effects which cannot be represented by a single state at
-                             * the merge
-                             */
-                            throw GraalError.shouldNotReachHere("Invalid snippet replacing a node before frame state assignment with merge " + merge + " for replacee " + replacee);
-                        default:
-                            throw GraalError.shouldNotReachHere("Unknown MergeStateAssigment");
-                    }
-                    replacee.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL,
-                                    replacee.graph(), "After duplicating after state for merge %s in snippet", duplicates.get(merge));
-                }
-            }
-
+        if (replacee.graph().getGuardsStage().areFrameStatesAtSideEffects() && requiresFrameStateProcessingBeforeFSA(replacee)) {
+            rewireFrameStatesBeforeFSA(replacee, duplicates, replaceeGraphCFGPredecessor);
         } else if (replacee.graph().getGuardsStage().areFrameStatesAtDeopts() && replacee instanceof DeoptimizingNode) {
-            DeoptimizingNode replaceeDeopt = (DeoptimizingNode) replacee;
+            rewireFrameStatesAfterFSA(replacee, duplicates);
+        }
+    }
 
-            FrameState stateBefore = null;
-            FrameState stateDuring = null;
-            FrameState stateAfter = null;
-            if (replaceeDeopt.canDeoptimize()) {
-                if (replaceeDeopt instanceof DeoptimizingNode.DeoptBefore) {
-                    stateBefore = ((DeoptimizingNode.DeoptBefore) replaceeDeopt).stateBefore();
+    private boolean requiresFrameStateProcessingBeforeFSA(ValueNode replacee) {
+        return replacee instanceof StateSplit || frameStateMergeAssignment != null;
+    }
+
+    private void rewireFrameStatesBeforeFSA(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates, FixedNode replaceeGraphCFGPredecessor) {
+        if (replacee instanceof StateSplit && ((StateSplit) replacee).hasSideEffect() && ((StateSplit) replacee).stateAfter() != null) {
+            /*
+             * We have a side-effecting node that is lowered to a snippet that also contains
+             * side-effecting nodes. Either of 2 cases applies: either there is a frame state merge
+             * assignment meaning there are merges in the snippet that require states, then those
+             * will be assigned based on a reverse post order iteration of the snippet examining
+             * effects and trying to find a proper state, or no merges are in the graph, i.e., there
+             * is no complex control flow so every side-effecting node in the snippet can have the
+             * state after of the original node with the correct values replaced (i.e. the replacee
+             * itself in the snippet)
+             */
+            for (StateSplit sideEffectNode : sideEffectNodes) {
+                assert ((StateSplit) replacee).hasSideEffect();
+                Node sideEffectDup = duplicates.get(sideEffectNode.asNode());
+                assert sideEffectDup != null : sideEffectNode;
+                FrameState stateAfter = ((StateSplit) replacee).stateAfter();
+                assert stateAfter != null : "Replacee " + replacee + " has no state after";
+
+                if (sideEffectDup instanceof ForeignCallNode) {
+                    if (replacee instanceof BCISupplier) {
+                        ((ForeignCallNode) sideEffectDup).setBci(((BCISupplier) replacee).bci());
+                    }
                 }
-                if (replaceeDeopt instanceof DeoptimizingNode.DeoptDuring) {
-                    stateDuring = ((DeoptimizingNode.DeoptDuring) replaceeDeopt).stateDuring();
-                }
-                if (replaceeDeopt instanceof DeoptimizingNode.DeoptAfter) {
-                    stateAfter = ((DeoptimizingNode.DeoptAfter) replaceeDeopt).stateAfter();
+                if (stateAfter.values().contains(replacee)) {
+                    FrameState duplicated = stateAfter.duplicateWithVirtualState();
+                    ValueNode valueInReplacement = (ValueNode) duplicates.get(returnNode.result());
+                    if (valueInReplacement instanceof ValuePhiNode) {
+                        valueInReplacement = (ValueNode) sideEffectDup;
+                    }
+                    duplicated.replaceAllInputs(replacee, valueInReplacement);
+                    ((StateSplit) sideEffectDup).setStateAfter(duplicated);
+                } else {
+                    ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
                 }
             }
+        }
+        if (frameStateMergeAssignment != null) {
+            assignMergeFrameStates(replacee, duplicates, replaceeGraphCFGPredecessor);
+        }
+    }
 
-            for (DeoptimizingNode deoptNode : deoptNodes) {
-                DeoptimizingNode deoptDup = (DeoptimizingNode) duplicates.get(deoptNode.asNode());
-                if (deoptDup.canDeoptimize()) {
-                    if (deoptDup instanceof DeoptimizingNode.DeoptBefore) {
-                        ((DeoptimizingNode.DeoptBefore) deoptDup).setStateBefore(stateBefore);
+    private void assignMergeFrameStates(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates, FixedNode replaceeGraphCFGPredecessor) {
+        FrameState stateAfter = null;
+        if (replacee instanceof StateSplit && ((StateSplit) replacee).hasSideEffect()) {
+            stateAfter = ((StateSplit) replacee).stateAfter();
+            assert stateAfter != null : "Statesplit with side-effect needs a framestate " + replacee;
+        } else {
+            /*
+             * We dont have a state split as a replacee, thus we take the prev state as the state
+             * after for the merges in the snippet.
+             */
+            stateAfter = findLastFrameState(replaceeGraphCFGPredecessor);
+        }
+        NodeMap<MergeStateAssignment> mergeStates = frameStateMergeAssignment.getMergeMaps();
+        MapCursor<Node, MergeStateAssignment> stateAssignments = mergeStates.getEntries();
+        while (stateAssignments.advance()) {
+            Node merge = stateAssignments.getKey();
+            MergeStateAssignment assignment = stateAssignments.getValue();
+            switch (assignment) {
+                case AFTER_BCI:
+                    FrameState newState = stateAfter.duplicateWithVirtualState();
+                    if (stateAfter.values().contains(replacee)) {
+                        ValueNode valueInReplacement = (ValueNode) duplicates.get(returnNode.result());
+                        newState.replaceAllInputs(replacee, valueInReplacement);
                     }
-                    if (deoptDup instanceof DeoptimizingNode.DeoptDuring) {
-                        // compute a state "during" for a DeoptDuring inside the snippet depending
-                        // on what kind of states we had on the node we are replacing.
-                        // If the original node had a state "during" already, we just use that,
-                        // otherwise we need to find a strategy to compute a state during based on
-                        // some other state (before or after).
-                        DeoptimizingNode.DeoptDuring deoptDupDuring = (DeoptimizingNode.DeoptDuring) deoptDup;
-                        if (stateDuring != null) {
-                            deoptDupDuring.setStateDuring(stateDuring);
-                        } else if (stateAfter != null) {
-                            deoptDupDuring.computeStateDuring(stateAfter);
-                        } else if (stateBefore != null) {
-                            assert ((DeoptBefore) replaceeDeopt).canUseAsStateDuring() || !deoptDupDuring.hasSideEffect() : "can't use stateBefore as stateDuring for state split " + deoptDupDuring;
-                            deoptDupDuring.setStateDuring(stateBefore);
-                        }
-                    }
-                    if (deoptDup instanceof DeoptimizingNode.DeoptAfter) {
-                        DeoptimizingNode.DeoptAfter deoptDupAfter = (DeoptimizingNode.DeoptAfter) deoptDup;
-                        if (stateAfter != null) {
-                            deoptDupAfter.setStateAfter(stateAfter);
-                        } else {
-                            assert !deoptDupAfter.hasSideEffect() : "can't use stateBefore as stateAfter for state split " + deoptDupAfter;
-                            deoptDupAfter.setStateAfter(stateBefore);
-                        }
+                    ((AbstractMergeNode) duplicates.get(merge)).setStateAfter(newState);
+                    break;
+                case BEFORE_BCI:
+                    FrameState stateBeforeSnippet = findLastFrameState(replaceeGraphCFGPredecessor);
+                    ((AbstractMergeNode) duplicates.get(merge)).setStateAfter(stateBeforeSnippet.duplicateWithVirtualState());
+                    break;
+                case INVALID:
+                    /*
+                     * We cannot assign a proper frame state for this snippet's merge since there
+                     * are effects which cannot be represented by a single state at the merge
+                     */
+                    throw GraalError.shouldNotReachHere("Invalid snippet replacing a node before frame state assignment with merge " + merge + " for replacee " + replacee);
+                default:
+                    throw GraalError.shouldNotReachHere("Unknown MergeStateAssigment:" + assignment);
+            }
+            replacee.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL,
+                            replacee.graph(), "After duplicating after state for merge %s in snippet", duplicates.get(merge));
+        }
+    }
 
+    private void rewireFrameStatesAfterFSA(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
+        DeoptimizingNode replaceeDeopt = (DeoptimizingNode) replacee;
+        FrameState stateBefore = null;
+        FrameState stateDuring = null;
+        FrameState stateAfter = null;
+        if (replaceeDeopt.canDeoptimize()) {
+            if (replaceeDeopt instanceof DeoptimizingNode.DeoptBefore) {
+                stateBefore = ((DeoptimizingNode.DeoptBefore) replaceeDeopt).stateBefore();
+            }
+            if (replaceeDeopt instanceof DeoptimizingNode.DeoptDuring) {
+                stateDuring = ((DeoptimizingNode.DeoptDuring) replaceeDeopt).stateDuring();
+            }
+            if (replaceeDeopt instanceof DeoptimizingNode.DeoptAfter) {
+                stateAfter = ((DeoptimizingNode.DeoptAfter) replaceeDeopt).stateAfter();
+            }
+        }
+
+        for (DeoptimizingNode deoptNode : deoptNodes) {
+            DeoptimizingNode deoptDup = (DeoptimizingNode) duplicates.get(deoptNode.asNode());
+            if (deoptDup.canDeoptimize()) {
+                if (deoptDup instanceof DeoptimizingNode.DeoptBefore) {
+                    ((DeoptimizingNode.DeoptBefore) deoptDup).setStateBefore(stateBefore);
+                }
+                if (deoptDup instanceof DeoptimizingNode.DeoptDuring) {
+                    // compute a state "during" for a DeoptDuring inside the snippet depending
+                    // on what kind of states we had on the node we are replacing.
+                    // If the original node had a state "during" already, we just use that,
+                    // otherwise we need to find a strategy to compute a state during based on
+                    // some other state (before or after).
+                    DeoptimizingNode.DeoptDuring deoptDupDuring = (DeoptimizingNode.DeoptDuring) deoptDup;
+                    if (stateDuring != null) {
+                        deoptDupDuring.setStateDuring(stateDuring);
+                    } else if (stateAfter != null) {
+                        deoptDupDuring.computeStateDuring(stateAfter);
+                    } else if (stateBefore != null) {
+                        assert ((DeoptBefore) replaceeDeopt).canUseAsStateDuring() || !deoptDupDuring.hasSideEffect() : "can't use stateBefore as stateDuring for state split " + deoptDupDuring;
+                        deoptDupDuring.setStateDuring(stateBefore);
                     }
+                }
+                if (deoptDup instanceof DeoptimizingNode.DeoptAfter) {
+                    DeoptimizingNode.DeoptAfter deoptDupAfter = (DeoptimizingNode.DeoptAfter) deoptDup;
+                    if (stateAfter != null) {
+                        deoptDupAfter.setStateAfter(stateAfter);
+                    } else {
+                        assert !deoptDupAfter.hasSideEffect() : "can't use stateBefore as stateAfter for state split " + deoptDupAfter;
+                        deoptDupAfter.setStateAfter(stateBefore);
+                    }
+
                 }
             }
         }
     }
 
     public static FrameState findLastFrameState(FixedNode start) {
-        return findLastFrameState(start, false);
+        FrameState state = findLastFrameState(start, false);
+        assert state != null : "Must find a prev state (this can be transitively broken) for node " + start + " " + findLastFrameState(start, true);
+        return state;
     }
 
-    public static FrameState findLastFrameState(FixedNode start, boolean debug) {
+    public static FrameState findLastFrameState(FixedNode start, boolean log) {
         FixedNode lastFixedNode = null;
         FixedNode currentStart = start;
         while (true) {
@@ -1876,17 +1883,18 @@ public class SnippetTemplate {
                 currentStart = ((LoopBeginNode) lastFixedNode).forwardEnd();
                 continue;
             }
-            if (debug) {
+            if (log) {
                 NodeSourcePosition p = lastFixedNode.getNodeSourcePosition();
-                TTY.printf("Last fixed node %s\n With source position -> \n %s", lastFixedNode,
+                DebugContext debug = start.getDebug();
+                debug.log(DebugContext.VERY_DETAILED_LEVEL, "Last fixed node %s\n with source position -> %s", lastFixedNode,
                                 p == null ? "null" : p.toString());
                 if (lastFixedNode instanceof MergeNode) {
                     MergeNode merge = (MergeNode) lastFixedNode;
-                    TTY.printf("Last fixed node is a merge with predecessors:\n");
+                    debug.log(DebugContext.VERY_DETAILED_LEVEL, "Last fixed node is a merge with predecessors:");
                     for (EndNode end : merge.forwardEnds()) {
                         for (FixedNode fixed : GraphUtil.predecessorIterable(end)) {
                             NodeSourcePosition sp = fixed.getNodeSourcePosition();
-                            TTY.printf("\t->%s:source position%s\n", fixed, sp != null ? sp.toString() : "null");
+                            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s:source position%s", fixed, sp != null ? sp.toString() : "null");
                         }
                     }
                 }
