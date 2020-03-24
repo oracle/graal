@@ -59,7 +59,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * methods in Integer, Long, etc.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Memory, InputType.Value})
-public abstract class BoxNode extends AbstractBoxNode implements VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode> {
+public abstract class BoxNode extends AbstractBoxingNode implements VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode> {
 
     public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);
 

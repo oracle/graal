@@ -97,22 +97,4 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
         return getLocationIdentity();
     }
 
-    @NodeInfo(nameTemplate = "SideEffectFreeWrite#{p#location/s}")
-    private static class SideEffectFreeWrite extends WriteNode {
-
-        public static final NodeClass<SideEffectFreeWrite> TYPE = NodeClass.create(SideEffectFreeWrite.class);
-
-        protected SideEffectFreeWrite(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
-            super(TYPE, address, location, value, barrierType);
-        }
-
-        @Override
-        public boolean hasSideEffect() {
-            return false;
-        }
-    }
-
-    public static WriteNode createWithoutSideEffect(AddressNode address, LocationIdentity location, ValueNode value) {
-        return new SideEffectFreeWrite(address, location, value, BarrierType.NONE);
-    }
 }

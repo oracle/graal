@@ -63,8 +63,9 @@ import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosu
  *
  * During lowering a node is replaced with the snippet which means there are only 2 possible states
  * that can be used inside the snippet nodes: the before frame state of the snippet lowered node and
- * the after state. Generally, if a side-effect is happening inside a snippet, only the after state
- * is a valid state to deoptimize to.
+ * the after state. Generally, if a side-effect is happening inside a snippet all code after that
+ * particular side-effect must not deopt to the before state but only to the after state. All code
+ * before the side-effect is allowed to use the before state
  */
 public class FrameStateMergeAssignment {
 
@@ -72,19 +73,19 @@ public class FrameStateMergeAssignment {
      * Possible states to be used inside a snippet.
      */
     public enum MergeStateAssignment {
-        /**
-         * The frame state before the snippet replacee.
-         */
-        BEFORE_BCI,
-        /**
-         * The frame state after the snippet replacee.
-         */
-        AFTER_BCI,
-        /**
-         * An invalid state setup (e.g. multiple subsequent effects inside a snippet)for a
-         * side-effecting node inside a snippet.
-         */
-        INVALID
+    /**
+     * The frame state before the snippet replacee.
+     */
+    BEFORE_BCI,
+    /**
+     * The frame state after the snippet replacee.
+     */
+    AFTER_BCI,
+    /**
+     * An invalid state setup (e.g. multiple subsequent effects inside a snippet)for a
+     * side-effecting node inside a snippet.
+     */
+    INVALID
     }
 
     /**

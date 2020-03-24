@@ -47,14 +47,14 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
-public abstract class AbstractBoxNode extends FixedWithNextNode implements Virtualizable, Lowerable, Canonicalizable.Unary<ValueNode>, MemoryAccess {
-    public static final NodeClass<AbstractBoxNode> TYPE = NodeClass.create(AbstractBoxNode.class);
+public abstract class AbstractBoxingNode extends FixedWithNextNode implements Virtualizable, Lowerable, Canonicalizable.Unary<ValueNode>, MemoryAccess {
+    public static final NodeClass<AbstractBoxingNode> TYPE = NodeClass.create(AbstractBoxingNode.class);
 
     @Input protected ValueNode value;
     protected final JavaKind boxingKind;
     protected final LocationIdentity accessedLocation;
 
-    public AbstractBoxNode(NodeClass<? extends AbstractBoxNode> c, ValueNode value, JavaKind boxingKind, Stamp s, LocationIdentity accessedLocation) {
+    public AbstractBoxingNode(NodeClass<? extends AbstractBoxingNode> c, ValueNode value, JavaKind boxingKind, Stamp s, LocationIdentity accessedLocation) {
         super(c, s);
         this.value = value;
         this.boxingKind = boxingKind;

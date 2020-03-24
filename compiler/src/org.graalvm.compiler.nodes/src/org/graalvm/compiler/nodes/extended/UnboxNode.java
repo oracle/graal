@@ -50,7 +50,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2, allowedUsageTypes = {InputType.Memory, InputType.Value})
-public final class UnboxNode extends AbstractBoxNode implements Virtualizable, Lowerable, Canonicalizable.Unary<ValueNode> {
+public final class UnboxNode extends AbstractBoxingNode implements Virtualizable, Lowerable, Canonicalizable.Unary<ValueNode> {
 
     public static final NodeClass<UnboxNode> TYPE = NodeClass.create(UnboxNode.class);
 
@@ -63,7 +63,7 @@ public final class UnboxNode extends AbstractBoxNode implements Virtualizable, L
         if (synonym != null) {
             return synonym;
         }
-        return new UnboxNode(value, boxingKind, AbstractBoxNode.createLocationIdentity(metaAccess, boxingKind));
+        return new UnboxNode(value, boxingKind, AbstractBoxingNode.createLocationIdentity(metaAccess, boxingKind));
     }
 
     @Override

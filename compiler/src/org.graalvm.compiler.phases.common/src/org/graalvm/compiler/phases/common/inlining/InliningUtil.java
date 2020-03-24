@@ -822,7 +822,7 @@ public class InliningUtil extends ValueMergeUtil {
         /*
          * Inlining util can be used to inline a replacee graph that has a different return kind
          * than the oginal call, i.e., a non void return for a void method, in this case we simply
-         * use the state after discaring the return value
+         * use the state after discarding the return value
          */
         boolean voidReturnMissmatch = frameState.stackSize() > 0 && stateAfterReturn.stackSize() == 0;
 

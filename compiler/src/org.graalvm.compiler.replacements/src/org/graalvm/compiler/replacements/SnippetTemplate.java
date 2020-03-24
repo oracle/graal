@@ -114,7 +114,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.extended.AbstractBoxNode;
+import org.graalvm.compiler.nodes.extended.AbstractBoxingNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
@@ -834,7 +834,7 @@ public class SnippetTemplate {
 
             boolean needsPEA = false;
             for (Node n : snippetCopy.getNodes()) {
-                if (n instanceof AbstractNewObjectNode || n instanceof AbstractBoxNode) {
+                if (n instanceof AbstractNewObjectNode || n instanceof AbstractBoxingNode) {
                     needsPEA = true;
                     break;
                 }
