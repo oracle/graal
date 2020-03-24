@@ -946,7 +946,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
      */
     LLVMValueRef createJNIWrapper(LLVMValueRef callee, boolean nativeABI, int numArgs, int anchorIPOffset) {
         LLVMTypeRef calleeType = LLVMIRBuilder.getElementType(LLVMIRBuilder.typeOf(callee));
-        String wrapperName = JNI_WRAPPER_BASE_NAME + LLVMIRBuilder.intrinsicType(calleeType);
+        String wrapperName = JNI_WRAPPER_BASE_NAME + LLVMIRBuilder.intrinsicType(calleeType) + (nativeABI ? "_native" : "");
 
         LLVMValueRef transitionWrapper = builder.getNamedFunction(wrapperName);
         if (transitionWrapper == null) {
