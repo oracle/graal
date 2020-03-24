@@ -942,6 +942,7 @@ public class GCImpl implements GC {
      * of. For example, watchers could keep track of the collections they have run in and reported
      * on, and only put out one report per collection.
      */
+    @SuppressWarnings("try")
     void possibleCollectionEpilogue(UnsignedWord requestingEpoch) {
         if (requestingEpoch.aboveOrEqual(getCollectionEpoch())) {
             /* No GC happened, so do not run any epilogue. */
@@ -967,7 +968,14 @@ public class GCImpl implements GC {
             return;
         }
 
-        ReferenceHandler.maybeProcessCurrentlyPending();
+        Timer refsTimer = new Timer("Enqueuing pending references and invoking internal cleaners");
+        try (Timer timer = refsTimer.open()) {
+            ReferenceHandler.maybeProcessCurrentlyPending();
+        }
+        if (SubstrateOptions.VerboseGC.getValue() && HeapOptions.PrintGCTimes.getValue()) {
+            logOneTimer(Log.log(), "[GC epilogue reference processing: ", refsTimer);
+            Log.log().string("]");
+        }
 
         visitWatchersReport();
     }
