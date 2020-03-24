@@ -150,3 +150,6 @@ final class TimeZoneFeature implements Feature {
         }
     }
 }
+
+class TimeZoneSubstitutions {
+}
