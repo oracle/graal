@@ -44,6 +44,7 @@ from __future__ import print_function
 from abc import ABCMeta
 from argparse import ArgumentParser
 from collections import OrderedDict
+import hashlib
 import io
 import json
 import os
@@ -51,6 +52,7 @@ from os.path import relpath, join, dirname, basename, exists, isfile, normpath, 
 import pprint
 import re
 import subprocess
+import sys
 
 import mx
 import mx_gate
@@ -59,16 +61,19 @@ import mx_sdk
 import mx_sdk_vm
 
 
-import sys
-
 if sys.version_info[0] < 3:
     _unicode = unicode # pylint: disable=undefined-variable
     def _decode(x):
+        return x
+    def _encode(x):
         return x
 else:
     _unicode = str
     def _decode(x):
         return x.decode()
+    def _encode(x):
+        return x.encode()
+
 
 def unicode_utf8(string):
     if sys.version_info[0] < 3:
@@ -881,27 +886,27 @@ def _get_graalvm_configuration(base_name, stage1=False):
         # Use custom distribution name and base dir for registered vm configurations
         vm_dist_name = None
         vm_config_name = None
-        vm_config_additional_components = sorted(components_set)
         for dist_name, config_name, config_components, _, _ in mx_sdk_vm._vm_configs:
             config_components_set = set(config_components)
-            config_additional_components = sorted(components_set - config_components_set)
-            if config_components_set <= components_set and len(config_additional_components) <= len(vm_config_additional_components):
+            if components_set == config_components_set:
                 vm_dist_name = dist_name.replace('-', '_')
                 vm_config_name = config_name.replace('-', '_')
-                vm_config_additional_components = config_additional_components
+                break
 
         if vm_dist_name:
-            base_dir = base_name + '_' + vm_dist_name + '_java{}'.format(_src_jdk_version)
+            base_dir = '{base_name}_{vm_dist_name}_java{jdk_version}'.format(base_name=base_name, vm_dist_name=vm_dist_name, jdk_version=_src_jdk_version)
             name = base_dir
-            if vm_config_additional_components:
-                name += '_' + '_'.join(vm_config_additional_components)
         else:
+            components_sorted_set = sorted(components_set)
             if mx.get_opts().verbose:
-                mx.logv("No dist name for {}".format(vm_config_additional_components))
-            base_dir = base_name + '_unknown' + '_java{}'.format(_src_jdk_version)
-            name = base_dir + ('_stage1' if stage1 else '')
+                mx.logv("No dist name for {}".format(components_sorted_set))
+            m = hashlib.sha1()
+            for component in components_sorted_set:
+                m.update(_encode(component))
+            base_dir = '{base_name}_{hash}_java{jdk_version}'.format(base_name=base_name, hash=m.hexdigest(), jdk_version=_src_jdk_version)
+            name = '{base_dir}{stage_suffix}'.format(base_dir=base_dir, stage_suffix='_stage1' if stage1 else '')
         name = name.upper()
-        base_dir = base_dir.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
+        base_dir = base_dir.lower().replace('_', '-') + '-' + _suite.release_version()
 
         _graal_vm_configs_cache[key] = name, base_dir, vm_config_name
     return _graal_vm_configs_cache[key]
