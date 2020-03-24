@@ -2056,7 +2056,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         Substitutions.EspressoRootNodeFactory factory = new Substitutions.EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode spawnNode(Method method) {
-                return EspressoRootNode.create(null, new NativeMethodNode(boundNative, method, true));
+                return EspressoRootNode.create(null, new NativeMethodNode(boundNative, method.getMethodVersion(), true));
             }
         };
         Symbol<Type> classType = clazz.getMirrorKlass().getType();

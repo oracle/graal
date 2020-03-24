@@ -68,6 +68,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return getMethodNode().getMethod();
     }
 
+    public final Method.MethodVersion getMethodVersion() {
+        return getMethodNode().getMethodVersion();
+    }
+
     @Override
     public final EspressoContext getContext() {
         return getMethodNode().getContext();

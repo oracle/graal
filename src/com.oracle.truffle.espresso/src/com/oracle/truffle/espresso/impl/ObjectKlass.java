@@ -34,10 +34,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
@@ -49,6 +51,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -67,10 +70,6 @@ public final class ObjectKlass extends Klass {
     public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
 
     private final EnclosingMethodAttribute enclosingMethod;
-
-    private final RuntimeConstantPool pool;
-
-    private final LinkedKlass linkedKlass;
 
     @CompilationFinal //
     private StaticObject statics;
@@ -117,6 +116,8 @@ public final class ObjectKlass extends Klass {
 
     @CompilationFinal private int computedModifiers = -1;
 
+    @CompilationFinal volatile RedefinitionCache redefineCache;
+
     public static final int LOADED = 0;
     public static final int LINKED = 1;
     public static final int PREPARED = 2;
@@ -124,7 +125,7 @@ public final class ObjectKlass extends Klass {
     public static final int ERRONEOUS = 99;
 
     public Attribute getAttribute(Symbol<Name> name) {
-        return linkedKlass.getAttribute(name);
+        return getLinkedKlass().getAttribute(name);
     }
 
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader) {
@@ -134,17 +135,25 @@ public final class ObjectKlass extends Klass {
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, Klass hostKlass) {
         super(context, linkedKlass.getName(), linkedKlass.getType(), superKlass, superInterfaces, linkedKlass.getFlags());
 
-        this.linkedKlass = linkedKlass;
         this.hostKlass = hostKlass;
+        // TODO(peterssen): Make writable copy.
+        RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
+
+        LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
+        Method[] methods = new Method[linkedMethods.length];
+        for (int i = 0; i < methods.length; ++i) {
+            LinkedMethod linkedMethod = linkedMethods[i];
+            methods[i] = new Method(this, linkedMethod, pool);
+        }
+
+        this.declaredMethods = methods;
+        this.redefineCache = new RedefinitionCache(pool, linkedKlass);
 
         this.enclosingMethod = (EnclosingMethodAttribute) getAttribute(EnclosingMethodAttribute.NAME);
         this.innerClasses = (InnerClassesAttribute) getAttribute(InnerClassesAttribute.NAME);
 
         // Move attribute name to better location.
         this.runtimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
-
-        // TODO(peterssen): Make writable copy.
-        this.pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
 
         FieldTable.CreationResult fieldCR = FieldTable.create(superKlass, this, linkedKlass);
 
@@ -159,14 +168,6 @@ public final class ObjectKlass extends Klass {
 
         this.leftoverHoles = fieldCR.leftoverHoles;
 
-        LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
-        Method[] methods = new Method[linkedMethods.length];
-        for (int i = 0; i < methods.length; ++i) {
-            LinkedMethod linkedMethod = linkedMethods[i];
-            methods[i] = new Method(this, linkedMethod);
-        }
-
-        this.declaredMethods = methods;
         if (this.isInterface()) {
             this.itable = null;
             InterfaceTables.InterfaceCreationResult icr = InterfaceTables.constructInterfaceItable(this, declaredMethods);
@@ -390,12 +391,12 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
-        return pool.getClassLoader();
+        return getConstantPool().getClassLoader();
     }
 
     @Override
     public RuntimeConstantPool getConstantPool() {
-        return pool;
+        return getRedefineCache().pool;
     }
 
     @Override
@@ -434,6 +435,15 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
+    public MethodRef[] getDeclaredMethodRefs() {
+        MethodRef[] result = new MethodRef[declaredMethods.length];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = declaredMethods[i].getMethodVersion();
+        }
+        return result;
+    }
+
+    @Override
     public Field[] getDeclaredFields() {
         return declaredFields;
     }
@@ -447,7 +457,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public LinkedKlass getLinkedKlass() {
-        return linkedKlass;
+        return getRedefineCache().linkedKlass;
     }
 
     public Attribute getRuntimeVisibleAnnotations() {
@@ -455,11 +465,11 @@ public final class ObjectKlass extends Klass {
     }
 
     public int getStaticFieldSlots() {
-        return linkedKlass.staticFieldCount;
+        return getLinkedKlass().staticFieldCount;
     }
 
     public int getInstanceFieldSlots() {
-        return linkedKlass.instanceFieldCount;
+        return getLinkedKlass().instanceFieldCount;
     }
 
     public int getObjectFieldsCount() {
@@ -845,7 +855,7 @@ public final class ObjectKlass extends Klass {
         if (innerClasses != null) {
             for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
                 if (entry.innerClassIndex != 0) {
-                    result.add(pool.classAt(entry.innerClassIndex).getName(pool));
+                    result.add(getConstantPool().classAt(entry.innerClassIndex).getName(getConstantPool()));
 
                 }
             }
@@ -859,7 +869,7 @@ public final class ObjectKlass extends Klass {
         if (innerClasses != null) {
             for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
                 if (entry.innerClassIndex != 0) {
-                    Symbol<Name> innerClassName = pool.classAt(entry.innerClassIndex).getName(pool);
+                    Symbol<Name> innerClassName = getConstantPool().classAt(entry.innerClassIndex).getName(getConstantPool());
                     if (innerClassName.equals(this.getName())) {
                         modifiers = entry.innerClassAccessFlags;
                         break;
@@ -892,11 +902,11 @@ public final class ObjectKlass extends Klass {
     @Override
     public String getGenericTypeAsString() {
         if (genericSignature == null) {
-            SignatureAttribute attr = (SignatureAttribute) linkedKlass.getAttribute(SignatureAttribute.NAME);
+            SignatureAttribute attr = (SignatureAttribute) getLinkedKlass().getAttribute(SignatureAttribute.NAME);
             if (attr == null) {
                 genericSignature = ""; // if no generics, the generic signature is empty
             } else {
-                genericSignature = pool.symbolAt(attr.getSignatureIndex()).toString();
+                genericSignature = getConstantPool().symbolAt(attr.getSignatureIndex()).toString();
             }
         }
         return genericSignature;
@@ -904,17 +914,51 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public int getMajorVersion() {
-        return linkedKlass.getMajorVersion();
+        return getLinkedKlass().getMajorVersion();
     }
 
     @Override
     public int getMinorVersion() {
-        return linkedKlass.getMinorVersion();
+        return getLinkedKlass().getMinorVersion();
     }
 
     @Override
     public String getSourceDebugExtension() {
         SourceDebugExtensionAttribute attribute = (SourceDebugExtensionAttribute) getAttribute(SourceDebugExtensionAttribute.NAME);
         return attribute != null ? attribute.getDebugExtension() : null;
+    }
+
+    public RedefinitionCache getRedefineCache() {
+        RedefinitionCache cache = redefineCache;
+        while (!cache.assumption.isValid()) {
+            cache = redefineCache;
+        }
+        return cache;
+    }
+
+    public void redefineClass(ParserKlass parserKlass) {
+        RedefinitionCache oldVersion = redefineCache;
+        StaticObject definingClassLoader = oldVersion.pool.getClassLoader();
+        RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), parserKlass.getConstantPool(), definingClassLoader);
+        ObjectKlass[] superInterfaces = getSuperInterfaces();
+        LinkedKlass[] interfaces = new LinkedKlass[superInterfaces.length];
+        for (int i = 0; i < superInterfaces.length; i++) {
+            interfaces[i] = superInterfaces[i].getLinkedKlass();
+        }
+        LinkedKlass linkedKlass = new LinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
+        redefineCache = new RedefinitionCache(pool, linkedKlass);
+        oldVersion.assumption.invalidate();
+    }
+
+    private static final class RedefinitionCache {
+        final Assumption assumption;
+        final RuntimeConstantPool pool;
+        final LinkedKlass linkedKlass;
+
+        RedefinitionCache(RuntimeConstantPool pool, LinkedKlass linkedKlass) {
+            this.assumption = Truffle.getRuntime().createAssumption();
+            this.pool = pool;
+            this.linkedKlass = linkedKlass;
+        }
     }
 }

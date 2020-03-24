@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
+import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
@@ -32,6 +34,7 @@ import com.oracle.truffle.espresso.jdwp.api.LocalRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
+import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 
 import java.nio.file.Path;
@@ -48,7 +51,6 @@ final class JDWP {
     public static final String JAVA_LANG_OBJECT = "Ljava/lang/Object;";
     public static final Object INVALID_VALUE = new Object();
 
-    private static final boolean CAN_REDEFINE_CLASSES = false;
     private static final boolean CAN_GET_INSTANCE_INFO = false;
 
     private static final int ACC_SYNTHETIC = 0x00001000;
@@ -336,7 +338,7 @@ final class JDWP {
                 reply.writeBoolean(true); // canGetOwnedMonitorInfo
                 reply.writeBoolean(true); // canGetCurrentContendedMonitor
                 reply.writeBoolean(true); // canGetMonitorInfo
-                reply.writeBoolean(CAN_REDEFINE_CLASSES); // canRedefineClasses
+                reply.writeBoolean(true); // canRedefineClasses
                 reply.writeBoolean(false); // canAddMethod
                 reply.writeBoolean(false); // canUnrestrictedlyRedefineClasses
                 reply.writeBoolean(true); // canPopFrames
@@ -361,6 +363,40 @@ final class JDWP {
                 reply.writeBoolean(false); // reserved for future
                 reply.writeBoolean(false); // reserved for future
                 reply.writeBoolean(false); // reserved for future
+                return new CommandResult(reply);
+            }
+        }
+
+        static class REDEFINE_CLASSES {
+            public static final int ID = 18;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                int classes = input.readInt();
+                RedefineInfo[] redefineInfos = new RedefineInfo[classes];
+                for (int i = 0; i < classes; i++) {
+                    KlassRef klass = verifyRefType(input.readLong(), reply, context);
+
+                    if (klass == null) {
+                        return new CommandResult(reply);
+                    } else if (klass == context.getNullObject()) {
+                        reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                        return new CommandResult(reply);
+                    }
+
+                    int byteLength = input.readInt();
+                    byte[] classBytes = input.readByteArray(byteLength);
+                    redefineInfos[i] = new RedefineInfo(klass, classBytes);
+                }
+
+                int errorCode = context.redefineClasses(redefineInfos);
+                if (errorCode != 0) {
+                    reply.errorCode(errorCode);
+                    return new CommandResult(reply);
+                }
                 return new CommandResult(reply);
             }
         }
@@ -522,7 +558,7 @@ final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                MethodRef[] declaredMethods = klass.getDeclaredMethods();
+                MethodRef[] declaredMethods = klass.getDeclaredMethodRefs();
                 int numDeclaredMethods = declaredMethods.length;
                 reply.writeInt(numDeclaredMethods);
                 for (MethodRef method : declaredMethods) {
@@ -593,7 +629,7 @@ final class JDWP {
                 }
 
                 String sourceFile = null;
-                MethodRef[] methods = klass.getDeclaredMethods();
+                MethodRef[] methods = klass.getDeclaredMethodRefs();
                 for (MethodRef method : methods) {
                     // we need only look at one method to find
                     // the source file of the declaring class
@@ -813,7 +849,7 @@ final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                MethodRef[] declaredMethods = klass.getDeclaredMethods();
+                MethodRef[] declaredMethods = klass.getDeclaredMethodRefs();
                 int numDeclaredMethods = declaredMethods.length;
                 reply.writeInt(numDeclaredMethods);
                 for (MethodRef method : declaredMethods) {
@@ -1364,15 +1400,22 @@ final class JDWP {
         static class IS_OBSOLETE {
             public static final int ID = 4;
 
-            static CommandResult createReply(Packet packet) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                // always return false until we have canRedefineMethod support
-                if (!CAN_REDEFINE_CLASSES) {
-                    reply.writeBoolean(false);
-                } else {
-                    throw new RuntimeException("Not implemented");
+                KlassRef refType = verifyRefType(input.readLong(), reply, context);
+
+                if (refType == null) {
+                    return new CommandResult(reply);
                 }
+
+                MethodRef method = verifyMethodRef(input.readLong(), reply, context);
+
+                if (method == null) {
+                    return new CommandResult(reply);
+                }
+                reply.writeBoolean(method.isObsolete());
                 return new CommandResult(reply);
             }
         }
@@ -1963,7 +2006,7 @@ final class JDWP {
                     reply.writeLong(controller.getContext().getIds().getIdAsLong(frame));
                     reply.writeByte(frame.getTypeTag());
                     reply.writeLong(frame.getClassId());
-                    reply.writeLong(frame.getMethodId());
+                    reply.writeLong(frame.getMethod().isObsolete() ? 0 : controller.getContext().getIds().getIdAsLong(frame.getMethod()));
                     reply.writeLong(frame.getCodeIndex());
                 }
                 return new CommandResult(reply);
@@ -2546,7 +2589,7 @@ final class JDWP {
 
                         writeValue(sigbyte, value, reply, true, context);
                     }
-                } catch (ArrayIndexOutOfBoundsException ex) {
+                } catch (ArrayIndexOutOfBoundsException | InteropException ex) {
                     // invalid slot provided
                     reply.errorCode(ErrorCodes.INVALID_SLOT);
                     return new CommandResult(reply);

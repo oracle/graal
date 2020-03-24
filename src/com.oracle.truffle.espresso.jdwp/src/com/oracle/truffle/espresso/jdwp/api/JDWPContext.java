@@ -458,4 +458,14 @@ public interface JDWPContext {
      * @return the Truffle language class
      */
     Class<? extends TruffleLanguage<?>> getLanguageClass();
+
+    /**
+     * Installs new class definitions. If there are active stack frames in methods of the redefined
+     * classes in the target VM then those active frames continue to run the bytecodes of the
+     * original method.
+     *
+     * @param redefineInfos the information about the original class and the new class bytes
+     * @return 0 on success or the appropriate {@link ErrorCodes} if an error occur
+     */
+    int redefineClasses(RedefineInfo[] redefineInfos);
 }

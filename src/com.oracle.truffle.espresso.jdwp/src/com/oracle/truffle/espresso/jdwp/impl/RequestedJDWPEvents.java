@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
@@ -110,7 +111,7 @@ public final class RequestedJDWPEvents {
                 eventListener.addBreakpointRequest(filter.getRequestId(), methodInfo);
                 eventListener.increaseMethodBreakpointCount();
                 for (KlassRef klass : filter.getKlassRefPatterns()) {
-                    for (MethodRef method : klass.getDeclaredMethods()) {
+                    for (MethodRef method : klass.getDeclaredMethodRefs()) {
                         method.addMethodBreakpointInfo(methodInfo);
                         methodInfo.addMethod(method);
                     }

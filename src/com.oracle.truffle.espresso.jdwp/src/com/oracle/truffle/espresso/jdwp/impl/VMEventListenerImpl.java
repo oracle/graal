@@ -375,7 +375,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(frame.getClassId());
         stream.writeLong(frame.getMethodId());
         stream.writeLong(frame.getCodeIndex());
-        JDWPLogger.log("Sending breakpoint hit event in thread: %s with suspension policy: %d", JDWPLogger.LogLevel.STEPPING, context.getThreadName(currentThread), info.getSuspendPolicy());
+        JDWPLogger.log("Sending breakpoint hit event in thread: %s with suspension policy: %d", JDWPLogger.LogLevel.PACKET, context.getThreadName(currentThread), info.getSuspendPolicy());
         if (holdEvents) {
             heldEvents.add(stream);
         } else {
@@ -493,7 +493,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         // location
         stream.writeByte(top.getTypeTag());
         stream.writeLong(top.getClassId());
-        stream.writeLong(top.getMethodId());
+        stream.writeLong(ids.getIdAsLong(top.getMethod()));
         stream.writeLong(top.getCodeIndex());
 
         // exception
@@ -503,7 +503,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         // catch-location
         boolean caught = false;
         for (CallFrame callFrame : callFrames) {
-            MethodRef method = (MethodRef) context.getIds().fromId((int) callFrame.getMethodId());
+            MethodRef method = callFrame.getMethod();
             int catchLocation = context.getCatchLocation(method, exception, (int) callFrame.getCodeIndex());
             if (catchLocation != -1) {
                 stream.writeByte(callFrame.getTypeTag());
@@ -532,7 +532,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         if (info.isPopFrames()) {
             // send reply packet when "step" is completed
             PacketStream reply = new PacketStream().replyPacket().id(info.getRequestId());
-            JDWPLogger.log("Sending pop frames reply packet", JDWPLogger.LogLevel.STEPPING);
+            JDWPLogger.log("Sending pop frames reply packet", JDWPLogger.LogLevel.PACKET);
             if (holdEvents) {
                 heldEvents.add(reply);
             } else {
@@ -585,7 +585,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(currentFrame.getMethodId());
         long codeIndex = currentFrame.getCodeIndex();
         stream.writeLong(codeIndex);
-        JDWPLogger.log("Sending monitor contended event", JDWPLogger.LogLevel.STEPPING);
+        JDWPLogger.log("Sending monitor contended event", JDWPLogger.LogLevel.PACKET);
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -624,7 +624,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(currentFrame.getMethodId());
         long codeIndex = currentFrame.getCodeIndex();
         stream.writeLong(codeIndex);
-        JDWPLogger.log("Sending monitor contended entered event", JDWPLogger.LogLevel.STEPPING);
+        JDWPLogger.log("Sending monitor contended entered event", JDWPLogger.LogLevel.PACKET);
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -665,7 +665,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
         // timeout
         stream.writeLong(timeout);
-        JDWPLogger.log("Sending monitor wait event", JDWPLogger.LogLevel.STEPPING);
+        JDWPLogger.log("Sending monitor wait event", JDWPLogger.LogLevel.PACKET);
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -736,7 +736,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
         // timeout
         stream.writeBoolean(timedOut);
-        JDWPLogger.log("Sending monitor wait event", JDWPLogger.LogLevel.STEPPING);
+        JDWPLogger.log("Sending monitor wait event", JDWPLogger.LogLevel.PACKET);
 
         if (holdEvents) {
             heldEvents.add(stream);

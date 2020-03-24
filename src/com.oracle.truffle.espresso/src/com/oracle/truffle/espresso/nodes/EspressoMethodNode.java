@@ -30,6 +30,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -37,14 +38,18 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  */
 public abstract class EspressoMethodNode extends EspressoInstrumentableNode implements ContextAccess {
 
-    private final Method method;
+    private final MethodVersion method;
 
-    EspressoMethodNode(Method method) {
+    EspressoMethodNode(MethodVersion method) {
         this.method = method;
     }
 
-    public final Method getMethod() {
+    public MethodVersion getMethodVersion() {
         return method;
+    }
+
+    public final Method getMethod() {
+        return method.getMethod();
     }
 
     @Override
@@ -60,7 +65,7 @@ public abstract class EspressoMethodNode extends EspressoInstrumentableNode impl
             return null;
         }
 
-        LineNumberTableAttribute lineNumberTable = method.getLineNumberTable();
+        LineNumberTableAttribute lineNumberTable = method.getLineNumberTableAttribute();
 
         if (lineNumberTable != LineNumberTableAttribute.EMPTY) {
             LineNumberTableAttribute.Entry[] entries = lineNumberTable.getEntries();
@@ -84,12 +89,12 @@ public abstract class EspressoMethodNode extends EspressoInstrumentableNode impl
     }
 
     public final Source getSource() {
-        return method.getSource();
+        return getMethod().getSource();
     }
 
     @Override
     public final EspressoContext getContext() {
-        return method.getContext();
+        return getMethod().getContext();
     }
 
 }

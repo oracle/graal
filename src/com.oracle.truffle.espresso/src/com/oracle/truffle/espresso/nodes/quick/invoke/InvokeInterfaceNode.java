@@ -31,6 +31,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
@@ -48,11 +49,11 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     protected abstract Object executeInterface(StaticObject receiver, Object[] args);
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass")
+    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass", assumptions = "resolvedMethod.getAssumption()")
     Object callVirtualDirect(StaticObject receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
-                    @Cached("methodLookup(receiver, itableIndex, declaringKlass)") Method resolvedMethod,
-                    @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
+                    @Cached("methodLookup(receiver, itableIndex, declaringKlass)") MethodVersion resolvedMethod,
+                    @Cached("create(resolvedMethod.getMethod().getCallTarget())") DirectCallNode directCallNode) {
         return directCallNode.call(args);
     }
 
@@ -60,7 +61,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
         // itable Lookup
-        return indirectCallNode.call(methodLookup(receiver, itableIndex, declaringKlass).getCallTarget(), arguments);
+        return indirectCallNode.call(methodLookup(receiver, itableIndex, declaringKlass).getMethod().getCallTarget(), arguments);
     }
 
     InvokeInterfaceNode(Method resolutionSeed, int top, int curBCI) {
@@ -71,7 +72,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         this.declaringKlass = resolutionSeed.getDeclaringKlass();
     }
 
-    static Method methodLookup(StaticObject receiver, int itableIndex, Klass declaringKlass) {
+    static MethodVersion methodLookup(StaticObject receiver, int itableIndex, Klass declaringKlass) {
         assert !receiver.getKlass().isArray();
         Method method = ((ObjectKlass) receiver.getKlass()).itableLookup(declaringKlass, itableIndex);
         if (!method.isPublic()) {
@@ -79,7 +80,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
             Meta meta = receiver.getKlass().getMeta();
             throw Meta.throwException(meta.java_lang_IllegalAccessError);
         }
-        return method;
+        return method.getMethodVersion();
     }
 
     @Override

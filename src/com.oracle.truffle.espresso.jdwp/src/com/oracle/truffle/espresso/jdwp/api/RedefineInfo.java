@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.espresso.jdwp.api;
 
-package com.oracle.truffle.espresso.nodes;
+public final class RedefineInfo {
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.substitutions.Substitutor;
+    private final KlassRef klass;
+    private final byte[] classBytes;
 
-public class IntrinsicSubstitutorRootNode extends EspressoMethodNode {
-    private final Substitutor substitution;
-
-    public IntrinsicSubstitutorRootNode(Substitutor sub, Method method) {
-        super(method.getMethodVersion());
-        this.substitution = sub;
+    public RedefineInfo(KlassRef klass, byte[] classBytes) {
+        this.klass = klass;
+        this.classBytes = classBytes;
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        return substitution.invoke(frame.getArguments());
+    public KlassRef getKlass() {
+        return klass;
     }
 
+    public byte[] getClassBytes() {
+        return classBytes;
+    }
 }
