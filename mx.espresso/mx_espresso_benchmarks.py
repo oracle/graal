@@ -25,12 +25,12 @@ import mx
 import mx_benchmark
 import mx_espresso
 
-from mx_benchmark import GuestVm
+from mx_benchmark import GuestVm, JavaVm
 
 _suite = mx.suite('espresso')
 
 
-class EspressoVm(GuestVm):
+class EspressoVm(GuestVm, JavaVm):
     def __init__(self, config_name, options, host_vm=None):
         super(EspressoVm, self).__init__(host_vm=host_vm)
         self._config_name = config_name
