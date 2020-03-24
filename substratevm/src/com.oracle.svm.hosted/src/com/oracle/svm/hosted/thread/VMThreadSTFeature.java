@@ -183,8 +183,7 @@ public class VMThreadSTFeature implements GraalFeature {
         VMThreadLocalSTHolderNode holder = b.add(new VMThreadLocalSTHolderNode(info));
         StoreVMThreadLocalNode store = new StoreVMThreadLocalNode(info, holder, valueNode, BarrierType.ARRAY);
         b.add(store);
-        b.setStateAfter(store);
-        assert store.stateAfter() != null : store;
+        assert store.stateAfter() != null : store + " has not state after with graph builder context " + b;
         return true;
     }
 
@@ -193,8 +192,7 @@ public class VMThreadSTFeature implements GraalFeature {
         VMThreadLocalSTHolderNode holder = b.add(new VMThreadLocalSTHolderNode(threadLocalInfo));
         CompareAndSetVMThreadLocalNode cas = new CompareAndSetVMThreadLocalNode(threadLocalInfo, holder, expect, update);
         b.addPush(targetMethod.getSignature().getReturnKind(), cas);
-        b.setStateAfter(cas);
-        assert cas.stateAfter() != null : cas;
+        assert cas.stateAfter() != null : cas + " has not state after with graph builder context " + b;
         return true;
     }
 
