@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 public final class EmptyListener implements VMListener {
 
     @Override
-    public void vmStarted(Object mainThread) {
+    public void vmStarted(boolean suspend) {
 
     }
 

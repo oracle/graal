@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.jdwp.api;
 
 public interface VMListener {
 
-    void vmStarted(Object mainThread);
+    void vmStarted(boolean suspend);
 
     /**
      * Fire a class prepare event on the listener.

@@ -1296,8 +1296,8 @@ final class JDWP {
 
                 if (table != null) {
                     LineNumberTableRef.EntryRef[] entries = table.getEntries();
-                    long start = method.isMethodNative() ? -1 : Integer.MAX_VALUE;
-                    long end = method.isMethodNative() ? -1 : 0;
+                    long start = method.isMethodNative() ? -1 : 0;
+                    long end = method.isMethodNative() ? -1 : method.getEndBCI();
                     int lines = entries.length;
                     Line[] allLines = new Line[lines];
 
@@ -1305,12 +1305,6 @@ final class JDWP {
                         LineNumberTableRef.EntryRef entry = entries[i];
                         int bci = entry.getBCI();
                         int line = entry.getLineNumber();
-                        if (bci < start) {
-                            start = bci;
-                        }
-                        if (bci > end) {
-                            end = bci;
-                        }
                         allLines[i] = new Line(bci, line);
                     }
                     reply.writeLong(start);
@@ -1687,7 +1681,6 @@ final class JDWP {
                     }, suspensionStrategy);
                     controller.postJobForThread(job);
                     ThreadJob<?>.JobResult<?> result = job.getResult();
-
                     writeMethodResult(reply, context, result);
                 } catch (Throwable t) {
                     throw new RuntimeException("not able to invoke method through jdwp", t);
@@ -2760,8 +2753,9 @@ final class JDWP {
                 return input.readLong();
             case TagConstants.DOUBLE:
                 return input.readDouble();
-            case TagConstants.ARRAY:
             case TagConstants.STRING:
+                return input.readString();
+            case TagConstants.ARRAY:
             case TagConstants.OBJECT:
             case TagConstants.THREAD:
             case TagConstants.THREAD_GROUP:

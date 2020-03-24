@@ -26,8 +26,6 @@ import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
-import java.util.concurrent.Callable;
-
 public interface VMEventListener extends VMListener {
     void setConnection(SocketConnection connection);
 
@@ -47,7 +45,7 @@ public interface VMEventListener extends VMListener {
 
     void addVMDeathRequest(int id);
 
-    Callable<Void> addClassPrepareRequest(ClassPrepareRequest request);
+    void addClassPrepareRequest(ClassPrepareRequest request);
 
     void removeClassPrepareRequest(int requestId);
 

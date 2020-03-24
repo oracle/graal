@@ -74,11 +74,13 @@ public final class VMEventListenerImpl implements VMEventListener {
     private final Map<Object, Object> currentContendedMonitor = new HashMap<>();
     private final ThreadLocal<Object> earlyReturns = new ThreadLocal<>();
     private final Map<Object, Map<Object, MonitorInfo>> monitorInfos = new HashMap<>();
+    private final Object mainThread;
 
-    public VMEventListenerImpl(DebuggerController controller) {
+    public VMEventListenerImpl(DebuggerController controller, Object mainThread) {
         this.debuggerController = controller;
         this.context = controller.getContext();
         this.ids = context.getIds();
+        this.mainThread = mainThread;
     }
 
     public void setConnection(SocketConnection connection) {
@@ -86,50 +88,8 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public Callable<Void> addClassPrepareRequest(ClassPrepareRequest request) {
+    public void addClassPrepareRequest(ClassPrepareRequest request) {
         classPrepareRequests.put(request.getRequestId(), request);
-        // check if the class has been already prepared and send the event
-        if (request.getPatterns() == null) {
-            return null;
-        }
-
-        // optimize for fully qualified class name pattern
-        Pattern[] patterns = request.getPatterns();
-
-        for (Pattern patt : patterns) {
-            String pattern = patt.pattern();
-            KlassRef[] klasses = context.findLoadedClass(pattern.replace('.', '/'));
-            if (klasses.length > 0) {
-                for (KlassRef klass : klasses) {
-                    // great, we can simply send a class prepare event for the class
-                    return getPreparedCallable(request, klass);
-                }
-            } else {
-                KlassRef[] allLoadedClasses = context.getAllLoadedClasses();
-                for (KlassRef klass : allLoadedClasses) {
-                    String dotName = klass.getNameAsString().replace('/', '.');
-                    Matcher matcher = patt.matcher(dotName);
-
-                    if (matcher.matches()) {
-                        return getPreparedCallable(request, klass);
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    private Callable<Void> getPreparedCallable(ClassPrepareRequest request, KlassRef klass) {
-        return new Callable<Void>() {
-            @Override
-            public Void call() throws Exception {
-                Object thread = klass.getPrepareThread();
-                if (request.getThread() == null || request.getThread() == thread) {
-                    classPrepared(klass, thread, true);
-                }
-                return null;
-            }
-        };
     }
 
     @Override
@@ -326,7 +286,7 @@ public final class VMEventListenerImpl implements VMEventListener {
                 // only send PREPARED status for class prepare events.
                 // if using ClassStatusConstants.INITIALIZED the debugger doesn't submit a
                 // breakpoint!
-                stream.writeInt(ClassStatusConstants.PREPARED);
+                stream.writeInt(ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED);
                 classPrepareRequests.remove(cpr.getRequestId());
             }
             if (!preparedEarlier && suspendPolicy != SuspendStrategy.NONE) {
@@ -964,18 +924,14 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void vmStarted(Object mainThread) {
+    public void vmStarted(boolean suspend) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
-        stream.writeByte(SuspendStrategy.NONE);
+        stream.writeByte(suspend ? SuspendStrategy.ALL : SuspendStrategy.NONE);
         stream.writeInt(1);
         stream.writeByte(RequestedJDWPEvents.VM_START);
         stream.writeInt(vmStartRequestId != -1 ? vmStartRequestId : 0);
         stream.writeLong(context.getIds().getIdAsLong(mainThread));
-        if (holdEvents) {
-            heldEvents.add(stream);
-        } else {
-            connection.queuePacket(stream);
-        }
+        connection.queuePacket(stream);
     }
 
     @Override
@@ -988,11 +944,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeInt(1);
         stream.writeByte(RequestedJDWPEvents.VM_DEATH);
         stream.writeInt(vmDeathRequestId != -1 ? vmDeathRequestId : 0);
-        if (holdEvents) {
-            heldEvents.add(stream);
-        } else {
-            connection.queuePacket(stream);
-        }
+        connection.queuePacket(stream);
     }
 
     @Override

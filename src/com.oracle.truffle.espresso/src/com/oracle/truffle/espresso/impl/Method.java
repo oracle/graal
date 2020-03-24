@@ -1217,6 +1217,23 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         public boolean isObsolete() {
             return !assumption.isValid();
         }
+
+        @Override
+        public long getEndBCI() {
+            int bci = 0;
+            BytecodeStream bs = new BytecodeStream(getCodeAttribute().getCode());
+            int end = bs.endBCI();
+
+            while (bci < end) {
+                int nextBCI = bs.nextBCI(bci);
+                if (nextBCI >= end || nextBCI == bci) {
+                    return bci;
+                } else {
+                    bci = nextBCI;
+                }
+            }
+            return bci;
+        }
     }
     // endregion jdwp-specific
 }
