@@ -411,7 +411,7 @@ public class ValueAssert {
 
     @SuppressWarnings("unchecked")
     private static void assertValueImpl(Value value, int depth, boolean hasHostAccess, Trait... expectedTypes) {
-        if (depth > 10) {
+        if (depth > 1) {
             // stop at a certain recursion depth for recursive data structures
             return;
         }
@@ -656,16 +656,6 @@ public class ValueAssert {
         } else if (!value.hasMembers()) {
             List<Object> objectMap5 = (List<Object>) value.as(Object.class);
             assertEquals(receivedObjects, objectMap5);
-        }
-
-        // write them all
-        for (long i = 0L; i < value.getArraySize(); i++) {
-            value.setArrayElement(i, value.getArrayElement(i));
-        }
-
-        for (int i = 0; i < value.getArraySize(); i++) {
-            objectList1.set(i, receivedObjects.get(i));
-            objectList2.set(i, receivedObjects.get(i));
         }
     }
 
