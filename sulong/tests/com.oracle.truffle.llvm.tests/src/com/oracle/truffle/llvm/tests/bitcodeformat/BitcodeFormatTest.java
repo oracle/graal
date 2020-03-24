@@ -33,9 +33,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -90,7 +93,21 @@ public class BitcodeFormatTest {
 
     @Parameters(name = "{0}")
     public static Collection<Object[]> data() throws IOException {
-        return Files.list(testBase).map(f -> new Object[]{f.getFileName()}).collect(Collectors.toList());
+        Set<String> blacklist = getBlacklist();
+        Collection<Object[]> testlist = Files.list(testBase).map(f -> new Object[]{f.getFileName()}).collect(Collectors.toList());
+        testlist.removeIf(t -> blacklist.contains(t[0].toString()));
+        return testlist;
+    }
+
+    protected static Set<String> getBlacklist() {
+        Set<String> blacklist = new HashSet<>();
+
+        if (Platform.isAArch64()) {
+            blacklist.addAll(Arrays.asList(
+                            "hello-linux-link-fembed-bitcode", "hello-linux-link-fembed-bitcode.so"));
+        }
+
+        return blacklist;
     }
 
     @Parameter(0) public Path value;
