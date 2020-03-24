@@ -510,7 +510,7 @@ public class ValueAssert {
                         assertTrue(stringMap.equals(stringMap));
                         assertFalse(value.as(STRING_OBJECT_MAP).equals(expectedValues));
                         assertTrue(value.as(STRING_OBJECT_MAP).equals(value.as(STRING_OBJECT_MAP)));
-                        assertNotEquals(0, value.as(STRING_OBJECT_MAP).hashCode());
+                        assertNotNull(value.as(STRING_OBJECT_MAP).hashCode());
                         assertNotNull(value.as(STRING_OBJECT_MAP).toString());
 
                         Set<String> keySet = value.as(Map.class).keySet();
