@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -42,6 +40,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -56,9 +55,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets.IsolateCreationWatcher;
-import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.AdvancedSignalDispatcher;
@@ -69,27 +66,17 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
 
 @AutomaticFeature
-public class SegfaultHandlerFeature implements Feature {
-
+class PosixSubstrateSegfaultHandlerFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(SubstrateSegfaultHandler.class, new PosixSubstrateSegfaultHandler());
         if (SubstrateOptions.useLLVMBackend()) {
-            ImageSingletons.add(IsolateCreationWatcher.class, new SubstrateSegfaultHandler.SingleIsolateSegfaultIsolateSetup());
+            ImageSingletons.add(IsolateCreationWatcher.class, new PosixSubstrateSegfaultHandler.SingleIsolateSegfaultIsolateSetup());
         }
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addStartupHook(SubstrateSegfaultHandler::install);
     }
 }
 
-class SubstrateSegfaultHandler {
-
-    public static class Options {
-        @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library.")//
-        static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
-    }
+class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
 
     private static volatile boolean dispatchInProgress = false;
 
@@ -148,20 +135,18 @@ class SubstrateSegfaultHandler {
     }
 
     /** The address of the signal handler for signals handled by Java code, above. */
-    private static final CEntryPointLiteral<AdvancedSignalDispatcher> advancedSignalDispatcher = CEntryPointLiteral.create(SubstrateSegfaultHandler.class, "dispatch", int.class, siginfo_t.class,
-                    ucontext_t.class);
+    private static final CEntryPointLiteral<AdvancedSignalDispatcher> advancedSignalDispatcher = CEntryPointLiteral.create(PosixSubstrateSegfaultHandler.class,
+                    "dispatch", int.class, siginfo_t.class, ucontext_t.class);
 
-    static void install() {
-        Boolean optionValue = Options.InstallSegfaultHandler.getValue();
-        if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
-            int structSigActionSize = SizeOf.get(sigaction.class);
-            sigaction structSigAction = StackValue.get(structSigActionSize);
-            LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
-            /* Register sa_sigaction signal handler */
-            structSigAction.sa_flags(Signal.SA_SIGINFO());
-            structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
-            Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, WordFactory.nullPointer());
-        }
+    @Override
+    protected void install() {
+        int structSigActionSize = SizeOf.get(sigaction.class);
+        sigaction structSigAction = StackValue.get(structSigActionSize);
+        LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
+        /* Register sa_sigaction signal handler */
+        structSigAction.sa_flags(Signal.SA_SIGINFO());
+        structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
+        Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, WordFactory.nullPointer());
     }
 
     static class SingleIsolateSegfaultIsolateSetup implements IsolateCreationWatcher {
