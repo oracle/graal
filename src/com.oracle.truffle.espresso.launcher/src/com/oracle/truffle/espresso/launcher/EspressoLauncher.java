@@ -220,10 +220,6 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         // @formatter:on
     }
 
-    private static void print(String string) {
-        System.out.println(string);
-    }
-
     /**
      * Gets the values of the attribute {@code name} from the manifest in {@code jarFile}.
      *
@@ -252,6 +248,15 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         } catch (IOException e) {
             throw abort("Could not find main class in jarfile: " + jarFileName + " [cause: " + e + "]");
         }
+    }
+
+    // cf. sun.launcher.LauncherHelper
+    private enum LaunchMode {
+        LM_UNKNOWN,
+        LM_CLASS,
+        LM_JAR,
+        // LM_MODULE,
+        // LM_SOURCE
     }
 
     @Override
@@ -283,7 +288,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             try {
                 Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
                 Value mainKlass = launcherHelper //
-                                .invokeMember("checkAndLoadMain", true, 1 /* LM_CLASS */, mainClassName) //
+                                .invokeMember("checkAndLoadMain", true, LaunchMode.LM_CLASS.ordinal(), mainClassName) //
                                 .getMember("static");
                 mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
                 rc = 0;
@@ -305,7 +310,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void printHelp(OptionCategory maxCategory) {
-        print(usage());
+        getOutput().println(usage());
     }
 
     @Override

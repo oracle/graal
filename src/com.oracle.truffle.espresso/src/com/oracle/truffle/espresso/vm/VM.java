@@ -59,6 +59,7 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import com.oracle.truffle.espresso.jni.Pointer;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -101,7 +102,6 @@ import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
 import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
-import com.oracle.truffle.espresso.jni.Word;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -126,27 +126,38 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
  */
 public final class VM extends NativeEnv implements ContextAccess {
 
-    private static final TruffleLogger VMLogger = TruffleLogger.getLogger(EspressoLanguage.ID, VM.class);
+    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, VM.class);
+    private final InteropLibrary uncached = InteropLibrary.getFactory().getUncached();
 
-    private static final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
-
-    private final TruffleObject initializeMokapotContext;
-    private final TruffleObject disposeMokapotContext;
-
-    private final TruffleObject initializeManagementContext;
-    private final TruffleObject disposeManagementContext;
-
-    private final TruffleObject getJavaVM;
+    private final @Pointer TruffleObject initializeMokapotContext;
+    private final @Pointer TruffleObject disposeMokapotContext;
+    private final @Pointer TruffleObject initializeManagementContext;
+    private final @Pointer TruffleObject disposeManagementContext;
+    private final @Pointer TruffleObject getJavaVM;
 
     private final JniEnv jniEnv;
 
-    private long managementPtr;
+    private @Pointer TruffleObject managementPtr;
+    private @Pointer TruffleObject vmPtr;
 
-    public JNIHandles getHandles() {
-        return jniEnv.getHandles();
+    // jvm.dll (Windows) or libjvm.so (Unixes) is the Espresso implementation of the VM
+    // interface (libjvm).
+    // Espresso loads all shared libraries in a private namespace (e.g. using dlmopen on Linux).
+    // Espresso's libjvm must be loaded strictly before any other library in the private namespace
+    // to avoid linking with HotSpot libjvm, then libjava is loaded and further system libraries,
+    // libzip, libnet, libnio ...
+    private final @Pointer TruffleObject mokapotLibrary;
+
+    // libjava must be loaded after mokapot.
+    private final @Pointer TruffleObject javaLibrary;
+
+    protected TruffleLogger getLogger() {
+        return logger;
     }
 
-    private @Word long vmPtr;
+    protected InteropLibrary getUncached() {
+        return uncached;
+    }
 
     public static final class GlobalFrameIDs {
         private static final AtomicLong id = new AtomicLong();
@@ -160,7 +171,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         @Override
         public Object call(Object... args) {
             try {
-                return VM.this.lookupVmImpl((String) args[0]);
+                String name = interopPointerToString((TruffleObject) args[0]);
+                return VM.this.lookupVmImpl(name);
             } catch (ClassCastException e) {
                 throw EspressoError.shouldNotReachHere(e);
             } catch (RuntimeException e) {
@@ -171,19 +183,37 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     });
 
-    // mokapot.dll (Windows) or libmokapot.so (Unixes) is the Espresso implementation of the VM
-    // interface (libjvm).
-    // Espresso loads all shared libraries in a private namespace (e.g. using dlmopen on Linux).
-    // libmokapot must be loaded strictly before any other library in the private namespace to
-    // avoid linking with HotSpot libjvm, then libjava is loaded and further system libraries,
-    // libzip, libnet, libnio ...
-    private final TruffleObject mokapotLibrary;
+    public JNIHandles getHandles() {
+        return jniEnv.getHandles();
+    }
 
-    // libjava must be loaded after mokapot.
-    private final TruffleObject javaLibrary;
-
-    public TruffleObject getJavaLibrary() {
+    public @Pointer TruffleObject getJavaLibrary() {
         return javaLibrary;
+    }
+
+    private @Pointer TruffleObject loadJavaLibrary(List<Path> bootLibraryPath) {
+        // Comment from HotSpot:
+        // Try to load verify dll first. In 1.3 java dll depends on it and is not
+        // always able to find it when the loading executable is outside the JDK.
+        // In order to keep working with 1.2 we ignore any loading errors.
+        /* verifyLibrary = */ loadLibraryInternal(bootLibraryPath, "verify", false);
+        TruffleObject libJava = loadLibraryInternal(bootLibraryPath, "java");
+
+        // The JNI_OnLoad handling is normally done by method load in
+        // java.lang.ClassLoader$NativeLibrary, but the VM loads the base library
+        // explicitly so we have to check for JNI_OnLoad as well
+        // libjava is initialized after libjvm (Espresso VM native context).
+        try {
+            // TODO(peterssen): Use JVM_FindLibraryEntry.
+            TruffleObject jniOnLoad = NativeLibrary.lookupAndBind(libJava, "JNI_OnLoad", "(pointer, pointer): sint32");
+            getUncached().execute(jniOnLoad, vmPtr, RawPointer.nullInstance());
+        } catch (UnknownIdentifierException e) {
+            // ignore
+        } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+
+        return libJava;
     }
 
     private VM(JniEnv jniEnv) {
@@ -191,29 +221,24 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             EspressoProperties props = getContext().getVmProperties();
 
-            List<Path> libjavaSearchPaths = new ArrayList<>();
-            libjavaSearchPaths.addAll(props.bootLibraryPath());
-            libjavaSearchPaths.addAll(props.javaLibraryPath());
-
-            mokapotLibrary = loadLibrary(Collections.singletonList(props.espressoLibraryPath()), "mokapot");
-
+            // Load Espresso's libjvm.
+            mokapotLibrary = loadLibraryInternal(Collections.singletonList(props.espressoLibraryPath()), "jvm");
             assert mokapotLibrary != null;
-            javaLibrary = loadLibrary(libjavaSearchPaths, "java");
 
             initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
-                            "initializeMokapotContext", "(env, sint64, (string): pointer): sint64");
+                            "initializeMokapotContext", "(env, pointer, (pointer): pointer): pointer");
 
             disposeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "disposeMokapotContext",
-                            "(env, sint64): void");
+                            "(env, pointer): void");
 
             if (jniEnv.getContext().EnableManagement) {
                 initializeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
-                                "initializeManagementContext", "(env, (string): pointer): sint64");
+                                "initializeManagementContext", "(env, (pointer): pointer): pointer");
 
                 disposeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                                 "disposeManagementContext",
-                                "(env, sint64): void");
+                                "(env, pointer): void");
             } else {
                 initializeManagementContext = null;
                 disposeManagementContext = null;
@@ -221,11 +246,13 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             getJavaVM = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "getJavaVM",
-                            "(env): sint64");
+                            "(env): pointer");
 
-            this.vmPtr = (long) UNCACHED.execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
+            this.vmPtr = (TruffleObject) getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
+            assert getUncached().isPointer(this.vmPtr);
+            assert !getUncached().isNull(this.vmPtr);
 
-            assert this.vmPtr != 0;
+            javaLibrary = loadJavaLibrary(props.bootLibraryPath());
 
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
             throw EspressoError.shouldNotReachHere(e);
@@ -237,9 +264,12 @@ public final class VM extends NativeEnv implements ContextAccess {
         return jniEnv.getContext();
     }
 
-    public @Word long getJavaVM() {
+    public @Pointer TruffleObject getJavaVM() {
         try {
-            return UNCACHED.asLong(UNCACHED.execute(getJavaVM));
+            @Pointer
+            TruffleObject ptr = (TruffleObject) getUncached().execute(getJavaVM);
+            assert getUncached().isPointer(ptr);
+            return ptr;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("getJavaVM failed");
         }
@@ -270,13 +300,13 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
-                VMLogger.log(Level.FINER, "Fetching unknown/unimplemented VM method: {0}", methodName);
-                return (TruffleObject) UNCACHED.execute(jniEnv.dupClosureRefAndCast("(pointer): void"),
+                getLogger().log(Level.FINER, "Fetching unknown/unimplemented VM method: {0}", methodName);
+                return (TruffleObject) getUncached().execute(jniEnv.dupClosureRefAndCast("(pointer): void"),
                                 new Callback(1, new Callback.Function() {
                                     @Override
                                     public Object call(Object... args) {
                                         CompilerDirectives.transferToInterpreter();
-                                        VMLogger.log(Level.SEVERE, "Calling unimplemented VM method: {0}", methodName);
+                                        getLogger().log(Level.SEVERE, "Calling unimplemented VM method: {0}", methodName);
                                         throw EspressoError.unimplemented("VM method: " + methodName);
                                     }
                                 }));
@@ -284,7 +314,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             String signature = m.jniNativeSignature();
             Callback target = vmMethodWrapper(m);
-            return (TruffleObject) UNCACHED.execute(jniEnv.dupClosureRefAndCast(signature), target);
+            return (TruffleObject) getUncached().execute(jniEnv.dupClosureRefAndCast(signature), target);
 
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
@@ -485,15 +515,15 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @SuppressWarnings("unused")
     @VmImpl
-    public static int AttachCurrentThread(@Word long penvPtr, @Word long argsPtr) {
-        VMLogger.warning("Calling AttachCurrentThread! " + penvPtr + " " + Thread.currentThread());
+    public int AttachCurrentThread(@Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr) {
+        getLogger().warning("Calling AttachCurrentThread! " + penvPtr + " " + Thread.currentThread());
         EspressoLanguage.getCurrentContext().createThread(Thread.currentThread());
         return JNI_OK;
     }
 
     @VmImpl
-    public static int DetachCurrentThread() {
-        VMLogger.warning("DetachCurrentThread!!!" + Thread.currentThread());
+    public int DetachCurrentThread() {
+        getLogger().warning("DetachCurrentThread!!!" + Thread.currentThread());
         EspressoLanguage.getCurrentContext().disposeThread(Thread.currentThread());
         return JNI_OK;
     }
@@ -513,17 +543,17 @@ public final class VM extends NativeEnv implements ContextAccess {
      */
     @SuppressWarnings("unused")
     @VmImpl
-    public int GetEnv(@Word long vmPtr_, @Word long envPtr, int version) {
+    public int GetEnv(@Pointer TruffleObject vmPtr_, @Pointer TruffleObject envPtr, int version) {
         // TODO(peterssen): Check the thread is attached, and that the VM pointer matches.
-        assert getJavaVM() == vmPtr_;
+        assert interopAsPointer(getJavaVM()) == interopAsPointer(vmPtr_);
         LongBuffer buf = directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
-        buf.put(jniEnv.getNativePointer());
+        buf.put(interopAsPointer(jniEnv.getNativePointer()));
         return JNI_OK;
     }
 
     @SuppressWarnings("unused")
     @VmImpl
-    public static int AttachCurrentThreadAsDaemon(@Word long penvPtr, @Word long argsPtr) {
+    public static int AttachCurrentThreadAsDaemon(@Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr) {
         return JNI_OK;
     }
 
@@ -690,8 +720,9 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public @Host(Class.class) StaticObject JVM_DefineClass(String name, @Host(ClassLoader.class) StaticObject loader, @Word long bufPtr, int len,
+    public @Host(Class.class) StaticObject JVM_DefineClass(@Pointer TruffleObject namePtr, @Host(ClassLoader.class) StaticObject loader, @Pointer TruffleObject bufPtr, int len,
                     @Host(ProtectionDomain.class) StaticObject pd) {
+        String name = interopPointerToString(namePtr);
         ByteBuffer buf = JniEnv.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
         buf.get(bytes);
@@ -718,10 +749,10 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public @Host(Class.class) StaticObject JVM_DefineClassWithSource(String name, @Host(ClassLoader.class) StaticObject loader, @Word long bufPtr, int len,
-                    @Host(ProtectionDomain.class) StaticObject pd, @SuppressWarnings("unused") String source) {
+    public @Host(Class.class) StaticObject JVM_DefineClassWithSource(@Pointer TruffleObject namePtr, @Host(ClassLoader.class) StaticObject loader, @Pointer TruffleObject bufPtr, int len,
+                    @Host(ProtectionDomain.class) StaticObject pd, @SuppressWarnings("unused") @Pointer TruffleObject source) {
         // FIXME(peterssen): Source is ignored.
-        return JVM_DefineClass(name, loader, bufPtr, len, pd);
+        return JVM_DefineClass(namePtr, loader, bufPtr, len, pd);
     }
 
     @VmImpl
@@ -736,24 +767,25 @@ public final class VM extends NativeEnv implements ContextAccess {
         return klass.mirror();
     }
 
-    private final ConcurrentHashMap<Long, TruffleObject> handle2Lib = new ConcurrentHashMap<>();
-
-    private final ConcurrentHashMap<Long, TruffleObject> handle2Sym = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, @Pointer TruffleObject> handle2Lib = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, @Pointer TruffleObject> handle2Sym = new ConcurrentHashMap<>();
 
     // region Library support
 
     @TruffleBoundary
     @VmImpl
-    public @Word long JVM_LoadLibrary(String name) {
-        VMLogger.fine(String.format("JVM_LoadLibrary: '%s'", name));
+    public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr) {
+        String name = interopPointerToString(namePtr);
+        getLogger().fine(String.format("JVM_LoadLibrary: '%s'", name));
         try {
+            @Pointer
             TruffleObject lib = NativeLibrary.loadLibrary(Paths.get(name));
             java.lang.reflect.Field f = lib.getClass().getDeclaredField("handle");
             f.setAccessible(true);
             long handle = (long) f.get(lib);
-            VMLogger.fine(String.format("JVM_LoadLibrary: Succesfuly loaded '%s' with handle %x", name, handle));
+            getLogger().fine(String.format("JVM_LoadLibrary: Succesfuly loaded '%s' with handle %x", name, handle));
             handle2Lib.put(handle, lib);
-            return handle;
+            return RawPointer.create(handle);
         } catch (IllegalAccessException | NoSuchFieldException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
@@ -761,31 +793,33 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @TruffleBoundary
     @VmImpl
-    public static void JVM_UnloadLibrary(@SuppressWarnings("unused") @Word long handle) {
+    public void JVM_UnloadLibrary(@SuppressWarnings("unused") @Pointer TruffleObject handle) {
         // TODO(peterssen): Do unload the library.
-        VMLogger.severe(String.format("JVM_UnloadLibrary: %x was not unloaded!", handle));
+        getLogger().severe(String.format("JVM_UnloadLibrary: %x was not unloaded!", handle));
     }
 
     @VmImpl
-    public @Word long JVM_FindLibraryEntry(@Word long libHandle, String name) {
-        if (libHandle == 0) {
-            VMLogger.warning(String.format("JVM_FindLibraryEntry from default/global namespace (0): %s", name));
-            return 0L;
+    public @Pointer TruffleObject JVM_FindLibraryEntry(@Pointer TruffleObject libraryPtr, @Pointer TruffleObject namePtr) {
+        String name = interopPointerToString(namePtr);
+        if (getUncached().isNull(libraryPtr)) {
+            getLogger().warning(String.format("JVM_FindLibraryEntry from default/global namespace (0): %s", name));
+            return RawPointer.nullInstance();
         }
         // TODO(peterssen): Workaround for MacOS flags: RTLD_DEFAULT...
-        if (-6 < libHandle && libHandle < 0) {
-            VMLogger.warning("JVM_FindLibraryEntry with unsupported flag/handle/namespace (" + libHandle + "): " + name);
-            return 0L;
+        long nativePtr = interopAsPointer(libraryPtr);
+        if (-6 < nativePtr && nativePtr < 0) {
+            getLogger().warning("JVM_FindLibraryEntry with unsupported flag/handle/namespace (" + libraryPtr + "): " + name);
+            return RawPointer.nullInstance();
         }
         try {
-            TruffleObject function = NativeLibrary.lookup(handle2Lib.get(libHandle), name);
-            long handle = UNCACHED.asPointer(function);
+            TruffleObject function = NativeLibrary.lookup(handle2Lib.get(nativePtr), name);
+            long handle = getUncached().asPointer(function);
             handle2Sym.put(handle, function);
-            return handle;
+            return function;
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         } catch (UnknownIdentifierException e) {
-            return 0; // not found
+            return RawPointer.nullInstance(); // not found
         }
     }
 
@@ -805,24 +839,24 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     public void dispose() {
-        assert vmPtr != 0L : "Mokapot already disposed";
+        assert !getUncached().isNull(vmPtr) : "Mokapot already disposed";
         try {
 
             if (getContext().EnableManagement) {
-                if (managementPtr != 0L /* NULL */) {
-                    UNCACHED.execute(disposeManagementContext, managementPtr);
-                    this.managementPtr = 0L;
+                if (managementPtr != null) {
+                    getUncached().execute(disposeManagementContext, managementPtr);
+                    this.managementPtr = null;
                 }
             } else {
-                assert managementPtr == 0L /* NULL */;
+                assert getUncached().isNull(managementPtr);
             }
 
-            UNCACHED.execute(disposeMokapotContext, vmPtr);
-            this.vmPtr = 0L;
+            getUncached().execute(disposeMokapotContext, vmPtr);
+            this.vmPtr = RawPointer.nullInstance();
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot dispose Espresso libjvm (mokapot).");
         }
-        assert vmPtr == 0L;
+        assert getUncached().isNull(vmPtr);
     }
 
     @VmImpl
@@ -1339,7 +1373,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public @Host(Class.class) StaticObject JVM_FindClassFromBootLoader(String name) {
+    public @Host(Class.class) StaticObject JVM_FindClassFromBootLoader(@Pointer TruffleObject namePtr) {
+        String name = interopPointerToString(namePtr);
         if (name == null) {
             return StaticObject.NULL;
         }
@@ -1367,11 +1402,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         return klass.mirror();
     }
 
-    public TruffleObject getLibrary(@Word long handle) {
-        return handle2Lib.get(handle);
-    }
-
-    public TruffleObject getFunction(@Word long handle) {
+    public @Pointer TruffleObject getFunction(long handle) {
         return handle2Sym.get(handle);
     }
 
@@ -1713,10 +1744,10 @@ public final class VM extends NativeEnv implements ContextAccess {
     // region Invocation API
 
     @VmImpl
-    public int JNI_GetCreatedJavaVMs(@Word long vmBufPtr, int bufLen, @Word long numVMsPtr) {
+    public int JNI_GetCreatedJavaVMs(@Pointer TruffleObject vmBufPtr, int bufLen, @Pointer TruffleObject numVMsPtr) {
         if (bufLen > 0) {
             getContext().getJNI().GetJavaVM(vmBufPtr);
-            if (numVMsPtr != 0L) {
+            if (!getUncached().isNull(numVMsPtr)) {
                 IntBuffer numVMsBuf = directByteBuffer(numVMsPtr, 1, JavaKind.Int).asIntBuffer();
                 numVMsBuf.put(1);
             }
@@ -1841,23 +1872,24 @@ public final class VM extends NativeEnv implements ContextAccess {
     public static final int JMM_VERSION = 0x20010203;
 
     @VmImpl
-    public synchronized long JVM_GetManagement(int version) {
+    public synchronized @Pointer TruffleObject JVM_GetManagement(int version) {
         if (version != JMM_VERSION_1_0) {
-            return 0L /* NULL */;
+            return RawPointer.nullInstance();
         }
         EspressoContext context = getContext();
         if (!context.EnableManagement) {
-            VMLogger.severe("JVM_GetManagement: Experimental support for java.lang.management native APIs is disabled.\n" +
+            getLogger().severe("JVM_GetManagement: Experimental support for java.lang.management native APIs is disabled.\n" +
                             "Use '--java.EnableManagement=true' to enable experimental support for j.l.management native APIs.");
-            return 0L /* NULL */;
+            return RawPointer.nullInstance();
         }
-        if (managementPtr == 0) {
+        if (getUncached().isNull(managementPtr)) {
             try {
-                managementPtr = (long) UNCACHED.execute(initializeManagementContext, lookupVmImplCallback);
+                managementPtr = (TruffleObject) getUncached().execute(initializeManagementContext, lookupVmImplCallback);
+                assert getUncached().isPointer(managementPtr);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
-            assert this.managementPtr != 0;
+            assert !getUncached().isNull(managementPtr);
         }
         return managementPtr;
     }
@@ -1870,8 +1902,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public static int GetOptionalSupport(@Word long /* jmmOptionalSupport **/ supportPtr) {
-        if (supportPtr != 0L) {
+    public int GetOptionalSupport(@Pointer TruffleObject /* jmmOptionalSupport **/ supportPtr) {
+        if (!getUncached().isNull(supportPtr)) {
             ByteBuffer supportBuf = directByteBuffer(supportPtr, 8);
             supportBuf.putInt(0); // nothing optional is supported
             return 0;
@@ -2153,9 +2185,9 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public int GetVMGlobals(@Host(Object[].class) StaticObject names, /* jmmVMGlobal* */ @Word long globalsPtr, @SuppressWarnings("unused") int count) {
+    public int GetVMGlobals(@Host(Object[].class) StaticObject names, /* jmmVMGlobal* */ @Pointer TruffleObject globalsPtr, @SuppressWarnings("unused") int count) {
         Meta meta = getMeta();
-        if (globalsPtr == 0L /* NULL */) {
+        if (getUncached().isNull(globalsPtr)) {
             throw meta.throwNullPointerException();
         }
         if (StaticObject.notNull(names)) {
@@ -2168,7 +2200,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 if (StaticObject.isNull(entry)) {
                     throw meta.throwNullPointerException();
                 }
-                VMLogger.fine("GetVMGlobals: " + Meta.toHostString(entry));
+                getLogger().fine("GetVMGlobals: " + Meta.toHostString(entry));
             }
         }
         return 0;

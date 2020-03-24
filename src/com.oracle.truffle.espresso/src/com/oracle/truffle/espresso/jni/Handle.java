@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,40 @@
  */
 package com.oracle.truffle.espresso.jni;
 
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+import static java.lang.annotation.ElementType.TYPE_USE;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
 /**
- * Retains one exception per thread that is pending to be handled in that thread (or none).
+ * Marker for parameters and return types to hint the primitive is a handle.
+ *
+ * <h4>Usage:</h4>
+ * <p>
+ * JNI handle:
+ *
+ * <pre>
+ * public &#64;Handle(StaticObject.class) long NewGlobalRef(&#64;Handle(StaticObject.class) long handle) {
+ * </pre>
+ *
+ * Field handle:
+ *
+ * <pre>
+ * public boolean GetBooleanField(StaticObject object, &#64;Handle(Field.class) long fieldId)
+ * </pre>
+ * </p>
  */
-public final class JniThreadLocalPendingException {
-    private ThreadLocal<StaticObject> pendingException = new ThreadLocal<>();
-
-    public StaticObject get() {
-        return pendingException.get();
-    }
-
-    public void set(StaticObject t) {
-        // TODO(peterssen): Warn about overwritten pending exceptions.
-        pendingException.set(t);
-    }
-
-    public void clear() {
-        set(null);
-    }
-
-    public void dispose() {
-        pendingException.remove();
-        pendingException = null;
-    }
+@Retention(RetentionPolicy.RUNTIME)
+@Target(value = {TYPE_USE})
+public @interface Handle {
+    /**
+     * Class of the object referenced by the handle. Expected types are {@link Field},
+     * {@link Method} and {@link StaticObject}.
+     */
+    Class<?> value() default Handle.class;
 }

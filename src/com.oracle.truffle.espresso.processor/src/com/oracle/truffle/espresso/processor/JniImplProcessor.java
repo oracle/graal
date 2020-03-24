@@ -42,10 +42,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
     // region Various String constants.
 
     private static final String SUBSTITUTION_PACKAGE = "com.oracle.truffle.espresso.jni";
-
     private static final String JNI_IMPL = SUBSTITUTION_PACKAGE + "." + "JniImpl";
-    private static final String NFI_TYPE = SUBSTITUTION_PACKAGE + "." + "NFIType";
-
     private static final String JNI_ENV = "JniEnv";
     private static final String ENV_NAME = "env";
     private static final String IMPORT_JNI_ENV = "import " + SUBSTITUTION_PACKAGE + "." + JNI_ENV + ";\n";
@@ -121,14 +118,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
     void processImpl(RoundEnvironment env) {
         // Set up the different annotations, along with their values, that we will need.
         this.jniImpl = processingEnv.getElementUtils().getTypeElement(JNI_IMPL);
-        this.nfiType = processingEnv.getElementUtils().getTypeElement(NFI_TYPE);
-        for (Element e : nfiType.getEnclosedElements()) {
-            if (e.getKind() == ElementKind.METHOD) {
-                if (e.getSimpleName().contentEquals("value")) {
-                    this.nfiTypeValueElement = (ExecutableElement) e;
-                }
-            }
-        }
+        initNfiType();
         for (Element e : env.getElementsAnnotatedWith(jniImpl)) {
             processElement(e);
         }

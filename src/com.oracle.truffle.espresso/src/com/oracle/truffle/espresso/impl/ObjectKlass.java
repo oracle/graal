@@ -28,9 +28,11 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -39,7 +41,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
@@ -285,7 +286,7 @@ public final class ObjectKlass extends Klass {
                         throw e;
                     }
                 } catch (Throwable e) {
-                    EspressoLanguage.EspressoLogger.severe("Host exception during class initialization: " + this);
+                    getContext().getLogger().log(Level.WARNING, "Host exception during class initialization: {0}", this);
                     setErroneous();
                     throw e;
                 }
@@ -766,12 +767,12 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    void printClass() {
-        System.err.println(getType());
+    void print(PrintStream out) {
+        out.println(getType());
         for (Method m : declaredMethods) {
-            System.err.println(m);
-            m.printBytecodes();
-            System.err.println();
+            out.println(m);
+            m.printBytecodes(out);
+            out.println();
         }
     }
 
