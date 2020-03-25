@@ -85,10 +85,10 @@ public interface CommittedMemoryProvider {
      *
      * @param nbytes The number of bytes to allocate, which is rounded up to the next multiple of
      *            the {@linkplain #getGranularity() granularity} if required.
-     * @param alignment The required alignment of the block start, which should be a multiple of the
-     *            {@linkplain #getGranularity() granularity}, or {@link #UNALIGNED}.
+     * @param alignment The required alignment of the block start, or {@link #UNALIGNED}.
      * @param executable Whether the block must be executable.
-     * @return the start of the allocated block.
+     * @return The start of the allocated block, or {@link WordFactory#nullPointer()} in case of an
+     *         error.
      */
     Pointer allocate(UnsignedWord nbytes, UnsignedWord alignment, boolean executable);
 

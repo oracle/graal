@@ -203,6 +203,10 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         return true;
     }
 
+    /**
+     * Annotation helper for guards to check whether {@code obj} is an auto-deref handle (e.g. a
+     * wrapped pointer). This helper assumes that an isPointer call returns true for {@code obj}.
+     */
     static boolean isWrappedAutoDerefHandle(LLVMLanguage language, LLVMNativeLibrary nativeLibrary, Object obj) {
         try {
             return LLVMNode.isAutoDerefHandle(language, nativeLibrary.asPointer(obj));
@@ -212,6 +216,15 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * Respond to reading I8 messages.
+     *
+     * <pre>
+     * {@code doPointer} Responds to messages when the {@code receiver} is a native pointer.
+     * {@code doHandle} Responds to messages when the {@code receiver} is wrapped in an auto-deref handle.
+     * {@code doValue} Responds to messages when the {@code receiver} is a non-pointer value.
+     * </pre>
+     */
     @ExportMessage
     static class ReadI8 {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -252,6 +265,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8}.
+     */
     @ExportMessage
     static class ReadI16 {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -292,6 +308,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8}.
+     */
     @ExportMessage
     static class ReadI32 {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -332,6 +351,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8}. Note that I64s can also represent pointers.
+     */
     @ExportMessage
     static class ReadGenericI64 {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -372,6 +394,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8}.
+     */
     @ExportMessage
     static class ReadFloat {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -412,6 +437,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8}.
+     */
     @ExportMessage
     static class ReadDouble {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -452,6 +480,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8}.
+     */
     @ExportMessage
     static class ReadPointer {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -492,6 +523,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8}, except that this is for writing.
+     */
     @ExportMessage
     static class WriteI8 {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -532,6 +566,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8}, except that this is for writing.
+     */
     @ExportMessage
     static class WriteI16 {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -572,6 +609,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8}, except that this is for writing.
+     */
     @ExportMessage
     static class WriteI32 {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -612,6 +652,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8} and {@link ReadGenericI64}, except that this is for writing.
+     */
     @ExportMessage
     static class WriteGenericI64 {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -654,6 +697,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8}, except that this is for writing.
+     */
     @ExportMessage
     static class WriteFloat {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -694,6 +740,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8}, except that this is for writing.
+     */
     @ExportMessage
     static class WriteDouble {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
@@ -734,6 +783,9 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         }
     }
 
+    /**
+     * See {@link ReadI8}, except that this is for writing.
+     */
     @ExportMessage
     static class WritePointer {
         @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})

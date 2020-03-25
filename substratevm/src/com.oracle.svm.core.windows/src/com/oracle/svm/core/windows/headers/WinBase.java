@@ -28,15 +28,11 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
-import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
 
@@ -71,112 +67,6 @@ public class WinBase {
 
         public void write(HMODULE value);
     }
-
-    /**
-     * CreateFileMapping - reserve, commit or change states of a region of pages.
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native Pointer CreateFileMapping(long hFile, Pointer lpFileMappingAttributes, int flProtect, int dwMaximumSizeHigh, int dwMaximumSizeLow, Pointer lpName);
-
-    /**
-     * MapViewOfFile - dwDesiredAccess Constants
-     */
-
-    @CConstant
-    public static native int FILE_MAP_EXECUTE();
-
-    @CConstant
-    public static native int FILE_MAP_READ();
-
-    @CConstant
-    public static native int FILE_MAP_WRITE();
-
-    /**
-     * MapViewOfFile - Maps a view of a file into the address space
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native Pointer MapViewOfFile(Pointer hFileMappingObject, int dwDesiredAccess, int dwFileOffsetHigh, int dwFileOffsetLow, UnsignedWord dwNumberOfBytesToMap);
-
-    /**
-     * VirtualAlloc - flAllocationType Constants
-     */
-    @CConstant
-    public static native int MEM_COMMIT();
-
-    @CConstant
-    public static native int MEM_RESERVE();
-
-    @CConstant
-    public static native int MEM_RESET();
-
-    @CConstant
-    public static native int MEM_LARGE_PAGES();
-
-    @CConstant
-    public static native int MEM_PHYSICAL();
-
-    @CConstant
-    public static native int MEM_TOP_DOWN();
-
-    @CConstant
-    public static native int MEM_WRITE_WATCH();
-
-    /**
-     * VirtualAlloc - flProtect Constants
-     */
-    @CConstant
-    public static native int PAGE_EXECUTE();
-
-    @CConstant
-    public static native int PAGE_EXECUTE_READ();
-
-    @CConstant
-    public static native int PAGE_EXECUTE_READWRITE();
-
-    @CConstant
-    public static native int PAGE_GUARD();
-
-    @CConstant
-    public static native int PAGE_NOACCESS();
-
-    @CConstant
-    public static native int PAGE_NOCACHE();
-
-    @CConstant
-    public static native int PAGE_READONLY();
-
-    @CConstant
-    public static native int PAGE_READWRITE();
-
-    @CConstant
-    public static native int PAGE_WRITECOMBINE();
-
-    /**
-     * VirtualAlloc - reserve, commit or change states of a region of pages.
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native Pointer VirtualAlloc(PointerBase lpAddress, UnsignedWord dwSize, int flAllocationType, int flProtect);
-
-    /**
-     * VirtualFree - dwFreeType Constants
-     */
-    @CConstant
-    public static native int MEM_DECOMMIT();
-
-    @CConstant
-    public static native int MEM_RELEASE();
-
-    /**
-     * VirtualFree
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int VirtualFree(PointerBase lpAddress, UnsignedWord dwSize, int dwFreeType);
-
-    /**
-     * VirtualProtect - change states of a region of pages.
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int VirtualProtect(PointerBase lpAddress, UnsignedWord dwSize, int flNewProtect, CIntPointer lpflOldProtect);
 
     /**
      * GetLastError - Return additional error information
@@ -263,33 +153,6 @@ public class WinBase {
      */
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native boolean SetDllDirectoryA(PointerBase lpPathName);
-
-    @CStruct(addStructKeyword = false)
-    public interface MEMORY_BASIC_INFORMATION extends PointerBase {
-        @CField
-        Pointer BaseAddress();
-
-        @CField
-        Pointer AllocationBase();
-
-        @CField
-        int AllocationProtect();
-
-        @CField
-        UnsignedWord RegionSize();
-
-        @CField
-        int State();
-
-        @CField
-        int Protect();
-
-        @CField
-        int Type();
-    }
-
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native UnsignedWord VirtualQuery(PointerBase lpAddress, MEMORY_BASIC_INFORMATION lpBuffer, UnsignedWord dwLength);
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int GetCurrentDirectoryW(int nBufferLength, WCharPointer lpBuffer);
