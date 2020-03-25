@@ -238,7 +238,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     @TruffleBoundary
-    public void classPrepared(KlassRef klass, Object prepareThread, boolean preparedEarlier) {
+    public void classPrepared(KlassRef klass, Object prepareThread) {
         if (connection == null) {
             return;
         }
@@ -269,11 +269,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         }
 
         if (!toSend.isEmpty()) {
-            if (preparedEarlier) {
-                stream.writeByte(SuspendStrategy.NONE);
-            } else {
-                stream.writeByte(suspendPolicy);
-            }
+            stream.writeByte(suspendPolicy);
             stream.writeInt(toSend.size());
 
             for (ClassPrepareRequest cpr : toSend) {
@@ -283,13 +279,10 @@ public final class VMEventListenerImpl implements VMEventListener {
                 stream.writeByte(TypeTag.CLASS);
                 stream.writeLong(ids.getIdAsLong(klass));
                 stream.writeString(klass.getTypeAsString());
-                // only send PREPARED status for class prepare events.
-                // if using ClassStatusConstants.INITIALIZED the debugger doesn't submit a
-                // breakpoint!
                 stream.writeInt(ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED);
                 classPrepareRequests.remove(cpr.getRequestId());
             }
-            if (!preparedEarlier && suspendPolicy != SuspendStrategy.NONE) {
+            if (suspendPolicy != SuspendStrategy.NONE) {
                 // the current thread has just prepared the class
                 // so we must suspend according to suspend policy
                 debuggerController.immediateSuspend(prepareThread, suspendPolicy, new Callable<Void>() {

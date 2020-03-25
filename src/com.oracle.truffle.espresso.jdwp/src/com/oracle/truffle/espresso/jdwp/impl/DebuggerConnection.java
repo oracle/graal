@@ -373,7 +373,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ClassType.SET_VALUES.createReply(packet, context);
                                     break;
                                 case JDWP.ClassType.INVOKE_METHOD.ID:
-                                    result = JDWP.ClassType.INVOKE_METHOD.createReply(packet, controller);
+                                    result = JDWP.ClassType.INVOKE_METHOD.createReply(packet, controller, DebuggerConnection.this);
                                     break;
                                 case JDWP.ClassType.NEW_INSTANCE.ID:
                                     result = JDWP.ClassType.NEW_INSTANCE.createReply(packet, controller);
@@ -392,7 +392,7 @@ public final class DebuggerConnection implements Commands {
                         case JDWP.InterfaceType.ID: {
                             switch (packet.cmd) {
                                 case JDWP.InterfaceType.INVOKE_METHOD.ID:
-                                    result = JDWP.InterfaceType.INVOKE_METHOD.createReply(packet, controller);
+                                    result = JDWP.InterfaceType.INVOKE_METHOD.createReply(packet, controller, DebuggerConnection.this);
                                     break;
                             }
                             break;
@@ -432,7 +432,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ObjectReference.MONITOR_INFO.createReply(packet, controller);
                                     break;
                                 case JDWP.ObjectReference.INVOKE_METHOD.ID:
-                                    result = JDWP.ObjectReference.INVOKE_METHOD.createReply(packet, controller);
+                                    result = JDWP.ObjectReference.INVOKE_METHOD.createReply(packet, controller, DebuggerConnection.this);
                                     break;
                                 case JDWP.ObjectReference.DISABLE_COLLECTION.ID:
                                     result = JDWP.ObjectReference.DISABLE_COLLECTION.createReply(packet, controller);
@@ -599,40 +599,47 @@ public final class DebuggerConnection implements Commands {
                             break;
                     }
                 }
-                // run pre futures before sending the reply
-                if (result != null && result.getPreFutures() != null) {
-                    try {
-                        for (Callable<Void> future : result.getPreFutures()) {
-                            if (future != null) {
-                                future.call();
-                            }
-                        }
-                    } catch (Exception e) {
-                        JDWPLogger.log("Failed to run future for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
-                    }
-                }
-                if (result != null && result.getReply() != null) {
-                    JDWPLogger.log("replying to command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
-                    connection.queuePacket(result.getReply());
-                } else {
-                    JDWPLogger.log("no result for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
-                }
-                // run post futures after sending the reply
-                if (result != null && result.getPostFutures() != null) {
-                    try {
-                        for (Callable<Void> future : result.getPostFutures()) {
-                            if (future != null) {
-                                future.call();
-                            }
-                        }
-                    } catch (Exception e) {
-                        JDWPLogger.log("Failed to run future for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
-                    }
-                }
+                handleReply(packet, result);
             } finally {
                 if (entered) {
                     controller.leaveTruffleContext();
                 }
+            }
+        }
+    }
+
+    void handleReply(Packet packet, CommandResult result) {
+        if (result == null) {
+            return;
+        }
+        // run pre futures before sending the reply
+        if (result.getPreFutures() != null) {
+            try {
+                for (Callable<Void> future : result.getPreFutures()) {
+                    if (future != null) {
+                        future.call();
+                    }
+                }
+            } catch (Exception e) {
+                JDWPLogger.log("Failed to run future for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
+            }
+        }
+        if (result.getReply() != null) {
+            JDWPLogger.log("replying to command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
+            connection.queuePacket(result.getReply());
+        } else {
+            JDWPLogger.log("no result for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
+        }
+        // run post futures after sending the reply
+        if (result.getPostFutures() != null) {
+            try {
+                for (Callable<Void> future : result.getPostFutures()) {
+                    if (future != null) {
+                        future.call();
+                    }
+                }
+            } catch (Exception e) {
+                JDWPLogger.log("Failed to run future for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
             }
         }
     }

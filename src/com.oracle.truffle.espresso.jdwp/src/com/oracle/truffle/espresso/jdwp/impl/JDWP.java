@@ -1030,7 +1030,7 @@ final class JDWP {
 
             public static final int ID = 3;
 
-            static CommandResult createReply(Packet packet, DebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller, DebuggerConnection connection) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 JDWPContext context = controller.getContext();
@@ -1066,21 +1066,31 @@ final class JDWP {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
                     ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<Object>() {
-
                         @Override
-                        public Object call() throws Exception {
+                        public Object call() {
                             return method.invokeMethod(null, args);
                         }
                     }, suspensionStrategy);
                     controller.postJobForThread(job);
-                    ThreadJob<?>.JobResult<?> result = job.getResult();
 
-                    writeMethodResult(reply, context, result);
+                    // invocation of a method can cause events with possible thread suspension
+                    // to happen, e.g. class prepare events for newly loaded classes
+                    // to avoid blocking here, we fire up a new thread that will post
+                    // the result when available
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            ThreadJob < ?>.JobResult<?> result = job.getResult();
+                            writeMethodResult(reply, context, result);
+                            CommandResult commandResult = new CommandResult(reply);
+                            connection.handleReply(packet, commandResult);
+                        }
+                    }).start();
                 } catch (Throwable t) {
                     throw new RuntimeException("not able to invoke static method through jdwp", t);
                 }
-
-                return new CommandResult(reply);
+                // the spawned thread will ship the reply when method invocation finishes
+                return null;
             }
         }
 
@@ -1178,7 +1188,7 @@ final class JDWP {
         static class INVOKE_METHOD {
             public static final int ID = 1;
 
-            static CommandResult createReply(Packet packet, DebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller, DebuggerConnection connection) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 PacketStream input = new PacketStream(packet);
                 JDWPContext context = controller.getContext();
@@ -1227,32 +1237,24 @@ final class JDWP {
                         }
                     }, suspensionStrategy);
                     controller.postJobForThread(job);
-                    ThreadJob<Object>.JobResult<Object> result = job.getResult();
-
-                    if (result.getException() != null) {
-                        JDWPLogger.log("interface method threw exception", JDWPLogger.LogLevel.PACKET);
-                        reply.writeByte(TagConstants.OBJECT);
-                        reply.writeLong(0);
-                        reply.writeByte(TagConstants.OBJECT);
-                        reply.writeLong(context.getIds().getIdAsLong(result.getException()));
-                    } else {
-                        Object value = context.toGuest(result.getResult());
-                        JDWPLogger.log("Got converted result from interface method invocation: %s", JDWPLogger.LogLevel.PACKET, value);
-                        if (value != null) {
-                            byte tag = context.getTag(value);
-                            writeValue(tag, value, reply, true, context);
-                        } else { // return value is null
-                            reply.writeByte(TagConstants.OBJECT);
-                            reply.writeLong(0);
+                    // invocation of a method can cause events with possible thread suspension
+                    // to happen, e.g. class prepare events for newly loaded classes
+                    // to avoid blocking here, we fire up a new thread that will post
+                    // the result when available
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            ThreadJob < ?>.JobResult<?> result = job.getResult();
+                            writeMethodResult(reply, context, result);
+                            CommandResult commandResult = new CommandResult(reply);
+                            connection.handleReply(packet, commandResult);
                         }
-                        // no exception, so zero object ID
-                        reply.writeByte(TagConstants.OBJECT);
-                        reply.writeLong(0);
-                    }
+                    }).start();
                 } catch (Throwable t) {
                     throw new RuntimeException("not able to invoke interface method through jdwp", t);
                 }
-                return new CommandResult(reply);
+                // spawned thread will handle reply when method invocation is done
+                return null;
             }
         }
     }
@@ -1628,7 +1630,7 @@ final class JDWP {
         static class INVOKE_METHOD {
             public static final int ID = 6;
 
-            static CommandResult createReply(Packet packet, DebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller, DebuggerConnection connection) {
 
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
@@ -1680,12 +1682,24 @@ final class JDWP {
                         }
                     }, suspensionStrategy);
                     controller.postJobForThread(job);
-                    ThreadJob<?>.JobResult<?> result = job.getResult();
-                    writeMethodResult(reply, context, result);
+                    // invocation of a method can cause events with possible thread suspension
+                    // to happen, e.g. class prepare events for newly loaded classes
+                    // to avoid blocking here, we fire up a new thread that will post
+                    // the result when available
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            ThreadJob < ?>.JobResult<?> result = job.getResult();
+                            writeMethodResult(reply, context, result);
+                            CommandResult commandResult = new CommandResult(reply);
+                            connection.handleReply(packet, commandResult);
+                        }
+                    }).start();
                 } catch (Throwable t) {
                     throw new RuntimeException("not able to invoke method through jdwp", t);
                 }
-                return new CommandResult(reply);
+                // spawned thread will handle reply when method invocation is done
+                return null;
             }
         }
 
