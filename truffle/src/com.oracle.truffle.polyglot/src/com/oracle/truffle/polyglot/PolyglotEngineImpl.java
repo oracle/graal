@@ -755,6 +755,11 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                                         duplicateId, className1, className2));
     }
 
+    /*
+     * Do not call this when exception wrapping is done in one of the callees. It is expected to be
+     * thrown directly to the embedder. Save to call this from within a language as the engine is
+     * never closed there.
+     */
     void checkState() {
         if (closed) {
             throw new IllegalStateException("Engine is already closed.");
@@ -1543,8 +1548,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
             prev = context.enterThreadChanged();
         }
-        assert context == PolyglotContextImpl.currentNotEntered();
+        assert verifyContext(context);
         return prev;
+    }
+
+    private static boolean verifyContext(PolyglotContextImpl context) {
+        return context == PolyglotContextImpl.currentNotEntered() || context.closed || context.invalid;
     }
 
     void leave(Object prev, PolyglotContextImpl polyglotContext) {
