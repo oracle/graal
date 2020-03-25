@@ -22,37 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management.libgraal.runtime;
+package org.graalvm.compiler.hotspot.management;
 
+import org.graalvm.compiler.hotspot.management.SVMMBean.Factory;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * Native methods linked to SVM entry points.
+ * Entry points in HotSpot for calls from SVM.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-final class HotSpotToSVMCalls {
+final class SVMToHotSpotEntryPoints {
 
-    private HotSpotToSVMCalls() {
+    private SVMToHotSpotEntryPoints() {
     }
 
-    static native long attachThread(long isolateId);
+    /**
+     * @see SVMMBean#getFactory()
+     */
+    static Factory getFactory() {
+        Factory factory = SVMMBean.getFactory();
+        return factory;
+    }
 
-    static native void detachThread(long isolateThreadId);
-
-    static native void log(long isolateThreadId, String message);
-
-    static native long[] pollRegistrations(long isolateThreadId);
-
-    static native void finishRegistration(long isolateThreadId, long[] svmRegistrations);
-
-    static native String getObjectName(long isolateThreadId, long svmRegistration);
-
-    static native byte[] getMBeanInfo(long isolateThreadId, long svmRegistration);
-
-    static native byte[] getAttributes(long isolateThreadId, long handle, String[] attributes);
-
-    static native byte[] setAttributes(long isolateThreadId, long handle, byte[] rawData);
-
-    static native byte[] invoke(long isolateThreadId, long handle, String actionName, byte[] rawData, String[] signature);
+    /**
+     * @see Factory#signal(long)
+     */
+    static void signal(Factory factory, long isolate) {
+        factory.signal(isolate);
+    }
 }

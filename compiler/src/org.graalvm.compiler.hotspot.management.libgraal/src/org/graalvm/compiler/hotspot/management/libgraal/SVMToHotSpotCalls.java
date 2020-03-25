@@ -48,11 +48,11 @@ final class SVMToHotSpotCalls {
 
     private static final String[] METHOD_GET_FACTORY = {
                     "getFactory",
-                    "()Lorg/graalvm/compiler/hotspot/management/libgraal/runtime/SVMMBean$Factory;"
+                    "()Lorg/graalvm/compiler/hotspot/management/SVMMBean$Factory;"
     };
     private static final String[] METHOD_SIGNAL = {
                     "signal",
-                    "(Lorg/graalvm/compiler/hotspot/management/libgraal/runtime/SVMMBean$Factory;J)V"
+                    "(Lorg/graalvm/compiler/hotspot/management/SVMMBean$Factory;J)V"
     };
     private static final String[] METHOD_GET_JVMCI_CLASS_LOADER = {
                     "getJVMCIClassLoader",

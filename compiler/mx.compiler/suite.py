@@ -657,6 +657,7 @@ suite = {
         "org.graalvm.compiler.hotspot.management",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
+      "checkPackagePrefix" : "false",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
       ],
@@ -2238,6 +2239,7 @@ suite = {
           "org.graalvm.compiler.replacements           to jdk.aot",
           "org.graalvm.compiler.serviceprovider        to jdk.aot,jdk.internal.vm.compiler.management",
           "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
+          "org.graalvm.util                            to jdk.internal.vm.compiler.management",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",

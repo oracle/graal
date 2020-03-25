@@ -22,10 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management.libgraal.runtime;
+package org.graalvm.compiler.hotspot.management;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,6 +56,7 @@ import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.util.OptionsEncoder;
@@ -174,7 +173,7 @@ class SVMMBean implements DynamicMBean {
                     attrValue = readComposite(attrName, (String) attrValue, it);
                 } catch (OpenDataException ex) {
                     attrValue = null;
-                    log(scope, "WARNING: Cannot read composite attribute %s due to %s", attrName, ex.getMessage());
+                    TTY.printf("WARNING: Cannot read composite attribute %s due to %s", attrName, ex.getMessage());
                 }
                 attrName = compositeAttrName(attrName);
             }
@@ -488,26 +487,6 @@ class SVMMBean implements DynamicMBean {
     }
 
     /**
-     * Logs a formatted message.
-     */
-    private static void log(IsolateThreadScope scope, String format, Object... parameters) {
-        String message = parameters.length == 0 ? format : String.format(format, parameters);
-        HotSpotToSVMCalls.log(scope.getIsolateThread(), message);
-    }
-
-    /**
-     * Logs an exception.
-     */
-    private static <T extends Throwable> T loge(IsolateThreadScope scope, T t) {
-        StringWriter stack = new StringWriter();
-        try (PrintWriter out = new PrintWriter(stack)) {
-            t.printStackTrace(out);
-        }
-        log(scope, stack.toString());
-        return t;
-    }
-
-    /**
      * An iterator allowing pushing back a single look ahead item.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -589,7 +568,8 @@ class SVMMBean implements DynamicMBean {
                     }
                     Thread.sleep(POLL_INTERVAL_MS);
                 } catch (InterruptedException e) {
-                    // Continue
+                    // Be verbose about unexpected interruption and then continue
+                    e.printStackTrace(TTY.out);
                 }
             }
         }
@@ -653,12 +633,12 @@ class SVMMBean implements DynamicMBean {
                                     platformMBeanServer.registerMBean(bean, new ObjectName(name));
                                 } catch (InstanceAlreadyExistsException e) {
                                     String newName = name + "_" + Long.toHexString(scope.getIsolateThread());
-                                    log(scope, "WARNING: The object name '%s' is already used by an existing MBean, using '%s' for libgraal MBean.%n",
+                                    TTY.out.printf("WARNING: The object name '%s' is already used by an existing MBean, using '%s' for libgraal MBean.%n",
                                                     name, newName);
                                     platformMBeanServer.registerMBean(bean, new ObjectName(newName));
                                 }
                             } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
-                                loge(scope, e);
+                                e.printStackTrace(TTY.out);
                             }
                         }
                         HotSpotToSVMCalls.finishRegistration(scope.getIsolateThread(), svmRegistrations);
