@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,52 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.automaton;
+package com.oracle.truffle.regex.charset;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.tregex.util.json.Json;
-import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
-import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
-/**
- * This class represents a power-set automaton state transition fragment to be used by
- * {@link StateTransitionCanonicalizer}.<br>
- * A transition in a power-set automaton consists of a set of transitions of the NFA that the
- * power-set automaton is being built from, and the set of characters it can match.
- */
-public class TransitionBuilder<SI extends StateIndex<? super S>, S extends AbstractState<S, T>, T extends AbstractTransition<S, T>> implements JsonConvertible {
+public final class Range {
 
-    private final TransitionSet<SI, S, T> transitionSet;
-    private CodePointSet matcherBuilder;
+    public final int lo;
+    public final int hi;
 
-    public TransitionBuilder(T[] transitions, StateSet<SI, S> targetStateSet, CodePointSet matcherBuilder) {
-        this(new TransitionSet<>(transitions, targetStateSet), matcherBuilder);
+    public Range(int lo, int hi) {
+        this.lo = lo;
+        this.hi = hi;
     }
 
-    public TransitionBuilder(TransitionSet<SI, S, T> transitionSet, CodePointSet matcherBuilder) {
-        this.transitionSet = transitionSet;
-        this.matcherBuilder = matcherBuilder;
+    public boolean isSingle() {
+        return lo == hi;
     }
 
-    public TransitionSet<SI, S, T> getTransitionSet() {
-        return transitionSet;
+    public int size() {
+        return (hi - lo) + 1;
     }
 
-    /**
-     * Represents the character set matched by this transition fragment.
-     */
-    public CodePointSet getMatcherBuilder() {
-        return matcherBuilder;
-    }
-
-    public void setMatcherBuilder(CodePointSet matcherBuilder) {
-        this.matcherBuilder = matcherBuilder;
+    @Override
+    public String toString() {
+        return toString(lo, hi);
     }
 
     @TruffleBoundary
-    @Override
-    public JsonValue toJson() {
-        return Json.obj(Json.prop("matcherBuilder", getMatcherBuilder()));
+    public static String toString(int lo, int hi) {
+        if (lo == hi) {
+            return DebugUtil.charToString(lo);
+        }
+        return DebugUtil.charToString(lo) + "-" + DebugUtil.charToString(hi);
     }
 }

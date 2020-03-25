@@ -1,5 +1,6 @@
+#!/usr/bin/env bash
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -39,31 +40,31 @@
 # SOFTWARE.
 #
 
-import mx
-import mx_sdk_vm
-from mx_unittest import unittest
-from mx_gate import Task, add_gate_runner
 
-_suite = mx.suite('regex')
+if [[ $(pwd) != *graal/regex/src/com.oracle.truffle.regex/tools ]]
+then
+    echo "This script should be run in graal/regex/src/com.oracle.truffle.regex/tools!"
+    exit 1
+fi
 
+mkdir -p ./dat
 
-def _tregex_tests_gate_runner(args, tasks):
-    with Task('UnitTests', tasks, tags=['default', 'all']) as t:
-        if t:
-            unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.regex'])
+wget https://www.unicode.org/Public/12.1.0/ucd/UnicodeData.txt -O dat/UnicodeData.txt
+wget https://www.unicode.org/Public/12.1.0/ucd/CaseFolding.txt -O dat/CaseFolding.txt
+wget https://www.unicode.org/Public/12.1.0/ucd/SpecialCasing.txt -O dat/SpecialCasing.txt
+wget https://www.unicode.org/Public/12.1.0/ucd/PropertyAliases.txt -O dat/PropertyAliases.txt
+wget https://www.unicode.org/Public/12.1.0/ucd/PropertyValueAliases.txt -O dat/PropertyValueAliases.txt
+wget https://www.unicode.org/Public/12.1.0/ucdxml/ucd.nounihan.flat.zip -O dat/ucd.nounihan.flat.zip
+wget https://unicode.org/Public/emoji/12.0/emoji-data.txt -O dat/emoji-data.txt
 
+unzip -d dat dat/ucd.nounihan.flat.zip
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
-    suite=_suite,
-    name='TRegex',
-    short_name='rgx',
-    dir_name='regex',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['Truffle'],
-    truffle_jars=['regex:TREGEX'],
-    support_distributions=['regex:TREGEX_GRAALVM_SUPPORT'],
-    installable=False,
-))
+./generate_unicode_properties.py > ../src/com/oracle/truffle/regex/charset/UnicodePropertyData.java
 
-add_gate_runner(_suite, _tregex_tests_gate_runner)
+./unicode-script.sh
+
+clojure --init generate_case_fold_table.clj --eval '(-main)' > dat/case-fold-table.txt
+
+./update_case_fold_table.py
+
+rm -r ./dat

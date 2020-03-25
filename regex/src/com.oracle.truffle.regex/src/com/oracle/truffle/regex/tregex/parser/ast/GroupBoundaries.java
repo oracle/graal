@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,10 +47,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
-import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -88,6 +86,8 @@ public class GroupBoundaries implements JsonConvertible {
     private final CompilationFinalBitSet updateIndices;
     private final CompilationFinalBitSet clearIndices;
     private final int cachedHash;
+    @CompilationFinal(dimensions = 1) private byte[] updateArrayByte;
+    @CompilationFinal(dimensions = 1) private byte[] clearArrayByte;
     @CompilationFinal(dimensions = 1) private short[] updateArray;
     @CompilationFinal(dimensions = 1) private short[] clearArray;
 
@@ -120,56 +120,18 @@ public class GroupBoundaries implements JsonConvertible {
         return updateIndices.isEmpty() && clearIndices.isEmpty();
     }
 
-    /**
-     * Creates a byte array suitable to be part of the {@code indexUpdates} parameter passed to
-     * {@link DFACaptureGroupPartialTransition#create(DFAGenerator, byte[], byte[], byte[][], byte[][], byte)}
-     * from this object.
-     *
-     * @param targetArray the index of the row to be targeted.
-     *
-     * @see DFACaptureGroupPartialTransition#create(DFAGenerator, byte[], byte[], byte[][],
-     *      byte[][], byte)
-     */
-    public byte[] updatesToPartialTransitionArray(int targetArray) {
-        return createPartialTransitionArray(targetArray, updateIndices);
-    }
-
-    /**
-     * Creates a byte array suitable to be part of the {@code indexClears} parameter passed to
-     * {@link DFACaptureGroupPartialTransition#create(DFAGenerator, byte[], byte[], byte[][], byte[][], byte)}
-     * from this object.
-     *
-     * @param targetArray the index of the row to be targeted.
-     *
-     * @see DFACaptureGroupPartialTransition#create(DFAGenerator, byte[], byte[], byte[][],
-     *      byte[][], byte)
-     */
-    public byte[] clearsToPartialTransitionArray(int targetArray) {
-        return createPartialTransitionArray(targetArray, clearIndices);
-    }
-
-    private static byte[] createPartialTransitionArray(int targetArray, CompilationFinalBitSet indices) {
-        assert !indices.isEmpty() : "should not be called on empty sets";
-        final byte[] indexUpdate = new byte[indices.numberOfSetBits() + 1];
-        indexUpdate[0] = (byte) targetArray;
-        writeIndicesToArray(indices, indexUpdate, 1);
-        return indexUpdate;
-    }
-
-    private static void writeIndicesToArray(CompilationFinalBitSet indices, final byte[] array, int offset) {
-        int i = offset;
-        for (int j : indices) {
-            assert j < 256;
-            array[i++] = (byte) j;
-        }
-    }
-
     public byte[] updatesToByteArray() {
-        return indicesToByteArray(updateIndices);
+        if (updateArrayByte == null) {
+            updateArrayByte = indicesToByteArray(updateIndices);
+        }
+        return updateArrayByte;
     }
 
     public byte[] clearsToByteArray() {
-        return indicesToByteArray(clearIndices);
+        if (clearArrayByte == null) {
+            clearArrayByte = indicesToByteArray(clearIndices);
+        }
+        return clearArrayByte;
     }
 
     private static byte[] indicesToByteArray(CompilationFinalBitSet indices) {
@@ -177,7 +139,11 @@ public class GroupBoundaries implements JsonConvertible {
             return EMPTY_BYTE_ARRAY;
         }
         final byte[] array = new byte[indices.numberOfSetBits()];
-        writeIndicesToArray(indices, array, 0);
+        int i = 0;
+        for (int j : indices) {
+            assert j < 256;
+            array[i++] = (byte) j;
+        }
         return array;
     }
 
@@ -237,6 +203,7 @@ public class GroupBoundaries implements JsonConvertible {
      */
     public void updateBitSets(CompilationFinalBitSet foreignUpdateIndices, CompilationFinalBitSet foreignClearIndices) {
         foreignUpdateIndices.union(updateIndices);
+        foreignClearIndices.subtract(updateIndices);
         foreignClearIndices.union(clearIndices);
     }
 

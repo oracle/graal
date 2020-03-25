@@ -80,7 +80,7 @@ public final class NFAGenerator {
     private final NFAStateTransition anchoredReverseEntry;
     private final NFAStateTransition unAnchoredReverseEntry;
     private final Deque<NFAState> expansionQueue = new ArrayDeque<>();
-    private final Map<StateSet<? extends RegexASTNode>, NFAState> nfaStates = new HashMap<>();
+    private final Map<StateSet<RegexAST, ? extends RegexASTNode>, NFAState> nfaStates = new HashMap<>();
     private final List<NFAState> hardPrefixStates = new ArrayList<>();
     private final ASTStepVisitor astStepVisitor;
     private final ASTTransitionCanonicalizer astTransitionCanonicalizer;
@@ -198,10 +198,10 @@ public final class NFAGenerator {
 
     private NFAStateTransition[] createNFATransitions(NFAState sourceState, ASTStep nextStep) {
         transitionsBuffer.clear();
-        StateSet<CharacterClass> stateSetCC;
-        StateSet<LookBehindAssertion> finishedLookBehinds;
+        StateSet<RegexAST, CharacterClass> stateSetCC;
+        StateSet<RegexAST, LookBehindAssertion> finishedLookBehinds;
         for (ASTSuccessor successor : nextStep.getSuccessors()) {
-            for (TransitionBuilder<Term, ASTTransition> mergeBuilder : successor.getMergedStates(astTransitionCanonicalizer, compilationBuffer)) {
+            for (TransitionBuilder<RegexAST, Term, ASTTransition> mergeBuilder : successor.getMergedStates(astTransitionCanonicalizer, compilationBuffer)) {
                 stateSetCC = null;
                 finishedLookBehinds = null;
                 boolean containsPositionAssertion = false;
@@ -245,7 +245,7 @@ public final class NFAGenerator {
         return transitionsBuffer.toArray(new NFAStateTransition[transitionsBuffer.size()]);
     }
 
-    private NFAState createFinalState(StateSet<? extends RegexASTNode> stateSet) {
+    private NFAState createFinalState(StateSet<RegexAST, ? extends RegexASTNode> stateSet) {
         NFAState state = new NFAState((short) stateID.inc(), stateSet, CodePointSet.getFull(), Collections.emptySet(), false);
         assert !nfaStates.containsKey(state.getStateSet());
         nfaStates.put(state.getStateSet(), state);
@@ -256,9 +256,9 @@ public final class NFAGenerator {
         return new NFAStateTransition((short) transitionID.inc(), source, target, ast.createGroupBoundaries(transitionGBUpdateIndices, transitionGBClearIndices));
     }
 
-    private NFAState registerMatcherState(StateSet<CharacterClass> stateSetCC,
+    private NFAState registerMatcherState(StateSet<RegexAST, CharacterClass> stateSetCC,
                     CodePointSet matcherBuilder,
-                    StateSet<LookBehindAssertion> finishedLookBehinds,
+                    StateSet<RegexAST, LookBehindAssertion> finishedLookBehinds,
                     boolean containsPrefixStates) {
         if (nfaStates.containsKey(stateSetCC)) {
             return nfaStates.get(stateSetCC);

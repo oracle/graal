@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -131,10 +131,15 @@ public final class RegexEngineBuilder extends AbstractRegexObject {
 
     @TruffleBoundary
     private static RegexEngine createRegexEngine(RegexLanguage regexLanguage, RegexOptions options, TruffleObject fallbackCompiler) {
+        RegexCompiler compiler = createRegexCompiler(regexLanguage, options, fallbackCompiler);
+        return options.isRegressionTestMode() ? new RegexEngine(compiler, options) : new CachingRegexEngine(compiler, options);
+    }
+
+    private static RegexCompiler createRegexCompiler(RegexLanguage regexLanguage, RegexOptions options, TruffleObject fallbackCompiler) {
         if (fallbackCompiler != null) {
-            return new CachingRegexEngine(new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage, options), fallbackCompiler), options);
+            return new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage, options), fallbackCompiler);
         } else {
-            return new CachingRegexEngine(new TRegexCompiler(regexLanguage, options), options);
+            return new TRegexCompiler(regexLanguage, options);
         }
     }
 

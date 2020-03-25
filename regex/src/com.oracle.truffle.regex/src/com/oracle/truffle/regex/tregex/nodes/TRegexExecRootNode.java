@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,6 +112,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         assert !regressionTestMode || nfaProducesSameResult(input, fromIndex, result);
         assert !regressionTestMode || noSimpleCGLazyDFAProducesSameResult(input, fromIndex, result);
         assert !regressionTestMode || eagerAndLazyDFAProduceSameResult(input, fromIndex, result);
+        assert validResult(input, fromIndex, result);
         if (CompilerDirectives.inInterpreter() && !backtrackingMode) {
             RegexProfile profile = getRegexProfile();
             if (lazyDFANode == null) {
@@ -138,6 +139,24 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
 
     public int getNumberOfCaptureGroups() {
         return numberOfCaptureGroups;
+    }
+
+    private boolean validResult(Object input, int fromIndex, RegexResult result) {
+        if (result == NoMatchResult.getInstance()) {
+            return true;
+        }
+        if (result instanceof LazyResult) {
+            ((LazyResult) result).debugForceEvaluation();
+        }
+        for (int i = 0; i < getNumberOfCaptureGroups(); i++) {
+            int start = result.getStart(i);
+            int end = result.getEnd(i);
+            if (start > end || (Math.min(start, end) < 0 && Math.max(start, end) >= 0)) {
+                LOG_INTERNAL_ERRORS.severe(() -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nINVALID Result: %s", getSource(), input, fromIndex, result));
+                return false;
+            }
+        }
+        return true;
     }
 
     private boolean backtrackerProducesSameResult(Object input, int fromIndex, RegexResult result) {

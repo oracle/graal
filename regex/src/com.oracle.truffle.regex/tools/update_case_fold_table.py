@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -37,33 +38,43 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-#
 
-import mx
-import mx_sdk_vm
-from mx_unittest import unittest
-from mx_gate import Task, add_gate_runner
-
-_suite = mx.suite('regex')
+import sys
+import os.path
 
 
-def _tregex_tests_gate_runner(args, tasks):
-    with Task('UnitTests', tasks, tags=['default', 'all']) as t:
-        if t:
-            unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.regex'])
+def check_file_exists(path):
+    if not os.path.exists(path):
+        error(f'file "${path}" not found')
 
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
-    suite=_suite,
-    name='TRegex',
-    short_name='rgx',
-    dir_name='regex',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['Truffle'],
-    truffle_jars=['regex:TREGEX'],
-    support_distributions=['regex:TREGEX_GRAALVM_SUPPORT'],
-    installable=False,
-))
+def error(msg):
+    print('ERROR: ' + msg)
+    sys.exit(1)
 
-add_gate_runner(_suite, _tregex_tests_gate_runner)
+
+def main():
+    file_name = 'CaseFoldTable.java'
+    file_path = '../src/com/oracle/truffle/regex/tregex/parser/' + file_name
+    replacement_file = './dat/case-fold-table.txt'
+    marker_begin = 'GENERATED CODE BEGIN'
+    marker_end = 'GENERATED CODE END'
+
+    check_file_exists(file_path)
+    check_file_exists(replacement_file)
+
+    with open(file_path, 'r') as f, open(replacement_file, 'r') as rf:
+        content = f.read()
+        i_begin = content.find(marker_begin)
+        i_end = content.find(marker_end)
+        if i_begin < 0:
+            error(f'could not find insertion marker "${marker_begin}" in ${file_name}')
+        if i_end < 0:
+            error(f'could not find end of insertion marker "${marker_begin}" in ${file_name}')
+        replacement = content[0:content.find('\n', i_begin) + 1] + '\n' + rf.read() + content[content.rfind('\n', i_begin, i_end):]
+
+    with open(file_path, 'w') as f:
+        f.write(replacement)
+
+
+main()
