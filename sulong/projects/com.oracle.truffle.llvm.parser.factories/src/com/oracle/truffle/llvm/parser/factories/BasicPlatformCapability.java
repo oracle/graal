@@ -96,6 +96,17 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     public List<String> preprocessDependencies(LLVMContext ctx, ExternalLibrary library, List<String> dependencies) {
         List<String> newDeps = null;
         boolean libSulongXXAdded = false;
+        // inject libsulong++ dependency
+        if (ctx.isInternalLibrary(library) && library.hasFile()) {
+            Path path = Paths.get(library.getFile().getPath());
+            String remainder = ctx.getInternalLibraryPath().relativize(path).toString();
+            if (remainder.startsWith(LIBCXXABI_PREFIX) || remainder.startsWith(LIBCXX_PREFIX)) {
+                newDeps = new ArrayList<>(dependencies);
+                newDeps.add(LIBSULONGXX_FILENAME);
+                libSulongXXAdded = true;
+            }
+        }
+
         // replace absolute dependencies to libc++* to relative ones (in the llvm home)
         for (int i = 0; i < dependencies.size(); i++) {
             String dep = dependencies.get(i);
