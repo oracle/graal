@@ -94,15 +94,6 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     @Override
     public List<String> preprocessDependencies(LLVMContext ctx, ExternalLibrary library, List<String> dependencies) {
         List<String> newDeps = null;
-        // inject libsulong++ dependency
-        if (ctx.isInternalLibrary(library) && library.hasFile()) {
-            Path path = Paths.get(library.getFile().getPath());
-            String remainder = ctx.getInternalLibraryPath().relativize(path).toString();
-            if (remainder.startsWith(LIBCXXABI_PREFIX)) {
-                newDeps = new ArrayList<>(dependencies);
-                newDeps.add(LIBSULONGXX_FILENAME);
-            }
-        }
         // replace absolute dependencies to libc++* to relative ones (in the llvm home)
         for (int i = 0; i < dependencies.size(); i++) {
             String dep = dependencies.get(i);
@@ -116,8 +107,16 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
                         }
                         // replace with file name
                         newDeps.set(i, filename);
+                        dep = filename;
                     }
                 }
+            }
+            if (dep.startsWith(LIBCXXABI_PREFIX)) {
+                // inject libsulong++ dependency
+                if (newDeps == null) {
+                    newDeps = new ArrayList<>(dependencies);
+                }
+                newDeps.add(LIBSULONGXX_FILENAME);
             }
         }
         if (newDeps != null) {
