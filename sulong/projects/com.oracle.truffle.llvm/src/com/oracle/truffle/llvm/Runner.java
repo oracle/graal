@@ -835,13 +835,13 @@ final class Runner {
                         LLVMFunction originalSymbol = scope.getFunction(originalName);
                         if (originalSymbol == null) {
                             throw new LLVMLinkerException(
-                                            String.format("The %s could not be imported because the symbol %s was not found in library %s", external.getName(), originalName, libs.get(lib)));
+                                            String.format("The symbol %s could not be imported because the symbol %s was not found in library %s", external.getName(), originalName, libs.get(lib)));
                         }
                         LLVMAlias alias = new LLVMAlias(parserResult.getRuntime().getLibrary(), name, originalSymbol);
                         parserResult.getRuntime().getFileScope().register(alias);
                         it.remove();
                     } else {
-                        throw new LLVMLinkerException(String.format("The %s could not be imported because library %s was not found", external.getName(), libs.get(lib)));
+                        throw new LLVMLinkerException(String.format("The symbol %s could not be imported because library %s was not found", external.getName(), libs.get(lib)));
                     }
                 }
             }
