@@ -41,7 +41,7 @@ simpleToolMavenProjectGate:  {
     }
     run : [
         ${simpleToolMavenProjectGate.mx_cmd} ["build"],
-        ${simpleToolMavenProjectGate.mx_cmd} ["maven-deploy", "--all-suites", "--version-string", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-version"]],
+        ${simpleToolMavenProjectGate.mx_cmd} ["maven-deploy", "--all-suites", "--suppress-javadoc", "--version-string", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-version"]],
         ["set-export", "JAVA_HOME", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-home"]],
         ["cd", "external_repos/"],
         ["python", "populate.py"],
@@ -64,7 +64,7 @@ simpleLanguageMavenProjectGate:  {
     }
     run : [
         ${simpleLanguageMavenProjectGate.mx_cmd} ["build"],
-        ${simpleLanguageMavenProjectGate.mx_cmd} ["maven-deploy", "--all-suites", "--version-string", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-version"]],
+        ${simpleLanguageMavenProjectGate.mx_cmd} ["maven-deploy", "--all-suites", "--suppress-javadoc", "--version-string", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-version"]],
         ["set-export", "JAVA_HOME", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-home"]],
         ["cd", "external_repos"],
         ["python", "populate.py"],
