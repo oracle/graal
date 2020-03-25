@@ -60,7 +60,7 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
         super(testName, configuration);
     }
 
-    @Parameters(name = "{0}_{1}")
+    @Parameters(name = "{0}" + TEST_FOLDER_EXT + "/{1}")
     public static Collection<Object[]> getConfigurations() {
         final Map<String, String[]> configs = new HashMap<>();
         configs.put("testPrimitives.c", new String[]{BC_O0, BC_MEM2REG});
