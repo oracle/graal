@@ -81,7 +81,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
@@ -110,9 +109,6 @@ final class EngineAccessor extends Accessor {
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {
-        if (TruffleOptions.AOT) {
-            return Collections.emptyList();
-        }
         List<ClassLoader> loaders = TruffleLocator.loaders();
         if (loaders == null) {
             return null;
