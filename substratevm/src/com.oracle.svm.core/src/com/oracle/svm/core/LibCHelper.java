@@ -36,6 +36,8 @@ public class LibCHelper {
     public static native CCharPointerPointer getEnviron();
 
     @CFunction(transition = Transition.TO_NATIVE)
-    public static native CCharPointer customFindJavaTZmd(CCharPointer tzmappings);
+    // Checkstyle: stop
+    public static native CCharPointer SVM_FindJavaTZmd(CCharPointer tzMappings, int length);
+    // Checkstyle: start
 
 }

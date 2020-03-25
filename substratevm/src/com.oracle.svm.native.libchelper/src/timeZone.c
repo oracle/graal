@@ -23,13 +23,13 @@
  * questions.
  */
 
-/*
- * The following is an identical copy of the TimeZone_md.c file found at
- * https://github.com/graalvm/labs-openjdk-11/blob/67ddc3bcadd985ea26997457aec6696f21caf154/src/java.base/unix/native/libjava/TimeZone_md.c
- * With the exceptions of the commented functions this file has not been modified from its original.
- */
 
 #ifdef _WIN64
+/*
+ * The following functions are an identical copy of the functions in file TimeZone_md.c found at
+ * https://github.com/graalvm/labs-openjdk-11/blob/67ddc3bcadd985ea26997457aec6696f21caf154/src/java.base/windows/native/libjava/TimeZone_md.c
+ * With the exceptions of the commented functions this file has not been modified from its original.
+ */
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -410,7 +410,7 @@ static int getWinTimeZone(char *winZoneName, char *winMapID)
  * An implementation of fgets on a buffer as opposed to a file object.
  *
  */
-static int readnewLine(char *dst, int num, int offset, char *source, int source_len) {
+static int SVM_readBufferUntilNewLine(char *dst, int num, int offset, char *source, int source_len) {
     int read = 0;
     while(read < num - 1) {
         if (offset + read == source_len) {
@@ -450,8 +450,8 @@ static int readnewLine(char *dst, int num, int offset, char *source, int source_
  * The following function differs from the original by accepting a buffer and reading
  * tzmappings data from it. The original function opens and reads  such data from a file.
  */
-static char *matchJavaTZ_Java11(const char *tzmappings, int value_type, char *tzName,
-                         char *mapID)
+static char *SVM_matchJavaTZ(const char *tzmappings, int value_type, char *tzName,
+                         char *mapID, int tzmappingsLen)
 {
     int line;
     int IDmatched = 0;
@@ -463,15 +463,14 @@ static char *matchJavaTZ_Java11(const char *tzmappings, int value_type, char *tz
     int noMapID = *mapID == '\0';       /* no mapID on Vista and later */
     int offset = 0;
     const char* errorMessage = "unknown error";
-    int tzmappingsLen;
     int currLocation;
     int readChars;
 
     line = 0;
-    tzmappingsLen = strlen(tzmappings);
     currLocation = 0;
     readChars = 0;
-    while((readChars = readnewLine(lineBuffer, sizeof(lineBuffer), currLocation, tzmappings, tzmappingsLen)) != 0) {
+    // Reads from buffer and not from file
+    while((readChars = SVM_readBufferUntilNewLine(lineBuffer, sizeof(lineBuffer), currLocation, tzmappings, tzmappingsLen)) != 0) {
         char *start, *idx, *endp;
         int itemIndex = 0;
 
@@ -544,57 +543,18 @@ static char *matchJavaTZ_Java11(const char *tzmappings, int value_type, char *tz
     return NULL;
 }
 
-/**
- * Returns a GMT-offset-based time zone ID.
- *
- * No change from original just different function name
- */
-static char *
-customGetGMTOffsetID()
-{
-    LONG bias = 0;
-    LONG ret;
-    HANDLE hKey = NULL;
-    char zonename[32];
-
-    // Obtain the current GMT offset value of ActiveTimeBias.
-    ret = RegOpenKeyEx(HKEY_LOCAL_MACHINE, WIN_CURRENT_TZ_KEY, 0,
-                       KEY_READ, (PHKEY)&hKey);
-    if (ret == ERROR_SUCCESS) {
-        DWORD val;
-        DWORD bufSize = sizeof(val);
-        ULONG valueType = 0;
-        ret = RegQueryValueExA(hKey, "ActiveTimeBias",
-                               NULL, &valueType, (LPBYTE) &val, &bufSize);
-        if (ret == ERROR_SUCCESS) {
-            bias = (LONG) val;
-        }
-        (void) RegCloseKey(hKey);
-    }
-
-    // If we can't get the ActiveTimeBias value, use Bias of TimeZoneInformation.
-    // Note: Bias doesn't reflect current daylight saving.
-    if (ret != ERROR_SUCCESS) {
-        TIME_ZONE_INFORMATION tzi;
-        if (GetTimeZoneInformation(&tzi) != TIME_ZONE_ID_INVALID) {
-            bias = tzi.Bias;
-        }
-    }
-
-    customZoneName(bias, zonename);
-    return _strdup(zonename);
-}
+extern char* getGMTOffsetID();
 
 /*
  * Detects the platform time zone which maps to a Java time zone ID.
  *
  * The following function only differs from the original by calling a custom parsing
- * function called "matchJavaTZ_Java11" that accepts a data buffer.
+ * function called "SVM_matchJavaTZ" that accepts a data buffer.
  *
- * This function expects its argument to contain the whole tzmappings data as an argument.
- * The original function expected a buffer whose content was the path to JAVA_HOME
+ * This function expects its argument to contain the whole tzmappings data and length as an arguments.
+ * The original function expected a char array whose content was the path to JAVA_HOME
  */
-char *customFindJavaTZmd(const char *tzmappings)
+char *SVM_FindJavaTZmd(const char *tzmappings, int length)
 {
     char winZoneName[MAX_ZONE_CHAR];
     char winMapID[MAX_MAPID_LENGTH];
@@ -608,10 +568,10 @@ char *customFindJavaTZmd(const char *tzmappings)
         if (result == VALUE_GMTOFFSET) {
             std_timezone = _strdup(winZoneName);
         } else {
-            std_timezone = matchJavaTZ_Java11(tzmappings, result,
-                                       winZoneName, winMapID);
+            std_timezone = SVM_matchJavaTZ(tzmappings, result,
+                                       winZoneName, winMapID, length);
             if (std_timezone == NULL) {
-                std_timezone = customGetGMTOffsetID();
+                std_timezone = getGMTOffsetID();
             }
         }
     }
@@ -619,7 +579,19 @@ char *customFindJavaTZmd(const char *tzmappings)
 }
 #else
 extern char* findJavaTZ_md(const char *);
-char *customFindJavaTZmd(const char *tzmappings) {
-    return findJavaTZ_md("");
+
+char *SVM_FindJavaTZmd(const char *tzmappings, int length) {
+
+    /* 
+     * For POSIX operating systems the original function 
+     * does not need the JAVA_HOME nor tzmappings. Except
+     * for AIX (which is currently not supported in native image)
+     *
+     * We can safely call the original JDK function with java home set to
+     * NULL. Note the JNI wrapper of the below function, checks JAVA_HOME 
+     * is not NULL and returns NULL if it is, stoppings us from directly
+     * calling this function from java without some type of substitution.
+     */
+    return findJavaTZ_md((void *) 0);
 }
 #endif // _WIN64
