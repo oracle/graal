@@ -903,7 +903,8 @@ def _get_graalvm_configuration(base_name, stage1=False):
             m = hashlib.sha1()
             for component in components_sorted_set:
                 m.update(_encode(component))
-            base_dir = '{base_name}_{hash}_java{jdk_version}'.format(base_name=base_name, hash=m.hexdigest(), jdk_version=_src_jdk_version)
+            short_sha1_digest = m.hexdigest()[:10]  # to keep paths short
+            base_dir = '{base_name}_{hash}_java{jdk_version}'.format(base_name=base_name, hash=short_sha1_digest, jdk_version=_src_jdk_version)
             name = '{base_dir}{stage_suffix}'.format(base_dir=base_dir, stage_suffix='_stage1' if stage1 else '')
         name = name.upper()
         base_dir = base_dir.lower().replace('_', '-') + '-' + _suite.release_version()
