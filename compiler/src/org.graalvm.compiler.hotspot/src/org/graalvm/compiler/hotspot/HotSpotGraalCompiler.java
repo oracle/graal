@@ -139,7 +139,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable {
                     compilationCounters.countCompilation(method);
                 }
                 CompilationRequestResult r = null;
-                try (DebugContext debug = graalRuntime.openDebugContext(options, task.getCompilationIdentifier(), method, getDebugHandlersFactories(), DebugContext.DEFAULT_LOG_STREAM);
+                try (DebugContext debug = graalRuntime.openDebugContext(options, task.getCompilationIdentifier(), method, getDebugHandlersFactories(), DebugContext.getDefaultLogStream());
                                 Activation a = debug.activate()) {
                     r = task.runCompilation(debug);
                 }

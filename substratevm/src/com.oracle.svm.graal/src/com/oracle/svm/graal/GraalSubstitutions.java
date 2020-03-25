@@ -26,7 +26,6 @@ package com.oracle.svm.graal;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
-import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -176,34 +175,6 @@ final class Target_org_graalvm_compiler_debug_DebugHandlersFactory {
      */
     @Alias @RecomputeFieldValue(kind = Custom, declClass = CachedFactories.class)//
     private static Iterable<DebugHandlersFactory> LOADER;
-}
-
-@TargetClass(value = DebugContext.class, onlyWith = GraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_debug_DebugContext {
-
-    /**
-     * Arbitrary threads cannot be in the image so null out {@code DebugContext.invariants} which
-     * holds onto a thread and is only used for assertions.
-     */
-    @Alias @RecomputeFieldValue(kind = Reset)//
-    private Target_org_graalvm_compiler_debug_DebugContext_Invariants invariants;
-
-    /**
-     * Initialization of {@code TTY.out} causes the pointsto analysis to see
-     * HotSpotTTYStreamProvider (the only implementation of TTYStreamProvider). Since SVM images
-     * must not include HotSpot code, a substitution is required.
-     */
-    @Alias @RecomputeFieldValue(kind = FromAlias)//
-    public static PrintStream DEFAULT_LOG_STREAM = Log.logStream();
-
-    /**
-     * SVM doesn't currently support {@code Throwable.fillInStackTrace()}. This substitution should
-     * be removed once GR-3763 is resolved.
-     */
-    @Substitute
-    static StackTraceElement[] getStackTrace(@SuppressWarnings("unused") Thread thread) {
-        return new StackTraceElement[0];
-    }
 }
 
 @TargetClass(value = TimeSource.class, onlyWith = GraalFeature.IsEnabled.class)

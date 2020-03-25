@@ -26,7 +26,7 @@ package org.graalvm.compiler.replacements;
 
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.UseSnippetGraphCache;
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
+import static org.graalvm.compiler.debug.DebugContext.getDefaultLogStream;
 import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineIntrinsicsDuringParsing;
@@ -222,7 +222,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             DebugContext outer = DebugContext.forCurrentThread();
             Description description = new Description(method, idPrefix + nextDebugContextId.incrementAndGet());
             List<DebugHandlersFactory> factories = debugHandlersFactory == null ? Collections.emptyList() : Collections.singletonList(debugHandlersFactory);
-            return DebugContext.create(options, description, outer.getGlobalMetrics(), DEFAULT_LOG_STREAM, factories);
+            return DebugContext.create(options, description, outer.getGlobalMetrics(), getDefaultLogStream(), factories);
         }
         return DebugContext.disabled(options);
     }

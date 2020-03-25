@@ -24,10 +24,10 @@
  */
 package org.graalvm.compiler.debug.test;
 
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 import static org.graalvm.compiler.debug.DebugContext.NO_CONFIG_CUSTOMIZERS;
 import static org.graalvm.compiler.debug.DebugContext.NO_DESCRIPTION;
 import static org.graalvm.compiler.debug.DebugContext.NO_GLOBAL_METRIC_VALUES;
+import static org.graalvm.compiler.debug.DebugContext.getDefaultLogStream;
 import static org.junit.Assert.assertEquals;
 
 import org.graalvm.collections.EconomicMap;
@@ -88,7 +88,7 @@ public class TimerKeyTest {
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
         map.put(DebugOptions.Time, "");
         OptionValues options = new OptionValues(map);
-        DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, NO_CONFIG_CUSTOMIZERS);
+        DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), NO_CONFIG_CUSTOMIZERS);
 
         TimerKey timerC = DebugContext.timer("TimerC");
         try (DebugCloseable c1 = timerC.start(debug)) {

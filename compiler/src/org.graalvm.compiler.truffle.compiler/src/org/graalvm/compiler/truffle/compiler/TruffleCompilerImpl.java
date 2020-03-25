@@ -221,7 +221,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         } else {
             TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
             CompilableTruffleAST compilable = ident.getCompilable();
-            debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), ident, compilable, DebugContext.DEFAULT_LOG_STREAM);
+            debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), ident, compilable, DebugContext.getDefaultLogStream());
         }
         return new TruffleDebugContextImpl(debugContext);
     }
@@ -259,7 +259,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             }
         } else {
             final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
-            try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.DEFAULT_LOG_STREAM);
+            try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.getDefaultLogStream());
                             DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
                 actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, graalDebug);
             } catch (Throwable e) {
