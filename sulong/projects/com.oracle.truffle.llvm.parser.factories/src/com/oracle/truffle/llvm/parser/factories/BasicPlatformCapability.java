@@ -64,6 +64,7 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     public static final String LIBSULONG_FILENAME = "libsulong." + NFIContextExtension.getNativeLibrarySuffix();
     public static final String LIBSULONGXX_FILENAME = "libsulong++." + NFIContextExtension.getNativeLibrarySuffix();
     public static final String LIBCXXABI_PREFIX = "libc++abi.";
+    public static final String LIBCXX_PREFIX = "libc++.";
 
     private final boolean loadCxxLibraries;
 
@@ -94,6 +95,7 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     @Override
     public List<String> preprocessDependencies(LLVMContext ctx, ExternalLibrary library, List<String> dependencies) {
         List<String> newDeps = null;
+        boolean libSulongXXAdded = false;
         // replace absolute dependencies to libc++* to relative ones (in the llvm home)
         for (int i = 0; i < dependencies.size(); i++) {
             String dep = dependencies.get(i);
@@ -111,12 +113,13 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
                     }
                 }
             }
-            if (dep.startsWith(LIBCXXABI_PREFIX)) {
+            if (!libSulongXXAdded && (dep.startsWith(LIBCXXABI_PREFIX) || dep.startsWith(LIBCXX_PREFIX))) {
                 // inject libsulong++ dependency
                 if (newDeps == null) {
                     newDeps = new ArrayList<>(dependencies);
                 }
                 newDeps.add(LIBSULONGXX_FILENAME);
+                libSulongXXAdded = true;
             }
         }
         if (newDeps != null) {
