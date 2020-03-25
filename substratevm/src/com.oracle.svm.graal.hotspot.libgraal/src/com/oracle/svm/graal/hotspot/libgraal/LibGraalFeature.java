@@ -542,17 +542,17 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 
     @Substitute
     static Annotation[] getClassAnnotations(String className) {
-        throw VMError.shouldNotReachHere("Annotations are unsupported in libgraal");
+        throw VMError.shouldNotReachHere("Annotations are unsupported in libgraal: " + className);
     }
 
     @Substitute
     static Annotation[][] getParameterAnnotations(String className, String methodName) {
-        throw VMError.shouldNotReachHere("Annotations are unsupported in libgraal");
+        throw VMError.shouldNotReachHere("Annotations are unsupported in libgraal: " + className + "." + methodName);
     }
 
     @Substitute
     static Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod) {
-        throw VMError.shouldNotReachHere("Annotations are unsupported in libgraal");
+        throw VMError.shouldNotReachHere("Annotations are unsupported in libgraal: " + javaMethod.format("%H.%n"));
     }
 }
 
