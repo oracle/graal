@@ -203,6 +203,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                     }
                 }
             }
+            if (config.MARKID_FRAME_COMPLETE != -1) {
+                crb.recordMark(config.MARKID_FRAME_COMPLETE);
+            }
             if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
                 try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register scratch = sc.getRegister();
