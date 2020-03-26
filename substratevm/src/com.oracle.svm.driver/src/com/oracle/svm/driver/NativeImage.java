@@ -401,7 +401,7 @@ public class NativeImage {
         /**
          * ResourcesJar packs resources files needed for some jdk services such as xml
          * serialization.
-         * 
+         *
          * @return the path to the resources.jar file
          */
         default Optional<Path> getResourcesJar() {
@@ -597,6 +597,13 @@ public class NativeImage {
         buildArgs.add(oHPath + imagePath.toString());
         buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorClasspath) + classpathString);
         buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorMainClass) + mainClass);
+
+        /*
+         * The fallback image on purpose captures the Java home directory used for image generation,
+         * see field FallbackExecutor.buildTimeJavaHome
+         */
+        buildArgs.add(oH + "-" + SubstrateOptions.DetectUserDirectoriesInImageHeap.getName());
+
         buildArgs.add(FallbackExecutor.class.getName());
         buildArgs.add(imageName);
 
