@@ -33,9 +33,13 @@ import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 
 public abstract class GlobalSymbol implements ValueSymbol {
 
+    public static final String CONSTRUCTORS_VARNAME = "llvm.global_ctors";
+    public static final String DESTRUCTORS_VARNAME = "llvm.global_dtors";
+
     private String name;
     private final Linkage linkage;
     private final int index;
+    private boolean isSpecialInternalSymbol;
 
     // Index for alias symbol from bitcode.
     public static final int ALIAS_INDEX = -1;
@@ -56,8 +60,20 @@ public abstract class GlobalSymbol implements ValueSymbol {
         return name;
     }
 
+    /**
+     * Returns true if the symbol is an
+     * <a href="https://llvm.org/docs/LangRef.html#intrinsic-global-variables">Intrinsic Global
+     * Variables</a>.
+     * 
+     * @see #setName
+     */
+    protected final boolean isIntrinsicGlobalVariable() {
+        return isSpecialInternalSymbol;
+    }
+
     @Override
     public final void setName(String name) {
+        this.isSpecialInternalSymbol = CONSTRUCTORS_VARNAME.equals(name) || DESTRUCTORS_VARNAME.equals(name);
         this.name = name;
     }
 
@@ -77,4 +93,5 @@ public abstract class GlobalSymbol implements ValueSymbol {
     public abstract boolean isOverridable();
 
     public abstract boolean isExternal();
+
 }

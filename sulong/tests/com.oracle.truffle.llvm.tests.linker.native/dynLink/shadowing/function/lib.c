@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,16 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdio.h>
 
-void __clear_cache(void *begin, void *end) {
-  /*
-   * Old llvm/gcc+dragonegg versions do not intrinsify __builtin___clear_cache but replace it with a call to
-   * __clear_cache from libgcc. Lets make sure the target exist even if not linked against libgcc.
-   */
-}
-
-int main() {
-  char a[100];
-  __builtin___clear_cache(a, a + 100);
-  return 0;
+char *hello() {
+  return "function";
 }

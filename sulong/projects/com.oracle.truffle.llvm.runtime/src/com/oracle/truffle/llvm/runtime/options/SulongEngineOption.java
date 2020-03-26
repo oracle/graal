@@ -70,11 +70,14 @@ public final class SulongEngineOption {
             deprecated = true)
     public static final OptionKey<String> SOURCE_PATH = new OptionKey<>("");
 
-    @Option(name = "llvm.loadC++Libraries",
+    public static final String LOAD_CXX_LIBRARIES_NAME = "llvm.loadC++Libraries";
+    @Option(name = LOAD_CXX_LIBRARIES_NAME,
             category = OptionCategory.EXPERT,
             help = "Specifies whether the standard C++ libraries (libc++ and libc++abi) " +
-                   "should be loaded. Enabled by default.")
-    public static final OptionKey<Boolean> LOAD_CXX_LIBRARIES = new OptionKey<>(true);
+                   "should be loaded by default. This should only be needed for running " +
+                   "plain bitcode files, since executables (ELF, Mach-O) usually have a " +
+                   "dependency on both of them. Thus, the option is off by default.")
+    public static final OptionKey<Boolean> LOAD_CXX_LIBRARIES = new OptionKey<>(false);
 
     @Option(name = "llvm.enableExternalNativeAccess",
             category = OptionCategory.USER,

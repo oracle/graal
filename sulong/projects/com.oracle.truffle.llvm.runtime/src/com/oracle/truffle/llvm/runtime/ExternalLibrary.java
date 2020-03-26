@@ -42,6 +42,7 @@ public final class ExternalLibrary {
     private final String name;
     private final Path path;
     private final TruffleFile file;
+    private static final String BC_EXT = ".bc";
 
     @CompilerDirectives.CompilationFinal private boolean isNative;
     private final boolean isInternal;
@@ -89,9 +90,8 @@ public final class ExternalLibrary {
             throw new IllegalArgumentException("Path " + path + " is empty");
         }
         String nameWithExt = filename.toString();
-        int lengthWithoutExt = nameWithExt.lastIndexOf(".");
-        if (lengthWithoutExt > 0) {
-            return nameWithExt.substring(0, lengthWithoutExt);
+        if (nameWithExt.endsWith(BC_EXT)) {
+            return nameWithExt.substring(0, nameWithExt.length() - BC_EXT.length());
         }
         return nameWithExt;
     }

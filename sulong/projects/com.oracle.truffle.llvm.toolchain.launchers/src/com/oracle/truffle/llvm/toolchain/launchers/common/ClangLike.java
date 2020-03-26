@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -57,6 +57,7 @@ public class ClangLike extends Driver {
     protected final String[] args;
     protected final String platform;
     protected final int outputFlagPos;
+    protected final boolean nostdincxx;
 
     protected ClangLike(String[] args, boolean cxx, OS os, String platform) {
         super(cxx ? "clang++" : "clang");
@@ -69,6 +70,7 @@ public class ClangLike extends Driver {
         boolean showHelp = false;
         boolean shouldExitEarly = false;
         boolean keepArgs = true;
+        boolean noStdIncxx = false;
         int outputFlagIdx = -1;
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
@@ -103,6 +105,9 @@ public class ClangLike extends Driver {
                     isVerbose = true;
                     shouldExitEarly = true;
                     break;
+                case "-nostdinc++":
+                    noStdIncxx = true;
+                    break;
                 case "-Wl,--gc-sections":
                 case "-Wa,--noexecstack":
                     keepArgs = false;
@@ -117,6 +122,7 @@ public class ClangLike extends Driver {
         this.help = showHelp;
         this.earlyExit = shouldExitEarly;
         this.outputFlagPos = outputFlagIdx;
+        this.nostdincxx = noStdIncxx;
     }
 
     private static boolean stageSelectionFlag(String s) {
@@ -157,7 +163,10 @@ public class ClangLike extends Driver {
             sulongArgs.addAll(Arrays.asList("-flto=full", "-g", "-O1", "-I" + getSulongHome().resolve("include")));
             // c++ specific flags
             if (cxx) {
-                sulongArgs.add("-stdlib=libc++");
+                // avoid "warning: argument unused during compilation: '-stdlib=libc++'"
+                if (needLinkerFlags || !nostdincxx) {
+                    sulongArgs.add("-stdlib=libc++");
+                }
             }
         }
         // linker flags

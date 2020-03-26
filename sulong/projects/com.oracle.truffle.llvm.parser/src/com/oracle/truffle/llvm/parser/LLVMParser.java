@@ -140,7 +140,12 @@ public final class LLVMParser {
                 importedSymbols.add(global.getName());
             } else {
                 assert exportedDescriptor.isFunction();
-                throw new LLVMLinkerException("The global variable " + global.getName() + " conflicts with a function that has the same name.");
+                // TODO (je) Symbol resolution is currently not correct [GR-21400] - doing
+                // nothing instead of throwing an exception does not make it more wrong but
+                // allows certain use cases to work correctly
+                // This was:
+                // throw new LLVMLinkerException("The global variable " + global.getName() + "
+                // conflicts with a function that has the same name.");
             }
         }
     }
@@ -164,7 +169,12 @@ public final class LLVMParser {
                 importedSymbols.add(functionSymbol.getName());
             } else {
                 assert exportedDescriptor.isGlobalVariable();
-                throw new LLVMLinkerException("The function " + functionSymbol.getName() + " conflicts with a global variable that has the same name.");
+                // TODO (je) Symbol resolution is currently not correct [GR-21400] - doing
+                // nothing instead of throwing an exception does not make it more wrong but
+                // allows certain use cases to work correctly
+                // This was:
+                // throw new LLVMLinkerException("The function " + functionSymbol.getName() + "
+                // conflicts with a global variable that has the same name.");
             }
         }
     }

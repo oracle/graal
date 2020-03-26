@@ -29,8 +29,12 @@
  */
 package com.oracle.truffle.llvm;
 
+import static com.oracle.truffle.llvm.parser.model.GlobalSymbol.CONSTRUCTORS_VARNAME;
+import static com.oracle.truffle.llvm.parser.model.GlobalSymbol.DESTRUCTORS_VARNAME;
+
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -161,8 +165,6 @@ final class Runner {
     private static final String MAIN_METHOD_NAME = "main";
     private static final String START_METHOD_NAME = "_start";
 
-    private static final String CONSTRUCTORS_VARNAME = "llvm.global_ctors";
-    private static final String DESTRUCTORS_VARNAME = "llvm.global_dtors";
     private static final int LEAST_CONSTRUCTOR_PRIORITY = 65535;
 
     private static final Comparator<Pair<Integer, ?>> ASCENDING_PRIORITY = (p1, p2) -> p1.getFirst() - p2.getFirst();
@@ -722,7 +724,7 @@ final class Runner {
         LLVMParserResult[] sulongLibraryResults = new LLVMParserResult[sulongLibraries.length];
         for (int i = 0; i < sulongLibraries.length; i++) {
             sulongLibraryResults[i] = parseLibrary(sulongLibraries[i], parseContext);
-            if (sulongLibraries[i].getName().equalsIgnoreCase("libsulong")) {
+            if (sulongLibraries[i].getName().startsWith("libsulong.")) {
                 context.addLibsulongDataLayout(sulongLibraryResults[i].getDataLayout());
             }
         }
@@ -789,12 +791,26 @@ final class Runner {
             libToRes.put(res.getRuntime().getLibrary(), res);
         }
         EconomicMap<String, LLVMScope> scopes = EconomicMap.create();
+        EconomicMap<String, ExternalLibrary> libs = EconomicMap.create();
         // TODO (je) we should probably do this in symbol resolution order - let's fix that when we
         // fix symbol resolution [GR-21400]
-        for (ExternalLibrary dep : parserResult.getDependencies()) {
+        ArrayDeque<ExternalLibrary> dependencyQueue = new ArrayDeque<>(parserResult.getDependencies());
+        EconomicSet<ExternalLibrary> visited = EconomicSet.create(Equivalence.IDENTITY);
+        visited.addAll(parserResult.getDependencies());
+        while (!dependencyQueue.isEmpty()) {
+            ExternalLibrary dep = dependencyQueue.removeFirst();
             LLVMParserResult depResult = libToRes.get(dep);
             if (depResult != null) {
-                scopes.put(dep.getName(), depResult.getRuntime().getFileScope());
+                String libraryName = getSimpleLibraryName(dep.getName());
+                scopes.put(libraryName, depResult.getRuntime().getFileScope());
+                libs.put(libraryName, dep);
+                // add transitive dependencies
+                for (ExternalLibrary transDep : depResult.getDependencies()) {
+                    if (!visited.contains(transDep)) {
+                        dependencyQueue.addLast(transDep);
+                        visited.add(transDep);
+                    }
+                }
             }
         }
         ListIterator<FunctionSymbol> it = parserResult.getExternalFunctions().listIterator();
@@ -817,16 +833,30 @@ final class Runner {
                     if (scope != null) {
                         String originalName = name.substring(idx + 1);
                         LLVMFunction originalSymbol = scope.getFunction(originalName);
-                        assert originalSymbol != null;
+                        if (originalSymbol == null) {
+                            throw new LLVMLinkerException(
+                                            String.format("The symbol %s could not be imported because the symbol %s was not found in library %s", external.getName(), originalName, libs.get(lib)));
+                        }
                         LLVMAlias alias = new LLVMAlias(parserResult.getRuntime().getLibrary(), name, originalSymbol);
                         parserResult.getRuntime().getFileScope().register(alias);
                         it.remove();
                     } else {
-                        throw new LLVMLinkerException(String.format("The %s could not be imported because library %s was not found.", external.getName(), lib));
+                        throw new LLVMLinkerException(String.format("The symbol %s could not be imported because library %s was not found", external.getName(), libs.get(lib)));
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Drop everything after the first "{@code .}".
+     */
+    private static String getSimpleLibraryName(String name) {
+        int index = name.indexOf(".");
+        if (index == -1) {
+            return name;
+        }
+        return name.substring(0, index);
     }
 
     private void updateOverriddenSymbols(LLVMParserResult[] sulongLibraryResults) {
@@ -990,7 +1020,7 @@ final class Runner {
             library.makeBitcodeLibrary();
             context.ensureExternalLibraryAdded(library);
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
-            ArrayList<ExternalLibrary> dependencies = processDependencies(binaryParserResult, parseContext, library);
+            ArrayList<ExternalLibrary> dependencies = processDependencies(library, binaryParserResult, parseContext);
             LLVMParserResult parserResult = parseBinary(binaryParserResult, library);
             parserResult.setDependencies(dependencies);
             parseContext.parserResultsAdd(parserResult);
@@ -1008,14 +1038,14 @@ final class Runner {
      * {@link BinaryParserResult} into {@link ExternalLibrary}s and add them to the
      * {@link ParseContext#dependencyQueueAddLast dependency queue} if not already in there.
      */
-    private ArrayList<ExternalLibrary> processDependencies(BinaryParserResult binaryParserResult, ParseContext parseContext, Object reason) {
+    private ArrayList<ExternalLibrary> processDependencies(ExternalLibrary library, BinaryParserResult binaryParserResult, ParseContext parseContext) {
         ArrayList<ExternalLibrary> dependencies = new ArrayList<>();
-        for (String lib : binaryParserResult.getLibraries()) {
-            ExternalLibrary dependency = context.findExternalLibrary(lib, reason, binaryParserResult.getLocator());
+        for (String lib : context.preprocessDependencies(library, binaryParserResult.getLibraries())) {
+            ExternalLibrary dependency = context.findExternalLibrary(lib, library, binaryParserResult.getLocator());
             if (dependency != null) {
                 dependencies.add(dependency);
             } else {
-                dependency = context.addExternalLibrary(lib, reason, binaryParserResult.getLocator());
+                dependency = context.addExternalLibrary(lib, library, binaryParserResult.getLocator());
                 if (dependency != null) {
                     parseContext.dependencyQueueAddLast(dependency);
                     dependencies.add(dependency);
@@ -1040,8 +1070,14 @@ final class Runner {
                     globalScope.register(functionSymbol);
                 } else if (!functionSymbol.isFunction()) {
                     assert functionSymbol.isGlobalVariable();
-                    throw new LLVMLinkerException(
-                                    "The function " + function.getName() + " is declared as external but its definition is shadowed by a conflicting function with the same name.");
+                    // TODO (je) Symbol resolution is currently not correct [GR-21400] - doing
+                    // nothing instead of throwing an exception does not make it more wrong but
+                    // allows certain use cases to work correctly
+                    // This was:
+                    // throw new LLVMLinkerException(
+                    // "The function " + function.getName() + " is declared as external but its
+                    // definition is shadowed by a conflicting global variable with the same
+                    // name.");
                 }
 
                 // there can already be a different local entry in the file scope
@@ -1056,8 +1092,13 @@ final class Runner {
                     globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getBitcodeID());
                 } else if (!globalSymbol.isGlobalVariable()) {
                     assert globalSymbol.isFunction();
-                    throw new LLVMLinkerException(
-                                    "The global variable " + global.getName() + " is declared as external but its definition is shadowed by a conflicting global variable with the same name.");
+                    // TODO (je) Symbol resolution is currently not correct [GR-21400] - doing
+                    // nothing instead of throwing an exception does not make it more wrong but
+                    // allows certain use cases to work correctly
+                    // This was:
+                    // throw new LLVMLinkerException("The global variable " + global.getName() + "
+                    // is declared as external but its definition is shadowed by a conflicting
+                    // function with the same name.");
                 }
 
                 // there can already be a different local entry in the file scope
