@@ -60,7 +60,7 @@ public final class NFIContextExtension implements ContextExtension {
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     @CompilerDirectives.CompilationFinal private TruffleObject defaultLibraryHandle;
-    @CompilerDirectives.CompilationFinal private boolean internalLibrariesAdded = false;
+    private boolean internalLibrariesAdded = false;
     private final ExternalLibrary defaultLibrary;
     // we use an EconomicMap because iteration order must match the insertion order
     private final EconomicMap<ExternalLibrary, TruffleObject> libraryHandles = EconomicMap.create();
