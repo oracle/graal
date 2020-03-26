@@ -2755,7 +2755,7 @@ final class JDWP {
 
     private static Object readValue(byte valueKind, PacketStream input, JDWPContext context) {
         switch (valueKind) {
-            case BOOLEAN:
+            case TagConstants.BOOLEAN:
                 return input.readBoolean();
             case TagConstants.BYTE:
                 return input.readByte();
@@ -2772,7 +2772,6 @@ final class JDWP {
             case TagConstants.DOUBLE:
                 return input.readDouble();
             case TagConstants.STRING:
-                return input.readString();
             case TagConstants.ARRAY:
             case TagConstants.OBJECT:
             case TagConstants.THREAD:
