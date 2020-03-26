@@ -64,9 +64,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
+import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.UnresolvedFunction;
-import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -305,7 +305,7 @@ public final class LLVMContext {
             LLVMLocalScope localScope = new LLVMLocalScope();
             localScope.register(functionDetail);
             localScope.addID(LLVMSymbol.MISCFUNCTION_ID);
-            localScopes.add(localScope);
+            this.addLocalScope(localScope);
         }
     }
 
@@ -730,15 +730,6 @@ public final class LLVMContext {
 
     public void addLocalScope(LLVMLocalScope scope) {
         localScopes.add(scope);
-    }
-
-    public LLVMLocalScope getLocalScope(int id) {
-        for (LLVMLocalScope scope : localScopes) {
-            if (scope.containID(id)) {
-                return scope;
-            }
-        }
-        throw new IllegalStateException("No local global scope matching the id: " + id);
     }
 
     public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {

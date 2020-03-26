@@ -112,7 +112,6 @@ import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.SulongLibrary;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
-import com.oracle.truffle.llvm.runtime.except.LLVMException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -218,6 +217,26 @@ final class Runner {
         return parseWithDependencies(source, bytes, library);
     }
 
+    /**
+     * {@link InitializeSymbolsNode} creates the symbol of all defined functions and globals, and
+     * put them into the symbol table. {@link InitializeGlobalNode} initializes the value of all
+     * defined global symbols.
+     *
+     * {@link InitializeExternalNode} initializes the symbol table for all the external symbols of
+     * this module. For external functions, if they are already defined in the local scope or the
+     * global scope, then the already defined symbol is placed into this function's spot in the
+     * symbol table. Otherwise, an instrinc or native function is created if they exists. Similarly,
+     * for external globals the local and global scope is checked first for this external global,
+     * and if it exists, then the defined global symbol from the local/global scope is placed into
+     * this external global's location in the symbol table.
+     *
+     * The aim of {@link InitializeOverwriteNode} is to identify which defined symbols will be
+     * resolved to their corresponding symbol in the local scope when they are called. If they
+     * resolve to the symbol in the local scope then this symbol from the local scope is place into
+     * this defined symbol's location in the symbol table. This means the local and global scope is
+     * no longer required for symbol resolution, and everything is done simply by looking up the
+     * symbol in the file scope.
+     */
     private static final class LoadModulesNode extends RootNode {
 
         final SulongLibrary sulongLibrary;
@@ -227,9 +246,9 @@ final class Runner {
         @Child LLVMStatementNode initContext;
 
         @Children final InitializeSymbolsNode[] initSymbols;
-        @Children final InitializeOverwriteNode[] initOverwrite;
         @Children final InitializeExternalNode[] initExternals;
         @Children final InitializeGlobalNode[] initGlobals;
+        @Children final InitializeOverwriteNode[] initOverwrite;
         @Children final InitializeModuleNode[] initModules;
 
         private LoadModulesNode(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary) {
@@ -242,8 +261,8 @@ final class Runner {
             int libCount = order.sulongLibraries.size() + order.otherLibraries.size();
             this.initSymbols = new InitializeSymbolsNode[libCount];
             this.initExternals = new InitializeExternalNode[libCount];
-            this.initOverwrite = new InitializeOverwriteNode[libCount];
             this.initGlobals = new InitializeGlobalNode[libCount];
+            this.initOverwrite = new InitializeOverwriteNode[libCount];
             this.initModules = new InitializeModuleNode[libCount];
         }
 
@@ -455,22 +474,15 @@ final class Runner {
     private static final class AllocExistingSymbolNode extends AllocSymbolNode {
 
         @Child LLVMAccessSymbolNode accessSymbol;
-        private final LLVMSymbol newSymbol;
 
-        AllocExistingSymbolNode(LLVMSymbol symbol, LLVMSymbol newSymbol, LLVMAccessSymbolNode accessSymbol) {
+        AllocExistingSymbolNode(LLVMSymbol symbol, LLVMAccessSymbolNode accessSymbol) {
             super(symbol);
             this.accessSymbol = accessSymbol;
-            this.newSymbol = newSymbol;
         }
 
         @Override
         LLVMPointer allocate(LLVMContext context) {
             return accessSymbol.execute();
-        }
-
-        @SuppressWarnings("unused")
-        public LLVMSymbol getNewSymbol() {
-            return newSymbol;
         }
     }
 
@@ -503,7 +515,8 @@ final class Runner {
     }
 
     /*
-     * For native functions that does not exists in the NFI context, a null is returned.
+     * Allocates a managed pointer for the newly constructed function descriptors of a native
+     * function.
      */
     private static final class AllocNativeFunctionNode extends AllocFunctionNode {
 
@@ -524,6 +537,7 @@ final class Runner {
                 functionDescriptor.getFunctionCode().define(nativeFunction.getLibrary(), new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
                 return functionDescriptor;
             }
+            // null is returned for native functions that does not exists in the NFI context.
             return null;
         }
 
@@ -531,6 +545,8 @@ final class Runner {
         LLVMPointer allocate(LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = createAndDefine(context);
             if (functionDescriptor == null) {
+                // null is propagated back up when the native function does not exists in the NFI
+                // context.
                 return null;
             }
             return LLVMManagedPointer.create(functionDescriptor);
@@ -538,7 +554,7 @@ final class Runner {
     }
 
     /*
-     * For native globals that does not exists in the NFI context, a null is returned.
+     * Allocates a native pointer for the newly constructed global symbol of a native global.
      */
     private static final class AllocNativeGlobalNode extends AllocSymbolNode {
 
@@ -560,6 +576,7 @@ final class Runner {
                 }
                 return pointer;
             }
+            // null is returned for native globals that does not exists in the NFI context.
             return null;
         }
 
@@ -567,6 +584,8 @@ final class Runner {
         LLVMPointer allocate(LLVMContext context) {
             NativePointerIntoLibrary pointer = createAndDefine(context);
             if (pointer == null) {
+                // null is propagated back up when the native global does not exists in the NFI
+                // context.
                 return null;
             }
             return LLVMNativePointer.create(pointer.getAddress());
@@ -1186,35 +1205,15 @@ final class Runner {
         for (LLVMParserResult parserResult : parserResults) {
             LLVMScope fileScope = parserResult.getRuntime().getFileScope();
             for (FunctionSymbol function : parserResult.getExternalFunctions()) {
-                 if (!fileScope.contains(function.getName())) {
+                if (!fileScope.contains(function.getName())) {
                     fileScope.register(LLVMFunction.create(function.getName(), null, new LLVMFunctionCode.UnresolvedFunction(), function.getType(), parserResult.getRuntime().getBitcodeID(),
                                     function.getIndex()));
                 }
             }
             for (GlobalVariable global : parserResult.getExternalGlobals()) {
-<<<<<<< HEAD
-                LLVMSymbol globalSymbol = globalScope.get(global.getName());
-                if (globalSymbol == null) {
-                    globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getBitcodeID());
-                    globalScope.register(globalSymbol);
-                } else if (!globalSymbol.isGlobalVariable()) {
-                    assert globalSymbol.isFunction();
-                    // TODO (je) Symbol resolution is currently not correct [GR-21400] - doing
-                    // nothing instead of throwing an exception does not make it more wrong but
-                    // allows certain use cases to work correctly
-                    // This was:
-                    // throw new LLVMLinkerException("The global variable " + global.getName() + "
-                    // is declared as external but its definition is shadowed by a conflicting
-                    // function with the same name.");
-                }
-
-                // there can already be a different local entry in the file scope
-=======
->>>>>>> Sulong: Enable global symbols to allow for AST sharing. Global symbols are not resolved only from the file scope. The local scope is now enabled for all symbols, and external symbols in the file scope are now being written by their corresponding symbol in the local scope.
                 if (!fileScope.contains(global.getName())) {
                     fileScope.register(
-                                    LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getBitcodeID(),
-                                                    false));
+                                    LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getBitcodeID()));
                 }
             }
         }
@@ -1304,7 +1303,15 @@ final class Runner {
     }
 
     /**
-     * Initialize external and exported symbols.
+     * Initialize external and exported symbols, by populating the symbol table of every external
+     * symbols of a given bitcode file.
+     *
+     * External bitcode functions will have their entry into the symbol table be replaced with the
+     * entry of it's corresponding defined function in the local scope, or the gloabl scope if the
+     * function is loaded in a previous parsing phase. Otherwise an instrinic or native function
+     * will be created if they are available. Similarly, external global will have their entry into
+     * the symbol table be that of the corresponding defined global symbol in the local scope. If no
+     * global of such name exists, a native global is created if it exists in the NFI context.
      *
      * @see InitializeSymbolsNode
      * @see InitializeGlobalNode
@@ -1341,7 +1348,7 @@ final class Runner {
 
                 if (localFunction != null && localFunction.isFunction()) {
                     assert localFunction.asFunction().isDefined();
-                    allocExternalSymbolsList.add(new AllocExistingSymbolNode(function, localFunction, LLVMAccessSymbolNodeGen.create(localFunction)));
+                    allocExternalSymbolsList.add(new AllocExistingSymbolNode(function, LLVMAccessSymbolNodeGen.create(localFunction)));
                 } else if (!function.isDefined()) {
                     if (intrinsicProvider.isIntrinsified(function.getName())) {
                         allocExternalSymbolsList.add(new AllocIntrinsicFunctionNode(function, result.getRuntime().getNodeFactory(), intrinsicProvider));
@@ -1364,7 +1371,7 @@ final class Runner {
 
                 if (localGlobal != null && localGlobal.isGlobalVariable() && !(global.equals(localGlobal))) {
                     assert localGlobal.asGlobalVariable().isDefined();
-                    allocExternalSymbolsList.add(new AllocExistingSymbolNode(global, localGlobal, LLVMAccessSymbolNodeGen.create(localGlobal)));
+                    allocExternalSymbolsList.add(new AllocExistingSymbolNode(global, LLVMAccessSymbolNodeGen.create(localGlobal)));
                 } else if (!global.isDefined()) {
                     if (nfiContextExtension != null) {
                         allocExternalSymbolsList.add(new AllocNativeGlobalNode(global));
@@ -1376,37 +1383,41 @@ final class Runner {
             this.allocExternalSymbols = allocExternalSymbolsList.toArray(AllocLLVMFunctionNode.EMPTY);
         }
 
-        // (PLi): Need to be careful of native functions/globals that are not in the nfi context
-        // (i.e. __xstat). Ideally they will be added to the symbol table as unresolved/undefined
-        // functions/globals.
+        /*
+         * (PLi): Need to be careful of native functions/globals that are not in the nfi context
+         * (i.e. __xstat). Ideally they will be added to the symbol table as unresolved/undefined
+         * functions/globals.
+         */
         @ExplodeLoop
         void execute(LLVMContext context) {
             synchronized (context) {
                 for (int i = 0; i < allocExternalSymbols.length; i++) {
-                    try {
-                        AllocSymbolNode allocSymbol = allocExternalSymbols[i];
-                        LLVMPointer pointer = allocSymbol.allocate(context);
-                        // Currently native functions/globals that are not in the nfi context are
-                        // not written into the symbol table. For function, another lookup will
-                        // happen when something tries to call the function.
-                        // (see doCachedNative in LLVMDispatchNode)
-                        // The function will be taken from the filescope directly.
-                        // Ideally the filescope and symbol table is in sync, and any lazy look up
-                        // will resolve from the function code in the symbol table.
-                        if (pointer == null) {
-                            continue;
-                        }
-                        writeSymbols.execute(pointer, allocSymbol.symbol);
-                    } catch (LLVMException e) {
-                        throw new LLVMLinkerException("Allocation of external symbols went wrong, with the exception: " + e);
+                    AllocSymbolNode allocSymbol = allocExternalSymbols[i];
+                    LLVMPointer pointer = allocSymbol.allocate(context);
+                    /*
+                     * Currently native functions/globals that are not in the nfi context are not
+                     * written into the symbol table. For function, another lookup will happen when
+                     * something tries to call the function. (see doCachedNative in
+                     * LLVMDispatchNode) The function will be taken from the filescope directly.
+                     * Ideally the filescope and symbol table is in sync, and any lazy look up will
+                     * resolve from the function code in the symbol table.
+                     */
+                    if (pointer == null) {
+                        continue;
                     }
+                    writeSymbols.execute(pointer, allocSymbol.symbol);
                 }
             }
         }
     }
 
     /**
-     * Overwrite initialized symbols in the fileScope with the correct symbol in the localScope.
+     * Overwriting for defined symbols that will be resolved to the local scope instead of the file
+     * scope.
+     *
+     * If a defined symbol is required to be access via the local scope instead of it's file scope,
+     * then that symbol's entry in the symbol table will be that of the defined symbol from the
+     * local scope.
      *
      * @see InitializeSymbolsNode
      * @see InitializeGlobalNode
@@ -1431,7 +1442,7 @@ final class Runner {
                     LLVMFunction function = fileScope.getFunction(symbol.getName());
                     LLVMSymbol localFunction = localScope.get(symbol.getName());
                     if (localFunction != null && localFunction.isFunction() && !(function.equals(localFunction.asFunction()))) {
-                        allocOverrideSymbolsList.add(new AllocExistingSymbolNode(function, localFunction, LLVMAccessSymbolNodeGen.create(localFunction)));
+                        allocOverrideSymbolsList.add(new AllocExistingSymbolNode(function, LLVMAccessSymbolNodeGen.create(localFunction)));
                     }
                 }
             }
@@ -1445,7 +1456,7 @@ final class Runner {
                     // different (non-hidden) global symbol of the same name in the localScope
                     if (localGlobal != null && localGlobal.isGlobalVariable() && !(global.equals(localGlobal.asGlobalVariable()))) {
                         // Cannot override with a hidden global symbol from the localScope
-                        allocOverrideSymbolsList.add(new AllocExistingSymbolNode(global, localGlobal, LLVMAccessSymbolNodeGen.create(localGlobal)));
+                        allocOverrideSymbolsList.add(new AllocExistingSymbolNode(global, LLVMAccessSymbolNodeGen.create(localGlobal)));
 
                     }
                 }

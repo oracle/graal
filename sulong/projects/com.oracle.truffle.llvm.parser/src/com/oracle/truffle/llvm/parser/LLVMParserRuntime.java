@@ -76,7 +76,6 @@ public final class LLVMParserRuntime {
         return bitcodeID;
     }
 
-    @SuppressWarnings("unsed")
     public LLVMFunction lookupFunction(String name) {
         LLVMSymbol symbol = fileScope.get(name);
         if (symbol != null && symbol.isFunction()) {

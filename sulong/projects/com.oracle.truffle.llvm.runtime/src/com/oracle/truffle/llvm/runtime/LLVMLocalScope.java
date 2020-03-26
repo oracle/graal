@@ -29,15 +29,26 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.util.ArrayList;
+import org.graalvm.collections.EconomicSet;
 
+/**
+ * The local scope contains the id of all the bitcode modules that is associated with this local
+ * scope.
+ *
+ * A local scope is created for each parsing phase, i.e. for each new runner a new local scope is
+ * created.
+ *
+ * The purpose of the local scope is to serve as a locally global scope for all the modules and
+ * their file scope in their particular parsing/loading and execution phase, there could be multiple
+ * parsing/loading phases.
+ */
 public class LLVMLocalScope extends LLVMScope {
 
-    private final ArrayList<Integer> ids;
+    private final EconomicSet<Integer> ids;
 
     public LLVMLocalScope() {
         super();
-        this.ids = new ArrayList<>();
+        this.ids = EconomicSet.create();
     }
 
     public void addID(int id) {
