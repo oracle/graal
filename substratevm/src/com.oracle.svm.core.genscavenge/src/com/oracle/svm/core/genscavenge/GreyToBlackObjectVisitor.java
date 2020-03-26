@@ -34,8 +34,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
@@ -43,6 +43,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Run an ObjectReferenceVisitor ({@link GreyToBlackObjRefVisitor}) over any interior object
@@ -56,10 +57,17 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 public final class GreyToBlackObjectVisitor implements ObjectVisitor {
 
     private final DiagnosticReporter diagnosticReporter;
+    private final GreyToBlackObjRefVisitor objRefVisitor;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static GreyToBlackObjectVisitor factory(final ObjectReferenceVisitor objRefVisitor) {
-        return new GreyToBlackObjectVisitor(objRefVisitor);
+    public GreyToBlackObjectVisitor(final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor) {
+        this.objRefVisitor = greyToBlackObjRefVisitor;
+        if (DiagnosticReporter.getHistoryLength() > 0) {
+            this.diagnosticReporter = new DiagnosticReporter();
+            SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(diagnosticReporter);
+        } else {
+            this.diagnosticReporter = null;
+        }
     }
 
     public void reset() {
@@ -70,42 +78,21 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
 
     /** Visit the interior Pointers of an Object. */
     @Override
+    @NeverInline("Non-performance critical version")
     public boolean visitObject(final Object o) {
-        return visitObjectInline(o);
+        throw VMError.shouldNotReachHere("For performance reasons, this should not be called.");
     }
 
     @Override
     @AlwaysInline("GC performance")
     public boolean visitObjectInline(final Object o) {
-        final Log trace = Log.noopLog();
         if (diagnosticReporter != null) {
             diagnosticReporter.noteObject(o);
         }
-        // TODO: Why would this be passed a null Object?
-        if (o == null) {
-            return true;
-        }
-        trace.string("[GreyToBlackObjectVisitor:").string("  o: ").object(o);
-        DiscoverableReferenceProcessing.discoverDiscoverableReference(o);
+        ReferenceObjectProcessing.discoverIfReference(o);
         InteriorObjRefWalker.walkObjectInline(o, objRefVisitor);
-        trace.string("]").newline();
         return true;
     }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private GreyToBlackObjectVisitor(final ObjectReferenceVisitor objRefVisitor) {
-        super();
-        this.objRefVisitor = objRefVisitor;
-        if (DiagnosticReporter.getHistoryLength() > 0) {
-            this.diagnosticReporter = new DiagnosticReporter();
-            SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(diagnosticReporter);
-        } else {
-            this.diagnosticReporter = null;
-        }
-    }
-
-    // Immutable state.
-    private final ObjectReferenceVisitor objRefVisitor;
 
     /*
      * History.
@@ -170,7 +157,6 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
                 ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
                 final Pointer firstRORPointer = Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyReferenceObject);
                 final Pointer lastRORPointer = Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyReferenceObject);
-                final ObjectHeaderImpl ohi = HeapImpl.getHeapImpl().getObjectHeaderImpl();
                 /*
                  * Report the history from the next available slot in the ring buffer. The older
                  * history is more reliable, since I have already used that to visit objects. The
@@ -186,10 +172,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
                     final UnsignedWord headerEntry = headerHistory[index];
                     final UnsignedWord headerHubBits = ObjectHeaderImpl.clearBits(headerEntry);
                     final UnsignedWord headerHeaderBits = ObjectHeaderImpl.getHeaderBitsFromHeaderCarefully(headerEntry);
-                    log.string("  headerEntry: ").hex(headerEntry)
-                                    .string(" = ").hex(headerHubBits)
-                                    .string(" | ").hex(headerHeaderBits)
-                                    .string(" / ").string(ohi.toStringFromHeader(headerEntry));
+                    log.string("  headerEntry: ").hex(headerEntry).string(" = ").hex(headerHubBits).string(" | ").hex(headerHeaderBits).string(" / ");
                     /* Print details about the hub if it looks okay. */
                     final boolean headerInImageHeap = ((headerHubBits.aboveOrEqual(firstRORPointer)) && headerHubBits.belowOrEqual(lastRORPointer));
                     if (headerInImageHeap) {

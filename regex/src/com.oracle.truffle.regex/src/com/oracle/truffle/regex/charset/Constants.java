@@ -212,7 +212,7 @@ public final class Constants {
                     0x0061, 0x0066);
 
     /**
-     * Used for deduplication in {@link CodePointSet} and {@link CharSet}.
+     * Used for deduplication in {@link CodePointSet}.
      */
     public static final CodePointSet[] CONSTANT_CODE_POINT_SETS = new CodePointSet[]{
                     DIGITS,

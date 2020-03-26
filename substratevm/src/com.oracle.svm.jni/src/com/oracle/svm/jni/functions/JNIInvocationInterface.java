@@ -121,7 +121,7 @@ final class JNIInvocationInterface {
                     // success
                 } else if (error == CEntryPointErrors.UNSPECIFIED) {
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());
-                } else if (error == CEntryPointErrors.MAP_HEAP_FAILED) {
+                } else if (error == CEntryPointErrors.MAP_HEAP_FAILED || error == CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED || error == CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE) {
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ENOMEM());
                 } else { // return a (non-JNI) error that is more helpful for diagnosis
                     error = -1000000000 - error;

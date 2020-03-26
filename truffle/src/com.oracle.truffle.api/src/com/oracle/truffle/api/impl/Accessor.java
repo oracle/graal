@@ -170,6 +170,8 @@ public abstract class Accessor {
 
         public abstract void applyPolyglotEngine(RootNode from, RootNode to);
 
+        public abstract void forceAdoption(Node parent, Node child);
+
     }
 
     public abstract static class SourceSupport {
@@ -215,6 +217,7 @@ public abstract class Accessor {
     }
 
     public abstract static class EngineSupport {
+        public abstract <T> Iterable<T> loadServices(Class<T> type);
 
         public abstract Object getInstrumentationHandler(Object polyglotObject);
 
@@ -340,7 +343,9 @@ public abstract class Accessor {
 
         public abstract Object findMetaObjectForLanguage(Object polyglotLanguageContext, Object value);
 
-        public abstract boolean isDefaultFileSystem(FileSystem fs);
+        public abstract boolean isInternal(FileSystem fs);
+
+        public abstract boolean hasAllAccess(FileSystem fs);
 
         public abstract String getLanguageHome(Object engineObject);
 
@@ -434,6 +439,8 @@ public abstract class Accessor {
         public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
 
         public abstract Object getScopedView(LanguageInfo viewLanguage, Node location, Frame frame, Object value);
+
+        public abstract boolean initializeLanguage(Object polyglotLanguageContext, LanguageInfo targetLanguage);
     }
 
     public abstract static class LanguageSupport {
@@ -469,7 +476,9 @@ public abstract class Accessor {
 
         public abstract ExecutableNode parseInline(Env env, Source code, Node context, MaterializedFrame frame);
 
-        public abstract String toStringIfVisible(Env env, Object obj, boolean checkVisibility);
+        public abstract boolean isVisible(Env env, Object value);
+
+        public abstract String legacyToString(Env env, Object obj);
 
         public abstract <C> String legacyToString(TruffleLanguage<C> language, C context, Object obj);
 
@@ -546,7 +555,7 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
 
-        public abstract boolean isDefaultFileSystem(Object fileSystemContext);
+        public abstract boolean hasAllAccess(Object fileSystemContext);
 
         public abstract TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
 

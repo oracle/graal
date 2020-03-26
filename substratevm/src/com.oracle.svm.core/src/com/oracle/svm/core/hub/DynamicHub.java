@@ -67,10 +67,10 @@ import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.util.DirectAnnotationAccess;
 
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
@@ -567,6 +567,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     public boolean isInstanceClass() {
         return HubType.isInstance(hubType);
+    }
+
+    public boolean isReferenceInstanceClass() {
+        return HubType.isReferenceInstance(hubType);
     }
 
     @Substitute

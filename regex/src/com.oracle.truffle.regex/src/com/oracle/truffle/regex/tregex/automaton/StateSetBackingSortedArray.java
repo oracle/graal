@@ -45,11 +45,11 @@ import java.util.PrimitiveIterator;
 
 public class StateSetBackingSortedArray implements StateSetBackingSet {
 
-    private short[] array;
-    private short size;
+    private int[] array;
+    private int size;
 
     public StateSetBackingSortedArray() {
-        array = new short[8];
+        array = new int[8];
     }
 
     private StateSetBackingSortedArray(StateSetBackingSortedArray copy) {
@@ -62,7 +62,7 @@ public class StateSetBackingSortedArray implements StateSetBackingSet {
         return new StateSetBackingSortedArray(this);
     }
 
-    private int find(short id) {
+    private int find(int id) {
         return Arrays.binarySearch(array, 0, size, id);
     }
 
@@ -73,12 +73,12 @@ public class StateSetBackingSortedArray implements StateSetBackingSet {
     }
 
     @Override
-    public boolean contains(short id) {
+    public boolean contains(int id) {
         return find(id) >= 0;
     }
 
     @Override
-    public boolean add(short id) {
+    public boolean add(int id) {
         checkGrow();
         int searchResult = find(id);
         if (searchResult >= 0) {
@@ -92,7 +92,7 @@ public class StateSetBackingSortedArray implements StateSetBackingSet {
     }
 
     @Override
-    public void addBatch(short id) {
+    public void addBatch(int id) {
         checkGrow();
         array[size++] = id;
     }
@@ -103,7 +103,7 @@ public class StateSetBackingSortedArray implements StateSetBackingSet {
     }
 
     @Override
-    public void replace(short oldId, short newId) {
+    public void replace(int oldId, int newId) {
         int searchResult = find(newId);
         assert searchResult < 0;
         int insertionPoint = (searchResult + 1) * (-1);
@@ -119,7 +119,7 @@ public class StateSetBackingSortedArray implements StateSetBackingSet {
     }
 
     @Override
-    public boolean remove(short id) {
+    public boolean remove(int id) {
         int searchResult = find(id);
         if (searchResult < 0) {
             return false;
@@ -142,7 +142,7 @@ public class StateSetBackingSortedArray implements StateSetBackingSet {
     @Override
     public boolean isDisjoint(StateSetBackingSet other) {
         for (int i : this) {
-            if (other.contains((short) i)) {
+            if (other.contains(i)) {
                 return false;
             }
         }
@@ -152,7 +152,7 @@ public class StateSetBackingSortedArray implements StateSetBackingSet {
     @Override
     public boolean contains(StateSetBackingSet other) {
         for (int i : other) {
-            if (!contains((short) i)) {
+            if (!contains(i)) {
                 return false;
             }
         }

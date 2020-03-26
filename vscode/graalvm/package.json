@@ -2,7 +2,7 @@
 	"name": "graalvm",
 	"displayName": "GraalVM",
 	"description": "Basic support for GraalVM",
-	"version": "0.0.4",
+	"version": "0.0.6",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "oracle-labs-graalvm",
 	"author": {
@@ -53,7 +53,7 @@
 				"graalvm.languageServer.delegateServers": {
 					"type": "string",
 					"default": "",
-					"description": "Comma-separated list of [host:]port where other language servers run"
+					"description": "Comma-separated list of language@[host:]port where other language servers run"
 				}
 			}
 		},

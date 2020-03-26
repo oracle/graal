@@ -27,14 +27,11 @@ package com.oracle.svm.core.image;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms(value = Platform.HOSTED_ONLY.class)
 public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> implements ImageHeapLayouter {
     /** A partition holding objects with only read-only primitive values, but no references. */
     private static final int READ_ONLY_PRIMITIVE = 0;
@@ -245,7 +242,6 @@ public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> im
      * The native image heap comes in partitions. Each partition holds objects with different
      * properties (read-only/writable, primitives/objects).
      */
-    @Platforms(value = Platform.HOSTED_ONLY.class)
     public abstract static class AbstractImageHeapPartition implements ImageHeapPartition {
         private static final long INVALID_SECTION_OFFSET = -1L;
 

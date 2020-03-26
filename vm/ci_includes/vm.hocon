@@ -12,6 +12,7 @@ vm_profiles: []
 collect_profiles: []
 
 vm_setup: {
+  short_name: ce
   setup: [
     [set-export, VM_ENV, ce]
     [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog-java${BASE_JDK_VERSION}.properties"]
@@ -111,7 +112,7 @@ builds += [
     ]
     name: deploy-vm-maven-darwin-amd64
   }
-  ${deploy_daily_vm_windows} ${maven_base_8_native} {
+  ${deploy_daily_vm_windows} ${svm-common-windows} ${maven_base_8_native} {
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} [--dry-run, "lafo-maven"]

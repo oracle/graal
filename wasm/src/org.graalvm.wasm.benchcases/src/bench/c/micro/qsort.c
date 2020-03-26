@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,9 @@
 #include <stdint.h>
 #include "harness.h"
 
+#ifndef DATA_COUNT
 #define DATA_COUNT (1000000)
+#endif
 
 int64_t data[DATA_COUNT];
 

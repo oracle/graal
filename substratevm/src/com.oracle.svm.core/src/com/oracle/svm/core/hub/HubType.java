@@ -51,6 +51,10 @@ public enum HubType {
         return hubType <= InstanceReference.getValue();
     }
 
+    public static boolean isReferenceInstance(int hubType) {
+        return hubType == InstanceReference.getValue();
+    }
+
     public static boolean isArray(int hubType) {
         return hubType >= TypeArray.getValue();
     }

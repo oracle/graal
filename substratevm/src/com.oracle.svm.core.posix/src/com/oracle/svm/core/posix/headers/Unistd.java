@@ -124,5 +124,8 @@ public class Unistd {
 
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native long sysconf(int name);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native SignedWord lseek(int fd, SignedWord offset, int whence);
     }
 }

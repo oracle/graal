@@ -88,7 +88,7 @@ class Graph implements StateIndex<GraphNode> {
     }
 
     @Override
-    public short getId(GraphNode state) {
+    public int getId(GraphNode state) {
         return state.getId();
     }
 

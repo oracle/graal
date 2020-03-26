@@ -24,7 +24,7 @@ const POLYGLOT: string = "polyglot";
 const LSPORT: number = 8123;
 const delegateLanguageServers: Set<() => Thenable<String>> = new Set();
 
-let client: LanguageClient | undefined;
+let languageClient: Promise<LanguageClient> | undefined;
 let languageServerPID: number = 0;
 
 export function activate(context: vscode.ExtensionContext) {
@@ -141,16 +141,21 @@ function connectToLanguageServer(connection: (() => Thenable<StreamInfo>)) {
 			{ scheme: 'file', language: 'ruby' }
 		]
 	};
-	client = new LanguageClient('GraalVM Language Client', connection, clientOptions);
-	let prepareStatus = vscode.window.setStatusBarMessage("Graal Language Client: Connecting to GraalLS");
-	client.onReady().then(() => {
-		prepareStatus.dispose();
-		vscode.window.setStatusBarMessage('GraalLS is ready.', 3000);
-	}).catch(() => {
-		prepareStatus.dispose();
-		vscode.window.setStatusBarMessage('GraalLS failed to initialize.', 3000);
+
+	languageClient = new Promise<LanguageClient>((resolve) => {
+		let client = new LanguageClient('GraalVM Language Client', connection, clientOptions);
+		let prepareStatus = vscode.window.setStatusBarMessage("Graal Language Client: Connecting to GraalLS");
+		client.onReady().then(() => {
+			prepareStatus.dispose();
+			vscode.window.setStatusBarMessage('GraalLS is ready.', 3000);
+			resolve(client);
+		}).catch(() => {
+			prepareStatus.dispose();
+			vscode.window.setStatusBarMessage('GraalLS failed to initialize.', 3000);
+			resolve(client);
+		});
+		client.start();
 	});
-	client.start();
 }
 
 function config() {
@@ -184,13 +189,13 @@ function config() {
 }
 
 function stopLanguageServer(): Thenable<void> {
-	if (client) {
-		return client.stop().then(() => {
-			client = undefined;
+	if (languageClient) {
+		return languageClient.then((client) => client.stop().then(() => {
+			languageClient = undefined;
 			if (languageServerPID > 0) {
 				terminateLanguageServer();
 			}
-		});
+		}));
 	}
 	if (languageServerPID > 0) {
 		terminateLanguageServer();
@@ -229,7 +234,7 @@ class GraalVMDebugAdapterTracker implements vscode.DebugAdapterTrackerFactory {
 	createDebugAdapterTracker(_session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
 		return {
 			onDidSendMessage(message: any) {
-				if (!client && message.type === 'event') {
+				if (!languageClient && message.type === 'event') {
 					if (message.event === 'output' && message.body.category === 'telemetry' && message.body.output === 'childProcessID') {
 						languageServerPID = message.body.data.pid;
 					}

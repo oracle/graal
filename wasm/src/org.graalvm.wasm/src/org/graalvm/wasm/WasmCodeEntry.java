@@ -143,18 +143,6 @@ public final class WasmCodeEntry {
         return longConstants[index];
     }
 
-    public int longConstantAsInt(int index) {
-        return (int) longConstants[index];
-    }
-
-    public float longConstantAsFloat(int index) {
-        return Float.intBitsToFloat(longConstantAsInt(index));
-    }
-
-    public double longConstantAsDouble(int index) {
-        return Double.longBitsToDouble(longConstants[index]);
-    }
-
     public void setLongConstants(long[] longConstants) {
         this.longConstants = longConstants;
     }

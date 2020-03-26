@@ -54,6 +54,7 @@ import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -83,6 +84,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -96,8 +98,8 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     private final AbstractObjectStamp hubStamp;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateBasicLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, TargetDescription target) {
-        super(metaAccess, foreignCalls, target, ReferenceAccess.singleton().haveCompressedReferences());
+    public SubstrateBasicLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig, TargetDescription target) {
+        super(metaAccess, foreignCalls, platformConfig, target, ReferenceAccess.singleton().haveCompressedReferences());
         lowerings = new HashMap<>();
 
         AbstractObjectStamp hubRefStamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(DynamicHub.class)));
@@ -173,8 +175,9 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
 
         assert !object.isConstant() || object.asJavaConstant().isNull();
 
-        Stamp headerBitsStamp = StampFactory.forUnsignedInteger(8 * getObjectLayout().getReferenceSize());
-        ConstantNode headerOffset = ConstantNode.forIntegerKind(target.wordJavaKind, getObjectLayout().getHubOffset(), graph);
+        ObjectLayout objectLayout = getObjectLayout();
+        Stamp headerBitsStamp = StampFactory.forUnsignedInteger(8 * objectLayout.getReferenceSize());
+        ConstantNode headerOffset = ConstantNode.forIntegerKind(target.wordJavaKind, objectLayout.getHubOffset(), graph);
         AddressNode headerAddress = graph.unique(new OffsetAddressNode(object, headerOffset));
         ValueNode headerBits = graph.unique(new FloatingReadNode(headerAddress, NamedLocationIdentity.FINAL_LOCATION, null, headerBitsStamp, null, BarrierType.NONE));
         ValueNode hubBits;
@@ -182,11 +185,15 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         if (reservedBitsMask != 0) {
             // get rid of the reserved header bits and extract the actual pointer to the hub
             int encodingShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
-            if (encodingShift != 0) {
-                assert (reservedBitsMask >>> encodingShift) == 0 : "Compression shift must mask object header bits";
+            if ((reservedBitsMask >>> encodingShift) == 0) {
                 hubBits = graph.unique(new UnsignedRightShiftNode(headerBits, ConstantNode.forInt(encodingShift, graph)));
-            } else {
+            } else if (reservedBitsMask < objectLayout.getAlignment()) {
                 hubBits = graph.unique(new AndNode(headerBits, ConstantNode.forIntegerStamp(headerBitsStamp, ~reservedBitsMask, graph)));
+            } else {
+                assert encodingShift > 0 : "shift below results in a compressed value";
+                assert CodeUtil.isPowerOf2(reservedBitsMask + 1) : "only the lowest bits may be set";
+                int numReservedBits = CodeUtil.log2(reservedBitsMask + 1);
+                hubBits = graph.unique(new UnsignedRightShiftNode(headerBits, ConstantNode.forInt(numReservedBits, graph)));
             }
         } else {
             hubBits = headerBits;
@@ -238,7 +245,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    protected final JavaKind getStorageKind(ResolvedJavaField field) {
+    public final JavaKind getStorageKind(ResolvedJavaField field) {
         return ((SharedField) field).getStorageKind();
     }
 }

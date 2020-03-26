@@ -46,6 +46,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
@@ -66,24 +67,14 @@ public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
         MATCH_ALL.invert();
     }
 
-    /**
-     * Constructs a new {@link MultiBitSetMatcher}.
-     * 
-     * @param inverse see {@link InvertibleCharMatcher}.
-     * @param ranges a sorted array of character ranges in the form [lower inclusive bound of range
-     *            0, higher inclusive bound of range 0, lower inclusive bound of range 1, higher
-     *            inclusive bound of range 1, ...]. The array contents are not modified by this
-     *            method.
-     * @return a new {@link MultiBitSetMatcher}.
-     */
-    public static MultiBitSetMatcher fromRanges(boolean inverse, char[] ranges) {
+    public static MultiBitSetMatcher fromCodePointSet(boolean inverse, CodePointSet cps) {
         CompilationFinalBitSet[] bitSets = new CompilationFinalBitSet[BYTE_RANGE];
         Arrays.fill(bitSets, MATCH_NONE);
         CompilationFinalBitSet cur = new CompilationFinalBitSet(BYTE_RANGE);
-        int curByte = highByte(ranges[0]);
-        for (int i = 0; i < ranges.length; i += 2) {
-            char rangeLo = ranges[i];
-            char rangeHi = ranges[i + 1];
+        int curByte = highByte(cps.getLo(0));
+        for (int i = 0; i < cps.size16(); i++) {
+            char rangeLo = cps.getLo16(i);
+            char rangeHi = cps.getHi16(i);
             if (highByte(rangeLo) > curByte) {
                 bitSets[curByte] = cur;
                 cur = new CompilationFinalBitSet(BYTE_RANGE);

@@ -49,8 +49,8 @@ public class CloneTypeFlow extends TypeFlow<ValueNode> {
     /** The allocation context for the generated clone object. Null if this is not a clone. */
     protected final AnalysisContext allocationContext;
 
-    public CloneTypeFlow(ValueNode node, BytecodeLocation cloneLabel, TypeFlow<?> input) {
-        super(node, null);
+    public CloneTypeFlow(ValueNode node, AnalysisType inputType, BytecodeLocation cloneLabel, TypeFlow<?> input) {
+        super(node, inputType);
         this.cloneSite = cloneLabel;
         this.allocationContext = null;
         this.input = input;

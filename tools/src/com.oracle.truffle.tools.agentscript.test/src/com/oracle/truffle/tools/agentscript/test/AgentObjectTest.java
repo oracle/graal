@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
@@ -583,13 +584,36 @@ public class AgentObjectTest {
             // @formatter:on
 
             Set<String> names = new TreeSet<>();
-            agentAPI.on("enter", (ctx, frame) -> {
+            final AgentScriptAPI.OnEventHandler captureNames = (ctx, frame) -> {
+                assertTrue(names.isEmpty());
                 names.addAll(frame.keySet());
-            }, createConfig(true, false, false, (name) -> "mul".equals(name), null));
-
+            };
+            agentAPI.on("enter", captureNames, createConfig(true, false, false, (name) -> "mul".equals(name), null));
             c.eval(sampleScript);
+            agentAPI.off("enter", captureNames);
 
             Assert.assertArrayEquals("THIS, a and b found", new Object[]{"THIS", "a", "b"}, names.toArray());
+
+            Object[] values = {0, 0};
+            agentAPI.on("enter", (ctx, frame) -> {
+                values[0] = frame.get("a");
+                values[1] = frame.get("b");
+            }, AgentObjectFactory.createConfig(true, false, false, (name) -> "mul".equals(name), null));
+
+            Value mul = c.getBindings(InstrumentationTestLanguage.ID).getMember("mul");
+            assertNotNull("mul function found", mul);
+            assertTrue("mul function found", mul.canExecute());
+
+            Random r = new Random();
+            for (int i = 1; i <= 100000; i++) {
+                int a = r.nextInt();
+                int b = r.nextInt();
+
+                mul.execute(a, b);
+
+                assertEquals(i + "th: a has been read", a, values[0]);
+                assertEquals(i + "th: b has been read", b, values[1]);
+            }
         }
     }
 

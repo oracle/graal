@@ -67,8 +67,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -88,6 +90,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -98,6 +101,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -123,6 +127,8 @@ public class LanguageSPITest {
     public void cleanup() {
         langContext = null;
         ProxyLanguage.setDelegate(new ProxyLanguage());
+        InitializeTestLanguage.initialized = false;
+        InitializeTestInternalLanguage.initialized = false;
     }
 
     @Test
@@ -1986,6 +1992,100 @@ public class LanguageSPITest {
         context.close();
     }
 
+    @Test
+    public void testInitializeInternalLanguage() {
+        try (Context context = Context.create()) {
+            testInitializeInternalImpl(context, (env) -> env.getInternalLanguages().get(InitializeTestInternalLanguage.ID), (se) -> se == null && InitializeTestInternalLanguage.initialized);
+        }
+    }
+
+    @Test
+    public void testInitializeNonInternalLanguage() {
+        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.newBuilder().allowEval(ProxyLanguage.ID, InitializeTestLanguage.ID).build()).build()) {
+            testInitializeInternalImpl(context, (env) -> env.getPublicLanguages().get(InitializeTestLanguage.ID), (se) -> se == null && InitializeTestLanguage.initialized);
+        }
+    }
+
+    @Test
+    public void testInitializeNonAccessibleLanguage() {
+        try (Context context = Context.create()) {
+            Function<TruffleLanguage.Env, LanguageInfo> languageResolver = (env) -> {
+                InstrumentInfo instrumentInfo = env.getInstruments().get(InitializeTestInstrument.ID);
+                assertNotNull(instrumentInfo);
+                InitializeTestInstrument.Service service = env.lookup(instrumentInfo, InitializeTestInstrument.Service.class);
+                assertNotNull(service);
+                LanguageInfo languageInfo = service.findLanguage(InitializeTestLanguage.ID);
+                assertNotNull(languageInfo);
+                return languageInfo;
+            };
+            testInitializeInternalImpl(context, languageResolver, (se) -> se != null);
+        }
+    }
+
+    private static void testInitializeInternalImpl(Context context, Function<TruffleLanguage.Env, LanguageInfo> languageResolver, Function<SecurityException, Boolean> verifier) {
+        AtomicReference<SecurityException> exception = new AtomicReference<>();
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        Env env = lookupContextReference(ProxyLanguage.class).get().getEnv();
+                        LanguageInfo languageToInitialize = languageResolver.apply(env);
+                        assertNotNull(languageToInitialize);
+                        try {
+                            assertTrue(env.initializeLanguage(languageToInitialize));
+                        } catch (SecurityException se) {
+                            exception.set(se);
+                        }
+                        return true;
+                    }
+                });
+            }
+        });
+        assertTrue(context.eval(ProxyLanguage.ID, "").asBoolean());
+        assertTrue(verifier.apply(exception.get()));
+    }
+
+    @Test
+    public void testInitializeFromServiceInternalLanguage() {
+        try (Context context = Context.create()) {
+            testInitializeFromServiceImpl(context, (env) -> env.getInternalLanguages().get(InitializeTestInternalLanguage.ID), () -> InitializeTestInternalLanguage.initialized);
+        }
+    }
+
+    @Test
+    public void testInitializeFromServiceNonInternalLanguage() {
+        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.newBuilder().allowEval(ProxyLanguage.ID, InitializeTestLanguage.ID).build()).build()) {
+            testInitializeFromServiceImpl(context, (env) -> env.getPublicLanguages().get(InitializeTestLanguage.ID), () -> InitializeTestLanguage.initialized);
+        }
+    }
+
+    private static void testInitializeFromServiceImpl(Context context, Function<Env, LanguageInfo> languageResolver, Supplier<Boolean> verifier) {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        Env env = lookupContextReference(ProxyLanguage.class).get().getEnv();
+                        LanguageInfo languageProvidingService = languageResolver.apply(env);
+                        assertNotNull(languageProvidingService);
+                        InitializeTestBaseLanguage.Service service = env.lookup(languageProvidingService, InitializeTestBaseLanguage.Service.class);
+                        assertNotNull(service);
+                        service.doNotInitialize();
+                        assertFalse(verifier.get());
+                        service.doesInitialize();
+                        assertTrue(verifier.get());
+                        return true;
+                    }
+                });
+            }
+        });
+        assertTrue(context.eval(ProxyLanguage.ID, "").asBoolean());
+        assertTrue(verifier.get());
+    }
+
     @TruffleLanguage.Registration(id = SERVICE_LANGUAGE, name = SERVICE_LANGUAGE, version = "1.0", contextPolicy = ContextPolicy.SHARED, services = {
                     LanguageSPITestLanguageService1.class, LanguageSPITestLanguageService2.class})
     public static class ServiceTestLanguage extends TruffleLanguage<Env> {
@@ -2022,4 +2122,97 @@ public class LanguageSPITest {
 
     }
 
+    public abstract static class InitializeTestBaseLanguage extends TruffleLanguage<TruffleLanguage.Env> {
+        @Override
+        protected Env createContext(Env env) {
+            env.registerService(new Service() {
+
+                @Override
+                public void doNotInitialize() {
+                }
+
+                @Override
+                public void doesInitialize() {
+                    LanguageInfo language = getLanguageInfo(env);
+                    assertNotNull(language);
+                    env.initializeLanguage(language);
+                }
+            });
+            return env;
+        }
+
+        @Override
+        protected void initializeContext(Env context) throws Exception {
+            setInitialized(true);
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
+        }
+
+        abstract LanguageInfo getLanguageInfo(Env env);
+
+        abstract void setInitialized(boolean value);
+
+        interface Service {
+            void doNotInitialize();
+
+            void doesInitialize();
+        }
+    }
+
+    @TruffleLanguage.Registration(id = InitializeTestLanguage.ID, name = InitializeTestLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.EXCLUSIVE, services = InitializeTestBaseLanguage.Service.class)
+    public static final class InitializeTestLanguage extends InitializeTestBaseLanguage {
+        static final String ID = "LanguageSPITestInitializeTestLanguage";
+
+        static boolean initialized;
+
+        @Override
+        LanguageInfo getLanguageInfo(Env env) {
+            return env.getPublicLanguages().get(ID);
+        }
+
+        @Override
+        void setInitialized(boolean value) {
+            initialized = value;
+        }
+    }
+
+    @TruffleLanguage.Registration(id = InitializeTestInternalLanguage.ID, name = InitializeTestInternalLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.EXCLUSIVE, internal = true, services = InitializeTestBaseLanguage.Service.class)
+    public static final class InitializeTestInternalLanguage extends InitializeTestBaseLanguage {
+        static final String ID = "LanguageSPITestInitializeTestInternalLanguage";
+
+        static boolean initialized;
+
+        @Override
+        LanguageInfo getLanguageInfo(Env env) {
+            return env.getInternalLanguages().get(ID);
+        }
+
+        @Override
+        void setInitialized(boolean value) {
+            initialized = value;
+        }
+    }
+
+    @TruffleInstrument.Registration(id = InitializeTestInstrument.ID, name = InitializeTestInstrument.ID, version = "1.0", services = InitializeTestInstrument.Service.class)
+    public static final class InitializeTestInstrument extends TruffleInstrument {
+
+        static final String ID = "LanguageSPITestInitializeTestInstrument";
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(new Service() {
+                @Override
+                public LanguageInfo findLanguage(String id) {
+                    return env.getLanguages().get(id);
+                }
+            });
+        }
+
+        public interface Service {
+            LanguageInfo findLanguage(String id);
+        }
+    }
 }

@@ -72,20 +72,7 @@ CXXFLAGS+= $(SUITE_CXXFLAGS) -std=c++11 -stdlib=libc++
 CPPFLAGS+= $(SUITE_CPPFLAGS)
 LDFLAGS+= $(SUITE_LDFLAGS)
 
-ifndef NO_FEMBED_BITCODE
-BC_FILE=
 EMBED_BC=-fembed-bitcode
-else # NO_FEMBED_BITCODE it set
-ifeq ($(OS), darwin)
-BC_FILE=
-EMBED_BC=-fembed-bitcode
-else # not darwin
-EMBED_BC=
-BC_FILE=%/O0.bc.o
-%.bc.o: %.bc
-	$(QUIETLY) $(LLVM_OBJCOPY) -I binary -O elf64-x86-64 -B i386:x86-64 --rename-section .data=.llvmbc $< $@
-endif # darwin
-endif # NO_FEMBED_BITCODE
 
 ifdef CLANG_NO_OPTNONE
 SULONG_MAKE_CLANG_IMPLICIT_ARGS=
@@ -115,41 +102,64 @@ tool-info.txt:
 	@cat $@
 
 ifdef GRAALVM_LLVM_HOME
-%.cpp.dir/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
-%.cc.dir/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
-%.C.dir/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
+%/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
 endif
 
-%.c.dir/ref.out: %.c $(BC_FILE)
+%.c.dir/ref.out: %.c
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.cpp.dir/ref.out: %.cpp $(BC_FILE)
+%.cpp.dir/ref.out: %.cpp
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.cc.dir/ref.out: %.cc $(BC_FILE)
+%.cc.dir/ref.out: %.cc
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.C.dir/ref.out: %.C $(BC_FILE)
+%.C.dir/ref.out: %.C
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.f.dir/ref.out: %.f $(BC_FILE)
+%.cint.dir/ref.out: %.cint
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+%.gcc.dir/ref.out: %.gcc
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+%.gpp.dir/ref.out: %.gpp
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+
+%.f.dir/ref.out: %.f
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.f90.dir/ref.out: %.f90 $(BC_FILE)
+%.f90.dir/ref.out: %.f90
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.f03.dir/ref.out: %.f03 $(BC_FILE)
+%.f03.dir/ref.out: %.f03
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -g -o $@ $^
 
 %.bc: %.dragonegg.ll
 	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
+
+%/gcc_O0.bc: %/gcc_O0.ll
+	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
+
+%_MISC_OPTS.bc: %.bc
+	$(QUIETLY) $(OPT) -o $@ -functionattrs -instcombine -always-inline -jump-threading -simplifycfg -mem2reg $<
+
+%_MEM2REG.bc: %.bc
+	$(QUIETLY) $(OPT) -o $@ -mem2reg $<
+
+%.ll.dir/ref.out: %.ll
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $@ $^
 
 define OPT_RULES
 %.c.dir/$(1).bc: %.c
@@ -165,6 +175,18 @@ define OPT_RULES
 	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
 
 %.C.dir/$(1).bc: %.C
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
+
+%.gcc.dir/$(1).bc: %.gcc
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANG) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
+
+%.cint.dir/$(1).bc: %.cint
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANG) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
+
+%.gpp.dir/$(1).bc: %.gpp
 	@mkdir -p $$(shell dirname $$@)
 	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
 
@@ -188,9 +210,16 @@ define OPT_RULES
 	@mkdir -p $$(shell dirname $$@)
 	$(QUIETLY) $(LLVM_AS) -o $$@ $$<
 
+%.c.dir/gcc_$(1).ll: %.c
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(DRAGONEGG_GCC) -w -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) $(CPPFLAGS) $(CFLAGS) -o $$@ $$<
+
 endef
 
 $(eval $(call OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
 $(eval $(call OPT_RULES,O1,-O1))
 $(eval $(call OPT_RULES,O2,-O2))
 $(eval $(call OPT_RULES,O3,-O3))
+
+# disable implicit rules
+.SUFFIXES:

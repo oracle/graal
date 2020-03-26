@@ -64,8 +64,13 @@ public class WasmResource {
                 return null;
             }
         }
-        byte[] contents = new byte[stream.available()];
-        new DataInputStream(stream).readFully(contents);
+        byte[] contents;
+        try {
+            contents = new byte[stream.available()];
+            new DataInputStream(stream).readFully(contents);
+        } finally {
+            stream.close();
+        }
         return contents;
     }
 
@@ -82,5 +87,9 @@ public class WasmResource {
             Assert.fail(String.format("Could not find test (neither .wasm or .wat): %s", baseName));
         }
         return null;
+    }
+
+    public static String getResourceIndex(String resourcePath) throws IOException {
+        return WasmResource.getResourceAsString(resourcePath + "/" + "wasm_test_index", true);
     }
 }

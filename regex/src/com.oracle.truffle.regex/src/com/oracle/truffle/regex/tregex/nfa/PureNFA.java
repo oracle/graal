@@ -40,33 +40,38 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import java.util.Collection;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.parser.Counter;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * A NFA that corresponds to the subtree of one {@link RegexASTSubtreeRootNode}.
  */
 public class PureNFA implements StateIndex<PureNFAState> {
 
-    private final short subTreeId;
-    private final boolean hasLookBehinds;
+    private final int subTreeId;
     @CompilationFinal(dimensions = 1) private final PureNFAState[] states;
     @CompilationFinal(dimensions = 1) private final PureNFATransition[] transitions;
 
-    public PureNFA(short subTreeId,
-                    Collection<PureNFAState> states,
+    public PureNFA(RegexASTSubtreeRootNode astSubRoot,
+                    PureNFAState[] states,
                     Counter.ThresholdCounter stateIDCounter,
                     Counter.ThresholdCounter transitionIDCounter) {
-        this.subTreeId = subTreeId;
+        this.subTreeId = astSubRoot.getSubTreeId();
         this.states = new PureNFAState[stateIDCounter.getCount()];
         this.transitions = new PureNFATransition[transitionIDCounter.getCount()];
-        boolean lookBehinds = false;
         for (PureNFAState s : states) {
+            if (s == null) {
+                continue;
+            }
             assert this.states[s.getId()] == null;
             this.states[s.getId()] = s;
             for (PureNFATransition t : s.getSuccessors()) {
@@ -74,19 +79,17 @@ public class PureNFA implements StateIndex<PureNFAState> {
                     // don't link the dummy initial state as predecessor of initial states.
                     t.getTarget().addPredecessor(t);
                 }
-                lookBehinds |= !t.getTraversedLookBehinds().isEmpty();
                 assert this.transitions[t.getId()] == null || (s.getId() == 0 && this.transitions[t.getId()] == t);
                 this.transitions[t.getId()] = t;
             }
         }
-        this.hasLookBehinds = lookBehinds;
     }
 
     /**
      * {@link RegexASTSubtreeRootNode#getSubTreeId() Subtree ID} of the
      * {@link RegexASTSubtreeRootNode} this NFA was generated from.
      */
-    public short getSubTreeId() {
+    public int getSubTreeId() {
         return subTreeId;
     }
 
@@ -100,6 +103,7 @@ public class PureNFA implements StateIndex<PureNFAState> {
      * unanchored final state, in that order. They serve as entry points for reverse DFAs.
      */
     public PureNFAState getDummyInitialState() {
+        assert states[0].getSuccessors().length == 2 && states[0].getPredecessors().length == 2;
         return states[0];
     }
 
@@ -107,12 +111,20 @@ public class PureNFA implements StateIndex<PureNFAState> {
         return getDummyInitialState().getSuccessors().length / 2;
     }
 
-    public PureNFATransition getAnchoredEntry(int i) {
-        return getDummyInitialState().getSuccessors()[i];
+    public PureNFATransition getAnchoredEntry() {
+        return getDummyInitialState().getSuccessors()[0];
     }
 
-    public PureNFATransition getUnAnchoredEntry(int i) {
-        return getDummyInitialState().getSuccessors()[getNumberOfEntryPoints() + i];
+    public PureNFATransition getUnAnchoredEntry() {
+        return getDummyInitialState().getSuccessors()[1];
+    }
+
+    public PureNFAState getUnAnchoredInitialState() {
+        return getUnAnchoredEntry().getTarget();
+    }
+
+    public PureNFAState getAnchoredInitialState() {
+        return getAnchoredEntry().getTarget();
     }
 
     public PureNFATransition getReverseAnchoredEntry() {
@@ -123,6 +135,22 @@ public class PureNFA implements StateIndex<PureNFAState> {
         return getDummyInitialState().getPredecessors()[1];
     }
 
+    public PureNFAState getUnAnchoredFinalState() {
+        return getReverseUnAnchoredEntry().getSource();
+    }
+
+    public PureNFAState getAnchoredFinalState() {
+        return getReverseAnchoredEntry().getSource();
+    }
+
+    public PureNFAState getUnAnchoredInitialState(boolean forward) {
+        return forward ? getUnAnchoredInitialState() : getUnAnchoredFinalState();
+    }
+
+    public PureNFAState getAnchoredInitialState(boolean forward) {
+        return forward ? getAnchoredInitialState() : getAnchoredFinalState();
+    }
+
     public PureNFAState[] getStates() {
         return states;
     }
@@ -131,17 +159,13 @@ public class PureNFA implements StateIndex<PureNFAState> {
         return transitions;
     }
 
-    public boolean hasLookBehinds() {
-        return hasLookBehinds;
-    }
-
     @Override
     public int getNumberOfStates() {
         return states.length;
     }
 
     @Override
-    public short getId(PureNFAState state) {
+    public int getId(PureNFAState state) {
         assert states[state.getId()] == state;
         return state.getId();
     }
@@ -149,5 +173,22 @@ public class PureNFA implements StateIndex<PureNFAState> {
     @Override
     public PureNFAState getState(int id) {
         return states[id];
+    }
+
+    public void materializeGroupBoundaries() {
+        for (PureNFATransition t : transitions) {
+            if (t != null) {
+                t.getGroupBoundaries().materializeArrays();
+            }
+        }
+    }
+
+    @TruffleBoundary
+    public JsonValue toJson(RegexAST ast) {
+        return Json.obj(Json.prop("states",
+                        Arrays.stream(states).map(x -> x == null || x == getDummyInitialState() || (x.isAnchoredFinalState() && !x.hasPredecessors()) ? Json.nullValue() : x.toJson(ast))),
+                        Json.prop("transitions", Arrays.stream(transitions).map(x -> x == null || x.getSource() == getDummyInitialState() ? Json.nullValue() : x.toJson(ast))),
+                        Json.prop("anchoredEntry", Json.array(Json.val(getAnchoredInitialState().getId()))),
+                        Json.prop("unAnchoredEntry", Json.array(Json.val(getUnAnchoredInitialState().getId()))));
     }
 }

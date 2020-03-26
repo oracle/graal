@@ -54,11 +54,10 @@ import org.graalvm.word.PointerBase;
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.ForceFixedRegisterReads;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.FeebleReferenceList;
+import com.oracle.svm.core.heap.ReferenceQueueInternals;
 import com.oracle.svm.core.jdk.ManagementSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -312,7 +311,6 @@ public abstract class JavaThreads {
     }
 
     @Uninterruptible(reason = "Called during isolate initialization")
-    @ForceFixedRegisterReads
     public void initializeIsolate() {
         /* The thread that creates the isolate is considered the "main" thread. */
         currentThread.set(mainThread);
@@ -537,7 +535,7 @@ public abstract class JavaThreads {
     protected abstract void yield();
 
     protected static void interruptVMCondVars() {
-        FeebleReferenceList.interruptWaiters();
+        ReferenceQueueInternals.interruptWaiters();
     }
 
     static StackTraceElement[] getStackTrace(Thread thread) {

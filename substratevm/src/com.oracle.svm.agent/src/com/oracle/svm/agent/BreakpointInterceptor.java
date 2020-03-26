@@ -898,34 +898,6 @@ final class BreakpointInterceptor {
         }
     }
 
-    private static final String DEFAULT_PACKAGE_INFO_CLASS_NAME = "java.lang.Package$1PackageInfoProxy";
-
-    private static boolean getPackageInfo(JNIEnvironment jni, Breakpoint bp) {
-        // All usages of getPackageInfo are a call away from the user API in both JDK8 and JDK11
-        JNIMethodId userCallerMethod = getCallerMethod(2);
-        JNIObjectHandle self = getObjectArgument(0);
-        JNIObjectHandle userCallerClass = getMethodDeclaringClass(userCallerMethod);
-        JNIObjectHandle returnResult = Support.callObjectMethod(jni, self, bp.method);
-
-        if (clearException(jni)) {
-            returnResult = nullHandle();
-        }
-
-        // Find the className for the returned class in getPackageInfo
-        String className = getClassNameOrNull(jni, returnResult);
-        boolean isValidClass = className != null && !className.equals(DEFAULT_PACKAGE_INFO_CLASS_NAME);
-
-        // Verify for the class that was just loaded
-        boolean allowed = (accessVerifier == null || accessVerifier.verifyGetPackageInfo(jni, userCallerClass, className));
-
-        traceBreakpoint(jni, bp.clazz, nullHandle(), userCallerClass, bp.specification.methodName, allowed && isValidClass, className);
-        if (!allowed) {
-            jvmtiFunctions().ForceEarlyReturnObject().invoke(jvmtiEnv(), nullHandle(), handles().defaultPackageInfoClass);
-        }
-
-        return allowed;
-    }
-
     private static String asInternalSignature(Object paramTypesArray) {
         if (paramTypesArray instanceof Object[]) {
             StringBuilder sb = new StringBuilder("(");
@@ -1232,7 +1204,6 @@ final class BreakpointInterceptor {
                     brk("java/lang/ClassLoader", "getResources", "(Ljava/lang/String;)Ljava/util/Enumeration;", BreakpointInterceptor::getResources),
                     brk("java/lang/ClassLoader", "getSystemResource", "(Ljava/lang/String;)Ljava/net/URL;", BreakpointInterceptor::getSystemResource),
                     brk("java/lang/ClassLoader", "getSystemResources", "(Ljava/lang/String;)Ljava/util/Enumeration;", BreakpointInterceptor::getSystemResources),
-                    brk("java/lang/Package", "getPackageInfo", "()Ljava/lang/Class;", BreakpointInterceptor::getPackageInfo),
                     /*
                      * NOTE: get(System)ResourceAsStream() generallys call get(System)Resource(), no
                      * additional breakpoints necessary

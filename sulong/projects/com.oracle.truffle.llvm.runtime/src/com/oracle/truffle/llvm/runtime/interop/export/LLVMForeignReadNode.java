@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.export;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
@@ -42,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
+@ImportStatic(CommonNodeFactory.class)
 public abstract class LLVMForeignReadNode extends LLVMNode {
 
     static final int VALUE_KIND_COUNT = LLVMInteropType.ValueKind.values().length;
@@ -56,22 +56,10 @@ public abstract class LLVMForeignReadNode extends LLVMNode {
 
     @Specialization(guards = "type.getKind() == cachedKind", limit = "VALUE_KIND_COUNT")
     static Object doValue(LLVMPointer ptr, LLVMInteropType.Value type,
-                    @Cached("type.getKind()") @SuppressWarnings(value = "unused") LLVMInteropType.ValueKind cachedKind,
-                    @Cached("createLoadNode(cachedKind)") LLVMLoadNode load,
+                    @Cached(value = "type.getKind()", allowUncached = true) @SuppressWarnings(value = "unused") LLVMInteropType.ValueKind cachedKind,
+                    @Cached(parameters = "cachedKind") LLVMLoadNode load,
                     @Cached(parameters = "cachedKind.foreignToLLVMType") LLVMDataEscapeNode dataEscape) {
         Object ret = load.executeWithTarget(ptr);
         return dataEscape.executeWithType(ret, type.getBaseType());
-    }
-
-    @Specialization(replaces = "doValue")
-    @TruffleBoundary
-    Object doValueUncached(LLVMPointer ptr, LLVMInteropType.Value type) {
-        LLVMInteropType.ValueKind kind = type.getKind();
-        return doValue(ptr, type, kind, createLoadNode(kind), LLVMDataEscapeNode.getUncached(kind.foreignToLLVMType));
-    }
-
-    LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind) {
-        CompilerAsserts.neverPartOfCompilation();
-        return CommonNodeFactory.createLoadNode(kind);
     }
 }

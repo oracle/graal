@@ -24,10 +24,9 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFRetain;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -39,9 +38,9 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
-import com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringRef;
+import com.oracle.svm.core.posix.headers.darwin.Foundation;
 
+@CLibrary(value = "darwin", requireStatic = true)
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
@@ -69,30 +68,16 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
             return osVersionValue;
         }
 
-        /* On OSX Java returns the ProductVersion instead of kernel release info. */
-        CoreFoundation.CFDictionaryRef dict = CoreFoundation._CFCopyServerVersionDictionary();
-        if (dict.isNull()) {
-            dict = CoreFoundation._CFCopySystemVersionDictionary();
-        }
-        if (dict.isNull()) {
+        Foundation.NSOperatingSystemVersion osVersion = StackValue.get(Foundation.NSOperatingSystemVersion.class);
+        Foundation.operatingSystemVersion(osVersion);
+        if (osVersion.isNull()) {
             return osVersionValue = "Unknown";
-        }
-        CoreFoundation.CFStringRef dictKeyRef = DarwinCoreFoundationUtils.toCFStringRef("MacOSXProductVersion");
-        CoreFoundation.CFStringRef dictValue = CoreFoundation.CFDictionaryGetValue(dict, dictKeyRef);
-        CoreFoundation.CFRelease(dictKeyRef);
-        if (dictValue.isNull()) {
-            dictKeyRef = DarwinCoreFoundationUtils.toCFStringRef("ProductVersion");
-            dictValue = CoreFoundation.CFDictionaryGetValue(dict, dictKeyRef);
-            CoreFoundation.CFRelease(dictKeyRef);
-        }
-        if (dictValue.isNonNull()) {
-            dictValue = (CFStringRef) CFRetain(dictValue);
-            osVersionValue = DarwinCoreFoundationUtils.fromCFStringRef(dictValue);
-            CoreFoundation.CFRelease(dictValue);
         } else {
-            osVersionValue = "Unknown";
+            long major = osVersion.getMajorVersion();
+            long minor = osVersion.getMinorVersion();
+            long patch = osVersion.getPatchVersion();
+            return osVersionValue = major + "." + minor + "." + patch;
         }
-        return osVersionValue;
     }
 }
 

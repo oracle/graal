@@ -155,6 +155,7 @@ public final class FileDownloader {
     long received;
     char signChar;
     MessageDigest fileDigest;
+    byte[] receivedDigest;
 
     public File getLocalFile() {
         return localFile;
@@ -231,11 +232,22 @@ public final class FileDownloader {
         return fileDigest.digest();
     }
 
+    public byte[] getReceivedDigest() throws IOException {
+        if (receivedDigest == null) {
+            if (localFile == null) {
+                return null;
+            }
+            receivedDigest = SystemUtils.computeFileDigest(localFile.toPath(), getDigestAlgorithm());
+        }
+        return receivedDigest == null ? null : receivedDigest.clone();
+    }
+
     void verifyDigest() throws IOException {
         if (shaDigest == null || /* for testing */ shaDigest.length == 0) {
             return;
         }
         byte[] computed = fileDigest.digest();
+        this.receivedDigest = computed;
         if (Arrays.equals(computed, shaDigest)) {
             return;
         }

@@ -66,7 +66,7 @@ public class DFAExport {
     public static void exportDot(DFAGenerator dfaGenerator, TruffleFile path, boolean shortLabels) {
         DFAStateNodeBuilder[] entryStates = dfaGenerator.getEntryStates();
         Map<DFAStateNodeBuilder, DFAStateNodeBuilder> stateMap = dfaGenerator.getStateMap();
-        TreeSet<Short> entryIDs = new TreeSet<>();
+        TreeSet<Integer> entryIDs = new TreeSet<>();
         for (DFAStateNodeBuilder s : entryStates) {
             if (s != null) {
                 entryIDs.add(s.getId());

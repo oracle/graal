@@ -59,7 +59,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.test.options.WasmTestOptions;
 import org.graalvm.wasm.utils.cases.WasmCase;
@@ -134,9 +133,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             resetStatus(oldOut, PHASE_PARSE_ICON, "parsing");
 
             try {
-                for (Source source : sources) {
-                    context.eval(source);
-                }
+                sources.forEach(context::eval);
             } catch (PolyglotException e) {
                 validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
                 return;
@@ -238,14 +235,18 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
     private WasmTestStatus runTestCase(WasmCase testCase) {
         try {
-            Map<String, byte[]> binaries = testCase.createBinaries();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
+            contextBuilder.allowExperimentalOptions(true);
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
             }
 
-            contextBuilder.allowExperimentalOptions(true);
+            if (WasmTestOptions.STORE_CONSTANTS_POLICY != null && !WasmTestOptions.STORE_CONSTANTS_POLICY.equals("")) {
+                contextBuilder.option("wasm.StoreConstantsPolicy", WasmTestOptions.STORE_CONSTANTS_POLICY);
+                System.out.println("wasm.StoreConstantsPolicy: " + WasmTestOptions.STORE_CONSTANTS_POLICY);
+            }
+
             contextBuilder.option("wasm.Builtins", includedExternalModules());
             String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {
@@ -253,13 +254,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             }
 
             Context context;
-
-            ArrayList<Source> sources = new ArrayList<>();
-            for (Map.Entry<String, byte[]> entry : binaries.entrySet()) {
-                Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(entry.getValue()), entry.getKey());
-                Source source = sourceBuilder.build();
-                sources.add(source);
-            }
+            ArrayList<Source> sources = testCase.getSources();
 
             // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
             int interpreterIterations = Integer.parseInt(testCase.options().getProperty("interpreter-iterations", String.valueOf(DEFAULT_INTERPRETER_ITERATIONS)));
@@ -304,10 +299,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     }
 
     private static void validateThrown(WasmCaseData data, WasmCaseData.ErrorType phase, PolyglotException e) throws PolyglotException {
-        if (data.expectedErrorMessage() == null) {
+        if (data.expectedErrorMessage() == null || !data.expectedErrorMessage().equals(e.getMessage())) {
             throw e;
         }
-        Assert.assertEquals("Unexpected error message.", data.expectedErrorMessage(), e.getMessage());
         Assert.assertEquals("Unexpected error phase (should not have been thrown during the running phase).", data.expectedErrorTime(), phase);
     }
 

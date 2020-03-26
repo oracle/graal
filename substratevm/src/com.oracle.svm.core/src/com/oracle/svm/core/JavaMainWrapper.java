@@ -24,50 +24,50 @@
  */
 package com.oracle.svm.core;
 
+//Checkstyle: allow reflection
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-//Checkstyle: allow reflection
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologue;
 import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Counter;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.Architecture;
 
 @InternalVMMethod
 public class JavaMainWrapper {
-
     /* C runtime argument count and argument vector */
-    private static int argc;
-    private static CCharPointerPointer argv;
-    /* Remember original argument vector length */
+    public static final CGlobalData<CArguments> ARGUMENTS = CGlobalDataFactory.createBytes(() -> SizeOf.get(CArguments.class));
 
     static {
         /* WordFactory.boxFactory is initialized by the static initializer of Word. */
@@ -102,8 +102,9 @@ public class JavaMainWrapper {
         }
 
         public List<String> getInputArguments() {
-            if (argv.isNonNull() && argc > 0) {
-                String[] unmodifiedArgs = SubstrateUtil.getArgs(argc, argv);
+            CArguments args = ARGUMENTS.get();
+            if (args.getArgv().isNonNull() && args.getArgc() > 0) {
+                String[] unmodifiedArgs = SubstrateUtil.getArgs(args.getArgc(), args.getArgv());
                 List<String> inputArgs = new ArrayList<>(Arrays.asList(unmodifiedArgs));
 
                 if (mainArgs != null) {
@@ -121,9 +122,6 @@ public class JavaMainWrapper {
      */
     @AlwaysInline(value = "Single callee from the main entry point.")
     public static int runCore(int paramArgc, CCharPointerPointer paramArgv) {
-        JavaMainWrapper.argc = paramArgc;
-        JavaMainWrapper.argv = paramArgv;
-
         Architecture imageArchitecture = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
         CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
         cpuFeatureAccess.verifyHostSupportsArchitecture(imageArchitecture);
@@ -181,9 +179,20 @@ public class JavaMainWrapper {
     }
 
     @CEntryPoint
-    @CEntryPointOptions(prologue = EnterCreateIsolatePrologue.class, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterCreateIsolateWithCArgumentsPrologue.class, include = CEntryPointOptions.NotIncludedAutomatically.class)
     public static int run(int paramArgc, CCharPointerPointer paramArgv) {
         return runCore(paramArgc, paramArgv);
+    }
+
+    private static boolean isArgumentBlockSupported() {
+        if (!Platform.includedIn(Platform.LINUX.class) && !Platform.includedIn(Platform.DARWIN.class)) {
+            return false;
+        }
+        CArguments args = ARGUMENTS.get();
+        if (args.getArgv().isNull() || args.getArgc() <= 0) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -200,22 +209,28 @@ public class JavaMainWrapper {
      * @return maximum length of C chars that can be stored in the program argument part of the
      *         contiguous memory block without writing into the environment variables part.
      */
-    public static long getCRuntimeArgumentBlockLength() {
-        VMError.guarantee(argv.notEqual(WordFactory.zero()) && argc > 0, "Requires JavaMainWrapper.run(int, CCharPointerPointer) entry point!");
+    public static int getCRuntimeArgumentBlockLength() {
+        if (!isArgumentBlockSupported()) {
+            return -1;
+        }
 
-        CCharPointer firstArgPos = argv.read(0);
+        CArguments args = ARGUMENTS.get();
+        CCharPointer firstArgPos = args.getArgv().read(0);
         if (argvLength.equal(WordFactory.zero())) {
             // Get char* to last program argument
-            CCharPointer lastArgPos = argv.read(argc - 1);
+            CCharPointer lastArgPos = args.getArgv().read(args.getArgc() - 1);
             // Determine the length of the last program argument
             UnsignedWord lastArgLength = SubstrateUtil.strlen(lastArgPos);
             // Determine maximum C string length that can be stored in the program argument part
             argvLength = WordFactory.unsigned(lastArgPos.rawValue()).add(lastArgLength).subtract(WordFactory.unsigned(firstArgPos.rawValue()));
         }
-        return argvLength.rawValue();
+        return Math.toIntExact(argvLength.rawValue());
     }
 
     public static boolean setCRuntimeArgument0(String arg0) {
+        if (!isArgumentBlockSupported()) {
+            throw new UnsupportedOperationException("Argument vector support not available");
+        }
         boolean arg0truncation = false;
 
         try (CCharPointerHolder arg0Pin = CTypeConversion.toCString(arg0)) {
@@ -229,7 +244,7 @@ public class JavaMainWrapper {
             }
             arg0truncation = arg0Length.aboveThan(origLength);
 
-            CCharPointer firstArgPos = argv.read(0);
+            CCharPointer firstArgPos = ARGUMENTS.get().getArgv().read(0);
             // Copy the new arg0 to the original argv[0] position
             MemoryUtil.copyConjointMemoryAtomic(WordFactory.pointer(arg0Pointer.rawValue()), WordFactory.pointer(firstArgPos.rawValue()), newArgLength);
             // Zero-out the remaining space
@@ -241,58 +256,34 @@ public class JavaMainWrapper {
     }
 
     public static String getCRuntimeArgument0() {
-        return CTypeConversion.toJavaString(argv.read(0));
+        if (!isArgumentBlockSupported()) {
+            throw new UnsupportedOperationException("Argument vector support not available");
+        }
+        return CTypeConversion.toJavaString(ARGUMENTS.get().getArgv().read(0));
     }
 
-    @AutomaticFeature
-    public static class ExposeCRuntimeArgumentBlockFeature implements Feature {
-        @Override
-        public List<Class<? extends Feature>> getRequiredFeatures() {
-            return Arrays.asList(RuntimeFeature.class);
-        }
-
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            RuntimeSupport rs = RuntimeSupport.getRuntimeSupport();
-            rs.addCommandPlugin(new GetCRuntimeArgumentBlockLengthCommand());
-            rs.addCommandPlugin(new SetCRuntimeArgument0Command());
-            rs.addCommandPlugin(new GetCRuntimeArgument0Command());
+    private static class EnterCreateIsolateWithCArgumentsPrologue {
+        @SuppressWarnings("unused")
+        public static void enter(int paramArgc, CCharPointerPointer paramArgv) {
+            CArguments args = ARGUMENTS.get();
+            args.setArgc(paramArgc);
+            args.setArgv(paramArgv);
+            EnterCreateIsolatePrologue.enter();
         }
     }
 
-    private static class GetCRuntimeArgumentBlockLengthCommand implements CompilerCommandPlugin {
-        @Override
-        public String name() {
-            return "com.oracle.svm.core.JavaMainWrapper.getCRuntimeArgumentBlockLength()long";
-        }
+    @RawStructure
+    public interface CArguments extends PointerBase {
+        @RawField
+        int getArgc();
 
-        @Override
-        public Object apply(Object[] args) {
-            return getCRuntimeArgumentBlockLength();
-        }
-    }
+        @RawField
+        void setArgc(int value);
 
-    private static class SetCRuntimeArgument0Command implements CompilerCommandPlugin {
-        @Override
-        public String name() {
-            return "com.oracle.svm.core.JavaMainWrapper.setCRuntimeArgument0(String)boolean";
-        }
+        @RawField
+        CCharPointerPointer getArgv();
 
-        @Override
-        public Object apply(Object[] args) {
-            return setCRuntimeArgument0((String) args[0]);
-        }
-    }
-
-    private static class GetCRuntimeArgument0Command implements CompilerCommandPlugin {
-        @Override
-        public String name() {
-            return "com.oracle.svm.core.JavaMainWrapper.getCRuntimeArgument0()String";
-        }
-
-        @Override
-        public Object apply(Object[] args) {
-            return getCRuntimeArgument0();
-        }
+        @RawField
+        void setArgv(CCharPointerPointer value);
     }
 }

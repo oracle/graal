@@ -57,7 +57,7 @@ public class FileIterable extends AbstractIterable {
 
             @Override
             public ComponentParam next() {
-                return new FileComponent(getFile(input.requiredParameter()), isVerifyJars(), feedback);
+                return new FileComponent(getFile(input.requiredParameter()), isVerifyJars(), null, feedback);
             }
         };
     }
@@ -67,10 +67,21 @@ public class FileIterable extends AbstractIterable {
         private MetadataLoader loader;
         private final boolean verifyJars;
         private final Feedback feedback;
+        private final String serial;
 
-        public FileComponent(File localFile, boolean verifyJars, Feedback feedback) {
+        /**
+         * Creates a file-based component.
+         * 
+         * @param localFile local file to load from
+         * @param verifyJars true, if the jar signature should be verified
+         * @param serial serial / tag of the component; if {@code null}, will be computed as sha256
+         *            hash.
+         * @param feedback output
+         */
+        public FileComponent(File localFile, boolean verifyJars, String serial, Feedback feedback) {
             this.localFile = localFile;
             this.verifyJars = verifyJars;
+            this.serial = serial;
             this.feedback = feedback.withBundle(FileComponent.class);
         }
 
@@ -80,6 +91,7 @@ public class FileIterable extends AbstractIterable {
                 return loader;
             }
             byte[] fileStart = null;
+            String ser;
 
             if (localFile.isFile()) {
                 try (ReadableByteChannel ch = FileChannel.open(localFile.toPath(), StandardOpenOption.READ)) {
@@ -87,12 +99,18 @@ public class FileIterable extends AbstractIterable {
                     ch.read(bb);
                     fileStart = bb.array();
                 }
+                if (serial != null) {
+                    ser = serial;
+                } else {
+                    ser = SystemUtils.fingerPrint(SystemUtils.computeFileDigest(localFile.toPath(), null), false);
+                }
             } else {
                 fileStart = new byte[]{0, 0, 0, 0, 0, 0, 0, 0};
+                ser = "";
             }
 
             for (ComponentArchiveReader provider : ServiceLoader.load(ComponentArchiveReader.class)) {
-                MetadataLoader ldr = provider.createLoader(localFile.toPath(), fileStart, feedback, verifyJars);
+                MetadataLoader ldr = provider.createLoader(localFile.toPath(), fileStart, ser, feedback, verifyJars);
                 if (ldr != null) {
                     loader = ldr;
                     return ldr;

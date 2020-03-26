@@ -2184,6 +2184,9 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         @TruffleBoundary
         public <S> S lookup(InstrumentInfo instrument, Class<S> type) {
+            if (isPreInitialization()) {
+                throw new IllegalStateException("Instrument lookup is not allowed during context pre-initialization.");
+            }
             return LanguageAccessor.engineAccess().lookup(instrument, type);
         }
 
@@ -2208,6 +2211,21 @@ public abstract class TruffleLanguage<C> {
             }
             Objects.requireNonNull(language);
             return LanguageAccessor.engineAccess().lookupService(polyglotLanguageContext, language, this.getSpi().languageInfo, type);
+        }
+
+        /**
+         * Ensures that the target language is initialized. This method firstly verifies that the
+         * target language is accessible from this language. If not the {@link SecurityException} is
+         * thrown. Then the target language initialization is performed if not already done.
+         *
+         * @param targetLanguage the language to initialize
+         * @throws SecurityException if an access to {@code targetLanguage} is not permitted
+         * @since 20.1.0
+         */
+        @TruffleBoundary
+        public boolean initializeLanguage(LanguageInfo targetLanguage) {
+            Objects.requireNonNull(targetLanguage, "TargetLanguage must be non null.");
+            return LanguageAccessor.engineAccess().initializeLanguage(polyglotLanguageContext, targetLanguage);
         }
 
         /**
@@ -2769,6 +2787,15 @@ public abstract class TruffleLanguage<C> {
                 }
             } else {
                 return initialized;
+            }
+        }
+
+        boolean isVisible(Object value) {
+            Object c = getLanguageContext();
+            if (c != UNSET_CONTEXT) {
+                return getSpi().isVisible(c, value);
+            } else {
+                return false;
             }
         }
 

@@ -323,8 +323,13 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public String toStringIfVisible(TruffleLanguage.Env env, Object value, boolean checkVisibility) {
-            return env.toStringIfVisible(value, checkVisibility);
+        public boolean isVisible(TruffleLanguage.Env env, Object value) {
+            return env.isVisible(value);
+        }
+
+        @Override
+        public String legacyToString(TruffleLanguage.Env env, Object value) {
+            return env.toStringIfVisible(value, false);
         }
 
         @Override
@@ -478,9 +483,9 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public boolean isDefaultFileSystem(Object fileSystemContext) {
+        public boolean hasAllAccess(Object fileSystemContext) {
             TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
-            return engineAccess().isDefaultFileSystem(ctx.fileSystem);
+            return engineAccess().hasAllAccess(ctx.fileSystem);
         }
 
         @Override

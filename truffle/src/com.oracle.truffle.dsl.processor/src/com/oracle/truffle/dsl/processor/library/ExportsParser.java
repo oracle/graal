@@ -585,8 +585,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     continue;
                 }
                 TypeMirror delegateType = delegateVar.asType();
-                TypeMirror exportsReceiverType = lib.getLibrary().getExportsReceiverType();
-                if (!ElementUtils.isAssignable(exportsReceiverType, delegateType)) {
+                TypeMirror exportsReceiverType = lib.getLibrary().getSignatureReceiverType();
+                if (!ElementUtils.isAssignable(delegateType, exportsReceiverType)) {
                     lib.addError(delegateToValue, "The type of export delegation field '%s' is not assignable to the expected type '%s'. " +
                                     "Change the field type to '%s' to resolve this.",
                                     ElementUtils.getSimpleName(receiverClass) + "." + delegateTo,
@@ -1039,6 +1039,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         } else {
             clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateUncached));
         }
+        transferReportPolymorphismAnnotations(nodeType, clonedType);
 
         NodeData parsedNodeData = NodeParser.createExportParser(
                         exportedMessage.getExportsLibrary().getLibrary().getTemplateType().asType(),
@@ -1049,6 +1050,17 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
         return parsedNodeData;
 
+    }
+
+    private void transferReportPolymorphismAnnotations(TypeElement nodeType, CodeTypeElement clonedType) {
+        AnnotationMirror reportPolymorphism = findAnnotationMirror(nodeType, types.ReportPolymorphism);
+        if (reportPolymorphism != null) {
+            clonedType.getAnnotationMirrors().add(reportPolymorphism);
+        }
+        AnnotationMirror reportPolymorphismExclude = findAnnotationMirror(nodeType, types.ReportPolymorphism_Exclude);
+        if (reportPolymorphismExclude != null) {
+            clonedType.getAnnotationMirrors().add(reportPolymorphismExclude);
+        }
     }
 
     private static boolean isNodeElement(Element member) {

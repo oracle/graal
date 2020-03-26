@@ -374,6 +374,7 @@ meth public !varargs com.oracle.truffle.api.io.TruffleProcessBuilder newProcessB
 meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.InstrumentInfo,java.lang.Class<{%%0}>)
 meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Class<{%%0}>)
 meth public <%0 extends java.lang.Object> {%%0} lookup(java.lang.Class<{%%0}>)
+meth public boolean initializeLanguage(com.oracle.truffle.api.nodes.LanguageInfo)
 meth public boolean isCreateProcessAllowed()
 meth public boolean isCreateThreadAllowed()
 meth public boolean isHostException(java.lang.Throwable)

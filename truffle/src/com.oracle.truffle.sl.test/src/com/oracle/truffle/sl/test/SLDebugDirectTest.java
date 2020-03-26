@@ -393,7 +393,7 @@ public class SLDebugDirectTest {
                 }
                 if (expectedValue != UNASSIGNED) {
                     Assert.assertNotNull(expectedIdentifier, slot);
-                    final String slotValue = slot.as(String.class);
+                    final String slotValue = slot.toDisplayString();
                     Assert.assertEquals(expectedValue, slotValue);
                 } else {
                     Assert.assertNull(expectedIdentifier, slot);

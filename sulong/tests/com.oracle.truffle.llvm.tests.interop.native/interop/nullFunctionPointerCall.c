@@ -30,7 +30,11 @@
 
 #include <stdio.h>
 
-void call_and_print(const char *(*fun)()) {
+/* The noinline attribute causes clang to not realize that calling this function with NULL
+ * would result in undefined behavior and replacing the call to it in main() with an
+ * "unreachable" instruction.
+ */
+__attribute__((noinline)) void call_and_print(const char *(*fun)()) {
   printf("%s\n", fun());
 }
 

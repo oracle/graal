@@ -29,6 +29,9 @@ import org.graalvm.compiler.options.OptionKey;
 
 public class AnalysisReportsOptions {
 
+    @Option(help = "Print analysis results statistics.")//
+    public static final OptionKey<Boolean> PrintAnalysisStatistics = new OptionKey<>(false);
+
     @Option(help = "Print analysis call tree, a breadth-first tree reduction of the call graph.")//
     public static final OptionKey<Boolean> PrintAnalysisCallTree = new OptionKey<>(false);
 

@@ -139,7 +139,7 @@ public class StateSetTest {
         }
 
         @Override
-        public short getId(ShortState state) {
+        public int getId(ShortState state) {
             return state.getId();
         }
 

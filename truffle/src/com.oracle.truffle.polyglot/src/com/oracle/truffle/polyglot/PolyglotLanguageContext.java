@@ -497,6 +497,13 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
+    void close() {
+        assert Thread.holdsLock(context);
+        assert !context.isActive();
+        lazy = null;
+        env = null;
+    }
+
     private static String verifyServices(LanguageInfo info, List<Object> registeredServices, Collection<String> expectedServices) {
         for (String expectedService : expectedServices) {
             boolean found = false;
@@ -590,11 +597,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     @Override
     public PolyglotEngineImpl getEngine() {
         return context.getEngine();
-    }
-
-    void preInitialize() {
-        ensureInitialized(null);
-        LOG.log(Level.FINE, "Pre-initialized context for language: {0}", language.getId());
     }
 
     boolean patch(PolyglotContextConfig newConfig) {

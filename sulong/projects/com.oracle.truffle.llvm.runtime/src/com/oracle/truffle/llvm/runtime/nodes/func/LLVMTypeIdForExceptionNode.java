@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,32 +29,24 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class LLVMTypeIdForExceptionNode extends LLVMExpressionNode {
+@NodeChild(value = "thrownTypeID", type = LLVMExpressionNode.class)
+public abstract class LLVMTypeIdForExceptionNode extends LLVMExpressionNode {
 
-    @Child private LLVMExpressionNode thrownTypeID;
     @Child private ToComparableValue toComparableValue;
 
-    public LLVMTypeIdForExceptionNode(LLVMExpressionNode thrownTypeID) {
-        this.thrownTypeID = thrownTypeID;
+    public LLVMTypeIdForExceptionNode() {
         this.toComparableValue = ToComparableValueNodeGen.create();
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        try {
-            LLVMPointer pointer = thrownTypeID.executeLLVMPointer(frame);
-            return (int) toComparableValue.executeWithTarget(pointer);
-        } catch (UnexpectedResultException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
+    @Specialization
+    public Object doGeneric(LLVMPointer thrownTypeID) {
+        return (int) toComparableValue.executeWithTarget(thrownTypeID);
     }
 }

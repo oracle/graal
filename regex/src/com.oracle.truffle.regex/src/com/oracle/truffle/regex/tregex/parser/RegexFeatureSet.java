@@ -57,7 +57,7 @@ public interface RegexFeatureSet {
     /**
      * Tests whether or not a regular expression is supported. Returns a descriptive error message
      * if it is not.
-     * 
+     *
      * @param source the regular expression whose features are in question
      * @param features a record of features detected in the expression by the parser that validated
      *            its well-formedness
@@ -81,21 +81,6 @@ public interface RegexFeatureSet {
     RegexFeatureSet DEFAULT = (RegexSource source, RegexFeatures features) -> Optional.empty();
 
     RegexFeatureSet TREGEX = (RegexSource source, RegexFeatures features) -> {
-        if (features.hasBackReferences()) {
-            return Optional.of("backreferences not supported");
-        }
-        if (features.hasLargeCountedRepetitions()) {
-            return Optional.of("bounds of range quantifier too high");
-        }
-        if (features.hasNegativeLookAheadAssertions()) {
-            return Optional.of("negative lookahead assertions not supported");
-        }
-        if (features.hasNonLiteralLookBehindAssertions()) {
-            return Optional.of("body of lookbehind assertion too complex");
-        }
-        if (features.hasNegativeLookBehindAssertions()) {
-            return Optional.of("negative lookbehind assertions not supported");
-        }
         return Optional.empty();
     };
 

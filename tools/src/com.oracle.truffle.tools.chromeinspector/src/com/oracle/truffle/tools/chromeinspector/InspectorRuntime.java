@@ -250,7 +250,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                             suspendedInfo.refreshFrames();
                         }
                         if (returnByValue) {
-                            result = RemoteObject.createJSONResultValue(value, context.getErr());
+                            result = RemoteObject.createJSONResultValue(value, context.areToStringSideEffectsAllowed(), context.getErr());
                         } else {
                             RemoteObject ro = new RemoteObject(value, generatePreview, context);
                             context.getRemoteObjectsHandler().register(ro, objectGroup);
@@ -684,7 +684,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                                     context.getRemoteObjectsHandler().register(ro, objectGroup);
                                     result = ro.toJSON();
                                 } else {
-                                    result = RemoteObject.createJSONResultValue(v, context.getErr());
+                                    result = RemoteObject.createJSONResultValue(v, context.areToStringSideEffectsAllowed(), context.getErr());
                                 }
                             }
                             return result;

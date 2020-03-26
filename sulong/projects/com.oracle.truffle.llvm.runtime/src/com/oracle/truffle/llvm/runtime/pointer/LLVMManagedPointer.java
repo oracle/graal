@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,6 +59,11 @@ public interface LLVMManagedPointer extends LLVMPointer {
     @Override
     LLVMManagedPointer copy();
 
+    @Override
+    @Deprecated
+    @SuppressWarnings("deprecation")
+    boolean equals(Object obj);
+
     /**
      * Increment this pointer. The result has the same {@link #getObject base object}, and the
      * {@link #getOffset offset} is incremented.
@@ -82,6 +87,7 @@ public interface LLVMManagedPointer extends LLVMPointer {
      * Create a new managed pointer, pointing to a particular offset of a managed object.
      */
     static LLVMManagedPointer create(Object object, long offset) {
+        assert object != null;
         return new LLVMPointerImpl(object, offset, null);
     }
 

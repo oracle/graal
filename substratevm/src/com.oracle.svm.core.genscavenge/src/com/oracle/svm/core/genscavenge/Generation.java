@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
@@ -68,13 +69,11 @@ public abstract class Generation {
      * had its interior pointers visited.
      *
      * @param original The original Object to be promoted.
+     * @param header The header of the object that should be promoted.
      * @return The promoted Object, either the original if promotion was done by HeapChunk motion,
      *         or a new Object if promotion was done by copying.
      */
-    protected abstract Object promoteObject(Object original);
-
-    /** Returns true if the space is a valid Space in this generation, else false. */
-    protected abstract boolean isValidSpace(Space space);
+    protected abstract Object promoteObject(Object original, UnsignedWord header);
 
     protected abstract boolean verify(HeapVerifier.Occasion occasion);
 }

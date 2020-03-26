@@ -71,7 +71,11 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 public final class LiteralRegexEngine {
 
     public static LiteralRegexExecRootNode createNode(RegexLanguage language, RegexAST ast) {
-        if (ast.isLiteralString()) {
+        /*
+         * Bail out if the search string would be huge. This can occur with expressions like
+         * /a{1000000}/.
+         */
+        if (ast.isLiteralString() && (!ast.getProperties().hasQuantifiers() || ast.getRoot().getMinPath() <= Short.MAX_VALUE)) {
             return createLiteralNode(language, ast);
         } else {
             return null;
