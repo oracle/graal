@@ -1405,13 +1405,17 @@ final class JDWP {
                 if (refType == null) {
                     return new CommandResult(reply);
                 }
+                long methodId = input.readLong();
+                if (methodId == 0) {
+                    reply.writeBoolean(true);
+                } else {
+                    MethodRef method = verifyMethodRef(methodId, reply, context);
 
-                MethodRef method = verifyMethodRef(input.readLong(), reply, context);
-
-                if (method == null) {
-                    return new CommandResult(reply);
+                    if (method == null) {
+                        return new CommandResult(reply);
+                    }
+                    reply.writeBoolean(method.isObsolete());
                 }
-                reply.writeBoolean(method.isObsolete());
                 return new CommandResult(reply);
             }
         }
