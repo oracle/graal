@@ -87,26 +87,27 @@ final class CXXDemangler {
     }
 
     /**
-     * Mangled C++ symbols. To encode the symbols, we use a special namespace (`__sulong` or
-     * `__sulong_base64`) to indicate symbols the are subject to renaming. The library name that
-     * includes the target function is encoded in yet another namespace. If the `__sulong_base64`
-     * namespace is used, the library name is encoded as a base64 encoded string. Example:
+     * Mangled C++ symbols. To encode the symbols, we use a special namespace (`__sulong_import` or
+     * `__sulong_import_base64`) to indicate symbols the are subject to renaming. The library name
+     * that includes the target function is encoded in yet another namespace. If the
+     * `__sulong_import_base64` namespace is used, the library name is encoded as a base64 encoded
+     * string. Example:
      *
      * <pre>
      namespace __cxxabiv1 {
-     namespace __sulong_base64 { // special __sulong namespace
+     namespace __sulong_import_base64 { // special __sulong_import namespace
      namespace bGliYysrYWJpLnNv { // libname in base64 (libc++abi.so)
     
      // the function declaration that will be aliased
      static __cxa_exception* cxa_exception_from_exception_unwind_exception(_Unwind_Exception* unwind_exception);
     
      } // end libc++.so
-     } // end __sulong
+     } // end __sulong_import
     
      ...
     
      // usage of the declared function
-     __cxa_exception *ex = __sulong_base64::bGliYysrYWJpLnNv::cxa_exception_from_exception_unwind_exception(unwindHeader);
+     __cxa_exception *ex = __sulong_import_base64::bGliYysrYWJpLnNv::cxa_exception_from_exception_unwind_exception(unwindHeader);
     
      } // end __cxxabiv1
      * </pre>
