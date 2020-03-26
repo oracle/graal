@@ -27,17 +27,34 @@ package com.oracle.truffle.tools.agentscript.impl;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 import java.util.Locale;
 
 final class AgentException extends RuntimeException implements TruffleException {
     static final long serialVersionUID = 1L;
     private final int exitCode;
+    private final Node node;
 
     @TruffleBoundary
     private AgentException(String msg, Throwable cause, int exitCode) {
         super("agentscript: " + msg, cause);
         this.exitCode = exitCode;
+        this.node = null;
+    }
+
+    @TruffleBoundary
+    private AgentException(Throwable cause, Node node) {
+        super(cause.getMessage());
+        this.exitCode = -1;
+        this.node = node;
     }
 
     @SuppressWarnings("all")
@@ -48,7 +65,7 @@ final class AgentException extends RuntimeException implements TruffleException 
 
     @Override
     public Node getLocation() {
-        return null;
+        return node;
     }
 
     @Override
@@ -92,4 +109,33 @@ final class AgentException extends RuntimeException implements TruffleException 
         }
         throw new AgentException(sb.toString(), originalError, 1);
     }
+
+    @TruffleBoundary
+    static void throwWhenExecuted(Instrumenter instrumenter, Source source, Exception ex) {
+        TruffleStackTrace.getStackTrace(ex);
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().sourceIs(source).build();
+        EventBinding<?>[] waitForSourceBeingExecuted = {null};
+        waitForSourceBeingExecuted[0] = instrumenter.attachExecutionEventListener(filter, new ExecutionEventListener() {
+            @Override
+            @TruffleBoundary
+            public void onEnter(EventContext context, VirtualFrame frame) {
+                waitForSourceBeingExecuted[0].dispose();
+                EventContextObject obj = new EventContextObject(context);
+                if (ex instanceof TruffleException && ex instanceof RuntimeException) {
+                    throw obj.rethrow((RuntimeException) ex);
+                }
+                AgentException wrapper = new AgentException(ex, context.getInstrumentedNode());
+                throw obj.rethrow(wrapper);
+            }
+
+            @Override
+            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            }
+        });
+    }
+
 }

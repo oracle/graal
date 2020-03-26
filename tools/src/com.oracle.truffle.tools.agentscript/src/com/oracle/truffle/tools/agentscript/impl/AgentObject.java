@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
@@ -147,10 +148,17 @@ final class AgentObject implements TruffleObject {
                         EventBinding<LoadSourceListener> handle = instrumenter.attachLoadSourceListener(filter, new LoadSourceListener() {
                             @Override
                             public void onLoad(LoadSourceEvent event) {
+                                final Source source = event.getSource();
                                 try {
-                                    interop.execute(args[1], new SourceEventObject(event.getSource()));
+                                    interop.execute(args[1], new SourceEventObject(source));
+                                } catch (RuntimeException ex) {
+                                    if (ex instanceof TruffleException) {
+                                        AgentException.throwWhenExecuted(instrumenter, source, ex);
+                                    } else {
+                                        throw ex;
+                                    }
                                 } catch (InteropException ex) {
-                                    throw AgentException.raise(ex);
+                                    AgentException.throwWhenExecuted(instrumenter, source, ex);
                                 }
                             }
                         }, false);
