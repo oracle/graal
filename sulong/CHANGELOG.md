@@ -2,6 +2,9 @@
 
 Changes:
 
+* `libc++` and `libc++abi` are now shipped as bitcode libraries. For building
+  those `cmake` is required to be installed.
+
 * C++ support (libsulong++) is no longer loaded by default. Instead, it is
   enabled if `libc++` is loaded. Executables (ELF, Mach-O) compiled with
   the toolchain usually have a dependency on this library and will continue
