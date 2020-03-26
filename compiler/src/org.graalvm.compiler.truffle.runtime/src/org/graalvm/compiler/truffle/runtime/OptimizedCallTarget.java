@@ -687,14 +687,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @Override
     public final void onCompilationFailed(Supplier<String> reasonAndStackTrace, boolean bailout, boolean permanentBailout) {
         ExceptionAction action;
-        if (bailout && !permanentBailout && !TruffleDebugOptions.bailoutsAsErrors(engine.engineOptions)) {
+        if (bailout && !permanentBailout) {
             /*
              * Non-permanent bailouts are expected cases. A non-permanent bailout would be for
              * example class redefinition during code installation. As opposed to permanent
              * bailouts, non-permanent bailouts will trigger recompilation and are not considered a
              * failure state.
              */
-            action = TruffleDebugOptions.verboseBailouts(engine.engineOptions) ? ExceptionAction.Print : ExceptionAction.Silent;
+            action = ExceptionAction.Silent;
         } else {
             compilationFailed = true;
             action = engine.compilationFailureAction;
