@@ -176,7 +176,7 @@ public class GradualInstrumentationTest {
 
     @Test
     public void testRepeatedInstrumentationDoesNotChangeParentsInMaterializedTree() {
-        Source source = Source.create(ID, "ROOT(MATERIALIZE_CHILD_STMT_AND_EXPR(MATERIALIZE_CHILD_STMT_AND_EXPR(EXPRESSION(EXPRESSION))))");
+        Source source = Source.create(ID, "ROOT(MATERIALIZE_CHILD_STMT_AND_EXPR(EXPRESSION(EXPRESSION)))");
         // execute first so that the next execution cannot take advantage of the "onFirstExecution"
         // optimization
         context.eval(source);
@@ -184,7 +184,7 @@ public class GradualInstrumentationTest {
         EventBinding<ExecutionEventListener> binding = instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(),
                         listener1);
         context.eval(source);
-        assertEquals("+S+S-S+S+S-S-S-S", listener1.getRecording());
+        assertEquals("+S+S-S-S", listener1.getRecording());
         binding.dispose();
         InstrumentationTestLanguage.RecordingExecutionEventListener listener2 = new InstrumentationTestLanguage.RecordingExecutionEventListener();
         instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.ExpressionTag.class).build(), listener2);
@@ -194,12 +194,12 @@ public class GradualInstrumentationTest {
         // consist of only one expression, then the nested expression is connected as a child
         // directly to the materialized node in place of its parent and for each expression which is
         // ommited this way, one child expression is added to the extra statement node.
-        assertEquals("+S+S-S+S+S+E-E-S+E-E-S-S", listener2.getRecording());
+        assertEquals("+S+S+E-E-S+E-E-S", listener2.getRecording());
     }
 
     @Test
     public void testRepeatedInstrumentationChangesParentsInMaterializedTreeIfSubtreesAreNotCloned() {
-        Source source = Source.create(ID, "ROOT(MATERIALIZE_CHILD_STMT_AND_EXPR_NC(MATERIALIZE_CHILD_STMT_AND_EXPR_NC(EXPRESSION(EXPRESSION))))");
+        Source source = Source.create(ID, "ROOT(MATERIALIZE_CHILD_STMT_AND_EXPR_NC(EXPRESSION(EXPRESSION)))");
         // execute first so that the next execution cannot take advantage of the "onFirstExecution"
         // optimization
         context.eval(source);
@@ -207,7 +207,7 @@ public class GradualInstrumentationTest {
         EventBinding<ExecutionEventListener> binding = instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(),
                         listener1);
         context.eval(source);
-        assertEquals("+S+S-S+S+S-S-S-S", listener1.getRecording());
+        assertEquals("+S+S-S-S", listener1.getRecording());
         binding.dispose();
         InstrumentationTestLanguage.RecordingExecutionEventListener listener2 = new InstrumentationTestLanguage.RecordingExecutionEventListener();
         instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.ExpressionTag.class).build(), listener2);
@@ -222,7 +222,7 @@ public class GradualInstrumentationTest {
         // parent, and so in the new materialized tree, the nested expression node which is now
         // a direct child of the materialized NC node is not instrumented in the new tree, because
         // it was already instrumented in the old tree (it already has instrumentation wrapper).
-        assertEquals("+S+S-S+S+S+E-E-S-S-S", listener2.getRecording());
+        assertEquals("+S+S+E-E-S-S", listener2.getRecording());
     }
 
     @Test

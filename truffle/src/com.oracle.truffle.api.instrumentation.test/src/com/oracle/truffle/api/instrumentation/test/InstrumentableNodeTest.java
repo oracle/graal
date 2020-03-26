@@ -396,7 +396,7 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
             private final SourceSection sourceSection;
             private final int depth;
             private boolean materialized;
-            @Node.Children private MaterializableNode[] children;
+            @Node.Children protected MaterializableNode[] children;
 
             MaterializableNode(MaterializationLanguage language, com.oracle.truffle.api.source.Source source, int depth) {
                 this.language = language;
@@ -406,10 +406,52 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
             }
 
             MaterializableNode(MaterializableNode copy) {
+                this(copy, createChildren(copy.language, copy.sourceSection.getSource(), copy.depth));
+            }
+
+            MaterializableNode(MaterializableNode copy, MaterializableNode[] children) {
                 this.language = copy.language;
                 this.depth = copy.depth;
+                this.materialized = copy.materialized;
                 this.sourceSection = copy.sourceSection;
-                children = createChildren(language, copy.sourceSection.getSource(), depth);
+                this.children = children;
+            }
+
+            protected MaterializableNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+                if (this instanceof InstrumentableNode.WrapperNode) {
+                    InstrumentableNode.WrapperNode wrapperNode = (InstrumentableNode.WrapperNode) this;
+                    return cloneUninitialized((MaterializableNode) wrapperNode.getDelegateNode(), materializedTags);
+                }
+
+                return new MaterializableNode(this, cloneUninitialized(children, materializedTags));
+            }
+
+            @SuppressWarnings("unchecked")
+            public static <T extends MaterializableNode> T cloneUninitialized(T node, Set<Class<? extends Tag>> materializedTags) {
+                if (node == null) {
+                    return null;
+                } else {
+                    T copy = node;
+                    if (node.isInstrumentable()) {
+                        copy = (T) node.materializeInstrumentableNodes(materializedTags);
+                    }
+                    if (node == copy) {
+                        copy = (T) node.copyUninitialized(materializedTags);
+                    }
+                    return copy;
+                }
+            }
+
+            public static <T extends MaterializableNode> T[] cloneUninitialized(T[] nodeArray, Set<Class<? extends Tag>> materializedTags) {
+                if (nodeArray == null) {
+                    return null;
+                } else {
+                    T[] copy = nodeArray.clone();
+                    for (int i = 0; i < copy.length; i++) {
+                        copy[i] = cloneUninitialized(copy[i], materializedTags);
+                    }
+                    return copy;
+                }
             }
 
             @Override
@@ -448,19 +490,24 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
                 }
                 materialized = true;
                 language.numMaterializations++;
-                return new MaterializedNode(language, sourceSection.getSource(), depth);
+                return new MaterializedNode(this, cloneUninitialized(children, materializedTags));
             }
         }
 
         @GenerateWrapper
         static class MaterializedNode extends MaterializableNode {
 
-            MaterializedNode(MaterializationLanguage language, com.oracle.truffle.api.source.Source source, int depth) {
-                super(language, source, depth);
-            }
-
             MaterializedNode(MaterializedNode copy) {
                 super(copy);
+            }
+
+            MaterializedNode(MaterializableNode copy, MaterializableNode[] children) {
+                super(copy, children);
+            }
+
+            @Override
+            protected MaterializableNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+                return new MaterializedNode(this, cloneUninitialized(children, materializedTags));
             }
 
             @Override
