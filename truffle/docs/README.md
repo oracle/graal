@@ -1,6 +1,6 @@
 # Using Truffle
 
-GraalVM is an open ecosystem and we invite third party systems to participate via connecting their own programming languages, tools, or platforms. 
+GraalVM is an open ecosystem and we invite third party systems to participate via connecting their own programming languages, tools, or platforms.
 For that purpose we have developed Truffle, a languages and tools development framework.
 
 The Truffle bits are uploaded to Maven central. You can use them from your
@@ -22,7 +22,7 @@ The Truffle bits are uploaded to Maven central. You can use them from your
 
 ## Implement your own language
 
-The Truffle framework allows you to run programming languages efficiently on GraalVM. 
+The Truffle framework allows you to run programming languages efficiently on GraalVM.
 It simplifies language implementation by automatically deriving high-performance code from interpreters.
 
 ### Getting started
@@ -36,9 +36,12 @@ A good way to start implementing your own Truffle language is to fork the [Simpl
 SimpleLanguage is a relatively small language implementation, well documented and designed to demonstrate most of the Truffle features.
 You could also try to get inspired by looking at code of one of existing open source Truffle language [implementations and experiments](./Languages.md).
 
-### More advanced topics
+Reading The Graal/Truffle [publications](../../docs/Publications.md) gives a very detailed view into how many of the aspects of Truffle work.
+However, as with any other software project, the source code is the ground truth.
 
-Implementing a language using Truffle offers that language a way to interoperate with other Truffle Languages. 
+### Advanced topics
+
+Implementing a language using Truffle offers a way to interoperate with other Truffle Languages.
 To learn more about verifying that your language is a valid polyglot citizen, read more about using the [Polyglot TCK](./TCK.md).
 Somewhat related topics worth exploring are [Truffle Libraries](./TruffleLibraries.md), as well as using them to implementing language [interoperability](./InteropMigration.md).
 Truffle languages can also be embedded in Java host applications using the [Polyglot API](https://www.graalvm.org/docs/reference-manual/embed/).
@@ -63,17 +66,15 @@ This is why we encourage you to understand how truffle works from a language dev
 ## Compatibility
 
 The Truffle API is evolved in a backwards compatible manner from one version to the next.
-When API is deprecated, then it will stay deprecated for at least two Truffle releases and a minimum of one month before it will be removed.
+When API is deprecated, then it will stay deprecated for at least [two GraalVM releases](https://www.graalvm.org/docs/release-notes/version-roadmap/) and a minimum of one month before it will be removed.
 
 As a best practice it is recommended to upgrade Truffle only one version at a time.
 This way you can increment the version, fix deprecation warnings to continue with the next version.
 The deprecated Javadoc tags on the deprecated APIs are designed to be a guide on how to upgrade.
 
-The latest additions and changes can be seen in the [changelog](./CHANGELOG.md).
+The latest additions and changes can be seen in the [changelog](../CHANGELOG.md).
 
-## Getting to the details
+## Modifying Truffle
 
-Reading The Graal/Truffle [publications](../../docs/Publications.md) gives a very detailed view into how many of the aspects of Truffle work.
-However, as with any other software project, the source code is the ground truth.
-To understand how to build and contribute to Truffle, please consult the [contribution documentation](../CONTRIBUTING.md).
+To understand how to modify Truffle, please consult the [Truffle README file](../README.md) and if you would like to contribute to Truffle, consult the [contribution documentation](../CONTRIBUTING.md).
 

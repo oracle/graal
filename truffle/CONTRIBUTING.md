@@ -89,6 +89,8 @@ Please make sure to address all the issues in failing gates.
 Once the review is successfully over, an `accept` label shall be attached to the pull request. 
 At that point, it's up to someone from the truffle core team to shepherd the pull request.
 The shepherding process includes ensuring that none of the public and internal tests are broken by the change and merging the change.
+Commonly, the person to shepherd the PR should be the same person that reviewed and approved it.
+If that person is unresponsive or unavailable to do so, feel free to cc @boris-spas to the PR.
 
 [1]: http://www.oracle.com/technetwork/community/oca-486395.html
 [2]: http://wiki.netbeans.org/APIReviews

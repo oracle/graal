@@ -15,6 +15,9 @@ framework that supports multi-language debugging and other external developer to
 Truffle is developed and maintained by Oracle Labs and the Institute for System
 Software of the Johannes Kepler University Linz.
 
+## Using Truffle
+
+If you are looking for documentation on how to use truffle, please consult the [user documentation](docs/README.md).
 
 ## Hacking Truffle
 
