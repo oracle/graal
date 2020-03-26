@@ -954,6 +954,8 @@ class CMakeBuildTask(mx.NativeBuildTask):
     def build(self):
         # get cwd and env
         self._configure()
+        # This is copied from the super call because we want to make it
+        # less verbose but calling super does not allow us to do that.
         # super(CMakeBuildTask, self).build()
         cmdline, cwd, env = self._build_run_args()
         if mx._opts.verbose:
