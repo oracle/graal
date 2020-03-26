@@ -305,10 +305,19 @@ final class Runner {
 
                 BitSet shouldInit = createBitset();
                 LLVMPointer[] roSections = new LLVMPointer[initSymbols.length];
+
+                /*
+                 * The ordering of executing these four initialization nodes is very important. They
+                 * must be in this particular order. The defined symbols and the external symbols
+                 * must be initialized before (the value in) the global symbols can be initialized.
+                 * The overwriting of symbols can only be done once all the globals are initialised
+                 * and allocated in the symbol table.
+                 */
                 doInitSymbols(ctx, shouldInit, roSections);
                 doInitExternal(ctx, shouldInit);
                 doInitGlobals(frame, shouldInit, roSections);
                 doInitOverwrite(ctx, shouldInit);
+
                 initContext.execute(frame);
                 doInitModules(frame, ctx, shouldInit);
                 return sulongLibrary;
