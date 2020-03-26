@@ -119,10 +119,6 @@ public final class DebuggerController implements ContextsListener {
         return context;
     }
 
-    public JDWPInstrument getInstrument() {
-        return instrument;
-    }
-
     public SuspendedInfo getSuspendedInfo(Object thread) {
         return suspendedInfos.get(thread);
     }
@@ -133,10 +129,6 @@ public final class DebuggerController implements ContextsListener {
 
     public int getListeningPort() {
         return Integer.parseInt(options.address);
-    }
-
-    public String getTransport() {
-        return options.transport;
     }
 
     public void setCommandRequestId(Object thread, int commandRequestId, byte suspendPolicy, boolean isPopFrames) {
