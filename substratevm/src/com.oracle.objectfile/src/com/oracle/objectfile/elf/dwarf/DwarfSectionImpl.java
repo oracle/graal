@@ -33,6 +33,7 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.elf.ELFObjectFile;
+import org.graalvm.compiler.debug.DebugContext;
 
 import java.nio.ByteOrder;
 import java.util.Map;
@@ -41,8 +42,7 @@ import java.util.Set;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.TEXT_SECTION_NAME;
 
 /**
- * class from which all DWARF debug sections
- * inherit providing common behaviours.
+ * class from which all DWARF debug sections inherit providing common behaviours.
  */
 public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     protected DwarfSections dwarfSections;
@@ -56,28 +56,22 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /**
-     * creates the target byte[] array used to define the section
-     * contents.
+     * creates the target byte[] array used to define the section contents.
      *
-     * the main task of this method is to precompute the
-     * size of the debug section. given the complexity of the
-     * data layouts that invariably requires performing a dummy
-     * write of the contents, inserting bytes into a small,
-     * scratch buffer only when absolutely necessary. subclasses
-     * may also cache some information for use when writing the
-     * contents.
+     * the main task of this method is to precompute the size of the debug section. given the
+     * complexity of the data layouts that invariably requires performing a dummy write of the
+     * contents, inserting bytes into a small, scratch buffer only when absolutely necessary.
+     * subclasses may also cache some information for use when writing the contents.
      */
     public abstract void createContent();
 
     /**
-     * populates the byte[] array used to contain the section
-     * contents.
+     * populates the byte[] array used to contain the section contents.
      *
-     * in most cases this task reruns the operations performed
-     * under createContent but this time actually writing data
-     * to the target byte[].
+     * in most cases this task reruns the operations performed under createContent but this time
+     * actually writing data to the target byte[].
      */
-    public abstract void writeContent();
+    public abstract void writeContent(DebugContext debugContext);
 
     @Override
     public boolean isLoadable() {
@@ -87,23 +81,38 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return false;
     }
 
-    public void checkDebug(int pos) {
+    public String debugSectionLogName() {
         /*
-         * if the env var relevant to this element
-         * type is set then switch on debugging
+         * Use prefix dwarf plus the section name (which already includes a dot separator) for the
+         * context key. For example messages for info section will be keyed using dwarf.debug_info.
+         * Other info formats use their own format-specific prefix.
          */
-        String name = getSectionName();
-        String envVarName = "DWARF_" + name.substring(1).toUpperCase();
-        if (System.getenv(envVarName) != null) {
+        assert getSectionName().startsWith(".debug");
+        return "dwarf" + getSectionName();
+    }
+
+    public void enableLog(DebugContext context, int pos) {
+        /*
+         * debug output is disabled during the first pass where we size the buffer. this is called
+         * to enable it during the second pass where the buffer gets written, but only if the scope
+         * is enabled.
+         */
+        if (context.areScopesEnabled()) {
             debug = true;
             debugBase = pos;
             debugAddress = debugTextBase;
         }
     }
 
-    protected void debug(String format, Object... args) {
+    protected void log(DebugContext context, String format, Object... args) {
         if (debug) {
-            System.out.format(format, args);
+            context.logv(DebugContext.INFO_LEVEL, format, args);
+        }
+    }
+
+    protected void verboseLog(DebugContext context, String format, Object... args) {
+        if (debug) {
+            context.logv(DebugContext.VERBOSE_LEVEL, format, args);
         }
     }
 
@@ -280,6 +289,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
+    @SuppressWarnings("unused")
     public int writeAttrData8(long value, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putLong(value, scratch, 0);
@@ -313,22 +323,24 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /**
-     * identify the section after which this debug section
-     * needs to be ordered when sizing and creating content.
+     * identify the section after which this debug section needs to be ordered when sizing and
+     * creating content.
+     * 
      * @return the name of the preceding section
      */
     public abstract String targetSectionName();
 
     /**
-     * identify the layout properties of the target section
-     * which need to have been decided before the contents
-     * of this section can be created.
+     * identify the layout properties of the target section which need to have been decided before
+     * the contents of this section can be created.
+     * 
      * @return an array of the relevant decision kinds
      */
     public abstract LayoutDecision.Kind[] targetSectionKinds();
 
     /**
      * identify this debug section by name.
+     * 
      * @return the name of the debug section
      */
     public abstract String getSectionName();
@@ -341,9 +353,14 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         createContent();
 
         /*
-         * ensure content byte[] has been written before calling super method
+         * ensure content byte[] has been written before calling super method.
+         *
+         * we do this in a nested debug scope derived from the one set up under the object file
+         * write
          */
-        writeContent();
+        getOwner().debugContext(debugSectionLogName(), debugContext -> {
+            writeContent(debugContext);
+        });
 
         return super.getOrDecideContent(alreadyDecided, contentHint);
     }

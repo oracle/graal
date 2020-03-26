@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020 Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,11 @@ package com.oracle.objectfile.debugentry;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
 /**
- * Details of a specific address range in a compiled method
- * either a primary range identifying a whole method
- * or a sub-range identifying a sequence of
- * instructions that belong to an inlined method.
+ * Details of a specific address range in a compiled method either a primary range identifying a
+ * whole method or a sub-range identifying a sequence of instructions that belong to an inlined
+ * method.
  */
 
 public class Range {
@@ -67,11 +67,11 @@ public class Range {
      */
     public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line, Range primary) {
         /*
-         * currently file name and full method name need to go into the debug_str section
-         * other strings just need to be deduplicated to save space
+         * currently file name and full method name need to go into the debug_str section other
+         * strings just need to be deduplicated to save space
          */
         this.fileName = (fileName == null ? fileName : stringTable.uniqueDebugString(fileName));
-        this.filePath =  filePath;
+        this.filePath = filePath;
         this.className = stringTable.uniqueString(className);
         this.methodName = stringTable.uniqueString(methodName);
         this.paramNames = stringTable.uniqueString(paramNames);

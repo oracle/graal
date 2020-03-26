@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,28 +37,25 @@ import java.util.Map;
  * track debug info associated with a Java class.
  */
 public class ClassEntry {
-   /**
+    /**
      * the name of the associated class.
-    */
+     */
     private String className;
     /**
      * details of the associated file.
      */
     FileEntry fileEntry;
     /**
-     * a list recording details of all primary
-     * ranges included in this class sorted by
-     * ascending address range.
+     * a list recording details of all primary ranges included in this class sorted by ascending
+     * address range.
      */
     private LinkedList<PrimaryEntry> primaryEntries;
     /**
-     * an index identifying primary ranges which
-     * have already been encountered.
+     * an index identifying primary ranges which have already been encountered.
      */
     private Map<Range, PrimaryEntry> primaryIndex;
     /**
-     * an index of all primary and secondary files
-     * referenced from this class's compilation unit.
+     * an index of all primary and secondary files referenced from this class's compilation unit.
      */
     private Map<FileEntry, Integer> localFilesIndex;
     /**
@@ -66,8 +63,7 @@ public class ClassEntry {
      */
     private LinkedList<FileEntry> localFiles;
     /**
-     * an index of all primary and secondary dirs
-     * referenced from this class's compilation unit.
+     * an index of all primary and secondary dirs referenced from this class's compilation unit.
      */
     private HashMap<DirEntry, Integer> localDirsIndex;
     /**
@@ -75,23 +71,19 @@ public class ClassEntry {
      */
     private LinkedList<DirEntry> localDirs;
     /**
-     * index of debug_info section compilation unit
-     * for this class.
+     * index of debug_info section compilation unit for this class.
      */
     private int cuIndex;
     /**
-     * index into debug_line section for associated
-     * compilation unit.
+     * index into debug_line section for associated compilation unit.
      */
     private int lineIndex;
     /**
-     * size of line number info prologue region for
-     * associated compilation unit.
+     * size of line number info prologue region for associated compilation unit.
      */
     private int linePrologueSize;
     /**
-     * total size of line number info region for
-     * associated compilation unit.
+     * total size of line number info region for associated compilation unit.
      */
     private int totalSize;
 

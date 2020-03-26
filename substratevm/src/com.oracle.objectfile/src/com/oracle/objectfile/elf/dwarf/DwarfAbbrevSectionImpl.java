@@ -27,6 +27,7 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.LayoutDecision;
+import org.graalvm.compiler.debug.DebugContext;
 
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_CODE_compile_unit;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_CODE_subprogram;
@@ -68,64 +69,90 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
     public void createContent() {
         int pos = 0;
         /*
-         * an abbrev table contains abbrev entries for one or
-         * more CUs. the table includes a sequence of abbrev
-         * entries each of which defines a specific DIE layout
-         * employed to describe some DIE in a CU. a table is
-         * terminated by a null entry
+         * an abbrev table contains abbrev entries for one or more CUs. the table includes a
+         * sequence of abbrev entries each of which defines a specific DIE layout employed to
+         * describe some DIE in a CU. a table is terminated by a null entry
          *
          * a null entry has consists of just a 0 abbrev code
-         * LEB128 abbrev_code; ...... == 0
+         *
+         * <ul>
+         *
+         * <li><code>LEB128 abbrev_code; ...... == 0</code>
+         *
+         * </ul>
          *
          * non-null entries have the following format
-         * LEB128 abbrev_code; ...... unique noncode for this layout != 0
-         * LEB128 tag; .............. defines the type of the DIE (class, subprogram, var etc)
-         * uint8 has_chldren; ....... is the DIE followed by child DIEs or a sibling DIE
-         * <attribute_spec>* ........ zero or more attributes
-         * <null_attribute_spec> .... terminator
+         *
+         * <ul>
+         *
+         * <li><code>LEB128 abbrev_code; ......unique noncode for this layout != 0</code>
+         *
+         * <li><code>LEB128 tag; .............. defines the type of the DIE (class, subprogram, var
+         * etc)</code>
+         *
+         * <li><code>uint8 has_chldren; ....... is the DIE followed by child DIEs or a sibling
+         * DIE</code>
+         *
+         * <li><code>attribute_spec* .......... zero or more attributes</code>
+         *
+         * <li><code>null_attribute_spec ...... terminator</code> </ul>
          *
          * An attribute_spec consists of an attribute name and form
-         * LEB128 attr_name; ........ 0 for the null attribute name
-         * LEB128 attr_form; ........ 0 for the null attribute form
          *
-         * For the moment we only use one abbrev table for all CUs.
-         * It contains two DIEs, the first to describe the compilation
-         * unit itself and the second to describe each method within
+         * <ul>
+         *
+         * <li><code>LEB128 attr_name; ........ 0 for the null attribute name</code>
+         *
+         * <li><code>LEB128 attr_form; ........ 0 for the null attribute form</code>
+         *
+         * </ul>
+         *
+         * For the moment we only use one abbrev table for all CUs. It contains two DIEs, the first
+         * to describe the compilation unit itself and the second to describe each method within
          * that compilation unit.
          *
          * The DIE layouts are as follows:
          *
-         * abbrev_code == 1, tag == DW_TAG_compilation_unit, has_children
-         * DW_AT_language : ... DW_FORM_data1
-         * DW_AT_name : ....... DW_FORM_strp
-         * DW_AT_low_pc : ..... DW_FORM_address
-         * DW_AT_hi_pc : ...... DW_FORM_address
-         * DW_AT_stmt_list : .. DW_FORM_data4
+         * <ul> <li><code>abbrev_code == 1, tag == DW_TAG_compilation_unit, has_children</code>
          *
-         * abbrev_code == 2, tag == DW_TAG_subprogram, no_children
-         * DW_AT_name : ....... DW_FORM_strp
-         * DW_AT_low_pc : ..... DW_FORM_addr
-         * DW_AT_hi_pc : ...... DW_FORM_addr
-         * DW_AT_external : ... DW_FORM_flag
+         * <li><code>DW_AT_language : ... DW_FORM_data1</code>
+         *
+         * <li><code>DW_AT_name : ....... DW_FORM_strp</code>
+         *
+         * <li><code>DW_AT_low_pc : ..... DW_FORM_address</code>
+         *
+         * <li><code>DW_AT_hi_pc : ...... DW_FORM_address</code>
+         *
+         * <li><code>DW_AT_stmt_list : .. DW_FORM_data4</code> </ul>
+         *
+         * <ul> <li><code>abbrev_code == 2, tag == DW_TAG_subprogram, no_children</code>
+         *
+         * <li><code>DW_AT_name : ....... DW_FORM_strp</code>
+         *
+         * <li><code>DW_AT_hi_pc : ...... DW_FORM_addr</code>
+         *
+         * <li><code>DW_AT_external : ... DW_FORM_flag</code>
+         *
+         * </ul>
          */
 
-        pos = writeAbbrev1(null, pos);
-        pos = writeAbbrev2(null, pos);
+        pos = writeAbbrev1(null, null, pos);
+        pos = writeAbbrev2(null, null, pos);
 
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
     }
 
     @Override
-    public void writeContent() {
+    public void writeContent(DebugContext context) {
         byte[] buffer = getContent();
         int size = buffer.length;
         int pos = 0;
 
-        checkDebug(pos);
+        enableLog(context, pos);
 
-        pos = writeAbbrev1(buffer, pos);
-        pos = writeAbbrev2(buffer, pos);
+        pos = writeAbbrev1(context, buffer, pos);
+        pos = writeAbbrev2(context, buffer, pos);
         assert pos == size;
     }
 
@@ -145,7 +172,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    public int writeAbbrev1(byte[] buffer, int p) {
+    public int writeAbbrev1(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         /*
          * abbrev 1 compile unit
@@ -171,7 +198,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    public int writeAbbrev2(byte[] buffer, int p) {
+    public int writeAbbrev2(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         /*
          * abbrev 2 compile unit
@@ -195,11 +222,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    @Override
-    protected void debug(String format, Object... args) {
-        super.debug(format, args);
-    }
-
     /**
      * debug_abbrev section content depends on debug_frame section content and offset.
      */
@@ -211,8 +233,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
     }
 
     public final LayoutDecision.Kind[] targetSectionKinds = {
-            LayoutDecision.Kind.CONTENT,
-            LayoutDecision.Kind.OFFSET
+                    LayoutDecision.Kind.CONTENT,
+                    LayoutDecision.Kind.OFFSET
     };
 
     @Override

@@ -28,13 +28,14 @@ package com.oracle.objectfile.debuginfo;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import org.graalvm.compiler.debug.DebugContext;
+
 /**
- * interfaces used to allow a native image to communicate
- * details of types, code and data to the underlying
- * object file so that the latter can insert appropriate
- * debug info.
+ * Interfaces used to allow a native image to communicate details of types, code and data to the
+ * underlying object file so that the latter can insert appropriate debug info.
  */
 public interface DebugInfoProvider {
     /**
@@ -47,62 +48,70 @@ public interface DebugInfoProvider {
      * access details of a specific compiled method.
      */
     interface DebugCodeInfo {
+        void debugContext(Consumer<DebugContext> action);
+
         /**
-         * @return the name of the file containing a compiled
-         * method excluding any path
+         * @return the name of the file containing a compiled method excluding any path
          */
         String fileName();
+
         /**
-         * @return a relative path to the file containing a compiled
-         * method derived from its package name or null if the method
-         * is in the empty package
+         * @return a relative path to the file containing a compiled method derived from its package
+         *         name or null if the method is in the empty package
          */
         Path filePath();
+
         /**
-         * @return the fully qualified name of the class owning the
-         * compiled method
+         * @return the fully qualified name of the class owning the compiled method
          */
         String className();
+
         /**
-         * @return the name of the compiled method including
-         * signature
+         * @return the name of the compiled method including signature
          */
         String methodName();
+
         /**
-         * @return the lowest address containing code generated for
-         * the method represented as an offset into the code segment
+         * @return the lowest address containing code generated for the method represented as an
+         *         offset into the code segment
          */
         int addressLo();
+
         /**
-         * @return the first address above the code generated for
-         * the method represented as an offset into the code segment
+         * @return the first address above the code generated for the method represented as an
+         *         offset into the code segment
          */
         int addressHi();
+
         /**
          * @return the starting line number for the method
          */
         int line();
+
         /**
-         * @return a stream of records detailing line numbers
-         * and addresses within the compiled method
+         * @return a stream of records detailing line numbers and addresses within the compiled
+         *         method
          */
         Stream<DebugLineInfo> lineInfoProvider();
+
         /**
          * @return a string identifying the method parameters
          */
         String paramNames();
+
         /**
          * @return a string identifying the method return type
          */
         String returnTypeName();
+
         /**
-         * @return the size of the method frame between prologue
-         * and epilogue
+         * @return the size of the method frame between prologue and epilogue
          */
         int getFrameSize();
+
         /**
-         * @return a list of positions at which the stack is extended
-         * to a full frame or torn down to an empty frame
+         * @return a list of positions at which the stack is extended to a full frame or torn down
+         *         to an empty frame
          */
         List<DebugFrameSizeChange> getFrameSizeChanges();
     }
@@ -114,42 +123,43 @@ public interface DebugInfoProvider {
     }
 
     /**
-     *  access details of code generated for a specific outer
-     *  or inlined method at  a given line number.
+     * access details of code generated for a specific outer or inlined method at a given line
+     * number.
      */
     interface DebugLineInfo {
         /**
-         * @return the name of the file containing the outer
-         * or inlined method excluding any path
+         * @return the name of the file containing the outer or inlined method excluding any path
          */
         String fileName();
+
         /**
-         * @return a relative path to the file containing the outer
-         * or inlined method derived from its package name or null
-         * if the method is in the empty package
+         * @return a relative path to the file containing the outer or inlined method derived from
+         *         its package name or null if the method is in the empty package
          */
         Path filePath();
+
         /**
-         * @return the fully qualified name of the class owning the
-         * outer or inlined method
+         * @return the fully qualified name of the class owning the outer or inlined method
          */
         String className();
+
         /**
          * @return the name of the outer or inlined method including signature
          */
         String methodName();
+
         /**
-         * @return the lowest address containing code generated for
-         * an outer or inlined code segment reported at this line
-         * represented as an offset into the code segment
+         * @return the lowest address containing code generated for an outer or inlined code segment
+         *         reported at this line represented as an offset into the code segment
          */
         int addressLo();
+
         /**
-         * @return the first address above the code generated for
-         * an outer or inlined code segment reported at this line
-         * represented as an offset into the code segment
+         * @return the first address above the code generated for an outer or inlined code segment
+         *         reported at this line represented as an offset into the code segment
          */
         int addressHi();
+
         /**
          * @return the line number for the outer or inlined segment
          */
