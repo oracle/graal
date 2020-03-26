@@ -48,4 +48,8 @@ public final class StringBufferUTF32 extends IntArrayBuffer implements AbstractS
     public void append(int codepoint) {
         add(codepoint);
     }
+
+    public StringUTF32 materialize() {
+        return new StringUTF32(toArray());
+    }
 }

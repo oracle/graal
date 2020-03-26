@@ -56,15 +56,23 @@ public final class StringBufferUTF8 extends ByteArrayBuffer implements AbstractS
             return;
         }
         int c = codepoint;
-        if (n == 4) {
-            set(--i, (byte) (0x80 | (c & 0x3f)));
-            c >>>= 6;
+        // Checkstyle: stop
+        switch (n) {
+            case 4:
+                set(--i, (byte) (0x80 | (c & 0x3f)));
+                c >>>= 6;
+            case 3:
+                set(--i, (byte) (0x80 | (c & 0x3f)));
+                c >>>= 6;
+            default:
+                set(--i, (byte) (0x80 | (c & 0x3f)));
+                c >>>= 6;
+                set(--i, (byte) ((0xf00 >>> n) | c));
         }
-        if (n == 3) {
-            set(--i, (byte) (0x80 | (c & 0x3f)));
-            c >>>= 6;
-        }
-        set(--i, (byte) (0x80 | (c & 0x3f)));
-        set(--i, (byte) ((0xf00 >>> n) | (c >>> 6)));
+        // Checkstyle: resume
+    }
+
+    public StringUTF8 materialize() {
+        return new StringUTF8(toArray());
     }
 }

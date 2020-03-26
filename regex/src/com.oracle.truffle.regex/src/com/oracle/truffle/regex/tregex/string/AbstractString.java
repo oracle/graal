@@ -40,9 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
-public interface AbstractStringBuffer {
+import java.util.PrimitiveIterator;
 
-    void append(int codepoint);
+public interface AbstractString extends Iterable<Integer> {
 
-    void clear();
+    @Override
+    PrimitiveIterator.OfInt iterator();
 }

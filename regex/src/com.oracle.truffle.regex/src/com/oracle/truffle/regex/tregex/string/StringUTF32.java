@@ -40,9 +40,38 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
-public interface AbstractStringBuffer {
+import java.util.PrimitiveIterator;
 
-    void append(int codepoint);
+public final class StringUTF32 implements AbstractString {
 
-    void clear();
+    private final int[] str;
+
+    public StringUTF32(int[] str) {
+        this.str = str;
+    }
+
+    @Override
+    public PrimitiveIterator.OfInt iterator() {
+        return new StringUTF32Iterator(str);
+    }
+
+    private static final class StringUTF32Iterator implements PrimitiveIterator.OfInt {
+
+        private final int[] str;
+        private int i = 0;
+
+        private StringUTF32Iterator(int[] str) {
+            this.str = str;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return i < str.length;
+        }
+
+        @Override
+        public int nextInt() {
+            return str[i++];
+        }
+    }
 }

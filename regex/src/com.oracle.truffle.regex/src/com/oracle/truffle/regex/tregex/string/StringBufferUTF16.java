@@ -44,6 +44,10 @@ import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
 
 public final class StringBufferUTF16 extends CharArrayBuffer implements AbstractStringBuffer {
 
+    public StringBufferUTF16() {
+        super();
+    }
+
     public StringBufferUTF16(int initialCapacity) {
         super(initialCapacity);
     }
@@ -60,5 +64,9 @@ public final class StringBufferUTF16 extends CharArrayBuffer implements Abstract
             set(length() + 1, Character.lowSurrogate(codepoint));
         }
         setLength(newLength);
+    }
+
+    public StringUTF16 materialize() {
+        return new StringUTF16(toArray());
     }
 }

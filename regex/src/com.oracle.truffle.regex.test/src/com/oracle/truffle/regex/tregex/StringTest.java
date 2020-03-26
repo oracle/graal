@@ -38,11 +38,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.string;
+package com.oracle.truffle.regex.tregex;
 
-public interface AbstractStringBuffer {
+import static org.junit.Assert.assertEquals;
 
-    void append(int codepoint);
+import java.util.PrimitiveIterator;
 
-    void clear();
+import org.junit.Test;
+
+import com.oracle.truffle.regex.tregex.string.StringBufferUTF16;
+import com.oracle.truffle.regex.tregex.string.StringBufferUTF32;
+import com.oracle.truffle.regex.tregex.string.StringBufferUTF8;
+
+public class StringTest {
+
+    @Test
+    public void testEncodings() {
+        testEncodingsRange(Character.MIN_CODE_POINT, Character.MAX_HIGH_SURROGATE);
+        testEncodingsRange(Character.MIN_LOW_SURROGATE, Character.MAX_CODE_POINT);
+    }
+
+    static void testEncodingsRange(int lo, int hi) {
+        StringBufferUTF8 sb8 = new StringBufferUTF8();
+        StringBufferUTF16 sb16 = new StringBufferUTF16();
+        StringBufferUTF32 sb32 = new StringBufferUTF32();
+
+        for (int i = lo; i <= hi; i++) {
+            sb8.append(i);
+            sb16.append(i);
+            sb32.append(i);
+        }
+
+        PrimitiveIterator.OfInt it8 = sb8.materialize().iterator();
+        PrimitiveIterator.OfInt it16 = sb16.materialize().iterator();
+        PrimitiveIterator.OfInt it32 = sb32.materialize().iterator();
+
+        for (int i = lo; i <= hi; i++) {
+            assertEquals(i, it8.nextInt());
+            assertEquals(i, it16.nextInt());
+            assertEquals(i, it32.nextInt());
+        }
+    }
 }

@@ -40,9 +40,42 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
-public interface AbstractStringBuffer {
+import java.util.PrimitiveIterator;
 
-    void append(int codepoint);
+public final class StringUTF16 implements AbstractString {
 
-    void clear();
+    private final char[] str;
+
+    public StringUTF16(char[] str) {
+        this.str = str;
+    }
+
+    @Override
+    public PrimitiveIterator.OfInt iterator() {
+        return new StringUTF16Iterator(str);
+    }
+
+    private static final class StringUTF16Iterator implements PrimitiveIterator.OfInt {
+
+        private final char[] str;
+        private int i = 0;
+
+        private StringUTF16Iterator(char[] str) {
+            this.str = str;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return i < str.length;
+        }
+
+        @Override
+        public int nextInt() {
+            char c = str[i++];
+            if (Character.isHighSurrogate(c) && hasNext() && Character.isLowSurrogate(str[i])) {
+                return Character.toCodePoint(c, str[i++]);
+            }
+            return c;
+        }
+    }
 }

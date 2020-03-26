@@ -40,9 +40,59 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
-public interface AbstractStringBuffer {
+import java.util.PrimitiveIterator;
 
-    void append(int codepoint);
+public final class StringUTF8 implements AbstractString {
 
-    void clear();
+    private final byte[] str;
+
+    public StringUTF8(byte[] str) {
+        this.str = str;
+    }
+
+    @Override
+    public PrimitiveIterator.OfInt iterator() {
+        return new StringUTF16Iterator(str);
+    }
+
+    private static final class StringUTF16Iterator implements PrimitiveIterator.OfInt {
+
+        private final byte[] str;
+        private int i = 0;
+
+        private StringUTF16Iterator(byte[] str) {
+            this.str = str;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return i < str.length;
+        }
+
+        @Override
+        public int nextInt() {
+            byte b = str[i++];
+            if (Byte.toUnsignedInt(b) < 0x80) {
+                return b;
+            }
+            int leadingOnes = Integer.numberOfLeadingZeros(~((int) b));
+            int codepoint = b & (~0 >>> leadingOnes);
+            int nBytes = leadingOnes - 24;
+            assert 1 < nBytes && nBytes < 5 : nBytes;
+            // Checkstyle: stop
+            switch (nBytes) {
+                case 4:
+                    assert hasNext() && (str[i] & 0xc0) == 0x80;
+                    codepoint = codepoint << 6 | (str[i++] & 0x3f);
+                case 3:
+                    assert hasNext() && (str[i] & 0xc0) == 0x80;
+                    codepoint = codepoint << 6 | (str[i++] & 0x3f);
+                default:
+                    assert hasNext() && (str[i] & 0xc0) == 0x80;
+                    codepoint = codepoint << 6 | (str[i++] & 0x3f);
+            }
+            // Checkstyle: resume
+            return codepoint;
+        }
+    }
 }
