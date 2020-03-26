@@ -223,16 +223,7 @@ public final class DebuggerController implements ContextsListener {
 
         SuspendedInfo susp = suspendedInfos.get(thread);
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
-            // check if we're at the last line in a method
-            // if so, we need to STEP_OUT to reach the caller
-            // location
-            CallFrame currentFrame = susp.getStackFrames()[0];
-            MethodRef method = currentFrame.getMethod();
-            if (method.isLastLine(currentFrame.getCodeIndex())) {
-                doStepOut(susp);
-            } else {
-                susp.getEvent().prepareStepOver(STEP_CONFIG);
-            }
+            susp.getEvent().prepareStepOver(STEP_CONFIG);
             susp.recordStep(DebuggerCommand.Kind.STEP_OVER);
         } else {
             JDWPLogger.log("NOT STEPPING OVER for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
@@ -265,22 +256,13 @@ public final class DebuggerController implements ContextsListener {
     }
 
     private void doStepOut(SuspendedInfo susp) {
-        // There are two different cases for step out, 1) step out and land
-        // on the same line, enabling step into next method on line, and 2)
-        // step over the callee line when there are no bytecode instructions
-        // on the line. Ask the guest language which one to use
-        boolean hasMoreMethodCallsOnLine = context.moreMethodCallsOnLine(susp.getCallerRootNode(), susp.getCallerFrame());
-        if (hasMoreMethodCallsOnLine) {
-            long stepOutBCI = context.readBCIFromFrame(susp.getCallerRootNode(), susp.getCallerFrame());
-            SteppingInfo steppingInfo = commandRequestIds.get(susp.getThread());
-            if (steppingInfo != null) {
-                // record the bci that we'll land on after the step out completes
-                steppingInfo.setStepOutBCI(stepOutBCI);
-            }
-            susp.getEvent().prepareStepOut(STEP_CONFIG);
-        } else {
-            susp.getEvent().prepareStepOut(STEP_CONFIG).prepareStepOver(STEP_CONFIG);
+        int stepOutBCI = context.getNextBCI(susp.getCallerRootNode(), susp.getCallerFrame());
+        SteppingInfo steppingInfo = commandRequestIds.get(susp.getThread());
+        if (steppingInfo != null && stepOutBCI != -1) {
+            // record the bci that we'll land on after the step out completes
+            steppingInfo.setStepOutBCI(stepOutBCI);
         }
+        susp.getEvent().prepareStepOut(STEP_CONFIG);
         susp.recordStep(DebuggerCommand.Kind.STEP_OUT);
     }
 
@@ -734,7 +716,7 @@ public final class DebuggerController implements ContextsListener {
 
             if (steppingInfo != null) {
                 // get the top frame for checking instance filters
-                CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), 1);
+                CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), 1, steppingInfo);
                 if (checkExclusionFilters(steppingInfo, event, currentThread, callFrames[0])) {
                     JDWPLogger.log("not suspending here: %s", JDWPLogger.LogLevel.STEPPING, event.getSourceSection());
                     // continue stepping until completed
@@ -743,7 +725,7 @@ public final class DebuggerController implements ContextsListener {
                 }
             }
 
-            CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), -1);
+            CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), -1, steppingInfo);
 
             RootNode callerRootNode = null;
             int i = 0;
@@ -930,7 +912,7 @@ public final class DebuggerController implements ContextsListener {
             }
         }
 
-        private CallFrame[] createCallFrames(long threadId, Iterable<DebugStackFrame> stackFrames, int frameLimit) {
+        private CallFrame[] createCallFrames(long threadId, Iterable<DebugStackFrame> stackFrames, int frameLimit, SteppingInfo steppingInfo) {
             LinkedList<CallFrame> list = new LinkedList<>();
             int frameCount = 0;
             for (DebugStackFrame frame : stackFrames) {
@@ -981,6 +963,11 @@ public final class DebuggerController implements ContextsListener {
                         codeIndex = 0;
                     }
                 }
+                // check if we have a dedicated step out code index on the top frame
+                if (frameCount == 0 && steppingInfo != null && steppingInfo.getStepOutBCI() != -1) {
+                    codeIndex = steppingInfo.getStepOutBCI();
+                }
+
                 // check if current bci is higher than the first index on the last line,
                 // in which case we must report the last line index instead
                 long lastLineBCI = method.getBCIFromLine(method.getLastLine());
