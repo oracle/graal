@@ -81,7 +81,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
     /**
      * debug_str section content depends on text section content and offset.
      */
-    public static final String TARGET_SECTION_NAME = TEXT_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = TEXT_SECTION_NAME;
 
     @Override
     public String targetSectionName() {
@@ -91,7 +91,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
     /**
      * debug_str section content depends on text section content and offset.
      */
-    public final LayoutDecision.Kind[] targetSectionKinds = {
+    private final LayoutDecision.Kind[] targetSectionKinds = {
                     LayoutDecision.Kind.CONTENT,
                     LayoutDecision.Kind.OFFSET,
                     /* add this so we can use the text section base address for debug */

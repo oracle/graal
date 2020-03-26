@@ -58,20 +58,22 @@ public class ApplicationSourceCache extends SourceCache {
             trySourceRoot(sourcePathEntry);
         }
     }
+
     private void tryClassPathRoot(String classPathEntry) {
         trySourceRoot(classPathEntry, true);
     }
+
     private void trySourceRoot(String sourcePathEntry) {
         trySourceRoot(sourcePathEntry, false);
     }
+
     private void trySourceRoot(String sourceRoot, boolean fromClassPath) {
         Path sourcePath = Paths.get(sourceRoot);
         String fileNameString = sourcePath.getFileName().toString();
         if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".zip")) {
             if (fromClassPath && fileNameString.endsWith(".jar")) {
                 /*
-                 * application jar /path/to/xxx.jar should have
-                 * sources /path/to/xxx-sources.jar
+                 * application jar /path/to/xxx.jar should have sources /path/to/xxx-sources.jar
                  */
                 int length = fileNameString.length();
                 fileNameString = fileNameString.substring(0, length - 4) + "-sources.zip";
@@ -92,8 +94,8 @@ public class ApplicationSourceCache extends SourceCache {
         } else {
             if (fromClassPath) {
                 /*
-                 * for dir entries ending in classes or target/classes
-                 * translate to a parallel src tree
+                 * for dir entries ending in classes or target/classes translate to a parallel src
+                 * tree
                  */
                 if (sourcePath.endsWith("classes")) {
                     Path parent = sourcePath.getParent();

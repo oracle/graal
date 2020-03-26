@@ -156,7 +156,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         assert pos == size;
     }
 
-    public int writeAttrType(long code, byte[] buffer, int pos) {
+    private int writeAttrType(long code, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putSLEB(code, scratch, 0);
         } else {
@@ -164,7 +164,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    public int writeAttrForm(long code, byte[] buffer, int pos) {
+    private int writeAttrForm(long code, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putSLEB(code, scratch, 0);
         } else {
@@ -172,7 +172,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    public int writeAbbrev1(DebugContext context, byte[] buffer, int p) {
+    @SuppressWarnings("unused")
+    private int writeAbbrev1(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         /*
          * abbrev 1 compile unit
@@ -198,7 +199,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    public int writeAbbrev2(DebugContext context, byte[] buffer, int p) {
+    @SuppressWarnings("unused")
+    private int writeAbbrev2(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         /*
          * abbrev 2 compile unit
@@ -225,14 +227,14 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
     /**
      * debug_abbrev section content depends on debug_frame section content and offset.
      */
-    public static final String TARGET_SECTION_NAME = DW_FRAME_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DW_FRAME_SECTION_NAME;
 
     @Override
     public String targetSectionName() {
         return TARGET_SECTION_NAME;
     }
 
-    public final LayoutDecision.Kind[] targetSectionKinds = {
+    private final LayoutDecision.Kind[] targetSectionKinds = {
                     LayoutDecision.Kind.CONTENT,
                     LayoutDecision.Kind.OFFSET
     };

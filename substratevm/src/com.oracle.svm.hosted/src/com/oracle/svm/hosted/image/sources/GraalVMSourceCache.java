@@ -26,7 +26,6 @@
 
 package com.oracle.svm.hosted.image.sources;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemNotFoundException;
@@ -37,6 +36,7 @@ import java.nio.file.Paths;
 
 import static com.oracle.svm.hosted.image.sources.SourceCacheType.GRAALVM;
 import static com.oracle.svm.hosted.image.sources.SourceManager.GRAALVM_SRC_PACKAGE_PREFIXES;
+
 public class GraalVMSourceCache extends SourceCache {
     /**
      * Create a GraalVM source cache.
@@ -53,30 +53,30 @@ public class GraalVMSourceCache extends SourceCache {
     private static final String JAVA_CLASSPATH_PROP = "java.class.path";
 
     private void initSrcRoots() {
-        String javaClassPath = System.getProperty(JAVA_CLASSPATH_PROP);
-        assert javaClassPath != null;
-        String[] classPathEntries = javaClassPath.split(File.pathSeparator);
         for (String classPathEntry : classPathEntries) {
             tryClassPathRoot(classPathEntry);
         }
         for (String sourcePathEntry : sourcePathEntries) {
-            tryClassPathRoot(sourcePathEntry);
+            trySourceRoot(sourcePathEntry);
         }
     }
+
     private void tryClassPathRoot(String classPathEntry) {
         trySourceRoot(classPathEntry, true);
     }
+
     private void trySourceRoot(String sourcePathEntry) {
         trySourceRoot(sourcePathEntry, false);
     }
+
     private void trySourceRoot(String sourceRoot, boolean fromClassPath) {
         Path sourcePath = Paths.get(sourceRoot);
         String fileNameString = sourcePath.getFileName().toString();
         if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".src.zip")) {
             if (fromClassPath && fileNameString.endsWith(".jar")) {
                 /*
-                 * GraalVM jar /path/to/xxx.jar in classpath should
-                 * have sources /path/to/xxx.src.zip
+                 * GraalVM jar /path/to/xxx.jar in classpath should have sources
+                 * /path/to/xxx.src.zip
                  */
                 int length = fileNameString.length();
                 fileNameString = fileNameString.substring(0, length - 3) + "src.zip";
@@ -96,7 +96,7 @@ public class GraalVMSourceCache extends SourceCache {
                     /* ignore this entry */
                 }
             }
-        } else  {
+        } else {
             if (fromClassPath) {
                 /* graal classpath dir entries should have a src and/or src_gen subdirectory */
                 Path srcPath = sourcePath.resolve("src");
@@ -115,16 +115,15 @@ public class GraalVMSourceCache extends SourceCache {
             }
         }
     }
+
     /**
-     * Ensure that the supplied root dir contains
-     * at least one  subdirectory that matches one
-     * of the expected Graal package dir hierarchies.
+     * Ensure that the supplied root dir contains at least one subdirectory that matches one of the
+     * expected Graal package dir hierarchies.
      *
-     * @param root A root path under which to locate
-     * the desired subdirectory
+     * @param root A root path under which to locate the desired subdirectory
      * @return true if a
      */
-    private boolean filterSrcRoot(Path root) {
+    private static boolean filterSrcRoot(Path root) {
         String separator = root.getFileSystem().getSeparator();
 
         /* if any of the graal paths exist accept this root */

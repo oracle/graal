@@ -177,9 +177,11 @@ public interface DebugInfoProvider {
         DebugFrameSizeChange.Type getType();
     }
 
+    @SuppressWarnings("unused")
     Stream<DebugTypeInfo> typeInfoProvider();
 
     Stream<DebugCodeInfo> codeInfoProvider();
 
+    @SuppressWarnings("unused")
     Stream<DebugDataInfo> dataInfoProvider();
 }

@@ -59,7 +59,7 @@ public class JDKSourceCache extends SourceCache {
         assert javaHome != null;
         Path javaHomePath = Paths.get("", javaHome);
         Path srcZipPath;
-        String javaSpecVersion =  System.getProperty(JAVA_SPEC_VERSION_PROP);
+        String javaSpecVersion = System.getProperty(JAVA_SPEC_VERSION_PROP);
         if (javaSpecVersion.equals("1.8")) {
             srcZipPath = javaHomePath.resolve("src.zip");
         } else {
@@ -80,4 +80,3 @@ public class JDKSourceCache extends SourceCache {
         }
     }
 }
-

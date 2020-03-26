@@ -170,7 +170,7 @@ public class Range {
         return builder.toString();
     }
 
-    public String getExtendedMethodName(boolean includeParams, boolean includeReturnType) {
+    private String getExtendedMethodName(boolean includeParams, boolean includeReturnType) {
         StringBuilder builder = new StringBuilder();
         if (includeReturnType && returnTypeName.length() > 0) {
             builder.append(returnTypeName);

@@ -276,29 +276,6 @@ public class DwarfSections {
     /**
      * indirects this call to the string table.
      *
-     * @param string the string to be inserted
-     *
-     * @return a unique equivalent String
-     */
-    public String uniqueString(String string) {
-        return stringTable.uniqueString(string);
-    }
-
-    /**
-     * indirects this call to the string table, ensuring the table entry is marked for inclusion in
-     * the debug_str section.
-     *
-     * @param string the string to be inserted and marked for inclusion in the debug_str section
-     *
-     * @return a unique equivalent String
-     */
-    public String uniqueDebugString(String string) {
-        return stringTable.uniqueDebugString(string);
-    }
-
-    /**
-     * indirects this call to the string table.
-     *
      * @param string the string whose index is required
      *
      * @return the offset of the string in the .debug_str section
@@ -322,7 +299,7 @@ public class DwarfSections {
         /*
          * ensure we have a null string in the string section
          */
-        uniqueDebugString("");
+        stringTable.uniqueDebugString("");
 
         debugInfoProvider.codeInfoProvider().forEach(debugCodeInfo -> debugCodeInfo.debugContext((debugContext) -> {
             /*
@@ -369,7 +346,7 @@ public class DwarfSections {
          */
     }
 
-    public ClassEntry ensureClassEntry(Range range) {
+    private ClassEntry ensureClassEntry(Range range) {
         String className = range.getClassName();
         /*
          * see if we already have an entry
@@ -388,7 +365,7 @@ public class DwarfSections {
         return classEntry;
     }
 
-    public FileEntry ensureFileEntry(Range range) {
+    private FileEntry ensureFileEntry(Range range) {
         String fileName = range.getFileName();
         if (fileName == null) {
             return null;
@@ -416,13 +393,13 @@ public class DwarfSections {
         return fileEntry;
     }
 
-    public void addRange(Range primaryRange, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
+    private void addRange(Range primaryRange, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         assert primaryRange.isPrimary();
         ClassEntry classEntry = ensureClassEntry(primaryRange);
         classEntry.addPrimary(primaryRange, frameSizeInfos, frameSize);
     }
 
-    public void addSubRange(Range primaryRange, Range subrange) {
+    private void addSubRange(Range primaryRange, Range subrange) {
         assert primaryRange.isPrimary();
         assert !subrange.isPrimary();
         String className = primaryRange.getClassName();
@@ -437,7 +414,7 @@ public class DwarfSections {
         }
     }
 
-    public DirEntry ensureDirEntry(Path filePath) {
+    private DirEntry ensureDirEntry(Path filePath) {
         if (filePath == null) {
             return null;
         }
