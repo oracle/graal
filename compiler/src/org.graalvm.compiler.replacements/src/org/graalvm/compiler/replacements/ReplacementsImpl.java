@@ -25,6 +25,7 @@
 package org.graalvm.compiler.replacements;
 
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.UseSnippetGraphCache;
 import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
@@ -137,11 +138,13 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     @Override
     public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
-        if (method.getAnnotation(Node.NodeIntrinsic.class) != null || method.getAnnotation(Fold.class) != null) {
-            return GeneratedInvocationPlugin.class;
-        }
-        if (method.getAnnotation(Word.Operation.class) != null) {
-            return WordOperationPlugin.class;
+        if (!IS_IN_NATIVE_IMAGE) {
+            if (method.getAnnotation(Node.NodeIntrinsic.class) != null || method.getAnnotation(Fold.class) != null) {
+                return GeneratedInvocationPlugin.class;
+            }
+            if (method.getAnnotation(Word.Operation.class) != null) {
+                return WordOperationPlugin.class;
+            }
         }
         return null;
     }
@@ -515,6 +518,9 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
             @Override
             public boolean isDeferredInvoke(StateSplit stateSplit) {
+                if (IS_IN_NATIVE_IMAGE) {
+                    throw GraalError.shouldNotReachHere("unused in libgraal");
+                }
                 if (stateSplit instanceof Invoke) {
                     Invoke invoke = (Invoke) stateSplit;
                     ResolvedJavaMethod method = invoke.callTarget().targetMethod();
@@ -561,8 +567,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 }
 
                 IntrinsicContext initialIntrinsicContext = null;
-                Snippet snippetAnnotation = method.getAnnotation(Snippet.class);
-                MethodSubstitution methodAnnotation = method.getAnnotation(MethodSubstitution.class);
+                Snippet snippetAnnotation = null;
+                MethodSubstitution methodAnnotation = null;
+                if (!IS_IN_NATIVE_IMAGE) {
+                    snippetAnnotation = method.getAnnotation(Snippet.class);
+                    methodAnnotation = method.getAnnotation(MethodSubstitution.class);
+                }
                 if (methodAnnotation == null && snippetAnnotation == null) {
                     // Post-parse inlined intrinsic
                     initialIntrinsicContext = new EncodedIntrinsicContext(substitutedMethod, method, bytecodeProvider, context, false);

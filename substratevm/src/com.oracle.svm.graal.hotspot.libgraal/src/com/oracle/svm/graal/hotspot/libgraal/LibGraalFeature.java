@@ -68,12 +68,13 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.EncodedSnippets;
 import org.graalvm.compiler.hotspot.HotSpotCodeCacheListener;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
-import org.graalvm.compiler.hotspot.SymbolicSnippetEncoder;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
@@ -104,6 +105,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
@@ -426,6 +428,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             throw debug.handle(t);
         }
 
+        // Filter out any cached services which are for a different architecture
         try {
             HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
             String osArch = compiler.getGraalRuntime().getVMConfig().osArch;
@@ -451,6 +454,11 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             // Clear that saved names if assertions aren't enabled
             hotSpotSubstrateReplacements.clearSnippetParameterNames();
         }
+        // Mark all the Node classes as allocated so they are available during graph decoding.
+        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(impl.getBigBang().getOptions());
+        for (NodeClass<?> nodeClass : encodedSnippets.getSnippetNodeClasses()) {
+            impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated(null);
+        }
     }
 
     private static void filterArchitectureServices(String archPackage, Map<Class<?>, List<?>> services) {
@@ -473,7 +481,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
         FeatureImpl.AfterCompilationAccessImpl accessImpl = (FeatureImpl.AfterCompilationAccessImpl) access;
-        SymbolicSnippetEncoder.EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(accessImpl.getUniverse().getBigBang().getOptions());
+        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(accessImpl.getUniverse().getBigBang().getOptions());
 
         // These fields are all immutable but the snippet object table isn't since symbolic JVMCI
         // references are converted into real references during decoding.
@@ -540,20 +548,16 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
         return KnownIntrinsics.convertUnknownValue(object, Object.class);
     }
 
-    @Substitute
-    static Annotation[] getClassAnnotations(String className) {
-        throw VMError.shouldNotReachHere("Annotations are unsupported in libgraal: " + className);
-    }
+    // Annotations are currently unsupported in libgraal. These substitutions will turn their use
+    // into a image time build error.
+    @Delete
+    static native Annotation[] getClassAnnotations(String className);
 
-    @Substitute
-    static Annotation[][] getParameterAnnotations(String className, String methodName) {
-        throw VMError.shouldNotReachHere("Annotations are unsupported in libgraal: " + className + "." + methodName);
-    }
+    @Delete
+    static native Annotation[][] getParameterAnnotations(String className, String methodName);
 
-    @Substitute
-    static Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod) {
-        throw VMError.shouldNotReachHere("Annotations are unsupported in libgraal: " + javaMethod.format("%H.%n"));
-    }
+    @Delete
+    static native Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod);
 }
 
 @TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalRuntime", onlyWith = LibGraalFeature.IsEnabled.class)
