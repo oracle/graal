@@ -179,14 +179,14 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     /*
      * debug_aranges section content depends on debug_info section content and offset
      */
-    public static final String TARGET_SECTION_NAME = DW_INFO_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DW_INFO_SECTION_NAME;
 
     @Override
     public String targetSectionName() {
         return TARGET_SECTION_NAME;
     }
 
-    public final LayoutDecision.Kind[] targetSectionKinds = {
+    private final LayoutDecision.Kind[] targetSectionKinds = {
                     LayoutDecision.Kind.CONTENT,
                     LayoutDecision.Kind.OFFSET
     };

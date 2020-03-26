@@ -39,19 +39,19 @@ public class PrimaryEntry {
     /**
      * The primary range detailed by this object.
      */
-    Range primary;
+    private Range primary;
     /**
      * Details of the class owning this range.
      */
-    ClassEntry classEntry;
+    private ClassEntry classEntry;
     /**
      * A list of subranges associated with the primary range.
      */
-    List<Range> subranges;
+    private List<Range> subranges;
     /**
      * A mapping from subranges to their associated file entry.
      */
-    HashMap<Range, FileEntry> subrangeIndex;
+    private HashMap<Range, FileEntry> subrangeIndex;
     /**
      * Details of of compiled method frame size changes.
      */

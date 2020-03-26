@@ -156,7 +156,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         assert pos == size;
     }
 
-    public int writeCUHeader(byte[] buffer, int p) {
+    private int writeCUHeader(byte[] buffer, int p) {
         int pos = p;
         if (buffer == null) {
             /* CU length */
@@ -179,7 +179,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    public int writeCU(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
+    private int writeCU(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, DW_ABBREV_CODE_compile_unit);
@@ -204,7 +204,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     }
 
-    public int writePrimary(DebugContext context, PrimaryEntry primaryEntry, byte[] buffer, int p) {
+    private int writePrimary(DebugContext context, PrimaryEntry primaryEntry, byte[] buffer, int p) {
         int pos = p;
         Range primary = primaryEntry.getPrimary();
         verboseLog(context, "  [0x%08x] <1> Abbrev Number  %d", pos, DW_ABBREV_CODE_subprogram);
@@ -222,7 +222,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeFlag(DW_FLAG_true, buffer, pos);
     }
 
-    public int writeAttrStrp(String value, byte[] buffer, int p) {
+    private int writeAttrStrp(String value, byte[] buffer, int p) {
         int pos = p;
         if (buffer == null) {
             return pos + putInt(0, scratch, 0);
@@ -232,6 +232,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
     }
 
+    @SuppressWarnings("unused")
     public int writeAttrString(String value, byte[] buffer, int p) {
         int pos = p;
         if (buffer == null) {
@@ -244,14 +245,14 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     /**
      * debug_info section content depends on abbrev section content and offset.
      */
-    public static final String TARGET_SECTION_NAME = DW_ABBREV_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DW_ABBREV_SECTION_NAME;
 
     @Override
     public String targetSectionName() {
         return TARGET_SECTION_NAME;
     }
 
-    public final LayoutDecision.Kind[] targetSectionKinds = {
+    private final LayoutDecision.Kind[] targetSectionKinds = {
                     LayoutDecision.Kind.CONTENT,
                     LayoutDecision.Kind.OFFSET
     };

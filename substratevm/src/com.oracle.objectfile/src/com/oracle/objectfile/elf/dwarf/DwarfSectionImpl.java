@@ -46,10 +46,10 @@ import static com.oracle.objectfile.elf.dwarf.DwarfSections.TEXT_SECTION_NAME;
  */
 public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     protected DwarfSections dwarfSections;
-    public boolean debug = false;
-    public long debugTextBase = 0;
-    public long debugAddress = 0;
-    public int debugBase = 0;
+    protected boolean debug = false;
+    protected long debugTextBase = 0;
+    protected long debugAddress = 0;
+    protected int debugBase = 0;
 
     public DwarfSectionImpl(DwarfSections dwarfSections) {
         this.dwarfSections = dwarfSections;
@@ -81,7 +81,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return false;
     }
 
-    public String debugSectionLogName() {
+    private String debugSectionLogName() {
         /*
          * Use prefix dwarf plus the section name (which already includes a dot separator) for the
          * context key. For example messages for info section will be keyed using dwarf.debug_info.
@@ -91,7 +91,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return "dwarf" + getSectionName();
     }
 
-    public void enableLog(DebugContext context, int pos) {
+    protected void enableLog(DebugContext context, int pos) {
         /*
          * debug output is disabled during the first pass where we size the buffer. this is called
          * to enable it during the second pass where the buffer gets written, but only if the scope
@@ -124,13 +124,13 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * base level put methods that assume a non-null buffer
      */
 
-    public int putByte(byte b, byte[] buffer, int p) {
+    protected int putByte(byte b, byte[] buffer, int p) {
         int pos = p;
         buffer[pos++] = b;
         return pos;
     }
 
-    public int putShort(short s, byte[] buffer, int p) {
+    protected int putShort(short s, byte[] buffer, int p) {
         int pos = p;
         if (littleEndian()) {
             buffer[pos++] = (byte) (s & 0xff);
@@ -142,7 +142,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
-    public int putInt(int i, byte[] buffer, int p) {
+    protected int putInt(int i, byte[] buffer, int p) {
         int pos = p;
         if (littleEndian()) {
             buffer[pos++] = (byte) (i & 0xff);
@@ -158,7 +158,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
-    public int putLong(long l, byte[] buffer, int p) {
+    protected int putLong(long l, byte[] buffer, int p) {
         int pos = p;
         if (littleEndian()) {
             buffer[pos++] = (byte) (l & 0xff);
@@ -182,7 +182,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
-    public int putRelocatableCodeOffset(long l, byte[] buffer, int p) {
+    protected int putRelocatableCodeOffset(long l, byte[] buffer, int p) {
         int pos = p;
         /*
          * mark address so it is relocated relative to the start of the text segment
@@ -192,7 +192,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
-    public int putULEB(long val, byte[] buffer, int p) {
+    protected int putULEB(long val, byte[] buffer, int p) {
         long l = val;
         int pos = p;
         for (int i = 0; i < 9; i++) {
@@ -210,7 +210,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
-    public int putSLEB(long val, byte[] buffer, int p) {
+    protected int putSLEB(long val, byte[] buffer, int p) {
         long l = val;
         int pos = p;
         for (int i = 0; i < 9; i++) {
@@ -229,11 +229,11 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
-    public int putAsciiStringBytes(String s, byte[] buffer, int pos) {
+    protected int putAsciiStringBytes(String s, byte[] buffer, int pos) {
         return putAsciiStringBytes(s, 0, buffer, pos);
     }
 
-    public int putAsciiStringBytes(String s, int startChar, byte[] buffer, int p) {
+    protected int putAsciiStringBytes(String s, int startChar, byte[] buffer, int p) {
         int pos = p;
         for (int l = startChar; l < s.length(); l++) {
             char c = s.charAt(l);
@@ -250,14 +250,14 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * common write methods that check for a null buffer
      */
 
-    public void patchLength(int lengthPos, byte[] buffer, int pos) {
+    protected void patchLength(int lengthPos, byte[] buffer, int pos) {
         if (buffer != null) {
             int length = pos - (lengthPos + 4);
             putInt(length, buffer, lengthPos);
         }
     }
 
-    public int writeAbbrevCode(long code, byte[] buffer, int pos) {
+    protected int writeAbbrevCode(long code, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putSLEB(code, scratch, 0);
         } else {
@@ -265,7 +265,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
-    public int writeTag(long code, byte[] buffer, int pos) {
+    protected int writeTag(long code, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putSLEB(code, scratch, 0);
         } else {
@@ -273,7 +273,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
-    public int writeFlag(byte flag, byte[] buffer, int pos) {
+    protected int writeFlag(byte flag, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putByte(flag, scratch, 0);
         } else {
@@ -281,7 +281,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
-    public int writeAttrAddress(long address, byte[] buffer, int pos) {
+    protected int writeAttrAddress(long address, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + 8;
         } else {
@@ -290,7 +290,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     @SuppressWarnings("unused")
-    public int writeAttrData8(long value, byte[] buffer, int pos) {
+    protected int writeAttrData8(long value, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putLong(value, scratch, 0);
         } else {
@@ -298,7 +298,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
-    public int writeAttrData4(int value, byte[] buffer, int pos) {
+    protected int writeAttrData4(int value, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putInt(value, scratch, 0);
         } else {
@@ -306,7 +306,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
-    public int writeAttrData1(byte value, byte[] buffer, int pos) {
+    protected int writeAttrData1(byte value, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putByte(value, scratch, 0);
         } else {
@@ -314,7 +314,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
-    public int writeAttrNull(byte[] buffer, int pos) {
+    protected int writeAttrNull(byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putSLEB(0, scratch, 0);
         } else {
@@ -358,9 +358,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
          * we do this in a nested debug scope derived from the one set up under the object file
          * write
          */
-        getOwner().debugContext(debugSectionLogName(), debugContext -> {
-            writeContent(debugContext);
-        });
+        getOwner().debugContext(debugSectionLogName(), this::writeContent);
 
         return super.getOrDecideContent(alreadyDecided, contentHint);
     }

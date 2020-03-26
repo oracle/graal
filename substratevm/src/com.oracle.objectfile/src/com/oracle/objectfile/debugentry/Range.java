@@ -66,7 +66,7 @@ public class Range {
          * currently file name and full method name need to go into the debug_str section other
          * strings just need to be deduplicated to save space
          */
-        this.fileName = (fileName == null ? fileName : stringTable.uniqueDebugString(fileName));
+        this.fileName = (fileName == null ? null : stringTable.uniqueDebugString(fileName));
         this.filePath = filePath;
         this.className = stringTable.uniqueString(className);
         this.methodName = stringTable.uniqueString(methodName);
@@ -133,7 +133,7 @@ public class Range {
         return fullMethodName;
     }
 
-    public String getExtendedMethodName(boolean includeParams, boolean includeReturnType) {
+    private String getExtendedMethodName(boolean includeParams, boolean includeReturnType) {
         StringBuilder builder = new StringBuilder();
         if (includeReturnType && returnTypeName.length() > 0) {
             builder.append(returnTypeName);

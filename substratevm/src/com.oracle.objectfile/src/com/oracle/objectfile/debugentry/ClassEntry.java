@@ -44,7 +44,7 @@ public class ClassEntry {
     /**
      * details of the associated file.
      */
-    FileEntry fileEntry;
+    private FileEntry fileEntry;
     /**
      * a list recording details of all primary ranges included in this class sorted by ascending
      * address range.
@@ -111,14 +111,12 @@ public class ClassEntry {
         this.totalSize = -1;
     }
 
-    public PrimaryEntry addPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
+    public void addPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         if (primaryIndex.get(primary) == null) {
             PrimaryEntry primaryEntry = new PrimaryEntry(primary, frameSizeInfos, frameSize, this);
             primaryEntries.add(primaryEntry);
             primaryIndex.put(primary, primaryEntry);
-            return primaryEntry;
         }
-        return null;
     }
 
     public void addSubRange(Range subrange, FileEntry subFileEntry) {
@@ -167,6 +165,7 @@ public class ClassEntry {
         }
     }
 
+    @SuppressWarnings("unused")
     String getFullFileName() {
         if (fileEntry != null) {
             return fileEntry.getFullName();
@@ -175,6 +174,7 @@ public class ClassEntry {
         }
     }
 
+    @SuppressWarnings("unused")
     String getDirName() {
         if (fileEntry != null) {
             return fileEntry.getPathName();
