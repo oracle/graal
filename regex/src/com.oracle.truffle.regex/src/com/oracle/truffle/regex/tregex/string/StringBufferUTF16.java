@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,65 +38,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex;
+package com.oracle.truffle.regex.tregex.string;
 
-public final class Encodings {
+import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
 
-    public static final Encoding UTF_8 = new Encoding.UTF8();
-    public static final Encoding UTF_16 = new Encoding.UTF16();
-    public static final Encoding UTF_32 = new Encoding.UTF32();
+public final class StringBufferUTF16 extends CharArrayBuffer implements AbstractStringBuffer {
 
-    public abstract static class Encoding {
+    public StringBufferUTF16(int initialCapacity) {
+        super(initialCapacity);
+    }
 
-        public abstract String getName();
-
-        public abstract int getEncodedSize(int codepoint);
-
-        private static final class UTF32 extends Encoding {
-
-            @Override
-            public String getName() {
-                return "UTF-32";
-            }
-
-            @Override
-            public int getEncodedSize(int codepoint) {
-                return 1;
-            }
+    @Override
+    public void append(int codepoint) {
+        int n = Encodings.UTF_16.getEncodedSize(codepoint);
+        int newLength = length() + n;
+        ensureCapacity(newLength);
+        if (n == 1) {
+            set(length(), (char) codepoint);
+        } else {
+            set(length(), Character.highSurrogate(codepoint));
+            set(length() + 1, Character.lowSurrogate(codepoint));
         }
-
-        private static final class UTF16 extends Encoding {
-
-            @Override
-            public String getName() {
-                return "UTF-16";
-            }
-
-            @Override
-            public int getEncodedSize(int codepoint) {
-                return codepoint < 0x10000 ? 1 : 2;
-            }
-        }
-
-        private static final class UTF8 extends Encoding {
-
-            @Override
-            public String getName() {
-                return "UTF-8";
-            }
-
-            @Override
-            public int getEncodedSize(int codepoint) {
-                if (codepoint < 0x80) {
-                    return 1;
-                } else if (codepoint < 0x800) {
-                    return 2;
-                } else if (codepoint < 0x10000) {
-                    return 3;
-                } else {
-                    return 4;
-                }
-            }
-        }
+        setLength(newLength);
     }
 }

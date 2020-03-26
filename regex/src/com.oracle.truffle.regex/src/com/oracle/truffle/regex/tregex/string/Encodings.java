@@ -38,73 +38,65 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.regex.tregex.string;
 
-package com.oracle.truffle.regex.tregex.buffer;
+public final class Encodings {
 
-import java.util.Arrays;
+    public static final Encoding UTF_8 = new Encoding.UTF8();
+    public static final Encoding UTF_16 = new Encoding.UTF16();
+    public static final Encoding UTF_32 = new Encoding.UTF32();
 
-/**
- * This class is designed as a "scratchpad" for generating many char arrays of unknown size. It will
- * never shrink its internal buffer, so it should be disposed as soon as it is no longer needed.
- * <p>
- * Usage Example:
- * </p>
- *
- * <pre>
- * CharArrayBuffer buf = new CharArrayBuffer();
- * List<char[]> results = new ArrayList<>();
- * for (Object obj : listOfThingsToProcess) {
- *     for (Object x : obj.thingsThatShouldBecomeChars()) {
- *         buf.add(someCalculation(x));
- *     }
- *     results.add(buf.toArray());
- *     buf.clear();
- * }
- * </pre>
- */
-public class CharArrayBuffer extends AbstractArrayBuffer {
+    public abstract static class Encoding {
 
-    private static final char[] EMPTY = {};
-    protected char[] buf;
+        public abstract String getName();
 
-    public CharArrayBuffer() {
-        this(16);
-    }
+        public abstract int getEncodedSize(int codepoint);
 
-    public CharArrayBuffer(int initialSize) {
-        buf = new char[initialSize];
-    }
+        private static final class UTF32 extends Encoding {
 
-    @Override
-    int getBufferLength() {
-        return buf.length;
-    }
+            @Override
+            public String getName() {
+                return "UTF-32";
+            }
 
-    @Override
-    void grow(int newSize) {
-        buf = Arrays.copyOf(buf, newSize);
-    }
-
-    public char[] getBuffer() {
-        return buf;
-    }
-
-    public char get(int i) {
-        return buf[i];
-    }
-
-    public void set(int i, char c) {
-        buf[i] = c;
-    }
-
-    public void add(char c) {
-        if (length == buf.length) {
-            grow(length * 2);
+            @Override
+            public int getEncodedSize(int codepoint) {
+                return 1;
+            }
         }
-        buf[length++] = c;
-    }
 
-    public char[] toArray() {
-        return isEmpty() ? EMPTY : Arrays.copyOf(buf, length);
+        private static final class UTF16 extends Encoding {
+
+            @Override
+            public String getName() {
+                return "UTF-16";
+            }
+
+            @Override
+            public int getEncodedSize(int codepoint) {
+                return codepoint < 0x10000 ? 1 : 2;
+            }
+        }
+
+        private static final class UTF8 extends Encoding {
+
+            @Override
+            public String getName() {
+                return "UTF-8";
+            }
+
+            @Override
+            public int getEncodedSize(int codepoint) {
+                if (codepoint < 0x80) {
+                    return 1;
+                } else if (codepoint < 0x800) {
+                    return 2;
+                } else if (codepoint < 0x10000) {
+                    return 3;
+                } else {
+                    return 4;
+                }
+            }
+        }
     }
 }

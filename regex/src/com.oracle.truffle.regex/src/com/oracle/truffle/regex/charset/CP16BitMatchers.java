@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.regex.charset;
 
-import java.util.Iterator;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
@@ -74,7 +72,11 @@ public class CP16BitMatchers {
      * are cut off.
      */
     public static CharMatcher createMatcher(CodePointSet cps, CompilationBuffer compilationBuffer) {
-        if (cps.matchesMinAndMax() || cps.inverseIsSameHighByte16Bit()) {
+        return createMatcher(CodePointSetBMPView.create(cps), compilationBuffer, false, true);
+    }
+
+    public static CharMatcher createMatcher(CodePointSetBMPView cps, CompilationBuffer compilationBuffer) {
+        if (cps.matchesMinAndMax() || cps.inverseIsSameHighByte()) {
             return createMatcher(cps.createInverse(), compilationBuffer, true, true);
         }
         return createMatcher(cps, compilationBuffer, false, true);
@@ -88,24 +90,22 @@ public class CP16BitMatchers {
         return c & 0xff;
     }
 
-    private static CharMatcher createMatcher(CodePointSet cps, CompilationBuffer compilationBuffer, boolean inverse, boolean tryHybrid) {
-        if (cps.numberOf16BitRanges() == 0) {
+    private static CharMatcher createMatcher(CodePointSetBMPView cps, CompilationBuffer compilationBuffer, boolean inverse, boolean tryHybrid) {
+        if (cps.isEmpty()) {
             return EmptyMatcher.create(inverse);
         }
         if (cps.matchesEverything()) {
             return AnyMatcher.create(inverse);
         }
         if (cps.matchesSingleChar()) {
-            assert cps.getMin() <= Character.MAX_VALUE;
             return SingleCharMatcher.create(inverse, cps.getMin());
         }
         if (cps.valueCountEquals(2)) {
-            assert cps.getMax() <= Character.MAX_VALUE;
             return TwoCharMatcher.create(inverse, cps.getMin(), cps.getMax());
         }
-        int size = cps.numberOf16BitRanges();
+        int size = cps.size();
         if (size == 1) {
-            return SingleRangeMatcher.create(inverse, cps.getLo16(0), cps.getHi16(0));
+            return SingleRangeMatcher.create(inverse, cps.getMin(), cps.getMax());
         }
         if (preferRangeListMatcherOverBitSetMatcher(cps, size)) {
             return RangeListMatcher.create(inverse, toCharArray(cps, size));
@@ -127,30 +127,30 @@ public class CP16BitMatchers {
                 charMatcher = RangeTreeMatcher.fromRanges(inverse, toCharArray(cps, size));
             }
         }
-        return ProfilingCharMatcher.create(createMatcher(cps.createIntersection(Constants.BYTE_RANGE, compilationBuffer), compilationBuffer, inverse, false), charMatcher);
+        return ProfilingCharMatcher.create(createMatcher(cps.createIntersection(CodePointSetBMPView.create(Constants.BYTE_RANGE), compilationBuffer), compilationBuffer, inverse, false), charMatcher);
     }
 
-    private static boolean preferRangeListMatcherOverBitSetMatcher(CodePointSet cps, int size) {
+    private static boolean preferRangeListMatcherOverBitSetMatcher(CodePointSetBMPView cps, int size) {
         // for up to two ranges, RangeListMatcher is faster than any BitSet matcher
         // also, up to four single character checks are still faster than a bit set
         return size <= 2 || cps.valueCountMax(4);
     }
 
-    private static InvertibleCharMatcher convertToBitSetMatcher(CodePointSet cps, CompilationBuffer compilationBuffer, boolean inverse) {
+    private static InvertibleCharMatcher convertToBitSetMatcher(CodePointSetBMPView cps, CompilationBuffer compilationBuffer, boolean inverse) {
         int highByte = highByte(cps.getMin());
-        if (highByte(cps.getHi16(cps.size16() - 1)) != highByte) {
+        if (highByte(cps.getMax()) != highByte) {
             return null;
         }
         CompilationFinalBitSet bs = compilationBuffer.getByteSizeBitSet();
-        for (int i = 0; i < cps.numberOf16BitRanges(); i++) {
-            assert highByte(cps.getLo16(i)) == highByte && highByte(cps.getHi16(i)) == highByte;
-            bs.setRange(lowByte(cps.getLo16(i)), lowByte(cps.getHi16(i)));
+        for (int i = 0; i < cps.size(); i++) {
+            assert highByte(cps.getLo(i)) == highByte && highByte(cps.getHi(i)) == highByte;
+            bs.setRange(lowByte(cps.getLo(i)), lowByte(cps.getHi(i)));
         }
         return BitSetMatcher.create(inverse, highByte, bs.copy());
     }
 
-    private static CharMatcher createHybridMatcher(CodePointSet cps, CompilationBuffer compilationBuffer, boolean inverse) {
-        int size = cps.size16();
+    private static CharMatcher createHybridMatcher(CodePointSetBMPView cps, CompilationBuffer compilationBuffer, boolean inverse) {
+        int size = cps.size();
         assert size >= 1;
         IntRangesBuffer rest = compilationBuffer.getIntRangesBuffer1();
         ByteArrayBuffer highBytes = compilationBuffer.getByteArrayBuffer();
@@ -158,23 +158,23 @@ public class CP16BitMatchers {
         // index of lowest range on current plane
         int lowestOCP = 0;
         boolean lowestRangeCanBeDeleted = !rangeCrossesPlanes(cps, 0);
-        int curPlane = highByte(cps.getHi16(0));
+        int curPlane = highByte(cps.getHi(0));
         for (int i = 0; i < size; i++) {
-            if (highByte(cps.getLo16(i)) != curPlane) {
+            if (highByte(cps.getLo(i)) != curPlane) {
                 if (isOverBitSetConversionThreshold(i - lowestOCP)) {
                     addBitSet(cps, rest, highBytes, bitSets, curPlane, lowestOCP, i, lowestRangeCanBeDeleted);
                 } else {
                     cps.appendRangesTo(rest, lowestOCP, i);
                 }
-                curPlane = highByte(cps.getLo16(i));
+                curPlane = highByte(cps.getLo(i));
                 lowestOCP = i;
                 lowestRangeCanBeDeleted = !rangeCrossesPlanes(cps, i);
             }
-            if (highByte(cps.getHi16(i)) != curPlane) {
+            if (highByte(cps.getHi(i)) != curPlane) {
                 if (lowestOCP != i) {
                     if (isOverBitSetConversionThreshold((i + 1) - lowestOCP)) {
                         addBitSet(cps, rest, highBytes, bitSets, curPlane, lowestOCP, i + 1, lowestRangeCanBeDeleted);
-                        lowestRangeCanBeDeleted = highByte(cps.getHi16(i)) - highByte(cps.getLo16(i)) == 1;
+                        lowestRangeCanBeDeleted = highByte(cps.getHi(i)) - highByte(cps.getLo(i)) == 1;
                     } else {
                         cps.appendRangesTo(rest, lowestOCP, i);
                         lowestRangeCanBeDeleted = !rangeCrossesPlanes(cps, i);
@@ -182,7 +182,7 @@ public class CP16BitMatchers {
                 } else {
                     lowestRangeCanBeDeleted = !rangeCrossesPlanes(cps, i);
                 }
-                curPlane = highByte(cps.getHi16(i));
+                curPlane = highByte(cps.getHi(i));
                 lowestOCP = i;
             }
         }
@@ -195,7 +195,7 @@ public class CP16BitMatchers {
             assert rest.length() == size * 2;
             return createMatcher(cps, compilationBuffer, inverse, false);
         }
-        CharMatcher restMatcher = createMatcher(CodePointSet.create(rest), compilationBuffer, false, false);
+        CharMatcher restMatcher = createMatcher(CodePointSetBMPView.create(rest), compilationBuffer, false, false);
         return HybridBitSetMatcher.create(inverse, highBytes.toArray(), bitSets.toArray(new CompilationFinalBitSet[bitSets.length()]), restMatcher);
     }
 
@@ -203,7 +203,7 @@ public class CP16BitMatchers {
         return nRanges >= TRegexOptions.TRegexRangeToBitSetConversionThreshold;
     }
 
-    private static void addBitSet(CodePointSet ranges, IntRangesBuffer rest, ByteArrayBuffer highBytes, ObjectArrayBuffer<CompilationFinalBitSet> bitSets,
+    private static void addBitSet(CodePointSetBMPView ranges, IntRangesBuffer rest, ByteArrayBuffer highBytes, ObjectArrayBuffer<CompilationFinalBitSet> bitSets,
                     int curPlane, int lowestOCP, int i, boolean lowestRangeCanBeDeleted) {
         highBytes.add((byte) curPlane);
         bitSets.add(convertToBitSet(ranges, curPlane, lowestOCP, i));
@@ -212,41 +212,39 @@ public class CP16BitMatchers {
         }
     }
 
-    private static boolean rangeCrossesPlanes(CodePointSet ranges, int i) {
-        return highByte(ranges.getLo16(i)) != highByte(ranges.getHi16(i));
+    private static boolean rangeCrossesPlanes(CodePointSetBMPView ranges, int i) {
+        return highByte(ranges.getLo(i)) != highByte(ranges.getHi(i));
     }
 
-    private static CompilationFinalBitSet convertToBitSet(CodePointSet ranges, int highByte, int iMinArg, int iMaxArg) {
+    private static CompilationFinalBitSet convertToBitSet(CodePointSetBMPView ranges, int highByte, int iMinArg, int iMaxArg) {
         assert iMaxArg - iMinArg > 1;
         CompilationFinalBitSet bs;
         int iMax = iMaxArg;
         if (rangeCrossesPlanes(ranges, iMaxArg - 1)) {
             bs = new CompilationFinalBitSet(0xff);
             iMax--;
-            bs.setRange(lowByte(ranges.getLo16(iMaxArg - 1)), 0xff);
+            bs.setRange(lowByte(ranges.getLo(iMaxArg - 1)), 0xff);
         } else {
-            bs = new CompilationFinalBitSet(lowByte(ranges.getHi16(iMaxArg - 1)));
+            bs = new CompilationFinalBitSet(lowByte(ranges.getHi(iMaxArg - 1)));
         }
         int iMin = iMinArg;
         if (rangeCrossesPlanes(ranges, iMinArg)) {
-            assert highByte(ranges.getHi16(iMinArg)) == highByte;
+            assert highByte(ranges.getHi(iMinArg)) == highByte;
             iMin++;
-            bs.setRange(0, lowByte(ranges.getHi16(iMinArg)));
+            bs.setRange(0, lowByte(ranges.getHi(iMinArg)));
         }
         for (int i = iMin; i < iMax; i++) {
-            assert highByte(ranges.getLo16(i)) == highByte && highByte(ranges.getHi16(i)) == highByte;
-            bs.setRange(lowByte(ranges.getLo16(i)), lowByte(ranges.getHi16(i)));
+            assert highByte(ranges.getLo(i)) == highByte && highByte(ranges.getHi(i)) == highByte;
+            bs.setRange(lowByte(ranges.getLo(i)), lowByte(ranges.getHi(i)));
         }
         return bs;
     }
 
-    private static char[] toCharArray(CodePointSet cps, int size) {
+    private static char[] toCharArray(CodePointSetBMPView cps, int size) {
         int length = size * 2;
-        Iterator<Range> it = cps.iterator16Bit();
         char[] arr = new char[length];
         int i = 0;
-        while (it.hasNext()) {
-            Range r = it.next();
+        for (Range r : cps) {
             assert r.lo <= Character.MAX_VALUE && r.hi <= Character.MAX_VALUE;
             arr[i] = (char) r.lo;
             arr[i + 1] = (char) r.hi;

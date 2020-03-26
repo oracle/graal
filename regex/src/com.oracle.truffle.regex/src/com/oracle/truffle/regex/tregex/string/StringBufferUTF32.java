@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,73 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.regex.tregex.string;
 
-package com.oracle.truffle.regex.tregex.buffer;
+import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 
-import java.util.Arrays;
-
-/**
- * This class is designed as a "scratchpad" for generating many char arrays of unknown size. It will
- * never shrink its internal buffer, so it should be disposed as soon as it is no longer needed.
- * <p>
- * Usage Example:
- * </p>
- *
- * <pre>
- * CharArrayBuffer buf = new CharArrayBuffer();
- * List<char[]> results = new ArrayList<>();
- * for (Object obj : listOfThingsToProcess) {
- *     for (Object x : obj.thingsThatShouldBecomeChars()) {
- *         buf.add(someCalculation(x));
- *     }
- *     results.add(buf.toArray());
- *     buf.clear();
- * }
- * </pre>
- */
-public class CharArrayBuffer extends AbstractArrayBuffer {
-
-    private static final char[] EMPTY = {};
-    protected char[] buf;
-
-    public CharArrayBuffer() {
-        this(16);
-    }
-
-    public CharArrayBuffer(int initialSize) {
-        buf = new char[initialSize];
-    }
+public final class StringBufferUTF32 extends IntArrayBuffer implements AbstractStringBuffer {
 
     @Override
-    int getBufferLength() {
-        return buf.length;
-    }
-
-    @Override
-    void grow(int newSize) {
-        buf = Arrays.copyOf(buf, newSize);
-    }
-
-    public char[] getBuffer() {
-        return buf;
-    }
-
-    public char get(int i) {
-        return buf[i];
-    }
-
-    public void set(int i, char c) {
-        buf[i] = c;
-    }
-
-    public void add(char c) {
-        if (length == buf.length) {
-            grow(length * 2);
-        }
-        buf[length++] = c;
-    }
-
-    public char[] toArray() {
-        return isEmpty() ? EMPTY : Arrays.copyOf(buf, length);
+    public void append(int codepoint) {
+        add(codepoint);
     }
 }
