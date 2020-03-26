@@ -270,46 +270,44 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public boolean resume(Object thread, boolean sessionClosed) {
-        JDWPLogger.log("Called resume thread: %s with suspension count: %d", JDWPLogger.LogLevel.THREAD, getThreadName(thread), threadSuspension.getSuspensionCount(thread));
+        SimpleLock lock = getSuspendLock(thread);
+        synchronized (lock) {
+            JDWPLogger.log("Called resume thread: %s with suspension count: %d", JDWPLogger.LogLevel.THREAD, getThreadName(thread), threadSuspension.getSuspensionCount(thread));
 
-        if (threadSuspension.getSuspensionCount(thread) == 0) {
-            // already running, so nothing to do
-            return true;
-        }
-
-        threadSuspension.resumeThread(thread);
-        int suspensionCount = threadSuspension.getSuspensionCount(thread);
-
-        if (suspensionCount == 0) {
-            // only resume when suspension count reaches 0
-
-            if (!isStepping(thread)) {
-                if (!sessionClosed) {
-                    try {
-                        JDWPLogger.log("calling underlying resume method for thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
-                        debuggerSession.resume(getContext().asHostThread(thread));
-                    } catch (Exception e) {
-                        throw new RuntimeException("Failed to resume thread: " + getThreadName(thread), e);
-                    }
-                }
-
-                // OK, this is a pure resume call, so clear suspended info
-                JDWPLogger.log("pure resume call, clearing suspended info on: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
-
-                suspendedInfos.put(thread, null);
+            if (threadSuspension.getSuspensionCount(thread) == 0) {
+                // already running, so nothing to do
+                return true;
             }
 
-            SimpleLock lock = getSuspendLock(thread);
-            synchronized (lock) {
+            threadSuspension.resumeThread(thread);
+            int suspensionCount = threadSuspension.getSuspensionCount(thread);
+
+            if (suspensionCount == 0) {
+                // only resume when suspension count reaches 0
+
+                if (!isStepping(thread)) {
+                    if (!sessionClosed) {
+                        try {
+                            JDWPLogger.log("calling underlying resume method for thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
+                            debuggerSession.resume(getContext().asHostThread(thread));
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to resume thread: " + getThreadName(thread), e);
+                        }
+                    }
+                }
+                JDWPLogger.log("resume call, clearing suspended info on: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
+
+                suspendedInfos.put(thread, null);
+
                 JDWPLogger.log("Waking up thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
                 lock.release();
                 lock.notifyAll();
                 threadSuspension.removeHardSuspendedThread(thread);
+                return true;
+            } else {
+                JDWPLogger.log("Not resuming thread: %s with suspension count: %d", JDWPLogger.LogLevel.THREAD, getThreadName(thread), threadSuspension.getSuspensionCount(thread));
+                return false;
             }
-            return true;
-        } else {
-            JDWPLogger.log("Not resuming thread: %s with suspension count: %d", JDWPLogger.LogLevel.THREAD, getThreadName(thread), threadSuspension.getSuspensionCount(thread));
-            return false;
         }
     }
 
@@ -320,46 +318,59 @@ public final class DebuggerController implements ContextsListener {
         // sent while performing a stepping request, some debuggers (IntelliJ is a known case) will
         // expect all other threads but the current stepping thread to be resumed first.
         for (Object thread : getContext().getAllGuestThreads()) {
-            while (threadSuspension.getSuspensionCount(thread) > 0) {
-                if (isStepping(thread)) {
-                    eventThread = thread;
-                    break;
-                } else {
-                    resume(thread, sessionClosed);
+            boolean resumed = false;
+            SimpleLock suspendLock = getSuspendLock(thread);
+            synchronized (suspendLock) {
+                while (!resumed) {
+                    if (isStepping(thread)) {
+                        eventThread = thread;
+                        break;
+                    } else {
+                        resumed = resume(thread, sessionClosed);
+                    }
                 }
             }
         }
         if (eventThread != null) {
-            resume(eventThread, sessionClosed);
+            boolean resumed = false;
+            SimpleLock suspendLock = getSuspendLock(eventThread);
+            synchronized (suspendLock) {
+                while (!resumed) {
+                    resumed = resume(eventThread, sessionClosed);
+                }
+            }
         }
     }
 
     public void suspend(Object guestThread) {
-        JDWPLogger.log("suspend called for guestThread: %s with suspension count %d", JDWPLogger.LogLevel.THREAD, getThreadName(guestThread), threadSuspension.getSuspensionCount(guestThread));
+        SimpleLock suspendLock = getSuspendLock(guestThread);
+        synchronized (suspendLock) {
+            JDWPLogger.log("suspend called for guestThread: %s with suspension count %d", JDWPLogger.LogLevel.THREAD, getThreadName(guestThread), threadSuspension.getSuspensionCount(guestThread));
 
-        if (threadSuspension.getSuspensionCount(guestThread) > 0) {
-            // already suspended, so only increase the suspension count
-            threadSuspension.suspendThread(guestThread);
-            return;
-        }
-
-        try {
-            JDWPLogger.log("State: %s", JDWPLogger.LogLevel.THREAD, getContext().asHostThread(guestThread).getState());
-            JDWPLogger.log("calling underlying suspend method for guestThread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(guestThread));
-            debuggerSession.suspend(getContext().asHostThread(guestThread));
-
-            // quite often the Debug API will not call back the onSuspend method in time,
-            // even if the guestThread is executing. If the guestThread is blocked or waiting we
-            // still need
-            // to suspend it, thus we manage this with a hard suspend mechanism
-            threadSuspension.addHardSuspendedThread(guestThread);
-            if (suspendedInfos.get(guestThread) == null) {
-                // if already set, we have captured a blocking suspendedInfo already
-                // so don't overwrite that information
-                suspendedInfos.put(guestThread, new UnknownSuspendedInfo(guestThread, getContext()));
+            if (threadSuspension.getSuspensionCount(guestThread) > 0) {
+                // already suspended, so only increase the suspension count
+                threadSuspension.suspendThread(guestThread);
+                return;
             }
-        } catch (Exception e) {
-            JDWPLogger.log("not able to suspend guestThread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(guestThread));
+
+            try {
+                JDWPLogger.log("State: %s", JDWPLogger.LogLevel.THREAD, getContext().asHostThread(guestThread).getState());
+                JDWPLogger.log("calling underlying suspend method for guestThread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(guestThread));
+                debuggerSession.suspend(getContext().asHostThread(guestThread));
+
+                // quite often the Debug API will not call back the onSuspend method in time,
+                // even if the guestThread is executing. If the guestThread is blocked or waiting we
+                // still need
+                // to suspend it, thus we manage this with a hard suspend mechanism
+                threadSuspension.addHardSuspendedThread(guestThread);
+                if (suspendedInfos.get(guestThread) == null) {
+                    // if already set, we have captured a blocking suspendedInfo already
+                    // so don't overwrite that information
+                    suspendedInfos.put(guestThread, new UnknownSuspendedInfo(guestThread, getContext()));
+                }
+            } catch (Exception e) {
+                JDWPLogger.log("not able to suspend guestThread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(guestThread));
+            }
         }
     }
 
@@ -516,7 +527,6 @@ public final class DebuggerController implements ContextsListener {
                         for (Object activeThread : getContext().getAllGuestThreads()) {
                             if (activeThread != thread) {
                                 JDWPLogger.log("Request thread suspend for other thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(activeThread));
-
                                 DebuggerController.this.suspend(activeThread);
                             }
                         }
@@ -887,6 +897,9 @@ public final class DebuggerController implements ContextsListener {
 
         private void continueStepping(SuspendedEvent event, Object thread) {
             SuspendedInfo susp = suspendedInfos.get(thread);
+            if (susp == null || susp.getStepKind() == null) {
+                return;
+            }
             switch (susp.getStepKind()) {
                 case STEP_INTO:
                     // stepping into unwanted code which was filtered
