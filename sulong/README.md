@@ -105,18 +105,21 @@ Sulong is mostly implemented in Java. However, parts of Sulong are
 implemented in C/C++ and will be compiled to a shared library or a bitcode
 file. To do so, we use `clang` and other LLVM tools bundled with the
 [Toolchain](docs/TOOLCHAIN.md).
-In addition, system tools such as a linker or `make` as well as system
-headers are needed.
+In addition, system tools such as a linker, `make` and `cmake` as well
+as system headers are needed.
 
 #### Linux
 
 On a Linux-based operating system you can usually use the package
 manager to install these requirements. For example, on Debian based system,
-installing the `build-essential` meta package should be sufficient.
+installing the `build-essential` and the `cmake` package should be sufficient.
 
 #### MacOS
 
-On MacOS those dependencies are provided by Xcode.
+While on MacOS most dependencies are provided by Xcode,
+`cmake` is not included and needs to be installed manually.
+A version for MacOS can be downloaded from the [cmake homepage](https://cmake.org/download/).
+
 On recent MacOS versions, you may run into a build error like this:
 
 ```
