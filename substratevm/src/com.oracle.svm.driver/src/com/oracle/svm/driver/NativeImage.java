@@ -86,6 +86,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.ModuleSupport;
 
@@ -183,6 +184,7 @@ public class NativeImage {
     final String oHJNIConfigurationFiles = oH(ConfigurationFiles.Options.JNIConfigurationFiles);
 
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
+    final String oHDeadlockWatchdogInterval = oH(DeadlockWatchdog.Options.DeadlockWatchdogInterval);
 
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
