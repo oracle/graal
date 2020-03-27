@@ -248,11 +248,16 @@ public final class DebuggerController implements ContextsListener {
     }
 
     private void doStepOut(SuspendedInfo susp) {
-        int stepOutBCI = context.getNextBCI(susp.getCallerRootNode(), susp.getCallerFrame());
+        RootNode callerRoot = susp.getCallerRootNode();
+        int stepOutBCI = context.getNextBCI(callerRoot, susp.getCallerFrame());
         SteppingInfo steppingInfo = commandRequestIds.get(susp.getThread());
         if (steppingInfo != null && stepOutBCI != -1) {
-            // record the bci that we'll land on after the step out completes
-            steppingInfo.setStepOutBCI(stepOutBCI);
+            // record the location that we'll land on after the step out completes
+            MethodRef method = context.getMethodFromRootNode(callerRoot);
+            if (method != null) {
+                KlassRef klass = method.getDeclaringKlass();
+                steppingInfo.setStepOutBCI(context.getIds().getIdAsLong(klass), context.getIds().getIdAsLong(method), stepOutBCI);
+            }
         }
         susp.getEvent().prepareStepOut(STEP_CONFIG);
         susp.recordStep(DebuggerCommand.Kind.STEP_OUT);
@@ -946,39 +951,35 @@ public final class DebuggerController implements ContextsListener {
                 methodId = ids.getIdAsLong(method);
                 typeTag = TypeTag.getKind(klass);
 
-                // for bytecode-based languages (Espresso) we can read the precise bci from the
-                // frame instance
                 codeIndex = -1;
-                try {
-                    codeIndex = context.readBCIFromFrame(root, rawFrame);
-                } catch (Throwable t) {
-                    JDWPLogger.log("Unable to read BCI: %s.%s", JDWPLogger.LogLevel.ALL, klass.getNameAsString(), method.getNameAsString());
-                }
 
-                if (codeIndex == -1) {
-                    // fall back to line precision through the source section
-                    SourceSection sourceSection = frame.getSourceSection();
-                    if (sourceSection.hasLines()) {
-                        if (sourceSection.getStartLine() != sourceSection.getEndLine()) {
-                            JDWPLogger.log("Not able to get a precise encapsulated source section", JDWPLogger.LogLevel.ALL);
+                // check if we have a dedicated step out code index on the top frame
+                if (frameCount == 0 && steppingInfo != null && steppingInfo.isStepOutFrame(methodId, klassId)) {
+                    codeIndex = steppingInfo.getStepOutBCI();
+                } else {
+                    try {
+                        // for bytecode-based languages (Espresso) we can read the precise bci from the
+                        // frame instance
+                        codeIndex = context.readBCIFromFrame(root, rawFrame);
+                    } catch (Throwable t) {
+                        JDWPLogger.log("Unable to read BCI: %s.%s", JDWPLogger.LogLevel.ALL, klass.getNameAsString(), method.getNameAsString());
+                    }
+
+                    if (codeIndex == -1) {
+                        // fall back to line precision through the source section
+                        SourceSection sourceSection = frame.getSourceSection();
+                        if (sourceSection.hasLines()) {
+                            if (sourceSection.getStartLine() != sourceSection.getEndLine()) {
+                                JDWPLogger.log("Not able to get a precise encapsulated source section", JDWPLogger.LogLevel.ALL);
+                            }
+                            codeIndex = method.getBCIFromLine(sourceSection.getStartLine());
+                        } else {
+                            // no lines! Fall back to bci 0 then
+                            codeIndex = 0;
                         }
-                        codeIndex = method.getBCIFromLine(sourceSection.getStartLine());
-                    } else {
-                        // no lines! Fall back to bci 0 then
-                        codeIndex = 0;
                     }
                 }
-                // check if we have a dedicated step out code index on the top frame
-                if (frameCount == 0 && steppingInfo != null && steppingInfo.getStepOutBCI() != -1) {
-                    codeIndex = steppingInfo.getStepOutBCI();
-                }
 
-                // check if current bci is higher than the first index on the last line,
-                // in which case we must report the last line index instead
-                long lastLineBCI = method.getBCIFromLine(method.getLastLine());
-                if (codeIndex > lastLineBCI) {
-                    codeIndex = lastLineBCI;
-                }
                 list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, root, instrument.getEnv(), frame));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
