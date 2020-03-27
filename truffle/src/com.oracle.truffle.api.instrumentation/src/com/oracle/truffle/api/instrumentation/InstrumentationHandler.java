@@ -492,7 +492,7 @@ final class InstrumentationHandler {
 
         if (!loadedRoots.isEmpty()) {
             BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-            visitorBuilder.addNotifyLoadedOperationForBinding(VisitOperation.Scope.ORIGINALTREE, binding);
+            visitorBuilder.addNotifyLoadedOperationForBinding(VisitOperation.Scope.ALLNODES, binding);
             visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.NEWMATERIALIZEDSUBTREES);
             visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.NEWMATERIALIZEDSUBTREES);
             visitRoots(loadedRoots, visitorBuilder.buildVisitor());
