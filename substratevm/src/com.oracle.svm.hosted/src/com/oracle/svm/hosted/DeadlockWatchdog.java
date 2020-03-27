@@ -32,21 +32,10 @@ import java.lang.management.ThreadInfo;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
-
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 
 public class DeadlockWatchdog implements Closeable {
-
-    public static class Options {
-        @Option(help = "The interval in minutes between watchdog checks (0 disables the watchdog)", type = OptionType.Expert)//
-        public static final HostedOptionKey<Integer> DeadlockWatchdogInterval = new HostedOptionKey<>(10);
-
-        @Option(help = "Exit the image builder VM after printing call stacks", type = OptionType.Expert)//
-        public static final HostedOptionKey<Boolean> DeadlockWatchdogExitOnTimeout = new HostedOptionKey<>(true);
-    }
 
     private final int watchdogInterval;
     private final boolean watchdogExitOnTimeout;
@@ -57,8 +46,8 @@ public class DeadlockWatchdog implements Closeable {
 
     DeadlockWatchdog() {
         /* Access to options must be done in main thread because it requires ImageSingletons. */
-        watchdogInterval = Options.DeadlockWatchdogInterval.getValue();
-        watchdogExitOnTimeout = Options.DeadlockWatchdogExitOnTimeout.getValue();
+        watchdogInterval = SubstrateOptions.DeadlockWatchdogInterval.getValue();
+        watchdogExitOnTimeout = SubstrateOptions.DeadlockWatchdogExitOnTimeout.getValue();
 
         if (watchdogInterval > 0) {
             thread = new Thread(this::watchdogThread);
@@ -93,8 +82,8 @@ public class DeadlockWatchdog implements Closeable {
 
                 if (watchdogExitOnTimeout) {
                     System.err.println("=== Image generator watchdog is aborting image generation. To configure the watchdog, use the options " +
-                                    SubstrateOptionsParser.commandArgument(Options.DeadlockWatchdogInterval, Integer.toString(watchdogInterval), null) + " and " +
-                                    SubstrateOptionsParser.commandArgument(Options.DeadlockWatchdogExitOnTimeout, "+", null));
+                                    SubstrateOptionsParser.commandArgument(SubstrateOptions.DeadlockWatchdogInterval, Integer.toString(watchdogInterval), null) + " and " +
+                                    SubstrateOptionsParser.commandArgument(SubstrateOptions.DeadlockWatchdogExitOnTimeout, "+", null));
                     /*
                      * Since there is a likely deadlock somewhere, there is no less intrusive way to
                      * abort other than a hard exit of the image builder VM.
