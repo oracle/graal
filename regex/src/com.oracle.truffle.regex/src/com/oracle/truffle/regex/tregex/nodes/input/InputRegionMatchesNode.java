@@ -45,6 +45,8 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.tregex.string.AbstractString;
+import com.oracle.truffle.regex.tregex.string.StringUTF16;
 
 public abstract class InputRegionMatchesNode extends Node {
 
@@ -52,35 +54,40 @@ public abstract class InputRegionMatchesNode extends Node {
         return InputRegionMatchesNodeGen.create();
     }
 
-    public abstract boolean execute(Object input, int fromIndex1, Object match, int fromIndex2, int length, String mask);
+    public abstract boolean execute(Object input, int fromIndex1, Object match, int fromIndex2, int length, AbstractString mask);
 
     @Specialization(guards = "mask == null")
-    public boolean regionMatches(String input, int fromIndex1, String match, int fromIndex2, int length, @SuppressWarnings("unused") String mask) {
+    public boolean regionMatchesJavaString(String input, int fromIndex1, String match, int fromIndex2, int length, @SuppressWarnings("unused") AbstractString mask) {
         return input.regionMatches(fromIndex1, match, fromIndex2, length);
     }
 
-    @Specialization(guards = "mask != null")
-    public boolean regionMatchesWithMask(String input, int fromIndex1, String match, int fromIndex2, int length, String mask) {
-        return ArrayUtils.regionEqualsWithOrMask(input, fromIndex1, match, fromIndex2, length, mask);
-    }
-
     @Specialization(guards = "mask == null")
-    public boolean regionMatchesTruffleObjNoMask(TruffleObject input, int fromIndex1, String match, int fromIndex2, int length, String mask,
-                    @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputCharAtNode charAtNode) {
-        return regionMatchesTruffleObj(input, fromIndex1, match, fromIndex2, length, mask, lengthNode, charAtNode);
+    public boolean regionMatches(String input, int fromIndex1, StringUTF16 match, int fromIndex2, int length, @SuppressWarnings("unused") AbstractString mask) {
+        return input.regionMatches(fromIndex1, match.toString(), fromIndex2, length);
     }
 
     @Specialization(guards = "mask != null")
-    public boolean regionMatchesTruffleObjWithMask(TruffleObject input, int fromIndex1, String match, int fromIndex2, int length, String mask,
+    public boolean regionMatchesWithMask(String input, int fromIndex1, StringUTF16 match, int fromIndex2, int length, StringUTF16 mask) {
+        return ArrayUtils.regionEqualsWithOrMask(input, fromIndex1, match.toString(), fromIndex2, length, mask.toString());
+    }
+
+    @Specialization(guards = "mask == null")
+    public boolean regionMatchesTruffleObjNoMask(TruffleObject input, int fromIndex1, StringUTF16 match, int fromIndex2, int length, @SuppressWarnings("unused") AbstractString mask,
                     @Cached("create()") InputLengthNode lengthNode,
                     @Cached("create()") InputCharAtNode charAtNode) {
-        assert match.length() == mask.length();
+        return regionMatchesTruffleObj(input, fromIndex1, match, fromIndex2, length, null, lengthNode, charAtNode);
+    }
+
+    @Specialization(guards = "mask != null")
+    public boolean regionMatchesTruffleObjWithMask(TruffleObject input, int fromIndex1, StringUTF16 match, int fromIndex2, int length, StringUTF16 mask,
+                    @Cached("create()") InputLengthNode lengthNode,
+                    @Cached("create()") InputCharAtNode charAtNode) {
+        assert match.encodedLength() == mask.encodedLength();
         return regionMatchesTruffleObj(input, fromIndex1, match, fromIndex2, length, mask, lengthNode, charAtNode);
     }
 
     @Specialization(guards = "mask == null")
-    public boolean regionMatchesTruffleObjTruffleObjNoMask(TruffleObject input, int fromIndex1, TruffleObject match, int fromIndex2, int length, @SuppressWarnings("unused") String mask,
+    public boolean regionMatchesTruffleObjTruffleObjNoMask(TruffleObject input, int fromIndex1, TruffleObject match, int fromIndex2, int length, @SuppressWarnings("unused") AbstractString mask,
                     @Cached("create()") InputLengthNode lengthNode1,
                     @Cached("create()") InputCharAtNode charAtNode1,
                     @Cached("create()") InputLengthNode lengthNode2,
@@ -96,8 +103,10 @@ public abstract class InputRegionMatchesNode extends Node {
         return true;
     }
 
-    private static boolean regionMatchesTruffleObj(TruffleObject input, int fromIndex1, String match, int fromIndex2, int length, String mask, InputLengthNode lengthNode, InputCharAtNode charAtNode) {
-        if (fromIndex1 + length > lengthNode.execute(input) || fromIndex2 + length > match.length()) {
+    private static boolean regionMatchesTruffleObj(TruffleObject input, int fromIndex1, StringUTF16 match, int fromIndex2, int length, StringUTF16 mask,
+                    InputLengthNode lengthNode,
+                    InputCharAtNode charAtNode) {
+        if (fromIndex1 + length > lengthNode.execute(input) || fromIndex2 + length > match.encodedLength()) {
             return false;
         }
         for (int i = 0; i < length; i++) {

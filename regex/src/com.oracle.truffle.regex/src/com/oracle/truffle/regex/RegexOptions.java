@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.parser.RegexFeatureSet;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 import java.util.Arrays;
 
@@ -76,6 +77,7 @@ public final class RegexOptions {
     private final int options;
     private final RegexFlavor flavor;
     private final RegexFeatureSet featureSet;
+    private final Encodings.Encoding encoding = Encodings.UTF_16;
 
     private RegexOptions(int options, RegexFlavor flavor, RegexFeatureSet featureSet) {
         assert flavor == null || featureSet == RegexFeatureSet.DEFAULT;
@@ -237,6 +239,10 @@ public final class RegexOptions {
      */
     public RegexFeatureSet getFeatureSet() {
         return featureSet;
+    }
+
+    public Encodings.Encoding getEncoding() {
+        return encoding;
     }
 
     @Override

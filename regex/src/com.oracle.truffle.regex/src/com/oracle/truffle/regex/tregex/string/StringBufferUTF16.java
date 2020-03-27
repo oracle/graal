@@ -66,6 +66,38 @@ public final class StringBufferUTF16 extends CharArrayBuffer implements Abstract
         setLength(newLength);
     }
 
+    @Override
+    public void appendOR(int c1, int c2) {
+        int n = Encodings.UTF_16.getEncodedSize(c1);
+        assert Encodings.UTF_16.getEncodedSize(c2) == n;
+        int newLength = length() + n;
+        ensureCapacity(newLength);
+        if (n == 1) {
+            set(length(), (char) (c1 | c2));
+        } else {
+            set(length(), (char) (Character.highSurrogate(c1) | Character.highSurrogate(c2)));
+            set(length() + 1, (char) (Character.lowSurrogate(c1) | Character.lowSurrogate(c2)));
+        }
+        setLength(newLength);
+    }
+
+    @Override
+    public void appendXOR(int c1, int c2) {
+        int n = Encodings.UTF_16.getEncodedSize(c1);
+        assert Encodings.UTF_16.getEncodedSize(c2) == n;
+        int newLength = length() + n;
+        ensureCapacity(newLength);
+        if (n == 1) {
+            set(length(), (char) (c1 ^ c2));
+        } else {
+            set(length(), (char) (Character.highSurrogate(c1) ^ Character.highSurrogate(c2)));
+            set(length() + 1, (char) (Character.lowSurrogate(c1) ^ Character.lowSurrogate(c2)));
+            assert Integer.bitCount(get(length())) + Integer.bitCount(get(length() + 1)) == 1;
+        }
+        setLength(newLength);
+    }
+
+    @Override
     public StringUTF16 materialize() {
         return new StringUTF16(toArray());
     }

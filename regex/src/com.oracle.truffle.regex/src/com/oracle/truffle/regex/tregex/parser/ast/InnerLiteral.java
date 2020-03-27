@@ -40,17 +40,19 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.regex.tregex.string.AbstractString;
+
 /**
  * Represents a literal string inside the regular expression that can be searched for before
  * starting the actual regular expression matcher.
  */
 public class InnerLiteral {
 
-    private final String literal;
-    private final String mask;
+    private final AbstractString literal;
+    private final AbstractString mask;
     private final int maxPrefixSize;
 
-    public InnerLiteral(String literal, String mask, int maxPrefixSize) {
+    public InnerLiteral(AbstractString literal, AbstractString mask, int maxPrefixSize) {
         this.literal = literal;
         this.mask = mask;
         this.maxPrefixSize = maxPrefixSize;
@@ -59,14 +61,14 @@ public class InnerLiteral {
     /**
      * The literal string.
      */
-    public String getLiteral() {
+    public AbstractString getLiteral() {
         return literal;
     }
 
     /**
      * An optional mask for matching the string in ignore-case mode.
      */
-    public String getMask() {
+    public AbstractString getMask() {
         return mask;
     }
 

@@ -77,7 +77,7 @@ public final class LiteralRegexEngine {
          * /a{1000000}/.
          */
         RegexProperties props = ast.getProperties();
-        if (ast.isLiteralString() && props.isFixedCodePointWidthUTF16() && props.isFixedCodePointWidthUTF8() && (!props.hasQuantifiers() || ast.getRoot().getMinPath() <= Short.MAX_VALUE)) {
+        if (ast.isLiteralString() && props.isFixedCodePointWidth() && (!props.hasQuantifiers() || ast.getRoot().getMinPath() <= Short.MAX_VALUE)) {
             return createLiteralNode(language, ast);
         } else {
             return null;
@@ -112,7 +112,7 @@ public final class LiteralRegexEngine {
         if (ast.getFlags().isSticky()) {
             return new RegionMatches(language, ast, preCalcResultVisitor);
         }
-        if (preCalcResultVisitor.getLiteral().length() <= 64) {
+        if (preCalcResultVisitor.getLiteral().encodedLength() <= 64) {
             return new IndexOfString(language, ast, preCalcResultVisitor);
         }
         return null;

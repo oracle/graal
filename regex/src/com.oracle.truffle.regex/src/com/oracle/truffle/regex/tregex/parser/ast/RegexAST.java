@@ -58,13 +58,12 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTDebugDumpVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
+import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -593,22 +592,21 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return sections;
     }
 
-    public InnerLiteral extractInnerLiteral(CompilationBuffer compilationBuffer) {
+    public InnerLiteral extractInnerLiteral() {
         assert properties.hasInnerLiteral();
         int literalEnd = properties.getInnerLiteralEnd();
         int literalStart = properties.getInnerLiteralStart();
-        CharArrayBuffer literal = compilationBuffer.getCharRangesBuffer1();
-        CharArrayBuffer mask = compilationBuffer.getCharRangesBuffer2();
-        literal.ensureCapacity(literalEnd - literalStart);
-        mask.ensureCapacity(literalEnd - literalStart);
+        AbstractStringBuffer literal = options.getEncoding().createStringBuffer(literalEnd - literalStart);
+        AbstractStringBuffer mask = options.getEncoding().createStringBuffer(literalEnd - literalStart);
         boolean hasMask = false;
         for (int i = literalStart; i < literalEnd; i++) {
             CharacterClass cc = root.getFirstAlternative().getTerms().get(i).asCharacterClass();
             assert cc.getCharSet().matchesSingleChar() || cc.getCharSet().matches2CharsWith1BitDifference();
+            assert options.getEncoding().isFixedCodePointWidth(cc.getCharSet());
             cc.extractSingleChar(literal, mask);
             hasMask |= cc.getCharSet().matches2CharsWith1BitDifference();
         }
-        return new InnerLiteral(new String(literal.toArray()), hasMask ? new String(mask.toArray()) : null, root.getFirstAlternative().get(literalStart).getMaxPath() - 1);
+        return new InnerLiteral(literal.materialize(), hasMask ? mask.materialize() : null, root.getFirstAlternative().get(literalStart).getMaxPath() - 1);
     }
 
     @TruffleBoundary

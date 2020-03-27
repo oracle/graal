@@ -725,7 +725,7 @@ public final class DFAGenerator implements JsonConvertible {
             }
 
             registerStateReplacement(unanchoredInitialState.getId(), new DFAFindInnerLiteralStateNode((short) unanchoredInitialState.getId(),
-                            new short[]{(short) literalLastDFAState.getId()}, nfa.getAst().extractInnerLiteral(compilationBuffer), prefixMatcher));
+                            new short[]{(short) literalLastDFAState.getId()}, nfa.getAst().extractInnerLiteral(), prefixMatcher));
         }
     }
 

@@ -46,4 +46,6 @@ public interface AbstractString extends Iterable<Integer> {
 
     @Override
     PrimitiveIterator.OfInt iterator();
+
+    int encodedLength();
 }

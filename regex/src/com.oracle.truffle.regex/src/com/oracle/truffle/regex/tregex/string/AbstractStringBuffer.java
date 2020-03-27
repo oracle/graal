@@ -44,5 +44,11 @@ public interface AbstractStringBuffer {
 
     void append(int codepoint);
 
+    void appendOR(int c1, int c2);
+
+    void appendXOR(int c1, int c2);
+
     void clear();
+
+    AbstractString materialize();
 }

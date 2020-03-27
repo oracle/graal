@@ -44,10 +44,24 @@ import java.util.PrimitiveIterator;
 
 public final class StringUTF16 implements AbstractString {
 
-    private final char[] str;
+    private final String str;
 
     public StringUTF16(char[] str) {
-        this.str = str;
+        this.str = new String(str);
+    }
+
+    @Override
+    public int encodedLength() {
+        return str.length();
+    }
+
+    public char charAt(int i) {
+        return str.charAt(i);
+    }
+
+    @Override
+    public String toString() {
+        return str;
     }
 
     @Override
@@ -57,23 +71,23 @@ public final class StringUTF16 implements AbstractString {
 
     private static final class StringUTF16Iterator implements PrimitiveIterator.OfInt {
 
-        private final char[] str;
+        private final String str;
         private int i = 0;
 
-        private StringUTF16Iterator(char[] str) {
+        private StringUTF16Iterator(String str) {
             this.str = str;
         }
 
         @Override
         public boolean hasNext() {
-            return i < str.length;
+            return i < str.length();
         }
 
         @Override
         public int nextInt() {
-            char c = str[i++];
-            if (Character.isHighSurrogate(c) && hasNext() && Character.isLowSurrogate(str[i])) {
-                return Character.toCodePoint(c, str[i++]);
+            char c = str.charAt(i++);
+            if (Character.isHighSurrogate(c) && hasNext() && Character.isLowSurrogate(str.charAt(i))) {
+                return Character.toCodePoint(c, str.charAt(i++));
             }
             return c;
         }

@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.Constants;
+
 public final class Encodings {
 
     public static final Encoding UTF_8 = new Encoding.UTF8();
@@ -52,6 +55,10 @@ public final class Encodings {
 
         public abstract int getEncodedSize(int codepoint);
 
+        public abstract boolean isFixedCodePointWidth(CodePointSet set);
+
+        public abstract AbstractStringBuffer createStringBuffer(int capacity);
+
         private static final class UTF32 extends Encoding {
 
             @Override
@@ -62,6 +69,16 @@ public final class Encodings {
             @Override
             public int getEncodedSize(int codepoint) {
                 return 1;
+            }
+
+            @Override
+            public boolean isFixedCodePointWidth(CodePointSet set) {
+                return true;
+            }
+
+            @Override
+            public StringBufferUTF32 createStringBuffer(int capacity) {
+                return new StringBufferUTF32(capacity);
             }
         }
 
@@ -75,6 +92,34 @@ public final class Encodings {
             @Override
             public int getEncodedSize(int codepoint) {
                 return codepoint < 0x10000 ? 1 : 2;
+            }
+
+            /**
+             * Returns {@code true} iff the given code point set may not match a variable amount of
+             * {@code char}s in an UTF-16 encoded string, i.e. the set is bounded by exactly one of
+             * the following ranges:
+             *
+             * <pre>
+             * [0x0     - 0xffff  ] (one char)
+             * [0x10000 - 0x10ffff] (two chars)
+             * </pre>
+             *
+             * @see Constants#BMP_RANGE
+             * @see Constants#ASTRAL_SYMBOLS
+             */
+            @Override
+            public boolean isFixedCodePointWidth(CodePointSet set) {
+                if (set.isEmpty()) {
+                    return true;
+                }
+                int min = set.getMin();
+                int max = set.getMax();
+                return !(min < 0x10000 && max > 0x10000);
+            }
+
+            @Override
+            public StringBufferUTF16 createStringBuffer(int capacity) {
+                return new StringBufferUTF16(capacity);
             }
         }
 
@@ -96,6 +141,33 @@ public final class Encodings {
                 } else {
                     return 4;
                 }
+            }
+
+            /**
+             * Returns {@code true} iff the given code point set may not match a variable amount of
+             * {@code byte}s in an UTF-8 encoded string, i.e. the set is bounded by exactly one of
+             * the following ranges:
+             *
+             * <pre>
+             * [0x0     - 0x7f    ] (one byte)
+             * [0x80    - 0x7ff   ] (two bytes)
+             * [0x800   - 0xffff  ] (three bytes)
+             * [0x10000 - 0x10ffff] (four bytes)
+             * </pre>
+             */
+            @Override
+            public boolean isFixedCodePointWidth(CodePointSet set) {
+                if (set.isEmpty()) {
+                    return true;
+                }
+                int min = set.getMin();
+                int max = set.getMax();
+                return !(min < 0x80 && max >= 0x80 || min < 0x800 && max >= 0x800 || min < 0x10000 && max > 0x10000);
+            }
+
+            @Override
+            public StringBufferUTF8 createStringBuffer(int capacity) {
+                return new StringBufferUTF8(capacity);
             }
         }
     }

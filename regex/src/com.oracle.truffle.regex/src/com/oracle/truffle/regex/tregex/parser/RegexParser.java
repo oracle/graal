@@ -188,7 +188,8 @@ public final class RegexParser {
         int maxPath = 0;
         for (int i = 0; i < terms.size(); i++) {
             Term t = terms.get(i);
-            if (t.isCharacterClass() && (t.asCharacterClass().getCharSet().matchesSingleChar() || t.asCharacterClass().getCharSet().matches2CharsWith1BitDifference())) {
+            if (t.isCharacterClass() && (t.asCharacterClass().getCharSet().matchesSingleChar() || t.asCharacterClass().getCharSet().matches2CharsWith1BitDifference()) &&
+                            options.getEncoding().isFixedCodePointWidth(t.asCharacterClass().getCharSet())) {
                 if (literalStart < 0) {
                     literalStart = i;
                 }
@@ -507,17 +508,8 @@ public final class RegexParser {
         if (wasSingleChar) {
             characterClass.setWasSingleChar();
         }
-        if (charSet.matchesSomething()) {
-            int max = charSet.getMax();
-            if (max >= 0x80) {
-                int min = charSet.getMin();
-                if (min < 0x10000 && max > 0x10000) {
-                    properties.setFixedCodePointWidthUTF16(false);
-                    properties.setFixedCodePointWidthUTF8(false);
-                } else if (min < 0x80 || min < 0x800 && max >= 0x800) {
-                    properties.setFixedCodePointWidthUTF8(false);
-                }
-            }
+        if (!options.getEncoding().isFixedCodePointWidth(charSet)) {
+            properties.setFixedCodePointWidth(false);
         }
         return characterClass;
     }

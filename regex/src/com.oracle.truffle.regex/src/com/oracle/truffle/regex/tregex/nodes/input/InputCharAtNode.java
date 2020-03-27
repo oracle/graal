@@ -53,6 +53,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.runtime.nodes.ToCharNode;
+import com.oracle.truffle.regex.tregex.string.StringUTF16;
 
 @GenerateUncached
 public abstract class InputCharAtNode extends Node {
@@ -81,7 +82,7 @@ public abstract class InputCharAtNode extends Node {
         }
     }
 
-    public static char charAtWithMask(TruffleObject input, int indexInput, String mask, int indexMask, InputCharAtNode charAtNode) {
+    public static char charAtWithMask(TruffleObject input, int indexInput, StringUTF16 mask, int indexMask, InputCharAtNode charAtNode) {
         CompilerAsserts.partialEvaluationConstant(mask == null);
         char c = charAtNode.execute(input, indexInput);
         return (mask == null ? c : (char) (c | mask.charAt(indexMask)));

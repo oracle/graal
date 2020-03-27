@@ -105,7 +105,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         this.lookAroundExecutors = lookAroundExecutors;
         this.loopbackInitialState = nfa == nfaMap.getRoot() && !nfaMap.getAst().getFlags().isSticky() && !nfaMap.getAst().getRoot().startsWithCaret();
         if (nfa == nfaMap.getRoot() && nfaMap.getAst().getProperties().hasInnerLiteral()) {
-            this.innerLiteral = nfaMap.getAst().extractInnerLiteral(compilationBuffer);
+            this.innerLiteral = nfaMap.getAst().extractInnerLiteral();
         } else {
             this.innerLiteral = null;
         }

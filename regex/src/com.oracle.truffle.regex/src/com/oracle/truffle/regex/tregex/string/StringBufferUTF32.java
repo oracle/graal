@@ -44,11 +44,30 @@ import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 
 public final class StringBufferUTF32 extends IntArrayBuffer implements AbstractStringBuffer {
 
+    public StringBufferUTF32() {
+        this(16);
+    }
+
+    public StringBufferUTF32(int capacity) {
+        super(capacity);
+    }
+
     @Override
     public void append(int codepoint) {
         add(codepoint);
     }
 
+    @Override
+    public void appendOR(int c1, int c2) {
+        add(c1 | c2);
+    }
+
+    @Override
+    public void appendXOR(int c1, int c2) {
+        add(c1 ^ c2);
+    }
+
+    @Override
     public StringUTF32 materialize() {
         return new StringUTF32(toArray());
     }

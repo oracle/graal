@@ -51,6 +51,11 @@ public final class StringUTF32 implements AbstractString {
     }
 
     @Override
+    public int encodedLength() {
+        return str.length;
+    }
+
+    @Override
     public PrimitiveIterator.OfInt iterator() {
         return new StringUTF32Iterator(str);
     }

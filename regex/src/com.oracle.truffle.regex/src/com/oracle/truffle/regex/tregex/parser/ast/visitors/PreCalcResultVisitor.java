@@ -49,6 +49,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.string.AbstractString;
+import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 
 public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisitor {
 
@@ -56,8 +58,8 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
     private final boolean unrollGroups;
 
     private int index = 0;
-    private final char[] literal;
-    private final char[] mask;
+    private final AbstractStringBuffer literal;
+    private final AbstractStringBuffer mask;
     private final PreCalculatedResultFactory result;
     private PreCalcResultVisitor groupUnroller;
 
@@ -65,9 +67,8 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         result = new PreCalculatedResultFactory(ast.getNumberOfCaptureGroups());
         this.extractLiteral = extractLiteral;
         if (extractLiteral) {
-            // TODO: minPath is in code points, so not applicable here
-            literal = new char[ast.getRoot().getMinPath()];
-            mask = ast.getProperties().hasCharClasses() ? new char[ast.getRoot().getMinPath()] : null;
+            literal = ast.getOptions().getEncoding().createStringBuffer(ast.getRoot().getMinPath());
+            mask = ast.getProperties().hasCharClasses() ? ast.getOptions().getEncoding().createStringBuffer(ast.getRoot().getMinPath()) : null;
         } else {
             literal = null;
             mask = null;
@@ -75,7 +76,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         unrollGroups = true;
     }
 
-    private PreCalcResultVisitor(boolean extractLiteral, boolean unrollGroups, int index, char[] literal, char[] mask, PreCalculatedResultFactory result) {
+    private PreCalcResultVisitor(boolean extractLiteral, boolean unrollGroups, int index, AbstractStringBuffer literal, AbstractStringBuffer mask, PreCalculatedResultFactory result) {
         this.extractLiteral = extractLiteral;
         this.unrollGroups = unrollGroups;
         this.index = index;
@@ -98,16 +99,16 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         return visitor.result;
     }
 
-    public String getLiteral() {
-        return new String(literal);
+    public AbstractString getLiteral() {
+        return literal.materialize();
     }
 
     public boolean hasMask() {
         return mask != null;
     }
 
-    public String getMask() {
-        return mask == null ? null : new String(mask);
+    public AbstractString getMask() {
+        return mask == null ? null : mask.materialize();
     }
 
     public PreCalculatedResultFactory getResultFactory() {
@@ -168,9 +169,9 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         for (int i = 0; i < (characterClass.hasNotUnrolledQuantifier() ? characterClass.getQuantifier().getMin() : 1); i++) {
             if (extractLiteral) {
                 if (mask == null) {
-                    literal[index] = (char) characterClass.getCharSet().getMin();
+                    literal.append(characterClass.getCharSet().getMin());
                 } else {
-                    characterClass.extractSingleChar(literal, mask, index);
+                    characterClass.extractSingleChar(literal, mask);
                 }
             }
             index++;

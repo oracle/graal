@@ -44,6 +44,14 @@ import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 
 public final class StringBufferUTF8 extends ByteArrayBuffer implements AbstractStringBuffer {
 
+    public StringBufferUTF8() {
+        this(16);
+    }
+
+    public StringBufferUTF8(int capacity) {
+        super(capacity);
+    }
+
     @Override
     public void append(int codepoint) {
         int n = Encodings.UTF_8.getEncodedSize(codepoint);
@@ -72,6 +80,73 @@ public final class StringBufferUTF8 extends ByteArrayBuffer implements AbstractS
         // Checkstyle: resume
     }
 
+    @Override
+    public void appendOR(int cp1, int cp2) {
+        int n = Encodings.UTF_8.getEncodedSize(cp1);
+        assert Encodings.UTF_8.getEncodedSize(cp2) == n;
+        int newLength = length() + n;
+        ensureCapacity(newLength);
+        setLength(newLength);
+        int i = newLength;
+        if (n == 1) {
+            set(--i, (byte) (cp1 | cp2));
+            return;
+        }
+        int c1 = cp1;
+        int c2 = cp1;
+        // Checkstyle: stop
+        switch (n) {
+            case 4:
+                set(--i, (byte) (0x80 | ((c1 | c2) & 0x3f)));
+                c1 >>>= 6;
+                c2 >>>= 6;
+            case 3:
+                set(--i, (byte) (0x80 | ((c1 | c2) & 0x3f)));
+                c1 >>>= 6;
+                c2 >>>= 6;
+            default:
+                set(--i, (byte) (0x80 | ((c1 | c2) & 0x3f)));
+                c1 >>>= 6;
+                c2 >>>= 6;
+                set(--i, (byte) ((0xf00 >>> n) | (c1 | c2)));
+        }
+        // Checkstyle: resume
+    }
+
+    @Override
+    public void appendXOR(int cp1, int cp2) {
+        int n = Encodings.UTF_8.getEncodedSize(cp1);
+        assert Encodings.UTF_8.getEncodedSize(cp2) == n;
+        int newLength = length() + n;
+        ensureCapacity(newLength);
+        setLength(newLength);
+        int i = newLength;
+        if (n == 1) {
+            set(--i, (byte) (cp1 ^ cp2));
+            return;
+        }
+        int c1 = cp1;
+        int c2 = cp1;
+        // Checkstyle: stop
+        switch (n) {
+            case 4:
+                set(--i, (byte) ((c1 ^ c2) & 0x3f));
+                c1 >>>= 6;
+                c2 >>>= 6;
+            case 3:
+                set(--i, (byte) ((c1 ^ c2) & 0x3f));
+                c1 >>>= 6;
+                c2 >>>= 6;
+            default:
+                set(--i, (byte) ((c1 ^ c2) & 0x3f));
+                c1 >>>= 6;
+                c2 >>>= 6;
+                set(--i, (byte) (c1 ^ c2));
+        }
+        // Checkstyle: resume
+    }
+
+    @Override
     public StringUTF8 materialize() {
         return new StringUTF8(toArray());
     }
