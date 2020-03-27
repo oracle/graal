@@ -429,6 +429,11 @@ public class SubstrateOptions {
     @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
     public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
 
+    @Option(help = "The interval in minutes between watchdog checks (0 disables the watchdog)", type = OptionType.Expert)//
+    public static final HostedOptionKey<Integer> DeadlockWatchdogInterval = new HostedOptionKey<>(10);
+    @Option(help = "Exit the image builder VM after printing call stacks", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> DeadlockWatchdogExitOnTimeout = new HostedOptionKey<>(true);
+
     /**
      * The alignment for AOT and JIT compiled methods. The value is constant folded during image
      * generation, i.e., cannot be changed at run time, so that it can be used in uninterruptible
