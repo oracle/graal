@@ -58,7 +58,7 @@ public class CVLineRecordBuilder {
 
     /**
      * build line number records for a function
-     * @param primaryEntry function to build line number table for
+     * @param entry function to build line number table for
      * @return CVLineRecord containing any entries generated, or null if no entries generated
      */
     CVLineRecord build(PrimaryEntry entry, String methodName) {
@@ -104,10 +104,12 @@ public class CVLineRecordBuilder {
      *  - if a range has the same line number, source file and function
      *
      * @param range to be merged or added to line number record
-     * @param previousRange the previously processed Range
+     * @param oldPreviousRange the previously processed Range
      * @return new value for previousRange in caller
      */
-    private Range processRange(Range range, Range previousRange) {
+    private Range processRange(Range range, Range oldPreviousRange) {
+
+        Range previousRange = oldPreviousRange;
 
         /* should we merge this range with the previous entry? */
         /* i.e. same line in same file, same class and function */
@@ -168,7 +170,7 @@ public class CVLineRecordBuilder {
 
     /**
      * test to see if a new line record should be emitted
-     * @param previous previous range
+     * @param previousRange previous range
      * @param range current range
      * @return true if the current range is on a different line or file from the previous one
      */
@@ -194,11 +196,5 @@ public class CVLineRecordBuilder {
         //long delta = range.getHi() - previousRange.getLo();
         //return delta >= 127;
         return false; */
-    }
-
-
-    @Override
-    public String toString() {
-        return "CVLineRecordBuilder()";
     }
 }

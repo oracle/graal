@@ -44,12 +44,12 @@ import java.util.Set;
  */
 public final class CVSections extends DebugInfoBase {
 
-    //private PECoffMachine machine;
+    @SuppressWarnings("unused") private PECoffMachine machine;
     private CVSymbolSectionImpl cvSymbolSection;
     private CVTypeSectionImpl cvTypeSection;
 
-    public CVSections(PECoffMachine machine) {
-        //this.machine = machine;
+    public CVSections(PECoffMachine targetMachine) {
+        machine = targetMachine;
         cvSymbolSection = new CVSymbolSectionImpl(this);
         cvTypeSection   = new CVTypeSectionImpl();
     }
@@ -122,7 +122,7 @@ public final class CVSections extends DebugInfoBase {
         public Set<BuildDependency> getDependencies(Map<ObjectFile.Element, LayoutDecisionMap> decisions) {
             Set<BuildDependency> deps = super.getDependencies(decisions);
             String targetName = getSectionName();
-            PECoffObjectFile.PECoffSection targetSection = (PECoffObjectFile.PECoffSection) getElement().getOwner().elementForName(targetName);
+            @SuppressWarnings("unused") PECoffObjectFile.PECoffSection targetSection = (PECoffObjectFile.PECoffSection) getElement().getOwner().elementForName(targetName);
             LayoutDecision ourContent =  decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
             LayoutDecision ourSize =  decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
             //LayoutDecision.Kind[] targetKinds = targetSectionKinds();
@@ -133,9 +133,9 @@ public final class CVSections extends DebugInfoBase {
             //}
             /* make our size depend on our content */
             deps.add(BuildDependency.createOrGet(ourSize, ourContent));
-
             return deps;
         }
+
         //public abstract LayoutDecision.Kind[] targetSectionKinds();
         public abstract void createContent();
         public abstract void writeContent();

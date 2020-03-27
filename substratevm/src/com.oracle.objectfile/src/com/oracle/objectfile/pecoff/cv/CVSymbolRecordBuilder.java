@@ -156,10 +156,11 @@ final class CVSymbolRecordBuilder {
     /**
      * add type records for function
      * (later add arglist, and return type and local types)
+     * @param entry primaryEntry containing entities whoses type records must be added
      *
      * @return type index of function type
      */
-    private int addTypeRecords(PrimaryEntry unused) {
+    private int addTypeRecords(@SuppressWarnings("unused") PrimaryEntry entry) {
         CVTypeRecord.CVTypeArglistRecord argListType = addTypeRecord(new CVTypeRecord.CVTypeArglistRecord().add(T_NOTYPE));
         CVTypeRecord funcType = addTypeRecord(new CVTypeRecord.CVTypeProcedureRecord().returnType(T_VOID).argList(argListType));
         return funcType.getSequenceNumber();

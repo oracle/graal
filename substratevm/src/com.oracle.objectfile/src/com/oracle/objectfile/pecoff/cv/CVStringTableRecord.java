@@ -47,7 +47,8 @@ final class CVStringTableRecord extends CVSymbolRecord {
     }
 
     @Override
-    public int computeContents(byte[] buffer, int pos) {
+    public int computeContents(byte[] buffer, int initialPos) {
+        int pos = initialPos;
         for (CVSymbolSectionImpl.CVStringTable.StringTableEntry entry : stringTable.values()) {
             pos = CVUtil.putUTF8StringBytes(entry.text, buffer, pos);
         }

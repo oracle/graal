@@ -308,8 +308,7 @@ abstract class CVSymbolSubrecord {
             pos = CVUtil.putInt(debugEnd, buffer, pos);
             pos = CVUtil.putInt(typeIndex, buffer, pos);
             if (buffer == null) {
-                ObjectFile.Element textSection = getTextSection();
-                cvSections.getCVSymbolSection().getOwner().createDefinedSymbol(name, textSection, offset, proclen, true, true);
+                cvSections.getCVSymbolSection().getOwner().createDefinedSymbol(name, getTextSection(), offset, proclen, true, true);
             }
             if (buffer != null) {
                 //CVUtil.debug("CVSymbolGProc32Record() adding SECREL reloc at pos=0x%x for func=%s addr=0x%x\n", pos, name, offset);

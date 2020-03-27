@@ -29,7 +29,6 @@ package com.oracle.objectfile.pecoff.cv;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debugentry.StringTable;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
