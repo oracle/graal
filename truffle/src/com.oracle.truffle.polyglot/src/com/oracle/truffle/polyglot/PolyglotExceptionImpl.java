@@ -592,7 +592,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
             StackTraceElement element = firstElement;
             int index = nextElementIndex;
-            while (isGuestToHostReflectiveCall(element) && nextElementIndex < hostStack.length) {
+            while (isGuestToHostReflectiveCall(element) && index < hostStack.length) {
                 element = hostStack[index++];
             }
             if (isGuestToHostCallFromHostInterop(element)) {
