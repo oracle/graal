@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.core;
 
+import java.lang.ref.ReferenceQueue;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
+import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer.ConditionObject;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.LockSupport;
@@ -79,29 +81,31 @@ import sun.misc.Unsafe;
  * (like synchronization via JNI) fall back to a monitor stored in {@link #additionalMonitors}.
  * <p>
  * {@link Condition} objects are used to implement {@link #wait()} and {@link #notify()}. When an
- * object monitor needs a condition object, its entry in {@link #additionalMonitors} is updated so
- * that rather than the lock, it contains the condition object which has a
- * {@linkplain Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject#objectMonitorLock
- * reference to the lock}.
+ * object monitor needs a condition object, it is atomically swapped into its
+ * {@link Target_java_util_concurrent_locks_ReentrantLock_NonfairSync#objectMonitorCondition} field.
  */
 public class MonitorSupport {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+
+    /**
+     * {@link Target_java_util_concurrent_locks_ReentrantLock_NonfairSync#objectMonitorCondition}
+     * marker to indicate that the associated lock is an object monitor, but does not have a
+     * Condition yet. This marker value is needed to identify monitor conditions for
+     * {@link #maybeAdjustNewParkStatus}.
+     */
+    static final ConditionObject MONITOR_WITHOUT_CONDITION = (ConditionObject) new ReentrantLock().newCondition();
+
+    /** Substituted in {@link Target_com_oracle_svm_core_MonitorSupport} */
+    static long SYNC_MONITOR_CONDITION_FIELD_OFFSET = -1;
+
     /**
      * Secondary storage for monitor slots.
      *
      * Synchronized to prevent concurrent access and modification.
      */
-    private final Map<Object, Object> additionalMonitors = new WeakIdentityHashMap<>();
+    private final Map<Object, ReentrantLock> additionalMonitors = new WeakIdentityHashMap<>();
     private final ReentrantLock additionalMonitorsLock = new ReentrantLock();
-
-    /**
-     * Secondary storage for condition variable slots.
-     *
-     * Synchronized to prevent concurrent access and modification.
-     */
-    private final Map<Object, Condition> additionalConditions = new WeakIdentityHashMap<>();
-    private final ReentrantLock additionalConditionsLock = new ReentrantLock();
 
     /**
      * Called from {@code Unsafe.park} when changing the current thread's state before parking the
@@ -162,7 +166,7 @@ public class MonitorSupport {
 
         ReentrantLock lockObject;
         try {
-            lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitorLock(obj, true);
+            lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
             lockObject.lock();
         } catch (Throwable ex) {
             /*
@@ -214,7 +218,7 @@ public class MonitorSupport {
 
         ReentrantLock lockObject;
         try {
-            lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitorLock(obj, true);
+            lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
             lockObject.unlock();
         } catch (Throwable ex) {
             /*
@@ -243,7 +247,7 @@ public class MonitorSupport {
             return;
         }
 
-        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(getOrCreateMonitorLock(obj, true), Target_java_util_concurrent_locks_ReentrantLock.class);
+        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(getOrCreateMonitor(obj, true), Target_java_util_concurrent_locks_ReentrantLock.class);
         Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
 
         VMError.guarantee(sync.getExclusiveOwnerThread() != null, "Cannot patch the exclusiveOwnerThread of an object that is not locked");
@@ -264,10 +268,8 @@ public class MonitorSupport {
              */
             return true;
         }
-
-        ReentrantLock lockObject = getOrCreateMonitorLock(obj, false);
+        ReentrantLock lockObject = getOrCreateMonitor(obj, false);
         return lockObject != null && lockObject.isHeldByCurrentThread();
-
     }
 
     /**
@@ -294,7 +296,12 @@ public class MonitorSupport {
             return;
         }
 
-        Condition condition = ensureLockedAndGetOrCreateMonitorCondition(obj, true);
+        /*
+         * Ensure that the current thread holds the lock. Required by the specification of
+         * Object.wait, and also required for our implementation.
+         */
+        ReentrantLock lock = ensureLocked(obj);
+        Condition condition = getOrCreateCondition(lock, true);
         if (timeoutMillis == 0L) {
             condition.await();
         } else {
@@ -312,7 +319,11 @@ public class MonitorSupport {
             return;
         }
 
-        Condition condition = ensureLockedAndGetOrCreateMonitorCondition(obj, false);
+        /* Make sure the current thread holds the lock on the receiver. */
+        ReentrantLock lock = ensureLocked(obj);
+        /* Find the wait/notify condition field of the receiver. */
+        Condition condition = getOrCreateCondition(lock, false);
+        /* If the receiver does not have a condition field, then it has not been waited on. */
         if (condition != null) {
             if (notifyAll) {
                 condition.signalAll();
@@ -322,76 +333,56 @@ public class MonitorSupport {
         }
     }
 
-    private static void ensureLockOwner(ReentrantLock lock) {
-        if (lock == null || !lock.isHeldByCurrentThread()) {
+    /** Return the lock of the receiver. */
+    private ReentrantLock ensureLocked(Object receiver) {
+        ReentrantLock lockObject = getOrCreateMonitor(receiver, false);
+        /*
+         * If the monitor field is null then it has not been locked by this thread. If there is a
+         * monitor, make sure it is locked by this thread.
+         */
+        if (lockObject == null || !lockObject.isHeldByCurrentThread()) {
             throw new IllegalMonitorStateException("Receiver is not locked by the current thread.");
         }
+        return lockObject;
     }
 
-    private ReentrantLock getOrCreateMonitorLock(Object obj, boolean createIfNotExisting) {
-        return (ReentrantLock) getOrCreateMonitorLockOrCondition(obj, false, createIfNotExisting);
-    }
-
-    /**
-     * Obtains, or creates if requested, a monitor object associated with {@code obj}. Consider
-     * using {@link #getOrCreateMonitorLock} or {@link #ensureLockedAndGetOrCreateMonitorCondition}
-     * instead.
-     *
-     * @param obj The object.
-     * @param condition Whether a condition variable should be provided and returned (read below). A
-     *            monitor lock must already exist for this object and be held by the current thread,
-     *            or a {@link IllegalMonitorStateException} will be thrown.
-     * @param createIfNotExisting Create the monitor, if it does not exist. If a lock already exists
-     *            and {@code condition} is set, upgrades it to conditional waiting.
-     * @return {@link ReentrantLock}, or if {@code condition} is set, a {@link ConditionObject} with
-     *         {@linkplain Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject#objectMonitorLock
-     *         a field that points to the associated ReentrantLock}.
-     */
-    private Object getOrCreateMonitorLockOrCondition(Object obj, boolean condition, boolean createIfNotExisting) {
+    private ReentrantLock getOrCreateMonitor(Object obj, boolean createIfNotExisting) {
         final DynamicHub hub = ObjectHeader.readDynamicHubFromObject(obj);
         final int monitorOffset = hub.getMonitorOffset();
         if (monitorOffset != 0) {
-            // The common case: a reserved field for the monitor in the object
-            Object existingMonitor = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, monitorOffset), Object.class);
-            Object match = tryGetMonitor(existingMonitor, condition);
-            if (match != null) {
-                return match;
-            } else if (!createIfNotExisting) {
-                return null;
+            /* The common case: memory for the monitor reserved in the object. */
+            final ReentrantLock existingMonitor = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, monitorOffset), ReentrantLock.class);
+            if (existingMonitor != null || !createIfNotExisting) {
+                assert existingMonitor == null || isMonitorLock(existingMonitor);
+                return existingMonitor;
             }
-            Object newMonitor = createMonitor(existingMonitor, condition);
-            if (UNSAFE.compareAndSwapObject(obj, monitorOffset, existingMonitor, newMonitor)) {
+            /* Atomically put a new lock in place of the null at the monitorOffset. */
+            final ReentrantLock newMonitor = newMonitorLock();
+            if (UNSAFE.compareAndSwapObject(obj, monitorOffset, null, newMonitor)) {
                 return newMonitor;
             }
-            // We lost the race, but the winner could have installed a lock when we need a condition
-            existingMonitor = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, monitorOffset), Object.class);
-            if (condition && existingMonitor.getClass() != Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class) {
-                newMonitor = newMonitorCondition((ReentrantLock) existingMonitor);
-                if (UNSAFE.compareAndSwapObject(obj, monitorOffset, existingMonitor, newMonitor)) {
-                    return newMonitor;
-                }
-                existingMonitor = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, monitorOffset), Object.class);
-                assert existingMonitor.getClass() == Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class : "Can only transition from lock to condition";
-            }
-            return existingMonitor;
+            /* We lost the race, use the lock some other thread installed. */
+            return KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, monitorOffset), ReentrantLock.class);
         } else {
+            /* No memory reserved for a lock in the object, fall back to our secondary storage. */
             /*
-             * No field reserved for a lock in the object, fall back to our secondary storage.
-             *
              * Lock the monitor map and maybe add a monitor for this object. This serialization
              * might be a scalability problem.
              */
+            assert hub != DynamicHub.fromClass(Target_java_lang_ref_ReferenceQueue_Lock.class) : "ReferenceQueue.Lock must have a monitor field or we can deadlock accessing WeakIdentityHashMap below";
             additionalMonitorsLock.lock();
             try {
-                Object existingMonitor = additionalMonitors.get(obj);
-                Object match = tryGetMonitor(existingMonitor, condition);
-                if (match != null) {
-                    return match;
-                } else if (!createIfNotExisting) {
+                final ReentrantLock existingEntry = additionalMonitors.get(obj);
+                if (existingEntry != null) {
+                    assert isMonitorLock(existingEntry);
+                    return existingEntry;
+                }
+                if (!createIfNotExisting) {
                     return null;
                 }
-                Object newEntry = createMonitor(existingMonitor, condition);
-                additionalMonitors.put(obj, newEntry);
+                final ReentrantLock newEntry = newMonitorLock();
+                final ReentrantLock previousEntry = additionalMonitors.put(obj, newEntry);
+                VMError.guarantee(previousEntry == null, "MonitorSupport.getOrCreateMonitor: Replaced monitor");
                 return newEntry;
             } finally {
                 additionalMonitorsLock.unlock();
@@ -399,74 +390,60 @@ public class MonitorSupport {
         }
     }
 
-    private static Object tryGetMonitor(Object existingMonitor, boolean condition) {
-        if (existingMonitor != null) {
-            ReentrantLock lock;
-            if (existingMonitor.getClass() == Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class) {
-                lock = ((Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject) existingMonitor).objectMonitorLock;
-                if (condition) {
-                    ensureLockOwner(lock);
-                    return existingMonitor;
-                }
-            } else {
-                lock = (ReentrantLock) existingMonitor;
-            }
-            if (!condition) {
-                assert isMonitorLock(lock);
-                return lock;
-            }
-        }
-        return null;
-    }
-
-    private static Object createMonitor(Object existingMonitor, boolean condition) {
-        assert existingMonitor == null || (condition && isMonitorLock(existingMonitor)) : "Nothing to create";
-        ReentrantLock lock = (ReentrantLock) existingMonitor;
-        if (lock == null) {
-            lock = newMonitorLock();
-        }
-        if (condition) {
-            ensureLockOwner(lock);
-            return newMonitorCondition(lock);
-        }
-        return lock;
-    }
-
     private static ReentrantLock newMonitorLock() {
         final ReentrantLock newMonitor = new ReentrantLock();
-        SubstrateUtil.cast(newMonitor, Target_java_util_concurrent_locks_ReentrantLock.class).sync.isObjectMonitor = true;
+        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(newMonitor, Target_java_util_concurrent_locks_ReentrantLock.class);
+        Target_java_util_concurrent_locks_ReentrantLock_NonfairSync sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class);
+        sync.objectMonitorCondition = SubstrateUtil.cast(MONITOR_WITHOUT_CONDITION, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class);
         assert isMonitorLock(newMonitor);
         return newMonitor;
     }
 
-    private static boolean isMonitorLock(Object obj) {
-        return obj != null && obj.getClass() == Target_java_util_concurrent_locks_ReentrantLock.class &&
-                        isMonitorLockSynchronizer(SubstrateUtil.cast(obj, Target_java_util_concurrent_locks_ReentrantLock.class).sync);
+    private static boolean isMonitorLock(ReentrantLock lock) {
+        return lock != null && isMonitorLockSynchronizer(SubstrateUtil.cast(lock, Target_java_util_concurrent_locks_ReentrantLock.class).sync);
     }
 
     private static boolean isMonitorLockSynchronizer(Object obj) {
-        return obj != null && obj.getClass() == Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class &&
-                        ((Target_java_util_concurrent_locks_ReentrantLock_Sync) obj).isObjectMonitor;
+        if (obj != null && obj.getClass() == Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class) {
+            Target_java_util_concurrent_locks_ReentrantLock_NonfairSync sync = SubstrateUtil.cast(obj, Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class);
+            return sync.objectMonitorCondition != null; // contains marker or actual condition
+        }
+        return false;
     }
 
     public ReentrantLock getMonitorForTesting(Object obj) {
-        return (ReentrantLock) getOrCreateMonitorLockOrCondition(obj, false, false);
+        return getOrCreateMonitor(obj, false);
     }
 
-    private Condition ensureLockedAndGetOrCreateMonitorCondition(Object obj, boolean createIfNotExisting) {
-        return (Condition) getOrCreateMonitorLockOrCondition(obj, true, createIfNotExisting);
-    }
-
-    private static Condition newMonitorCondition(ReentrantLock lock) {
-        Condition condition = lock.newCondition();
-        SubstrateUtil.cast(condition, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class).objectMonitorLock = lock;
-        assert isMonitorCondition(condition);
-        return condition;
+    private static ConditionObject getOrCreateCondition(ReentrantLock monitorLock, boolean createIfNotExisting) {
+        assert isMonitorLock(monitorLock);
+        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(monitorLock, Target_java_util_concurrent_locks_ReentrantLock.class);
+        Target_java_util_concurrent_locks_ReentrantLock_NonfairSync sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class);
+        ConditionObject existingCondition = SubstrateUtil.cast(sync.objectMonitorCondition, ConditionObject.class);
+        if (existingCondition == MONITOR_WITHOUT_CONDITION) {
+            existingCondition = null;
+        }
+        if (existingCondition != null || !createIfNotExisting) {
+            assert existingCondition == null || isMonitorCondition(existingCondition);
+            return existingCondition;
+        }
+        ConditionObject newCondition = (ConditionObject) monitorLock.newCondition();
+        if (!UNSAFE.compareAndSwapObject(sync, SYNC_MONITOR_CONDITION_FIELD_OFFSET, MONITOR_WITHOUT_CONDITION, newCondition)) {
+            newCondition = SubstrateUtil.cast(sync.objectMonitorCondition, ConditionObject.class);
+            assert isMonitorCondition(newCondition) : "race winner must have installed valid condition";
+        }
+        return newCondition;
     }
 
     private static boolean isMonitorCondition(Object obj) {
-        return obj != null && obj.getClass() == Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class &&
-                        ((Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject) obj).objectMonitorLock != null;
+        if (obj != null && obj.getClass() == Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class) {
+            Target_java_util_concurrent_locks_AbstractQueuedSynchronizer enclosing = SubstrateUtil.cast(obj, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class).this$0;
+            if (enclosing.getClass() == (Class<?>) Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class) {
+                Target_java_util_concurrent_locks_ReentrantLock_NonfairSync sync = SubstrateUtil.cast(enclosing, Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class);
+                return obj == sync.objectMonitorCondition;
+            }
+        }
+        return false;
     }
 }
 
@@ -490,12 +467,24 @@ final class Target_java_util_concurrent_locks_AbstractOwnableSynchronizer {
 
 @TargetClass(value = ReentrantLock.class, innerClass = "Sync")
 final class Target_java_util_concurrent_locks_ReentrantLock_Sync {
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    boolean isObjectMonitor;
 }
 
 @TargetClass(value = ReentrantLock.class, innerClass = "NonfairSync")
 final class Target_java_util_concurrent_locks_ReentrantLock_NonfairSync {
+    /**
+     * If this is a monitor's synchronizer, either {@link MonitorSupport#MONITOR_WITHOUT_CONDITION}
+     * to mark it as part of a monitor that currently has no condition variable, or otherwise, a
+     * specific {@link ConditionObject} that provides conditional waiting for this monitor. If
+     * {@code null}, not associated with a monitor.
+     */
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    volatile Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject objectMonitorCondition;
+}
+
+@TargetClass(MonitorSupport.class)
+final class Target_com_oracle_svm_core_MonitorSupport {
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "objectMonitorCondition", declClass = Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class) //
+    static long SYNC_MONITOR_CONDITION_FIELD_OFFSET;
 }
 
 @TargetClass(ReentrantLock.class)
@@ -504,12 +493,16 @@ final class Target_java_util_concurrent_locks_ReentrantLock {
     Target_java_util_concurrent_locks_ReentrantLock_Sync sync;
 }
 
+@TargetClass(AbstractQueuedSynchronizer.class)
+final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer {
+}
+
 @TargetClass(value = ConditionObject.class)
 final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject {
-    /**
-     * If (and only if) this condition is associated with an object monitor, the lock object for
-     * that object monitor.
-     */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    ReentrantLock objectMonitorLock;
+    /** Enclosing {@link AbstractQueuedSynchronizer} of this nested class. */
+    @Alias Target_java_util_concurrent_locks_AbstractQueuedSynchronizer this$0;
+}
+
+@TargetClass(value = ReferenceQueue.class, innerClass = "Lock")
+final class Target_java_lang_ref_ReferenceQueue_Lock {
 }
