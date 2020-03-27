@@ -1043,9 +1043,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                                      * MethodHandle.invoke(Object... args), or
                                      * MethodHandle.invokeExact(Object... args).
                                      *
-                                     * The method was obtained through a regular lookup (since it is in
-                                     * the declared method). Delegate it to a polysignature method
-                                     * lookup.
+                                     * The method was obtained through a regular lookup (since it is
+                                     * in the declared method). Delegate it to a polysignature
+                                     * method lookup.
                                      *
                                      * Redundant callTarget assignment. Better sure than sorry.
                                      */
@@ -1058,7 +1058,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         } else {
                             if (codeAttribute == null) {
                                 throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
-                                        "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                                                "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                             }
 
                             FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());

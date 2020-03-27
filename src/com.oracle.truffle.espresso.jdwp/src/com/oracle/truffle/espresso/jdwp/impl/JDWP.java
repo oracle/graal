@@ -1080,7 +1080,7 @@ final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            ThreadJob < ?>.JobResult<?> result = job.getResult();
+                            ThreadJob<?>.JobResult<?> result = job.getResult();
                             writeMethodResult(reply, context, result);
                             CommandResult commandResult = new CommandResult(reply);
                             connection.handleReply(packet, commandResult);
@@ -1244,7 +1244,7 @@ final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            ThreadJob < ?>.JobResult<?> result = job.getResult();
+                            ThreadJob<?>.JobResult<?> result = job.getResult();
                             writeMethodResult(reply, context, result);
                             CommandResult commandResult = new CommandResult(reply);
                             connection.handleReply(packet, commandResult);
@@ -1693,7 +1693,7 @@ final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            ThreadJob < ?>.JobResult<?> result = job.getResult();
+                            ThreadJob<?>.JobResult<?> result = job.getResult();
                             writeMethodResult(reply, context, result);
                             CommandResult commandResult = new CommandResult(reply);
                             connection.handleReply(packet, commandResult);

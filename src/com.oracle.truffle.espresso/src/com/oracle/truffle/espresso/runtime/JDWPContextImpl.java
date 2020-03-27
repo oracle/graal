@@ -548,7 +548,7 @@ public final class JDWPContextImpl implements JDWPContext {
             int bci = (int) readBCIFromFrame(callerRoot, frame);
             if (bci != -1) {
                 BytecodeStream bs = new BytecodeStream(espressoRootNode.getMethodVersion().getOriginalCode());
-               return bs.nextBCI(bci);
+                return bs.nextBCI(bci);
             }
         }
         return -1;
