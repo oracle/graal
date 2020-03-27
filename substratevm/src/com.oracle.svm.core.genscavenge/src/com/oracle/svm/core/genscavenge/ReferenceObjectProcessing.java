@@ -158,7 +158,7 @@ public class ReferenceObjectProcessing {
         final Reference<?> result = discoveredReferencesList;
         if (result != null) {
             discoveredReferencesList = ReferenceInternals.getNextDiscovered(result);
-            ReferenceInternals.clearDiscovered(result);
+            ReferenceInternals.setNextDiscovered(result, null);
         }
         return result;
     }

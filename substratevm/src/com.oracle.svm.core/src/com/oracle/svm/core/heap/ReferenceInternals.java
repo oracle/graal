@@ -62,15 +62,6 @@ public final class ReferenceInternals {
         return SubstrateUtil.cast(instance, Reference.class);
     }
 
-    /**
-     * Garbage collection might run between the allocation of this object and before its constructor
-     * is called, so this returns a flag that is set in the constructor (which is
-     * {@link Uninterruptible}) and indicates whether the instance is fully initialized.
-     */
-    public static <T> boolean isInitialized(Reference<T> instance) {
-        return cast(instance).initialized;
-    }
-
     public static <T> void clear(Reference<T> instance) {
         cast(instance).referent = null;
     }
@@ -86,14 +77,13 @@ public final class ReferenceInternals {
     }
 
     public static <T> boolean needsDiscovery(Reference<T> instance) {
-        Target_java_lang_ref_Reference<T> ref = cast(instance);
         /*
-         * If the Reference has been allocated but not initialized, the referent will be
-         * strongly-reachable because it is on the call stack to the constructor. If the Reference
-         * is initialized but has a null referent, it has already been enqueued (either manually or
-         * by the GC) and does not need to be discovered.
+         * If the Reference has been allocated but not yet initialized (null referent), its
+         * soon-to-be referent will still be strongly reachable because it is on the call stack to
+         * the constructor. If the Reference is initialized but has a null referent, it has already
+         * been enqueued (either manually or by the GC) and does not need to be discovered.
          */
-        return ref.initialized && getReferentPointer(instance).isNonNull() && !ref.isDiscovered;
+        return getReferentPointer(instance).isNonNull() && getNextDiscovered(instance) == null;
     }
 
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered}. */
@@ -101,18 +91,9 @@ public final class ReferenceInternals {
         return KnownIntrinsics.convertUnknownValue(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)), Reference.class);
     }
 
-    public static <T> void clearDiscovered(Reference<T> instance) {
-        setNextDiscovered(instance, null, false);
-    }
-
-    public static <T> void setNextDiscovered(Reference<T> instance, Reference<?> newNext) {
-        setNextDiscovered(instance, newNext, true);
-    }
-
     /** Barrier-less write of {@link Target_java_lang_ref_Reference#discovered}. */
-    private static <T> void setNextDiscovered(Reference<T> instance, Reference<?> newNext, boolean newIsDiscovered) {
+    public static <T> void setNextDiscovered(Reference<T> instance, Reference<?> newNext) {
         ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset), newNext);
-        cast(instance).isDiscovered = newIsDiscovered;
     }
 
     public static boolean hasQueue(Reference<?> instance) {

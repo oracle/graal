@@ -28,7 +28,6 @@ package com.oracle.svm.core.heap;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
-import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.Field;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -86,10 +85,6 @@ public final class Target_java_lang_ref_Reference<T> {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "discovered", declClass = Target_java_lang_ref_Reference.class) //
     static long discoveredFieldOffset;
 
-    /** @see ReferenceInternals#isInitialized */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTrue.class) //
-    final boolean initialized;
-
     /**
      * The object we reference. The field must not be in the regular reference map since we do all
      * the garbage collection support manually. The garbage collector performs Pointer-level access
@@ -99,18 +94,6 @@ public final class Target_java_lang_ref_Reference<T> {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeReferenceValue.class) //
     @ExcludeFromReferenceMap("Field is manually processed by the garbage collector.") //
     T referent;
-
-    /**
-     * Whether this reference is currently either {@linkplain #discovered on a list} of references
-     * discovered during garbage collection or pending to be enqueued in a {@link ReferenceQueue}.
-     * <p>
-     * This cannot be replaced with the same self-link trick that is used for {@link #next} because
-     * during reference discovery, our reference object could have been moved, but
-     * {@link #discovered} might not have been updated yet, and {@code this == next} would fail.
-     * ({@link #discovered} != null is not valid either because there might not be a next node)
-     */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    boolean isDiscovered;
 
     @SuppressWarnings("unused") //
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
@@ -131,10 +114,7 @@ public final class Target_java_lang_ref_Reference<T> {
     @Uninterruptible(reason = "The initialization of the fields must be atomic with respect to collection.")
     Target_java_lang_ref_Reference(T referent, Target_java_lang_ref_ReferenceQueue<? super T> queue) {
         this.referent = referent;
-        this.discovered = null;
-        this.isDiscovered = false;
         this.queue = (queue == null) ? Target_java_lang_ref_ReferenceQueue.NULL : queue;
-        this.initialized = true;
     }
 
     @KeepOriginal
