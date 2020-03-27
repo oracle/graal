@@ -31,6 +31,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INNER_CLASS;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_MODULE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
@@ -541,6 +542,8 @@ public final class ClassfileParser {
                         Symbol<Type> annotType = constant.value();
                         if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
                             methodFlags |= ACC_LAMBDA_FORM_COMPILED;
+                        } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType)) {
+                            methodFlags |= ACC_LAMBDA_FORM_HIDDEN;
                         } else if (Type.sun_reflect_CallerSensitive.equals(annotType)) {
                             methodFlags |= ACC_CALLER_SENSITIVE;
                         }
