@@ -51,26 +51,28 @@ import java.nio.file.Paths;
 import java.util.TimeZone;
 
 /**
- * The following classes aim to provide full support for time zones for native-image. This is
- * substitution is necessary due to the reliance in JAVA_HOME in the JDK.
+ * The following classes aim to provide full support for time zones for native-image. This
+ * substitution is necessary due to the reliance on JAVA_HOME in the JDK.
  *
  * In summary in the JDK time zone data is extracted from the underlying platform via native
- * methods, later the JDK code process that data to create time zone objects exposed via java apis.
+ * methods, later the JDK code processes that data to create time zone objects exposed via JAVA
+ * APIs.
  *
  * Luckily JAVA_HOME is only really necessary for the Windows operating system. Posix operating
  * systems rely on system calls independent of JAVA_HOME (except for null checks done in the JNI
- * function wrapping the native time zone JDK functions). Thus for Posix operating this
+ * function wrapping the native time zone JDK functions). Thus for Posix operating systems this
  * implementation, simply, by-passes the null check(in native image JAVA_HOME is null) and calls
  * into the original native functions by substituting the JNI method
  * TimeZone.getSystemTimeZoneID(String).
  *
- * In windows, the JRE contains a special file called tzmappings, (see
+ * In Windows, the JRE contains a special file called tzmappings, (see
  * <a href="https://docs.oracle.com/javase/9/troubleshoot/time-zone-settings-jre.htm#JSTGD359">time
  * zones in the jre</a>), representing the mapping between Windows and Java time zones. The
  * tzmappings file is read and parsed in the native JDK code. Thus for windows,
- * {@link TimeZoneFeature} reads such file and stores in the image heap at build-time. At run-time
- * the contents of the file are passed to a special version of the time zone native functions that
- * parse data from the buffer and not from a file.
+ * {@link TimeZoneFeature} reads such file and stores it in the image heap at build-time. At
+ * run-time the contents of the file are passed to a custom implementation of the JDK time zones
+ * logic. The only difference in the custom implementation is reading and parsing time zone mappings
+ * from a buffer as opposed to a file.
  */
 @TargetClass(java.util.TimeZone.class)
 @SuppressWarnings("unused")

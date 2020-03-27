@@ -68,4 +68,11 @@ public @interface CLibrary {
      * @since 19.1.0
      */
     boolean requireStatic() default false;
+
+    /**
+     * Specifies the name of the libraries this library depends on.
+     * 
+     * @since 20.0.1
+     */
+    String[] dependsOn() default {};
 }
