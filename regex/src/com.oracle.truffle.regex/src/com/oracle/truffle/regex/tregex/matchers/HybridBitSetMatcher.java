@@ -82,7 +82,7 @@ public abstract class HybridBitSetMatcher extends InvertibleCharMatcher {
 
     @Specialization
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    protected boolean match(char c, boolean compactString) {
+    protected boolean match(int c, boolean compactString) {
         assert !compactString : "this matcher should be avoided via ProfilingCharMatcher on compact strings";
         final int highByte = highByte(c);
         for (int i = 0; i < highBytes.length; i++) {

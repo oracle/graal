@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.charset;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 
 public final class CodePointSetBMPView extends ImmutableSortedListOfIntRanges {
@@ -94,6 +96,10 @@ public final class CodePointSetBMPView extends ImmutableSortedListOfIntRanges {
         int hi = super.getHi(i);
         assert hi <= MAX_VALUE || hi == Character.MAX_CODE_POINT;
         return (char) hi;
+    }
+
+    public int[] toArray() {
+        return size * 2 == ranges.length ? ranges : Arrays.copyOf(ranges, size * 2);
     }
 
     @SuppressWarnings("unchecked")

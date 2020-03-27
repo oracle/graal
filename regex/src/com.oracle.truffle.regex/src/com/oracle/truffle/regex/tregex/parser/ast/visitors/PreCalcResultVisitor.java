@@ -57,6 +57,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
     private final boolean extractLiteral;
     private final boolean unrollGroups;
 
+    private final RegexAST ast;
     private int index = 0;
     private final AbstractStringBuffer literal;
     private final AbstractStringBuffer mask;
@@ -64,6 +65,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
     private PreCalcResultVisitor groupUnroller;
 
     private PreCalcResultVisitor(RegexAST ast, boolean extractLiteral) {
+        this.ast = ast;
         result = new PreCalculatedResultFactory(ast.getNumberOfCaptureGroups());
         this.extractLiteral = extractLiteral;
         if (extractLiteral) {
@@ -76,7 +78,8 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         unrollGroups = true;
     }
 
-    private PreCalcResultVisitor(boolean extractLiteral, boolean unrollGroups, int index, AbstractStringBuffer literal, AbstractStringBuffer mask, PreCalculatedResultFactory result) {
+    private PreCalcResultVisitor(RegexAST ast, boolean extractLiteral, boolean unrollGroups, int index, AbstractStringBuffer literal, AbstractStringBuffer mask, PreCalculatedResultFactory result) {
+        this.ast = ast;
         this.extractLiteral = extractLiteral;
         this.unrollGroups = unrollGroups;
         this.index = index;
@@ -135,7 +138,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         if (unrollGroups && group.hasNotUnrolledQuantifier()) {
             assert group.getQuantifier().getMin() == group.getQuantifier().getMax();
             if (groupUnroller == null) {
-                groupUnroller = new PreCalcResultVisitor(extractLiteral, false, index, literal, mask, result);
+                groupUnroller = new PreCalcResultVisitor(ast, extractLiteral, false, index, literal, mask, result);
             }
             groupUnroller.index = index;
             for (int i = 0; i < group.getQuantifier().getMin() - 1; i++) {
@@ -167,14 +170,15 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
     protected void visit(CharacterClass characterClass) {
         assert !characterClass.hasQuantifier() || characterClass.getQuantifier().getMin() == characterClass.getQuantifier().getMax();
         for (int i = 0; i < (characterClass.hasNotUnrolledQuantifier() ? characterClass.getQuantifier().getMin() : 1); i++) {
+            int cp = characterClass.getCharSet().getMin();
             if (extractLiteral) {
                 if (mask == null) {
-                    literal.append(characterClass.getCharSet().getMin());
+                    literal.append(cp);
                 } else {
                     characterClass.extractSingleChar(literal, mask);
                 }
             }
-            index++;
+            index += ast.getOptions().getEncoding().getEncodedSize(cp);
         }
     }
 }

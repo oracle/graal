@@ -65,7 +65,7 @@ public abstract class BitSetMatcher extends InvertibleCharMatcher {
 
     /**
      * Constructs a new bit-set-based character matcher.
-     * 
+     *
      * @param invert see {@link InvertibleCharMatcher}.
      * @param highByte the high byte common to all characters to match.
      * @param bitSet the bit set to match the low byte of the characters to match.
@@ -83,7 +83,7 @@ public abstract class BitSetMatcher extends InvertibleCharMatcher {
     }
 
     @Specialization
-    public boolean match(char c, boolean compactString) {
+    public boolean match(int c, boolean compactString) {
         return result(!compactString && highByte(c) == highByte && bitSet.get(lowByte(c)));
     }
 

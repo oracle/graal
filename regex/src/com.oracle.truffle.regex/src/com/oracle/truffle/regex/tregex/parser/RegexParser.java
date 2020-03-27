@@ -345,6 +345,7 @@ public final class RegexParser {
             assert !flags.isUnicode() || !options.isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
             assert !group.hasEnclosedCaptureGroups();
             cc.setCharSet(cc.getCharSet().createInverse());
+            ast.updatePropsCC(cc);
             curSequence.removeLastTerm();
             Group wrapGroup = ast.createGroup();
             Sequence positionAssertionSeq = wrapGroup.addSequence(ast);
@@ -507,9 +508,6 @@ public final class RegexParser {
         ast.addSourceSection(characterClass, token);
         if (wasSingleChar) {
             characterClass.setWasSingleChar();
-        }
-        if (!options.getEncoding().isFixedCodePointWidth(charSet)) {
-            properties.setFixedCodePointWidth(false);
         }
         return characterClass;
     }
@@ -930,6 +928,7 @@ public final class RegexParser {
     private void mergeCharClasses(CharacterClass dst, CharacterClass src) {
         dst.setCharSet(dst.getCharSet().union(src.getCharSet()));
         dst.setWasSingleChar(false);
+        ast.updatePropsCC(dst);
         ast.addSourceSections(dst, ast.getSourceSections(src));
     }
 

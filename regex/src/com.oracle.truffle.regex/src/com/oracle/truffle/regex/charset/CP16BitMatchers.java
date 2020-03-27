@@ -108,7 +108,7 @@ public class CP16BitMatchers {
             return SingleRangeMatcher.create(inverse, cps.getMin(), cps.getMax());
         }
         if (preferRangeListMatcherOverBitSetMatcher(cps, size)) {
-            return RangeListMatcher.create(inverse, toCharArray(cps, size));
+            return RangeListMatcher.create(inverse, cps.toArray());
         }
         InvertibleCharMatcher bitSetMatcher = convertToBitSetMatcher(cps, compilationBuffer, inverse);
         if (bitSetMatcher != null) {
@@ -121,10 +121,10 @@ public class CP16BitMatchers {
             charMatcher = createHybridMatcher(cps, compilationBuffer, inverse);
         } else {
             if (size <= 10) {
-                charMatcher = RangeListMatcher.create(inverse, toCharArray(cps, size));
+                charMatcher = RangeListMatcher.create(inverse, cps.toArray());
             } else {
                 assert size <= 100;
-                charMatcher = RangeTreeMatcher.fromRanges(inverse, toCharArray(cps, size));
+                charMatcher = RangeTreeMatcher.fromRanges(inverse, cps.toArray());
             }
         }
         return ProfilingCharMatcher.create(createMatcher(cps.createIntersection(CodePointSetBMPView.create(Constants.BYTE_RANGE), compilationBuffer), compilationBuffer, inverse, false), charMatcher);
@@ -240,30 +240,17 @@ public class CP16BitMatchers {
         return bs;
     }
 
-    private static char[] toCharArray(CodePointSetBMPView cps, int size) {
-        int length = size * 2;
-        char[] arr = new char[length];
-        int i = 0;
-        for (Range r : cps) {
-            assert r.lo <= Character.MAX_VALUE && r.hi <= Character.MAX_VALUE;
-            arr[i] = (char) r.lo;
-            arr[i + 1] = (char) r.hi;
-            i += 2;
-        }
-        return arr;
-    }
-
     @TruffleBoundary
-    public static String rangesToString(char[] ranges) {
+    public static String rangesToString(int[] ranges) {
         return rangesToString(ranges, false);
     }
 
     @TruffleBoundary
-    public static String rangesToString(char[] ranges, boolean numeric) {
+    public static String rangesToString(int[] ranges, boolean numeric) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < ranges.length; i += 2) {
             if (numeric) {
-                sb.append("[").append((int) ranges[i]).append("-").append((int) ranges[i + 1]).append("]");
+                sb.append("[").append(ranges[i]).append("-").append(ranges[i + 1]).append("]");
             } else {
                 sb.append(Range.toString(ranges[i], ranges[i + 1]));
             }

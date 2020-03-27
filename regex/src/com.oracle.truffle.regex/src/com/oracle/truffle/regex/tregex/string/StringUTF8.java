@@ -80,9 +80,8 @@ public final class StringUTF8 implements AbstractString {
             if (Byte.toUnsignedInt(b) < 0x80) {
                 return b;
             }
-            int leadingOnes = Integer.numberOfLeadingZeros(~((int) b));
-            int codepoint = b & (~0 >>> leadingOnes);
-            int nBytes = leadingOnes - 24;
+            int nBytes = Integer.numberOfLeadingZeros(~(b << 24));
+            int codepoint = b & (0xff >>> nBytes);
             assert 1 < nBytes && nBytes < 5 : nBytes;
             // Checkstyle: stop
             switch (nBytes) {

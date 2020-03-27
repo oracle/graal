@@ -315,13 +315,20 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     public CharacterClass register(CharacterClass characterClass) {
         nodeCount.inc();
+        updatePropsCC(characterClass);
+        return characterClass;
+    }
+
+    public void updatePropsCC(CharacterClass characterClass) {
         if (!characterClass.getCharSet().matchesSingleChar()) {
             if (!characterClass.getCharSet().matches2CharsWith1BitDifference()) {
                 properties.unsetCharClassesCanBeMatchedWithMask();
             }
+            if (!options.getEncoding().isFixedCodePointWidth(characterClass.getCharSet())) {
+                properties.setFixedCodePointWidth(false);
+            }
             properties.setCharClasses();
         }
-        return characterClass;
     }
 
     public Group register(Group group) {

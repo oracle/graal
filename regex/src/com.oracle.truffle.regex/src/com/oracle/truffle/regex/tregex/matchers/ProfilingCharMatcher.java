@@ -59,21 +59,21 @@ public abstract class ProfilingCharMatcher extends CharMatcher {
     }
 
     @Specialization(guards = "compactString")
-    boolean matchCompactString(char c, boolean compactString) {
+    boolean matchCompactString(int c, boolean compactString) {
         return byteMatcher.execute(c, compactString);
     }
 
     @Specialization(guards = {"!compactString", "isByte(c)"})
-    boolean matchByte(char c, boolean compactString) {
+    boolean matchByte(int c, boolean compactString) {
         return byteMatcher.execute(c, compactString);
     }
 
     @Specialization(guards = "!compactString", replaces = "matchByte")
-    boolean matchChar(char c, boolean compactString) {
+    boolean matchChar(int c, boolean compactString) {
         return charMatcher.execute(c, compactString);
     }
 
-    static boolean isByte(char c) {
+    static boolean isByte(int c) {
         return c < 256;
     }
 
