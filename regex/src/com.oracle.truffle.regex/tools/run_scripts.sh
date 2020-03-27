@@ -47,15 +47,17 @@ then
     exit 1
 fi
 
+UNICODE_VERSION=13.0.0
+
 mkdir -p ./dat
 
-wget https://www.unicode.org/Public/12.1.0/ucd/UnicodeData.txt -O dat/UnicodeData.txt
-wget https://www.unicode.org/Public/12.1.0/ucd/CaseFolding.txt -O dat/CaseFolding.txt
-wget https://www.unicode.org/Public/12.1.0/ucd/SpecialCasing.txt -O dat/SpecialCasing.txt
-wget https://www.unicode.org/Public/12.1.0/ucd/PropertyAliases.txt -O dat/PropertyAliases.txt
-wget https://www.unicode.org/Public/12.1.0/ucd/PropertyValueAliases.txt -O dat/PropertyValueAliases.txt
-wget https://www.unicode.org/Public/12.1.0/ucdxml/ucd.nounihan.flat.zip -O dat/ucd.nounihan.flat.zip
-wget https://unicode.org/Public/emoji/12.0/emoji-data.txt -O dat/emoji-data.txt
+wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/UnicodeData.txt -O dat/UnicodeData.txt
+wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/CaseFolding.txt -O dat/CaseFolding.txt
+wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/SpecialCasing.txt -O dat/SpecialCasing.txt
+wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/PropertyAliases.txt -O dat/PropertyAliases.txt
+wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/PropertyValueAliases.txt -O dat/PropertyValueAliases.txt
+wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/emoji/emoji-data.txt -O dat/emoji-data.txt
+wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucdxml/ucd.nounihan.flat.zip -O dat/ucd.nounihan.flat.zip
 
 unzip -d dat dat/ucd.nounihan.flat.zip
 
@@ -68,3 +70,8 @@ clojure --init generate_case_fold_table.clj --eval '(-main)' > dat/case-fold-tab
 ./update_case_fold_table.py
 
 rm -r ./dat
+
+mx build
+mx java -cp `mx paths regex:TREGEX`:`mx paths truffle:TRUFFLE_API`:`mx paths sdk:GRAAL_SDK` com.oracle.truffle.regex.charset.UnicodeGeneralCategoriesGenerator > ../src/com/oracle/truffle/regex/charset/UnicodeGeneralCategories.java
+
+mx eclipseformat --primary || true
