@@ -37,7 +37,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -62,7 +61,6 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.GraalServiceThread;
@@ -70,15 +68,17 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.EncodedSnippets;
 import org.graalvm.compiler.hotspot.HotSpotCodeCacheListener;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
-import org.graalvm.compiler.hotspot.SymbolicSnippetEncoder;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
+import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionDescriptorsMap;
@@ -95,18 +95,17 @@ import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlug
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
@@ -123,7 +122,6 @@ import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.jni.hosted.JNIFeature;
@@ -168,12 +166,8 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         }
     }
 
-    private EconomicSet<AnnotatedElement> visitedElements = EconomicSet.create();
-
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(MethodAnnotationSupport.class, new MethodAnnotationSupport());
-
         JNIRuntimeAccess.JNIRuntimeAccessibilitySupport registry = ImageSingletons.lookup(JNIRuntimeAccess.JNIRuntimeAccessibilitySupport.class);
         ImageClassLoader imageClassLoader = ((DuringSetupAccessImpl) access).getImageClassLoader();
         registerJNIConfiguration(registry, imageClassLoader);
@@ -434,6 +428,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             throw debug.handle(t);
         }
 
+        // Filter out any cached services which are for a different architecture
         try {
             HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
             String osArch = compiler.getGraalRuntime().getVMConfig().osArch;
@@ -453,6 +448,17 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
+
+        hotSpotSubstrateReplacements.encode(impl.getBigBang().getOptions());
+        if (!SubstrateOptions.getRuntimeAssertionsForClass(SnippetParameterInfo.class.getName())) {
+            // Clear that saved names if assertions aren't enabled
+            hotSpotSubstrateReplacements.clearSnippetParameterNames();
+        }
+        // Mark all the Node classes as allocated so they are available during graph decoding.
+        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(impl.getBigBang().getOptions());
+        for (NodeClass<?> nodeClass : encodedSnippets.getSnippetNodeClasses()) {
+            impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated(null);
+        }
     }
 
     private static void filterArchitectureServices(String archPackage, Map<Class<?>, List<?>> services) {
@@ -467,60 +473,15 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         }
     }
 
-    @SuppressWarnings("try")
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        DuringAnalysisAccessImpl accessImpl = (DuringAnalysisAccessImpl) access;
-        AnalysisUniverse universe = accessImpl.getUniverse();
-
-        int numTypes = universe.getTypes().size();
-        int numMethods = universe.getMethods().size();
-        int numFields = universe.getFields().size();
-
-        /*
-         * JDK implementation of repeatable annotations always instantiates an array of a requested
-         * annotation. We need to mark arrays of all reachable annotations as in heap.
-         */
-        universe.getTypes().stream()
-                        .filter(AnalysisType::isAnnotation)
-                        .filter(AnalysisType::isInTypeCheck)
-                        .map(type -> universe.lookup(type.getWrapped()).getArrayClass())
-                        .filter(annotationArray -> !annotationArray.isInstantiated())
-                        .forEach(annotationArray -> {
-                            accessImpl.registerAsInHeap(annotationArray);
-                            access.requireAnalysisIteration();
-                        });
-
-        // Capture annotations for all Snippets
-        for (ResolvedJavaMethod method : hotSpotSubstrateReplacements.getSnippetMethods()) {
-            if (visitedElements.add(method)) {
-                ImageSingletons.lookup(MethodAnnotationSupport.class).setParameterAnnotations(method, method.getParameterAnnotations());
-                ImageSingletons.lookup(MethodAnnotationSupport.class).setMethodAnnotation(method, method.getAnnotations());
-            }
-        }
-
-        // Rerun the iteration if new things have been seen.
-        if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
-            access.requireAnalysisIteration();
-        }
-
-        // Ensure all known snippets and method subsitutions are encoded and rerun the iteration if
-        // new encoding is done.
-        if (hotSpotSubstrateReplacements.encode(accessImpl.getBigBang().getOptions())) {
-            access.requireAnalysisIteration();
-        }
-    }
-
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        visitedElements.clear();
         verifyReachableTruffleClasses(access);
     }
 
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
         FeatureImpl.AfterCompilationAccessImpl accessImpl = (FeatureImpl.AfterCompilationAccessImpl) access;
-        SymbolicSnippetEncoder.EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(accessImpl.getUniverse().getBigBang().getOptions());
+        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(accessImpl.getUniverse().getBigBang().getOptions());
 
         // These fields are all immutable but the snippet object table isn't since symbolic JVMCI
         // references are converted into real references during decoding.
@@ -568,50 +529,8 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         return true;
     }
 
-    static class MethodAnnotationSupport {
-        private Map<String, Annotation[]> classAnnotationMap = new HashMap<>();
-
-        private Map<String, Annotation[][]> parameterAnnotationMap = new HashMap<>();
-        private Map<String, Annotation[]> methodAnnotationMap = new HashMap<>();
-
-        static final Annotation[][] NO_PARAMETER_ANNOTATIONS = new Annotation[0][];
-        static final Annotation[] NO_ANNOTATIONS = new Annotation[0];
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        void setParameterAnnotations(ResolvedJavaMethod element, Annotation[][] parameterAnnotations) {
-            String name = element.getDeclaringClass().getName() + " " + element.getName();
-            if (parameterAnnotations.length == 0) {
-                parameterAnnotationMap.put(name, NO_PARAMETER_ANNOTATIONS);
-            } else {
-                parameterAnnotationMap.put(name, parameterAnnotations);
-            }
-        }
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        void setMethodAnnotation(ResolvedJavaMethod javaMethod, Annotation[] annotations) {
-            String name = javaMethod.format("%R %H.%n%P");
-            if (annotations.length == 0) {
-                methodAnnotationMap.put(name, NO_ANNOTATIONS);
-            } else {
-                methodAnnotationMap.put(name, annotations);
-            }
-        }
-
-        public Annotation[] getClassAnnotations(String className) {
-            return classAnnotationMap.getOrDefault(className, NO_ANNOTATIONS);
-        }
-
-        public Annotation[][] getParameterAnnotations(String className, String methodName) {
-            String name = className + " " + methodName;
-            return parameterAnnotationMap.get(name);
-        }
-
-        public Annotation[] getMethodAnnotations(ResolvedJavaMethod javaMethod) {
-            String name = javaMethod.format("%R %H.%n%P");
-            return methodAnnotationMap.getOrDefault(name, NO_ANNOTATIONS);
-
-        }
-    }
+    static final Annotation[][] NO_PARAMETER_ANNOTATIONS = new Annotation[0][];
+    static final Annotation[] NO_ANNOTATIONS = new Annotation[0];
 
     static HotSpotReplacementsImpl getReplacements() {
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
@@ -625,24 +544,20 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
 final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 
     @Substitute
-    static Annotation[] getClassAnnotations(String className) {
-        return ImageSingletons.lookup(LibGraalFeature.MethodAnnotationSupport.class).getClassAnnotations(className);
-    }
-
-    @Substitute
-    static Annotation[][] getParameterAnnotations(String className, String methodName) {
-        return ImageSingletons.lookup(LibGraalFeature.MethodAnnotationSupport.class).getParameterAnnotations(className, methodName);
-    }
-
-    @Substitute
-    static Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod) {
-        return ImageSingletons.lookup(LibGraalFeature.MethodAnnotationSupport.class).getMethodAnnotations(javaMethod);
-    }
-
-    @Substitute
     static Object convertUnknownValue(Object object) {
         return KnownIntrinsics.convertUnknownValue(object, Object.class);
     }
+
+    // Annotations are currently unsupported in libgraal. These substitutions will turn their use
+    // into a image time build error.
+    @Delete
+    static native Annotation[] getClassAnnotations(String className);
+
+    @Delete
+    static native Annotation[][] getParameterAnnotations(String className, String methodName);
+
+    @Delete
+    static native Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod);
 }
 
 @TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalRuntime", onlyWith = LibGraalFeature.IsEnabled.class)

@@ -44,7 +44,6 @@ import java.util.BitSet;
 import java.util.List;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -140,6 +139,7 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
+import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
@@ -178,6 +178,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected final BarrierSet barrierSet;
     protected final TargetDescription target;
     private final boolean useCompressedOops;
+    protected Replacements replacements;
 
     private BoxingSnippets.Templates boxingSnippets;
     private ConstantStringIndexOfSnippets.Templates indexOfSnippets;
@@ -194,6 +195,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection) {
         boxingSnippets = new BoxingSnippets.Templates(options, factories, factory, providers, snippetReflection, target);
         indexOfSnippets = new ConstantStringIndexOfSnippets.Templates(options, factories, providers, snippetReflection, target);
+        replacements = providers.getReplacements();
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, factories, providers, snippetReflection, target));
     }
 
@@ -207,6 +209,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     public BarrierSet getBarrierSet() {
         return barrierSet;
+    }
+
+    public Replacements getReplacements() {
+        return replacements;
     }
 
     @Override
@@ -345,7 +351,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         ResolvedJavaMethod method = math.graph().method();
         if (method != null) {
-            if (method.getAnnotation(Snippet.class) != null) {
+            if (replacements.isSnippet(method)) {
                 // In the context of SnippetStub, i.e., Graal-generated stubs, use the LIR
                 // lowering to emit the stub assembly code instead of the Node lowering.
                 return;
