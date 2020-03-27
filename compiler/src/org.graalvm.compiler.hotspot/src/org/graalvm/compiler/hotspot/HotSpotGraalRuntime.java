@@ -49,6 +49,7 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -244,8 +245,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         G1(true, "UseG1GC", true),
 
         // Unsupported GCs
-        Epsilon(false, "UseEpsilonGC", true),
-        Z(false, "UseZGC", true);
+        Epsilon(false, "UseEpsilonGC", JDK >= 11),
+        Z(false, "UseZGC", JDK >= 11);
 
         HotSpotGC(boolean supported,
                         String flag1, boolean expectFlagPresent1,
@@ -267,28 +268,41 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         private final String[] flags;
 
         public boolean isSelected(GraalHotSpotVMConfig config) {
+            boolean selected = false;
             for (int i = 0; i < flags.length; i++) {
                 final boolean notPresent = false;
                 if (config.getFlag(flags[i], Boolean.class, notPresent, expectFlagsPresent[i])) {
-                    return true;
+                    selected = true;
+                    if (!Assertions.assertionsEnabled()) {
+                        // When asserting, check that isSelected works for all flag names
+                        break;
+                    }
                 }
             }
-            return false;
+            return selected;
         }
     }
 
     private HotSpotGC getSelectedGC() throws GraalError {
+        HotSpotGC selected = null;
         for (HotSpotGC gc : HotSpotGC.values()) {
             if (gc.isSelected(config)) {
                 if (!gc.supported) {
                     throw new GraalError(gc.name() + " garbage collector is not supported by Graal");
                 }
-                return gc;
+                selected = gc;
+                if (!Assertions.assertionsEnabled()) {
+                    // When asserting, check that isSelected works for all HotSpotGC values
+                    break;
+                }
             }
         }
-        // As of JDK 9, exactly one GC flag is guaranteed to be selected.
-        // On JDK 8, the default GC is Serial when no GC flag is true.
-        return HotSpotGC.Serial;
+        if (selected == null) {
+            // As of JDK 9, exactly one GC flag is guaranteed to be selected.
+            // On JDK 8, the default GC is Serial when no GC flag is true.
+            selected = HotSpotGC.Serial;
+        }
+        return selected;
     }
 
     private HotSpotBackend registerBackend(HotSpotBackend backend) {
