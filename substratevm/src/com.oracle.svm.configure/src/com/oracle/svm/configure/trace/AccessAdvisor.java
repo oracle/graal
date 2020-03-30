@@ -41,6 +41,7 @@ public final class AccessAdvisor {
         internalsFilter.addOrGetChildren("com.sun.**", RuleNode.Inclusion.Exclude);
         internalsFilter.addOrGetChildren("jdk.**", RuleNode.Inclusion.Exclude);
         internalsFilter.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Exclude);
+        internalsFilter.addOrGetChildren("org.graalvm.libgraal.**", RuleNode.Inclusion.Exclude);
         internalsFilter.removeRedundantNodes();
     }
 
