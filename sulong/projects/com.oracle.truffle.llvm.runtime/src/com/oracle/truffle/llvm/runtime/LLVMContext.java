@@ -107,7 +107,7 @@ public final class LLVMContext {
     private final List<String> internalLibraryNames;
 
     // map that contains all non-native globals, needed for pointer->global lookups
-    private final ConcurrentHashMap<LLVMPointer, LLVMGlobal> globalsReverseMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<LLVMPointer, List<LLVMSymbol>> symbolsReverseMap = new ConcurrentHashMap<>();
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
     private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
     private final ArrayList<LLVMPointer> globalsReadOnlyStore = new ArrayList<>();
@@ -494,7 +494,7 @@ public final class LLVMContext {
         }
 
         // free the space which might have been when putting pointer-type globals into native memory
-        for (LLVMPointer pointer : globalsReverseMap.keySet()) {
+        for (LLVMPointer pointer : symbolsReverseMap.keySet()) {
             if (LLVMManagedPointer.isInstance(pointer)) {
                 Object object = LLVMManagedPointer.cast(pointer).getObject();
                 if (object instanceof LLVMGlobalContainer) {
@@ -888,7 +888,16 @@ public final class LLVMContext {
 
     @TruffleBoundary
     public LLVMGlobal findGlobal(LLVMPointer pointer) {
-        return globalsReverseMap.get(pointer);
+        List<LLVMSymbol> symbols = symbolsReverseMap.get(pointer);
+        if (symbols == null) {
+            return null;
+        }
+        return symbols.get(0).asGlobalVariable();
+    }
+
+    @TruffleBoundary
+    public List<LLVMSymbol> findSymbols(LLVMPointer pointer) {
+        return symbolsReverseMap.get(pointer);
     }
 
     @TruffleBoundary
@@ -908,13 +917,18 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void registerGlobalReverseMap(LLVMGlobal global, LLVMPointer target) {
-        globalsReverseMap.put(target, global);
+    public void registerSymbolReverseMap(List<LLVMSymbol> symbols, LLVMPointer pointer) {
+        symbolsReverseMap.put(pointer, symbols);
     }
 
     @TruffleBoundary
-    public void replaceGlobalReverseMap(LLVMGlobal oldGlobal, LLVMGlobal newGlobal, LLVMPointer target) {
-        globalsReverseMap.replace(target, oldGlobal, newGlobal);
+    public void registerSymbol(LLVMSymbol symbol, LLVMPointer pointer) {
+        symbolsReverseMap.get(pointer).add(symbol);
+    }
+
+    @TruffleBoundary
+    public List<LLVMSymbol> removeSymbolReverseMap(LLVMPointer pointer) {
+        return symbolsReverseMap.remove(pointer);
     }
 
     public void setCleanupNecessary(boolean value) {

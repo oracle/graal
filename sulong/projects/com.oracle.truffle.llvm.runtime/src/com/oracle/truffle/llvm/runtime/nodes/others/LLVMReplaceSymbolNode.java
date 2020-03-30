@@ -36,58 +36,21 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMReplaceSymbolNode extends LLVMNode {
 
-    public abstract void execute(LLVMPointer value, LLVMSymbol descriptor);
+    public abstract void execute(LLVMPointer value, LLVMSymbol symbol);
 
-    @SuppressWarnings("unused")
-    @Specialization
-    void doReplace(LLVMPointer value, LLVMGlobal global,
+    @Specialization(guards = {"symbol.isAlias()"})
+    void doAlias(LLVMPointer value, LLVMSymbol symbol,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(global.getBitcodeID(false));
-        synchronized (symbols) {
-            CompilerAsserts.partialEvaluationConstant(global);
-            try {
-                int index = global.getSymbolIndex(false);
-                symbols[index].set(value);
-            } catch (Exception e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMIllegalSymbolIndexException("Global replacement is inconsistent. Accessing the symbol with an invalid index.");
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization
-    void doReplace(LLVMPointer value, LLVMFunction function,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(function.getBitcodeID(false));
-        synchronized (symbols) {
-            CompilerAsserts.partialEvaluationConstant(function);
-            try {
-                int index = function.getSymbolIndex(false);
-                symbols[index].set(value);
-            } catch (LLVMIllegalSymbolIndexException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMLinkerException(this, "Global replacement is inconsistent. Accessing the symbol with an invalid index.");
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization
-    void doReplace(LLVMPointer value, LLVMAlias alias,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMSymbol target = alias.getTarget();
+        LLVMSymbol target = ((LLVMAlias) symbol).getTarget();
         while (target.isAlias()) {
             target = ((LLVMAlias) target).getTarget();
         }
@@ -100,6 +63,22 @@ public abstract class LLVMReplaceSymbolNode extends LLVMNode {
             } catch (LLVMIllegalSymbolIndexException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMLinkerException(this, "Function replacement is inconsistent.");
+            }
+        }
+    }
+
+    @Specialization
+    void doFallback(LLVMPointer value, LLVMSymbol symbol,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(symbol.getBitcodeID(false));
+        synchronized (symbols) {
+            CompilerAsserts.partialEvaluationConstant(symbol);
+            try {
+                int index = symbol.getSymbolIndex(false);
+                symbols[index].set(value);
+            } catch (Exception e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMIllegalSymbolIndexException("Global replacement is inconsistent. Accessing the symbol with an invalid index.");
             }
         }
     }
