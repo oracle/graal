@@ -212,5 +212,5 @@ public interface MethodRef {
      */
     boolean isObsolete();
 
-    long getEndBCI();
+    long getLastBCI();
 }
