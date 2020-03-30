@@ -70,6 +70,7 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
     static final OptionKey<String> SCRIPT = new OptionKey<>("");
 
     private Env env;
+    private final IgnoreSources ignoreSources = new IgnoreSources();
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -124,7 +125,7 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
             @CompilerDirectives.TruffleBoundary
             synchronized boolean initializeAgentObject() {
                 if (agent == null) {
-                    agent = new AgentObject(env);
+                    agent = new AgentObject(env, ignoreSources);
                     return true;
                 }
                 return false;
@@ -132,15 +133,15 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
 
             @CompilerDirectives.TruffleBoundary
             void initializeAgent() {
-                Source script = src.get();
-                CallTarget target;
-                try {
-                    target = env.parse(script, "agent");
-                } catch (IOException ex) {
-                    throw AgentException.raise(ex);
-                }
                 if (initializeAgentObject()) {
-                    agent.ignoreSource(script);
+                    Source script = src.get();
+                    ignoreSources.ignoreSource(script);
+                    CallTarget target;
+                    try {
+                        target = env.parse(script, "agent");
+                    } catch (IOException ex) {
+                        throw AgentException.raise(ex);
+                    }
                     target.call(agent);
                 }
             }

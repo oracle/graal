@@ -52,18 +52,18 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.WeakHashMap;
 
 @SuppressWarnings({"unused", "static-method"})
 @ExportLibrary(InteropLibrary.class)
 final class AgentObject implements TruffleObject {
     private final TruffleInstrument.Env env;
-    private final ExcludeAgentScriptsFilter excludeSources = new ExcludeAgentScriptsFilter();
+    private final IgnoreSources excludeSources;
     private final Map<AgentType, Map<Object, EventBinding<?>>> listeners = new EnumMap<>(AgentType.class);
     private Object closeFn;
 
-    AgentObject(TruffleInstrument.Env env) {
+    AgentObject(TruffleInstrument.Env env, IgnoreSources excludeSources) {
         this.env = env;
+        this.excludeSources = excludeSources;
     }
 
     private void registerHandle(AgentType at, EventBinding<?> handle, Object arg) {
@@ -85,26 +85,6 @@ final class AgentObject implements TruffleObject {
         }
         if (remove != null) {
             remove.dispose();
-        }
-    }
-
-    void ignoreSource(Source script) {
-        excludeSources.ignoreSource(script);
-    }
-
-    private static final class ExcludeAgentScriptsFilter implements SourceSectionFilter.SourcePredicate {
-        private final Map<Source, Boolean> ignore = new WeakHashMap<>();
-
-        ExcludeAgentScriptsFilter() {
-        }
-
-        @Override
-        public boolean test(Source source) {
-            return !Boolean.TRUE.equals(ignore.get(source));
-        }
-
-        void ignoreSource(Source source) {
-            ignore.put(source, Boolean.TRUE);
         }
     }
 
