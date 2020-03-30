@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
-public interface AbstractString extends Iterable<Integer> {
+import java.util.PrimitiveIterator;
 
-    @Override
-    AbstractStringIterator iterator();
+public abstract class AbstractStringIterator implements PrimitiveIterator.OfInt {
 
-    int encodedLength();
+    protected int i;
+
+    public int getIndex() {
+        return i;
+    }
 }

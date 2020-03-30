@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
-import java.util.PrimitiveIterator;
-
 public final class StringUTF32 implements AbstractString {
 
     private final int[] str;
@@ -56,14 +54,13 @@ public final class StringUTF32 implements AbstractString {
     }
 
     @Override
-    public PrimitiveIterator.OfInt iterator() {
+    public AbstractStringIterator iterator() {
         return new StringUTF32Iterator(str);
     }
 
-    private static final class StringUTF32Iterator implements PrimitiveIterator.OfInt {
+    private static final class StringUTF32Iterator extends AbstractStringIterator {
 
         private final int[] str;
-        private int i = 0;
 
         private StringUTF32Iterator(int[] str) {
             this.str = str;

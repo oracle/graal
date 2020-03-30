@@ -184,7 +184,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return allTransitionsInOneTreeMatcher;
     }
 
-    boolean sameResultAsRegularMatchers(TRegexDFAExecutorNode executor, char c, boolean compactString, int allTransitionsMatcherResult) {
+    boolean sameResultAsRegularMatchers(TRegexDFAExecutorNode executor, int c, boolean compactString, int allTransitionsMatcherResult) {
         CompilerAsserts.neverPartOfCompilation();
         if (executor.isRegressionTestMode()) {
             for (int i = 0; i < matchers.length; i++) {
@@ -277,8 +277,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
     /**
      * Finds the first matching transition. The index of the element of {@link #getMatchers()} that
      * matched the current input character (
-     * {@link TRegexExecutorNode#getChar(TRegexExecutorLocals)}) or {@link #FS_RESULT_NO_SUCCESSOR}
-     * is stored via {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}.
+     * {@link TRegexExecutorNode#inputRead(TRegexExecutorLocals)}) or
+     * {@link #FS_RESULT_NO_SUCCESSOR} is stored via
+     * {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}.
      *
      * @param locals a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
@@ -289,7 +290,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private boolean checkMatch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
-        final char c = executor.getChar(locals);
+        final int c = executor.inputRead(locals);
         executor.advance(locals);
         if (treeTransitionMatching()) {
             int successor = getTreeMatcher().checkMatchTree(locals, executor, this, c);

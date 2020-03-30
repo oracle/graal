@@ -131,7 +131,7 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     private void findNextStates(TRegexNFAExecutorLocals locals) {
-        char c = getChar(locals);
+        int c = inputRead(locals);
         while (locals.hasNext()) {
             expandState(locals, locals.next(), c, false);
             // If we have found a path to a final state, then we will trim all paths with lower
@@ -151,7 +151,7 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
         }
     }
 
-    private void expandState(TRegexNFAExecutorLocals locals, int stateId, char c, boolean isLoopBack) {
+    private void expandState(TRegexNFAExecutorLocals locals, int stateId, int c, boolean isLoopBack) {
         NFAState state = nfa.getState(stateId);
         // If we manage to find a path to the (unanchored) final state, then we will trim all other
         // paths leading from the current state as they all have lower priority. We do this by

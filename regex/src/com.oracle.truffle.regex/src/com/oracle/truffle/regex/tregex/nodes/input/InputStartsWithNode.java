@@ -69,24 +69,24 @@ public abstract class InputStartsWithNode extends Node {
     @Specialization(guards = "mask == null")
     public boolean startsWithTruffleObjNoMask(TruffleObject input, StringUTF16 prefix, @SuppressWarnings("unused") AbstractString mask,
                     @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputCharAtNode charAtNode) {
+                    @Cached("create()") InputReadNode charAtNode) {
         return startsWithTruffleObj(input, prefix, null, lengthNode, charAtNode);
     }
 
     @Specialization(guards = "mask != null")
     public boolean startsWithTruffleObjWithMask(TruffleObject input, StringUTF16 prefix, StringUTF16 mask,
                     @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputCharAtNode charAtNode) {
+                    @Cached("create()") InputReadNode charAtNode) {
         assert mask.encodedLength() == prefix.encodedLength();
         return startsWithTruffleObj(input, prefix, mask, lengthNode, charAtNode);
     }
 
-    private static boolean startsWithTruffleObj(TruffleObject input, StringUTF16 prefix, StringUTF16 mask, InputLengthNode lengthNode, InputCharAtNode charAtNode) {
+    private static boolean startsWithTruffleObj(TruffleObject input, StringUTF16 prefix, StringUTF16 mask, InputLengthNode lengthNode, InputReadNode charAtNode) {
         if (lengthNode.execute(input) < prefix.encodedLength()) {
             return false;
         }
         for (int i = 0; i < prefix.encodedLength(); i++) {
-            if (InputCharAtNode.charAtWithMask(input, i, mask, i, charAtNode) != prefix.charAt(i)) {
+            if (InputReadNode.readWithMask(input, i, mask, i, charAtNode) != prefix.charAt(i)) {
                 return false;
             }
         }

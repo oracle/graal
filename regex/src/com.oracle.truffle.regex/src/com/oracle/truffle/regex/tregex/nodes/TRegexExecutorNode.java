@@ -63,14 +63,14 @@ public abstract class TRegexExecutorNode extends Node {
         return root.inputLength(locals.getInput());
     }
 
-    public char getChar(TRegexExecutorLocals locals) {
+    public int inputRead(TRegexExecutorLocals locals) {
         assert root != null;
-        return root.inputCharAt(locals.getInput(), locals.getIndex());
+        return root.inputRead(locals.getInput(), locals.getIndex());
     }
 
-    public char getCharAt(TRegexExecutorLocals locals, int index) {
+    public int inputRead(TRegexExecutorLocals locals, int index) {
         assert root != null;
-        return root.inputCharAt(locals.getInput(), index);
+        return root.inputRead(locals.getInput(), index);
     }
 
     protected int getNumberOfCaptureGroups() {

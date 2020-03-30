@@ -69,23 +69,23 @@ public abstract class InputEqualsNode extends Node {
     @Specialization(guards = "mask == null")
     public boolean equalsTruffleObjNoMask(TruffleObject input, StringUTF16 string, @SuppressWarnings("unused") AbstractString mask,
                     @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputCharAtNode charAtNode) {
+                    @Cached("create()") InputReadNode charAtNode) {
         return equalsTruffleObj(input, string, null, lengthNode, charAtNode);
     }
 
     @Specialization(guards = "mask != null")
     public boolean equalsTruffleObjWithMask(TruffleObject input, StringUTF16 string, StringUTF16 mask,
                     @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputCharAtNode charAtNode) {
+                    @Cached("create()") InputReadNode charAtNode) {
         return equalsTruffleObj(input, string, mask, lengthNode, charAtNode);
     }
 
-    private static boolean equalsTruffleObj(TruffleObject input, StringUTF16 string, StringUTF16 mask, InputLengthNode lengthNode, InputCharAtNode charAtNode) {
+    private static boolean equalsTruffleObj(TruffleObject input, StringUTF16 string, StringUTF16 mask, InputLengthNode lengthNode, InputReadNode charAtNode) {
         if (lengthNode.execute(input) != string.encodedLength()) {
             return false;
         }
         for (int i = 0; i < string.encodedLength(); i++) {
-            if (InputCharAtNode.charAtWithMask(input, i, mask, i, charAtNode) != string.charAt(i)) {
+            if (InputReadNode.readWithMask(input, i, mask, i, charAtNode) != string.charAt(i)) {
                 return false;
             }
         }

@@ -62,7 +62,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
     private int[] curStates;
     /**
      * A buffer of the paths that we will be considering in the next step. Every path in this array
-     * was created by taking a path from {@link #curStates} and following the transition labelled
+     * was created by taking a path from {@link #curStates} and following the transition labeled
      * with the current character.
      */
     private int[] nextStates;

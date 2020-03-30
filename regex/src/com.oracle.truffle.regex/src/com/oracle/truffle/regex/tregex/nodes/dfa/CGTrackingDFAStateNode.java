@@ -150,7 +150,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     }
 
     private void doTreeMatch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
-        final char c = executor.getChar(locals);
+        final int c = executor.inputRead(locals);
         executor.advance(locals);
         int successor = getTreeMatcher().checkMatchTree(locals, executor, this, c);
         assert sameResultAsRegularMatchers(executor, c, compactString, successor) : this.toString();
@@ -161,8 +161,9 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
      * Finds the first matching transition. If a transition matches,
      * {@link #successorFound(TRegexDFAExecutorLocals, TRegexDFAExecutorNode, int)} is called. The
      * index of the element of {@link #getMatchers()} that matched the current input character (
-     * {@link TRegexExecutorNode#getChar(TRegexExecutorLocals)}) or {@link #FS_RESULT_NO_SUCCESSOR}
-     * is stored via {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}.
+     * {@link TRegexExecutorNode#inputRead(TRegexExecutorLocals)}) or
+     * {@link #FS_RESULT_NO_SUCCESSOR} is stored via
+     * {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}.
      *
      * @param locals a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
@@ -173,7 +174,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private boolean checkMatch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
-        final char c = executor.getChar(locals);
+        final int c = executor.inputRead(locals);
         executor.advance(locals);
         for (int i = 0; i < matchers.length; i++) {
             if (matchers[i].execute(c, compactString)) {
@@ -195,7 +196,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
      * looping transition matches,
      * {@link #successorFoundLoop(TRegexDFAExecutorLocals, TRegexDFAExecutorNode, int, int)} is
      * called. The index of the element of {@link #getMatchers()} that matched the current input
-     * character ( {@link TRegexExecutorNode#getChar(TRegexExecutorLocals)}) or
+     * character ( {@link TRegexExecutorNode#inputRead(TRegexExecutorLocals)}) or
      * {@link #FS_RESULT_NO_SUCCESSOR} is stored via
      * {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}. If no transition matches,
      * {@link #noSuccessorLoop(TRegexDFAExecutorLocals, TRegexDFAExecutorNode, int)} is called.
@@ -211,7 +212,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private boolean checkMatchLoop(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString, int preLoopIndex) {
-        final char c = executor.getChar(locals);
+        final int c = executor.inputRead(locals);
         executor.advance(locals);
         for (int i = 0; i < matchers.length; i++) {
             if (matchers[i].execute(c, compactString)) {

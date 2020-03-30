@@ -322,7 +322,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         CompilerDirectives.isPartialEvaluationConstant(successors.length);
         final int index = locals.getIndex();
         boolean atEnd = isForward() ? index >= locals.getMaxIndex() : index == 0;
-        char c = atEnd ? 0 : inputGetChar(locals, index);
+        int c = atEnd ? 0 : inputGetChar(locals, index);
         if (curState.isDeterministic()) {
             /*
              * We know that in this state only one transition can match at a time, so we can always
@@ -458,7 +458,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
     }
 
     @ExplodeLoop
-    protected boolean transitionMatches(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString, PureNFATransition transition, int index, boolean atEnd, char c) {
+    protected boolean transitionMatches(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString, PureNFATransition transition, int index, boolean atEnd, int c) {
         PureNFAState target = transition.getTarget(isForward());
         CompilerDirectives.isPartialEvaluationConstant(target);
         if (transition.hasCaretGuard() && index != 0) {
@@ -651,17 +651,17 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             }
             int codePointBR = inputGetChar(locals, iBR);
             if (unicode && inputIsHighSurrogate((char) codePointBR) && inputBoundsCheck(inputIncIndex(iBR), backrefStart, backrefEnd)) {
-                char lowSurrogate = inputGetChar(locals, inputIncIndex(iBR));
-                if (inputIsLowSurrogate(lowSurrogate)) {
-                    codePointBR = inputToCodePoint((char) codePointBR, lowSurrogate);
+                int lowSurrogate = inputGetChar(locals, inputIncIndex(iBR));
+                if (inputIsLowSurrogate((char) lowSurrogate)) {
+                    codePointBR = inputToCodePoint((char) codePointBR, (char) lowSurrogate);
                     iBR = inputIncIndex(iBR);
                 }
             }
             int codePointI = inputGetChar(locals, i);
             if (unicode && inputIsHighSurrogate((char) codePointI) && inputBoundsCheck(inputIncIndex(i), 0, inputLength)) {
-                char lowSurrogate = inputGetChar(locals, inputIncIndex(i));
-                if (inputIsLowSurrogate(lowSurrogate)) {
-                    codePointI = inputToCodePoint((char) codePointI, lowSurrogate);
+                int lowSurrogate = inputGetChar(locals, inputIncIndex(i));
+                if (inputIsLowSurrogate((char) lowSurrogate)) {
+                    codePointI = inputToCodePoint((char) codePointI, (char) lowSurrogate);
                     i = inputIncIndex(i);
                 }
             }
@@ -696,8 +696,8 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         return locals.getIndex() == (isForward() ? 0 : locals.getMaxIndex());
     }
 
-    private char inputGetChar(TRegexBacktrackingNFAExecutorLocals locals, int index) {
-        return forward ? getCharAt(locals, index) : getCharAt(locals, index - 1);
+    private int inputGetChar(TRegexBacktrackingNFAExecutorLocals locals, int index) {
+        return forward ? inputRead(locals, index) : inputRead(locals, index - 1);
     }
 
     private int inputIncIndex(int i) {

@@ -69,26 +69,26 @@ public abstract class InputEndsWithNode extends Node {
     @Specialization(guards = "mask == null")
     public boolean endsWithTruffleObjNoMask(TruffleObject input, StringUTF16 suffix, @SuppressWarnings("unused") AbstractString mask,
                     @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputCharAtNode charAtNode) {
+                    @Cached("create()") InputReadNode charAtNode) {
         return endsWithTruffleObj(input, suffix, null, lengthNode, charAtNode);
     }
 
     @Specialization(guards = "mask != null")
     public boolean endsWithTruffleObjWithMask(TruffleObject input, StringUTF16 suffix, StringUTF16 mask,
                     @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputCharAtNode charAtNode) {
+                    @Cached("create()") InputReadNode charAtNode) {
         assert mask.encodedLength() == suffix.encodedLength();
         return endsWithTruffleObj(input, suffix, mask, lengthNode, charAtNode);
     }
 
-    private static boolean endsWithTruffleObj(TruffleObject input, StringUTF16 suffix, StringUTF16 mask, InputLengthNode lengthNode, InputCharAtNode charAtNode) {
+    private static boolean endsWithTruffleObj(TruffleObject input, StringUTF16 suffix, StringUTF16 mask, InputLengthNode lengthNode, InputReadNode charAtNode) {
         final int inputLength = lengthNode.execute(input);
         if (inputLength < suffix.encodedLength()) {
             return false;
         }
         final int offset = inputLength - suffix.encodedLength();
         for (int i = 0; i < suffix.encodedLength(); i++) {
-            if (InputCharAtNode.charAtWithMask(input, offset + i, mask, i, charAtNode) != suffix.charAt(i)) {
+            if (InputReadNode.readWithMask(input, offset + i, mask, i, charAtNode) != suffix.charAt(i)) {
                 return false;
             }
         }

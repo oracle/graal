@@ -67,8 +67,8 @@ import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
-import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
 import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
@@ -895,7 +895,7 @@ public final class DFAGenerator implements JsonConvertible {
 
     private AllTransitionsInOneTreeMatcher createAllTransitionsInOneTreeMatcher(DFAStateNodeBuilder state) {
         DFAStateTransitionBuilder[] transitions = state.getSuccessors();
-        CharArrayBuffer sortedRangesBuf = compilationBuffer.getCharRangesBuffer1();
+        IntArrayBuffer sortedRangesBuf = compilationBuffer.getIntRangesBuffer1();
         ShortArrayBuffer rangeTreeSuccessorsBuf = compilationBuffer.getShortArrayBuffer();
         @SuppressWarnings("unchecked")
         Iterator<Range>[] iterators = new Iterator[transitions.length];
@@ -923,12 +923,12 @@ public final class DFAGenerator implements JsonConvertible {
             }
             if (minLo != lastHi) {
                 rangeTreeSuccessorsBuf.add((short) -1);
-                sortedRangesBuf.add((char) minLo);
+                sortedRangesBuf.add(minLo);
             }
             rangeTreeSuccessorsBuf.add((short) minMb);
             lastHi = curRanges[minMb].hi + 1;
             if (lastHi <= Constants.MAX_CODE_POINT) {
-                sortedRangesBuf.add((char) (lastHi));
+                sortedRangesBuf.add(lastHi);
             }
             curRanges[minMb] = iterators[minMb].hasNext() ? iterators[minMb].next() : null;
         }

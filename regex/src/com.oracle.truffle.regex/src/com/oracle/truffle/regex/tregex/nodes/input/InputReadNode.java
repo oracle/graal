@@ -38,58 +38,53 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex;
+package com.oracle.truffle.regex.tregex.nodes.input;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
-import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.runtime.nodes.ToCharNode;
+import com.oracle.truffle.regex.tregex.string.StringUTF16;
 
-public abstract class RegexExecRootNode extends RegexBodyNode {
+@GenerateUncached
+public abstract class InputReadNode extends Node {
 
-    private final boolean mustCheckUnicodeSurrogates;
-    private @Child InputLengthNode lengthNode;
-    private @Child InputReadNode charAtNode;
-
-    public RegexExecRootNode(RegexLanguage language, RegexSource source, boolean mustCheckUnicodeSurrogates) {
-        super(language, source);
-        this.mustCheckUnicodeSurrogates = mustCheckUnicodeSurrogates;
+    public static InputReadNode create() {
+        return InputReadNodeGen.create();
     }
 
-    @Override
-    public final RegexResult execute(VirtualFrame frame) {
-        Object[] args = frame.getArguments();
-        assert args.length == 2;
-        Object input = args[0];
-        int fromIndex = (int) args[1];
-        return execute(input, adjustFromIndex(fromIndex, input));
+    public abstract int execute(Object input, int index);
+
+    @Specialization
+    static int doString(String input, int index) {
+        return input.charAt(index);
     }
 
-    private int adjustFromIndex(int fromIndex, Object input) {
-        if (mustCheckUnicodeSurrogates && fromIndex > 0 && fromIndex < inputLength(input)) {
-            if (Character.isLowSurrogate((char) inputRead(input, fromIndex)) && Character.isHighSurrogate((char) inputRead(input, fromIndex - 1))) {
-                return fromIndex - 1;
-            }
+    @Specialization(guards = "inputs.hasArrayElements(input)", limit = "2")
+    static int doBoxedCharArray(Object input, int index,
+                    @CachedLibrary("input") InteropLibrary inputs,
+                    @Cached ToCharNode toCharNode) {
+        try {
+            return toCharNode.execute(inputs.readArrayElement(input, index));
+        } catch (UnsupportedMessageException | InvalidArrayIndexException | UnsupportedTypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            // should never be reached
+            throw new RuntimeException(e);
         }
-        return fromIndex;
     }
 
-    public int inputLength(Object input) {
-        if (lengthNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            lengthNode = insert(InputLengthNode.create());
-        }
-        return lengthNode.execute(input);
+    public static int readWithMask(TruffleObject input, int indexInput, StringUTF16 mask, int indexMask, InputReadNode charAtNode) {
+        CompilerAsserts.partialEvaluationConstant(mask == null);
+        int c = charAtNode.execute(input, indexInput);
+        return (mask == null ? c : (c | mask.charAt(indexMask)));
     }
-
-    public int inputRead(Object input, int i) {
-        if (charAtNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            charAtNode = insert(InputReadNode.create());
-        }
-        return charAtNode.execute(input, i);
-    }
-
-    protected abstract RegexResult execute(Object input, int fromIndex);
 }

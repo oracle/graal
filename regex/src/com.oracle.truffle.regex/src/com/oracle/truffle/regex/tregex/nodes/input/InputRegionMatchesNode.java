@@ -74,14 +74,14 @@ public abstract class InputRegionMatchesNode extends Node {
     @Specialization(guards = "mask == null")
     public boolean regionMatchesTruffleObjNoMask(TruffleObject input, int fromIndex1, StringUTF16 match, int fromIndex2, int length, @SuppressWarnings("unused") AbstractString mask,
                     @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputCharAtNode charAtNode) {
+                    @Cached("create()") InputReadNode charAtNode) {
         return regionMatchesTruffleObj(input, fromIndex1, match, fromIndex2, length, null, lengthNode, charAtNode);
     }
 
     @Specialization(guards = "mask != null")
     public boolean regionMatchesTruffleObjWithMask(TruffleObject input, int fromIndex1, StringUTF16 match, int fromIndex2, int length, StringUTF16 mask,
                     @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputCharAtNode charAtNode) {
+                    @Cached("create()") InputReadNode charAtNode) {
         assert match.encodedLength() == mask.encodedLength();
         return regionMatchesTruffleObj(input, fromIndex1, match, fromIndex2, length, mask, lengthNode, charAtNode);
     }
@@ -89,9 +89,9 @@ public abstract class InputRegionMatchesNode extends Node {
     @Specialization(guards = "mask == null")
     public boolean regionMatchesTruffleObjTruffleObjNoMask(TruffleObject input, int fromIndex1, TruffleObject match, int fromIndex2, int length, @SuppressWarnings("unused") AbstractString mask,
                     @Cached("create()") InputLengthNode lengthNode1,
-                    @Cached("create()") InputCharAtNode charAtNode1,
+                    @Cached("create()") InputReadNode charAtNode1,
                     @Cached("create()") InputLengthNode lengthNode2,
-                    @Cached("create()") InputCharAtNode charAtNode2) {
+                    @Cached("create()") InputReadNode charAtNode2) {
         if (fromIndex1 + length > lengthNode1.execute(input) || fromIndex2 + length > lengthNode2.execute(match)) {
             return false;
         }
@@ -105,12 +105,12 @@ public abstract class InputRegionMatchesNode extends Node {
 
     private static boolean regionMatchesTruffleObj(TruffleObject input, int fromIndex1, StringUTF16 match, int fromIndex2, int length, StringUTF16 mask,
                     InputLengthNode lengthNode,
-                    InputCharAtNode charAtNode) {
+                    InputReadNode charAtNode) {
         if (fromIndex1 + length > lengthNode.execute(input) || fromIndex2 + length > match.encodedLength()) {
             return false;
         }
         for (int i = 0; i < length; i++) {
-            if (InputCharAtNode.charAtWithMask(input, fromIndex1 + i, mask, i, charAtNode) != match.charAt(fromIndex2 + i)) {
+            if (InputReadNode.readWithMask(input, fromIndex1 + i, mask, i, charAtNode) != match.charAt(fromIndex2 + i)) {
                 return false;
             }
         }

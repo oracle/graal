@@ -96,8 +96,8 @@ public class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNode {
         return !negated;
     }
 
-    private char inputGetChar(TRegexBacktrackingNFAExecutorLocals locals, int index) {
-        return forward ? getCharAt(locals, index) : getCharAt(locals, index - 1);
+    private int inputGetChar(TRegexBacktrackingNFAExecutorLocals locals, int index) {
+        return forward ? inputRead(locals, index) : inputRead(locals, index - 1);
     }
 
     private boolean inputBoundsCheck(int i, int min, int max) {
