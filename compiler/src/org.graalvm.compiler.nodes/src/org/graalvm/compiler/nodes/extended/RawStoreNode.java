@@ -58,21 +58,28 @@ public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, 
     @Input ValueNode value;
     @OptionalInput(State) FrameState stateAfter;
     private final boolean needsBarrier;
+    private boolean isVolatile;
 
     public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity) {
-        this(object, offset, value, accessKind, locationIdentity, true);
+        this(object, offset, value, accessKind, locationIdentity, true, false, null, false);
     }
 
-    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier) {
-        this(object, offset, value, accessKind, locationIdentity, needsBarrier, null, false);
+    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean isVolatile) {
+        this(object, offset, value, accessKind, locationIdentity, true, isVolatile, null, false);
     }
 
     public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier, FrameState stateAfter,
+                    boolean forceAnyLocation) {
+        this(object, offset, value, accessKind, locationIdentity, needsBarrier, false, stateAfter, forceAnyLocation);
+    }
+
+    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier, boolean isVolatile, FrameState stateAfter,
                     boolean forceAnyLocation) {
         super(TYPE, StampFactory.forVoid(), object, offset, accessKind, locationIdentity, forceAnyLocation);
         this.value = value;
         this.needsBarrier = needsBarrier;
         this.stateAfter = stateAfter;
+        this.isVolatile = isVolatile;
         assert accessKind != JavaKind.Void && accessKind != JavaKind.Illegal;
     }
 
@@ -133,13 +140,18 @@ public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, 
     }
 
     @Override
+    public boolean isVolatile() {
+        return isVolatile;
+    }
+
+    @Override
     protected ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field, boolean volatileAccess) {
         return new StoreFieldNode(field.isStatic() ? null : object(), field, value(), stateAfter(), volatileAccess);
     }
 
     @Override
-    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
-        return new RawStoreNode(object(), location, value, accessKind(), identity, needsBarrier, stateAfter(), isAnyLocationForced());
+    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity, boolean volatileAccess) {
+        return new RawStoreNode(object(), location, value, accessKind(), identity, needsBarrier, volatileAccess, stateAfter(), isAnyLocationForced());
     }
 
     public FrameState getState() {
@@ -148,6 +160,9 @@ public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, 
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
+        if (isVolatile()) {
+            return LocationIdentity.any();
+        }
         return getLocationIdentity();
     }
 }

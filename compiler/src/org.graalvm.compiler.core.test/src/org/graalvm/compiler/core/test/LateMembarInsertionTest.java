@@ -229,6 +229,24 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
         Assert.assertEquals(2, getMembars(graph).size());
     }
 
+    public static int unsafeVolatileFieldLoad(Object o, long offset) {
+        return UNSAFE.getIntVolatile(o, offset);
+    }
+
+    @Test
+    public void test11() {
+        verifyMembars("unsafeVolatileFieldLoad", true);
+    }
+
+    public static void unsafeVolatileFieldStore(Object o, long offset, int v) {
+        UNSAFE.putIntVolatile(o, offset, v);
+    }
+
+    @Test
+    public void test12() {
+        verifyMembars("unsafeVolatileFieldStore", true);
+    }
+
     private void verifyMembars(String method, boolean expectsMembar) {
         StructuredGraph graph = getFinalGraph(getResolvedJavaMethod(method));
         StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
