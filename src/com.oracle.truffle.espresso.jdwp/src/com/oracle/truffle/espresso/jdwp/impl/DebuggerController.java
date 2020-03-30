@@ -958,9 +958,8 @@ public final class DebuggerController implements ContextsListener {
                     codeIndex = steppingInfo.getStepOutBCI();
                 } else {
                     try {
-                        // for bytecode-based languages (Espresso) we can read the precise bci from
-                        // the
-                        // frame instance
+                        // for bytecode-based languages (Espresso) we can
+                        // read the precise bci from the frame instance
                         codeIndex = context.readBCIFromFrame(root, rawFrame);
                     } catch (Throwable t) {
                         JDWPLogger.log("Unable to read BCI: %s.%s", JDWPLogger.LogLevel.ALL, klass.getNameAsString(), method.getNameAsString());
