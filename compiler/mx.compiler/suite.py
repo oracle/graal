@@ -653,7 +653,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.libgraal.jni",
-        "org.graalvm.libgraal",
         "org.graalvm.compiler.hotspot.management",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
