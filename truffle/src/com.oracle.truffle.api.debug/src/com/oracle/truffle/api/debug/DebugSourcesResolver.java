@@ -57,6 +57,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -253,6 +254,7 @@ final class DebugSourcesResolver {
             }
             n = n.getParent();
         }
-        return node.getRootNode().getSourceSection();
+        final RootNode rootNode = node.getRootNode();
+        return rootNode != null ? rootNode.getSourceSection() : null;
     }
 }
