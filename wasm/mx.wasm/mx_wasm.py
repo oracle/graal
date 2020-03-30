@@ -41,7 +41,6 @@
 import mx
 import mx_benchmark
 import mx_sdk_vm
-import mx_truffle
 import mx_wasm_benchmark  # pylint: disable=unused-import
 
 import os
@@ -484,9 +483,9 @@ def wasm(args):
     """Run a WebAssembly program."""
     mx.get_opts().jdk = "jvmci"
     vmArgs, wasmArgs = mx.extract_VM_args(args, True)
-    path_args = mx_truffle._path_args([
+    path_args = mx.get_runtime_jvm_args([
         "TRUFFLE_API",
         "org.graalvm.wasm",
         "org.graalvm.wasm.launcher",
-    ])
+    ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:AGENTSCRIPT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
     mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs)
