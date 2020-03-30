@@ -396,19 +396,19 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(FunctionDeclaration toResolve) {
-            LLVMFunction value = runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable());
+            LLVMFunction value = runtime.lookupFunction(toResolve.getName());
             resolvedNode = nodeFactory.createLiteral(value, toResolve.getType());
         }
 
         @Override
         public void visit(FunctionDefinition toResolve) {
-            LLVMFunction value = runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable());
+            LLVMFunction value = runtime.lookupFunction(toResolve.getName());
             resolvedNode = nodeFactory.createLiteral(value, toResolve.getType());
         }
 
         @Override
         public void visit(GlobalAlias alias) {
-            LLVMSymbol symbol = runtime.lookupSymbol(alias.getName(), alias.isOverridable());
+            LLVMSymbol symbol = runtime.lookupSymbol(alias.getName());
             if (symbol.isFunction()) {
                 LLVMFunction value = symbol.asFunction();
                 resolvedNode = nodeFactory.createLiteral(value, alias.getType());
@@ -422,7 +422,7 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(GlobalVariable global) {
-            LLVMGlobal value = runtime.lookupGlobal(global.getName(), global.isOverridable());
+            LLVMGlobal value = runtime.lookupGlobal(global.getName());
             resolvedNode = nodeFactory.createLiteral(value, new PointerType(global.getType()));
         }
 

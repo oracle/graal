@@ -64,9 +64,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
+import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.UnresolvedFunction;
-import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -127,6 +127,8 @@ public final class LLVMContext {
 
     @CompilationFinal private Env env;
     private final LLVMScope globalScope;
+    private final ArrayList<LLVMLocalScope> localScopes;
+
     private final DynamicLinkChain dynamicLinkChain;
     private final List<RootCallTarget> destructorFunctions;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
@@ -196,6 +198,7 @@ public final class LLVMContext {
         assert !internalLibraryNames.isEmpty() : "No internal libraries?";
 
         this.globalScope = new LLVMScope();
+        this.localScopes = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
 
         this.mainArguments = getMainArguments(env);
@@ -299,6 +302,10 @@ public final class LLVMContext {
             AssumedValue<LLVMPointer>[] symbols = symbolStorage[functionDetail.getBitcodeID(false)];
             symbols[functionDetail.getSymbolIndex(false)] = new AssumedValue<>(LLVMManagedPointer.create(functionDescriptor));
             globalScope.register(functionDetail);
+            LLVMLocalScope localScope = new LLVMLocalScope();
+            localScope.register(functionDetail);
+            localScope.addID(LLVMSymbol.MISCFUNCTION_ID);
+            this.addLocalScope(localScope);
         }
     }
 
@@ -721,6 +728,10 @@ public final class LLVMContext {
         return globalScope;
     }
 
+    public void addLocalScope(LLVMLocalScope scope) {
+        localScopes.add(scope);
+    }
+
     public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {
         return symbolStorage[id];
     }
@@ -899,6 +910,11 @@ public final class LLVMContext {
     @TruffleBoundary
     public void registerGlobalReverseMap(LLVMGlobal global, LLVMPointer target) {
         globalsReverseMap.put(target, global);
+    }
+
+    @TruffleBoundary
+    public void replaceGlobalReverseMap(LLVMGlobal oldGlobal, LLVMGlobal newGlobal, LLVMPointer target) {
+        globalsReverseMap.replace(target, oldGlobal, newGlobal);
     }
 
     public void setCleanupNecessary(boolean value) {
