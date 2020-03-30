@@ -87,7 +87,6 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
-import org.graalvm.compiler.nodes.BCISupplier;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
@@ -97,6 +96,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InliningLog;
+import org.graalvm.compiler.nodes.MethodInvokable;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -114,7 +114,6 @@ import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.AbstractBoxingNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -1739,9 +1738,9 @@ public class SnippetTemplate {
                 FrameState stateAfter = ((StateSplit) replacee).stateAfter();
                 assert stateAfter != null : "Replacee " + replacee + " has no state after";
 
-                if (sideEffectDup instanceof ForeignCallNode) {
-                    if (replacee instanceof BCISupplier) {
-                        ((ForeignCallNode) sideEffectDup).setBci(((BCISupplier) replacee).bci());
+                if (sideEffectDup instanceof MethodInvokable) {
+                    if (replacee instanceof MethodInvokable) {
+                        ((MethodInvokable) sideEffectDup).setBci(((MethodInvokable) replacee).bci());
                     }
                 }
                 if (stateAfter.values().contains(replacee)) {

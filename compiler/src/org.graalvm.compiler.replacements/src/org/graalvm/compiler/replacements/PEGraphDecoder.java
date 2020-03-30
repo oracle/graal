@@ -61,7 +61,6 @@ import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
-import org.graalvm.compiler.nodes.BCISupplier;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ControlSinkNode;
@@ -71,9 +70,10 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.MethodInvokable;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -820,8 +820,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (graphBuilderContext.invokeConsumed) {
                 /* Nothing to do. */
             } else if (graphBuilderContext.lastInstr != null) {
-                if (graphBuilderContext.lastInstr instanceof BCISupplier) {
-                    ((BCISupplier) graphBuilderContext.lastInstr).setBCI(invokeData.invoke.bci());
+                if (graphBuilderContext.lastInstr instanceof MethodInvokable) {
+                    ((MethodInvokable) graphBuilderContext.lastInstr).setBci(invokeData.invoke.bci());
                 }
                 registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, true);
                 invoke.asNode().replaceAtUsages(graphBuilderContext.pushedNode);
@@ -1166,8 +1166,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (foreignCall.getBci() == BytecodeFrame.UNKNOWN_BCI && methodScope.invokeData != null) {
                 foreignCall.setBci(methodScope.invokeData.invoke.bci());
             }
-        } else if (node instanceof BCISupplier) {
-            ((BCISupplier) node).setBCI(methodScope.invokeData.invoke.bci());
+        } else if (node instanceof MethodInvokable) {
+            ((MethodInvokable) node).setBci(methodScope.invokeData.invoke.bci());
         }
 
         super.handleFixedNode(methodScope, loopScope, nodeOrderId, node);

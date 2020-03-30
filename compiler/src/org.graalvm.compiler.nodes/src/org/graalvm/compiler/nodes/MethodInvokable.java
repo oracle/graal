@@ -25,19 +25,23 @@
 package org.graalvm.compiler.nodes;
 
 /**
- * Marker interface for nodes carrying a byte code index (BCI) for code generation or lowering
- * purposes. For example, nodes lowering to foreign calls that can safepoint require a valid BCI for
- * computations of the during-state of such a foreign call.
+ * A marker interface for nodes that represent calls to other methods. These methods can be Java
+ * methods, native methods, stubs or code snippets that do not have a method associated with them.
  */
-public interface BCISupplier {
+public interface MethodInvokable {
 
     /**
      * @return the byte code index (BCI) associated with the node implementing this interface
      */
     int bci();
 
+    /**
+     * Remember the byte code index (BCI) for code generation or lowering purposes. For example,
+     * nodes lowering to foreign calls that can safepoint require a valid BCI for computations of
+     * the during-state of such a foreign call.
+     */
     @SuppressWarnings("unused")
-    default void setBCI(int bci) {
-        // nothing to do
+    default void setBci(int bci) {
+
     }
 }
