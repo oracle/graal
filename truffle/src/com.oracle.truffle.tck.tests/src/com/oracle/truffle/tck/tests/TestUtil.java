@@ -137,25 +137,35 @@ final class TestUtil {
     static void validateResult(
                     final TestRun testRun,
                     final Value result,
-                    final PolyglotException exception) {
+                    final PolyglotException exception,
+                    boolean fastAssertions) {
         ResultVerifier verifier = testRun.getSnippet().getResultVerifier();
-        validateResult(verifier, testRun, result, exception);
+        validateResult(verifier, testRun, result, exception, fastAssertions);
     }
 
     static void validateResult(
                     final ResultVerifier verifier,
                     final TestRun testRun,
                     final Value result,
-                    final PolyglotException exception) {
+                    final PolyglotException exception,
+                    boolean fastAssertions) {
         if (exception == null) {
             verifier.accept(ResultVerifier.SnippetRun.create(testRun.getSnippet(), testRun.getActualParameters(), result));
-            ValueAssert.assertValue(result);
+            assertValue(result, fastAssertions);
         } else {
             verifier.accept(ResultVerifier.SnippetRun.create(testRun.getSnippet(), testRun.getActualParameters(), exception));
             Value exceptionObject = exception.getGuestObject();
             if (exceptionObject != null) {
-                ValueAssert.assertValue(exceptionObject);
+                assertValue(exceptionObject, fastAssertions);
             }
+        }
+    }
+
+    private static void assertValue(final Value result, boolean fastAssertions) {
+        if (fastAssertions) {
+            ValueAssert.assertValueFast(result);
+        } else {
+            ValueAssert.assertValue(result);
         }
     }
 

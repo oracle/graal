@@ -102,10 +102,10 @@ public class InlineExecutionTest {
         try {
             try {
                 final Value result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
-                TestUtil.validateResult(testRun, result, null);
+                TestUtil.validateResult(testRun, result, null, true);
                 success = true;
             } catch (PolyglotException pe) {
-                TestUtil.validateResult(testRun, null, pe);
+                TestUtil.validateResult(testRun, null, pe, true);
                 success = true;
             }
             if (verifier != null && verifier.exception != null) {
@@ -133,14 +133,14 @@ public class InlineExecutionTest {
         public void verify(Object ret) {
             Value result = context.getValue(ret);
             InlineSnippet inlineSnippet = testRun.getInlineSnippet();
-            TestUtil.validateResult(inlineSnippet.getResultVerifier(), testRun, result, null);
+            TestUtil.validateResult(inlineSnippet.getResultVerifier(), testRun, result, null, true);
         }
 
         @Override
         public void verify(PolyglotException pe) {
             InlineSnippet inlineSnippet = testRun.getInlineSnippet();
             try {
-                TestUtil.validateResult(inlineSnippet.getResultVerifier(), testRun, null, pe);
+                TestUtil.validateResult(inlineSnippet.getResultVerifier(), testRun, null, pe, true);
             } catch (Exception exc) {
                 exception = exc;
             }

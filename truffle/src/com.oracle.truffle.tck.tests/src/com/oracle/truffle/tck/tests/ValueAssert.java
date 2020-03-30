@@ -140,6 +140,19 @@ public class ValueAssert {
         }
     }
 
+    public static void assertValueFast(Value value) {
+        try {
+            /*
+             * The idea is that type detection triggers all type checks which triggers basic
+             * assertions.
+             */
+            detectSupportedTypes(value);
+        } catch (AssertionError e) {
+            e.addSuppressed(new AssertionError(String.format("assertValue: %s", value)));
+            throw e;
+        }
+    }
+
     public static void assertUnsupported(Value value, Trait... supported) {
         Set<Trait> supportedSet = new HashSet<>(Arrays.asList(supported));
         for (Trait unsupportedType : Trait.values()) {
