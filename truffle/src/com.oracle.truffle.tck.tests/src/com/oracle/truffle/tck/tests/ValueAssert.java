@@ -655,13 +655,6 @@ public class ValueAssert {
         }
         assertEquals(receivedObjectsIntMap, objectMap3);
         assertEquals(receivedObjectsLongMap, objectMap4);
-
-        if (value.isHostObject()) {
-            assertTrue(value.as(Object.class) instanceof List || value.as(Object.class).getClass().isArray());
-        } else if (!value.hasMembers()) {
-            List<Object> objectMap5 = (List<Object>) value.as(Object.class);
-            assertEquals(receivedObjects, objectMap5);
-        }
     }
 
     @SafeVarargs

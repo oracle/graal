@@ -117,7 +117,9 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -126,6 +128,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
@@ -1887,79 +1890,13 @@ public class ValueAPITest {
 
     static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
-    @ExportLibrary(InteropLibrary.class)
+    @ExportLibrary(value = InteropLibrary.class, delegateTo = "number")
     static final class NumberWrapper implements TruffleObject {
 
         final Number number;
 
         NumberWrapper(Number number) {
             this.number = number;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean isNumber() {
-            return true;
-        }
-
-        @ExportMessage
-        boolean fitsInByte() {
-            return INTEROP.fitsInByte(number);
-        }
-
-        @ExportMessage
-        boolean fitsInShort() {
-            return INTEROP.fitsInShort(number);
-        }
-
-        @ExportMessage
-        boolean fitsInInt() {
-            return INTEROP.fitsInInt(number);
-        }
-
-        @ExportMessage
-        boolean fitsInLong() {
-            return INTEROP.fitsInLong(number);
-        }
-
-        @ExportMessage
-        boolean fitsInFloat() {
-            return INTEROP.fitsInFloat(number);
-        }
-
-        @ExportMessage
-        boolean fitsInDouble() {
-            return INTEROP.fitsInDouble(number);
-        }
-
-        @ExportMessage
-        byte asByte() throws UnsupportedMessageException {
-            return INTEROP.asByte(number);
-        }
-
-        @ExportMessage
-        short asShort() throws UnsupportedMessageException {
-            return INTEROP.asShort(number);
-        }
-
-        @ExportMessage
-        int asInt() throws UnsupportedMessageException {
-            return INTEROP.asInt(number);
-        }
-
-        @ExportMessage
-        long asLong() throws UnsupportedMessageException {
-            return INTEROP.asLong(number);
-        }
-
-        @ExportMessage
-        float asFloat() throws UnsupportedMessageException {
-            return INTEROP.asFloat(number);
-        }
-
-        @ExportMessage
-        double asDouble() throws UnsupportedMessageException {
-            return INTEROP.asDouble(number);
         }
     }
 
@@ -2005,6 +1942,72 @@ public class ValueAPITest {
             throw delegate;
         }
 
+    }
+
+    @ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
+    static final class BooleanAndDelegate implements TruffleObject {
+
+        final Object delegate;
+        boolean booleanValue;
+
+        BooleanAndDelegate(Object delegate) {
+            this.delegate = delegate;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isBoolean() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean asBoolean() {
+            return booleanValue;
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class TestArray implements TruffleObject {
+
+        @CompilationFinal(dimensions = 1) private final String[] members;
+
+        TestArray(String[] members) {
+            this.members = members;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return members.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long idx) {
+            return 0 <= idx && idx < members.length;
+        }
+
+        @ExportMessage
+        String readArrayElement(long idx,
+                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(idx)) {
+                exception.enter();
+                throw InvalidArrayIndexException.create(idx);
+            }
+            return members[(int) idx];
+        }
+    }
+
+    @Test
+    public void testPrimitiveAndObject() {
+        BooleanAndDelegate o = new BooleanAndDelegate(new TestArray(new String[0]));
+        Value v = context.asValue(o);
+        ValueAssert.assertValue(v, Trait.ARRAY_ELEMENTS, Trait.BOOLEAN);
     }
 
 }
