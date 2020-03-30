@@ -72,6 +72,11 @@ public class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNode {
     }
 
     @Override
+    public boolean isForward() {
+        return forward;
+    }
+
+    @Override
     public boolean writesCaptureGroups() {
         return false;
     }
@@ -89,15 +94,11 @@ public class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNode {
         int index = locals.getIndex();
         for (int i = 0; i < matchers.length; i++) {
             int iChar = forward ? index + i : index - i;
-            if (!inputBoundsCheck(iChar, 0, locals.getMaxIndex()) || !matchers[i].execute(inputGetChar(locals, iChar), compactString)) {
+            if (!inputBoundsCheck(iChar, 0, locals.getMaxIndex()) || !matchers[i].execute(inputRead(locals, iChar), compactString)) {
                 return negated;
             }
         }
         return !negated;
-    }
-
-    private int inputGetChar(TRegexBacktrackingNFAExecutorLocals locals, int index) {
-        return forward ? inputRead(locals, index) : inputRead(locals, index - 1);
     }
 
     private boolean inputBoundsCheck(int i, int min, int max) {

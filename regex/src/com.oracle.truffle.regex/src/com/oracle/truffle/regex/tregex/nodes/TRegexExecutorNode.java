@@ -64,19 +64,20 @@ public abstract class TRegexExecutorNode extends Node {
     }
 
     public int inputRead(TRegexExecutorLocals locals) {
-        assert root != null;
-        return root.inputRead(locals.getInput(), locals.getIndex());
+        return inputRead(locals, locals.getIndex());
     }
 
     public int inputRead(TRegexExecutorLocals locals, int index) {
         assert root != null;
-        return root.inputRead(locals.getInput(), index);
+        return root.inputRead(locals.getInput(), isForward() ? index : index - 1);
     }
 
     protected int getNumberOfCaptureGroups() {
         assert root != null;
         return root.getNumberOfCaptureGroups();
     }
+
+    public abstract boolean isForward();
 
     /**
      * Returns {@code true} if this executor may write any new capture group boundaries.

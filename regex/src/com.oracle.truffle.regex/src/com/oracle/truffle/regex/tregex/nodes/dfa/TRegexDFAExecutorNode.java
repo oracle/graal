@@ -92,6 +92,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return !getInitialState().hasUnAnchoredEntry();
     }
 
+    @Override
     public boolean isForward() {
         return props.isForward();
     }
@@ -174,7 +175,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         }
         // check if input is long enough for a match
         if (props.getMinResultLength() > 0 &&
-                        (isForward() ? locals.getMaxIndex() - locals.getIndex() : locals.getIndex() - Math.max(-1, locals.getMaxIndex() - getPrefixLength())) < props.getMinResultLength()) {
+                        (isForward() ? locals.getMaxIndex() - locals.getIndex() : locals.getIndex() - Math.max(0, locals.getMaxIndex() - getPrefixLength())) < props.getMinResultLength()) {
             // no match possible, break immediately
             return isGenericCG() || isSimpleCG() ? null : TRegexDFAExecutorNode.NO_MATCH;
         }
@@ -252,20 +253,15 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     public boolean hasNext(TRegexDFAExecutorLocals locals) {
-        return props.isForward() ? Integer.compareUnsigned(locals.getIndex(), locals.getCurMaxIndex()) < 0 : locals.getIndex() > locals.getCurMaxIndex();
+        return isForward() ? Integer.compareUnsigned(locals.getIndex(), locals.getCurMaxIndex()) < 0 : locals.getIndex() > locals.getCurMaxIndex();
     }
 
     public boolean atBegin(TRegexDFAExecutorLocals locals) {
-        return locals.getIndex() == (props.isForward() ? 0 : getInputLength(locals) - 1);
+        return locals.getIndex() == (isForward() ? 0 : getInputLength(locals));
     }
 
     public boolean atEnd(TRegexDFAExecutorLocals locals) {
-        final int i = locals.getIndex();
-        if (props.isForward()) {
-            return i == getInputLength(locals);
-        } else {
-            return i < 0;
-        }
+        return locals.getIndex() == (isForward() ? getInputLength(locals) : 0);
     }
 
     public int rewindUpTo(TRegexDFAExecutorLocals locals, int length) {
@@ -284,19 +280,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         final int inputLength = getInputLength(locals);
         final int fromIndex = locals.getFromIndex();
         final int maxIndex = locals.getMaxIndex();
-        if (props.isForward()) {
-            return inputLength >= 0 && inputLength < Integer.MAX_VALUE - 20 &&
-                            fromIndex >= 0 && fromIndex <= inputLength &&
-                            initialIndex >= 0 && initialIndex <= inputLength &&
-                            maxIndex >= 0 && maxIndex <= inputLength &&
-                            initialIndex <= maxIndex;
-        } else {
-            return inputLength >= 0 && inputLength < Integer.MAX_VALUE - 20 &&
-                            fromIndex >= 0 && fromIndex <= inputLength &&
-                            initialIndex >= -1 && initialIndex < inputLength &&
-                            maxIndex >= -1 && maxIndex < inputLength &&
-                            initialIndex >= maxIndex;
-        }
+        return inputLength >= 0 && inputLength < Integer.MAX_VALUE - 20 &&
+                        fromIndex >= 0 && fromIndex <= inputLength &&
+                        initialIndex >= 0 && initialIndex <= inputLength &&
+                        maxIndex >= 0 && maxIndex <= inputLength &&
+                        (isForward() ? initialIndex <= maxIndex : initialIndex >= maxIndex);
     }
 
     @ExplodeLoop

@@ -102,7 +102,7 @@ public final class LazyCaptureGroupsResult extends LazyResult implements JsonCon
      *         contained in {@link #getFindStartCallTarget()}.
      */
     public Object[] createArgsFindStart() {
-        return new Object[]{getInput(), getEnd() - 1, getFromIndex()};
+        return new Object[]{getInput(), getEnd(), getFromIndex()};
     }
 
     /**
@@ -115,7 +115,7 @@ public final class LazyCaptureGroupsResult extends LazyResult implements JsonCon
      *         contained in {@link #getCaptureGroupCallTarget()}.
      */
     public Object[] createArgsCG(int start) {
-        return new Object[]{this, start + 1, getEnd()};
+        return new Object[]{this, start, getEnd()};
     }
 
     /**

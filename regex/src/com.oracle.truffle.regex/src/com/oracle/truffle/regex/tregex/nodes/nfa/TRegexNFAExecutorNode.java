@@ -78,6 +78,11 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     @Override
+    public boolean isForward() {
+        return true;
+    }
+
+    @Override
     public boolean writesCaptureGroups() {
         return true;
     }

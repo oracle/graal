@@ -71,24 +71,14 @@ public class BackwardDFAStateNode extends DFAStateNode {
     @Override
     int atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         super.atEnd(locals, executor);
-        if (hasBackwardPrefixState() && locals.getIndex() == locals.getFromIndex() - 1 && locals.getFromIndex() > 0) {
+        if (hasBackwardPrefixState() && locals.getIndex() == locals.getFromIndex() && locals.getFromIndex() > 0) {
             /*
              * We have reached the starting index of the forward matcher, so we have to switch to
              * backward-prefix-states. These states will match look-behind assertions only.
              */
-            locals.setCurMaxIndex(-1);
+            locals.setCurMaxIndex(0);
             return getBackwardPrefixStateIndex();
         }
         return FS_RESULT_NO_SUCCESSOR;
-    }
-
-    @Override
-    void applySimpleCGTransition(DFASimpleCGTransition transition, TRegexDFAExecutorLocals locals, int index) {
-        transition.apply(locals.getCGData().results, index + 1);
-    }
-
-    @Override
-    void applySimpleCGFinalTransition(DFASimpleCGTransition transition, TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals, int index) {
-        transition.apply(simpleCGFinalTransitionTargetArray(locals, executor), index + 1);
     }
 }

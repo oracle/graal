@@ -388,7 +388,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         transition.apply(locals.getCGData().results, index);
     }
 
-    void applySimpleCGFinalTransition(DFASimpleCGTransition transition, @SuppressWarnings("unused") TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals, int index) {
+    void applySimpleCGFinalTransition(DFASimpleCGTransition transition, TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals, int index) {
         transition.apply(simpleCGFinalTransitionTargetArray(locals, executor), index);
     }
 
