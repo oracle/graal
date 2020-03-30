@@ -151,28 +151,28 @@ public final class ThreadLocalAllocation {
 
     static Object allocateNewInstance(DynamicHub hub, ThreadLocalAllocation.Descriptor tlab, boolean rememberedSet) {
         DeoptTester.disableDeoptTesting();
+        try {
+            log().string("[ThreadLocalAllocation.allocateNewInstance: ").string(DynamicHub.toClass(hub).getName()).string(" in tlab ").hex(tlab).newline();
 
-        log().string("[ThreadLocalAllocation.allocateNewInstance: ").string(DynamicHub.toClass(hub).getName()).string(" in tlab ").hex(tlab).newline();
+            // Slow-path check if allocation is disallowed.
+            HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.allocateNewInstance", DynamicHub.toClass(hub).getName());
+            // Policy: Possibly collect before this allocation.
+            HeapImpl.getHeapImpl().getHeapPolicy().getCollectOnAllocationPolicy().maybeCauseCollection();
 
-        // Slow-path check if allocation is disallowed.
-        HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.allocateNewInstance", DynamicHub.toClass(hub).getName());
-        // Policy: Possibly collect before this allocation.
-        HeapImpl.getHeapImpl().getHeapPolicy().getCollectOnAllocationPolicy().maybeCauseCollection();
+            /*
+             * On this path allocation failed in the 'allocation chunk', thus we refill it, i.e..,
+             * add a new allocation chunk at the front of the TLAB's aligned chunks.
+             */
+            AlignedHeader newChunk = prepareNewAllocationChunk(tlab);
 
-        /*
-         * On this path allocation failed in the 'allocation chunk', thus we refill it, i.e.., add a
-         * new allocation chunk at the front of the TLAB's aligned chunks.
-         */
-        AlignedHeader newChunk = prepareNewAllocationChunk(tlab);
+            UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
+            Object result = allocateNewInstanceUninterruptibly(hub, tlab, rememberedSet, size, newChunk);
 
-        UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
-        Object result = allocateNewInstanceUninterruptibly(hub, tlab, rememberedSet, size, newChunk);
-
-        log().string("  ThreadLocalAllocation.allocateNewInstance returns ").object(result).string(" .. ").hex(LayoutEncoding.getObjectEnd(result)).string("]").newline();
-
-        DeoptTester.enableDeoptTesting();
-
-        return result;
+            log().string("  ThreadLocalAllocation.allocateNewInstance returns ").object(result).string(" .. ").hex(LayoutEncoding.getObjectEnd(result)).string("]").newline();
+            return result;
+        } finally {
+            DeoptTester.enableDeoptTesting();
+        }
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory, modifies TLAB")
@@ -220,37 +220,38 @@ public final class ThreadLocalAllocation {
 
     private static Object allocateNewArray(DynamicHub hub, int length, ThreadLocalAllocation.Descriptor tlab, boolean rememberedSet) {
         DeoptTester.disableDeoptTesting();
+        try {
+            log().string("[ThreadLocalAllocation.allocateNewArray: ").string(DynamicHub.toClass(hub).getName()).string("  length ").signed(length).string("  in tlab ").hex(tlab).newline();
 
-        log().string("[ThreadLocalAllocation.allocateNewArray: ").string(DynamicHub.toClass(hub).getName()).string("  length ").signed(length).string("  in tlab ").hex(tlab).newline();
+            // Slow-path check if allocation is disallowed.
+            HeapImpl.exitIfAllocationDisallowed("Heap.allocateNewArray", DynamicHub.toClass(hub).getName());
+            // Policy: Possibly collect before this allocation.
+            HeapImpl.getHeapImpl().getHeapPolicy().getCollectOnAllocationPolicy().maybeCauseCollection();
 
-        // Slow-path check if allocation is disallowed.
-        HeapImpl.exitIfAllocationDisallowed("Heap.allocateNewArray", DynamicHub.toClass(hub).getName());
-        // Policy: Possibly collect before this allocation.
-        HeapImpl.getHeapImpl().getHeapPolicy().getCollectOnAllocationPolicy().maybeCauseCollection();
-
-        UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
-        Object result;
-        if (size.aboveOrEqual(HeapPolicy.getLargeArrayThreshold())) {
-            /*
-             * Check if the array is really too big. This is an optimistic check because the heap
-             * probably has other objects in it, so the next collection will throw an
-             * OutOfMemoryError if this object is allocated and survives.
-             */
-            if (size.aboveOrEqual(HeapPolicy.getMaximumHeapSize())) {
-                throw arrayAllocationTooLarge;
+            UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
+            Object result;
+            if (size.aboveOrEqual(HeapPolicy.getLargeArrayThreshold())) {
+                /*
+                 * Check if the array is really too big. This is an optimistic check because the
+                 * heap probably has other objects in it, so the next collection will throw an
+                 * OutOfMemoryError if this object is allocated and survives.
+                 */
+                if (size.aboveOrEqual(HeapPolicy.getMaximumHeapSize())) {
+                    throw arrayAllocationTooLarge;
+                }
+                /* Large arrays go into their own unaligned chunk. */
+                UnalignedHeapChunk.UnalignedHeader uChunk = HeapChunkProvider.get().produceUnalignedChunk(size);
+                result = allocateLargeArray(hub, length, size, uChunk, tlab, rememberedSet);
+            } else {
+                /* Small arrays go into the regular aligned chunk. */
+                AlignedHeader newChunk = prepareNewAllocationChunk(tlab);
+                result = allocateSmallArray(hub, length, size, tlab, rememberedSet, newChunk);
             }
-            /* Large arrays go into their own unaligned chunk. */
-            UnalignedHeapChunk.UnalignedHeader uChunk = HeapChunkProvider.get().produceUnalignedChunk(size);
-            result = allocateLargeArray(hub, length, size, uChunk, tlab, rememberedSet);
-        } else {
-            /* Small arrays go into the regular aligned chunk. */
-            AlignedHeader newChunk = prepareNewAllocationChunk(tlab);
-            result = allocateSmallArray(hub, length, size, tlab, rememberedSet, newChunk);
+            log().string("  ThreadLocalAllocation.allocateNewArray returns ").object(result).string(" .. ").hex(LayoutEncoding.getObjectEnd(result)).string("]").newline();
+            return result;
+        } finally {
+            DeoptTester.enableDeoptTesting();
         }
-        log().string("  ThreadLocalAllocation.allocateNewArray returns ").object(result).string(" .. ").hex(LayoutEncoding.getObjectEnd(result)).string("]").newline();
-
-        DeoptTester.enableDeoptTesting();
-        return result;
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory, modifies TLAB")
