@@ -118,12 +118,20 @@ public class SLTCKLanguageProvider implements LanguageProvider {
         res.add(createValueConstructor(context, "wrapPrimitive(1)", "wrapped-number", "createWrappedNumber", TypeDescriptor.NUMBER));
         res.add(createValueConstructor(context, "wrapPrimitive(\"string\")", "wrapped-string", "createWrappedString", TypeDescriptor.STRING));
 
-        res.add(createValueConstructor(context, "typeOf(1 == 2)", "boolean-metaobject", "createBooleanMetaObject", TypeDescriptor.META_OBJECT));
-        res.add(createValueConstructor(context, "typeOf(1)", "number-metaobject", "createNumberMetaObject", TypeDescriptor.META_OBJECT));
-        res.add(createValueConstructor(context, "typeOf(\"str\")", "string-metaobject", "createStringMetaObject", TypeDescriptor.META_OBJECT));
-        res.add(createValueConstructor(context, "typeOf(NULL)", "null-metaobject", "createNullMetaObject", TypeDescriptor.META_OBJECT));
-        res.add(createValueConstructor(context, "typeOf(new())", "object-metaobject", "createObjectMetaObject", TypeDescriptor.META_OBJECT));
-        res.add(createValueConstructor(context, "typeOf(createStringMetaObject)", "function-metaobject", "createFunctionMetaObject", TypeDescriptor.META_OBJECT));
+        // enable after GR-22098
+        // res.add(createValueConstructor(context, "typeOf(1 == 2)", "boolean-metaobject",
+        // "createBooleanMetaObject", TypeDescriptor.META_OBJECT));
+        // res.add(createValueConstructor(context, "typeOf(1)", "number-metaobject",
+        // "createNumberMetaObject", TypeDescriptor.META_OBJECT));
+        // res.add(createValueConstructor(context, "typeOf(\"str\")", "string-metaobject",
+        // "createStringMetaObject", TypeDescriptor.META_OBJECT));
+        // res.add(createValueConstructor(context, "typeOf(NULL)", "null-metaobject",
+        // "createNullMetaObject", TypeDescriptor.META_OBJECT));
+        // res.add(createValueConstructor(context, "typeOf(new())", "object-metaobject",
+        // "createObjectMetaObject", TypeDescriptor.META_OBJECT));
+        // res.add(createValueConstructor(context, "typeOf(createStringMetaObject)",
+        // "function-metaobject",
+        // "createFunctionMetaObject", TypeDescriptor.META_OBJECT));
 
         res.add(opb.build());
         return Collections.unmodifiableCollection(res);
@@ -201,9 +209,14 @@ public class SLTCKLanguageProvider implements LanguageProvider {
         res.add(createBuiltin(context, "getSize", TypeDescriptor.NUMBER, TypeDescriptor.ARRAY));
         res.add(createBuiltin(context, "hasSize", TypeDescriptor.BOOLEAN, TypeDescriptor.ANY));
         res.add(createBuiltin(context, "isExecutable", TypeDescriptor.BOOLEAN, TypeDescriptor.ANY));
-        res.add(createBuiltin(context, "isInstance", TypeDescriptor.BOOLEAN, TypeDescriptor.META_OBJECT, TypeDescriptor.ANY));
         res.add(createBuiltin(context, "isNull", TypeDescriptor.BOOLEAN, TypeDescriptor.ANY));
-        res.add(createBuiltin(context, "typeOf", TypeDescriptor.union(TypeDescriptor.META_OBJECT, TypeDescriptor.NULL), TypeDescriptor.ANY));
+
+        // enable after GR-22098
+        // res.add(createBuiltin(context, "isInstance", TypeDescriptor.BOOLEAN,
+        // TypeDescriptor.META_OBJECT,
+        // TypeDescriptor.ANY));
+        // res.add(createBuiltin(context, "typeOf", TypeDescriptor.union(TypeDescriptor.META_OBJECT,
+        // TypeDescriptor.NULL), TypeDescriptor.ANY));
 
         return res;
     }
