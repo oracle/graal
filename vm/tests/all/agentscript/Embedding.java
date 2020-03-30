@@ -64,7 +64,7 @@ public class Embedding {
         URL agentScript = Embedding.class.getResource("agent-embedding.js");
         assert agentScript != null : "Script found";
 
-        Source src = Source.newBuilder("js", agentScript).internal(true).build();
+        Source src = Source.newBuilder("js", agentScript).build();
         Object[] handle = { null };
         Thread register = new Thread("register agent") {
             @Override
