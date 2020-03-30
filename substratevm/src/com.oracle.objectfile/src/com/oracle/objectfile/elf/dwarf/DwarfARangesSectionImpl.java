@@ -37,9 +37,9 @@ import org.graalvm.compiler.debug.DebugContext;
 import java.util.LinkedList;
 import java.util.Map;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ARANGES_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_INFO_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_VERSION_2;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ARANGES_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_INFO_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_VERSION_2;
 
 /**
  * Section generator for debug_aranges section.
@@ -48,7 +48,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     private static final int DW_AR_HEADER_SIZE = 12;
     private static final int DW_AR_HEADER_PAD_SIZE = 4; // align up to 2 * address size
 
-    public DwarfARangesSectionImpl(DwarfSections dwarfSections) {
+    public DwarfARangesSectionImpl(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
     }
 

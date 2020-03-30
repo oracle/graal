@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,10 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
+
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import org.graalvm.compiler.debug.DebugContext;
 
 import java.nio.ByteOrder;
 import java.nio.file.Path;
@@ -32,195 +35,17 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
-import org.graalvm.compiler.debug.DebugContext;
-
-import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.debugentry.DirEntry;
-import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.Range;
-import com.oracle.objectfile.debugentry.StringTable;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
-import com.oracle.objectfile.elf.ELFMachine;
-
 /**
- * A class that models the debug info in an organization that facilitates generation of the required
- * DWARF sections. It groups common data and behaviours for use by the various subclasses of class
- * DwarfSectionImpl that take responsibility for generating content for a specific section type.
+ * An abstract class which indexes the information presented by the DebugInfoProvider
+ * in an organization suitable for use by subclasses targeting a specific binary format.
  */
-public class DwarfSections {
-
-    /*
-     * Names of the different ELF sections we create or reference in reverse dependency order.
-     */
-    public static final String TEXT_SECTION_NAME = ".text";
-    public static final String DW_STR_SECTION_NAME = ".debug_str";
-    public static final String DW_LINE_SECTION_NAME = ".debug_line";
-    public static final String DW_FRAME_SECTION_NAME = ".debug_frame";
-    public static final String DW_ABBREV_SECTION_NAME = ".debug_abbrev";
-    public static final String DW_INFO_SECTION_NAME = ".debug_info";
-    public static final String DW_ARANGES_SECTION_NAME = ".debug_aranges";
-
-    /**
-     * Currently generated debug info relies on DWARF spec vesion 2.
-     */
-    public static final short DW_VERSION_2 = 2;
-
-    /*
-     * Define all the abbrev section codes we need for our DIEs.
-     */
-    @SuppressWarnings("unused") public static final int DW_ABBREV_CODE_null = 0;
-    public static final int DW_ABBREV_CODE_compile_unit = 1;
-    public static final int DW_ABBREV_CODE_subprogram = 2;
-
-    /*
-     * Define all the Dwarf tags we need for our DIEs.
-     */
-    public static final int DW_TAG_compile_unit = 0x11;
-    public static final int DW_TAG_subprogram = 0x2e;
-    /*
-     * Define all the Dwarf attributes we need for our DIEs.
-     */
-    public static final int DW_AT_null = 0x0;
-    public static final int DW_AT_name = 0x3;
-    @SuppressWarnings("unused") public static final int DW_AT_comp_dir = 0x1b;
-    public static final int DW_AT_stmt_list = 0x10;
-    public static final int DW_AT_low_pc = 0x11;
-    public static final int DW_AT_hi_pc = 0x12;
-    public static final int DW_AT_language = 0x13;
-    public static final int DW_AT_external = 0x3f;
-    @SuppressWarnings("unused") public static final int DW_AT_return_addr = 0x2a;
-    @SuppressWarnings("unused") public static final int DW_AT_frame_base = 0x40;
-    /*
-     * Define all the Dwarf attribute forms we need for our DIEs.
-     */
-    public static final int DW_FORM_null = 0x0;
-    @SuppressWarnings("unused") private static final int DW_FORM_string = 0x8;
-    public static final int DW_FORM_strp = 0xe;
-    public static final int DW_FORM_addr = 0x1;
-    public static final int DW_FORM_data1 = 0x0b;
-    public static final int DW_FORM_data4 = 0x6;
-    @SuppressWarnings("unused") public static final int DW_FORM_data8 = 0x7;
-    @SuppressWarnings("unused") public static final int DW_FORM_block1 = 0x0a;
-    public static final int DW_FORM_flag = 0xc;
-
-    /*
-     * Define specific attribute values for given attribute or form types.
-     */
-    /*
-     * DIE header has_children attribute values.
-     */
-    public static final byte DW_CHILDREN_no = 0;
-    public static final byte DW_CHILDREN_yes = 1;
-    /*
-     * DW_FORM_flag attribute values.
-     */
-    @SuppressWarnings("unused") public static final byte DW_FLAG_false = 0;
-    public static final byte DW_FLAG_true = 1;
-    /*
-     * Value for DW_AT_language attribute with form DATA1.
-     */
-    public static final byte DW_LANG_Java = 0xb;
-
-    /*
-     * DW_AT_Accessibility attribute values.
-     *
-     * These are not needed until we make functions members.
-     */
-    @SuppressWarnings("unused") public static final byte DW_ACCESS_public = 1;
-    @SuppressWarnings("unused") public static final byte DW_ACCESS_protected = 2;
-    @SuppressWarnings("unused") public static final byte DW_ACCESS_private = 3;
-
-    /*
-     * Others that are not yet needed.
-     */
-    @SuppressWarnings("unused") public static final int DW_AT_type = 0; // only present for non-void
-    // functions
-    @SuppressWarnings("unused") public static final int DW_AT_accessibility = 0;
-
-    /*
-     * CIE and FDE entries.
-     */
-
-    /* Full byte/word values. */
-    public static final int DW_CFA_CIE_id = -1;
-    @SuppressWarnings("unused") public static final int DW_CFA_FDE_id = 0;
-
-    public static final byte DW_CFA_CIE_version = 1;
-
-    /* Values encoded in high 2 bits. */
-    public static final byte DW_CFA_advance_loc = 0x1;
-    public static final byte DW_CFA_offset = 0x2;
-    @SuppressWarnings("unused") public static final byte DW_CFA_restore = 0x3;
-
-    /* Values encoded in low 6 bits. */
-    public static final byte DW_CFA_nop = 0x0;
-    @SuppressWarnings("unused") public static final byte DW_CFA_set_loc1 = 0x1;
-    public static final byte DW_CFA_advance_loc1 = 0x2;
-    public static final byte DW_CFA_advance_loc2 = 0x3;
-    public static final byte DW_CFA_advance_loc4 = 0x4;
-    @SuppressWarnings("unused") public static final byte DW_CFA_offset_extended = 0x5;
-    @SuppressWarnings("unused") public static final byte DW_CFA_restore_extended = 0x6;
-    @SuppressWarnings("unused") public static final byte DW_CFA_undefined = 0x7;
-    @SuppressWarnings("unused") public static final byte DW_CFA_same_value = 0x8;
-    public static final byte DW_CFA_register = 0x9;
-    public static final byte DW_CFA_def_cfa = 0xc;
-    @SuppressWarnings("unused") public static final byte DW_CFA_def_cfa_register = 0xd;
-    public static final byte DW_CFA_def_cfa_offset = 0xe;
-
-    private ByteOrder byteOrder;
-    private DwarfStrSectionImpl dwarfStrSection;
-    private DwarfAbbrevSectionImpl dwarfAbbrevSection;
-    private DwarfInfoSectionImpl dwarfInfoSection;
-    private DwarfARangesSectionImpl dwarfARangesSection;
-    private DwarfLineSectionImpl dwarfLineSection;
-    private DwarfFrameSectionImpl dwarfFameSection;
-
-    public DwarfSections(ELFMachine elfMachine, ByteOrder byteOrder) {
-        this.byteOrder = byteOrder;
-        dwarfStrSection = new DwarfStrSectionImpl(this);
-        dwarfAbbrevSection = new DwarfAbbrevSectionImpl(this);
-        dwarfInfoSection = new DwarfInfoSectionImpl(this);
-        dwarfARangesSection = new DwarfARangesSectionImpl(this);
-        dwarfLineSection = new DwarfLineSectionImpl(this);
-        if (elfMachine == ELFMachine.AArch64) {
-            dwarfFameSection = new DwarfFrameSectionImplAArch64(this);
-        } else {
-            dwarfFameSection = new DwarfFrameSectionImplX86_64(this);
-        }
-    }
-
-    public DwarfStrSectionImpl getStrSectionImpl() {
-        return dwarfStrSection;
-    }
-
-    public DwarfAbbrevSectionImpl getAbbrevSectionImpl() {
-        return dwarfAbbrevSection;
-    }
-
-    public DwarfFrameSectionImpl getFrameSectionImpl() {
-        return dwarfFameSection;
-    }
-
-    public DwarfInfoSectionImpl getInfoSectionImpl() {
-        return dwarfInfoSection;
-    }
-
-    public DwarfARangesSectionImpl getARangesSectionImpl() {
-        return dwarfARangesSection;
-    }
-
-    public DwarfLineSectionImpl getLineSectionImpl() {
-        return dwarfLineSection;
-    }
-
+public abstract class DebugInfoBase {
+    protected ByteOrder byteOrder;
     /**
      * A table listing all known strings, some of which may be marked for insertion into the
      * debug_str section.
      */
-    private StringTable stringTable = new StringTable();
-
+    protected StringTable stringTable = new StringTable();
     /**
      * Index of all dirs in which files are found to reside either as part of substrate/compiler or
      * user code.
@@ -265,23 +90,18 @@ public class DwarfSections {
      * index of already seen classes.
      */
     private Map<String, ClassEntry> primaryClassesIndex = new HashMap<>();
-
     /**
      * Index of files which contain primary or secondary ranges.
      */
     private Map<Path, FileEntry> filesIndex = new HashMap<>();
-
     /**
-     * Indirects this call to the string table.
-     *
-     * @param string the string whose index is required.
-     *
-     * @return the offset of the string in the .debug_str section.
+     * List of of files which contain primary or secondary ranges.
      */
-    public int debugStringIndex(String string) {
-        return stringTable.debugStringIndex(string);
-    }
+    private LinkedList<FileEntry> files = new LinkedList<>();
 
+    public DebugInfoBase(ByteOrder byteOrder) {
+        this.byteOrder = byteOrder;
+    }
     /**
      * Entry point allowing ELFObjectFile to pass on information about types, code and heap data.
      *
@@ -347,7 +167,6 @@ public class DwarfSections {
          * String name = debugDataInfo.toString(); }
          */
     }
-
     private ClassEntry ensureClassEntry(Range range) {
         String className = range.getClassName();
         /*
@@ -366,7 +185,6 @@ public class DwarfSections {
         assert classEntry.getClassName().equals(className);
         return classEntry;
     }
-
     private FileEntry ensureFileEntry(Range range) {
         String fileName = range.getFileName();
         if (fileName == null) {
@@ -381,6 +199,7 @@ public class DwarfSections {
         if (fileEntry == null) {
             DirEntry dirEntry = ensureDirEntry(filePath);
             fileEntry = new FileEntry(fileName, dirEntry);
+            files.add(fileEntry);
             /*
              * Index the file entry by file path.
              */
@@ -394,13 +213,11 @@ public class DwarfSections {
         }
         return fileEntry;
     }
-
-    private void addRange(Range primaryRange, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
+    private void addRange(Range primaryRange, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         assert primaryRange.isPrimary();
         ClassEntry classEntry = ensureClassEntry(primaryRange);
         classEntry.addPrimary(primaryRange, frameSizeInfos, frameSize);
     }
-
     private void addSubRange(Range primaryRange, Range subrange) {
         assert primaryRange.isPrimary();
         assert !subrange.isPrimary();
@@ -415,7 +232,6 @@ public class DwarfSections {
             classEntry.addSubRange(subrange, subrangeFileEntry);
         }
     }
-
     private DirEntry ensureDirEntry(Path filePath) {
         if (filePath == null) {
             return null;
@@ -427,16 +243,32 @@ public class DwarfSections {
         }
         return dirEntry;
     }
-
-    public StringTable getStringTable() {
-        return stringTable;
+    /* Accessors to query the debug info model. */
+    public ByteOrder getByteOrder() {
+        return byteOrder;
     }
-
     public LinkedList<ClassEntry> getPrimaryClasses() {
         return primaryClasses;
     }
-
-    public ByteOrder getByteOrder() {
-        return byteOrder;
+    @SuppressWarnings("unused")
+    public LinkedList<FileEntry> getFiles() {
+        return files;
+    }
+    @SuppressWarnings("unused")
+    public FileEntry findFile(Path fullFileName) {
+        return filesIndex.get(fullFileName);
+    }
+    public StringTable getStringTable() {
+        return stringTable;
+    }
+    /**
+     * Indirects this call to the string table.
+     *
+     * @param string the string whose index is required.
+     *
+     * @return the offset of the string in the .debug_str section.
+     */
+    public int debugStringIndex(String string) {
+        return stringTable.debugStringIndex(string);
     }
 }

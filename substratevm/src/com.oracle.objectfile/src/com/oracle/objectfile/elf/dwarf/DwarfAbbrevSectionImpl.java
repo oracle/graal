@@ -29,34 +29,34 @@ package com.oracle.objectfile.elf.dwarf;
 import com.oracle.objectfile.LayoutDecision;
 import org.graalvm.compiler.debug.DebugContext;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_CODE_compile_unit;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_CODE_subprogram;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_AT_external;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_AT_hi_pc;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_AT_language;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_AT_low_pc;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_AT_name;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_AT_null;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_AT_stmt_list;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CHILDREN_no;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CHILDREN_yes;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_FORM_addr;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_FORM_data1;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_FORM_data4;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_FORM_flag;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_FORM_null;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_FORM_strp;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_FRAME_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_TAG_compile_unit;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_TAG_subprogram;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_subprogram;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_external;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_hi_pc;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_language;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_low_pc;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_name;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_null;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_stmt_list;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CHILDREN_no;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CHILDREN_yes;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FORM_addr;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FORM_data1;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FORM_data4;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FORM_flag;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FORM_null;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FORM_strp;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FRAME_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_TAG_compile_unit;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_TAG_subprogram;
 
 /**
  * Section generator for debug_abbrev section.
  */
 public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
 
-    public DwarfAbbrevSectionImpl(DwarfSections dwarfSections) {
+    public DwarfAbbrevSectionImpl(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
     }
 

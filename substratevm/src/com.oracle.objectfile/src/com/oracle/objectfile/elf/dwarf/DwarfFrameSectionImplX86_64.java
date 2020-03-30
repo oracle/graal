@@ -34,7 +34,7 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
     private static final int DW_CFA_RSP_IDX = 7;
     private static final int DW_CFA_RIP_IDX = 16;
 
-    public DwarfFrameSectionImplX86_64(DwarfSections dwarfSections) {
+    public DwarfFrameSectionImplX86_64(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
     }
 

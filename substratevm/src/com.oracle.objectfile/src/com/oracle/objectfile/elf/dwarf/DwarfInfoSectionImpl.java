@@ -34,13 +34,13 @@ import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.LinkedList;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_CODE_compile_unit;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_CODE_subprogram;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_FLAG_true;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_INFO_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_LANG_Java;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_VERSION_2;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_subprogram;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FLAG_true;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_INFO_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_LANG_Java;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_VERSION_2;
 
 /**
  * Section generator for debug_info section.
@@ -51,7 +51,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
      */
     private static final int DW_DIE_HEADER_SIZE = 11;
 
-    public DwarfInfoSectionImpl(DwarfSections dwarfSections) {
+    public DwarfInfoSectionImpl(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
     }
 

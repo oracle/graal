@@ -38,9 +38,9 @@ import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.Map;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_LINE_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_STR_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_VERSION_2;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_LINE_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_STR_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_VERSION_2;
 
 /**
  * Section generator for debug_line section.
@@ -131,7 +131,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
      */
     private static final byte DW_LNE_define_file = 3;
 
-    DwarfLineSectionImpl(DwarfSections dwarfSections) {
+    DwarfLineSectionImpl(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
     }
 

@@ -32,19 +32,19 @@ import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import org.graalvm.compiler.debug.DebugContext;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_CIE_id;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_CIE_version;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_advance_loc;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_advance_loc1;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_advance_loc2;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_advance_loc4;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_def_cfa;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_def_cfa_offset;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_nop;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_offset;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_register;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_FRAME_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_LINE_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_CIE_id;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_CIE_version;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_advance_loc;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_advance_loc1;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_advance_loc2;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_advance_loc4;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_def_cfa;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_def_cfa_offset;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_nop;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_offset;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_register;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FRAME_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_LINE_SECTION_NAME;
 
 /**
  * Section generic generator for debug_frame section.
@@ -53,7 +53,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
     private static final int PADDING_NOPS_ALIGNMENT = 8;
 
-    public DwarfFrameSectionImpl(DwarfSections dwarfSections) {
+    public DwarfFrameSectionImpl(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
     }
 

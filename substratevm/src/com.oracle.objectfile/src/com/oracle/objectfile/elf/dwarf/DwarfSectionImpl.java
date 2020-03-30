@@ -39,19 +39,19 @@ import java.nio.ByteOrder;
 import java.util.Map;
 import java.util.Set;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.TEXT_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.TEXT_SECTION_NAME;
 
 /**
  * A class from which all DWARF debug sections inherit providing common behaviours.
  */
 public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
-    protected DwarfSections dwarfSections;
+    protected DwarfDebugInfo dwarfSections;
     protected boolean debug = false;
     protected long debugTextBase = 0;
     protected long debugAddress = 0;
     protected int debugBase = 0;
 
-    public DwarfSectionImpl(DwarfSections dwarfSections) {
+    public DwarfSectionImpl(DwarfDebugInfo dwarfSections) {
         this.dwarfSections = dwarfSections;
     }
 

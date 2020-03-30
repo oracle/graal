@@ -48,7 +48,7 @@ import com.oracle.objectfile.elf.dwarf.DwarfAbbrevSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfFrameSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfInfoSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfLineSectionImpl;
-import com.oracle.objectfile.elf.dwarf.DwarfSections;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 import com.oracle.objectfile.elf.dwarf.DwarfStrSectionImpl;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
@@ -1167,7 +1167,7 @@ public class ELFObjectFile extends ObjectFile {
 
     @Override
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
-        DwarfSections dwarfSections = new DwarfSections(getMachine(), getByteOrder());
+        DwarfDebugInfo dwarfSections = new DwarfDebugInfo(getMachine(), getByteOrder());
         /* We need an implementation for each generated DWARF section. */
         DwarfStrSectionImpl elfStrSectionImpl = dwarfSections.getStrSectionImpl();
         DwarfAbbrevSectionImpl elfAbbrevSectionImpl = dwarfSections.getAbbrevSectionImpl();

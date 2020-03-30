@@ -30,14 +30,14 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.StringEntry;
 import org.graalvm.compiler.debug.DebugContext;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_STR_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.TEXT_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_STR_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.TEXT_SECTION_NAME;
 
 /**
  * Generator for debug_str section.
  */
 public class DwarfStrSectionImpl extends DwarfSectionImpl {
-    public DwarfStrSectionImpl(DwarfSections dwarfSections) {
+    public DwarfStrSectionImpl(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
     }
 
