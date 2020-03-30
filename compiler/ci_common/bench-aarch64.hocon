@@ -1,0 +1,18 @@
+aarch64.default : ${linux-aarch64} {
+  capabilities: ${linux-aarch64.capabilities}
+  environment : {
+    JVM_CONFIG  : ${jvm-config.default}
+    JVM         : "server"
+    MACHINE_NAME: "xgene3"
+  }
+}
+
+builds += [
+  # TODO once GR-18514 is fixed, 'labsjdk-ce-11' should be replaced with 'labsjdk11'
+  ${aarch64.default} ${bench-dacapo} ${aarch64-bench-notifications}              ${labsjdk-ce-11} { targets: [bench, daily], name: "bench-compiler-dacapo-libgraal-11-linux-aarch64" }
+  ${aarch64.default} ${bench-scala-dacapo} ${aarch64-bench-notifications}        ${labsjdk-ce-11} { targets: [bench, daily], name: "bench-compiler-scala-dacapo-libgraal-11-linux-aarch64" }
+  ${aarch64.default} ${bench-renaissance-hwloc} ${aarch64-bench-notifications}   ${labsjdk-ce-11} { targets: [bench, daily], name: "bench-compiler-renaissance-libgraal-11-linux-aarch64" }
+  ${aarch64.default} ${bench-specjvm2008-Single} ${aarch64-bench-notifications}  ${labsjdk-ce-11} { targets: [bench, daily], name: "bench-compiler-specjvm2008-Single-libgraal-11-linux-aarch64" }
+  ${aarch64.default} ${bench-specjbb2005} ${aarch64-bench-notifications}         ${labsjdk-ce-11} { targets: [bench, daily], name: "bench-compiler-specjbb2005-libgraal-11-linux-aarch64" }
+  ${aarch64.default} ${bench-specjbb2015} ${aarch64-bench-notifications}         ${labsjdk-ce-11} { targets: [bench, daily], name: "bench-compiler-specjbb2015-libgraal-11-linux-aarch64" }
+]

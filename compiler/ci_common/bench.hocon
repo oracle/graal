@@ -94,7 +94,7 @@ bench-specjbb2005: ${bench-common} ${specjbb-large-heap} ${specjbb-bench-notific
   run: [
     ${bench-jvmci.mx-specjbb2005} ${bench-arguments} ["input.ending_number_warehouses=77"]
   ]
-  timelimit: "2:00:00"
+  timelimit: "4:00:00"
 }
 
 # SPECJvm2008-related targets
