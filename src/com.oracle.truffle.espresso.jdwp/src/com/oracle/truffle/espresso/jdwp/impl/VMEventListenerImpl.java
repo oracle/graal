@@ -107,9 +107,11 @@ public final class VMEventListenerImpl implements VMEventListener {
     @TruffleBoundary
     public void removeBreakpointRequest(int requestId) {
         BreakpointInfo remove = breakpointRequests.remove(requestId);
-        Breakpoint[] breakpoints = remove.getBreakpoints();
-        for (Breakpoint breakpoint : breakpoints) {
-            breakpoint.dispose();
+        if (remove != null) {
+            Breakpoint[] breakpoints = remove.getBreakpoints();
+            for (Breakpoint breakpoint : breakpoints) {
+                breakpoint.dispose();
+            }
         }
     }
 
