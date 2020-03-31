@@ -60,13 +60,6 @@ public final class BytecodeStream {
     }
 
     /**
-     * Advances to the next bytecode.
-     */
-    public int next(int curBCI) {
-        return nextBCI(curBCI);
-    }
-
-    /**
      * Gets the next bytecode index (no side-effects).
      *
      * @return the next bytecode index

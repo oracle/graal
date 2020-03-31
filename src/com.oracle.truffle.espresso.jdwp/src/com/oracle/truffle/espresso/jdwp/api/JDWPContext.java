@@ -392,13 +392,13 @@ public interface JDWPContext {
     int getCatchLocation(MethodRef method, Object guestException, int bci);
 
     /**
-     * Determines if a caller has more same-line method invocations.
+     * Returns the bci of the next bytecode instruction within the current frame
      *
      * @param callerRoot the root node of the caller frame
      * @param frame the frame to read the current bci from
-     * @return true if the caller method has further method invocations on the current line
+     * @return the bci of the next instruction
      */
-    boolean moreMethodCallsOnLine(RootNode callerRoot, Frame frame);
+    int getNextBCI(RootNode callerRoot, Frame frame);
 
     /**
      * Returns the current BCI or -1 if the BCI cannot be read.

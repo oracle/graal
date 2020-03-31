@@ -211,4 +211,6 @@ public interface MethodRef {
      * @return true if the method is obsolete
      */
     boolean isObsolete();
+
+    long getLastBCI();
 }

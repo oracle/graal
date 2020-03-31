@@ -1054,7 +1054,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                                      */
                                     this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
                                 } else {
-                                    getContext().getLogger().log(Level.WARNING, "Failed to link native method: {0}", this.toString());
+                                    getContext().getLogger().log(Level.WARNING, "Failed to link native method: {0}", getMethod().toString());
                                     throw Meta.throwException(meta.java_lang_UnsatisfiedLinkError);
                                 }
                             }
@@ -1218,6 +1218,23 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @Override
         public boolean isObsolete() {
             return !assumption.isValid();
+        }
+
+        @Override
+        public long getLastBCI() {
+            int bci = 0;
+            BytecodeStream bs = new BytecodeStream(getCodeAttribute().getCode());
+            int end = bs.endBCI();
+
+            while (bci < end) {
+                int nextBCI = bs.nextBCI(bci);
+                if (nextBCI >= end || nextBCI == bci) {
+                    return bci;
+                } else {
+                    bci = nextBCI;
+                }
+            }
+            return bci;
         }
     }
     // endregion jdwp-specific
