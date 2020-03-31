@@ -55,6 +55,14 @@ public class EmbeddingDoubled {
                 assert txt.contains("fib called with 7") : "Expecting debug output:\n" + txt;
                 assert txt.contains("fib return for 7") : "Expecting debug output:\n" + txt;
             }
+
+            out.reset();
+            assert out.size() == 0 : "Empty again";
+
+            int fib12 = fib.execute(12).asInt();
+            assert fib12 == 144 : "fib(12) == " + fib12;
+
+            assert out.size() == 0 : "No output again:\n" + out.toString("UTF-8");
         }
         System.out.println("Everything is OK!");
     }
