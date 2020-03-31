@@ -1,6 +1,5 @@
 # Documentation
 
-* [Short architecture description](ARCHITECTURE.md)
 * [Sulong's continuous integration](CI.md)
 * [Guidelines for contributing to the project](CONTRIBUTING.md)
 * [Source-Level debugging with Sulong](DEBUGGING.md)
