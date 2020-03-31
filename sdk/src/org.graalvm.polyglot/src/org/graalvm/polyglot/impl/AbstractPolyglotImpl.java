@@ -744,6 +744,10 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getMetaSimpleName(Object receiver);
 
         public abstract boolean isMetaInstance(Object receiver, Object instance);
+
+        public abstract boolean equalsImpl(Object receiver, Object obj);
+
+        public abstract int hashCodeImpl(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

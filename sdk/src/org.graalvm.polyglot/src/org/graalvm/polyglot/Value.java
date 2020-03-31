@@ -1327,6 +1327,29 @@ public final class Value {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * @since 20.1
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Value)) {
+            return false;
+        }
+        return impl.equalsImpl(receiver, ((Value) obj).receiver);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 20.1
+     */
+    @Override
+    public int hashCode() {
+        return impl.hashCodeImpl(receiver);
+    }
+
+    /**
      * Converts a Java host value to a polyglot value. Returns a value for any host or guest value.
      * If there is a context available use {@link Context#asValue(Object)} for efficiency instead.
      * The value is bound the {@link Context#getCurrent() current} context when created. If there is
