@@ -37,6 +37,9 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining.CallTreeNodeVisitor;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.logging.Level;
 
 /**
  * Traces all polymorphic and generic nodes after each successful Truffle compilation.
@@ -54,12 +57,15 @@ public final class TraceASTCompilationListener extends AbstractGraalTruffleRunti
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
         if (target.getOptionValue(PolyglotCompilerOptions.TraceCompilationAST)) {
-            runtime.logEvent(0, "opt AST", target.toString(), target.getDebugProperties(inliningDecision));
-            printCompactTree(target, inliningDecision);
+            StringWriter logMessage = new StringWriter();
+            try (PrintWriter out = new PrintWriter(logMessage)) {
+                printCompactTree(out, target, inliningDecision);
+            }
+            runtime.logEvent(target, 0, "opt AST", target.getDebugProperties(inliningDecision));
         }
     }
 
-    private void printCompactTree(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    private void printCompactTree(PrintWriter out, OptimizedCallTarget target, TruffleInlining inliningDecision) {
         target.accept(new CallTreeNodeVisitor() {
 
             @Override
@@ -75,10 +81,10 @@ public final class TraceASTCompilationListener extends AbstractGraalTruffleRunti
                 Node parent = node.getParent();
 
                 if (parent == null) {
-                    runtime.log(String.format("%s%s", indent, node.getClass().getSimpleName()));
+                    out.printf("%s%s%n", indent, node.getClass().getSimpleName());
                 } else {
                     String fieldName = getFieldName(parent, node);
-                    runtime.log(String.format("%s%s = %s", indent, fieldName, node.getClass().getSimpleName()));
+                    out.printf("%s%s = %s%n", indent, fieldName, node.getClass().getSimpleName());
                 }
                 return true;
             }

@@ -29,7 +29,6 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.options.OptionDescriptors;
@@ -92,10 +91,5 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     public TruffleCompiler newTruffleCompiler() {
         return HotSpotTruffleCompilerImpl.create(this);
-    }
-
-    @Override
-    public void log(String message) {
-        TTY.println(message);
     }
 }

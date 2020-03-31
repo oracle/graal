@@ -584,7 +584,6 @@ public abstract class PartialEvaluator {
         if (cfg.instrumentBoundaries) {
             new InstrumentTruffleBoundariesPhase(request.options, snippetReflection, getInstrumentation(), cfg.instrumentBoundariesPerInlineSite).apply(request.graph, request.highTierContext);
         }
-        request.graph.maybeCompress();
     }
 
     private static final SpeculationReasonGroup TRUFFLE_BOUNDARY_EXCEPTION_SPECULATIONS = new SpeculationReasonGroup("TruffleBoundaryWithoutException", ResolvedJavaMethod.class);

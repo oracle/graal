@@ -35,12 +35,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.test.SubprocessUtil;
@@ -55,6 +57,7 @@ import org.junit.BeforeClass;
 
 public class ExceptionActionTest extends TestWithPolyglotOptions {
 
+    private static final String LOG_FILE_PROPERTY = ExceptionActionTest.class.getSimpleName() + ".LogFile";
     private static final String[] DEFAULT_OPTIONS = {
                     "engine.CompileImmediately", "true",
                     "engine.BackgroundCompilation", "false",
@@ -188,13 +191,13 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             verifier.accept(log);
         } else {
             setupContext(contextOptions);
+            OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNodeFactory.get());
             try {
-                OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNodeFactory.get());
                 target.call();
             } catch (RuntimeException e) {
                 OptimizationFailedException optFailedException = isOptimizationFailed(e);
                 if (optFailedException != null) {
-                    TruffleCompilerRuntime.getRuntime().log(optFailedException.getClass().getName());
+                    TruffleCompilerRuntime.getRuntime().log(target, optFailedException.getClass().getName());
                 }
             }
         }
@@ -226,13 +229,30 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
 
     @Override
     protected Context setupContext(String... keyValuePairs) {
-        String[] newKeyValuePairs = Arrays.copyOf(keyValuePairs, keyValuePairs.length + DEFAULT_OPTIONS.length);
-        System.arraycopy(DEFAULT_OPTIONS, 0, newKeyValuePairs, keyValuePairs.length, DEFAULT_OPTIONS.length);
-        return super.setupContext(newKeyValuePairs);
+        try {
+            String logFile = System.getProperty(LOG_FILE_PROPERTY);
+            FileHandler handler = new FileHandler(logFile);
+            handler.setFormatter(new SimpleFormatter());
+            Context.Builder builder = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).logHandler(handler);
+            setOptions(builder, DEFAULT_OPTIONS);
+            setOptions(builder, keyValuePairs);
+            return super.setupContext(builder);
+        } catch (IOException ioe) {
+            throw new AssertionError("Cannot write log file.", ioe);
+        }
+    }
+
+    private static void setOptions(Context.Builder builder, String... keyValuePairs) {
+        if ((keyValuePairs.length & 1) == 1) {
+            throw new IllegalArgumentException("KeyValuePairs must have even length.");
+        }
+        for (int i = 0; i < keyValuePairs.length; i += 2) {
+            builder.option(keyValuePairs[i], keyValuePairs[i + 1]);
+        }
     }
 
     private static boolean isConfigured() {
-        return Boolean.getBoolean(String.format("%s", ExceptionActionTest.class.getSimpleName()));
+        return System.getProperty(LOG_FILE_PROPERTY) != null;
     }
 
     private static void execute(String testName, Path logFile, String... additionalVmOptions) throws IOException, InterruptedException {
@@ -249,15 +269,13 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             public boolean test(String vmArg) {
                 return !vmArg.contains(GraalCompilerOptions.CompilationFailureAction.getName()) &&
                                 !vmArg.contains(GraalCompilerOptions.CompilationBailoutAsFailure.getName()) &&
-                                !vmArg.contains(GraalCompilerOptions.CrashAt.getName()) &&
-                                !vmArg.contains("LogFile");
+                                !vmArg.contains(GraalCompilerOptions.CrashAt.getName());
             }
         }).collect(Collectors.toList()));
         for (String additionalVmOption : additionalVmOptions) {
             newVmArgs.add(1, additionalVmOption);
         }
-        newVmArgs.add(1, String.format("-Dgraal.LogFile=%s", logFile.toAbsolutePath().toString()));
-        newVmArgs.add(1, String.format("-D%s=true", ExceptionActionTest.class.getSimpleName()));
+        newVmArgs.add(1, String.format("-D%s=%s", LOG_FILE_PROPERTY, logFile.toAbsolutePath().toString()));
         return newVmArgs;
     }
 

@@ -734,8 +734,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             GraalTruffleRuntime rt = runtime();
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("ASTSize", getNonTrivialNodeCount());
-            rt.logEvent(0, "opt fail", toString(), properties);
-            rt.log(reasonAndStackTrace.get());
+            rt.logEvent(this, 0, "opt fail", toString(), properties, reasonAndStackTrace.get());
             if (action == ExceptionAction.ExitVM) {
                 String reason;
                 if (getOptionValue(PolyglotCompilerOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {
@@ -751,8 +750,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    public static final void log(String message) {
-        runtime().log(message);
+    public final void log(String message) {
+        runtime().log(this, message);
     }
 
     @Override

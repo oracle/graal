@@ -282,9 +282,24 @@ public interface TruffleCompilerRuntime {
      * {@linkplain #formatEvent(String, int, String, int, String, int, Map, int) Formats} a Truffle
      * event and writes it to the {@linkplain #log(String) log output}.
      */
-    default void logEvent(int depth, String event, String subject, Map<String, Object> properties) {
-        log(formatEvent("[truffle]", depth, event, 16, subject, 60, properties, 20));
+    default void logEvent(CompilableTruffleAST compilable, int depth, String event, Map<String, Object> properties) {
+        logEvent(compilable, depth, event, compilable.toString(), properties, null);
     }
+
+    default void logEvent(CompilableTruffleAST compilable, int depth, String event, String subject, Map<String, Object> properties, String message) {
+        String formattedMessage = formatEvent(null, depth, event, 16, subject, 60, properties, 20);
+        if (message != null) {
+            formattedMessage = String.format("%s%n%s", formattedMessage, message);
+        }
+        log(compilable, formattedMessage);
+    }
+
+    /**
+     * Writes {@code message} followed by a new line to the Truffle logger.
+     * @param compilable the currently compiled AST
+     * @param message message to log
+     */
+    abstract void log(CompilableTruffleAST compilable, String message);
 
     /**
      * Formats a message describing a Truffle event as a single line of text. A representative event
@@ -317,8 +332,8 @@ public interface TruffleCompilerRuntime {
         }
         int subjectIndent = depth * 2;
         StringBuilder sb = new StringBuilder();
-        String format = "%s %-" + eventWidth + "s%" + (1 + subjectIndent) + "s%-" + Math.max(1, subjectWidth - subjectIndent) + "s";
-        sb.append(String.format(format, caption, event, "", subject));
+        String format = "%-" + eventWidth + "s%" + (1 + subjectIndent) + "s%-" + Math.max(1, subjectWidth - subjectIndent) + "s";
+        sb.append(String.format(format, event, "", subject));
         if (properties != null) {
             for (String property : properties.keySet()) {
                 Object value = properties.get(property);
@@ -343,11 +358,6 @@ public interface TruffleCompilerRuntime {
         }
         return sb.toString();
     }
-
-    /**
-     * Writes {@code message} followed by a new line to the Truffle log stream.
-     */
-    void log(String message);
 
     /**
      * Looks up a type in this runtime.

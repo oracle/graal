@@ -1012,6 +1012,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
             // don't commit to the close if still running as this might cause races in the executing
             // context.
+            if (this.runtimeData != null) {
+                EngineAccessor.ACCESSOR.onEngineClosed(this.runtimeData);
+            }
             if (closeContexts) {
                 Object loggers = getEngineLoggers();
                 if (loggers != null) {
@@ -1028,9 +1031,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             } else if (logHandler != null) {
                 // called from shutdown hook, at least flush the logging handler
                 logHandler.flush();
-            }
-            if (this.runtimeData != null) {
-                EngineAccessor.ACCESSOR.onEngineClosed(this.runtimeData);
             }
         }
     }

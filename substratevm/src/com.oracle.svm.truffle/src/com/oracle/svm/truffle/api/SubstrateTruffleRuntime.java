@@ -396,11 +396,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public void log(String message) {
-        TTY.println(message);
-    }
-
-    @Override
     public Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumptionConstant) {
         return TruffleFeature.getSupport().registerOptimizedAssumptionDependency(optimizedAssumptionConstant);
     }

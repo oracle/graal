@@ -53,10 +53,17 @@ import java.util.logging.StreamHandler;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 final class PolyglotLogHandler extends Handler {
 
+    static final String COMPILER_LOGGER = "truffle";
     static final Handler INSTANCE = new PolyglotLogHandler();
+    private static volatile Set<String> internalIds;
 
     private final Handler fallBackHandler;
 
@@ -108,6 +115,17 @@ final class PolyglotLogHandler extends Handler {
             }
         }
         return currentContext;
+    }
+
+    static Set<String> getInternalIds() {
+        Set<String> result = internalIds;
+        if (result == null) {
+            result = new HashSet<>(2);
+            result.add(PolyglotEngineImpl.OPTION_GROUP_ENGINE);
+            result.add(COMPILER_LOGGER);
+            internalIds = result;
+        }
+        return result;
     }
 
     static LogRecord createLogRecord(final Level level, String loggerName, final String message, final String className, final String methodName, final Object[] parameters, final Throwable thrown) {
@@ -162,6 +180,26 @@ final class PolyglotLogHandler extends Handler {
      */
     static Handler createStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish) {
         return new PolyglotStreamHandler(out, closeStream, flushOnPublish);
+    }
+
+    interface LoggerCacheImplementation {
+        final LoggerCacheImplementation DISABLED = new LoggerCacheImplementation() {
+            @Override
+            public Handler getLogHandler() {
+                return new PolyglotStreamHandler(new OutputStream() {
+                    @Override
+                    public void write(int b) throws IOException {
+                    }
+                }, false, false);
+            }
+
+            @Override
+            public Map<String, Level> getLogLevels() {
+                return Collections.emptyMap();
+            }
+        };
+        Handler getLogHandler();
+        Map<String,Level> getLogLevels();
     }
 
     private static final class ImmutableLogRecord extends LogRecord {

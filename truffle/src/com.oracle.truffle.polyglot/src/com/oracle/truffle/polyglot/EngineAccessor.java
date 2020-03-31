@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
@@ -789,15 +790,27 @@ final class EngineAccessor extends Accessor {
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T> T getOrCreateRuntimeData(Object polyglotEngine, Function<OptionValues, T> constructor) {
+        public <T> T getOrCreateRuntimeData(Object polyglotEngine, BiFunction<OptionValues, Function<String,TruffleLogger>, T> constructor) {
             if (polyglotEngine == null) {
                 OptionValues engineOptionValues = PolyglotEngineImpl.getEngineOptionsWithNoEngine();
-                return constructor.apply(engineOptionValues);
+                return constructor.apply(engineOptionValues, new Function<String, TruffleLogger>() {
+                    @Override
+                    public TruffleLogger apply(String loggerName) {
+                        Object loggersCache = LANGUAGE.createEngineLoggers(PolyglotLogHandler.LoggerCacheImplementation.DISABLED, Collections.emptyMap());
+                        return LANGUAGE.getLogger(PolyglotLogHandler.COMPILER_LOGGER, loggerName, loggersCache);
+                    }
+                });
             }
 
             final PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;
             if (engine.runtimeData == null) {
-                engine.runtimeData = constructor.apply(engine.engineOptionValues);
+                engine.runtimeData = constructor.apply(engine.engineOptionValues, new Function<String, TruffleLogger>() {
+                    @Override
+                    public TruffleLogger apply(String loggerName) {
+                        Object loggersCache = engine.getOrCreateEngineLoggers();
+                        return LANGUAGE.getLogger(PolyglotLogHandler.COMPILER_LOGGER, loggerName, loggersCache);
+                    }
+                });
             }
             return (T) engine.runtimeData;
         }
@@ -841,8 +854,16 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Handler getLogHandler(Object polyglotEngine) {
-            return polyglotEngine == null ? PolyglotLogHandler.INSTANCE : new PolyglotLogHandler((PolyglotEngineImpl) polyglotEngine);
+        public Handler getLogHandler(Object owner) {
+            if (owner ==null) {
+                return PolyglotLogHandler.INSTANCE;
+            } else if (owner instanceof PolyglotEngineImpl) {
+                return new PolyglotLogHandler((PolyglotEngineImpl) owner);
+            } else if (owner instanceof PolyglotLogHandler.LoggerCacheImplementation) {
+                return ((PolyglotLogHandler.LoggerCacheImplementation)owner).getLogHandler();
+            } else {
+                throw new AssertionError("Unexpected owner type " + owner.getClass());
+            }
         }
 
         @Override
@@ -856,13 +877,15 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Map<String, Level> getLogLevels(final Object polyglotObject) {
-            if (polyglotObject instanceof PolyglotContextImpl) {
-                return ((PolyglotContextImpl) polyglotObject).config.logLevels;
-            } else if (polyglotObject instanceof PolyglotEngineImpl) {
-                return ((PolyglotEngineImpl) polyglotObject).logLevels;
+        public Map<String, Level> getLogLevels(final Object owner) {
+            if (owner instanceof PolyglotContextImpl) {
+                return ((PolyglotContextImpl) owner).config.logLevels;
+            } else if (owner instanceof PolyglotEngineImpl) {
+                return ((PolyglotEngineImpl) owner).logLevels;
+            } else if (owner instanceof PolyglotLogHandler.LoggerCacheImplementation) {
+                return ((PolyglotLogHandler.LoggerCacheImplementation)owner).getLogLevels();
             } else {
-                throw new AssertionError();
+                throw new AssertionError("Unexpected owner type " + owner.getClass());
             }
         }
 
@@ -882,7 +905,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Set<String> getInternalIds() {
-            return Collections.singleton(PolyglotEngineImpl.OPTION_GROUP_ENGINE);
+            return PolyglotLogHandler.getInternalIds();
         }
 
         @Override

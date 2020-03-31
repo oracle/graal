@@ -526,7 +526,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.getCurrentFrame().getCallTarget();
             final int limit = callTarget.getOptionValue(PolyglotCompilerOptions.TraceStackTraceLimit);
 
-            runtime.log("[truffle] transferToInterpreter at");
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append("transferToInterpreter at\n");
             runtime.iterateFrames(new FrameInstanceVisitor<Object>() {
                 int frameIndex = 0;
 
@@ -537,24 +538,24 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                     if (frameIndex > 0) {
                         line.append("  ");
                     }
-                    line.append(formatStackFrame(frameInstance, target));
+                    line.append(formatStackFrame(frameInstance, target)).append("\n");
                     frameIndex++;
 
-                    runtime.log(line.toString());
+                    messageBuilder.append(line);
                     if (frameIndex < limit) {
                         return null;
                     } else {
-                        runtime.log("    ...");
+                        messageBuilder.append("    ...\n");
                         return frameInstance;
                     }
                 }
 
             });
             final int skip = 3;
-
             StackTraceElement[] stackTrace = new Throwable().getStackTrace();
             String suffix = stackTrace.length > skip + limit ? "\n    ..." : "";
-            runtime.log(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n    ", "  ", suffix)));
+            messageBuilder.append(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n    ", "  ", suffix)));
+            runtime.log(callTarget, messageBuilder.toString());
         }
     }
 }
