@@ -67,7 +67,7 @@ public abstract class GlobalSymbol implements ValueSymbol {
      * 
      * @see #setName
      */
-    protected final boolean isIntrinsicGlobalVariable() {
+    public final boolean isIntrinsicGlobalVariable() {
         return isSpecialInternalSymbol;
     }
 
