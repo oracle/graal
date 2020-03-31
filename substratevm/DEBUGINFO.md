@@ -1,5 +1,5 @@
-Using the ptototype debug info feature
---------------------------------------
+Using the debug info feature
+----------------------------
 
 To add debug info to a generated native image add flag
 -H:GenerateDebugInfo=<N> to the native image command line (where N is
@@ -10,8 +10,8 @@ debug info). For example,
     $ mx native-image -H:GenerateDebugInfo=1 Hello
 
 The resulting image should contain code (method) debug records in a
-format gdb understands (VS support is still under development). At
-present it makes no difference which positive value is supplied as
+format gdb understands (Windows support is still under development).
+At present it makes no difference which positive value is supplied as
 argument to the GenerateDebugInfo option.
 
 The GenerateDebugInfo option also enables caching of sources for any
@@ -30,7 +30,7 @@ uses the current JAVA_HOME to locate the JDK src.zip when searching
 for JDK runtime sources. It also uses entries in the classpath to
 suggest locations for GraalVM source files and application source
 files (see below for precise details of the scheme used to identify
-source locations). However, source layouts do vary and it may no tbe
+source locations). However, source layouts do vary and it may not be
 possible to find all sources. Hence, users can specify the location of
 source files explicitly on the command line using option
 DebugInfoSourceSearchPath:
@@ -61,7 +61,7 @@ Note that in both the examples above the DebugInfoSourceSearchPath
 options are actually redundant. In the first case the classpath
 entries for apps/hello/classes and apps/greeter/classes will be used
 to derive the default search roots apps/hello/src and
-apps/greeter/src. In the second case classpath entires
+apps/greeter/src. In the second case classpath entries
 apps/target/hello.jar and apps/target/greeter.jar will be used to
 derive the default search roots apps/target/hello-sources.jar and
 apps/target/greeter-sources.jar.
@@ -90,7 +90,7 @@ achieve this by accumulating the relevant sources in a suitably
 structured file cache.
 
 The native image generator uses different strategies to locate source
-files for JDK runtime classes, GraalVM classses and application source
+files for JDK runtime classes, GraalVM classes and application source
 classes for inclusion in the local sources cache. It identifies which
 strategy to use based on the package name of the class. So, for
 example, packages starting with java.* or jdk.* are JDK classes;
@@ -180,7 +180,7 @@ sources are being included.
 You can also add extra directories to the search path. Note that gdb
 does not understand zip format file systems so any extra entries you
 add must identify a directory tree containing the relevant
-sources. Once again. top leel entries in the directory added to the
+sources. Once again. top level entries in the directory added to the
 search path must correspond to the top level package for the classes
 whose sources are being included.
 
@@ -193,13 +193,13 @@ Checking debug info on Linux
 ----------------------------
 
 n.b. this is only of interest to those who want to understand how the
-debug info implemetation works or want to trouble shoot problems
+debug info implementation works or want to trouble shoot problems
 encountered during debugging that might relate to the debug info
 encoding.
 
-The objdump command can be used to display the dbeug info embedded
+The objdump command can be used to display the debug info embedded
 into a native image. The following commands (which all assume the
-target binary is called hello) can be used to display all currentyl
+target binary is called hello) can be used to display all currently
 generated content:
 
     $ objdump --dwarf=info hello > info
@@ -212,7 +212,7 @@ generated content:
 
 The *info* section includes details of all compiled Java methods.
 
-The *abbrev* sectio defines the layout of records in the info section
+The *abbrev* section defines the layout of records in the info section
 that describe Java files (compilation units) and methods.
 
 The *ranges* section details the start and end addresses of method
@@ -222,8 +222,8 @@ The *decodedline* section maps subsegments of method code range
 segments to files and line numbers. This mapping includes entries
 for files and line numbers for inlined methods.
 
-The *rawline* segment provides deatails of how the line table is
-generated using DWARF state machine instuctions that encode file,
+The *rawline* segment provides details of how the line table is
+generated using DWARF state machine instructions that encode file,
 line and address transitions.
 
 The *str* section provides a lookup table for strings referenced
@@ -244,7 +244,7 @@ Currently supported targets
 
 The prototype is currently implemented only for gdb on Linux.
 
-  - Linux/x86_64 suppoort has been tested and should work
+  - Linux/x86_64 support has been tested and should work
     correctly.
 
   - Linux/AArch64 support is present but has not yet been fully

@@ -1183,15 +1183,13 @@ public class ELFObjectFile extends ObjectFile {
         newUserDefinedSection(elfARangesSectionImpl.getSectionName(), elfARangesSectionImpl);
         newUserDefinedSection(elfLineSectionImpl.getSectionName(), elfLineSectionImpl);
         /*
-         * The byte[] for each implementation's content are created and
-         * written under getOrDecideContent. Doing that ensures that all
-         * dependent sections are filled in and then sized according to the
-         * declared dependencies. However, if we leave it at that then
-         * associated reloc sections only get created when the first reloc
-         * is inserted during content write that's too late for them to have
-         * layout constraints included in the layout decision set and causes
-         * an NPE during reloc section write. So we need to create the relevant
-         * reloc sections here in advance.
+         * The byte[] for each implementation's content are created and written under
+         * getOrDecideContent. Doing that ensures that all dependent sections are filled in and then
+         * sized according to the declared dependencies. However, if we leave it at that then
+         * associated reloc sections only get created when the first reloc is inserted during
+         * content write that's too late for them to have layout constraints included in the layout
+         * decision set and causes an NPE during reloc section write. So we need to create the
+         * relevant reloc sections here in advance.
          */
         elfStrSectionImpl.getOrCreateRelocationElement(false);
         elfAbbrevSectionImpl.getOrCreateRelocationElement(false);

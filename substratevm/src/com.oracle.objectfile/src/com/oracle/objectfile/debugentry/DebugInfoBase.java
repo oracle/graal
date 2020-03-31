@@ -35,9 +35,10 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
 /**
- * An abstract class which indexes the information presented by the DebugInfoProvider
- * in an organization suitable for use by subclasses targeting a specific binary format.
+ * An abstract class which indexes the information presented by the DebugInfoProvider in an
+ * organization suitable for use by subclasses targeting a specific binary format.
  */
 public abstract class DebugInfoBase {
     protected ByteOrder byteOrder;
@@ -45,7 +46,7 @@ public abstract class DebugInfoBase {
      * A table listing all known strings, some of which may be marked for insertion into the
      * debug_str section.
      */
-    protected StringTable stringTable = new StringTable();
+    private StringTable stringTable = new StringTable();
     /**
      * Index of all dirs in which files are found to reside either as part of substrate/compiler or
      * user code.
@@ -102,6 +103,7 @@ public abstract class DebugInfoBase {
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
     }
+
     /**
      * Entry point allowing ELFObjectFile to pass on information about types, code and heap data.
      *
@@ -167,6 +169,7 @@ public abstract class DebugInfoBase {
          * String name = debugDataInfo.toString(); }
          */
     }
+
     private ClassEntry ensureClassEntry(Range range) {
         String className = range.getClassName();
         /*
@@ -185,6 +188,7 @@ public abstract class DebugInfoBase {
         assert classEntry.getClassName().equals(className);
         return classEntry;
     }
+
     private FileEntry ensureFileEntry(Range range) {
         String fileName = range.getFileName();
         if (fileName == null) {
@@ -213,11 +217,13 @@ public abstract class DebugInfoBase {
         }
         return fileEntry;
     }
+
     private void addRange(Range primaryRange, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         assert primaryRange.isPrimary();
         ClassEntry classEntry = ensureClassEntry(primaryRange);
         classEntry.addPrimary(primaryRange, frameSizeInfos, frameSize);
     }
+
     private void addSubRange(Range primaryRange, Range subrange) {
         assert primaryRange.isPrimary();
         assert !subrange.isPrimary();
@@ -225,13 +231,15 @@ public abstract class DebugInfoBase {
         ClassEntry classEntry = primaryClassesIndex.get(className);
         FileEntry subrangeFileEntry = ensureFileEntry(subrange);
         /*
-         * The primary range should already have been seen and associated with a primary class entry.
+         * The primary range should already have been seen and associated with a primary class
+         * entry.
          */
         assert classEntry.primaryIndexFor(primaryRange) != null;
         if (subrangeFileEntry != null) {
             classEntry.addSubRange(subrange, subrangeFileEntry);
         }
     }
+
     private DirEntry ensureDirEntry(Path filePath) {
         if (filePath == null) {
             return null;
@@ -243,24 +251,30 @@ public abstract class DebugInfoBase {
         }
         return dirEntry;
     }
+
     /* Accessors to query the debug info model. */
     public ByteOrder getByteOrder() {
         return byteOrder;
     }
+
     public LinkedList<ClassEntry> getPrimaryClasses() {
         return primaryClasses;
     }
+
     @SuppressWarnings("unused")
     public LinkedList<FileEntry> getFiles() {
         return files;
     }
+
     @SuppressWarnings("unused")
     public FileEntry findFile(Path fullFileName) {
         return filesIndex.get(fullFileName);
     }
+
     public StringTable getStringTable() {
         return stringTable;
     }
+
     /**
      * Indirects this call to the string table.
      *
