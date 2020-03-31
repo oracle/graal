@@ -39,6 +39,7 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -562,16 +563,21 @@ public final class InterpreterToVM implements ContextAccess {
                         if (rootNode instanceof EspressoRootNode) {
                             EspressoRootNode espressoNode = (EspressoRootNode) rootNode;
                             Method method = espressoNode.getMethod();
-                            if (!c.checkFillIn(method)) {
-                                if (!c.checkThrowableInit(method)) {
-                                    int bci = -1; // unknown
-                                    if (espressoNode.isBytecodeNode()) {
-                                        bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
-                                    } else if (method.isNative()) {
-                                        bci = -2; // native
+
+                            // Methods annotated with java.lang.invoke.LambdaForm.Hidden are
+                            // ignored.
+                            if ((method.getModifiers() & Constants.ACC_LAMBDA_FORM_HIDDEN) == 0) {
+                                if (!c.checkFillIn(method)) {
+                                    if (!c.checkThrowableInit(method)) {
+                                        int bci = -1; // unknown
+                                        if (espressoNode.isBytecodeNode()) {
+                                            bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
+                                        } else if (method.isNative()) {
+                                            bci = -2; // native
+                                        }
+                                        frames.add(new VM.StackElement(method, bci));
+                                        c.inc();
                                     }
-                                    frames.add(new VM.StackElement(method, bci));
-                                    c.inc();
                                 }
                             }
                         }

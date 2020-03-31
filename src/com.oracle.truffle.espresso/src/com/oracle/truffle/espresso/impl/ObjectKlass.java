@@ -930,8 +930,11 @@ public final class ObjectKlass extends Klass {
 
     public RedefinitionCache getRedefineCache() {
         RedefinitionCache cache = redefineCache;
-        while (!cache.assumption.isValid()) {
-            cache = redefineCache;
+        if (!cache.assumption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            do {
+                cache = redefineCache;
+            } while (!cache.assumption.isValid());
         }
         return cache;
     }
