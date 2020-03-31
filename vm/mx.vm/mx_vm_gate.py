@@ -134,7 +134,6 @@ def gate_body(args, tasks):
 
     gate_substratevm(tasks)
     gate_sulong(tasks)
-    gate_ruby(tasks)
     gate_python(tasks)
     gate_svm_sl_tck(tasks)
     gate_svm_truffle_tck_js(tasks)
@@ -185,13 +184,6 @@ def gate_sulong(tasks):
                     return path_substitutions.get(dname, mx._get_dependency_path(dname))
                 mx_subst.path_substitutions.register_with_arg('path', distribution_paths)
                 sulong.extensions.runLLVMUnittests(functools.partial(svm._native_unittest, native_image))
-
-def gate_ruby(tasks):
-    with Task('Ruby', tasks, tags=[VmGateTasks.ruby]) as t:
-        if t:
-            ruby = join(mx_sdk_vm_impl.graalvm_output(), 'jre', 'languages', 'ruby', 'bin', 'truffleruby')
-            truffleruby_suite = mx.suite('truffleruby')
-            truffleruby_suite.extensions.ruby_testdownstream_aot([ruby, 'spec', 'release'])
 
 def gate_python(tasks):
     with Task('Python', tasks, tags=[VmGateTasks.python]) as t:
