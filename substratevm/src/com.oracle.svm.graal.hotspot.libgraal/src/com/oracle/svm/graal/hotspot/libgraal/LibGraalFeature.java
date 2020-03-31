@@ -779,3 +779,8 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy {
         }
     }
 }
+
+@TargetClass(className = "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder", onlyWith = LibGraalFeature.IsEnabled.class)
+@Delete("shouldn't appear in libgraal")
+final class Target_org_graalvm_compiler_hotspot_SymbolicSnippetEncoder {
+}
