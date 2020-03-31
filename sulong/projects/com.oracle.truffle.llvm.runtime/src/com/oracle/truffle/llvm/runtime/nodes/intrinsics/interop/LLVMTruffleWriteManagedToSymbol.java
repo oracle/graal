@@ -55,7 +55,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
  */
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
+public abstract class LLVMTruffleWriteManagedToSymbol extends LLVMIntrinsic {
 
     @Child AttachInteropTypeNode attachType = AttachInteropTypeNodeGen.create();
     @Child LLVMReplaceSymbolNode globalReplace = LLVMReplaceSymbolNodeGen.create();
