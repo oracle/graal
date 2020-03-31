@@ -78,7 +78,6 @@ import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
 import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
@@ -1458,7 +1457,7 @@ final class Runner {
             for (GlobalSymbol symbol : result.getDefinedGlobals()) {
                 // Cannot override the reserved symbols CONSTRUCTORS_VARNAME and
                 // DECONSTRUCTORS_VARNAME
-                if (symbol.isOverridable() && symbol.getLinkage() != Linkage.APPENDING) {
+                if (symbol.isOverridable() && !symbol.isIntrinsicGlobalVariable()) {
                     LLVMGlobal global = fileScope.getGlobalVariable(symbol.getName());
                     LLVMSymbol localGlobal = localScope.get(symbol.getName());
                     // Global symbol from the fileScope will be overridden if there exists a
