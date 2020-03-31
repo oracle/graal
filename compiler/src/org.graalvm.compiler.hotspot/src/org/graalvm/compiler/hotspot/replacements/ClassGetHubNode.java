@@ -56,7 +56,6 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -79,8 +78,7 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
         return canonical(null, metaAccess, constantReflection, allUsagesAvailable, KlassPointerStamp.klass(), clazz);
     }
 
-    @SuppressWarnings("unused")
-    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode clazz) {
+    public static boolean intrinsify(GraphBuilderContext b, ValueNode clazz) {
         ValueNode clazzValue = create(clazz, b.getMetaAccess(), b.getConstantReflection(), false);
         b.push(JavaKind.Object, b.append(clazzValue));
         return true;

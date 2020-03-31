@@ -87,4 +87,10 @@ public interface GraphBuilderTool {
         // By default generated plugins must be completely processed during parsing.
         return false;
     }
+
+    @SuppressWarnings("unused")
+    default boolean shouldDeferPlugin(GeneratedInvocationPlugin plugin) {
+        // By default generated plugins must be completely processed during parsing.
+        return false;
+    }
 }

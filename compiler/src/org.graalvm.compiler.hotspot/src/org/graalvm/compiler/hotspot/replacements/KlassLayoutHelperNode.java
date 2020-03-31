@@ -49,7 +49,6 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -74,8 +73,7 @@ public final class KlassLayoutHelperNode extends FloatingNode implements Canonic
         return canonical(null, config, klass, stamp, constantReflection, metaAccess);
     }
 
-    @SuppressWarnings("unused")
-    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, @InjectedNodeParameter GraalHotSpotVMConfig config, ValueNode klass) {
+    public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter GraalHotSpotVMConfig config, ValueNode klass) {
         ValueNode valueNode = create(config, klass, b.getConstantReflection(), b.getMetaAccess());
         b.push(JavaKind.Int, b.append(valueNode));
         return true;

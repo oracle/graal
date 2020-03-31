@@ -81,7 +81,7 @@ final class IgvDumpChannel implements WritableByteChannel {
 
     WritableByteChannel channel() throws IOException {
         if (closed) {
-            throw new IOException();
+            throw new IOException("already closed");
         }
         if (sharedChannel == null) {
             PrintGraphTarget target = DebugOptions.PrintGraph.getValue(options);

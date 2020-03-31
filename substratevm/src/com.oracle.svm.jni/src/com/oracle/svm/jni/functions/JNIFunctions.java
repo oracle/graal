@@ -769,6 +769,7 @@ final class JNIFunctions {
                 } catch (Throwable ignored) {
                     // ignore
                 }
+                System.err.flush();
             }
         }
     }

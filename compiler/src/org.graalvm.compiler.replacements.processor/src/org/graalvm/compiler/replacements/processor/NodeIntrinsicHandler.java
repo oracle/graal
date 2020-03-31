@@ -61,7 +61,6 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
     static final String MARKER_TYPE_CLASS_NAME = "org.graalvm.compiler.nodeinfo.StructuralInput.MarkerType";
     static final String GRAPH_BUILDER_CONTEXT_CLASS_NAME = "org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext";
     static final String STRUCTURAL_INPUT_CLASS_NAME = "org.graalvm.compiler.nodeinfo.StructuralInput";
-    static final String RESOLVED_JAVA_METHOD_CLASS_NAME = "jdk.vm.ci.meta.ResolvedJavaMethod";
     static final String RESOLVED_JAVA_TYPE_CLASS_NAME = "jdk.vm.ci.meta.ResolvedJavaType";
     static final String VALUE_NODE_CLASS_NAME = "org.graalvm.compiler.nodes.ValueNode";
     static final String STAMP_CLASS_NAME = "org.graalvm.compiler.core.common.type.Stamp";
@@ -69,6 +68,7 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
     static final String NODE_INFO_CLASS_NAME = "org.graalvm.compiler.nodeinfo.NodeInfo";
     static final String NODE_INTRINSIC_CLASS_NAME = "org.graalvm.compiler.graph.Node.NodeIntrinsic";
     static final String INJECTED_NODE_PARAMETER_CLASS_NAME = "org.graalvm.compiler.graph.Node.InjectedNodeParameter";
+    static final String FOREIGN_CALL_DESCRIPTOR_CLASS_NAME = "org.graalvm.compiler.core.common.spi.ForeignCallDescriptor";
 
     public NodeIntrinsicHandler(AbstractProcessor processor) {
         super(processor, NODE_INTRINSIC_CLASS_NAME);
@@ -142,18 +142,10 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
             constructors = findConstructors(nodeClass, constructorSignature, nonMatches, injectedStampIsNonNull);
         }
         Formatter msg = new Formatter();
-        if (factories.size() > 1) {
-            msg.format("Found more than one factory in %s matching node intrinsic:", nodeClass);
-            for (ExecutableElement candidate : factories) {
-                msg.format("%n  %s", candidate);
-            }
-            messager.printMessage(Kind.ERROR, msg.toString(), intrinsicMethod, annotation);
-        } else if (constructors.size() > 1) {
-            msg.format("Found more than one constructor in %s matching node intrinsic:", nodeClass);
-            for (ExecutableElement candidate : constructors) {
-                msg.format("%n  %s", candidate);
-            }
-            messager.printMessage(Kind.ERROR, msg.toString(), intrinsicMethod, annotation);
+        if (checkTooManyElements(annotation, intrinsicMethod, messager, nodeClass, "factory", factories, msg)) {
+            return;
+        } else if (checkTooManyElements(annotation, intrinsicMethod, messager, nodeClass, "constructor", constructors, msg)) {
+            return;
         } else if (factories.size() == 1) {
             generator.addPlugin(new GeneratedNodeIntrinsicPlugin.CustomFactoryPlugin(intrinsicMethod, factories.get(0), constructorSignature));
         } else if (constructors.size() == 1) {
@@ -168,6 +160,19 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
             }
             messager.printMessage(Kind.ERROR, msg.toString(), intrinsicMethod, annotation);
         }
+    }
+
+    private static boolean checkTooManyElements(AnnotationMirror annotation, ExecutableElement intrinsicMethod, Messager messager, TypeElement nodeClass, String kind, List<ExecutableElement> elements,
+                    Formatter msg) {
+        if (elements.size() > 1) {
+            msg.format("Found more than one %s in %s matching node intrinsic:", kind, nodeClass);
+            for (ExecutableElement candidate : elements) {
+                msg.format("%n  %s", candidate);
+            }
+            messager.printMessage(Kind.ERROR, msg.toString(), intrinsicMethod, annotation);
+            return true;
+        }
+        return false;
     }
 
     private void checkInputType(TypeElement nodeClass, TypeMirror returnType, Element element, AnnotationMirror annotation) {
@@ -244,7 +249,7 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
                 continue;
             }
 
-            if (method.getParameters().size() < 2) {
+            if (method.getParameters().size() < 1) {
                 nonMatches.put(method, "Too few arguments");
                 continue;
             }
@@ -252,12 +257,6 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
             VariableElement firstArg = method.getParameters().get(0);
             if (!isTypeCompatible(firstArg.asType(), processor.getType(GRAPH_BUILDER_CONTEXT_CLASS_NAME))) {
                 nonMatches.put(method, "First argument isn't of type GraphBuilderContext");
-                continue;
-            }
-
-            VariableElement secondArg = method.getParameters().get(1);
-            if (!isTypeCompatible(secondArg.asType(), processor.getType(RESOLVED_JAVA_METHOD_CLASS_NAME))) {
-                nonMatches.put(method, "Second argument isn't of type ResolvedJavaMethod");
                 continue;
             }
 
@@ -271,7 +270,12 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
                 continue;
             }
 
-            if (matchSignature(2, method, signature, nonMatches, requiresInjectedStamp)) {
+            if (!method.getModifiers().contains(Modifier.PUBLIC)) {
+                nonMatches.put(method, "Method is non-public");
+                continue;
+            }
+
+            if (matchSignature(1, method, signature, nonMatches, requiresInjectedStamp)) {
                 found.add(method);
             }
         }

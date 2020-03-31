@@ -33,6 +33,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
@@ -45,7 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * Interface for managing replacements.
  */
-public interface Replacements {
+public interface Replacements extends GeneratedPluginInjectionProvider {
 
     CoreProviders getProviders();
 

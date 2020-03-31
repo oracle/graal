@@ -69,6 +69,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
@@ -429,11 +430,15 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             String archPackage = "." + osArch + ".";
 
             final Field servicesCacheField = ReflectionUtil.lookupField(Services.class, "servicesCache");
-            filterArchitectureServices(archPackage, (Map<Class<?>, List<?>>) servicesCacheField.get(null));
+            Map<Class<?>, List<?>> servicesCache = (Map<Class<?>, List<?>>) servicesCacheField.get(null);
+            filterArchitectureServices(archPackage, servicesCache);
+            servicesCache.remove(GeneratedPluginFactory.class);
 
             if (JAVA_SPEC > 8) {
                 final Field graalServicesCacheField = ReflectionUtil.lookupField(GraalServices.class, "servicesCache");
-                filterArchitectureServices(archPackage, (Map<Class<?>, List<?>>) graalServicesCacheField.get(null));
+                Map<Class<?>, List<?>> graalServicesCache = (Map<Class<?>, List<?>>) graalServicesCacheField.get(null);
+                filterArchitectureServices(archPackage, graalServicesCache);
+                graalServicesCache.remove(GeneratedPluginFactory.class);
             }
 
             Field cachedHotSpotJVMCIBackendFactoriesField = ReflectionUtil.lookupField(HotSpotJVMCIRuntime.class, "cachedHotSpotJVMCIBackendFactories");
@@ -451,7 +456,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         // Mark all the Node classes as allocated so they are available during graph decoding.
         EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(impl.getBigBang().getOptions());
         for (NodeClass<?> nodeClass : encodedSnippets.getSnippetNodeClasses()) {
-            impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated(null);
+            impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsInHeap();
         }
     }
 
@@ -476,13 +481,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     public void afterCompilation(AfterCompilationAccess access) {
         FeatureImpl.AfterCompilationAccessImpl accessImpl = (FeatureImpl.AfterCompilationAccessImpl) access;
         EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(accessImpl.getUniverse().getBigBang().getOptions());
-
-        // These fields are all immutable but the snippet object table isn't since symbolic JVMCI
-        // references are converted into real references during decoding.
-        access.registerAsImmutable(encodedSnippets.getOriginalMethods());
-        access.registerAsImmutable(encodedSnippets.getSnippetEncoding());
-        access.registerAsImmutable(encodedSnippets.getSnippetNodeClasses());
-        access.registerAsImmutable(encodedSnippets.getSnippetStartOffsets());
+        encodedSnippets.visitImmutable(access::registerAsImmutable);
     }
 
     /**

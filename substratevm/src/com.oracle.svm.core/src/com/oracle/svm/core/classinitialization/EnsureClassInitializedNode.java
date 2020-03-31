@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(size = NodeSize.SIZE_16, cycles = NodeCycles.CYCLES_2, cyclesRationale = "Class initialization only runs at most once at run time, so the amortized cost is only the is-initialized check")
@@ -53,7 +52,7 @@ public class EnsureClassInitializedNode extends WithExceptionNode implements Sim
     @Input private ValueNode hub;
     @Input(InputType.State) private FrameState stateAfter;
 
-    static boolean intrinsify(GraphBuilderContext b, @SuppressWarnings("unused") ResolvedJavaMethod targetMethod, ValueNode hub) {
+    public static boolean intrinsify(GraphBuilderContext b, ValueNode hub) {
         b.add(new EnsureClassInitializedNode(b.nullCheckedValue(hub)));
         return true;
     }

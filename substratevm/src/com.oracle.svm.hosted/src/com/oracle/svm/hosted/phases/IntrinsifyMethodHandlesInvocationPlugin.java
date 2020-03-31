@@ -185,17 +185,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         this.universeProviders = providers;
 
         Providers originalProviders = GraalAccess.getOriginalProviders();
-        this.parsingProviders = new Providers(
-                        originalProviders.getMetaAccess(),
-                        originalProviders.getCodeCache(),
-                        originalProviders.getConstantReflection(),
-                        originalProviders.getConstantFieldProvider(),
-                        originalProviders.getForeignCalls(),
-                        originalProviders.getLowerer(),
-                        originalProviders.getReplacements(),
-                        originalProviders.getStampProvider(),
-                        originalProviders.getPlatformConfigurationProvider(),
-                        new MethodHandlesMetaAccessExtensionProvider());
+        this.parsingProviders = new Providers(originalProviders).copyWith(new MethodHandlesMetaAccessExtensionProvider());
 
         this.classInitializationPlugin = new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM());
 

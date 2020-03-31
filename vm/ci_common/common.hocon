@@ -260,7 +260,7 @@ builds += [
   ${vm_java_8} ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
     run: [
       # enable asserts in the JVM building the image and enable asserts in the resulting native image
-      [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa", "--extra-image-builder-argument=-ea", build]
+      [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa",  "--extra-image-builder-argument=-J-ea", "--extra-image-builder-argument=-ea", build]
       [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Compiler"]
     ]
     timelimit: "1:00:00"
@@ -270,7 +270,7 @@ builds += [
   ${vm_java_8} ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
     run: [
       # enable asserts in the JVM building the image and enable asserts in the resulting native image
-      [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa", "--extra-image-builder-argument=-ea", build]
+      [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa", "--extra-image-builder-argument=-J-ea", "--extra-image-builder-argument=-ea", build]
       [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Truffle"]
     ]
     logs: ${common_vm.logs} ["*/graal-compiler.log"]

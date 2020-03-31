@@ -52,7 +52,6 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Node for a {@linkplain ForeignCallDescriptor foreign} call with an {@linkplain WithExceptionNode
@@ -76,8 +75,8 @@ public class ForeignCallWithExceptionNode extends WithExceptionNode implements F
     protected final ForeignCallDescriptor descriptor;
     protected int bci = BytecodeFrame.UNKNOWN_BCI;
 
-    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod targetMethod, @InjectedNodeParameter Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        return ForeignCallNode.doIntrinsify(b, targetMethod, returnStamp, descriptor, arguments, true);
+    public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+        return ForeignCallNode.doIntrinsify(b, returnStamp, descriptor, arguments, true);
     }
 
     public ForeignCallWithExceptionNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {

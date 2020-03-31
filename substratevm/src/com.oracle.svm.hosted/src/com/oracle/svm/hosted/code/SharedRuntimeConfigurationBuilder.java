@@ -138,7 +138,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
                     LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, @SuppressWarnings("unused") SnippetReflectionProvider snippetReflection,
                     PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider) {
         return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider,
-                        metaAccessExtensionProvider);
+                        metaAccessExtensionProvider, snippetReflection, wordTypes);
     }
 
     public RuntimeConfiguration getRuntimeConfig() {

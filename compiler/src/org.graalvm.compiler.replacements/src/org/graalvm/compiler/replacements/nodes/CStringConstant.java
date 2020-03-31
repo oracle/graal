@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Represents a compile-time constant zero-terminated UTF-8 string installed with the generated
@@ -71,7 +70,7 @@ public final class CStringConstant extends DataPointerConstant {
         return "c\"" + string + "\"";
     }
 
-    public static boolean intrinsify(GraphBuilderContext b, @SuppressWarnings("unused") ResolvedJavaMethod targetMethod, String string) {
+    public static boolean intrinsify(GraphBuilderContext b, String string) {
         b.addPush(JavaKind.Object, new ConstantNode(new CStringConstant(string), StampFactory.pointer()));
         return true;
     }

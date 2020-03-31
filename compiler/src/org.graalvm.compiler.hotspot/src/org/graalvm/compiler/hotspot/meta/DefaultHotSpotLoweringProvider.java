@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.AlwaysInlineVTableStubs;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.InlineVTableStubs;
 import static org.graalvm.compiler.core.common.GraalOptions.OmitHotExceptionStacktrace;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.OSR_MIGRATION_END;
@@ -238,12 +239,12 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         resolveConstantSnippets = new ResolveConstantSnippets.Templates(options, factories, providers, target);
         objectCloneSnippets = new ObjectCloneSnippets.Templates(options, factories, providers, target);
         foreignCallSnippets = new ForeignCallSnippets.Templates(options, factories, providers, target);
-        objectSnippets = new ObjectSnippets.Templates(options, factories, providers, target);
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            objectSnippets = new ObjectSnippets.Templates(options, factories, providers, target);
+        }
         unsafeSnippets = new UnsafeSnippets.Templates(options, factories, providers, target);
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+        if (JavaVersionUtil.JAVA_SPEC >= 11 && GeneratePIC.getValue(options)) {
             // AOT only introduced in JDK 9
-            profileSnippets = null;
-        } else {
             profileSnippets = new ProfileSnippets.Templates(options, factories, providers, target);
         }
     }
@@ -419,6 +420,9 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             } else if (n instanceof KlassBeingInitializedCheckNode) {
                 allocationSnippets.lower((KlassBeingInitializedCheckNode) n, tool);
             } else if (n instanceof FastNotifyNode) {
+                if (JavaVersionUtil.JAVA_SPEC < 11) {
+                    throw GraalError.shouldNotReachHere("FastNotify is not support prior to 11");
+                }
                 if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
                     objectSnippets.lower(n, tool);
                 }

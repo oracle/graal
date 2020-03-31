@@ -1150,7 +1150,6 @@ suite = {
         "org.graalvm.compiler.api.directives",
         "org.graalvm.compiler.java",
         "org.graalvm.compiler.loop.phases",
-        "org.graalvm.compiler.word",
         "org.graalvm.compiler.virtual"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1339,7 +1338,9 @@ suite = {
     "org.graalvm.compiler.phases" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["org.graalvm.compiler.nodes"],
+      "dependencies" : [
+        "org.graalvm.compiler.word"
+      ],
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -2376,7 +2377,7 @@ suite = {
           "org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration",
           "org.graalvm.compiler.hotspot.HotSpotCodeCacheListener",
           "org.graalvm.compiler.hotspot.HotSpotBackendFactory",
-          "org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory",
+          "org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory",
           "org.graalvm.compiler.options.OptionDescriptors",
           "org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider",
           "org.graalvm.compiler.serviceprovider.JMXService",

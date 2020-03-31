@@ -79,7 +79,7 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
     @Override
     protected Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        return new SubstrateReplacements(p, snippetReflection, bytecodeProvider, ConfigurationValues.getTarget(), new SubstrateGraphMakerFactory(wordTypes));
+        return new SubstrateReplacements(p, snippetReflection, bytecodeProvider, ConfigurationValues.getTarget(), wordTypes, new SubstrateGraphMakerFactory(wordTypes));
     }
 
     @Override
