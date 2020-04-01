@@ -40,7 +40,7 @@ import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.memory.MemoryNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.replacements.nodes.ArrayCopy;
@@ -56,7 +56,7 @@ public class ArrayCopyWithExceptionNode extends WithExceptionNode implements Arr
     @Input NodeInputList<ValueNode> args;
     @OptionalInput(State) FrameState stateDuring;
     @OptionalInput(State) protected FrameState stateAfter;
-    @OptionalInput(Memory) protected MemoryNode lastLocationAccess;
+    @OptionalInput(Memory) protected MemoryKill lastLocationAccess;
 
     protected JavaKind elementKind;
 
@@ -88,12 +88,12 @@ public class ArrayCopyWithExceptionNode extends WithExceptionNode implements Arr
     }
 
     @Override
-    public MemoryNode getLastLocationAccess() {
+    public MemoryKill getLastLocationAccess() {
         return lastLocationAccess;
     }
 
     @Override
-    public void setLastLocationAccess(MemoryNode lla) {
+    public void setLastLocationAccess(MemoryKill lla) {
         updateUsagesInterface(lastLocationAccess, lla);
         lastLocationAccess = lla;
     }
