@@ -413,10 +413,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         /*
          * Note this method compiles without any inlining or other optimizations. It is therefore
          * important that this method stays small. It is compiled as a special stub that calls into
-         * the optimized code or if the call target is not yet optimized calls into partialEvaluationRoot
-         * directly. In order to avoid deoptimizations in this method it has optimizations disabled.
-         * Any additional code here will likely have significant impact on the intepreter call
-         * performance.
+         * the optimized code or if the call target is not yet optimized calls into
+         * partialEvaluationRoot directly. In order to avoid deoptimizations in this method it has
+         * optimizations disabled. Any additional code here will likely have significant impact on
+         * the intepreter call performance.
          */
         if (interpreterCall()) {
             return doInvoke(args);

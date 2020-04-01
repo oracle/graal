@@ -246,7 +246,8 @@ public abstract class PartialEvaluator {
     }
 
     /**
-     * The {@link PartialEvaluator} is the place where {@link ResolvedJavaMethod}s can be looked up on SVM.
+     * The {@link PartialEvaluator} is the place where {@link ResolvedJavaMethod}s can be looked up
+     * on SVM.
      *
      * @return OptimizedCallTarget#callDirect
      */
@@ -255,8 +256,9 @@ public abstract class PartialEvaluator {
     }
 
     /**
-     * {@link PartialEvaluator} is the place where {@link ResolvedJavaMethod}s can be looked up on SVM.
-     * 
+     * {@link PartialEvaluator} is the place where {@link ResolvedJavaMethod}s can be looked up on
+     * SVM.
+     *
      * @return OptimizedCallTarget#callIndirect
      */
     public ResolvedJavaMethod getCallIndirectMethod() {
@@ -264,8 +266,9 @@ public abstract class PartialEvaluator {
     }
 
     /**
-     * {@link PartialEvaluator} is the place where {@link ResolvedJavaMethod}s can be looked up on SVM.
-     * 
+     * {@link PartialEvaluator} is the place where {@link ResolvedJavaMethod}s can be looked up on
+     * SVM.
+     *
      * @return OptimizedCallTarget#callBoundary
      */
     public ResolvedJavaMethod getCallBoundary() {
