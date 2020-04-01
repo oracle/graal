@@ -106,7 +106,8 @@ public final class LLVMContext {
     private final Object externalLibrariesLock = new Object();
     private final List<String> internalLibraryNames;
 
-    // map that contains all non-native globals, needed for pointer->global lookups
+    // A map for pointer-> non-native symbol lookups.
+    // The list contains all the symbols declared from the same symbol defined.
     private final ConcurrentHashMap<LLVMPointer, List<LLVMSymbol>> symbolsReverseMap = new ConcurrentHashMap<>();
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
     private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
@@ -886,6 +887,9 @@ public final class LLVMContext {
         return sourceContext;
     }
 
+    /**
+     * Retrieve the global symbol associated with the pointer.
+     */
     @TruffleBoundary
     public LLVMGlobal findGlobal(LLVMPointer pointer) {
         List<LLVMSymbol> symbols = symbolsReverseMap.get(pointer);
@@ -895,6 +899,9 @@ public final class LLVMContext {
         return symbols.get(0).asGlobalVariable();
     }
 
+    /**
+     * Retrieve the symbol associated with the pointer.
+     */
     @TruffleBoundary
     public List<LLVMSymbol> findSymbols(LLVMPointer pointer) {
         return symbolsReverseMap.get(pointer);
@@ -916,16 +923,25 @@ public final class LLVMContext {
         }
     }
 
+    /**
+     * Register the list of symbols associated with the pointer.
+     */
     @TruffleBoundary
     public void registerSymbolReverseMap(List<LLVMSymbol> symbols, LLVMPointer pointer) {
         symbolsReverseMap.put(pointer, symbols);
     }
 
+    /**
+     * Register a symbol to list of symbols associated with the pointer.
+     */
     @TruffleBoundary
     public void registerSymbol(LLVMSymbol symbol, LLVMPointer pointer) {
         symbolsReverseMap.get(pointer).add(symbol);
     }
 
+    /**
+     * Remove an entry in the map, and return the list of symbols associated with the pointer.
+     */
     @TruffleBoundary
     public List<LLVMSymbol> removeSymbolReverseMap(LLVMPointer pointer) {
         return symbolsReverseMap.remove(pointer);

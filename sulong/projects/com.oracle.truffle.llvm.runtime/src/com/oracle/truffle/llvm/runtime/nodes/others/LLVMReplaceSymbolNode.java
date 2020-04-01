@@ -67,7 +67,7 @@ public abstract class LLVMReplaceSymbolNode extends LLVMNode {
         }
     }
 
-    @Specialization
+    @Specialization(guards = {"!symbol.isAlias()"})
     void doFallback(LLVMPointer value, LLVMSymbol symbol,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(symbol.getBitcodeID(false));
