@@ -538,6 +538,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle", false);
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.ci", false);
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler.management", true);
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.loader", false);
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.text.spi", false);
