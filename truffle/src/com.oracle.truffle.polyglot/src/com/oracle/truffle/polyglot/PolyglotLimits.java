@@ -313,7 +313,7 @@ final class PolyglotLimits {
                 newPredicate = NO_PREDICATE;
             }
             if (this.statementLimitSourcePredicate != null && newPredicate != statementLimitSourcePredicate) {
-                throw new IllegalArgumentException("Using multiple source predicates per engine is not supported. " +
+                throw PolyglotEngineException.illegalArgument("Using multiple source predicates per engine is not supported. " +
                                 "The same statement limit source predicate must be used for all polyglot contexts that are assigned to the same engine. " +
                                 "Resolve this by using the same predicate instance when constructing the limits object with ResourceLimits.Builder.statementLimit(long, Predicate).");
             }
@@ -332,7 +332,7 @@ final class PolyglotLimits {
                     }
                 }
                 if (time == -1) {
-                    throw new UnsupportedOperationException("ThreadMXBean.getCurrentThreadCpuTime() is not supported or enabled by the host VM but required for time limits.", cause);
+                    throw PolyglotEngineException.unsupported("ThreadMXBean.getCurrentThreadCpuTime() is not supported or enabled by the host VM but required for time limits.", cause);
                 }
             }
         }
@@ -368,7 +368,7 @@ final class PolyglotLimits {
                                 try {
                                     return statementLimitSourcePredicate.test(engine.getImpl().getPolyglotSource(s));
                                 } catch (Throwable e) {
-                                    throw new HostException(e);
+                                    throw PolyglotImpl.hostToGuestException(context, e);
                                 }
                             }
                         });
@@ -409,7 +409,7 @@ final class PolyglotLimits {
             try {
                 onEvent.accept(engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.creatorApi));
             } catch (Throwable t) {
-                return PolyglotImpl.wrapHostException(context, t);
+                return PolyglotImpl.hostToGuestException(context, t);
             }
             return null;
         }

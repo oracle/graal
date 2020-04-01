@@ -242,7 +242,7 @@ final class OptionValuesImpl implements OptionValues {
     private static RuntimeException failExperimental(String key) {
         final String message = String.format("Option '%s' is experimental and must be enabled with allowExperimentalOptions(). ", key) +
                         "Do not use experimental options in production environments.";
-        return new IllegalArgumentException(message);
+        return PolyglotEngineException.illegalArgument(message);
     }
 
     private RuntimeException failNotFound(String key) {
@@ -274,7 +274,7 @@ final class OptionValuesImpl implements OptionValues {
                 msg.format("%n    %s=<%s>", match.getName(), match.getKey().getType().getName());
             }
         }
-        throw new IllegalArgumentException(msg.toString());
+        throw PolyglotEngineException.illegalArgument(msg.toString());
     }
 
     /**

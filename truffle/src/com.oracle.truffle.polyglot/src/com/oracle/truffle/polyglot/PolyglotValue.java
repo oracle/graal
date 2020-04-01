@@ -143,7 +143,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public Value getArrayElement(Object receiver, long index) {
-        return getArrayElementUnsupported(languageContext, receiver);
+        try {
+            return getArrayElementUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @TruffleBoundary
@@ -153,7 +157,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public void setArrayElement(Object receiver, long index, Object value) {
-        setArrayElementUnsupported(languageContext, receiver);
+        try {
+            setArrayElementUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @TruffleBoundary
@@ -163,7 +171,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public boolean removeArrayElement(Object receiver, long index) {
-        throw removeArrayElementUnsupported(languageContext, receiver);
+        try {
+            throw removeArrayElementUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @TruffleBoundary
@@ -173,7 +185,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public long getArraySize(Object receiver) {
-        return getArraySizeUnsupported(languageContext, receiver);
+        try {
+            return getArraySizeUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @TruffleBoundary
@@ -183,7 +199,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public Value getMember(Object receiver, String key) {
-        return getMemberUnsupported(languageContext, receiver, key);
+        try {
+            return getMemberUnsupported(languageContext, receiver, key);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @TruffleBoundary
@@ -193,7 +213,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public void putMember(Object receiver, String key, Object member) {
-        putMemberUnsupported(languageContext, receiver);
+        try {
+            putMemberUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @TruffleBoundary
@@ -203,7 +227,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public boolean removeMember(Object receiver, String key) {
-        throw removeMemberUnsupported(languageContext, receiver);
+        try {
+            throw removeMemberUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @TruffleBoundary
@@ -213,12 +241,20 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public Value execute(Object receiver, Object[] arguments) {
-        throw executeUnsupported(languageContext, receiver);
+        try {
+            throw executeUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @Override
     public Value execute(Object receiver) {
-        throw executeUnsupported(languageContext, receiver);
+        try {
+            throw executeUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @TruffleBoundary
@@ -228,7 +264,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public Value newInstance(Object receiver, Object[] arguments) {
-        return newInstanceUnsupported(languageContext, receiver);
+        try {
+            return newInstanceUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @TruffleBoundary
@@ -238,12 +278,20 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public void executeVoid(Object receiver, Object[] arguments) {
-        executeVoidUnsupported(languageContext, receiver);
+        try {
+            executeVoidUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @Override
     public void executeVoid(Object receiver) {
-        executeVoidUnsupported(languageContext, receiver);
+        try {
+            executeVoidUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @TruffleBoundary
@@ -253,12 +301,20 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public Value invoke(Object receiver, String identifier, Object[] arguments) {
-        throw invokeUnsupported(languageContext, receiver, identifier);
+        try {
+            throw invokeUnsupported(languageContext, receiver, identifier);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @Override
     public Value invoke(Object receiver, String identifier) {
-        throw invokeUnsupported(languageContext, receiver, identifier);
+        try {
+            throw invokeUnsupported(languageContext, receiver, identifier);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @TruffleBoundary
@@ -268,79 +324,132 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public String asString(Object receiver) {
-        if (isNull(receiver)) {
-            throw nullCoercion(languageContext, receiver, String.class, "asString()", "isString()");
-        } else {
-            throw cannotConvert(languageContext, receiver, String.class, "asString()", "isString()", "Invalid coercion.");
+        try {
+            return asStringUnsupported(receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
+    }
+
+    protected final String asStringUnsupported(Object receiver) {
+        return invalidCastPrimitive(receiver, String.class, "asString()", "isString()", "Invalid coercion.");
     }
 
     @Override
     public boolean asBoolean(Object receiver) {
-        if (isNull(receiver)) {
-            throw nullCoercion(languageContext, receiver, boolean.class, "asBoolean()", "isBoolean()");
-        } else {
-            throw cannotConvert(languageContext, receiver, boolean.class, "asBoolean()", "isBoolean()", "Invalid or lossy primitive coercion.");
+        try {
+            return asBooleanUnsupported(receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
+    }
+
+    private static boolean isNullUncached(Object receiver) {
+        return InteropLibrary.getFactory().getUncached().isNull(receiver);
+    }
+
+    protected final boolean asBooleanUnsupported(Object receiver) {
+        return invalidCastPrimitive(receiver, boolean.class, "asBoolean()", "isBoolean()", "Invalid or lossy primitive coercion.");
+    }
+
+    private <T> T invalidCastPrimitive(Object receiver, Class<T> clazz, String asMethodName, String isMethodName, String detail) {
+        Object prev = hostEnter(languageContext);
+        try {
+            if (isNullUncached(receiver)) {
+                throw nullCoercion(languageContext, receiver, clazz, asMethodName, isMethodName);
+            } else {
+                throw cannotConvert(languageContext, receiver, clazz, asMethodName, isMethodName, detail);
+            }
+        } finally {
+            hostLeave(languageContext, prev);
         }
     }
 
     @Override
     public int asInt(Object receiver) {
-        if (isNull(receiver)) {
-            throw nullCoercion(languageContext, receiver, int.class, "asInt()", "fitsInInt()");
-        } else {
-            throw cannotConvert(languageContext, receiver, int.class, "asInt()", "fitsInInt()", "Invalid or lossy primitive coercion.");
+        try {
+            return asIntUnsupported(receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
+    }
+
+    protected final int asIntUnsupported(Object receiver) {
+        return invalidCastPrimitive(receiver, int.class, "asInt()", "fitsInInt()", "Invalid or lossy primitive coercion.");
     }
 
     @Override
     public long asLong(Object receiver) {
-        if (isNull(receiver)) {
-            throw nullCoercion(languageContext, receiver, long.class, "asLong()", "fitsInLong()");
-        } else {
-            throw cannotConvert(languageContext, receiver, long.class, "asLong()", "fitsInLong()", "Invalid or lossy primitive coercion.");
+        try {
+            return asLongUnsupported(receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
+    }
+
+    protected final long asLongUnsupported(Object receiver) {
+        return invalidCastPrimitive(receiver, long.class, "asLong()", "fitsInLong()", "Invalid or lossy primitive coercion.");
     }
 
     @Override
     public double asDouble(Object receiver) {
-        if (isNull(receiver)) {
-            throw nullCoercion(languageContext, receiver, double.class, "asDouble()", "fitsInDouble()");
-        } else {
-            throw cannotConvert(languageContext, receiver, double.class, "asDouble()", "fitsInDouble()", "Invalid or lossy primitive coercion.");
+        try {
+            return asDoubleUnsupported(receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
+    }
+
+    protected final double asDoubleUnsupported(Object receiver) {
+        return invalidCastPrimitive(receiver, double.class, "asDouble()", "fitsInDouble()", "Invalid or lossy primitive coercion.");
     }
 
     @Override
     public float asFloat(Object receiver) {
-        if (isNull(receiver)) {
-            throw nullCoercion(languageContext, receiver, float.class, "asFloat()", "fitsInFloat()");
-        } else {
-            throw cannotConvert(languageContext, receiver, float.class, "asFloat()", "fitsInFloat()", "Invalid or lossy primitive coercion.");
+        try {
+            return asFloatUnsupported(receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
+    }
+
+    protected final float asFloatUnsupported(Object receiver) {
+        return invalidCastPrimitive(receiver, float.class, "asFloat()", "fitsInFloat()", "Invalid or lossy primitive coercion.");
     }
 
     @Override
     public byte asByte(Object receiver) {
-        if (isNull(receiver)) {
-            throw nullCoercion(languageContext, receiver, byte.class, "asByte()", "fitsInByte()");
-        } else {
-            throw cannotConvert(languageContext, receiver, byte.class, "asByte()", "fitsInByte()", "Invalid or lossy primitive coercion.");
+        try {
+            return asByteUnsupported(receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
+    }
+
+    protected final byte asByteUnsupported(Object receiver) {
+        return invalidCastPrimitive(receiver, byte.class, "asByte()", "fitsInByte()", "Invalid or lossy primitive coercion.");
     }
 
     @Override
     public short asShort(Object receiver) {
-        if (isNull(receiver)) {
-            throw nullCoercion(languageContext, receiver, short.class, "asShort()", "fitsInShort()");
-        } else {
-            throw cannotConvert(languageContext, receiver, short.class, "asShort()", "fitsInShort()", "Invalid or lossy primitive coercion.");
+        try {
+            return asShortUnsupported(receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
+    }
+
+    protected final short asShortUnsupported(Object receiver) {
+        return invalidCastPrimitive(receiver, short.class, "asShort()", "fitsInShort()", "Invalid or lossy primitive coercion.");
     }
 
     @Override
     public long asNativePointer(Object receiver) {
-        return asNativePointerUnsupported(languageContext, receiver);
+        try {
+            return asNativePointerUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     static long asNativePointerUnsupported(PolyglotLanguageContext context, Object receiver) {
@@ -349,73 +458,115 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public Object asHostObject(Object receiver) {
+        try {
+            return asHostObjectUnsupported(receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
+    }
+
+    protected final Object asHostObjectUnsupported(Object receiver) {
         throw cannotConvert(languageContext, receiver, null, "asHostObject()", "isHostObject()", "Value is not a host object.");
     }
 
     @Override
     public Object asProxyObject(Object receiver) {
+        try {
+            return asProxyObjectUnsupported(receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
+    }
+
+    protected final Object asProxyObjectUnsupported(Object receiver) {
         throw cannotConvert(languageContext, receiver, null, "asProxyObject()", "isProxyObject()", "Value is not a proxy object.");
     }
 
     @Override
     public LocalDate asDate(Object receiver) {
-        if (isNull(receiver)) {
-            return null;
-        } else {
-            throw cannotConvert(languageContext, receiver, null, "asDate()", "isDate()", "Value does not contain date information.");
+        try {
+            if (isNullUncached(receiver)) {
+                return null;
+            } else {
+                throw cannotConvert(languageContext, receiver, null, "asDate()", "isDate()", "Value does not contain date information.");
+            }
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
     }
 
     @Override
     public LocalTime asTime(Object receiver) {
-        if (isNull(receiver)) {
-            return null;
-        } else {
-            throw cannotConvert(languageContext, receiver, null, "asTime()", "isTime()", "Value does not contain time information.");
+        try {
+            if (isNullUncached(receiver)) {
+                return null;
+            } else {
+                throw cannotConvert(languageContext, receiver, null, "asTime()", "isTime()", "Value does not contain time information.");
+            }
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
     }
 
     @Override
     public ZoneId asTimeZone(Object receiver) {
-        if (isNull(receiver)) {
-            return null;
-        } else {
-            throw cannotConvert(languageContext, receiver, null, "asTimeZone()", "isTimeZone()", "Value does not contain time zone information.");
+        try {
+            if (isNullUncached(receiver)) {
+                return null;
+            } else {
+                throw cannotConvert(languageContext, receiver, null, "asTimeZone()", "isTimeZone()", "Value does not contain time zone information.");
+            }
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
     }
 
     @Override
     public Instant asInstant(Object receiver) {
-        if (isNull(receiver)) {
-            return null;
-        } else {
-            throw cannotConvert(languageContext, receiver, null, "asInstant()", "isInstant()", "Value does not contain instant information.");
+        try {
+            if (isNullUncached(receiver)) {
+                return null;
+            } else {
+                throw cannotConvert(languageContext, receiver, null, "asInstant()", "isInstant()", "Value does not contain instant information.");
+            }
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
     }
 
     @Override
     public Duration asDuration(Object receiver) {
-        if (isNull(receiver)) {
-            return null;
-        } else {
-            throw cannotConvert(languageContext, receiver, null, "asDuration()", "isDuration()", "Value does not contain duration information.");
+        try {
+            if (isNullUncached(receiver)) {
+                return null;
+            } else {
+                throw cannotConvert(languageContext, receiver, null, "asDuration()", "isDuration()", "Value does not contain duration information.");
+            }
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
     }
 
     @Override
     public RuntimeException throwException(Object receiver) {
-        throw unsupported(languageContext, receiver, "throwException()", "isException()");
+        try {
+            throw unsupported(languageContext, receiver, "throwException()", "isException()");
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @Override
     public final Value getMetaObject(Object receiver) {
-        Object prev = enter(languageContext);
         try {
-            return getMetaObjectImpl(receiver);
+            Object prev = hostEnter(languageContext);
+            try {
+                return getMetaObjectImpl(receiver);
+            } finally {
+                hostLeave(languageContext, prev);
+            }
         } catch (Throwable e) {
-            throw PolyglotImpl.wrapGuestException(languageContext, e);
-        } finally {
-            leave(languageContext, prev);
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
     }
 
@@ -440,19 +591,23 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
     }
 
-    private static Object enter(PolyglotLanguageContext languageContext) {
-        return languageContext != null ? languageContext.context.engine.enterIfNeeded(languageContext.context) : null;
+    static Object hostEnter(PolyglotLanguageContext languageContext) {
+        if (languageContext == null) {
+            return null;
+        }
+        return languageContext.context.engine.enterIfNeeded(languageContext.context);
     }
 
-    private static void leave(PolyglotLanguageContext languageContext, Object prev) {
-        if (languageContext != null) {
-            languageContext.context.engine.leaveIfNeeded(prev, languageContext.context);
+    static void hostLeave(PolyglotLanguageContext languageContext, Object prev) {
+        if (languageContext == null) {
+            return;
         }
+        languageContext.context.engine.leaveIfNeeded(prev, languageContext.context);
     }
 
     @TruffleBoundary
     protected static RuntimeException unsupported(PolyglotLanguageContext languageContext, Object receiver, String message, String useToCheck) {
-        Object prev = enter(languageContext);
+        Object prev = hostEnter(languageContext);
         try {
             String polyglotMessage;
             if (useToCheck != null) {
@@ -462,11 +617,9 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 polyglotMessage = String.format("Unsupported operation %s.%s for %s.",
                                 Value.class.getSimpleName(), message, getValueInfo(languageContext, receiver));
             }
-            throw new PolyglotUnsupportedException(polyglotMessage);
-        } catch (Throwable e) {
-            throw PolyglotImpl.wrapGuestException(languageContext, e);
+            throw PolyglotEngineException.unsupported(polyglotMessage);
         } finally {
-            leave(languageContext, prev);
+            hostLeave(languageContext, prev);
         }
     }
 
@@ -482,7 +635,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             assert false : "receiver should never be null";
             return "null";
         }
-        Object prev = enter(languageContext);
+        Object prev = hostEnter(languageContext);
         try {
             PolyglotContextImpl context = languageContext.context;
             PolyglotLanguage displayLanguage = EngineAccessor.EngineImpl.findObjectLanguage(context.engine, receiver);
@@ -525,7 +678,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 return String.format("'%s'(language: %s, type: %s)", valueToString, languageName, metaObjectToString);
             }
         } finally {
-            leave(languageContext, prev);
+            hostLeave(languageContext, prev);
         }
 
     }
@@ -540,47 +693,43 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @TruffleBoundary
     protected static RuntimeException nullCoercion(PolyglotLanguageContext languageContext, Object receiver, Class<?> targetType, String message, String useToCheck) {
-        Object prev = enter(languageContext);
+        Object prev = hostEnter(languageContext);
         try {
             String valueInfo = getValueInfo(languageContext, receiver);
-            throw new PolyglotNullPointerException(String.format("Cannot convert null value %s to Java type '%s' using %s.%s. " +
+            throw PolyglotEngineException.nullPointer(String.format("Cannot convert null value %s to Java type '%s' using %s.%s. " +
                             "You can ensure that the operation is supported using %s.%s.",
                             valueInfo, targetType, Value.class.getSimpleName(), message, Value.class.getSimpleName(), useToCheck));
-        } catch (Throwable e) {
-            throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            leave(languageContext, prev);
+            hostLeave(languageContext, prev);
         }
     }
 
     @TruffleBoundary
     protected static RuntimeException cannotConvert(PolyglotLanguageContext languageContext, Object receiver, Class<?> targetType, String message, String useToCheck, String reason) {
-        Object prev = enter(languageContext);
+        Object prev = hostEnter(languageContext);
         try {
             String valueInfo = getValueInfo(languageContext, receiver);
             String targetTypeString = "";
             if (targetType != null) {
                 targetTypeString = String.format("to Java type '%s'", targetType.getTypeName());
             }
-            throw new PolyglotClassCastException(
+            throw PolyglotEngineException.classCast(
                             String.format("Cannot convert %s %s using %s.%s: %s You can ensure that the value can be converted using %s.%s.",
                                             valueInfo, targetTypeString, Value.class.getSimpleName(), message, reason, Value.class.getSimpleName(), useToCheck));
-        } catch (Throwable e) {
-            throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            leave(languageContext, prev);
+            hostLeave(languageContext, prev);
         }
     }
 
     @TruffleBoundary
     protected static RuntimeException invalidArrayIndex(PolyglotLanguageContext context, Object receiver, long index) {
         String message = String.format("Invalid array index %s for array %s.", index, getValueInfo(context, receiver));
-        throw new PolyglotArrayIndexOutOfBoundsException(message);
+        throw PolyglotEngineException.arrayIndexOutOfBounds(message);
     }
 
     @TruffleBoundary
     protected static RuntimeException invalidArrayValue(PolyglotLanguageContext context, Object receiver, long identifier, Object value) {
-        throw new PolyglotClassCastException(
+        throw PolyglotEngineException.classCast(
                         String.format("Invalid array value %s for array %s and index %s.",
                                         getValueInfo(context, value), getValueInfo(context, receiver), identifier));
     }
@@ -588,24 +737,23 @@ abstract class PolyglotValue extends AbstractValueImpl {
     @TruffleBoundary
     protected static RuntimeException invalidMemberKey(PolyglotLanguageContext context, Object receiver, String identifier) {
         String message = String.format("Invalid member key '%s' for object %s.", identifier, getValueInfo(context, receiver));
-        throw new PolyglotIllegalArgumentException(message);
+        throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
     protected static RuntimeException invalidMemberValue(PolyglotLanguageContext context, Object receiver, String identifier, Object value) {
         String message = String.format("Invalid member value %s for object %s and member key '%s'.", getValueInfo(context, value), getValueInfo(context, receiver), identifier);
-        throw new PolyglotIllegalArgumentException(message);
+        throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
     protected static RuntimeException invalidExecuteArgumentType(PolyglotLanguageContext context, Object receiver, UnsupportedTypeException e) {
         String originalMessage = e.getMessage() == null ? "" : e.getMessage() + " ";
         String[] formattedArgs = formatArgs(context, e.getSuppliedValues());
-        String message = String.format("Invalid argument when executing %s. %sProvided arguments: %s.",
+        throw PolyglotEngineException.illegalArgument(String.format("Invalid argument when executing %s. %sProvided arguments: %s.",
                         getValueInfo(context, receiver),
                         originalMessage,
-                        Arrays.asList(formattedArgs));
-        throw new PolyglotIllegalArgumentException(message);
+                        Arrays.asList(formattedArgs)));
     }
 
     @TruffleBoundary
@@ -617,14 +765,14 @@ abstract class PolyglotValue extends AbstractValueImpl {
                         getValueInfo(context, receiver),
                         originalMessage,
                         Arrays.asList(formattedArgs));
-        throw new PolyglotIllegalArgumentException(message);
+        throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
     protected static RuntimeException invalidInstantiateArgumentType(PolyglotLanguageContext context, Object receiver, Object[] arguments) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument when instantiating %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
-        throw new PolyglotIllegalArgumentException(message);
+        throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
@@ -632,7 +780,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when instantiating %s with arguments %s. Expected %d argument(s) but got %d.",
                         getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
-        throw new PolyglotIllegalArgumentException(message);
+        throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
@@ -640,7 +788,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when executing %s with arguments %s. Expected %d argument(s) but got %d.",
                         getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
-        throw new PolyglotIllegalArgumentException(message);
+        throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
@@ -649,7 +797,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         String message = String.format("Invalid argument count when invoking '%s' on %s with arguments %s. Expected %d argument(s) but got %d.",
                         member,
                         getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
-        throw new PolyglotIllegalArgumentException(message);
+        throw PolyglotEngineException.illegalArgument(message);
     }
 
     private static String[] formatArgs(PolyglotLanguageContext context, Object[] arguments) {
@@ -662,13 +810,15 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public final String toString(Object receiver) {
-        Object prev = enter(languageContext);
         try {
-            return toStringImpl(receiver);
+            Object prev = hostEnter(languageContext);
+            try {
+                return toStringImpl(receiver);
+            } finally {
+                hostLeave(languageContext, prev);
+            }
         } catch (Throwable e) {
-            throw PolyglotImpl.wrapGuestException(languageContext, e);
-        } finally {
-            leave(languageContext, prev);
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
     }
 
@@ -685,24 +835,26 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public SourceSection getSourceLocation(Object receiver) {
-        Object prev = enter(languageContext);
         try {
-            InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
-            com.oracle.truffle.api.source.SourceSection result = null;
-            if (lib.hasSourceLocation(receiver)) {
-                try {
-                    result = lib.getSourceLocation(receiver);
-                } catch (UnsupportedMessageException e) {
+            Object prev = hostEnter(languageContext);
+            try {
+                InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
+                com.oracle.truffle.api.source.SourceSection result = null;
+                if (lib.hasSourceLocation(receiver)) {
+                    try {
+                        result = lib.getSourceLocation(receiver);
+                    } catch (UnsupportedMessageException e) {
+                    }
                 }
+                if (result == null) {
+                    return null;
+                }
+                return EngineImpl.createSourceSectionStatic(EngineAccessor.SOURCE.getPolyglotSource(result.getSource()), result);
+            } finally {
+                hostLeave(languageContext, prev);
             }
-            if (result == null) {
-                return null;
-            }
-            return EngineImpl.createSourceSectionStatic(EngineAccessor.SOURCE.getPolyglotSource(result.getSource()), result);
-        } catch (final Throwable t) {
-            throw PolyglotImpl.wrapGuestException(languageContext, t);
-        } finally {
-            leave(languageContext, prev);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
     }
 
@@ -737,17 +889,29 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public boolean isMetaInstance(Object receiver, Object instance) {
-        throw unsupported(languageContext, receiver, "isMetaInstance(Object)", "isMetaObject()");
+        try {
+            throw unsupported(languageContext, receiver, "isMetaInstance(Object)", "isMetaObject()");
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @Override
     public String getMetaQualifiedName(Object receiver) {
-        throw unsupported(languageContext, receiver, "getMetaQualifiedName()", "isMetaObject()");
+        try {
+            throw unsupported(languageContext, receiver, "getMetaQualifiedName()", "isMetaObject()");
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     @Override
     public String getMetaSimpleName(Object receiver) {
-        throw unsupported(languageContext, receiver, "getMetaSimpleName()", "isMetaObject()");
+        try {
+            throw unsupported(languageContext, receiver, "getMetaSimpleName()", "isMetaObject()");
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException((languageContext), e);
+        }
     }
 
     static CallTarget createTarget(InteropNode root) {
@@ -2289,7 +2453,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             try {
                 return (T) ToHostNodeGen.getUncached().execute(receiver, targetType, targetType, languageContext, true);
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
+                throw PolyglotImpl.guestToHostException(languageContext, e);
             }
         }
 
@@ -2675,220 +2839,258 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public boolean isNumber(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.isNumber(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.isNumber(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public boolean fitsInByte(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.fitsInByte(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.fitsInByte(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public byte asByte(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.asByte(receiver);
-            } catch (UnsupportedMessageException e) {
-                return super.asByte(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.asByte(receiver);
+                } catch (UnsupportedMessageException e) {
+                    return asByteUnsupported(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public boolean isString(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.isString(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.isString(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public String asString(Object receiver) {
-            if (isNull(receiver)) {
-                return null;
-            }
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.asString(receiver);
-            } catch (UnsupportedMessageException e) {
-                return super.asString(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    if (isNullUncached(receiver)) {
+                        return null;
+                    }
+                    return UNCACHED_INTEROP.asString(receiver);
+                } catch (UnsupportedMessageException e) {
+                    return asStringUnsupported(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public boolean fitsInInt(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.fitsInInt(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.fitsInInt(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public int asInt(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.asInt(receiver);
-            } catch (UnsupportedMessageException e) {
-                return super.asInt(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.asInt(receiver);
+                } catch (UnsupportedMessageException e) {
+                    return asIntUnsupported(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public boolean isBoolean(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return InteropLibrary.getFactory().getUncached().isBoolean(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return InteropLibrary.getFactory().getUncached().isBoolean(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public boolean asBoolean(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return InteropLibrary.getFactory().getUncached().asBoolean(receiver);
-            } catch (UnsupportedMessageException e) {
-                return super.asBoolean(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return InteropLibrary.getFactory().getUncached().asBoolean(receiver);
+                } catch (UnsupportedMessageException e) {
+                    return asBooleanUnsupported(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public boolean fitsInFloat(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return InteropLibrary.getFactory().getUncached().fitsInFloat(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return InteropLibrary.getFactory().getUncached().fitsInFloat(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public float asFloat(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.asFloat(receiver);
-            } catch (UnsupportedMessageException e) {
-                return super.asFloat(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.asFloat(receiver);
+                } catch (UnsupportedMessageException e) {
+                    return asFloatUnsupported(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public boolean fitsInDouble(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.fitsInDouble(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.fitsInDouble(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public double asDouble(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.asDouble(receiver);
-            } catch (UnsupportedMessageException e) {
-                return super.asDouble(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.asDouble(receiver);
+                } catch (UnsupportedMessageException e) {
+                    return asDoubleUnsupported(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public boolean fitsInLong(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.fitsInLong(receiver);
-            } finally {
-                leave(languageContext, c);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.fitsInLong(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
+            } catch (Throwable e) {
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public long asLong(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.asLong(receiver);
-            } catch (UnsupportedMessageException e) {
-                return super.asLong(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.asLong(receiver);
+                } catch (UnsupportedMessageException e) {
+                    return asLongUnsupported(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public boolean fitsInShort(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.fitsInShort(receiver);
-            } finally {
-                leave(languageContext, c);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.fitsInShort(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
+            } catch (Throwable e) {
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 
         @Override
         public short asShort(Object receiver) {
-            Object c = enter(languageContext);
             try {
-                return UNCACHED_INTEROP.asShort(receiver);
-            } catch (UnsupportedMessageException e) {
-                return super.asShort(receiver);
+                Object c = hostEnter(languageContext);
+                try {
+                    return UNCACHED_INTEROP.asShort(receiver);
+                } catch (UnsupportedMessageException e) {
+                    return asShortUnsupported(receiver);
+                } finally {
+                    hostLeave(languageContext, c);
+                }
             } catch (Throwable e) {
-                throw PolyglotImpl.wrapGuestException(languageContext, e);
-            } finally {
-                leave(languageContext, c);
+                throw PolyglotImpl.guestToHostException((languageContext), e);
             }
         }
 

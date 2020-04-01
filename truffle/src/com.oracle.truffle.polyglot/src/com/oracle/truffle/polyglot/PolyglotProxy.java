@@ -427,7 +427,7 @@ final class PolyglotProxy implements TruffleObject {
 
     @TruffleBoundary
     RuntimeException illegalProxy(String message, Object... parameters) {
-        throw PolyglotImpl.wrapHostException(languageContext, new IllegalStateException(
+        throw PolyglotImpl.hostToGuestException(languageContext, new IllegalStateException(
                         String.format(message, parameters)));
     }
 
@@ -807,7 +807,7 @@ final class PolyglotProxy implements TruffleObject {
         try {
             return this.proxy.toString();
         } catch (Throwable t) {
-            throw PolyglotImpl.wrapHostException(languageContext, t);
+            throw PolyglotImpl.hostToGuestException(languageContext, t);
         }
     }
 

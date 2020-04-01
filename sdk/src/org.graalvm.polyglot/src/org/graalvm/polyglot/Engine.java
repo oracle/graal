@@ -679,8 +679,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public void validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> languages) {
-            access.validate(languages);
+        public String validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> languages) {
+            return access.validate(languages);
         }
 
     }
@@ -765,6 +765,11 @@ public final class Engine implements AutoCloseable {
                 }
             });
             PolyglotInvalid.AOT = aot.booleanValue();
+        }
+
+        @Override
+        public Context getCurrentContext() {
+            throw noPolyglotImplementationFound();
         }
 
         @Override

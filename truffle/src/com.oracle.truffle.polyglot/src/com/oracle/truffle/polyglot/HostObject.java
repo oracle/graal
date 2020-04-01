@@ -446,9 +446,9 @@ final class HostObject implements TruffleObject {
             Object javaValue;
             try {
                 javaValue = toHostNode.execute(value, obj.getClass().getComponentType(), null, receiver.languageContext, true);
-            } catch (ClassCastException | NullPointerException e) {
+            } catch (PolyglotEngineException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, e.e.getMessage());
             }
             try {
                 arraySet.execute(obj, (int) index, javaValue);
@@ -468,9 +468,9 @@ final class HostObject implements TruffleObject {
             Object javaValue;
             try {
                 javaValue = toHostNode.execute(value, Object.class, null, receiver.languageContext, true);
-            } catch (ClassCastException | NullPointerException e) {
+            } catch (PolyglotEngineException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, e.e.getMessage());
             }
             try {
                 List<Object> list = ((List<Object>) receiver.obj);
@@ -996,7 +996,7 @@ final class HostObject implements TruffleObject {
                 }
             }
         } catch (Throwable t) {
-            throw PolyglotImpl.wrapHostException(context, t);
+            throw PolyglotImpl.hostToGuestException(context, t);
         }
     }
 
@@ -1441,9 +1441,9 @@ final class HostObject implements TruffleObject {
             try {
                 Object value = toHost.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext, true);
                 cachedField.set(object.obj, value);
-            } catch (ClassCastException | NullPointerException | IllegalArgumentException e) {
+            } catch (PolyglotEngineException e) {
                 errorBranch.enter();
-                throw HostInteropErrors.unsupportedTypeException(rawValue, e);
+                throw HostInteropErrors.unsupportedTypeException(rawValue, e.e);
             }
         }
 
@@ -1457,8 +1457,8 @@ final class HostObject implements TruffleObject {
             try {
                 Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext, true);
                 field.set(object.obj, val);
-            } catch (ClassCastException | NullPointerException | IllegalArgumentException e) {
-                throw HostInteropErrors.unsupportedTypeException(rawValue, e);
+            } catch (PolyglotEngineException e) {
+                throw HostInteropErrors.unsupportedTypeException(rawValue, e.e);
             }
         }
     }

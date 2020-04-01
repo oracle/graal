@@ -121,9 +121,9 @@ abstract class HostExecuteNode extends Node {
             for (int i = 0; i < toJavaNodes.length; i++) {
                 convertedArguments[i] = toJavaNodes[i].execute(args[i], types[i], genericTypes[i], languageContext, true);
             }
-        } catch (ClassCastException | NullPointerException e) {
+        } catch (PolyglotEngineException e) {
             errorBranch.enter();
-            throw HostInteropErrors.unsupportedTypeException(args, e);
+            throw HostInteropErrors.unsupportedTypeException(args, e.e);
         }
         return doInvoke(cachedMethod, receiverProfile.profile(obj), convertedArguments, languageContext, toGuest);
     }
@@ -159,9 +159,9 @@ abstract class HostExecuteNode extends Node {
             } else {
                 convertedArguments[minArity] = toJavaNode.execute(args[minArity], types[minArity], genericTypes[minArity], languageContext, true);
             }
-        } catch (ClassCastException | NullPointerException e) {
+        } catch (PolyglotEngineException e) {
             errorBranch.enter();
-            throw HostInteropErrors.unsupportedTypeException(args, e);
+            throw HostInteropErrors.unsupportedTypeException(args, e.e);
         }
         return doInvoke(cachedMethod, receiverProfile.profile(obj), convertedArguments, languageContext, toGuest);
     }
@@ -182,9 +182,9 @@ abstract class HostExecuteNode extends Node {
         Object[] convertedArguments;
         try {
             convertedArguments = prepareArgumentsUncached(method, args, languageContext, toJavaNode, isVarArgsProfile);
-        } catch (ClassCastException | NullPointerException e) {
+        } catch (PolyglotEngineException e) {
             errorBranch.enter();
-            throw HostInteropErrors.unsupportedTypeException(args, e);
+            throw HostInteropErrors.unsupportedTypeException(args, e.e);
         }
         return doInvoke(methodProfile.execute(method), obj, convertedArguments, languageContext, toGuest);
     }
@@ -222,9 +222,9 @@ abstract class HostExecuteNode extends Node {
                     convertedArguments[i] = toJavaNode.execute(args[i], types[i], genericTypes[i], languageContext, true);
                 }
             }
-        } catch (ClassCastException | NullPointerException e) {
+        } catch (PolyglotEngineException e) {
             errorBranch.enter();
-            throw HostInteropErrors.unsupportedTypeException(args, e);
+            throw HostInteropErrors.unsupportedTypeException(args, e.e);
         }
         return doInvoke(overload, receiverProfile.profile(obj), convertedArguments, languageContext, toGuest);
     }
@@ -240,9 +240,9 @@ abstract class HostExecuteNode extends Node {
         Object[] convertedArguments;
         try {
             convertedArguments = prepareArgumentsUncached(overload, args, languageContext, toJavaNode, isVarArgsProfile);
-        } catch (ClassCastException | NullPointerException e) {
+        } catch (PolyglotEngineException e) {
             errorBranch.enter();
-            throw HostInteropErrors.unsupportedTypeException(args, e);
+            throw HostInteropErrors.unsupportedTypeException(args, e.e);
         }
         return doInvoke(methodProfile.execute(overload), obj, convertedArguments, languageContext, toGuest);
     }

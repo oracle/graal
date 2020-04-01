@@ -97,6 +97,8 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+
 import java.util.Random;
 
 /**
@@ -1997,14 +1999,9 @@ public final class TruffleFile {
 
     static <T extends Throwable> RuntimeException wrapHostException(T t, FileSystem fs) {
         if (LanguageAccessor.engineAccess().isInternal(fs)) {
-            throw sthrow(t);
+            throw Env.engineToLanguageException(t);
         }
         throw LanguageAccessor.engineAccess().wrapHostException(null, LanguageAccessor.engineAccess().getCurrentHostContext(), t);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends Throwable> RuntimeException sthrow(Throwable t) throws T {
-        throw (T) t;
     }
 
     private static final class AllFiles implements DirectoryStream.Filter<Path> {
