@@ -29,6 +29,8 @@ import java.util.ArrayList;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -42,6 +44,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
 import org.graalvm.compiler.nodes.debug.WeakCounterNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
@@ -187,7 +190,12 @@ public final class GraphEffectList extends EffectList {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 if (withExceptionNode.isAlive()) {
-                    graph.removeSplitPropagate(withExceptionNode, withExceptionNode.next());
+                    AbstractBeginNode next = withExceptionNode.next();
+                    graph.removeSplitPropagate(withExceptionNode, next);
+                    if (next.hasNoUsages() && next instanceof MemoryKill) {
+                        // This is a killing begin which is no longer needed.
+                        graph.replaceFixedWithFixed(next, graph.add(new BeginNode()));
+                    }
                 }
             }
 
