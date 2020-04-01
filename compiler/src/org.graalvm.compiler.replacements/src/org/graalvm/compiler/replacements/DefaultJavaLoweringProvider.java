@@ -267,6 +267,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerCommitAllocationNode((CommitAllocationNode) n, tool);
             } else if (n instanceof BoxNode) {
                 if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+                    /*
+                     * We do not perform box canonicalization directly in the node since want
+                     * virtualization of box nodes. Creating a boxed constant early on inhibits PEA
+                     * so we do it after PEA.
+                     */
                     FloatingNode canonical = canonicalizeBoxing((BoxNode) n, metaAccess, tool.getConstantReflection());
                     if (canonical != null) {
                         n.replaceAtUsages(InputType.Memory, (ValueNode) ((BoxNode) n).getLastLocationAccess());
