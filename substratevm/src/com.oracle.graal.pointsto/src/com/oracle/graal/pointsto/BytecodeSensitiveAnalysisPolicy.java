@@ -222,7 +222,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             while (toi.hasNextType()) {
                 AnalysisType type = toi.nextType();
 
-                AnalysisMethod method = type.resolveConcreteMethod(getTargetMethod(), getSource().invoke().getContextType());
+                AnalysisMethod method = type.resolveConcreteMethod(getTargetMethod());
                 if (method == null || Modifier.isAbstract(method.getModifiers())) {
                     /*
                      * Type states can be conservative, i.e., we can have receiver types that do not

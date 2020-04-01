@@ -829,6 +829,16 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return resolvedMethod == NULL_METHOD ? null : (AnalysisMethod) resolvedMethod;
     }
 
+    /**
+     * Wrapper for resolveConcreteMethod() that ignores the callerType parameter. The method that
+     * does the resolution, resolveMethod() above, ignores the callerType parameter and uses
+     * substMethod.getDeclaringClass() instead since we don't want any access checks in the
+     * analysis.
+     */
+    public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method) {
+        return (AnalysisMethod) WrappedJavaType.super.resolveConcreteMethod(method, null);
+    }
+
     @Override
     public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         return (AnalysisMethod) WrappedJavaType.super.resolveConcreteMethod(method, callerType);
