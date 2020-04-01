@@ -246,7 +246,8 @@ public abstract class PartialEvaluator {
     }
 
     /**
-     * {@link PartialEvaluator} is a pace where {@link ResolvedJavaMethod}s can be looked up on SVM.
+     * The {@link PartialEvaluator} is the place where {@link ResolvedJavaMethod}s can be looked up on SVM.
+     *
      * @return OptimizedCallTarget#callDirect
      */
     public ResolvedJavaMethod getCallDirectMethod() {
@@ -254,7 +255,8 @@ public abstract class PartialEvaluator {
     }
 
     /**
-     * {@link PartialEvaluator} is a pace where {@link ResolvedJavaMethod}s can be looked up on SVM.
+     * {@link PartialEvaluator} is the place where {@link ResolvedJavaMethod}s can be looked up on SVM.
+     * 
      * @return OptimizedCallTarget#callIndirect
      */
     public ResolvedJavaMethod getCallIndirectMethod() {
@@ -262,7 +264,8 @@ public abstract class PartialEvaluator {
     }
 
     /**
-     * {@link PartialEvaluator} is a pace where {@link ResolvedJavaMethod}s can be looked up on SVM.
+     * {@link PartialEvaluator} is the place where {@link ResolvedJavaMethod}s can be looked up on SVM.
+     * 
      * @return OptimizedCallTarget#callBoundary
      */
     public ResolvedJavaMethod getCallBoundary() {
@@ -608,7 +611,7 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings("unused")
-    protected PEGraphDecoder createGraphDecoder(OptionValues options, StructuredGraph graph, final HighTierContext tierContext, LoopExplosionPlugin loopExplosionPlugin,
+    protected PEGraphDecoder createGraphDecoder(Request request, LoopExplosionPlugin loopExplosionPlugin,
                     InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePluginList,
                     SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
@@ -620,7 +623,7 @@ public abstract class PartialEvaluator {
         plugins.clearInlineInvokePlugins();
         plugins.appendInlineInvokePlugin(replacements);
         plugins.appendInlineInvokePlugin(new ParsingInlineInvokePlugin(replacements, parsingInvocationPlugins, loopExplosionPlugin));
-        if (!getPolyglotOptionValue(options, PrintExpansionHistogram)) {
+        if (!getPolyglotOptionValue(request.options, PrintExpansionHistogram)) {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
 
@@ -628,7 +631,8 @@ public abstract class PartialEvaluator {
                         method -> TruffleCompilerRuntime.getRuntime().getInlineKind(method, true) == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
 
         Providers compilationUnitProviders = providers.copyWith(new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess()));
-        return new CachingPEGraphDecoder(architecture, graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations, AllowAssumptions.ifNonNull(graph.getAssumptions()),
+        return new CachingPEGraphDecoder(architecture, request.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
+                        AllowAssumptions.ifNonNull(request.graph.getAssumptions()),
                         loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, peRootForInlinling, peRootForAgnosticInlining,
                         sourceLanguagePositionProvider, postParsingPhase, graphCache);
     }
@@ -649,7 +653,7 @@ public abstract class PartialEvaluator {
         }
 
         SourceLanguagePositionProvider sourceLanguagePosition = new TruffleSourceLanguagePositionProvider(request.inliningPlan);
-        PEGraphDecoder decoder = createGraphDecoder(request.options, request.graph, request.highTierContext, loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin,
+        PEGraphDecoder decoder = createGraphDecoder(request, loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin,
                         nodePlugins,
                         sourceLanguagePosition, graphCache);
         decoder.decode(request.graph.method(), request.graph.isSubstitution(), request.graph.trackNodeSourcePosition());
