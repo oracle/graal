@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
+import java.lang.reflect.Method;
 import static org.graalvm.libgraal.jni.JNIUtil.createString;
 import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
 
@@ -48,6 +49,17 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
 class MBeanProxy<T extends DynamicMBean> {
+
+    private static final Method getCurrentJavaThreadMethod;
+    static {
+        Method m;
+        try {
+            m = HotSpotJVMCIRuntime.class.getMethod("getCurrentJavaThread");
+        } catch (NoSuchMethodException e) {
+            m = null;
+        }
+        getCurrentJavaThreadMethod = m;
+    }
 
     // Classes defined in HotSpot heap by JNI, the values are filled by LibGraalFeature.
     private static final String HS_BEAN_CLASS_NAME = null;
@@ -159,13 +171,16 @@ class MBeanProxy<T extends DynamicMBean> {
         return objName;
     }
 
-    static void initializeJNI(GraalHotSpotVMConfig config) {
+    static boolean initializeJNI(GraalHotSpotVMConfig config) {
+        if (getCurrentJavaThreadMethod == null) {
+            return false;
+        }
         if (jniEnvOffset == 0) {
             synchronized (MBeanProxy.class) {
                 if (jniEnvOffset == 0) {
                     if (config.jniEnvironmentOffset == Integer.MIN_VALUE) {
                         // Old unsupported JVMCI version.
-                        return;
+                        return false;
                     }
                     memPoolBean = new LibGraalMemoryPoolMBean();
                     jniEnvOffset = config.jniEnvironmentOffset;
@@ -179,6 +194,7 @@ class MBeanProxy<T extends DynamicMBean> {
                 }
             }
         }
+        return true;
     }
 
     static JNI.JClass getHotSpotEntryPoints() {
@@ -192,8 +208,15 @@ class MBeanProxy<T extends DynamicMBean> {
         if (jniEnvOffset == 0) {
             throw new IllegalStateException("JniEnvOffset is not yet initialized.");
         }
-        long currentJavaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
-        return WordFactory.pointer(currentJavaThreadAddr + jniEnvOffset);
+        if (getCurrentJavaThreadMethod == null) {
+            throw new IllegalStateException("CurrentJavaThread not supported by JVMCI.");
+        }
+        try {
+            long currentJavaThreadAddr = (Long) getCurrentJavaThreadMethod.invoke(HotSpotJVMCIRuntime.runtime());
+            return WordFactory.pointer(currentJavaThreadAddr + jniEnvOffset);
+        } catch (ReflectiveOperationException reflectiveException) {
+            throw new RuntimeException("Failed to invoke HotSpotJVMCIRuntime::getCurrentJavaThread", reflectiveException);
+        }
     }
 
     /**
