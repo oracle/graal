@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,39 +30,39 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.word.LocationIdentity;
 
 /**
- * A begin node that kills a single memory location. See {@link MultiKillingBeginNode} for a version
- * with multiple killed locations.
+ * A begin node that kills multiple memory locations. See {@link KillingBeginNode} for a version
+ * with a single killed location.
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_0, size = SIZE_0)
-public final class KillingBeginNode extends AbstractBeginNode implements SingleMemoryKill {
+public final class MultiKillingBeginNode extends AbstractBeginNode implements MultiMemoryKill {
 
-    public static final NodeClass<KillingBeginNode> TYPE = NodeClass.create(KillingBeginNode.class);
-    protected LocationIdentity locationIdentity;
+    public static final NodeClass<MultiKillingBeginNode> TYPE = NodeClass.create(MultiKillingBeginNode.class);
+    protected LocationIdentity[] locationIdentities;
 
-    public KillingBeginNode(LocationIdentity locationIdentity) {
+    public MultiKillingBeginNode(LocationIdentity[] locationIdentities) {
         super(TYPE);
-        this.locationIdentity = locationIdentity;
+        this.locationIdentities = locationIdentities;
     }
 
-    public static AbstractBeginNode begin(FixedNode with, LocationIdentity locationIdentity) {
-        if (with instanceof KillingBeginNode) {
-            return (KillingBeginNode) with;
+    public static AbstractBeginNode begin(FixedNode with, LocationIdentity[] locationIdentities) {
+        if (with instanceof MultiKillingBeginNode) {
+            return (MultiKillingBeginNode) with;
         }
-        AbstractBeginNode begin = with.graph().add(KillingBeginNode.create(locationIdentity));
+        AbstractBeginNode begin = with.graph().add(MultiKillingBeginNode.create(locationIdentities));
         begin.setNext(with);
         return begin;
     }
 
-    public static AbstractBeginNode create(LocationIdentity locationIdentity) {
-        return new KillingBeginNode(locationIdentity);
+    public static AbstractBeginNode create(LocationIdentity[] locationIdentities) {
+        return new MultiKillingBeginNode(locationIdentities);
     }
 
     @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        return locationIdentity;
+    public LocationIdentity[] getKilledLocationIdentities() {
+        return locationIdentities;
     }
 }

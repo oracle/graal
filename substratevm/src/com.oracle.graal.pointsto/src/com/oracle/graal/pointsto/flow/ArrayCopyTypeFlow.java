@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,10 +30,11 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
-import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
+
+import org.graalvm.compiler.replacements.nodes.ArrayCopy;
 
 /**
- * Models the flow transfer of an {@link BasicArrayCopyNode} which intrinsifies calls to
+ * Models the flow transfer of an {@link ArrayCopy} node which intrinsifies calls to
  * System.arraycopy(). This flow registers itself as an observer for both the source and the
  * destination. When either the source or the destination elements change the element flows from
  * source are passed to destination.
