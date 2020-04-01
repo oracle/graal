@@ -430,7 +430,7 @@ class UnitTestRun:
                     extra_args = ['--verbose', '--enable-timing']
                 else:
                     extra_args = []
-                if 'coverage' not in Task.tags:
+                if Task.tags is None or 'coverage' not in Task.tags:
                     # If this is a coverage execution, we want maximal coverage
                     # and thus must not fail fast.
                     extra_args += ['--fail-fast']
