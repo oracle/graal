@@ -140,11 +140,11 @@ public class HeapImpl extends Heap {
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.imageHeapInfo = new ImageHeapInfo();
         this.classList = null;
-        SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(() -> {
-            logImageHeapPartitionBoundaries(Log.log()).newline();
-            zapValuesToLog(Log.log()).newline();
-            report(Log.log(), true).newline();
-            Log.log().newline();
+        SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(log -> {
+            logImageHeapPartitionBoundaries(log).newline();
+            zapValuesToLog(log).newline();
+            report(log, true).newline();
+            log.newline();
         });
     }
 
