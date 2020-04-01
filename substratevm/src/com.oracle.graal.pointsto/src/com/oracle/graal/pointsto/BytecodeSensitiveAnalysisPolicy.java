@@ -163,9 +163,9 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(Invoke invoke, MethodCallTargetNode target,
+    public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        return new BytecodeSensitiveVirtualInvokeTypeFlow(invoke, target, actualParameters, actualReturn, location);
+        return new BytecodeSensitiveVirtualInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
     /**
@@ -185,9 +185,9 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         private final ConcurrentMap<MethodFlowsGraph, Object> calleesFlows;
         private final AnalysisContext callerContext;
 
-        protected BytecodeSensitiveVirtualInvokeTypeFlow(Invoke invoke, MethodCallTargetNode target,
+        protected BytecodeSensitiveVirtualInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
                         TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-            super(invoke, target, actualParameters, actualReturn, location);
+            super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
             calleesFlows = null;
             callerContext = null;
         }

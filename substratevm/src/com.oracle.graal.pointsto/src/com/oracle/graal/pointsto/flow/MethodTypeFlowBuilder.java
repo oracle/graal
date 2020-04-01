@@ -1376,18 +1376,18 @@ public class MethodTypeFlowBuilder {
                          * actual return builder is materialized.
                          */
                         ActualReturnTypeFlow actualReturn = null;
-
+                        AnalysisType receiverType = invoke.getInvokeKind().hasReceiver() ? (AnalysisType) invoke.getReceiverType() : null;
                         InvokeTypeFlow invokeFlow = null;
                         switch (target.invokeKind()) {
                             case Static:
-                                invokeFlow = new StaticInvokeTypeFlow(invoke, target, actualParameters, actualReturn, location);
+                                invokeFlow = new StaticInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
                                 break;
                             case Special:
-                                invokeFlow = new SpecialInvokeTypeFlow(invoke, target, actualParameters, actualReturn, location);
+                                invokeFlow = new SpecialInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
                                 break;
                             case Virtual:
                             case Interface:
-                                invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invoke, target, actualParameters, actualReturn, location);
+                                invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
                                 break;
                             default:
                                 throw shouldNotReachHere();
