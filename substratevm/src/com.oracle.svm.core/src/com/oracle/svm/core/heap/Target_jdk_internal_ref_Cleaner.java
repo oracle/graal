@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.heap;
 
 import java.lang.ref.ReferenceQueue;
 import java.util.function.Function;
@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 class Package_jdk_internal_ref implements Function<TargetClass, String> {
@@ -53,17 +54,6 @@ public final class Target_jdk_internal_ref_Cleaner {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     static Target_jdk_internal_ref_Cleaner first;
 
-    /**
-     * Contrary to the comment on {@code sun.misc.Cleaner}.dummyQueue, in SubstrateVM the queue can
-     * have Cleaner instances on it, because SubstrateVM does not have a ReferenceHandler thread to
-     * clean instances, so SubstrateVM puts them on the queue and drains the queue after collections
-     * in {@link CleanerSupport#drainReferenceQueues()}.
-     * <p>
-     * Cleaner instances that do bad things are even worse in SubstrateVM than they are in the
-     * HotSpot VM, because they are run on the thread that started a collection.
-     * <p>
-     * Changing the access from `private` to `protected`, and reinitializing to an empty queue.
-     */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
     static ReferenceQueue<Object> dummyQueue = new ReferenceQueue<>();
 
@@ -75,10 +65,9 @@ public final class Target_jdk_internal_ref_Cleaner {
  * On JDK11+, the cleaner infrastructure is quite different from JDK8:
  * <ul>
  * <li>java.lang.ref.Cleaner: starts a new thread to process its reference queue.</li>
- * <li>jdk.internal.ref.CleanerFactory: provides a common cleaner that is used in all places that
- * don't want to start an explicit reference cleaner thread. In native-image, we do not spawn a
- * separate thread for the reference processing. Instead, we drain the queue after garbage
- * collections in {@link CleanerSupport#drainReferenceQueues()}.</li>
+ * <li>jdk.internal.ref.CleanerFactory: provides a common cleaner with a shared cleaner thread. In
+ * native-image, we do not necessarily spawn a separate thread for processing references, but may
+ * drain the queue after garbage collection.</li>
  * <li>jdk.internal.ref.Cleaner: this only seems to be used by DirectByteBuffer but at least the
  * handling is the same as on JDK 8.
  * </ul>

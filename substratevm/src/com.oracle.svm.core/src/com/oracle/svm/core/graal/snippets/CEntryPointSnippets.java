@@ -275,6 +275,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (UseDedicatedVMOperationThread.getValue()) {
             VMOperationControl.startVMOperationThread();
         }
+        RuntimeSupport.executeInitializationHooks();
         return CEntryPointErrors.NO_ERROR;
     }
 
@@ -509,7 +510,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         Log log = Log.log();
         if (log.isEnabled()) {
             if (NoAllocationVerifier.isActive()) {
-                log.exception(exception).newline();
+                log.exception(exception);
             } else {
                 StringWriter writer = new StringWriter();
                 exception.printStackTrace(new PrintWriter(writer));
