@@ -160,7 +160,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasOptFailedException(log));
         };
         executeForked(verifier, ExceptionActionTest::createConstantNode,
-                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.callRoot:Bailout"},
+                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.partialEvaluationRoot:Bailout"},
                         "engine.PerformanceWarningsAreFatal", "all");
     }
 
@@ -172,7 +172,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasOptFailedException(log));
         };
         executeForked(verifier, ExceptionActionTest::createConstantNode,
-                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.callRoot:Bailout"},
+                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.partialEvaluationRoot:Bailout"},
                         "engine.TraceCompilationDetails", "true");
     }
 
