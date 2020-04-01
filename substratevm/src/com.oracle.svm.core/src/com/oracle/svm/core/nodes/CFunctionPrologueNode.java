@@ -50,9 +50,8 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
  * transition}.
  *
  * It must always be paired with a {@link CFunctionEpilogueNode}. In between the prologue and
- * epilogue, there must be exactly one {@link InvokeNode} (note that it must not
- * bAbstractStateSplite an invoke that requires an exception handler, i.e., it must not be an
- * {@link InvokeWithExceptionNode}.
+ * epilogue, there must be exactly one {@link InvokeNode} (note that it must not be an invoke that
+ * requires an exception handler, i.e., it must not be an {@link InvokeWithExceptionNode}.
  *
  * Part of the prologue/epilogue are emitted by the lowering of these nodes using snippets, see
  * class CFunctionSnippets. Other parts are emitted in the backend when the call instruction is
@@ -91,9 +90,7 @@ public final class CFunctionPrologueNode extends FixedWithNextNode implements Lo
 
     @Override
     public void lower(LoweringTool tool) {
-        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
-            tool.getLowerer().lower(this, tool);
-        }
+        tool.getLowerer().lower(this, tool);
     }
 
     @Override
@@ -107,5 +104,4 @@ public final class CFunctionPrologueNode extends FixedWithNextNode implements Lo
 
     @NodeIntrinsic
     public static native void cFunctionPrologue(@ConstantNodeParameter int newThreadStatus);
-
 }

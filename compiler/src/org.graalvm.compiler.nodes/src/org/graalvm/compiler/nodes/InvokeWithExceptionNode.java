@@ -196,7 +196,7 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     }
 
     @Override
-    public void replaceBci(int newBci) {
+    public void setBci(int newBci) {
         assert BytecodeFrame.isPlaceholderBci(bci) && !BytecodeFrame.isPlaceholderBci(newBci) : "can only replace placeholder with better bci";
         bci = newBci;
     }

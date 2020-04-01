@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -173,9 +174,9 @@ public class SubstrateGraphKit extends GraphKit {
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
-            CFunctionEpilogueNode epilog = new CFunctionEpilogueNode(newThreadStatus);
-            append(epilog);
-            epilog.setStateAfter(invoke.stateAfter().duplicateWithVirtualState());
+            CFunctionEpilogueNode epilogue = new CFunctionEpilogueNode(newThreadStatus);
+            append(epilogue);
+            epilogue.setStateAfter(invoke.stateAfter().duplicateWithVirtualState());
         } else if (emitDeoptTarget) {
             DeoptEntryNode deoptEntry = append(new DeoptEntryNode());
             deoptEntry.setStateAfter(invoke.stateAfter());
@@ -286,5 +287,17 @@ public class SubstrateGraphKit extends GraphKit {
             exceptionState.setRethrowException(true);
             unwindMergeNode.setStateAfter(exceptionState.create(BytecodeFrame.AFTER_EXCEPTION_BCI, unwindMergeNode));
         }
+    }
+
+    public void appendStateSplitProxy(FrameState state) {
+        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+        append(proxy);
+        proxy.setStateAfter(state);
+    }
+
+    public void appendStateSplitProxy(FrameStateBuilder stateBuilder) {
+        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+        append(proxy);
+        proxy.setStateAfter(stateBuilder.create(bci(), proxy));
     }
 }

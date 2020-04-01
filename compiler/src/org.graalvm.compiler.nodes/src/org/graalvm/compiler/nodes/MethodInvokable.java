@@ -41,7 +41,5 @@ public interface MethodInvokable {
      * the during-state of such a foreign call.
      */
     @SuppressWarnings("unused")
-    default void setBci(int bci) {
-
-    }
+    void setBci(int bci);
 }

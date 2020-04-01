@@ -26,10 +26,17 @@ package org.graalvm.compiler.nodes.memory;
 
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.word.LocationIdentity;
 
+/**
+ * This is a special form of write node that does not have a side effect to the interpreter, i.e.,
+ * it does not modify memory that is visible to other threads or modifies state beyond what is
+ * captured in {@link FrameState} nodes. Thus is should only be used with caution in sutiable
+ * scenarios.
+ */
 @NodeInfo(nameTemplate = "SideEffectFreeWrite#{p#location/s}")
 public class SideEffectFreeWrite extends WriteNode {
 

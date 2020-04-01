@@ -116,5 +116,4 @@ public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, Deoptim
         return callTarget().invokeKind();
     }
 
-    void replaceBci(int newBci);
 }

@@ -371,8 +371,8 @@ public class GraphDecoder {
     }
 
     /**
-     * Additional information encoded for {@link Invoke} nodes to allow method inlining
-     * without decoding the frame state and successors beforehand.
+     * Additional information encoded for {@link Invoke} nodes to allow method inlining without
+     * decoding the frame state and successors beforehand.
      */
     protected static class InvokeData {
         public final Invoke invoke;

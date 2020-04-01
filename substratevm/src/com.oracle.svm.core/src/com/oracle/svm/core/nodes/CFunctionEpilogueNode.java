@@ -71,9 +71,7 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
 
     @Override
     public void lower(LoweringTool tool) {
-        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
-            tool.getLowerer().lower(this, tool);
-        }
+        tool.getLowerer().lower(this, tool);
     }
 
     @Override
@@ -97,7 +95,6 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
 
     @Override
     public void setStateBefore(FrameState state) {
-
         updateUsages(this.stateBefore, state);
         this.stateBefore = state;
     }

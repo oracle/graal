@@ -467,7 +467,7 @@ public class InliningUtil extends ValueMergeUtil {
             // A partial intrinsic exit must be replaced with a call to
             // the intrinsified method.
             Invoke dup = (Invoke) duplicates.get(exit.asNode());
-            dup.replaceBci(invoke.bci());
+            dup.setBci(invoke.bci());
         }
         if (unwindNode != null) {
             unwindNode = (UnwindNode) duplicates.get(unwindNode);

@@ -2334,7 +2334,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     if (node instanceof Invoke) {
                         Invoke invoke = (Invoke) node;
                         if (invoke.bci() == BytecodeFrame.UNKNOWN_BCI) {
-                            invoke.replaceBci(bci());
+                            invoke.setBci(bci());
                         }
                         if (node instanceof InvokeWithExceptionNode) {
                             // The graphs for MethodSubsitutions are produced assuming that

@@ -397,37 +397,11 @@ public final class GraalFeature implements Feature {
         for (JavaKind kind : new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Double, JavaKind.Float, JavaKind.Int, JavaKind.Long, JavaKind.Short}) {
             Field f = null;
             try {
-                switch (kind) {
-                    case Byte:
-                        f = Byte.class.getDeclaredField("value");
-                        break;
-                    case Boolean:
-                        f = Boolean.class.getDeclaredField("value");
-                        break;
-                    case Short:
-                        f = Short.class.getDeclaredField("value");
-                        break;
-                    case Char:
-                        f = Character.class.getDeclaredField("value");
-                        break;
-                    case Float:
-                        f = Float.class.getDeclaredField("value");
-                        break;
-                    case Int:
-                        f = Integer.class.getDeclaredField("value");
-                        break;
-                    case Long:
-                        f = Long.class.getDeclaredField("value");
-                        break;
-                    case Double:
-                        f = Double.class.getDeclaredField("value");
-                        break;
-                    default:
-                        throw GraalError.unimplemented();
-                }
+                f = kind.toBoxedJavaClass().getDeclaredField("value");
             } catch (NoSuchFieldException | SecurityException e) {
                 throw GraalError.shouldNotReachHere(e);
             }
+            assert f != null;
             ImageSingletons.lookup(SubstrateMetaAccess.class).getBoxingFields().put(f, config.getMetaAccess().lookupJavaField(f));
         }
 

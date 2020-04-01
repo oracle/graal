@@ -573,7 +573,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                         throw new GraalError("unexpected invoke %s in snippet", call.targetMethod());
                     }
                     // Here we need to fix the bci of the invoke
-                    invoke.replaceBci(arraycopy.getBci());
+                    invoke.setBci(arraycopy.getBci());
                     invoke.setStateDuring(null);
                     invoke.setStateAfter(null);
                     if (arraycopy.stateDuring() != null) {

@@ -820,7 +820,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (graphBuilderContext.invokeConsumed) {
                 /* Nothing to do. */
             } else if (graphBuilderContext.lastInstr != null) {
-                if (graphBuilderContext.lastInstr instanceof MethodInvokable) {
+                if (graphBuilderContext.lastInstr instanceof MethodInvokable && !BytecodeFrame.isPlaceholderBci(invokeData.invoke.bci()) &&
+                                BytecodeFrame.isPlaceholderBci(((MethodInvokable) graphBuilderContext.lastInstr).bci())) {
                     ((MethodInvokable) graphBuilderContext.lastInstr).setBci(invokeData.invoke.bci());
                 }
                 registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, true);
@@ -1163,7 +1164,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         if (node instanceof ForeignCallNode) {
             ForeignCallNode foreignCall = (ForeignCallNode) node;
-            if (foreignCall.getBci() == BytecodeFrame.UNKNOWN_BCI && methodScope.invokeData != null) {
+            if (foreignCall.getBci() == BytecodeFrame.UNKNOWN_BCI && methodScope.invokeData != null && !BytecodeFrame.isPlaceholderBci(methodScope.invokeData.invoke.bci())) {
                 foreignCall.setBci(methodScope.invokeData.invoke.bci());
             }
         } else if (node instanceof MethodInvokable) {

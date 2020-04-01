@@ -596,6 +596,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         @Override
         public void lower(CEntryPointEnterNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                return;
+            }
             Arguments args;
             switch (node.getEnterAction()) {
                 case CreateIsolate:
@@ -636,6 +639,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         @Override
         public void lower(CEntryPointLeaveNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                return;
+            }
             Arguments args;
             switch (node.getLeaveAction()) {
                 case Leave:
@@ -665,6 +671,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         @Override
         public void lower(CEntryPointUtilityNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                return;
+            }
             Arguments args;
             switch (node.getUtilityAction()) {
                 case IsAttached:

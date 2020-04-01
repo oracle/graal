@@ -114,12 +114,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public void replaceBci(int newBci) {
-        assert BytecodeFrame.isPlaceholderBci(bci) && !BytecodeFrame.isPlaceholderBci(newBci) : "can only replace placeholder with better bci";
-        bci = newBci;
-    }
-
-    @Override
     protected void afterClone(Node other) {
         updateInliningLogAfterClone(other);
     }
@@ -212,6 +206,12 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     @Override
     public int bci() {
         return bci;
+    }
+
+    @Override
+    public void setBci(int newBci) {
+        assert BytecodeFrame.isPlaceholderBci(bci) && !BytecodeFrame.isPlaceholderBci(newBci) : "can only replace placeholder with better bci";
+        bci = newBci;
     }
 
     @Override

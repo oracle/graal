@@ -34,7 +34,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
-import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint.FatalExceptionHandler;
 import org.graalvm.word.LocationIdentity;
 
@@ -164,9 +163,7 @@ public final class JNIFieldAccessorMethod extends JNIGeneratedMethod {
                 returnValue = kit.boxObjectInLocalHandle(returnValue);
             }
         }
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
-        kit.append(proxy);
-        proxy.setStateAfter(state.create(kit.bci(), proxy));
+        kit.appendStateSplitProxy(state);
         CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
         kit.append(leave);
         JavaKind returnKind = isSetter ? JavaKind.Void : fieldKind;

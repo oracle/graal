@@ -147,6 +147,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
         @Override
         public void lower(CFunctionPrologueNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                return;
+            }
             matchCallStructure(node);
 
             /*
@@ -172,6 +175,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
         @Override
         public void lower(CFunctionEpilogueNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                return;
+            }
             node.graph().addAfterFixed(node, node.graph().add(new VerificationMarkerNode(node.getMarker())));
 
             int oldThreadStatus = node.getOldThreadStatus();
