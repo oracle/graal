@@ -27,7 +27,6 @@ package com.oracle.svm.graal.hosted;
 import static com.oracle.svm.core.util.VMError.guarantee;
 
 import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,7 +45,6 @@ import java.util.function.Predicate;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeClass;
@@ -101,7 +99,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.meta.SubstrateField;
-import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.hosted.FeatureHandler;
@@ -393,18 +390,6 @@ public final class GraalFeature implements Feature {
         for (ResolvedJavaMethod method : ((SubstrateReplacements) runtimeProviders.getReplacements()).getSnippetMethods()) {
             objectReplacer.apply(method);
         }
-
-        for (JavaKind kind : new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Double, JavaKind.Float, JavaKind.Int, JavaKind.Long, JavaKind.Short}) {
-            Field f = null;
-            try {
-                f = kind.toBoxedJavaClass().getDeclaredField("value");
-            } catch (NoSuchFieldException | SecurityException e) {
-                throw GraalError.shouldNotReachHere(e);
-            }
-            assert f != null;
-            ImageSingletons.lookup(SubstrateMetaAccess.class).getBoxingFields().put(f, config.getMetaAccess().lookupJavaField(f));
-        }
-
     }
 
     private static void populateMatchRuleRegistry() {

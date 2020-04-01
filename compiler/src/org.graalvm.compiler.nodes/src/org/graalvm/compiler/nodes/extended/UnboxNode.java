@@ -59,7 +59,11 @@ public final class UnboxNode extends AbstractBoxingNode implements Virtualizable
     }
 
     public UnboxNode(ValueNode value, JavaKind boxingKind, MetaAccessProvider metaAccess) {
-        super(TYPE, value, boxingKind, StampFactory.forKind(boxingKind.getStackKind()), metaAccess);
+        super(TYPE, value, boxingKind, StampFactory.forKind(boxingKind.getStackKind()), new FieldLocationIdentity(getValueField(getResultType(metaAccess, boxingKind))));
+    }
+
+    private static ResolvedJavaType getResultType(MetaAccessProvider metaAccess, JavaKind boxingKind) {
+        return metaAccess.lookupJavaType(boxingKind.toBoxedJavaClass());
     }
 
     public static ValueNode create(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode value, JavaKind boxingKind) {

@@ -31,8 +31,6 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -62,15 +60,8 @@ public class SubstrateMetaAccess implements MetaAccessProvider, Replaced {
         return ImageSingletons.lookup(SubstrateMetaAccess.class);
     }
 
-    private final EconomicMap<Field, ResolvedJavaField> boxingFields;
-
-    public EconomicMap<Field, ResolvedJavaField> getBoxingFields() {
-        return boxingFields;
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateMetaAccess() {
-        boxingFields = EconomicMap.create(Equivalence.DEFAULT);
         ImageSingletons.add(SubstrateMetaAccess.class, this);
     }
 
@@ -99,10 +90,6 @@ public class SubstrateMetaAccess implements MetaAccessProvider, Replaced {
 
     @Override
     public ResolvedJavaField lookupJavaField(Field reflectionField) {
-        ResolvedJavaField cached = boxingFields.get(reflectionField);
-        if (cached != null) {
-            return cached;
-        }
         throw unimplemented();
     }
 

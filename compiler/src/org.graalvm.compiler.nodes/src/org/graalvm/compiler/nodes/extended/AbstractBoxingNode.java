@@ -33,7 +33,6 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
@@ -44,7 +43,8 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
 public abstract class AbstractBoxingNode extends FixedWithNextNode implements Virtualizable, Lowerable, Canonicalizable.Unary<ValueNode>, MemoryAccess {
@@ -61,8 +61,13 @@ public abstract class AbstractBoxingNode extends FixedWithNextNode implements Vi
         this.accessedLocation = accessedLocation;
     }
 
-    public AbstractBoxingNode(NodeClass<? extends AbstractBoxingNode> c, ValueNode value, JavaKind boxingKind, Stamp s, MetaAccessProvider metaAccess) {
-        this(c, value, boxingKind, s, createLocationIdentity(metaAccess, boxingKind));
+    public static ResolvedJavaField getValueField(ResolvedJavaType resultType) {
+        for (ResolvedJavaField f : resultType.getInstanceFields(false)) {
+            if (f.getName().equals("value")) {
+                return f;
+            }
+        }
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -91,32 +96,4 @@ public abstract class AbstractBoxingNode extends FixedWithNextNode implements Vi
     public LocationIdentity getLocationIdentity() {
         return accessedLocation;
     }
-
-    private static FieldLocationIdentity createLocationIdentity(MetaAccessProvider metaAccess, JavaKind boxingKind) {
-        try {
-            switch (boxingKind) {
-                case Byte:
-                    return new FieldLocationIdentity(metaAccess.lookupJavaField(Byte.class.getDeclaredField("value")));
-                case Boolean:
-                    return new FieldLocationIdentity(metaAccess.lookupJavaField(Boolean.class.getDeclaredField("value")));
-                case Short:
-                    return new FieldLocationIdentity(metaAccess.lookupJavaField(Short.class.getDeclaredField("value")));
-                case Char:
-                    return new FieldLocationIdentity(metaAccess.lookupJavaField(Character.class.getDeclaredField("value")));
-                case Float:
-                    return new FieldLocationIdentity(metaAccess.lookupJavaField(Float.class.getDeclaredField("value")));
-                case Int:
-                    return new FieldLocationIdentity(metaAccess.lookupJavaField(Integer.class.getDeclaredField("value")));
-                case Long:
-                    return new FieldLocationIdentity(metaAccess.lookupJavaField(Long.class.getDeclaredField("value")));
-                case Double:
-                    return new FieldLocationIdentity(metaAccess.lookupJavaField(Double.class.getDeclaredField("value")));
-                default:
-                    throw GraalError.unimplemented();
-            }
-        } catch (NoSuchFieldException | SecurityException e) {
-            throw GraalError.shouldNotReachHere(e);
-        }
-    }
-
 }

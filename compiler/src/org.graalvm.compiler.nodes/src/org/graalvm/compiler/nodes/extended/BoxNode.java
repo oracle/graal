@@ -30,7 +30,6 @@ import java.util.Collections;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
@@ -51,7 +50,6 @@ import org.graalvm.compiler.nodes.virtual.VirtualBoxingNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -65,15 +63,6 @@ public abstract class BoxNode extends AbstractBoxingNode implements Virtualizabl
 
     private BoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
         this(TYPE, value, resultType, boxingKind);
-    }
-
-    private static ResolvedJavaField getValueField(ResolvedJavaType resultType) {
-        for (ResolvedJavaField f : resultType.getInstanceFields(false)) {
-            if (f.getName().equals("value")) {
-                return f;
-            }
-        }
-        throw GraalError.shouldNotReachHere();
     }
 
     private BoxNode(NodeClass<? extends BoxNode> c, ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
