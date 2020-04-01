@@ -55,16 +55,10 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
     }
 
     private final PartialEvaluator partialEvaluator;
-    private final TruffleMetaAccessProvider truffleMetaAccessProvider;
-    private final CompilableTruffleAST compilableTruffleAST;
-    private final OptionValues options;
     private final PartialEvaluator.Request request;
 
-    public AgnosticInliningPhase(OptionValues options, PartialEvaluator partialEvaluator, TruffleMetaAccessProvider truffleMetaAccessProvider, CompilableTruffleAST compilableTruffleAST, PartialEvaluator.Request request) {
-        this.options = options;
+    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, PartialEvaluator.Request request) {
         this.partialEvaluator = partialEvaluator;
-        this.truffleMetaAccessProvider = truffleMetaAccessProvider;
-        this.compilableTruffleAST = compilableTruffleAST;
         this.request = request;
     }
 
@@ -78,16 +72,16 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
     }
 
     private InliningPolicyProvider getInliningPolicyProvider() {
-        final String policy = getPolyglotOptionValue(options, PolyglotCompilerOptions.InliningPolicy);
+        final String policy = getPolyglotOptionValue(request.options, PolyglotCompilerOptions.InliningPolicy);
         return policy.equals("") ? POLICY_PROVIDERS.get(0) : chosenProvider(POLICY_PROVIDERS, policy);
     }
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders coreProviders) {
-        final InliningPolicy policy = getInliningPolicyProvider().get(options, coreProviders);
-        final CallTree tree = new CallTree(options, partialEvaluator, truffleMetaAccessProvider, compilableTruffleAST, graph, policy, request);
+        final InliningPolicy policy = getInliningPolicyProvider().get(request.options, coreProviders);
+        final CallTree tree = new CallTree(partialEvaluator, request, policy);
         tree.dumpBasic("Before Inline", "");
-        if (getPolyglotOptionValue(options, PolyglotCompilerOptions.Inlining)) {
+        if (getPolyglotOptionValue(request.options, PolyglotCompilerOptions.Inlining)) {
             policy.run(tree);
             tree.dumpBasic("After Inline", "");
             tree.dequeueInlined();

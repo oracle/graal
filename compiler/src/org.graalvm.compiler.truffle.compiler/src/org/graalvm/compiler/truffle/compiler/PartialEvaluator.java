@@ -313,11 +313,11 @@ public abstract class PartialEvaluator {
         public final OptionValues options;
         public final DebugContext debug;
         public final CompilableTruffleAST compilable;
-        final TruffleInliningPlan inliningPlan;
-        final AllowAssumptions allowAssumptions;
-        final CompilationIdentifier compilationId;
-        final SpeculationLog log;
-        final Cancellable cancellable;
+        public final TruffleInliningPlan inliningPlan;
+        public final AllowAssumptions allowAssumptions;
+        public final CompilationIdentifier compilationId;
+        public final SpeculationLog log;
+        public final Cancellable cancellable;
         public final StructuredGraph graph;
         final HighTierContext highTierContext;
 
@@ -734,7 +734,7 @@ public abstract class PartialEvaluator {
 
     private void agnosticInliningOrGraphPE(Request request) {
         if (getPolyglotOptionValue(request.options, LanguageAgnosticInlining)) {
-            AgnosticInliningPhase agnosticInlining = new AgnosticInliningPhase(request.options, this, request.inliningPlan, request.compilable, request);
+            AgnosticInliningPhase agnosticInlining = new AgnosticInliningPhase(this, request);
             agnosticInlining.apply(request.graph, providers);
         } else {
             final PEInliningPlanInvokePlugin plugin = new PEInliningPlanInvokePlugin(request.options, request.inliningPlan, request.graph);

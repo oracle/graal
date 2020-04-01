@@ -109,7 +109,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         };
         final PartialEvaluator.Request request = partialEvaluator.new Request(callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget), callNodeProvider,
                 StructuredGraph.AllowAssumptions.YES, compilationIdentifier, getSpeculationLog(), null);
-        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(callTarget.getOptionValues(), partialEvaluator, callNodeProvider, callTarget, request);
+        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, request);
         agnosticInliningPhase.apply(request.graph, getTruffleCompiler(callTarget).getPartialEvaluator().getProviders());
         return request.graph;
     }
@@ -121,12 +121,6 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                 return null;
             }
         });
-    }
-
-    private ResolvedJavaMethod rootCallForTarget(OptimizedCallTarget target) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        final PartialEvaluator partialEvaluator = getTruffleCompiler(target).getPartialEvaluator();
-        final Method rootForCallTarget = partialEvaluator.getClass().getSuperclass().getDeclaredMethod("rootForCallTarget", CompilableTruffleAST.class);
-        return (ResolvedJavaMethod) rootForCallTarget.invoke(partialEvaluator, target);
     }
 
     protected class CallsInnerNodeTwice extends RootNode {

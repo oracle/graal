@@ -28,30 +28,26 @@ import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPo
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.options.OptionValues;
 
 public final class CallTree extends Graph {
 
     private final InliningPolicy policy;
     private final GraphManager graphManager;
     private final CallNode root;
-    private final OptionValues options;
+    private final PartialEvaluator.Request request;
     int expanded = 1;
     int inlined = 1;
 
-    CallTree(OptionValues options, PartialEvaluator partialEvaluator, TruffleMetaAccessProvider truffleMetaAccessProvider, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy, PartialEvaluator.Request request) {
-        super(ir.getOptions(), ir.getDebug());
-        this.options = options;
+    CallTree(PartialEvaluator partialEvaluator, PartialEvaluator.Request request, InliningPolicy policy) {
+        super(request.graph.getOptions(), request.debug);
         this.policy = policy;
-        this.graphManager = new GraphManager(ir, partialEvaluator, truffleMetaAccessProvider, request);
+        this.request = request;
+        this.graphManager = new GraphManager(partialEvaluator, request);
         // Should be kept as the last call in the constructor, as this is an argument.
-        this.root = CallNode.makeRoot(options, this, truffleAST, ir);
+        this.root = CallNode.makeRoot(this, request);
     }
 
     InliningPolicy getPolicy() {
@@ -75,8 +71,8 @@ public final class CallTree extends Graph {
     }
 
     public void trace() {
-        final Boolean details = getPolyglotOptionValue(options, PolyglotCompilerOptions.TraceInliningDetails);
-        if (getPolyglotOptionValue(options, PolyglotCompilerOptions.TraceInlining) || details) {
+        final Boolean details = getPolyglotOptionValue(request.options, PolyglotCompilerOptions.TraceInliningDetails);
+        if (getPolyglotOptionValue(request.options, PolyglotCompilerOptions.TraceInlining) || details) {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
             runtime.logEvent(0, "inline start", root.getName(), root.getStringProperties());
             traceRecursive(runtime, root, details, 0);
