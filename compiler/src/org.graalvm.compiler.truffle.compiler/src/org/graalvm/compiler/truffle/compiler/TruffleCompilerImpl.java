@@ -454,7 +454,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             }
 
             try (DebugCloseable a = PartialEvaluationTime.start(debug); DebugCloseable c = PartialEvaluationMemUse.start(debug)) {
-                graph = partialEvaluator.createGraph(options, debug, compilable, inliningPlan, AllowAssumptions.YES, compilationId, speculationLog, task);
+                PartialEvaluator.Request request = partialEvaluator.new Request(options, debug, compilable, partialEvaluator.rootForCallTarget(compilable), inliningPlan, AllowAssumptions.YES, compilationId, speculationLog, task);
+                graph = partialEvaluator.evaluate(request);
             }
 
             // Check if the task has been cancelled
@@ -489,7 +490,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     /**
-     * Compiles a graph produced by {@link PartialEvaluator#createGraph partial evaluation}.
+     * Compiles a graph produced by {@link PartialEvaluator#evaluate partial evaluation}.
      *
      * @param graph a graph resulting from partial evaluation
      * @param name the name to be used for the returned {@link CompilationResult#getName() result}

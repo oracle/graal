@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
@@ -57,11 +58,13 @@ final class GraphManager {
     private final TruffleMetaAccessProvider truffleMetaAccessProvider;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining = EconomicMap.create();
     private final EconomicMap<CompilableTruffleAST, GraphManager.Entry> irCache = EconomicMap.create();
+    private final PartialEvaluator.Request rootRequest;
 
-    GraphManager(StructuredGraph ir, PartialEvaluator partialEvaluator, TruffleMetaAccessProvider truffleMetaAccessProvider) {
+    GraphManager(StructuredGraph ir, PartialEvaluator partialEvaluator, TruffleMetaAccessProvider truffleMetaAccessProvider, PartialEvaluator.Request rootRequest) {
         this.partialEvaluator = partialEvaluator;
         this.rootIR = ir;
         this.truffleMetaAccessProvider = truffleMetaAccessProvider;
+        this.rootRequest = rootRequest;
     }
 
     Entry get(OptionValues options, CompilableTruffleAST truffleAST) {
@@ -74,8 +77,9 @@ final class GraphManager {
             CompilationIdentifier id = rootIR.compilationId();
             final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(truffleMetaAccessProvider, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary(),
                             partialEvaluator.getCallIndirectMethod());
-            StructuredGraph graph = partialEvaluator.createGraphForInlining(options, debug, truffleAST, truffleMetaAccessProvider, plugin, allowAssumptions, id, log, cancellable,
-                            graphCacheForInlining);
+            final PartialEvaluator.Request request = partialEvaluator.new Request(options, debug, truffleAST, partialEvaluator.inlineRootForCallTargetAgnostic(truffleAST),
+                            (TruffleInliningPlan) truffleMetaAccessProvider, allowAssumptions, id, log, cancellable);
+            StructuredGraph graph = partialEvaluator.evaluate(request, plugin, graphCacheForInlining);
             final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = plugin.getTruffleCallNodeToInvoke();
             final List<Invoke> indirectInvokes = plugin.getIndirectInvokes();
             entry = new GraphManager.Entry(graph, truffleCallNodeToInvoke, indirectInvokes);
@@ -87,7 +91,7 @@ final class GraphManager {
     EconomicMap<TruffleCallNode, Invoke> peRoot(OptionValues options, CompilableTruffleAST truffleAST) {
         final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(truffleMetaAccessProvider, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary(),
                         partialEvaluator.getCallIndirectMethod());
-        partialEvaluator.parseRootGraphForInlining(options, truffleAST, rootIR, truffleMetaAccessProvider, plugin, graphCacheForInlining);
+        partialEvaluator.evaluate(rootRequest, plugin, graphCacheForInlining);
         return plugin.getTruffleCallNodeToInvoke();
     }
 

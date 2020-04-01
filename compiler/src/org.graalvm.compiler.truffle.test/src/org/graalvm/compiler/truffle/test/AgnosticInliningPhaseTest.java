@@ -101,32 +101,17 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
     protected StructuredGraph runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         final TruffleInlining callNodeProvider = new TruffleInlining(callTarget, new NoInliningPolicy());
         final PartialEvaluator partialEvaluator = getTruffleCompiler(callTarget).getPartialEvaluator();
-        final Class<?> partialEvaluatorClass = partialEvaluator.getClass().getSuperclass();
-        final Method createGraphForPE = partialEvaluatorClass.getDeclaredMethod("createGraphForPE",
-                        DebugContext.class,
-                        String.class,
-                        ResolvedJavaMethod.class,
-                        StructuredGraph.AllowAssumptions.class,
-                        CompilationIdentifier.class,
-                        SpeculationLog.class,
-                        Cancellable.class);
-        ReflectionUtils.setAccessible(createGraphForPE, true);
-        final StructuredGraph graph = (StructuredGraph) createGraphForPE.invoke(partialEvaluator,
-                        getDebugContext(),
-                        "",
-                        rootCallForTarget(callTarget),
-                        StructuredGraph.AllowAssumptions.YES,
-                        new CompilationIdentifier() {
-                            @Override
-                            public String toString(Verbosity verbosity) {
-                                return "";
-                            }
-                        },
-                        getSpeculationLog(),
-                        null);
-        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(callTarget.getOptionValues(), partialEvaluator, callNodeProvider, callTarget);
-        agnosticInliningPhase.apply(graph, getTruffleCompiler(callTarget).getPartialEvaluator().getProviders());
-        return graph;
+        final CompilationIdentifier compilationIdentifier = new CompilationIdentifier() {
+            @Override
+            public String toString(Verbosity verbosity) {
+                return "";
+            }
+        };
+        final PartialEvaluator.Request request = partialEvaluator.new Request(callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget), callNodeProvider,
+                StructuredGraph.AllowAssumptions.YES, compilationIdentifier, getSpeculationLog(), null);
+        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(callTarget.getOptionValues(), partialEvaluator, callNodeProvider, callTarget, request);
+        agnosticInliningPhase.apply(request.graph, getTruffleCompiler(callTarget).getPartialEvaluator().getProviders());
+        return request.graph;
     }
 
     protected final OptimizedCallTarget createDummyNode() {

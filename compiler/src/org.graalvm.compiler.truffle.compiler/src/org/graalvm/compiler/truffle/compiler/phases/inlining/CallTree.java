@@ -45,11 +45,11 @@ public final class CallTree extends Graph {
     int expanded = 1;
     int inlined = 1;
 
-    CallTree(OptionValues options, PartialEvaluator partialEvaluator, TruffleMetaAccessProvider truffleMetaAccessProvider, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy) {
+    CallTree(OptionValues options, PartialEvaluator partialEvaluator, TruffleMetaAccessProvider truffleMetaAccessProvider, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy, PartialEvaluator.Request request) {
         super(ir.getOptions(), ir.getDebug());
         this.options = options;
         this.policy = policy;
-        this.graphManager = new GraphManager(ir, partialEvaluator, truffleMetaAccessProvider);
+        this.graphManager = new GraphManager(ir, partialEvaluator, truffleMetaAccessProvider, request);
         // Should be kept as the last call in the constructor, as this is an argument.
         this.root = CallNode.makeRoot(options, this, truffleAST, ir);
     }
