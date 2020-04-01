@@ -96,7 +96,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InliningLog;
-import org.graalvm.compiler.nodes.MethodInvokable;
+import org.graalvm.compiler.nodes.DeoptBciSupplier;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -1738,9 +1738,9 @@ public class SnippetTemplate {
                 FrameState stateAfter = ((StateSplit) replacee).stateAfter();
                 assert stateAfter != null : "Replacee " + replacee + " has no state after";
 
-                if (sideEffectDup instanceof MethodInvokable) {
-                    if (replacee instanceof MethodInvokable) {
-                        ((MethodInvokable) sideEffectDup).setBci(((MethodInvokable) replacee).bci());
+                if (sideEffectDup instanceof DeoptBciSupplier) {
+                    if (replacee instanceof DeoptBciSupplier) {
+                        ((DeoptBciSupplier) sideEffectDup).setBci(((DeoptBciSupplier) replacee).bci());
                     }
                 }
                 if (stateAfter.values().contains(replacee)) {

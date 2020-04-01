@@ -25,10 +25,10 @@
 package org.graalvm.compiler.nodes;
 
 /**
- * A marker interface for nodes that represent calls to other methods. These methods can be Java
- * methods, native methods, stubs or code snippets that do not have a method associated with them.
+ * A marker interface for nodes that represent operations that can deoptimize and thus need a BCI to
+ * deopt to.
  */
-public interface MethodInvokable {
+public interface DeoptBciSupplier {
 
     /**
      * @return the byte code index (BCI) associated with the node implementing this interface

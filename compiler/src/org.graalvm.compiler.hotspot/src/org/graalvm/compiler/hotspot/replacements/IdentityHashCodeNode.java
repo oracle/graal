@@ -37,7 +37,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.MethodInvokable;
+import org.graalvm.compiler.nodes.DeoptBciSupplier;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
@@ -49,7 +49,7 @@ import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public class IdentityHashCodeNode extends AbstractStateSplit implements Canonicalizable, Lowerable, SingleMemoryKill, MethodInvokable {
+public class IdentityHashCodeNode extends AbstractStateSplit implements Canonicalizable, Lowerable, SingleMemoryKill, DeoptBciSupplier {
 
     public static final NodeClass<IdentityHashCodeNode> TYPE = NodeClass.create(IdentityHashCodeNode.class);
 
