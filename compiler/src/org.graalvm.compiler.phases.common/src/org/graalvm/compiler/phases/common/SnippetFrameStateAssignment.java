@@ -37,11 +37,13 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
@@ -54,9 +56,9 @@ import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosu
  * For example, a snippet lowering can create a merge node without a frame state. Any deoptimization
  * point dominated by this merge will be missing frame state information since we cannot decide
  * which frame state to use for the deoptimization point. See {@link GraphUtil#mayRemoveSplit} for
- * more details.
+ * more details. The same applies for loop exit nodes.
  *
- * This utility determines which frame state can be assigned to each merge node in a snippet graph.
+ * This utility determines which frame state can be assigned to each node in a snippet graph.
  *
  * During lowering a node is replaced with the snippet which means there are only 2 possible states
  * that can be used inside the snippet graph: the before frame state of the snippet lowered node and
@@ -64,12 +66,12 @@ import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosu
  * particular side-effect must not deopt to the before state but only to the after state. All code
  * before the side-effect is allowed to use the before state
  */
-public class FrameStateMergeAssignment {
+public class SnippetFrameStateAssignment {
 
     /**
      * Possible states to be used inside a snippet.
      */
-    public enum MergeStateAssignment {
+    public enum NodeStateAssignment {
         /**
          * The frame state before the snippet replacee.
          */
@@ -87,37 +89,36 @@ public class FrameStateMergeAssignment {
 
     /**
      * The iterator below visits a compiler graph in reverse post order and, based on the
-     * side-effecting nodes, decides which state can be used after snippet lowering for a merge
-     * node.
+     * side-effecting nodes, decides which state can be used after snippet lowering for a merge or
+     * loop exit node.
      */
-    public static class FrameStateMergeAssignmentClosure extends NodeIteratorClosure<MergeStateAssignment> {
+    public static class SnippetFrameStateAssignmentClosure extends NodeIteratorClosure<NodeStateAssignment> {
 
-        /**
-         * Final assignment of states to merges.
-         */
-        private final NodeMap<MergeStateAssignment> mergeMaps;
+        private final NodeMap<NodeStateAssignment> stateMapping;
 
-        public NodeMap<MergeStateAssignment> getMergeMaps() {
-            return mergeMaps;
+        public NodeMap<NodeStateAssignment> getStateMapping() {
+            return stateMapping;
         }
 
         /**
-         * Debugging flag to run the phase again on error to find specific invalid merges.
+         * Debugging flag to run the phase again on error to find specific invalid nodes.
          */
         private static final boolean RUN_WITH_LOG_ON_ERROR = false;
 
         public boolean verify() {
-            MapCursor<Node, MergeStateAssignment> stateAssignments = mergeMaps.getEntries();
+            MapCursor<Node, NodeStateAssignment> stateAssignments = stateMapping.getEntries();
             while (stateAssignments.advance()) {
-                Node merge = stateAssignments.getKey();
-                MergeStateAssignment fsRequirements = stateAssignments.getValue();
+                Node nodeWithState = stateAssignments.getKey();
+                NodeStateAssignment fsRequirements = stateAssignments.getValue();
                 switch (fsRequirements) {
                     case INVALID:
                         if (RUN_WITH_LOG_ON_ERROR) {
-                            ReentrantNodeIterator.apply(new FrameStateMergeAssignmentClosure((StructuredGraph) merge.graph(), true),
-                                            ((StructuredGraph) merge.graph()).start(), MergeStateAssignment.BEFORE_BCI);
+                            ReentrantNodeIterator.apply(new SnippetFrameStateAssignmentClosure((StructuredGraph) nodeWithState.graph(), true),
+                                            ((StructuredGraph) nodeWithState.graph()).start(), NodeStateAssignment.BEFORE_BCI);
                         }
-                        throw GraalError.shouldNotReachHere("Invalid snippet replacing a node before FS assignment with merge " + merge + " for graph " + merge.graph() + " other merges=" + mergeMaps);
+                        throw GraalError.shouldNotReachHere(
+                                        "Invalid snippet replacing a node before FS assignment with node " + nodeWithState + " for graph " + nodeWithState.graph() + " other assignments=" +
+                                                        stateMapping);
                     default:
                         break;
                 }
@@ -130,33 +131,36 @@ public class FrameStateMergeAssignment {
          */
         private final boolean logOnInvalid;
 
-        public FrameStateMergeAssignmentClosure(StructuredGraph graph) {
+        public SnippetFrameStateAssignmentClosure(StructuredGraph graph) {
             this(graph, false);
         }
 
-        public FrameStateMergeAssignmentClosure(StructuredGraph graph, boolean logOnInvalid) {
-            mergeMaps = new NodeMap<>(graph);
+        public SnippetFrameStateAssignmentClosure(StructuredGraph graph, boolean logOnInvalid) {
+            stateMapping = new NodeMap<>(graph);
             this.logOnInvalid = logOnInvalid;
         }
 
         @Override
-        protected MergeStateAssignment processNode(FixedNode node, MergeStateAssignment stateAssignment) {
-            MergeStateAssignment nextStateAssignment = stateAssignment;
+        protected NodeStateAssignment processNode(FixedNode node, NodeStateAssignment stateAssignment) {
+            NodeStateAssignment nextStateAssignment = stateAssignment;
+            if (node instanceof LoopExitNode) {
+                stateMapping.put(node, stateAssignment);
+            }
             if (node instanceof StateSplit && ((StateSplit) node).hasSideEffect() && !(node instanceof StartNode || node instanceof AbstractMergeNode)) {
-                if (stateAssignment == MergeStateAssignment.BEFORE_BCI) {
-                    nextStateAssignment = MergeStateAssignment.AFTER_BCI;
+                if (stateAssignment == NodeStateAssignment.BEFORE_BCI) {
+                    nextStateAssignment = NodeStateAssignment.AFTER_BCI;
                 } else {
                     if (logOnInvalid) {
                         node.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Node %s creating invalid assignment", node);
                     }
-                    nextStateAssignment = MergeStateAssignment.INVALID;
+                    nextStateAssignment = NodeStateAssignment.INVALID;
                 }
             }
             return nextStateAssignment;
         }
 
         @Override
-        protected MergeStateAssignment merge(AbstractMergeNode merge, List<MergeStateAssignment> states) {
+        protected NodeStateAssignment merge(AbstractMergeNode merge, List<NodeStateAssignment> states) {
             /*
              * The state at a merge is either the before or after state, but if multiple effects
              * exist preceding a merge we must have a merged state, and this state can only differ
@@ -168,41 +172,60 @@ public class FrameStateMergeAssignment {
             int invalidCount = 0;
 
             for (int i = 0; i < states.size(); i++) {
-                if (states.get(i) == MergeStateAssignment.BEFORE_BCI) {
+                if (states.get(i) == NodeStateAssignment.BEFORE_BCI) {
                     beforeCount++;
-                } else if (states.get(i) == MergeStateAssignment.AFTER_BCI) {
+                } else if (states.get(i) == NodeStateAssignment.AFTER_BCI) {
                     afterCount++;
                 } else {
                     invalidCount++;
                 }
             }
             if (invalidCount > 0) {
-                mergeMaps.put(merge, MergeStateAssignment.INVALID);
-                return MergeStateAssignment.INVALID;
+                stateMapping.put(merge, NodeStateAssignment.INVALID);
+                return NodeStateAssignment.INVALID;
             } else {
                 if (afterCount == 0) {
                     // only before states
                     assert beforeCount == states.size();
-                    mergeMaps.put(merge, MergeStateAssignment.BEFORE_BCI);
-                    return MergeStateAssignment.BEFORE_BCI;
+                    stateMapping.put(merge, NodeStateAssignment.BEFORE_BCI);
+                    return NodeStateAssignment.BEFORE_BCI;
                 } else {
                     // some before, and at least one after
                     assert afterCount > 0;
-                    mergeMaps.put(merge, MergeStateAssignment.AFTER_BCI);
-                    return MergeStateAssignment.AFTER_BCI;
+                    stateMapping.put(merge, NodeStateAssignment.AFTER_BCI);
+                    return NodeStateAssignment.AFTER_BCI;
                 }
             }
 
         }
 
         @Override
-        protected MergeStateAssignment afterSplit(AbstractBeginNode node, MergeStateAssignment oldState) {
+        protected NodeStateAssignment afterSplit(AbstractBeginNode node, NodeStateAssignment oldState) {
             return oldState;
         }
 
         @Override
-        protected EconomicMap<LoopExitNode, MergeStateAssignment> processLoop(LoopBeginNode loop, MergeStateAssignment initialState) {
-            return ReentrantNodeIterator.processLoop(this, loop, initialState).exitStates;
+        protected EconomicMap<LoopExitNode, NodeStateAssignment> processLoop(LoopBeginNode loop, NodeStateAssignment initialState) {
+            LoopInfo<NodeStateAssignment> loopInfo = ReentrantNodeIterator.processLoop(this, loop, initialState);
+            int afterCount = 0;
+            int invalidCount = 0;
+            for (LoopEndNode loopEnd : loop.loopEnds()) {
+                if (loopInfo.endStates.get(loopEnd) == NodeStateAssignment.INVALID) {
+                    invalidCount++;
+                } else if (loopInfo.endStates.get(loopEnd) == NodeStateAssignment.AFTER_BCI) {
+                    afterCount++;
+                }
+            }
+            if (invalidCount > 0) {
+                stateMapping.put(loop, NodeStateAssignment.INVALID);
+            } else {
+                if (afterCount > 0) {
+                    stateMapping.put(loop, NodeStateAssignment.AFTER_BCI);
+                } else {
+                    stateMapping.put(loop, NodeStateAssignment.BEFORE_BCI);
+                }
+            }
+            return loopInfo.exitStates;
         }
 
     }

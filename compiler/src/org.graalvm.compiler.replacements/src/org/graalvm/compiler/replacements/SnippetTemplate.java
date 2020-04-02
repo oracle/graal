@@ -99,6 +99,7 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -142,14 +143,14 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase.MemoryMapImpl;
-import org.graalvm.compiler.phases.common.FrameStateMergeAssignment;
-import org.graalvm.compiler.phases.common.FrameStateMergeAssignment.FrameStateMergeAssignmentClosure;
-import org.graalvm.compiler.phases.common.FrameStateMergeAssignment.MergeStateAssignment;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
+import org.graalvm.compiler.phases.common.SnippetFrameStateAssignment;
+import org.graalvm.compiler.phases.common.SnippetFrameStateAssignment.NodeStateAssignment;
+import org.graalvm.compiler.phases.common.SnippetFrameStateAssignment.SnippetFrameStateAssignmentClosure;
 import org.graalvm.compiler.phases.common.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
@@ -906,6 +907,7 @@ public class SnippetTemplate {
                 try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {
                     new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(snippetCopy, providers);
                     snippetCopy.setGuardsStage(GuardsStage.AFTER_FSA);
+                    snippetCopy.disableFrameStateVerification();
                 } catch (Throwable e) {
                     throw debug.handle(e);
                 }
@@ -932,10 +934,14 @@ public class SnippetTemplate {
             ArrayList<ValueNode> curPlaceholderStampedNodes = new ArrayList<>();
 
             boolean containsMerge = false;
+            boolean containsLoopExit = false;
 
             for (Node node : snippetCopy.getNodes()) {
                 if (node instanceof AbstractMergeNode) {
                     containsMerge = true;
+                }
+                if (node instanceof LoopExitNode) {
+                    containsLoopExit = true;
                 }
                 if (node instanceof ValueNode) {
                     ValueNode valueNode = (ValueNode) node;
@@ -1042,14 +1048,14 @@ public class SnippetTemplate {
             }
             debug.dump(DebugContext.INFO_LEVEL, snippet, "After fixing returns");
 
-            boolean needsMergeStateMap = !guardsStage.areFrameStatesAtDeopts() && containsMerge;
+            boolean needsMergeStateMap = !guardsStage.areFrameStatesAtDeopts() && (containsMerge || containsLoopExit);
 
             if (needsMergeStateMap) {
-                frameStateMergeAssignment = new FrameStateMergeAssignmentClosure(snippetCopy);
-                ReentrantNodeIterator.apply(frameStateMergeAssignment, snippetCopy.start(), MergeStateAssignment.BEFORE_BCI);
-                assert frameStateMergeAssignment.verify() : info;
+                frameStateAssignment = new SnippetFrameStateAssignmentClosure(snippetCopy);
+                ReentrantNodeIterator.apply(frameStateAssignment, snippetCopy.start(), SnippetFrameStateAssignment.NodeStateAssignment.BEFORE_BCI);
+                assert frameStateAssignment.verify() : info;
             } else {
-                frameStateMergeAssignment = null;
+                frameStateAssignment = null;
             }
 
             assert verifyIntrinsicsProcessed(snippetCopy);
@@ -1197,10 +1203,11 @@ public class SnippetTemplate {
     private final ArrayList<DeoptimizingNode> deoptNodes;
 
     /**
-     * Mapping of merge nodes to frame state info determining if a merge node is required to have a
-     * framestate after the lowering, and if so which state (before,after).
+     * Mapping of merge and loop exit nodes to frame state info determining if a merge/loop exit
+     * node is required to have a framestate after the lowering, and if so which state
+     * (before,after).
      */
-    private FrameStateMergeAssignment.FrameStateMergeAssignmentClosure frameStateMergeAssignment;
+    private SnippetFrameStateAssignment.SnippetFrameStateAssignmentClosure frameStateAssignment;
 
     /**
      * Nodes that have a stamp originating from a {@link Placeholder}.
@@ -1766,7 +1773,7 @@ public class SnippetTemplate {
     }
 
     private boolean requiresFrameStateProcessingBeforeFSA(ValueNode replacee) {
-        return replacee instanceof StateSplit || frameStateMergeAssignment != null;
+        return replacee instanceof StateSplit || frameStateAssignment != null;
     }
 
     private void rewireFrameStatesBeforeFSA(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates, FixedNode replaceeGraphCFGPredecessor) {
@@ -1814,12 +1821,12 @@ public class SnippetTemplate {
                 }
             }
         }
-        if (frameStateMergeAssignment != null) {
-            assignMergeFrameStates(replacee, duplicates, replaceeGraphCFGPredecessor);
+        if (frameStateAssignment != null) {
+            assignNecessaryFrameStates(replacee, duplicates, replaceeGraphCFGPredecessor);
         }
     }
 
-    private void assignMergeFrameStates(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates, FixedNode replaceeGraphCFGPredecessor) {
+    private void assignNecessaryFrameStates(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates, FixedNode replaceeGraphCFGPredecessor) {
         FrameState stateAfter = null;
         if (replacee instanceof StateSplit && ((StateSplit) replacee).hasSideEffect()) {
             stateAfter = ((StateSplit) replacee).stateAfter();
@@ -1827,15 +1834,15 @@ public class SnippetTemplate {
         } else {
             /*
              * We dont have a state split as a replacee, thus we take the prev state as the state
-             * after for the merges in the snippet.
+             * after for the node in the snippet.
              */
             stateAfter = findLastFrameState(replaceeGraphCFGPredecessor);
         }
-        NodeMap<MergeStateAssignment> mergeStates = frameStateMergeAssignment.getMergeMaps();
-        MapCursor<Node, MergeStateAssignment> stateAssignments = mergeStates.getEntries();
+        NodeMap<NodeStateAssignment> assignedStateMappings = frameStateAssignment.getStateMapping();
+        MapCursor<Node, NodeStateAssignment> stateAssignments = assignedStateMappings.getEntries();
         while (stateAssignments.advance()) {
-            Node merge = stateAssignments.getKey();
-            MergeStateAssignment assignment = stateAssignments.getValue();
+            Node nodeRequiringState = stateAssignments.getKey();
+            NodeStateAssignment assignment = stateAssignments.getValue();
             switch (assignment) {
                 case AFTER_BCI:
                     FrameState newState = stateAfter.duplicate();
@@ -1850,23 +1857,23 @@ public class SnippetTemplate {
                             }
                         });
                     }
-                    ((AbstractMergeNode) duplicates.get(merge)).setStateAfter(newState);
+                    ((StateSplit) duplicates.get(nodeRequiringState)).setStateAfter(newState);
                     break;
                 case BEFORE_BCI:
                     FrameState stateBeforeSnippet = findLastFrameState(replaceeGraphCFGPredecessor);
-                    ((AbstractMergeNode) duplicates.get(merge)).setStateAfter(stateBeforeSnippet.duplicate());
+                    ((StateSplit) duplicates.get(nodeRequiringState)).setStateAfter(stateBeforeSnippet.duplicate());
                     break;
                 case INVALID:
                     /*
-                     * We cannot assign a proper frame state for this snippet's merge since there
-                     * are effects which cannot be represented by a single state at the merge
+                     * We cannot assign a proper frame state for this snippet's node since there are
+                     * effects which cannot be represented by a single state at the node
                      */
-                    throw GraalError.shouldNotReachHere("Invalid snippet replacing a node before frame state assignment with merge " + merge + " for replacee " + replacee);
+                    throw GraalError.shouldNotReachHere("Invalid snippet replacing a node before frame state assignment with node " + nodeRequiringState + " for replacee " + replacee);
                 default:
-                    throw GraalError.shouldNotReachHere("Unknown MergeStateAssigment:" + assignment);
+                    throw GraalError.shouldNotReachHere("Unknown StateAssigment:" + assignment);
             }
             replacee.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL,
-                            replacee.graph(), "After duplicating after state for merge %s in snippet", duplicates.get(merge));
+                            replacee.graph(), "After duplicating after state for node %s in snippet", duplicates.get(nodeRequiringState));
         }
     }
 
