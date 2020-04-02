@@ -518,6 +518,16 @@ class BaseDaCapoNativeImageBenchmarkSuite():
                 dacapo_nested_resources += self.collect_nested_dependencies(dacapo_dat_resource)
         return dacapo_extracted, dacapo_dat_resources, dacapo_nested_resources
 
+    def collect_unique_dependencies(self, path, benchmark, exclude_libs):
+        deps = BaseDaCapoNativeImageBenchmarkSuite.collect_dependencies(path)
+        # if there are more versions of the same jar, we choose one and omit remaining from the classpath
+        if benchmark in exclude_libs:
+            for lib in exclude_libs[benchmark]:
+                lib_path = mx.join(path, lib)
+                if lib_path in deps:
+                    deps.remove(mx.join(path, lib))
+        return deps
+
 
 _DACAPO_EXTRA_VM_ARGS = {
     'avrora':     ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.derby.jdbc.ClientDriver,'
@@ -588,6 +598,10 @@ _daCapo_iterations = {
     'xalan'      : 30, # Needs both xalan.jar and xalan-2.7.2.jar. Different library versions on classpath aren't supported.
 }
 
+_daCapo_exclude_lib = {
+    'h2'          : ['derbytools.jar', 'derbyTesting.jar', 'derbyclient.jar', 'derbynet.jar']  # multiple derby classes occurrences on the classpath can cause a security error
+}
+
 class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors
     def name(self):
         return 'dacapo-native-image'
@@ -636,7 +650,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite, B
 
     def create_classpath(self, benchmark):
         dacapo_extracted, dacapo_dat_resources, dacapo_nested_resources = self.create_dacapo_classpath(self.daCapoPath(), benchmark)
-        dacapo_jars = self.collect_dependencies(os.path.join(dacapo_extracted, 'jar'))
+        dacapo_jars = super(DaCapoNativeImageBenchmarkSuite, self).collect_unique_dependencies(os.path.join(dacapo_extracted, 'jar'), benchmark, _scala_daCapo_exclude_lib)
         cp = ':'.join([dacapo_extracted] + dacapo_jars + dacapo_dat_resources + dacapo_nested_resources)
         return cp
 
@@ -738,7 +752,7 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.ScalaDaCapoBenchma
 
     def create_classpath(self, benchmark):
         dacapo_extracted, dacapo_dat_resources, dacapo_nested_resources = self.create_dacapo_classpath(self.daCapoPath(), benchmark)
-        dacapo_jars = self.collect_unique_dependencies(os.path.join(dacapo_extracted, 'jar'), benchmark)
+        dacapo_jars = super(ScalaDaCapoNativeImageBenchmarkSuite, self).collect_unique_dependencies(os.path.join(dacapo_extracted, 'jar'), benchmark, _scala_daCapo_exclude_lib)
         cp = ':'.join([self.substitution_path()] + [dacapo_extracted] + dacapo_jars + dacapo_dat_resources + dacapo_nested_resources)
         if benchmark == 'scalaxb':
             cp += ':' + self.daCapoAdditionalLib()
@@ -749,16 +763,6 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.ScalaDaCapoBenchma
         bench_suite = mx.suite('nativeimage-benchmarks')
         root_dir = mx.join(bench_suite.dir, "mxbuild")
         return os.path.abspath(mx.join(root_dir, 'java/com.oracle.svm.bench.scaladacapo/bin/'))
-
-    def collect_unique_dependencies(self, path, benchmark):
-        deps = super(ScalaDaCapoNativeImageBenchmarkSuite, self).collect_dependencies(path)
-        # if there are more versions of the same jar, we choose one and omit remaining from the classpath
-        if benchmark in _scala_daCapo_exclude_lib:
-            for lib in _scala_daCapo_exclude_lib[benchmark]:
-                lib_path = mx.join(path, lib)
-                if lib_path in deps:
-                    deps.remove(mx.join(path, lib))
-        return deps
 
 
 mx_benchmark.add_bm_suite(ScalaDaCapoNativeImageBenchmarkSuite())
