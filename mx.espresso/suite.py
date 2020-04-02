@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "5.258.1",
+    "mxversion": "5.261.3",
     "name": "espresso",
 
     # ------------- licenses
@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "aea53e2eb37713b17b1f1d16da177448ead60606",
+                "version": "aba032ffaaab97442e9af6bc16a4794246061592",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -174,7 +174,7 @@ suite = {
             "jniHeaders": True,
             "dependencies": [
                 "com.oracle.truffle.espresso",
-                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "truffle:TRUFFLE_TCK",
                 "mx:JUNIT",
             ],
             # JTT unit tests run both on the host JVM and on Espresso, so they must be compiled with a version compatible with Espresso (8).
@@ -285,7 +285,7 @@ suite = {
             "distDependencies": [
                 "espresso:ESPRESSO",
                 "truffle:TRUFFLE_API",
-                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "truffle:TRUFFLE_TCK",
                 "mx:JUNIT",
             ],
             "javaProperties": {
