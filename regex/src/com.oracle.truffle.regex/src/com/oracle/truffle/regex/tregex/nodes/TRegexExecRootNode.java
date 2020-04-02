@@ -418,12 +418,11 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         }
 
         private RegexResult executeBackwardAnchored(Object input, int fromIndexArg, int inputLength) {
-            int maxIndex = fromIndexArg;
             if (getBackwardExecutor().isSimpleCG()) {
-                int[] result = (int[]) backwardEntryNode.execute(input, fromIndexArg, inputLength, maxIndex);
+                int[] result = (int[]) backwardEntryNode.execute(input, fromIndexArg, inputLength, inputLength);
                 return result == null ? NoMatchResult.getInstance() : new SingleIndexArrayResult(result);
             }
-            final int backwardResult = (int) backwardEntryNode.execute(input, fromIndexArg, inputLength, maxIndex);
+            final int backwardResult = (int) backwardEntryNode.execute(input, fromIndexArg, inputLength, inputLength);
             if (backwardResult == TRegexDFAExecutorNode.NO_MATCH) {
                 return NoMatchResult.getInstance();
             }

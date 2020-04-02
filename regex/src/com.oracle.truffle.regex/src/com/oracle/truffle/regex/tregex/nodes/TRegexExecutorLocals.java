@@ -98,8 +98,4 @@ public abstract class TRegexExecutorLocals {
     public void setIndex(int index) {
         this.index = index;
     }
-
-    public void incIndex(int i) {
-        this.index += i;
-    }
 }

@@ -41,13 +41,14 @@
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 
 /**
  * Container for all local variables used in {@link TRegexDFAExecutorNode}.
  */
 public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
 
-    private int curMaxIndex;
+    private int curMinIndex;
     private int successorIndex;
     private int result;
     private short lastTransition;
@@ -60,22 +61,21 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
     }
 
     /**
-     * The maximum index as checked by
-     * {@link TRegexDFAExecutorNode#hasNext(TRegexDFAExecutorLocals)}. In most cases this value is
-     * equal to {@link #getMaxIndex()}, but backward matching nodes change this value while
-     * matching.
+     * The minimum index as checked by
+     * {@link TRegexExecutorNode#inputHasNext(TRegexExecutorLocals)}. In most cases this value is
+     * {@code 0}, but backward matching nodes change this value while matching.
      *
-     * @return the maximum index as checked by
-     *         {@link TRegexDFAExecutorNode#hasNext(TRegexDFAExecutorLocals)}.
+     * @return the minimum index as checked by
+     *         {@link TRegexExecutorNode#inputHasNext(TRegexExecutorLocals)}.
      *
      * @see BackwardDFAStateNode
      */
-    public int getCurMaxIndex() {
-        return curMaxIndex;
+    public int getCurMinIndex() {
+        return curMinIndex;
     }
 
-    public void setCurMaxIndex(int curMaxIndex) {
-        this.curMaxIndex = curMaxIndex;
+    public void setCurMinIndex(int curMinIndex) {
+        this.curMinIndex = curMinIndex;
     }
 
     public short getLastTransition() {
@@ -107,6 +107,6 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
     }
 
     public TRegexDFAExecutorLocals toInnerLiteralBackwardLocals() {
-        return new TRegexDFAExecutorLocals(getInput(), getFromIndex(), getIndex(), getFromIndex(), cgData);
+        return new TRegexDFAExecutorLocals(getInput(), getFromIndex(), getIndex(), getMaxIndex(), cgData);
     }
 }

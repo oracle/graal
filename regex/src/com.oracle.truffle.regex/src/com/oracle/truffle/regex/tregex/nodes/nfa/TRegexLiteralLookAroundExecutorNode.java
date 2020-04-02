@@ -54,7 +54,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
  * Specialized {@link TRegexExecutorNode} for matching {@link LookAroundAssertion#isLiteral()
  * literal} {@link LookAroundAssertion}s.
  */
-public class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNode {
+public final class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNode {
 
     private final boolean forward;
     private final boolean negated;
@@ -91,17 +91,15 @@ public class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNode {
     @Override
     public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
-        int index = locals.getIndex();
+        int initialIndex = locals.getIndex();
         for (int i = 0; i < matchers.length; i++) {
-            int iChar = forward ? index + i : index - i;
-            if (!inputBoundsCheck(iChar, 0, locals.getMaxIndex()) || !matchers[i].execute(inputRead(locals, iChar), compactString)) {
+            if (!inputHasNext(locals) || !matchers[i].execute(inputRead(locals), compactString)) {
+                locals.setIndex(initialIndex);
                 return negated;
             }
+            inputAdvance(locals);
         }
+        locals.setIndex(initialIndex);
         return !negated;
-    }
-
-    private boolean inputBoundsCheck(int i, int min, int max) {
-        return forward ? i < max : i > min;
     }
 }

@@ -71,12 +71,13 @@ public class BackwardDFAStateNode extends DFAStateNode {
     @Override
     int atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         super.atEnd(locals, executor);
-        if (hasBackwardPrefixState() && locals.getIndex() == locals.getFromIndex() && locals.getFromIndex() > 0) {
+        if (hasBackwardPrefixState() && locals.getIndex() > 0) {
+            assert locals.getIndex() == locals.getFromIndex();
             /*
              * We have reached the starting index of the forward matcher, so we have to switch to
              * backward-prefix-states. These states will match look-behind assertions only.
              */
-            locals.setCurMaxIndex(0);
+            locals.setCurMinIndex(0);
             return getBackwardPrefixStateIndex();
         }
         return FS_RESULT_NO_SUCCESSOR;

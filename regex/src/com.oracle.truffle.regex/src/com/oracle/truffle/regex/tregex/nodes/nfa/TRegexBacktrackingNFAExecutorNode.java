@@ -70,7 +70,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
  * This regex executor uses a backtracking algorithm on the NFA. It is used for all expressions that
  * cannot be matched with the DFA, such as expressions with backreferences.
  */
-public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
+public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
 
     public static final TRegexExecutorNode[] NO_LOOK_AROUND_EXECUTORS = {};
 
@@ -162,13 +162,14 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
         if (innerLiteral != null) {
-            int indexOfInnerLiteral = findInnerLiteral(locals, locals.getFromIndex());
-            if (indexOfInnerLiteral < 0) {
+            locals.setIndex(locals.getFromIndex());
+            int innerLiteralIndex = findInnerLiteral(locals);
+            if (innerLiteralIndex < 0) {
                 return null;
             }
-            locals.setLastInnerLiteralIndex(indexOfInnerLiteral);
-            // TODO: translate code points to array slots here
-            locals.setIndex(Math.max(locals.getFromIndex(), indexOfInnerLiteral - innerLiteral.getMaxPrefixSize()));
+            locals.setLastInnerLiteralIndex(innerLiteralIndex);
+            locals.setIndex(innerLiteralIndex);
+            rewindUpTo(locals, locals.getFromIndex(), innerLiteral.getMaxPrefixSize());
         }
         if (loopbackInitialState) {
             locals.setLastInitialStateIndex(locals.getIndex());
@@ -207,35 +208,38 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                          * state again.
                          */
                         assert isForward();
-                        int nextIndex = locals.getLastInitialStateIndex() + 1;
-                        if (nextIndex > locals.getMaxIndex()) {
+                        locals.setIndex(locals.getLastInitialStateIndex());
+                        if (!inputHasNext(locals)) {
                             // break if we are at the end of the string.
                             break;
                         }
+                        inputAdvance(locals);
                         if (innerLiteral != null) {
                             // we can search for the inner literal again, but only if we tried all
                             // offsets between the last inner literal match and maxPrefixSize.
                             if (locals.getLastInitialStateIndex() == locals.getLastInnerLiteralIndex()) {
-                                nextIndex = findInnerLiteral(locals, nextIndex);
-                                if (nextIndex < 0) {
-                                    nextIndex = locals.getMaxIndex();
-                                    locals.setLastInnerLiteralIndex(locals.getMaxIndex());
+                                int innerLiteralIndex = findInnerLiteral(locals);
+                                if (innerLiteralIndex < 0) {
+                                    break;
                                 } else {
-                                    locals.setLastInnerLiteralIndex(nextIndex);
-                                    // TODO: translate code points to array slots here
-                                    nextIndex = Math.max(locals.getFromIndex(), nextIndex - innerLiteral.getMaxPrefixSize());
+                                    locals.setLastInnerLiteralIndex(innerLiteralIndex);
+                                    locals.setIndex(innerLiteralIndex);
+                                    rewindUpTo(locals, locals.getFromIndex(), innerLiteral.getMaxPrefixSize());
                                 }
                             }
                         } else if (loopbackInitialStateMatcher != null) {
                             // find the next character that matches any of the initial state's
                             // successors.
-                            nextIndex = findFirstLoopbackMatch(locals, compactString, nextIndex);
-                            if (nextIndex < 0) {
-                                nextIndex = locals.getMaxIndex();
+                            assert isForward();
+                            while (inputHasNext(locals)) {
+                                if (loopbackInitialStateMatcher.execute(inputRead(locals), compactString)) {
+                                    break;
+                                }
+                                inputAdvance(locals);
                             }
                         }
-                        locals.setLastInitialStateIndex(nextIndex);
-                        locals.resetToInitialState(nextIndex);
+                        locals.setLastInitialStateIndex(locals.getIndex());
+                        locals.resetToInitialState();
                         ip = nfa.getUnAnchoredInitialState(isForward()).getId();
                         continue;
                     } else {
@@ -321,9 +325,9 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         PureNFATransition[] successors = curState.getSuccessors(isForward());
         CompilerDirectives.isPartialEvaluationConstant(successors);
         CompilerDirectives.isPartialEvaluationConstant(successors.length);
+        boolean atEnd = inputAtEnd(locals);
+        int c = atEnd ? 0 : inputRead(locals);
         final int index = locals.getIndex();
-        boolean atEnd = isForward() ? index >= locals.getMaxIndex() : index == 0;
-        int c = atEnd ? 0 : inputRead(locals, index);
         if (curState.isDeterministic()) {
             /*
              * We know that in this state only one transition can match at a time, so we can always
@@ -454,7 +458,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         return (int[]) getLookAroundExecutor(lookAroundState).execute(subLocals, compactString);
     }
 
-    protected boolean subMatchFailed(PureNFAState curState, int[] subMatchResult) {
+    protected static boolean subMatchFailed(PureNFAState curState, int[] subMatchResult) {
         return (subMatchResult == null) != curState.isLookAroundNegated();
     }
 
@@ -533,7 +537,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         }
     }
 
-    protected int getBackRefBoundary(TRegexBacktrackingNFAExecutorLocals locals, PureNFATransition transition, int cgIndex, int index) {
+    protected static int getBackRefBoundary(TRegexBacktrackingNFAExecutorLocals locals, PureNFATransition transition, int cgIndex, int index) {
         return transition.getGroupBoundaries().getUpdateIndices().get(cgIndex) ? index
                         : transition.getGroupBoundaries().getClearIndices().get(cgIndex) ? -1 : locals.getCaptureGroupBoundary(cgIndex);
     }
@@ -675,26 +679,12 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         return i;
     }
 
-    private int findInnerLiteral(TRegexBacktrackingNFAExecutorLocals locals, int fromIndex) {
+    private int findInnerLiteral(TRegexBacktrackingNFAExecutorLocals locals) {
         if (indexOfNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             indexOfNode = InputIndexOfStringNode.create();
         }
-        return indexOfNode.execute(locals.getInput(), fromIndex, locals.getMaxIndex(), innerLiteral.getLiteral(), innerLiteral.getMask());
-    }
-
-    private int findFirstLoopbackMatch(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString, int fromIndex) {
-        assert isForward();
-        for (int i = fromIndex; i < locals.getMaxIndex(); i++) {
-            if (loopbackInitialStateMatcher.execute(inputRead(locals, i), compactString)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    protected boolean inputAtBegin(TRegexBacktrackingNFAExecutorLocals locals) {
-        return locals.getIndex() == (isForward() ? 0 : locals.getMaxIndex());
+        return indexOfNode.execute(locals.getInput(), locals.getIndex(), locals.getMaxIndex(), innerLiteral.getLiteral(), innerLiteral.getMask());
     }
 
     private int inputIncIndex(int i) {

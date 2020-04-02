@@ -133,14 +133,13 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         nextStatesLength += frameSize;
     }
 
-    public void nextChar() {
+    public void nextState() {
         int[] tmp = curStates;
         curStates = nextStates;
         nextStates = tmp;
         curStatesLength = nextStatesLength;
         nextStatesLength = 0;
         iCurStates = 0;
-        incIndex(1);
         Arrays.fill(marks, 0);
         resultPushed = false;
     }

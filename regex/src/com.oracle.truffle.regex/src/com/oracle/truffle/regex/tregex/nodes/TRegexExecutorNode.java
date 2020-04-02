@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -63,6 +64,38 @@ public abstract class TRegexExecutorNode extends Node {
         return root.inputLength(locals.getInput());
     }
 
+    /**
+     * Returns {@code true} iff the index is at the beginning of the input string in respect to
+     * {@link #isForward()}.
+     */
+    public boolean inputAtBegin(TRegexExecutorLocals locals) {
+        return locals.getIndex() == (isForward() ? 0 : getInputLength(locals));
+    }
+
+    /**
+     * Returns {@code true} iff the index is at the end of the input string in respect to
+     * {@link #isForward()}.
+     */
+    public boolean inputAtEnd(TRegexExecutorLocals locals) {
+        return locals.getIndex() == (isForward() ? getInputLength(locals) : 0);
+    }
+
+    public int getMinIndex(@SuppressWarnings("unused") TRegexExecutorLocals locals) {
+        return 0;
+    }
+
+    public int getMaxIndex(TRegexExecutorLocals locals) {
+        return locals.getMaxIndex();
+    }
+
+    public boolean inputHasNext(TRegexExecutorLocals locals) {
+        return isForward() ? locals.getIndex() < getMaxIndex(locals) : locals.getIndex() > getMinIndex(locals);
+    }
+
+    public int nextIndex() {
+        return 0;
+    }
+
     public int inputRead(TRegexExecutorLocals locals) {
         return inputRead(locals, locals.getIndex());
     }
@@ -70,6 +103,43 @@ public abstract class TRegexExecutorNode extends Node {
     public int inputRead(TRegexExecutorLocals locals, int index) {
         assert root != null;
         return root.inputRead(locals.getInput(), isForward() ? index : index - 1);
+    }
+
+    public void inputAdvance(TRegexExecutorLocals locals) {
+        locals.setIndex(isForward() ? locals.getIndex() + 1 : locals.getIndex() - 1);
+    }
+
+    public int countUpTo(TRegexExecutorLocals locals, int max, int nCodePoints) {
+        CompilerAsserts.partialEvaluationConstant(nCodePoints);
+        CompilerAsserts.partialEvaluationConstant(max);
+        if (nCodePoints > 0) {
+            assert isForward();
+            int i = 0;
+            int index = locals.getIndex();
+            while (index < max && i < nCodePoints) {
+                // TODO: decode here
+                index++;
+                i++;
+            }
+            return i;
+        }
+        return 0;
+    }
+
+    public int rewindUpTo(TRegexExecutorLocals locals, int min, int nCodePoints) {
+        CompilerAsserts.partialEvaluationConstant(nCodePoints);
+        CompilerAsserts.partialEvaluationConstant(min);
+        if (nCodePoints > 0) {
+            assert isForward();
+            int i = 0;
+            while (locals.getIndex() > min && i < nCodePoints) {
+                // TODO: decode here
+                locals.setIndex(locals.getIndex() - 1);
+                i++;
+            }
+            return i;
+        }
+        return 0;
     }
 
     protected int getNumberOfCaptureGroups() {

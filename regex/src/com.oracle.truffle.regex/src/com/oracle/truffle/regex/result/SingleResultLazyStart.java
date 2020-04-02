@@ -81,7 +81,7 @@ public final class SingleResultLazyStart extends LazyResult {
     }
 
     public Object[] createArgsFindStart() {
-        return new Object[]{getInput(), getEnd(), getFromIndex()};
+        return new Object[]{getInput(), getFromIndex(), getEnd()};
     }
 
     /**
