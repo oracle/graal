@@ -1139,7 +1139,7 @@ public class StandardGraphBuilderPlugins {
                 unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc);
             }
             createUnsafeAccess(object, b, unsafeNodeConstructor);
-            if (accessKind.emitBarriers) {
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.postReadBarriers));
             }
             return true;
