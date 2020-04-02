@@ -823,7 +823,7 @@ public class SnippetTemplate {
 
             explodeLoops(snippetCopy, providers);
 
-            CanonicalizerPhase canonicalizer = null;
+            CanonicalizerPhase canonicalizer;
             if (GraalOptions.ImmutableCode.getValue(snippetCopy.getOptions())) {
                 canonicalizer = CanonicalizerPhase.createWithoutReadCanonicalization();
             } else {
@@ -859,7 +859,7 @@ public class SnippetTemplate {
             }
             snippetCopy.setGuardsStage(guardsStage);
             try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate", snippetCopy)) {
-                new LoweringPhase(CanonicalizerPhase.create(), args.cacheKey.loweringStage).apply(snippetCopy, providers);
+                new LoweringPhase(canonicalizer, args.cacheKey.loweringStage).apply(snippetCopy, providers);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }

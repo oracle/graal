@@ -138,6 +138,7 @@ public class ArrayCopyWithExceptionNode extends WithExceptionNode implements Arr
          */
         SubstrateArraycopyNode plainArrayCopy = this.asNode().graph()
                         .add(new SubstrateArraycopyNode(getSource(), getSourcePosition(), getDestination(), getDestinationPosition(), getLength(), getElementKind(), getBci()));
+        plainArrayCopy.setStateAfter(stateAfter);
         AbstractBeginNode oldException = this.exceptionEdge;
         graph().replaceSplitWithFixed(this, plainArrayCopy, this.next());
         GraphUtil.killCFG(oldException);

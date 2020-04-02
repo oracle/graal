@@ -1164,7 +1164,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         if (node instanceof ForeignCallNode) {
             ForeignCallNode foreignCall = (ForeignCallNode) node;
-            if (foreignCall.getBci() == BytecodeFrame.UNKNOWN_BCI && methodScope.invokeData != null && !BytecodeFrame.isPlaceholderBci(methodScope.invokeData.invoke.bci())) {
+            if (foreignCall.bci() == BytecodeFrame.UNKNOWN_BCI && methodScope.invokeData != null && !BytecodeFrame.isPlaceholderBci(methodScope.invokeData.invoke.bci())) {
                 foreignCall.setBci(methodScope.invokeData.invoke.bci());
             }
         } else if (node instanceof DeoptBciSupplier) {

@@ -244,6 +244,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
             ForeignCallsProvider foreignCalls = tool.getProviders().getForeignCalls();
             ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(foreignCalls, ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
                             node.getDestinationPosition(), node.getLength()));
+            call.setStateAfter(node.stateAfter());
             call.setBci(node.getBci());
             graph.replaceWithExceptionSplit(node, call);
         }
