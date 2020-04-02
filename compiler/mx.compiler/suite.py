@@ -2727,7 +2727,11 @@ suite = {
         "JVMCI_API",
         "JVMCI_HOTSPOT",
       ],
-      "maven": False,
+      "allowsJavadocWarnings": True,
+      "description":  "The GraalVM compiler Management Bean.",
+      "maven" : {
+        "artifactId" : "compiler-management",
+      },
     },
 
     "GRAAL_MANAGEMENT_LIBGRAAL": {
