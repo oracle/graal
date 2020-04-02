@@ -1376,18 +1376,18 @@ public class MethodTypeFlowBuilder {
                          * actual return builder is materialized.
                          */
                         ActualReturnTypeFlow actualReturn = null;
-
+                        AnalysisType receiverType = invoke.getInvokeKind().hasReceiver() ? (AnalysisType) invoke.getReceiverType() : null;
                         InvokeTypeFlow invokeFlow = null;
                         switch (target.invokeKind()) {
                             case Static:
-                                invokeFlow = new StaticInvokeTypeFlow(invoke, target, actualParameters, actualReturn, location);
+                                invokeFlow = new StaticInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
                                 break;
                             case Special:
-                                invokeFlow = new SpecialInvokeTypeFlow(invoke, target, actualParameters, actualReturn, location);
+                                invokeFlow = new SpecialInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
                                 break;
                             case Virtual:
                             case Interface:
-                                invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invoke, target, actualParameters, actualReturn, location);
+                                invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
                                 break;
                             default:
                                 throw shouldNotReachHere();
@@ -1454,27 +1454,15 @@ public class MethodTypeFlowBuilder {
                 ConvertUnknownValueNode node = (ConvertUnknownValueNode) n;
 
                 /*
-                 * Wire the AllInstantiated type flow, potentially filtered by an annotation
-                 * specified type, to the uses of this node.
+                 * Wire the all-instantiated type flow, of either the Object type or a more concrete
+                 * sub-type if precise type information is available, to the uses of this node.
                  */
-
-                TypeFlowBuilder<?> resultBuilder = TypeFlowBuilder.create(bb, node, ProxyTypeFlow.class, () -> {
-                    ProxyTypeFlow resultFlow = new ProxyTypeFlow(node, bb.getAllInstantiatedTypeFlow());
+                AnalysisType nodeType = (AnalysisType) StampTool.typeOrNull(node);
+                TypeFlowBuilder<?> resultBuilder = TypeFlowBuilder.create(bb, node, ConvertUnknownValueTypeFlow.class, () -> {
+                    ConvertUnknownValueTypeFlow resultFlow = new ConvertUnknownValueTypeFlow(node, nodeType.getTypeFlow(bb, true));
                     methodFlow.addMiscEntry(resultFlow);
                     return resultFlow;
                 });
-
-                AnalysisType filterType = (AnalysisType) StampTool.typeOrNull(node);
-                if (!filterType.equals(bb.getObjectType())) {
-                    TypeFlowBuilder<?> filterBuilder = TypeFlowBuilder.create(bb, node, FilterTypeFlow.class, () -> {
-                        /* Reduce the all instantiated type using the filter type. */
-                        FilterTypeFlow filterFlow = new FilterTypeFlow(null, filterType, true, true);
-                        methodFlow.addMiscEntry(filterFlow);
-                        return filterFlow;
-                    });
-                    filterBuilder.addUseDependency(resultBuilder);
-                    resultBuilder = filterBuilder;
-                }
 
                 state.add(node, resultBuilder);
             }
