@@ -167,8 +167,15 @@ public interface ArrayCopy extends Virtualizable, SingleMemoryKill, MemoryAccess
                     if (!checkEntryTypes(srcPosInt, len, srcVirtual, destVirtual.type().getComponentType(), tool)) {
                         return;
                     }
-                    for (int i = 0; i < len; i++) {
-                        tool.setVirtualEntry(destVirtual, destPosInt + i, tool.getEntry(srcVirtual, srcPosInt + i));
+                    if (srcVirtual == destVirtual && srcPosInt < destPosInt) {
+                        // must copy backwards to avoid losing elements
+                        for (int i = len - 1; i >= 0; i--) {
+                            tool.setVirtualEntry(destVirtual, destPosInt + i, tool.getEntry(srcVirtual, srcPosInt + i));
+                        }
+                    } else {
+                        for (int i = 0; i < len; i++) {
+                            tool.setVirtualEntry(destVirtual, destPosInt + i, tool.getEntry(srcVirtual, srcPosInt + i));
+                        }
                     }
                     deleteThisNode(tool);
                     DebugContext debug = this.asNode().getDebug();
