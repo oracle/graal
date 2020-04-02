@@ -208,6 +208,7 @@ class GraalVmComponent(object):
                  has_polyglot_lib_entrypoints=False,
                  boot_jars=None,
                  jvmci_parent_jars=None,
+                 jlink=True,
                  priority=None,
                  installable=None,
                  post_install_msg=None,
@@ -274,6 +275,7 @@ class GraalVmComponent(object):
         self.installable = installable
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
+        self.jlink = jlink
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.builder_jar_distributions, list)
@@ -505,7 +507,7 @@ def jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable
         setattr(jdk, '.omits_ThreadPriorityPolicy_warning', '-XX:ThreadPriorityPolicy=1 may require system level permission' not in out.data)
     return getattr(jdk, '.omits_ThreadPriorityPolicy_warning')
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   root_module_names=None,
                   missing_export_target_action='create',
                   with_source=lambda x: True,
@@ -518,6 +520,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
     :param JDKConfig jdk: source JDK
     :param str dst_jdk_dir: path to use for the jlink --output option
     :param list module_dists: list of distributions defining modules
+    :param list ignore_dists: list of distributions that should be ignored for missing_export_target_action
     :param list root_module_names: list of strings naming the module root set for the new JDK image.
                      The named modules must either be in `module_dists` or in `jdk`. If None, then
                      the root set will be all the modules in ``module_dists` and `jdk`.
@@ -564,12 +567,13 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
 
     build_dir = mx.ensure_dir_exists(join(dst_jdk_dir + ".build"))
     try:
+        ignore_module_names = set(mx_javamodules.get_module_name(mx.dependency(ignore_dist)) for ignore_dist in ignore_dists)
         # Handle targets of qualified exports that are not present in `modules`
         target_requires = {}
         for jmd in modules:
             for targets in jmd.exports.values():
                 for target in targets:
-                    if target not in all_module_names and target not in hashes:
+                    if target not in all_module_names and target not in ignore_module_names and target not in hashes:
                         target_requires.setdefault(target, set()).add(jmd.name)
         if target_requires and missing_export_target_action is not None:
             if missing_export_target_action == 'error':
@@ -578,9 +582,6 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
 
             extra_modules = []
             for name, requires in target_requires.items():
-                if name.startswith('org.graalvm.nativeimage.'):
-                    print('Skip jlink for ' + name)
-                    continue
                 module_jar = join(build_dir, name + '.jar')
                 jmd = JavaModuleDescriptor(name, {}, requires={module: [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
                 extra_modules.append(jmd)

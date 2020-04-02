@@ -810,6 +810,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'substratevm:POINTSTO',
     ],
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
+    jlink=False,
 ))
 
 def _native_image_launcher_main_class():
@@ -866,6 +867,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     provided_executables=['bin/<cmd:rebuild-images>'],
     installable=True,
+    jlink=False,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(

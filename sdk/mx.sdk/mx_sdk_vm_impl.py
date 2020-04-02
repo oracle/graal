@@ -1401,10 +1401,11 @@ class GraalVmJImage(mx.Project):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, suite, jimage_jars, workingSets, theLicense=None, **kw_args):
+    def __init__(self, suite, jimage_jars, jimage_ignore_jars, workingSets, theLicense=None, **kw_args):
         super(GraalVmJImage, self).__init__(suite=suite, name='graalvm-jimage', subDir=None, srcDirs=[], deps=jimage_jars,
                                             workingSets=workingSets, d=_suite.dir, theLicense=theLicense,
                                             **kw_args)
+        self.jimage_ignore_jars = jimage_ignore_jars or []
 
     def isPlatformDependent(self):
         return True
@@ -1436,7 +1437,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
     def build(self):
         with_source = lambda dep: not isinstance(dep, mx.Dependency) or (_include_sources() and dep.isJARDistribution() and not dep.is_stripped())
         vendor_info = {'vendor-version': graalvm_vendor_version(get_final_graalvm_distribution())}
-        mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source, vendor_info=vendor_info)
+        mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, self.subject.jimage_ignore_jars, with_source=with_source, vendor_info=vendor_info)
         with open(self._config_file(), 'w') as f:
             f.write('\n'.join(self._config()))
 
@@ -2363,14 +2364,23 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
         if _src_jdk.javaCompliance >= '9':
             jimage_jars = set()
+            jimage_ignore_jars = set()
             for component in registered_graalvm_components(stage1=False):
-                jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
-                if isinstance(component, mx_sdk.GraalVmJvmciComponent):
-                    jimage_jars.update(component.jvmci_jars)
+                if not component.jlink:
+                    jimage_ignore_jars.update(component.jar_distributions)
+                    jimage_ignore_jars.update(component.builder_jar_distributions)
+                    for launcher_config in component.launcher_configs:
+                        if launcher_config.jar_distributions:
+                            jimage_ignore_jars.update(launcher_config.jar_distributions)
+                else:
+                    jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
+                    if isinstance(component, mx_sdk.GraalVmJvmciComponent):
+                        jimage_jars.update(component.jvmci_jars)
 
             register_project(GraalVmJImage(
                 suite=_suite,
                 jimage_jars=list(jimage_jars),
+                jimage_ignore_jars=list(jimage_ignore_jars),
                 workingSets=None,
             ))
 
