@@ -206,6 +206,11 @@ public class LLVMForeignCallNode extends RootNode {
     }
 
     @Override
+    public String toString() {
+        return "LLVM:" + callNode.getCallTarget();
+    }
+
+    @Override
     public boolean isInternal() {
         return true;
     }
