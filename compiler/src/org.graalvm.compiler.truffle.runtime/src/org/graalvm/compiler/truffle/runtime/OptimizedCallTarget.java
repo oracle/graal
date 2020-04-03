@@ -80,6 +80,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
+    // TODO GR-22184 constant names don't match constant values
     static final String CALL_BOUNDARY_METHOD_NAME = "executeRootNode";
     static final String CALL_INLINED_METHOD_NAME = "call";
     private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, SpeculationLog> SPECULATION_LOG_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,

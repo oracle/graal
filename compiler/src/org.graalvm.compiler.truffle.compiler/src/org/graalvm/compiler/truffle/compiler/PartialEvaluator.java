@@ -211,7 +211,7 @@ public abstract class PartialEvaluator {
      * Gets the instrumentation manager associated with this compiler, creating it first if
      * necessary. Each compiler instance has its own instrumentation manager.
      */
-    // TODO: Make private, used only in test outside PartialEvaluator
+    // TODO GR-22185 Make private, used only in test outside PartialEvaluator
     public final InstrumentPhase.Instrumentation getInstrumentation() {
         if (instrumentation == null) {
             synchronized (this) {
@@ -431,7 +431,7 @@ public abstract class PartialEvaluator {
         }
     }
 
-    // TODO: Remove
+    // TODO GR-22186 Remove
     public static class PEInlineInvokePlugin implements InlineInvokePlugin {
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
@@ -801,7 +801,7 @@ public abstract class PartialEvaluator {
         return decision;
     }
 
-    // TODO: Move out of PE
+    // TODO GR-22187 Move out of PE
     public static final class PerformanceInformationHandler implements Closeable {
 
         private static final ThreadLocal<PerformanceInformationHandler> instance = new ThreadLocal<>();
