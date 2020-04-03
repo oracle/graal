@@ -60,7 +60,7 @@ final class PolyglotEngineException extends RuntimeException {
     final RuntimeException e;
 
     private PolyglotEngineException(RuntimeException e) {
-        super(null, null);
+        super(null, e);
         this.e = e;
     }
 
