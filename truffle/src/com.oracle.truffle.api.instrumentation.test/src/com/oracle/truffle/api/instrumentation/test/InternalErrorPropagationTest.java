@@ -60,17 +60,29 @@ public class InternalErrorPropagationTest extends AbstractPolyglotTest {
 
     static final String OTHER_LANGUAGE = "InstrumentationExceptionTest_OtherLanguage";
 
+    public static class TestProxyInstrument extends ProxyInstrument {
+
+        private final TestContextListener listener;
+
+        public TestProxyInstrument(TestContextListener listener) {
+            this.listener = listener;
+        }
+
+        public TestProxyInstrument() {
+            this.listener = null;
+        }
+
+        @Override
+        protected void onCreate(Env env) {
+            super.onCreate(env);
+            env.getInstrumenter().attachContextsListener(listener, true);
+        }
+    }
+
     @Test
     public void testInstrumentCreateException() {
         TestContextListener listener = new TestContextListener();
-        ProxyInstrument instrument = new ProxyInstrument() {
-            @Override
-            protected void onCreate(Env env) {
-                super.onCreate(env);
-                env.getInstrumenter().attachContextsListener(listener, true);
-            }
-        };
-
+        ProxyInstrument instrument = new TestProxyInstrument(listener);
         TestEventListener triggerFailure = new TestEventListener();
 
         setupEnv(Context.create(ProxyLanguage.ID), instrument);
