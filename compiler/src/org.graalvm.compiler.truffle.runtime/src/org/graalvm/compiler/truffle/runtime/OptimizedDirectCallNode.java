@@ -65,7 +65,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
             target = onInterpreterCall(target);
         }
         try {
-            return target.callDirect(this, arguments);
+            return target.callDirectOrInlined(this, arguments);
         } catch (Throwable t) {
             Throwable profiledT = profileExceptionType(t);
             OptimizedCallTarget.runtime().getTvmci().onThrowable(this, null, profiledT, null);

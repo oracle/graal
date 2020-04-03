@@ -371,7 +371,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public final Object callDirect(Node location, Object... args) {
+    public final Object callDirectOrInlined(Node location, Object... args) {
         try {
             try {
                 Object result;
