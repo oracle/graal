@@ -89,6 +89,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
+import org.graalvm.compiler.nodes.DeoptBciSupplier;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.EndNode;
@@ -96,7 +97,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InliningLog;
-import org.graalvm.compiler.nodes.DeoptBciSupplier;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -143,8 +144,10 @@ import org.graalvm.compiler.phases.common.FrameStateMergeAssignment;
 import org.graalvm.compiler.phases.common.FrameStateMergeAssignment.FrameStateMergeAssignmentClosure;
 import org.graalvm.compiler.phases.common.FrameStateMergeAssignment.MergeStateAssignment;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
+import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
+import org.graalvm.compiler.phases.common.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -721,6 +724,7 @@ public class SnippetTemplate {
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
                 snippetCopy.disableUnsafeAccessTracking();
             }
+            assert snippetCopy.isSubstitution();
 
             EconomicMap<Node, Node> nodeReplacements = EconomicMap.create(Equivalence.IDENTITY);
             nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
@@ -830,11 +834,31 @@ public class SnippetTemplate {
                 canonicalizer = CanonicalizerPhase.create();
             }
 
+            /*
+             * Mirror the behavior of normal compilations here (without aggressive optimizations
+             * but with the most important phases)
+             *
+             * @formatter:off
+             * (1) Run some important high-tier optimizations
+             * (2) If lowering stage is != high tier --> perform high-tier lowering
+             * (3) Run important mid tier phases --> guard lowering
+             * (4) If lowering stage is != mid tier --> perform mid-tier lowering
+             * (5) Run important mid tier phases after lowering --> write barrier addition
+             * (6) If lowering stage == low tier
+             *
+             * @formatter:on
+             */
+            // (1)
+            GuardsStage guardsStage = args.cacheKey.guardsStage;
             boolean needsPEA = false;
+            boolean needsCE = false;
+            LoweringTool.LoweringStage loweringStage = args.cacheKey.loweringStage;
             for (Node n : snippetCopy.getNodes()) {
                 if (n instanceof AbstractNewObjectNode || n instanceof AbstractBoxingNode) {
                     needsPEA = true;
                     break;
+                } else if (n instanceof LogicNode) {
+                    needsCE = true;
                 }
             }
             if (needsPEA) {
@@ -851,17 +875,38 @@ public class SnippetTemplate {
                  */
                 new PartialEscapePhase(true, true, canonicalizer, null, options, SchedulingStrategy.LATEST).apply(snippetCopy, providers);
             }
-
-            GuardsStage guardsStage = args.cacheKey.guardsStage;
-            // Perform lowering on the snippet
-            if (!guardsStage.allowsFloatingGuards()) {
-                new GuardLoweringPhase().apply(snippetCopy, null);
+            if (needsCE) {
+                new IterativeConditionalEliminationPhase(canonicalizer, false).apply(snippetCopy, providers);
             }
-            snippetCopy.setGuardsStage(guardsStage);
-            try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate", snippetCopy)) {
-                new LoweringPhase(canonicalizer, args.cacheKey.loweringStage).apply(snippetCopy, providers);
+
+            // (2)
+            try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_HIGH_TIER", snippetCopy)) {
+                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(snippetCopy, providers);
             } catch (Throwable e) {
                 throw debug.handle(e);
+            }
+
+            if (loweringStage != LoweringTool.StandardLoweringStage.HIGH_TIER) {
+                // (3)
+                if (!guardsStage.allowsFloatingGuards()) {
+                    new GuardLoweringPhase().apply(snippetCopy, null);
+                }
+                snippetCopy.setGuardsStage(guardsStage);
+                // (4)
+                try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {
+                    new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(snippetCopy, providers);
+                } catch (Throwable e) {
+                    throw debug.handle(e);
+                }
+                if (loweringStage != LoweringTool.StandardLoweringStage.MID_TIER) {
+                    // (5)
+                    new WriteBarrierAdditionPhase().apply(snippetCopy, providers);
+                    try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_LOW_TIER", snippetCopy)) {
+                        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(snippetCopy, providers);
+                    } catch (Throwable e) {
+                        throw debug.handle(e);
+                    }
+                }
             }
 
             ArrayList<StateSplit> curSideEffectNodes = new ArrayList<>();
@@ -1480,6 +1525,7 @@ public class SnippetTemplate {
         try (DebugCloseable a = args.info.instantiationTimer.start(debug)) {
             args.info.instantiationCounter.increment(debug);
             // Inline the snippet nodes, replacing parameters with the given args in the process
+            final FixedNode replaceeGraphPredecessor = (FixedNode) replacee.predecessor();
             StartNode entryPointNode = snippet.start();
             FixedNode firstCFGNode = entryPointNode.next();
             StructuredGraph replaceeGraph = replacee.graph();
@@ -1507,7 +1553,7 @@ public class SnippetTemplate {
                 }
             }
 
-            rewireFrameStates(replacee, duplicates, firstCFGNodeDuplicate);
+            rewireFrameStates(replacee, duplicates, replaceeGraphPredecessor);
 
             updateStamps(replacee, duplicates);
 
@@ -1865,6 +1911,7 @@ public class SnippetTemplate {
     }
 
     public static FrameState findLastFrameState(FixedNode start, boolean log) {
+        assert start != null;
         FixedNode lastFixedNode = null;
         FixedNode currentStart = start;
         while (true) {
