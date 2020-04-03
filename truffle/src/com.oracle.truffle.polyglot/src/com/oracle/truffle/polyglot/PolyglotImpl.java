@@ -449,11 +449,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         PolyglotContextImpl context = languageContext.context;
         PolyglotExceptionImpl exceptionImpl;
-        Object prev = context.engine.enterIfNeeded(context);
-        try {
-            exceptionImpl = new PolyglotExceptionImpl(languageContext, e);
-        } finally {
-            context.engine.leaveIfNeeded(prev, context);
+        if (context.closed || context.invalid) {
+            exceptionImpl = new PolyglotExceptionImpl(context.engine, e);
+        } else {
+            Object prev = context.engine.enterIfNeeded(context);
+            try {
+                exceptionImpl = new PolyglotExceptionImpl(languageContext, e);
+            } finally {
+                context.engine.leaveIfNeeded(prev, context);
+            }
         }
         APIAccess access = getInstance().getAPIAccess();
         return access.newLanguageException(exceptionImpl.getMessage(), exceptionImpl);
