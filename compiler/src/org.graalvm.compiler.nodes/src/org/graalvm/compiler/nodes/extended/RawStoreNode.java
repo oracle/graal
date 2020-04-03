@@ -64,8 +64,12 @@ public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, 
         this(object, offset, value, accessKind, locationIdentity, true, false, null, false);
     }
 
-    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean isVolatile) {
-        this(object, offset, value, accessKind, locationIdentity, true, isVolatile, null, false);
+    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier) {
+        this(object, offset, value, accessKind, locationIdentity, needsBarrier, false, null, false);
+    }
+
+    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier, boolean isVolatile) {
+        this(object, offset, value, accessKind, locationIdentity, needsBarrier, isVolatile, null, false);
     }
 
     public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier, FrameState stateAfter,

@@ -1187,7 +1187,7 @@ public class StandardGraphBuilderPlugins {
             // Raw accesses can be turned into floatable field accesses, the membars preserve the
             // access mode. In the case of opaque access, and only for opaque, the location of the
             // wrapping membars can be refined to the field location.
-            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc, isVolatile));
+            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc, true, isVolatile));
             if (emitBarriers) {
                 b.add(new MembarNode(accessKind.postWriteBarriers));
             }
