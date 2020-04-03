@@ -75,6 +75,40 @@ import jdk.vm.ci.meta.SpeculationLog;
  * this is a Truffle AST that can be optimized via partial evaluation and compiled to machine code.
  *
  * Note: {@code PartialEvaluator} looks up this class and a number of its methods by name.
+ *
+ * TODO: Explain the graph.
+ *
+ * <pre>
+ *
+ *             OptimizedCallProfiled#call
+ *                        |
+ *             call       |
+ *              |         |
+ *  PUBLIC   callIndirect |  callOSR  callDirectOrInlined callInlined
+ *              |         |     |           |                 |
+ *              | --------|     |           |                 |
+ *              | | |-----------|           |                 |
+ *              | | | |------------- no - inlined? - yes ---- |
+ *  PROTECTED  doInvoke                                       |
+ *                |                                           |
+ *                | <- jump to installed code in PE           |
+ *                |                                           |
+ *  PROTECTED callBoundary                                    |
+ *                |                                           |
+ *                | <- tail jump to installed code in Int     |
+ *                |                                           |
+ *  PROTECTED profiledPERoot                         inlinedPERoot
+ *            [callRoot]                          [callInlinedAgnostic]
+ *                |                                           |
+ *                |                                           |
+ *                |                                           |
+ *  PRIVATE       |--------------- executeRootNode()----------|
+ *                                 [callProxy]
+ *                                         |
+ *                                         |
+ *                                 rootNode.execute()
+ *
+ * </pre>
  */
 @SuppressWarnings("deprecation")
 public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver {
