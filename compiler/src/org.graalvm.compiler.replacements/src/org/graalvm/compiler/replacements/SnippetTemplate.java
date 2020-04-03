@@ -144,6 +144,7 @@ import org.graalvm.compiler.phases.common.FrameStateMergeAssignment;
 import org.graalvm.compiler.phases.common.FrameStateMergeAssignment.FrameStateMergeAssignmentClosure;
 import org.graalvm.compiler.phases.common.FrameStateMergeAssignment.MergeStateAssignment;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
+import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
@@ -840,12 +841,12 @@ public class SnippetTemplate {
              *
              * @formatter:off
              * (1) Run some important high-tier optimizations
-             * (2) If lowering stage is != high tier --> perform high-tier lowering
-             * (3) Run important mid tier phases --> guard lowering
-             * (4) If lowering stage is != mid tier --> perform mid-tier lowering
-             * (5) Run important mid tier phases after lowering --> write barrier addition
-             * (6) If lowering stage == low tier
-             *
+             * (2) Perform high-tier lowering
+             * (3) If lowering stage is != high tier --> Run important mid tier phases --> guard lowering
+             * (4) perform mid-tier lowering
+             * (5) If lowering stage is != mid tier --> Run important mid tier phases after lowering --> write barrier addition
+             * (6) perform low-tier lowering
+             * (7) Run final phases --> dead code elimination
              * @formatter:on
              */
             // (1)
@@ -878,23 +879,23 @@ public class SnippetTemplate {
             if (needsCE) {
                 new IterativeConditionalEliminationPhase(canonicalizer, false).apply(snippetCopy, providers);
             }
-
             // (2)
             try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_HIGH_TIER", snippetCopy)) {
                 new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(snippetCopy, providers);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
-
             if (loweringStage != LoweringTool.StandardLoweringStage.HIGH_TIER) {
                 // (3)
-                if (!guardsStage.allowsFloatingGuards()) {
-                    new GuardLoweringPhase().apply(snippetCopy, null);
-                }
-                snippetCopy.setGuardsStage(guardsStage);
+                assert !guardsStage.allowsFloatingGuards() : guardsStage;
+                // only create memory map nodes if we need the memory graph
+                new IncrementalCanonicalizerPhase<>(canonicalizer, new FloatingReadPhase(true, true)).apply(snippetCopy, providers);
+                new GuardLoweringPhase().apply(snippetCopy, providers);
+                new IncrementalCanonicalizerPhase<>(canonicalizer, new RemoveValueProxyPhase()).apply(snippetCopy, providers);
                 // (4)
                 try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {
                     new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(snippetCopy, providers);
+                    snippetCopy.setGuardsStage(GuardsStage.AFTER_FSA);
                 } catch (Throwable e) {
                     throw debug.handle(e);
                 }
@@ -902,12 +903,16 @@ public class SnippetTemplate {
                     // (5)
                     new WriteBarrierAdditionPhase().apply(snippetCopy, providers);
                     try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_LOW_TIER", snippetCopy)) {
+                        // (6)
                         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(snippetCopy, providers);
                     } catch (Throwable e) {
                         throw debug.handle(e);
                     }
+                    // (7)
+                    new DeadCodeEliminationPhase(Required).apply(snippetCopy);
                 }
             }
+            assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
             ArrayList<StateSplit> curSideEffectNodes = new ArrayList<>();
             ArrayList<DeoptimizingNode> curDeoptNodes = new ArrayList<>();
@@ -943,30 +948,17 @@ public class SnippetTemplate {
                     }
                 }
             }
-
-            new DeadCodeEliminationPhase(Required).apply(snippetCopy);
-
-            assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
-
-            if (((StructuredGraph) replacee.graph()).isAfterFloatingReadPhase()) {
-                new FloatingReadPhase(true, true).apply(snippetCopy);
-            }
-
-            if (!guardsStage.requiresValueProxies()) {
-                new RemoveValueProxyPhase().apply(snippetCopy);
-            }
-
+            this.snippet = snippetCopy;
+            StartNode entryPointNode = snippet.start();
             MemoryAnchorNode anchor = snippetCopy.add(new MemoryAnchorNode(info.privateLocations));
             snippetCopy.start().replaceAtUsages(InputType.Memory, anchor);
-
-            this.snippet = snippetCopy;
-
-            StartNode entryPointNode = snippet.start();
+            debug.dump(DebugContext.VERY_DETAILED_LEVEL, snippetCopy, "After adding memory anchor %s", anchor);
             if (anchor.hasNoUsages()) {
                 anchor.safeDelete();
                 this.memoryAnchor = null;
             } else {
-                // Find out if all the return memory maps point to the anchor (i.e., there's no kill
+                // Find out if all the return memory maps point to the anchor (i.e., there's no
+                // kill
                 // anywhere)
                 boolean needsMemoryMaps = false;
                 for (ReturnNode retNode : snippet.getNodes(ReturnNode.TYPE)) {
@@ -1005,7 +997,6 @@ public class SnippetTemplate {
                 }
             }
             debug.dump(DebugContext.INFO_LEVEL, snippet, "SnippetTemplate after fixing memory anchoring");
-
             List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.TYPE).snapshot();
             if (returnNodes.isEmpty()) {
                 this.returnNode = null;
