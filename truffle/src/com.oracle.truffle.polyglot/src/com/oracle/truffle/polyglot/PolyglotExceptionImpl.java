@@ -129,8 +129,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 com.oracle.truffle.api.source.Source truffleSource = section.getSource();
                 String language = truffleSource.getLanguage();
                 if (language == null) {
-                    Objects.requireNonNull(languageContext, "Source location can not be accepted without language context.");
-                    PolyglotLanguage foundLanguage = languageContext.getEngine().findLanguage(null, language, truffleSource.getMimeType(), false, true);
+                    Objects.requireNonNull(engine, "Source location can not be accepted without language context.");
+                    PolyglotLanguage foundLanguage = engine.findLanguage(null, language, truffleSource.getMimeType(), false, true);
                     if (foundLanguage != null) {
                         language = foundLanguage.getId();
                     }

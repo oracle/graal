@@ -439,16 +439,23 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * why this coercion should only be used in the catch block at the outermost API call.
      */
     @TruffleBoundary
-    static <T extends Throwable> PolyglotException guestToHostException(PolyglotLanguageContext context, T e) {
+    static <T extends Throwable> PolyglotException guestToHostException(PolyglotLanguageContext languageContext, T e) {
         assert !(e instanceof PolyglotException) : "polyglot exceptions must not be thrown to the host";
         PolyglotEngineException.rethrow(e);
 
-        if (context == null) {
+        if (languageContext == null) {
             throw new RuntimeException(e);
         }
 
+        PolyglotContextImpl context = languageContext.context;
+        PolyglotExceptionImpl exceptionImpl;
+        Object prev = context.engine.enterIfNeeded(context);
+        try {
+            exceptionImpl = new PolyglotExceptionImpl(languageContext, e);
+        } finally {
+            context.engine.leaveIfNeeded(prev, context);
+        }
         APIAccess access = getInstance().getAPIAccess();
-        PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(context, e);
         return access.newLanguageException(exceptionImpl.getMessage(), exceptionImpl);
     }
 
