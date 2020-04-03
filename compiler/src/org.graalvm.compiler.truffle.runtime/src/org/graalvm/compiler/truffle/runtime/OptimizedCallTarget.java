@@ -410,26 +410,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    final Object partialEvaluationRootForInlining(Node location, Object... arguments) {
-        ensureInitialized();
-        try {
-            return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments));
-        } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert keepAlive(location);
-        }
-    }
-
-    // Note: {@code PartialEvaluator} looks up this method by name and signature.
     final Object inlinedPERoot(Object... arguments) {
         ensureInitialized();
         return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments));
     }
 
-    public final Object callInlinedForced(Node location, Object... arguments) {
+    // Note: {@code PartialEvaluator} looks up this method by name and signature.
+    public final Object callInlined(Node location, Object... arguments) {
         ensureInitialized();
         try {
-            return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments));
+            return inlinedPERoot(arguments);
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert keepAlive(location);
@@ -1351,7 +1341,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         @Override
         public Object call(Node callNode, CallTarget target, Object... arguments) {
             try {
-                return ((OptimizedCallTarget) target).callInlinedForced(callNode, arguments);
+                return ((OptimizedCallTarget) target).callInlined(callNode, arguments);
             } catch (Throwable t) {
                 OptimizedCallTarget.runtime().getTvmci().onThrowable(callNode, ((OptimizedCallTarget) target), t, null);
                 throw OptimizedCallTarget.rethrow(t);

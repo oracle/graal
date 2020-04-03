@@ -548,8 +548,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                     skipFrames--;
                 }
             } else if (frame.isMethod(methods.callDirectMethod) || frame.isMethod(methods.callIndirectMethod) || frame.isMethod(methods.callInlinedMethod) ||
-                            frame.isMethod(methods.callInlinedAgnosticMethod) ||
-                            frame.isMethod(methods.callInliningForcedMethod)) {
+                            frame.isMethod(methods.inlinedPERoot)) {
                 callNodeFrame = frame;
             }
             return null;
@@ -972,8 +971,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     protected static final class CallMethods {
         public final ResolvedJavaMethod callDirectMethod;
         public final ResolvedJavaMethod callInlinedMethod;
-        public final ResolvedJavaMethod callInlinedAgnosticMethod;
-        public final ResolvedJavaMethod callInliningForcedMethod;
+        public final ResolvedJavaMethod inlinedPERoot;
         public final ResolvedJavaMethod callIndirectMethod;
         public final ResolvedJavaMethod callTargetMethod;
         public final ResolvedJavaMethod callOSRMethod;
@@ -983,12 +981,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             this.callDirectMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_DIRECT);
             this.callIndirectMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INDIRECT);
             this.callInlinedMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INLINED);
-            this.callInlinedAgnosticMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INLINED_AGNOSTIC);
-            this.callInliningForcedMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INLINED_FORCED);
+            this.inlinedPERoot = metaAccess.lookupJavaMethod(GraalFrameInstance.INLINED_PE_ROOT);
             this.callTargetMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_TARGET_METHOD);
             this.callOSRMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_OSR_METHOD);
-            this.anyFrameMethod = new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, callInlinedMethod, callInlinedAgnosticMethod, callTargetMethod, callOSRMethod,
-                            callInliningForcedMethod};
+            this.anyFrameMethod = new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, callInlinedMethod, inlinedPERoot, callTargetMethod, callOSRMethod};
         }
 
         public static CallMethods lookup(MetaAccessProvider metaAccess) {
