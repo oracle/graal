@@ -151,7 +151,7 @@ public abstract class PartialEvaluator {
     protected final ResolvedJavaMethod peRootForInlinling;
     protected final ResolvedJavaMethod peRootForAgnosticInlining;
     private final ResolvedJavaMethod callIndirectMethod;
-    private final ResolvedJavaMethod peRoot;
+    private final ResolvedJavaMethod profiledPERoot;
     private final GraphBuilderConfiguration configPrototype;
     private final InvocationPlugins decodingInvocationPlugins;
     private final NodePlugin[] nodePlugins;
@@ -189,7 +189,7 @@ public abstract class PartialEvaluator {
         this.peRootForInlinling = findRequiredMethod(type, methods, "partialEvaluationRootForInlining", "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
         this.peRootForAgnosticInlining = findRequiredMethod(type, methods, "partialEvaluationRootForAgnosticInlining", "([Ljava/lang/Object;)Ljava/lang/Object;");
         this.callIndirectMethod = findRequiredMethod(type, methods, "callIndirect", "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
-        this.peRoot = findRequiredMethod(type, methods, "partialEvaluationRoot", "([Ljava/lang/Object;)Ljava/lang/Object;");
+        this.profiledPERoot = findRequiredMethod(type, methods, "profiledPERoot", "([Ljava/lang/Object;)Ljava/lang/Object;");
         this.callBoundary = findRequiredMethod(type, methods, "callBoundary", "([Ljava/lang/Object;)Ljava/lang/Object;");
 
         this.configPrototype = createGraphBuilderConfig(configForRoot, true);
@@ -308,7 +308,7 @@ public abstract class PartialEvaluator {
     }
 
     public ResolvedJavaMethod[] getCompilationRootMethods() {
-        return new ResolvedJavaMethod[]{peRoot, peRootForInlinling, peRootForAgnosticInlining};
+        return new ResolvedJavaMethod[]{profiledPERoot, peRootForInlinling, peRootForAgnosticInlining};
     }
 
     public ResolvedJavaMethod[] getNeverInlineMethods() {
@@ -390,7 +390,7 @@ public abstract class PartialEvaluator {
      * @param compilable the Truffle AST being compiled.
      */
     public ResolvedJavaMethod rootForCallTarget(CompilableTruffleAST compilable) {
-        return peRoot;
+        return profiledPERoot;
     }
 
     /**

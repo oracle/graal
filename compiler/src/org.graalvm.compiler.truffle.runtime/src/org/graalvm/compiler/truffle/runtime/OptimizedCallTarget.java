@@ -449,14 +449,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
          * Note this method compiles without any inlining or other optimizations. It is therefore
          * important that this method stays small. It is compiled as a special stub that calls into
          * the optimized code or if the call target is not yet optimized calls into
-         * partialEvaluationRoot directly. In order to avoid deoptimizations in this method it has
+         * profiledPERoot directly. In order to avoid deoptimizations in this method it has
          * optimizations disabled. Any additional code here will likely have significant impact on
          * the intepreter call performance.
          */
         if (interpreterCall()) {
             return doInvoke(args);
         }
-        return partialEvaluationRoot(args);
+        return profiledPERoot(args);
     }
 
     private boolean interpreterCall() {
@@ -482,7 +482,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    protected final Object partialEvaluationRoot(Object[] originalArguments) {
+    protected final Object profiledPERoot(Object[] originalArguments) {
         Object[] args = originalArguments;
         if (GraalCompilerDirectives.inFirstTier()) {
             firstTierCall();
