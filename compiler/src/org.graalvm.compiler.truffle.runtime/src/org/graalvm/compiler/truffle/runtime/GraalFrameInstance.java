@@ -56,7 +56,7 @@ public final class GraalFrameInstance implements FrameInstance {
         try {
             CALL_DIRECT = OptimizedCallTarget.class.getDeclaredMethod("callDirect", Node.class, Object[].class);
             CALL_INLINED = OptimizedCallTarget.class.getDeclaredMethod("partialEvaluationRootForInlining", Node.class, Object[].class);
-            CALL_INLINED_AGNOSTIC = OptimizedCallTarget.class.getDeclaredMethod("partialEvaluationRootForAgnosticInlining", Object[].class);
+            CALL_INLINED_AGNOSTIC = OptimizedCallTarget.class.getDeclaredMethod("inlinedPERoot", Object[].class);
             CALL_INLINED_FORCED = OptimizedCallTarget.class.getDeclaredMethod("callInlinedForced", Node.class, Object[].class);
             CALL_INDIRECT = OptimizedCallTarget.class.getDeclaredMethod("callIndirect", Node.class, Object[].class);
 

@@ -149,7 +149,7 @@ public abstract class PartialEvaluator {
     private final SnippetReflectionProvider snippetReflection;
     private final ResolvedJavaMethod callDirectMethod;
     protected final ResolvedJavaMethod peRootForInlinling;
-    protected final ResolvedJavaMethod peRootForAgnosticInlining;
+    protected final ResolvedJavaMethod inlinedPERoot;
     private final ResolvedJavaMethod callIndirectMethod;
     private final ResolvedJavaMethod profiledPERoot;
     private final GraphBuilderConfiguration configPrototype;
@@ -187,7 +187,7 @@ public abstract class PartialEvaluator {
         ResolvedJavaMethod[] methods = type.getDeclaredMethods();
         this.callDirectMethod = findRequiredMethod(type, methods, "callDirect", "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
         this.peRootForInlinling = findRequiredMethod(type, methods, "partialEvaluationRootForInlining", "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
-        this.peRootForAgnosticInlining = findRequiredMethod(type, methods, "partialEvaluationRootForAgnosticInlining", "([Ljava/lang/Object;)Ljava/lang/Object;");
+        this.inlinedPERoot = findRequiredMethod(type, methods, "inlinedPERoot", "([Ljava/lang/Object;)Ljava/lang/Object;");
         this.callIndirectMethod = findRequiredMethod(type, methods, "callIndirect", "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
         this.profiledPERoot = findRequiredMethod(type, methods, "profiledPERoot", "([Ljava/lang/Object;)Ljava/lang/Object;");
         this.callBoundary = findRequiredMethod(type, methods, "callBoundary", "([Ljava/lang/Object;)Ljava/lang/Object;");
@@ -308,11 +308,11 @@ public abstract class PartialEvaluator {
     }
 
     public ResolvedJavaMethod[] getCompilationRootMethods() {
-        return new ResolvedJavaMethod[]{profiledPERoot, peRootForInlinling, peRootForAgnosticInlining};
+        return new ResolvedJavaMethod[]{profiledPERoot, peRootForInlinling, inlinedPERoot};
     }
 
     public ResolvedJavaMethod[] getNeverInlineMethods() {
-        return new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, peRootForAgnosticInlining};
+        return new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, inlinedPERoot};
     }
 
     public class Request {
@@ -400,17 +400,7 @@ public abstract class PartialEvaluator {
      * @param compilable the Truffle AST being compiled.
      */
     public ResolvedJavaMethod inlineRootForCallTarget(CompilableTruffleAST compilable) {
-        return peRootForInlinling;
-    }
-
-    /**
-     * Hook for subclasses: return a customized compilation root when inlining a specific call
-     * target.
-     *
-     * @param compilable the Truffle AST being compiled.
-     */
-    public ResolvedJavaMethod inlineRootForCallTargetAgnostic(CompilableTruffleAST compilable) {
-        return peRootForAgnosticInlining;
+        return inlinedPERoot;
     }
 
     private class InterceptReceiverPlugin implements ParameterPlugin {
@@ -574,7 +564,7 @@ public abstract class PartialEvaluator {
             if (!inlineInfo.allowsInlining()) {
                 return inlineInfo;
             }
-            if (original.equals(callIndirectMethod) || original.equals(peRootForAgnosticInlining) || original.equals(callDirectMethod)) {
+            if (original.equals(callIndirectMethod) || original.equals(inlinedPERoot) || original.equals(callDirectMethod)) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
             if (hasMethodHandleArgument(arguments)) {
@@ -636,7 +626,7 @@ public abstract class PartialEvaluator {
         Providers compilationUnitProviders = providers.copyWith(new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess()));
         return new CachingPEGraphDecoder(architecture, request.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
                         AllowAssumptions.ifNonNull(request.graph.getAssumptions()),
-                        loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, peRootForInlinling, peRootForAgnosticInlining,
+                        loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, peRootForInlinling, inlinedPERoot,
                         sourceLanguagePositionProvider, postParsingPhase, graphCache);
     }
 

@@ -62,7 +62,7 @@ final class GraphManager {
         if (entry == null) {
             final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(rootRequest.inliningPlan, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary(),
                             partialEvaluator.getCallIndirectMethod());
-            final PartialEvaluator.Request request = partialEvaluator.new Request(rootRequest.options, rootRequest.debug, truffleAST, partialEvaluator.inlineRootForCallTargetAgnostic(truffleAST),
+            final PartialEvaluator.Request request = partialEvaluator.new Request(rootRequest.options, rootRequest.debug, truffleAST, partialEvaluator.inlineRootForCallTarget(truffleAST),
                             rootRequest.inliningPlan, rootRequest.allowAssumptions, rootRequest.compilationId, rootRequest.log, rootRequest.cancellable);
             partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
             final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = plugin.getTruffleCallNodeToInvoke();
@@ -81,7 +81,7 @@ final class GraphManager {
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
-        final UnmodifiableEconomicMap<Node, Node> duplicates = InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTargetAgnostic(truffleAST),
+        final UnmodifiableEconomicMap<Node, Node> duplicates = InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTarget(truffleAST),
                         "cost-benefit analysis", "AgnosticInliningPhase");
         return duplicates;
     }

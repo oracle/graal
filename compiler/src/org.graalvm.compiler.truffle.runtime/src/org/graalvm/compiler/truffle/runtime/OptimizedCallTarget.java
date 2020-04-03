@@ -421,7 +421,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    final Object partialEvaluationRootForAgnosticInlining(Object... arguments) {
+    final Object inlinedPERoot(Object... arguments) {
         ensureInitialized();
         return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments));
     }
