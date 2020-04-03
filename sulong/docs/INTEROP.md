@@ -1,64 +1,53 @@
 # Interoperability
 
-Sulong supports standard Polyglot interop messages. This document explains what
-it does when it receives them, how to get it to explicitly send them, and what
-messages it sends for normal LLVM operations on foreign objects.
+The GraalVM LLVM runtime supports standard Polyglot interop messages. This document
+explains what it does when it receives them, how to get it to explicitly send them,
+and what messages it sends for normal LLVM operations on foreign objects.
 
-Detailed reference documentation of Polyglot interop support in Sulong can be
-found in `polyglot.h` (in `mxbuild/sulong-libs/polyglot.h` when building from
-source).
+Detailed reference documentation of Polyglot interop support can be found in
+`polyglot.h` (in `mxbuild/<platform>-<arch>/SULONG_HOME/include/polyglot.h` when
+building from source).
 
-## How Sulong responds to messages from other languages
+## How the LLVM runtime responds to messages from other languages
 
-### `HAS_SIZE`, `GET_SIZE`
-
-Values created with `polyglot_from_*_array` behave as polyglot arrays. The size
-is explicitly set from the `len` argument.
-
-### `HAS_KEYS`, `KEYS`, `KEY_INFO`
+### `getMembers`, `readMember`, `writeMember`
 
 Values created with `polyglot_from_*` behave as objects with named keys. Struct
 members are directly translated to member keys. Primitives and pointer values
 are readable and writable. Nested structs or arrays are only readable.
 
-### `READ`, `WRITE`
+For struct members of primitive or pointer type, the `readMember` message results in a
+memory read and the `writeMember` message results in a memory write.
 
-For pointers to structs (created with `polyglot_from_*`), the key must be a
-string specifying the member name of the struct. For pointers to arrays (created
-with `polyglot_from_*_array`), the key must be an integer number specifying the
-array index. The index will be bounds checked.
+For complex data types (e.g. structs or arrays within structs), the `readMember`
+message will do pointer arithmetic to produce a new polyglot value representing
+the nested value. `writeMember` is not supported for complex data types.
 
-For struct members of primitive or pointer type, the `READ` message results in a
-memory read and the `WRITE` message results in a memory write.
+### `getArraySize`, `readArrayElement`, `writeArrayElement`
 
-For complex data types (e.g. structs within structs, or arrays of structs),
-the `READ` message will do pointer arithmetic to produce a new polyglot value
-representing the nested value. `WRITE` is not supported for complex data types.
+Values created with `polyglot_from_*_array` behave as polyglot arrays. The size
+is explicitly set from the `len` argument.
 
-### `IS_EXECUTABLE`, `EXECUTE`
+The `readArrayElement` and `writeArrayElement` messages behave analogous to
+the `readMember` and `writeMember` messages for structs (see above).
 
-Function pointers in Sulong respond to the `EXECUTE` message.
+### `isExecutable`, `execute`
 
-## How to explicitly send messages from Sulong
+Function pointers respond to the `execute` message.
 
-You can use the built-ins defined in `polyglot.h`.
+Primitive arguments are converted using the `as*` message (e.g. `asInt` for i32).
+Typed pointer arguments and return values are implicitly converted using
+`polyglot_from_*`/`polyglot_as_*`. Untyped pointer arguments are passed as is.
+
+### `isNull`
+
+The native `NULL` pointer responds with `true`, all other native pointers respond
+with `false`.
 
 ## What messages are sent for LLVM operations on foreign objects
 
-Foreign objects are represented as untyped pointers. The foreign objects can be
-accessed from Sulong using various methods:
-
-### primitive arrays
-
-Foreign array values can be accessed by casting them to the corresponding C
-pointer type and accessing them. This works for primitive arrays and pointer
-arrays.
-
-```
-int *array = (int*) value;
-int x = array[index];  // sends READ(index), possibly followed by UNBOX
-array[index] = value;  // sends WRITE(index, value)
-```
+Foreign objects are represented as pointers. The foreign objects can be accessed
+using various methods:
 
 ### executable objects
 
@@ -66,7 +55,7 @@ Executable foreign objects can be cast to a function pointer type and called.
 
 ```
 void (*fn)(int) = (void (*)(int)) value;
-fn(5);  // sends EXECUTE
+fn(5);  // sends `execute` message
 ```
 
 ### structs or arrays of structs
@@ -82,11 +71,52 @@ struct MyStruct {
 POLYGLOT_DECLARE_STRUCT(MyStruct)
 
 struct MyStruct *myStruct = polyglot_as_MyStruct(value);
-int x = myStruct->someField;  // sends READ("someField")
-myStruct->someField = 5;      // sends WRITE("someField", 5)
+int x = myStruct->someField;  // sends readMember("someField")
+myStruct->someField = 5;      // sends writeMember("someField", 5)
 ```
 
 ### explicit access
 
 Other interop messages can be sent directly using the built-ins defined in
 `polyglot.h`.
+
+## Simulating native pointers with foreign objects
+
+When implementing the native interface of other languages using the GraalVM LLVM
+runtime, it is sometimes necessary to make language objects behave according to
+a certain native layout (e.g. `struct pyobject`).
+
+There are two mechanisms for achieving this.
+
+### NativeTypeLibrary
+
+Any foreign objects implementing the `NativeTypeLibrary` will behave as if it were
+a native pointer pointing to the type returned by the `getNativeType` message.
+The value returned by `getNativeType` should be a `polyglot_typeid` as returned
+by a `polyglot_*_typeid` function (see `polyglot.h`).
+
+The foreing object will then behave as if it was cast by `polyglot_as_typed(type, ...)`
+to that type.
+
+### `isPointer`/`asPointer`
+
+Objects that respond to the `isPointer` interop message with `true` are treated
+as equal to the native pointer that's returned by the `asPointer` message. That is,
+they will compare equal to native pointers of that value, or to other foreign
+objects that return the same value for `asPointer`.
+
+It is expected that the `asPointer` message is cheap. If it is possible that an
+object can be converted to a native pointer, but this has not happened yet, the
+object should return `false` to `isPointer`.
+
+### `toNative`
+
+If a pointer to a foreign object has to be converted to the numeric value of that
+pointer for any reason, the `toNative` interop message will be sent to the object.
+It is expected that the object converts itself to a native form, and if successful
+it should from now on respond to `isPointer` with `true`.
+
+Reasons for transforming to native include complex arithmetic (anything that's
+more than simple addition, subtraction or bitmasks), or trying to store the pointer
+to native memory. Note that a simple conversion to i64 does not force a pointer
+to native.
