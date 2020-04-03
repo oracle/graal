@@ -627,6 +627,21 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.bitcode.other.native" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ["O0"],
+      "buildRef" : False,
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CFLAGS" : "-O0",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.sulongavx.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
@@ -1094,6 +1109,7 @@ suite = {
         "./" : [
           "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
         ],
       },
       "license" : "BSD-new",

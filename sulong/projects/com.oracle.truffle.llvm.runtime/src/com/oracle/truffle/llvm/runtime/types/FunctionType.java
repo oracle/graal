@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -78,7 +78,7 @@ public final class FunctionType extends Type {
     }
 
     @Override
-    public int getBitSize() {
+    public long getBitSize() {
         return 0;
     }
 
@@ -97,7 +97,7 @@ public final class FunctionType extends Type {
     }
 
     @Override
-    public int getSize(DataLayout targetDataLayout) {
+    public long getSize(DataLayout targetDataLayout) {
         return LLVMNode.ADDRESS_SIZE_IN_BYTES;
     }
 

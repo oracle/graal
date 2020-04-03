@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,41 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.memory.literal;
+package com.oracle.truffle.llvm.runtime.except;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+public class LLVMStackOverflowError extends StackOverflowError {
 
-@NodeChild(value = "address", type = LLVMExpressionNode.class)
-public abstract class LLVMArrayLiteralNode extends LLVMExpressionNode {
+    private static final long serialVersionUID = -7370258635552835057L;
 
-    @Children private final LLVMExpressionNode[] values;
-    @Child private LLVMStoreNode write;
-    private final long stride;
-
-    public LLVMArrayLiteralNode(LLVMExpressionNode[] values, long stride, LLVMStoreNode write) {
-        this.values = values;
-        this.stride = stride;
-        this.write = write;
-    }
-
-    public LLVMExpressionNode[] getValues() {
-        return values;
-    }
-
-    @Specialization
-    @ExplodeLoop
-    protected LLVMPointer foreignWrite(VirtualFrame frame, LLVMPointer addr) {
-        LLVMPointer currentPtr = addr;
-        for (int i = 0; i < values.length; i++) {
-            write.executeWithTarget(currentPtr, values[i].executeGeneric(frame));
-            currentPtr = currentPtr.increment(stride);
-        }
-        return addr;
+    public LLVMStackOverflowError(String message) {
+        super(message);
     }
 }

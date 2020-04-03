@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,11 +41,11 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class StructLiteralNode extends LLVMExpressionNode {
 
-    @CompilationFinal(dimensions = 1) private final int[] offsets;
+    @CompilationFinal(dimensions = 1) private final long[] offsets;
     @Children private final LLVMStoreNode[] elementWriteNodes;
     @Children private final LLVMExpressionNode[] values;
 
-    public StructLiteralNode(int[] offsets, LLVMStoreNode[] elementWriteNodes, LLVMExpressionNode[] values) {
+    public StructLiteralNode(long[] offsets, LLVMStoreNode[] elementWriteNodes, LLVMExpressionNode[] values) {
         assert offsets.length == elementWriteNodes.length && elementWriteNodes.length == values.length;
         this.offsets = offsets;
         this.elementWriteNodes = elementWriteNodes;

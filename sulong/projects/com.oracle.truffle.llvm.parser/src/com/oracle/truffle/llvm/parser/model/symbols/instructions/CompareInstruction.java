@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -64,7 +64,7 @@ public final class CompareInstruction extends ValueInstruction {
     private static Type calculateResultType(Type type) {
         // The comparison performed always yields either an i1 or vector of i1 as result
         if (type instanceof VectorType) {
-            return new VectorType(PrimitiveType.I1, ((VectorType) type).getNumberOfElements());
+            return new VectorType(PrimitiveType.I1, ((VectorType) type).getNumberOfElementsInt());
         }
         return PrimitiveType.I1;
     }

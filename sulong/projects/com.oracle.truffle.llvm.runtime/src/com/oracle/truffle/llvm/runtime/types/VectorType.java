@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,6 +41,9 @@ public final class VectorType extends AggregateType {
 
     @CompilationFinal private Assumption elementTypeAssumption;
     @CompilationFinal private Type elementType;
+    /**
+     * Length of the vector. The value is interpreted as an unsigned 32 bit integer value.
+     */
     private final int length;
 
     public VectorType(Type elementType, int length) {
@@ -61,12 +64,16 @@ public final class VectorType extends AggregateType {
     }
 
     @Override
-    public int getBitSize() {
-        return getElementType().getBitSize() * length;
+    public long getBitSize() throws TypeOverflowException {
+        return multiplyUnsignedExact(getElementType().getBitSize(), length);
     }
 
     @Override
-    public int getNumberOfElements() {
+    public long getNumberOfElements() {
+        return Integer.toUnsignedLong(length);
+    }
+
+    public int getNumberOfElementsInt() {
         return length;
     }
 
@@ -96,13 +103,13 @@ public final class VectorType extends AggregateType {
     }
 
     @Override
-    public int getSize(DataLayout targetDataLayout) {
-        return getElementType().getSize(targetDataLayout) * length;
+    public long getSize(DataLayout targetDataLayout) throws TypeOverflowException {
+        return multiplyUnsignedExact(getElementType().getSize(targetDataLayout), Integer.toUnsignedLong(length));
     }
 
     @Override
-    public long getOffsetOf(long index, DataLayout targetDataLayout) {
-        return getElementType().getSize(targetDataLayout) * index;
+    public long getOffsetOf(long index, DataLayout targetDataLayout) throws TypeOverflowException {
+        return multiplyUnsignedExact(getElementType().getSize(targetDataLayout), index);
     }
 
     @Override

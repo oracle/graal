@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public final class BigIntegerConstant extends AbstractConstant {
 
@@ -60,8 +61,12 @@ public final class BigIntegerConstant extends AbstractConstant {
 
     @Override
     public String toString() {
-        if (getType().getBitSize() == 1) {
-            return BigInteger.ZERO.equals(value) ? "false" : "true";
+        try {
+            if (getType().getBitSize() == 1) {
+                return BigInteger.ZERO.equals(value) ? "false" : "true";
+            }
+        } catch (TypeOverflowException e) {
+            // fall-through
         }
         return value.toString();
     }

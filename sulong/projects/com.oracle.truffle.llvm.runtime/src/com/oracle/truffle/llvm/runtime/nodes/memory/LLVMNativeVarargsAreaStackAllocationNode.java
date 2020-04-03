@@ -36,6 +36,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
+import com.oracle.truffle.llvm.runtime.except.LLVMStackOverflowError;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -56,6 +58,11 @@ public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode 
     @Specialization
     protected LLVMNativePointer alloc(VirtualFrame frame, long size,
                     @CachedLanguage LLVMLanguage language) {
-        return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size, 8));
+        try {
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size, 8));
+        } catch (LLVMStackOverflowError soe) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMAllocationFailureException(this, soe);
+        }
     }
 }

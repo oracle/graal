@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -113,6 +113,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
 public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
@@ -322,12 +323,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         if (count instanceof NullConstant) {
             result = nodeFactory.createAlloca(type, alignment);
         } else if (count instanceof IntegerConstant) {
-            long numElements = (int) ((IntegerConstant) count).getValue();
+            long numElements = ((IntegerConstant) count).getValue();
             if (numElements == 1) {
                 result = nodeFactory.createAlloca(type, alignment);
             } else {
-                assert numElements == (int) numElements;
-                ArrayType arrayType = new ArrayType(type, (int) numElements);
+                ArrayType arrayType = new ArrayType(type, numElements);
                 result = nodeFactory.createAlloca(arrayType, alignment);
             }
         } else {
@@ -704,25 +704,35 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final AggregateType aggregateType = (AggregateType) baseType;
 
-        long offset = aggregateType.getOffsetOf(targetIndex, dataLayout);
+        LLVMExpressionNode result;
+        try {
+            long offset = aggregateType.getOffsetOf(targetIndex, dataLayout);
 
-        final Type targetType = aggregateType.getElementType(targetIndex);
-        if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
-            offset += Type.getPadding(offset, targetType, dataLayout);
+            final Type targetType = aggregateType.getElementType(targetIndex);
+            if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
+                offset = Type.addUnsignedExact(offset, Type.getPadding(offset, targetType, dataLayout));
+            }
+
+            if (offset != 0) {
+                final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
+                targetAddress = nodeFactory.createTypedElementPointer(offset, extract.getType(), targetAddress, oneLiteralNode);
+            }
+
+            result = nodeFactory.createExtractValue(resultType, targetAddress);
+        } catch (TypeOverflowException e) {
+            result = Type.handleOverflowExpression(e);
         }
-
-        if (offset != 0) {
-            final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
-            targetAddress = nodeFactory.createTypedElementPointer(offset, extract.getType(), targetAddress, oneLiteralNode);
-        }
-
-        final LLVMExpressionNode result = nodeFactory.createExtractValue(resultType, targetAddress);
         createFrameWrite(result, extract);
     }
 
     @Override
     public void visit(GetElementPointerInstruction gep) {
-        LLVMExpressionNode targetAddress = symbols.resolveElementPointer(gep.getBasePointer(), gep.getIndices(), this::resolveOptimized);
+        LLVMExpressionNode targetAddress;
+        try {
+            targetAddress = symbols.resolveElementPointer(gep.getBasePointer(), gep.getIndices(), this::resolveOptimized);
+        } catch (TypeOverflowException e) {
+            targetAddress = Type.handleOverflowExpression(e);
+        }
         createFrameWrite(targetAddress, gep);
     }
 
@@ -771,10 +781,16 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final LLVMExpressionNode resultAggregate = nodeFactory.createGetUniqueStackSpace(sourceType, uniquesRegion);
 
-        final long offset = sourceType.getOffsetOf(targetIndex, dataLayout);
-        final LLVMExpressionNode result = nodeFactory.createInsertValue(resultAggregate, sourceAggregate,
-                        sourceType.getSize(dataLayout), offset, valueToInsert, valueType);
+        LLVMExpressionNode result;
+        try {
+            final long offset = sourceType.getOffsetOf(targetIndex, dataLayout);
+            result = nodeFactory.createInsertValue(resultAggregate, sourceAggregate,
+                            sourceType.getSize(dataLayout), offset, valueToInsert, valueType);
 
+        } catch (TypeOverflowException e) {
+            // FIXME is that the right thing to do?
+            result = Type.handleOverflowExpression(e);
+        }
         createFrameWrite(result, insert);
     }
 
@@ -1075,17 +1091,20 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     }
 
     private LLVMExpressionNode capsuleAddressByValue(LLVMExpressionNode child, Type type, AttributesGroup paramAttr) {
-        final Type pointee = ((PointerType) type).getPointeeType();
-
-        final int size = pointee.getSize(dataLayout);
-        int alignment = pointee.getAlignment(dataLayout);
-        for (Attribute attr : paramAttr.getAttributes()) {
-            if (attr instanceof Attribute.KnownIntegerValueAttribute && ((Attribute.KnownIntegerValueAttribute) attr).getAttr() == Attribute.Kind.ALIGN) {
-                alignment = ((Attribute.KnownIntegerValueAttribute) attr).getValue();
+        try {
+            final Type pointee = ((PointerType) type).getPointeeType();
+            final long size = pointee.getSize(dataLayout);
+            int alignment = pointee.getAlignment(dataLayout);
+            for (Attribute attr : paramAttr.getAttributes()) {
+                if (attr instanceof Attribute.KnownIntegerValueAttribute && ((Attribute.KnownIntegerValueAttribute) attr).getAttr() == Attribute.Kind.ALIGN) {
+                    alignment = ((Attribute.KnownIntegerValueAttribute) attr).getValue();
+                }
             }
-        }
 
-        return nodeFactory.createVarArgCompoundValue(size, alignment, child);
+            return nodeFactory.createVarArgCompoundValue(size, alignment, child);
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
     }
 
     private static boolean isByValue(AttributesGroup parameter) {

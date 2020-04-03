@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,12 +34,13 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public class DebugExprSizeofNode extends LLVMExpressionNode {
 
-    private final int typeSize;
+    private final long typeSize;
 
-    public DebugExprSizeofNode(DebugExprType type) {
+    public DebugExprSizeofNode(DebugExprType type) throws TypeOverflowException {
         DataLayout datalayout = getDataLayout();
         this.typeSize = type.getLLVMRuntimeType().getSize(datalayout);
     }

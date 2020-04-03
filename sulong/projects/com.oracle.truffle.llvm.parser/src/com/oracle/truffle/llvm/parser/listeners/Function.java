@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -216,7 +216,7 @@ public final class Function implements ParserListener {
                 return;
 
             case INSTRUCTION_DECLAREBLOCKS:
-                function.allocateBlocks((int) buffer.read());
+                function.allocateBlocks(buffer.readInt());
                 return;
 
             default:
@@ -749,7 +749,7 @@ public final class Function implements ParserListener {
         int rhs = readIndex(buffer);
         int opcode = buffer.readInt();
 
-        Type type = operandType instanceof VectorType ? new VectorType(PrimitiveType.I1, Types.castToVector(operandType).getNumberOfElements()) : PrimitiveType.I1;
+        Type type = operandType instanceof VectorType ? new VectorType(PrimitiveType.I1, Types.castToVector(operandType).getNumberOfElementsInt()) : PrimitiveType.I1;
         emit(CompareInstruction.fromSymbols(scope.getSymbols(), type, opcode, lhs, rhs));
     }
 
@@ -860,7 +860,7 @@ public final class Function implements ParserListener {
         int mask = readIndex(buffer);
 
         Type subtype = Types.castToVector(vectorType).getElementType();
-        int length = Types.castToVector(scope.getValueType(mask)).getNumberOfElements();
+        int length = Types.castToVector(scope.getValueType(mask)).getNumberOfElementsInt();
         Type type = new VectorType(subtype, length);
 
         emit(ShuffleVectorInstruction.fromSymbols(scope.getSymbols(), type, vector1, vector2, mask));
@@ -895,7 +895,7 @@ public final class Function implements ParserListener {
 
     private Type getElementPointerType(Type type, int[] indices) {
         boolean vectorized = type instanceof VectorType;
-        int length = vectorized ? ((VectorType) type).getNumberOfElements() : 0;
+        int length = vectorized ? ((VectorType) type).getNumberOfElementsInt() : 0;
         Type elementType = vectorized ? ((VectorType) type).getElementType() : type;
         for (int indexIndex : indices) {
             Type indexType = scope.getValueType(indexIndex);
@@ -919,7 +919,7 @@ public final class Function implements ParserListener {
             }
 
             if (indexType instanceof VectorType) {
-                int indexVectorLength = ((VectorType) indexType).getNumberOfElements();
+                int indexVectorLength = ((VectorType) indexType).getNumberOfElementsInt();
                 if (vectorized) {
                     if (indexVectorLength != length) {
                         throw new LLVMParserException(String.format("Vectors of different lengths are not supported: %d != %d", indexVectorLength, length));

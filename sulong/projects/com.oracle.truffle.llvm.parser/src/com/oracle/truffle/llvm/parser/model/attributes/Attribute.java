@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -141,9 +141,25 @@ public abstract class Attribute {
     public static final class KnownIntegerValueAttribute extends KnownAttribute {
         private final int value;
 
-        public KnownIntegerValueAttribute(Kind paramAttr, int value) {
+        public KnownIntegerValueAttribute(Kind paramAttr, long value) {
             super(paramAttr);
-            this.value = value;
+            if (paramAttr == Kind.ALLOCSIZE) {
+                /*
+                 * See https://llvm.org/docs/BitCodeFormat.html#paramattr-grp-code-entry-record
+                 * <quote> The allocsize attribute has a special encoding for its arguments. Its two
+                 * arguments, which are 32-bit integers, are packed into one 64-bit integer value
+                 * (i.e. (EltSizeParam << 32) | NumEltsParam), with NumEltsParam taking on the
+                 * sentinel value -1 if it is not specified. </quote>
+                 *
+                 * With the exception of Kind.ALIGN, #value is only used for printing so we are
+                 * ignoring the number of elements for now.
+                 */
+                int eltSizeParam = (int) (value >> 32L);
+                // int numEltsParam = (int) value; <-- ignored
+                this.value = eltSizeParam;
+            } else {
+                this.value = (int) value;
+            }
         }
 
         public int getValue() {

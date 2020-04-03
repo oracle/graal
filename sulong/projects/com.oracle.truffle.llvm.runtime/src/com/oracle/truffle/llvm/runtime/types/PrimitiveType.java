@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -121,7 +121,7 @@ public final class PrimitiveType extends Type {
     }
 
     @Override
-    public int getBitSize() {
+    public long getBitSize() {
         return kind.sizeInBits;
     }
 
@@ -150,8 +150,13 @@ public final class PrimitiveType extends Type {
     }
 
     @Override
-    public int getSize(DataLayout targetDataLayout) {
-        return targetDataLayout.getSize(this);
+    public long getSize(DataLayout targetDataLayout) {
+        try {
+            return targetDataLayout.getSize(this);
+        } catch (TypeOverflowException e) {
+            // should not reach here
+            throw new AssertionError(e);
+        }
     }
 
     @Override
