@@ -40,19 +40,57 @@
  */
 package com.oracle.truffle.polyglot;
 
+import org.graalvm.polyglot.Context;
+
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+
 /**
  * Represents an expected user exception caused by the polyglot engine. It is wrapped such that it
  * can be differentiated from internal errors. This class is not supposed to be visible to the
- * outside world and must always be unwrapped when shown to the user, which may be the embeder, the
+ * outside world and must always be unwrapped when shown to the user, which may be the embedder, the
  * language or the instrument.
  * <p>
- * The idea behind this wrapper is that code from the polyglot engine can be used from the embedder
- * and the language/instrument side at the same time. If the exception is thrown from any API then
- * the exception is unboxed at the API boundary. The wrapper first becomes useful if the exception
- * is thrown to the language/instrument SPI and then not properly handled. If we would use special
- * exception types that are white listed they would just directly be thrown to the embedder. With
- * this exception unwrapped we know that for the embedder this is now an internal error, as
- * languages are not supposed to propagate engine errors.
+ * This wrapper is necessary such that code from the polyglot engine can be used from the embedder
+ * and the language/instrument side at the same time. The usefulness of this wrapper is best
+ * explained using an example:
+ *
+ * <p>
+ * Example 1:
+ * <ol>
+ * <li>The embedder calls {@link Context#initialize(String) initialization} with a language.
+ * <li>During {@link TruffleLanguage#initializeContext context initialization} a language calls into
+ * {@link Env#parsePublic(com.oracle.truffle.api.source.Source, String...)} with a language that it
+ * does not have access to.
+ * <li>The engine throws a {@link PolyglotEngineException#illegalArgument(String) illegal argument}
+ * error
+ * <li>At the language API boundary for
+ * {@link Env#parsePublic(com.oracle.truffle.api.source.Source, String...)} the exception is
+ * unwrapped using {@link PolyglotImpl#engineToLanguageException(Throwable)}.
+ * <li>The language does not handle the exception and forwards the illegal argument exception to the
+ * engine.
+ * <li>At the embedder API boundary for {@link PolyglotContextImpl#initializeLanguage(String)
+ * initialization} the exception is wrapped into an PolylgotException designated as internal error.
+ * This is good behavior, as the embedder cannot fix this error and should report a bug.
+ * </ol>
+ * Example 2:
+ * <ol>
+ * <li>The embedder calls {@link Context#initialize(String) initialization} with a language the
+ * embedder has no access to.
+ * <li>The engine throws a {@link PolyglotEngineException#illegalArgument(String) illegal argument}
+ * error.
+ * <li>At the embedder API boundary for {@link Context#initialize(String) initialization} the engine
+ * exception is unwrapped using
+ * {@link PolyglotImpl#guestToHostException(PolyglotLanguageContext, Throwable)} and the embedder
+ * sees an {@link IllegalArgumentException}. This is expected as the embedder must change their code
+ * to fix this problem.
+ * </ol>
+ * Note that both examples use the same code in
+ * {@link PolyglotLanguageContext#checkAccess(PolyglotLanguage)} to implement this behavior. The
+ * polyglot engine exception wrapper makes this possible. If we would, for example, use special a
+ * exception type (e.g. a subclass of {@link IllegalArgumentException}) instead of a wrapper for
+ * Example 1 then it would see an {@link IllegalArgumentException} instead of an internal
+ * PolylgotException.
  */
 @SuppressWarnings("serial")
 final class PolyglotEngineException extends RuntimeException {
