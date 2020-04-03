@@ -2324,7 +2324,7 @@ suite = {
           "org.graalvm.compiler.printer                to jdk.aot",
           "org.graalvm.compiler.runtime                to jdk.aot",
           "org.graalvm.compiler.replacements           to jdk.aot",
-          "org.graalvm.compiler.serviceprovider        to jdk.aot,jdk.internal.vm.compiler.management,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver",
+          "org.graalvm.compiler.serviceprovider        to jdk.aot,jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver",
           "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
           "org.graalvm.libgraal                        to jdk.internal.vm.compiler.management",
           "org.graalvm.util                            to jdk.internal.vm.compiler.management",
