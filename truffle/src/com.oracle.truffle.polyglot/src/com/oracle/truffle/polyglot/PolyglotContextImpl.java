@@ -920,7 +920,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 engine.ensureClosed(cancelIfExecuting, true);
             }
         } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(getHostContext(), t);
+            throw PolyglotImpl.guestToHostException(engine, t);
         }
     }
 
