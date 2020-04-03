@@ -220,7 +220,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         tvmci.setCallTarget(rootNode, this);
     }
 
-    public final Assumption getNodeRewritingAssumption() {
+    final Assumption getNodeRewritingAssumption() {
         Assumption assumption = nodeRewritingAssumption;
         if (assumption == null) {
             assumption = initializeNodeRewritingAssumption();
@@ -375,7 +375,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public final Object partialEvaluationRootForInlining(Node location, Object... arguments) {
+    final Object partialEvaluationRootForInlining(Node location, Object... arguments) {
         ensureInitialized();
         try {
             return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments));
@@ -386,7 +386,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public final Object partialEvaluationRootForAgnosticInlining(Object... arguments) {
+    final Object partialEvaluationRootForAgnosticInlining(Object... arguments) {
         ensureInitialized();
         return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments));
     }
@@ -477,7 +477,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return callTarget.compile(true);
     }
 
-    protected final Object executeRootNode(VirtualFrame frame) {
+    private Object executeRootNode(VirtualFrame frame) {
         final boolean inCompiled = CompilerDirectives.inCompilationRoot();
         try {
             return rootNode.execute(frame);
