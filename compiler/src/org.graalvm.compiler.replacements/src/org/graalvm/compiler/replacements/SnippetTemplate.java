@@ -835,11 +835,10 @@ public class SnippetTemplate {
                 canonicalizer = CanonicalizerPhase.create();
             }
 
-            /*
+            /*-
              * Mirror the behavior of normal compilations here (without aggressive optimizations
              * but with the most important phases)
              *
-             * @formatter:off
              * (1) Run some important high-tier optimizations
              * (2) Perform high-tier lowering
              * (3) If lowering stage is != high tier --> Run important mid tier phases --> guard lowering
@@ -847,7 +846,7 @@ public class SnippetTemplate {
              * (5) If lowering stage is != mid tier --> Run important mid tier phases after lowering --> write barrier addition
              * (6) perform low-tier lowering
              * (7) Run final phases --> dead code elimination
-             * @formatter:on
+             *
              */
             // (1)
             GuardsStage guardsStage = args.cacheKey.guardsStage;
@@ -1781,7 +1780,7 @@ public class SnippetTemplate {
                     }
                 }
                 if (stateAfter.values().contains(replacee)) {
-                    FrameState duplicated = stateAfter.duplicateWithVirtualState();
+                    FrameState duplicated = stateAfter.duplicate();
                     ValueNode valueInReplacement = (ValueNode) duplicates.get(returnNode.result());
                     if (valueInReplacement instanceof ValuePhiNode) {
                         valueInReplacement = (ValueNode) sideEffectDup;
@@ -1817,7 +1816,7 @@ public class SnippetTemplate {
             MergeStateAssignment assignment = stateAssignments.getValue();
             switch (assignment) {
                 case AFTER_BCI:
-                    FrameState newState = stateAfter.duplicateWithVirtualState();
+                    FrameState newState = stateAfter.duplicate();
                     if (stateAfter.values().contains(replacee)) {
                         ValueNode valueInReplacement = (ValueNode) duplicates.get(returnNode.result());
                         newState.replaceAllInputs(replacee, valueInReplacement);
@@ -1826,7 +1825,7 @@ public class SnippetTemplate {
                     break;
                 case BEFORE_BCI:
                     FrameState stateBeforeSnippet = findLastFrameState(replaceeGraphCFGPredecessor);
-                    ((AbstractMergeNode) duplicates.get(merge)).setStateAfter(stateBeforeSnippet.duplicateWithVirtualState());
+                    ((AbstractMergeNode) duplicates.get(merge)).setStateAfter(stateBeforeSnippet.duplicate());
                     break;
                 case INVALID:
                     /*
