@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
@@ -57,9 +59,23 @@ public final class TruffleStackTraceElement {
     private final Frame frame;
 
     TruffleStackTraceElement(Node location, RootCallTarget target, Frame frame) {
+        assert target != null;
         this.location = location;
         this.target = target;
         this.frame = frame;
+    }
+
+    /**
+     * Create a new stack trace element.
+     *
+     * @param location See {@link #getLocation()}
+     * @param target See {@link #getTarget()}
+     * @param frame See {@link #getFrame()}
+     * @since 20.1.0
+     */
+    public static TruffleStackTraceElement create(Node location, RootCallTarget target, Frame frame) {
+        Objects.requireNonNull(target, "RootCallTarget must not be null");
+        return new TruffleStackTraceElement(location, target, frame);
     }
 
     /**

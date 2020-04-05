@@ -181,6 +181,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     private volatile EngineLimits limits;
     final boolean conservativeContextReferences;
     private final MessageTransport messageInterceptor;
+    private volatile int asynchronousStackDepth = 0;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine,
@@ -1139,6 +1140,26 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     HostClassCache getHostClassCache() {
         return hostClassCache;
+    }
+
+    @TruffleBoundary
+    int getAsynchronousStackDepth() {
+        return asynchronousStackDepth;
+    }
+
+    @TruffleBoundary
+    void setAsynchronousStackDepth(PolyglotInstrument polyglotInstrument, int depth) {
+        assert depth >= 0 : String.format("Wrong depth: %d", depth);
+        int newDepth = 0;
+        synchronized (this) {
+            polyglotInstrument.requestedAsyncStackDepth = depth;
+            for (PolyglotInstrument instrument : idToInstrument.values()) {
+                if (instrument.requestedAsyncStackDepth > newDepth) {
+                    newDepth = instrument.requestedAsyncStackDepth;
+                }
+            }
+        }
+        asynchronousStackDepth = newDepth;
     }
 
     private static final class PolyglotShutDownHook implements Runnable {

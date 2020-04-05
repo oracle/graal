@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,16 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 
@@ -122,6 +127,12 @@ final class NodeAccessor extends Accessor {
         @Override
         public TruffleLanguage<?> getLanguage(RootNode rootNode) {
             return rootNode.language;
+        }
+
+        @Override
+        public List<TruffleStackTraceElement> findAsynchronousFrames(CallTarget target, Frame frame) {
+            CompilerAsserts.neverPartOfCompilation();
+            return ((RootCallTarget) target).getRootNode().findAsynchronousFrames(frame);
         }
 
         @Override

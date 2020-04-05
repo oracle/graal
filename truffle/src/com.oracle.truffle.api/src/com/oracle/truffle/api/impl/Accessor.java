@@ -84,6 +84,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -155,6 +156,8 @@ public abstract class Accessor {
                         boolean interactive);
 
         public abstract Object getPolyglotEngine(RootNode rootNode);
+
+        public abstract List<TruffleStackTraceElement> findAsynchronousFrames(CallTarget target, Frame frame);
 
         public abstract int getRootNodeBits(RootNode root);
 
@@ -398,6 +401,10 @@ public abstract class Accessor {
         public abstract TruffleFile getTruffleFile(String path);
 
         public abstract TruffleFile getTruffleFile(URI uri);
+
+        public abstract int getAsynchronousStackDepth(Object polylgotLanguage);
+
+        public abstract void setAsynchronousStackDepth(Object polyglotInstrument, int depth);
 
         public abstract boolean isCreateProcessAllowed(Object polylgotLanguageContext);
 

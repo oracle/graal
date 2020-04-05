@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CallTarget;
@@ -367,6 +368,24 @@ public abstract class RootNode extends ExecutableNode {
      */
     protected boolean isInstrumentable() {
         return true;
+    }
+
+    /**
+     * Provide a list of stack frames that led to a schedule of asynchronous execution of this root
+     * node on the provided frame. The asynchronous frames are expected to be found here when
+     * {@link Env#getAsynchronousStackDepth()} is positive. The language is free to provide
+     * asynchronous frames or longer list of frames when it's of no performance penalty, or if
+     * requested by other options. This method is invoked on slow-paths only and with a context
+     * entered.
+     *
+     * @param frame A frame, never <code>null</code>
+     * @return a list of {@link TruffleStackTraceElement}, or <code>null</code> when no asynchronous
+     *         stack is available.
+     * @see Env#getAsynchronousStackDepth()
+     * @since 20.1.0
+     */
+    protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
+        return null;
     }
 
     /**
