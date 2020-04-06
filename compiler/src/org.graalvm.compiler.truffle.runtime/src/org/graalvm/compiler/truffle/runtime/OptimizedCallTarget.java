@@ -76,38 +76,33 @@ import jdk.vm.ci.meta.SpeculationLog;
  *
  * Note: {@code PartialEvaluator} looks up this class and a number of its methods by name.
  *
- * TODO: Explain the graph.
+ * The end-goal of executing a {@link OptimizedCallTarget} is executing its root node. The following
+ * call-graph shows all the paths that can be taken from calling a call target (through all the
+ * public <code>call*</code> methods) to the {@linkplain #executeRootNode(VirtualFrame) execution of
+ * the root node} depending on the type of call.
  *
  * <pre>
- *
- *             OptimizedCallProfiled#call
- *                        |
- *             call       |
- *              |         |
- *  PUBLIC   callIndirect |  callOSR  callDirectOrInlined callInlined
- *              |         |     |           |                 |
- *              | --------|     |           |                 |
- *              | | |-----------|           |                 |
- *              | | | |------------- no - inlined? - yes ---- |
- *  PROTECTED  doInvoke                                       |
- *                |                                           |
- *                | <- jump to installed code in PE           |
- *                |                                           |
- *  PROTECTED callBoundary                                    |
- *                |                                           |
- *                | <- tail jump to installed code in Int     |
- *                |                                           |
- *  PROTECTED profiledPERoot                         inlinedPERoot
- *            [callRoot]                          [callInlinedAgnostic]
- *                |                                           |
- *                |                                           |
- *                |                                           |
- *  PRIVATE       |--------------- executeRootNode()----------|
- *                                 [callProxy]
- *                                         |
- *                                         |
- *                                 rootNode.execute()
- *
+ *                    OptimizedCallProfiled#call
+ *                                |
+ *                                |
+ *  PUBLIC   call -> callIndirect | callOSR  callDirectOrInlined  callInlined
+ *                           |  +-+    |              |                 |
+ *                           |  |  +---+              |                 |
+ *                           V  V  V                  |                 |
+ *  PROTECTED               doInvoke <------ no - inlined? - yes -------+
+ *                             |                                        |
+ *                             | <= Jump to installed code              |
+ *                             V                                        |
+ *  PROTECTED              callBoundary                                 |
+ *                             |                                        |
+ *                             | <= Tail jump to installed code in Int. |
+ *                             V                                        V
+ *  PROTECTED           profiledPERoot                              inlinedPERoot
+ *                             |                                        |
+ *  PRIVATE                    +----------> executeRootNode <-----------+
+ *                                                 |
+ *                                                 V
+ *                                         rootNode.execute()
  * </pre>
  */
 @SuppressWarnings("deprecation")
@@ -379,6 +374,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 if (isInlined) {
                     /*
                      * Language agnostic inlining depends on this call to callBoundary to inline.
+                     * This call to callBoundary will be replaced with #inlinedPERoot during
+                     * compilation. We don't simply call #inlinedPERoot at this point as a truffle
+                     * call boundary is a known point to end partial evaluation. This might change
+                     * (GR-22220).
+                     *
                      * The isInlined value is passed in to create a data dependency needed by the
                      * compiler and despite being "always true" should not be replaced with true (or
                      * anything else).
@@ -426,7 +426,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    /*
+    /**
      * Overridden by SVM.
      */
     protected Object doInvoke(Object[] args) {
