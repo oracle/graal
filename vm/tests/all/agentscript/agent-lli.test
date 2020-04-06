@@ -20,7 +20,7 @@ Computed 776 primes in [0-9]+ ms. Last one is 5897
 Computed 1552 primes in [0-9]+ ms. Last one is 13033
 Computed 3104 primes in [0-9]+ ms. Last one is 28541
 Computed 6208 primes in [0-9]+ ms. Last one is 61687
-T-Trace: nextNatural method called 1400000 times. enough!
+GraalVM Insight: nextNatural method called 1400000 times. enough!
         at <js> :anonymous.*
         at <llvm> nextNatural.agent-sieve.*
         at <llvm> nextPrime.agent-sieve.*

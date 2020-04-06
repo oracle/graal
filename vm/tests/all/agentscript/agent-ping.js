@@ -6,7 +6,7 @@ function ping() {
 }
 setTimeout(ping, 5000);
 
-// define T-Trace script via curl anytime later:
+// define GraalVM Insight script via curl anytime later:
 function connect() {
     const script = 'agent.on("enter", (ctx, frame) => {' +
             '  console.log("observing ping at " + frame.counter);' +
