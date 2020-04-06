@@ -55,7 +55,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -69,6 +68,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.Utf8;
@@ -928,7 +928,7 @@ final class JNIFunctions {
         if (obj == null) {
             throw new NullPointerException();
         }
-        MonitorSupport.monitorEnter(obj);
+        MonitorSupport.singleton().monitorEnter(obj);
         assert Thread.holdsLock(obj);
         JNIThreadOwnedMonitors.entered(obj);
         return JNIErrors.JNI_OK();
@@ -947,7 +947,7 @@ final class JNIFunctions {
         if (!Thread.holdsLock(obj)) {
             throw new IllegalMonitorStateException();
         }
-        MonitorSupport.monitorExit(obj);
+        MonitorSupport.singleton().monitorExit(obj);
         JNIThreadOwnedMonitors.exited(obj);
         return JNIErrors.JNI_OK();
     }

@@ -39,7 +39,6 @@ import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -50,7 +49,6 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Specialize;
@@ -76,11 +74,11 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
-import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
@@ -435,10 +433,8 @@ public final class Deoptimizer {
      */
     private Object[] materializedObjects;
 
-    /**
-     * All objects that have been materialized and re-locked during deoptimization.
-     */
-    private Object[] relockedObjects;
+    /** The recursive locking depth of {@link #materializedObjects} that need to be re-locked. */
+    private int[] materializedObjectsLockDepths;
 
     /**
      * The size of the new stack content after all stack entries are built).
@@ -708,16 +704,16 @@ public final class Deoptimizer {
             deoptInfo = deoptInfo.getCaller();
         }
 
-        if (relockedObjects != null) {
-            for (Object lockee : relockedObjects) {
-                if (lockee != null) {
+        if (materializedObjectsLockDepths != null) {
+            for (int i = 0; i < materializedObjectsLockDepths.length; i++) {
+                int lockDepth = materializedObjectsLockDepths[i];
+                if (lockDepth > 0) {
+                    Object object = materializedObjects[i];
                     /*
                      * The re-locked objects must appear as if they had been locked from the thread
-                     * that contains the frame, not the thread that performed deoptimization. Since
-                     * the same object can be re-locked multiple times, we change the thread after
-                     * all virtual frames have been reconstructed.
+                     * that contains the frame, not the thread that performed deoptimization.
                      */
-                    ImageSingletons.lookup(MonitorSupport.class).setExclusiveOwnerThread(lockee, JavaThreads.fromVMThread(currentThread));
+                    MonitorSupport.singleton().lockRematerializedObject(object, currentThread, lockDepth);
                 }
             }
         }
@@ -890,13 +886,11 @@ public final class Deoptimizer {
             Object lockee = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(valueConstant), Object.class);
             int lockeeIndex = TypeConversion.asS4(valueInfo.getData());
             assert lockee == materializedObjects[lockeeIndex];
-            MonitorSupport.monitorEnterWithoutBlockingCheck(lockee);
 
-            if (relockedObjects == null) {
-                relockedObjects = new Object[sourceFrame.getVirtualObjects().length];
+            if (materializedObjectsLockDepths == null) {
+                materializedObjectsLockDepths = new int[sourceFrame.getVirtualObjects().length];
             }
-            assert relockedObjects[lockeeIndex] == null || relockedObjects[lockeeIndex] == lockee;
-            relockedObjects[lockeeIndex] = lockee;
+            materializedObjectsLockDepths[lockeeIndex]++;
         }
     }
 

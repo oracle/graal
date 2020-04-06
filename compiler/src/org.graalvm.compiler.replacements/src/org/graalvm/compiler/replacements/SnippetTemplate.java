@@ -136,6 +136,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
@@ -654,7 +655,7 @@ public class SnippetTemplate {
                     try (DebugCloseable a = SnippetTemplateCreationTime.start(debug); DebugContext.Scope s = debug.scope("SnippetSpecialization", args.info.method)) {
                         SnippetTemplates.increment(debug);
                         OptionValues snippetOptions = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options));
-                        template = new SnippetTemplate(snippetOptions, debug, providers, snippetReflection, args, graph.trackNodeSourcePosition(), replacee);
+                        template = new SnippetTemplate(snippetOptions, debug, providers, snippetReflection, args, graph.trackNodeSourcePosition(), replacee, createMidTierPhases());
                         if (Options.UseSnippetTemplateCache.getValue(snippetOptions) && args.cacheable) {
                             templates.put(args.cacheKey, template);
                         }
@@ -664,6 +665,15 @@ public class SnippetTemplate {
                 }
             }
             return template;
+        }
+
+        /**
+         * Additional mid-tier optimization phases to run on the snippet graph during
+         * {@link #template} creation. These phases are only run for snippets lowered in the
+         * low-tier lowering.
+         */
+        protected PhaseSuite<Providers> createMidTierPhases() {
+            return null;
         }
     }
 
@@ -705,7 +715,7 @@ public class SnippetTemplate {
      */
     @SuppressWarnings("try")
     protected SnippetTemplate(OptionValues options, DebugContext debug, final Providers providers, SnippetReflectionProvider snippetReflection, Arguments args, boolean trackNodeSourcePosition,
-                    Node replacee) {
+                    Node replacee, PhaseSuite<Providers> midTierPhases) {
         this.snippetReflection = snippetReflection;
         this.info = args.info;
 
@@ -900,6 +910,9 @@ public class SnippetTemplate {
                 }
                 if (loweringStage != LoweringTool.StandardLoweringStage.MID_TIER) {
                     // (5)
+                    if (midTierPhases != null) {
+                        midTierPhases.apply(snippetCopy, providers);
+                    }
                     new WriteBarrierAdditionPhase().apply(snippetCopy, providers);
                     try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_LOW_TIER", snippetCopy)) {
                         // (6)

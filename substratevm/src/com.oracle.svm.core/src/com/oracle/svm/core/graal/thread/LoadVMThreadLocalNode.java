@@ -66,7 +66,7 @@ public class LoadVMThreadLocalNode extends FixedWithNextNode implements Lowerabl
 
         ConstantNode offset = ConstantNode.forLong(threadLocalInfo.offset, holder.graph());
         AddressNode address = graph().unique(new OffsetAddressNode(holder, offset));
-        JavaReadNode read = graph().add(new JavaReadNode(threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, barrierType, true));
+        JavaReadNode read = graph().add(new JavaReadNode(stamp, threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, barrierType, true));
         graph().replaceFixedWithFixed(this, read);
         tool.getLowerer().lower(read, tool);
     }
