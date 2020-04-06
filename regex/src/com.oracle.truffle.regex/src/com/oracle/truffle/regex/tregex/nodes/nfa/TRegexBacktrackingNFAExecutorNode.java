@@ -213,7 +213,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                             // break if we are at the end of the string.
                             break;
                         }
-                        inputAdvance(locals);
+                        inputSkip(locals);
                         if (innerLiteral != null) {
                             // we can search for the inner literal again, but only if we tried all
                             // offsets between the last inner literal match and maxPrefixSize.

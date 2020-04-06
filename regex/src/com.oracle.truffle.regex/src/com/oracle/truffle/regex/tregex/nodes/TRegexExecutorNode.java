@@ -102,11 +102,26 @@ public abstract class TRegexExecutorNode extends Node {
 
     public int inputRead(TRegexExecutorLocals locals, int index) {
         assert root != null;
+        locals.setNextIndex(isForward() ? index + 1 : index - 1);
         return root.inputRead(locals.getInput(), isForward() ? index : index - 1);
     }
 
     public void inputAdvance(TRegexExecutorLocals locals) {
+        assert isForward() ? locals.getIndex() < locals.getNextIndex() : locals.getIndex() > locals.getNextIndex();
+        locals.setIndex(locals.getNextIndex());
+    }
+
+    public void inputSkip(TRegexExecutorLocals locals) {
         locals.setIndex(isForward() ? locals.getIndex() + 1 : locals.getIndex() - 1);
+    }
+
+    public void inputIncRaw(TRegexExecutorLocals locals) {
+        inputIncRaw(locals, 1);
+    }
+
+    public void inputIncRaw(TRegexExecutorLocals locals, int offset) {
+        assert offset > 0;
+        locals.setIndex(isForward() ? locals.getIndex() + offset : locals.getIndex() - offset);
     }
 
     public int countUpTo(TRegexExecutorLocals locals, int max, int nCodePoints) {

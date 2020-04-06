@@ -79,6 +79,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
             return indexOfChars;
         }
 
+        public int getEncodedMatchLength() {
+            return 1;
+        }
+
         public InputIndexOfNode getIndexOfNode() {
             if (indexOfNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -220,12 +224,12 @@ public class DFAStateNode extends DFAAbstractStateNode {
                     if (executor.isSimpleCG()) {
                         // we have to write the final state transition before anything else in
                         // simpleCG mode
-                        checkFinalState(locals, executor, curIndex(locals));
+                        checkFinalState(locals, executor, locals.getIndex());
                     }
                     if (!checkMatch(locals, executor, compactString)) {
                         if (!executor.isSimpleCG()) {
                             // in ignore-capture-groups mode, we can delay the final state check
-                            checkFinalState(locals, executor, curIndex(locals));
+                            checkFinalState(locals, executor, locals.getIndex());
                         }
                         executor.inputAdvance(locals);
                         return;
@@ -239,7 +243,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
                 locals.setSuccessorIndex(atEnd(locals, executor));
                 return;
             }
-            checkFinalState(locals, executor, curIndex(locals));
+            checkFinalState(locals, executor, locals.getIndex());
             checkMatch(locals, executor, compactString);
             executor.inputAdvance(locals);
         }
@@ -339,12 +343,12 @@ public class DFAStateNode extends DFAAbstractStateNode {
         CompilerAsserts.partialEvaluationConstant(this);
         boolean anchored = isAnchoredFinalState() && executor.inputAtEnd(locals);
         if (isFinalState() || anchored) {
-            storeResult(locals, executor, curIndex(locals), anchored);
+            storeResult(locals, executor, locals.getIndex(), anchored);
             if (simpleCG != null) {
                 if (isAnchoredFinalState()) {
-                    applySimpleCGFinalTransition(simpleCG.getTransitionToAnchoredFinalState(), executor, locals, curIndex(locals));
+                    applySimpleCGFinalTransition(simpleCG.getTransitionToAnchoredFinalState(), executor, locals, locals.getIndex());
                 } else if (isFinalState()) {
-                    applySimpleCGFinalTransition(simpleCG.getTransitionToFinalState(), executor, locals, curIndex(locals));
+                    applySimpleCGFinalTransition(simpleCG.getTransitionToFinalState(), executor, locals, locals.getIndex());
                 }
             }
         }
@@ -353,7 +357,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     void successorFound(TRegexDFAExecutorLocals locals, @SuppressWarnings("unused") TRegexDFAExecutorNode executor, int i) {
         if (simpleCG != null) {
-            applySimpleCGTransition(simpleCG.getTransitions()[i], locals, curIndex(locals));
+            applySimpleCGTransition(simpleCG.getTransitions()[i], locals, locals.getIndex());
         }
     }
 
@@ -371,16 +375,6 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     static int[] simpleCGFinalTransitionTargetArray(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         return executor.getProperties().isSimpleCGMustCopy() ? locals.getCGData().currentResult : locals.getCGData().results;
-    }
-
-    int curIndex(TRegexDFAExecutorLocals locals) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        return locals.getIndex();
-    }
-
-    int nextIndex(TRegexDFAExecutorLocals locals) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        return locals.getIndex() + 1;
     }
 
     void applySimpleCGTransition(DFASimpleCGTransition transition, TRegexDFAExecutorLocals locals, int index) {

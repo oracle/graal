@@ -87,7 +87,7 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
                 locals.setSuccessorIndex(0);
                 return;
             }
-            executor.inputAdvance(locals);
+            executor.inputIncRaw(locals);
         }
     }
 

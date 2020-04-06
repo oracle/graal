@@ -50,6 +50,7 @@ public abstract class TRegexExecutorLocals {
     private final int fromIndex;
     private final int maxIndex;
     private int index;
+    private int nextIndex;
 
     public TRegexExecutorLocals(Object input, int fromIndex, int maxIndex, int index) {
         this.input = input;
@@ -97,5 +98,13 @@ public abstract class TRegexExecutorLocals {
 
     public void setIndex(int index) {
         this.index = index;
+    }
+
+    public int getNextIndex() {
+        return nextIndex;
+    }
+
+    public void setNextIndex(int nextIndex) {
+        this.nextIndex = nextIndex;
     }
 }
