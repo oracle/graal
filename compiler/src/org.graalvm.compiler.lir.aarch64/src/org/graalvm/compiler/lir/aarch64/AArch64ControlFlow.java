@@ -337,6 +337,7 @@ public class AArch64ControlFlow {
 
     public static final class TableSwitchOp extends AArch64BlockEndOp {
         public static final LIRInstructionClass<TableSwitchOp> TYPE = LIRInstructionClass.create(TableSwitchOp.class);
+        private final Constant[] keyConstants;
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
@@ -344,8 +345,9 @@ public class AArch64ControlFlow {
         @Temp({REG, HINT}) protected Value idxScratch;
         @Temp protected Value scratch;
 
-        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Value index, Variable scratch, Variable idxScratch) {
+        public TableSwitchOp(final Constant[] keyConstants, final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Value index, Variable scratch, Variable idxScratch) {
             super(TYPE);
+            this.keyConstants = keyConstants;
             this.lowKey = lowKey;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
@@ -375,6 +377,7 @@ public class AArch64ControlFlow {
             masm.add(64, scratchReg, scratchReg, idxScratchReg, ExtendType.UXTW, 2);
             masm.jmp(scratchReg);
             masm.bind(jumpTable);
+            // TODO register constant pointers
             // emit jump table entries
             for (LabelRef target : targets) {
                 masm.jmp(target.label());

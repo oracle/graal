@@ -117,7 +117,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
 
     private static boolean isZeroConstant(ValueNode value) {
         JavaConstant constant = value.asJavaConstant();
-        return constant.getJavaKind().isNumericInteger() && constant.asLong() == 0;
+        return constant != null && constant.getJavaKind().isNumericInteger() && constant.asLong() == 0;
     }
 
     private static Stamp objectStampFor(ValueNode input) {
@@ -172,7 +172,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
         assert !stamp.isCompatible(input.stamp(NodeView.DEFAULT));
         if (input.isConstant()) {
             /* Null pointers are uncritical for GC, so they can be constant folded. */
-            if (input.asJavaConstant().isNull()) {
+            if (input.asJavaConstant() != null && input.asJavaConstant().isNull()) {
                 return ConstantNode.forIntegerStamp(stamp, 0);
             } else if (isZeroConstant(input)) {
                 return ConstantNode.forConstant(stamp, ((AbstractPointerStamp) stamp).nullConstant(), tool.getMetaAccess());

@@ -500,9 +500,14 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @Override
-    public int intKeyAt(int i) {
+    public JavaConstant keyAt(int i) {
         assert i == 0;
-        return ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
+        return ((IntegerEqualsNode) condition()).getY().asJavaConstant();
+    }
+
+    @Override
+    public int intKeyAt(int i) {
+        return keyAt(i).asInt();
     }
 
     @Override

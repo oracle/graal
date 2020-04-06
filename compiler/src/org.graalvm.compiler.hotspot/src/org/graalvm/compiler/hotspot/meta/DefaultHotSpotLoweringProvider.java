@@ -40,8 +40,14 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION;
 import static org.graalvm.word.LocationIdentity.any;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.EnumMap;
 
+import jdk.vm.ci.hotspot.HotSpotConstant;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.MemoryAccessProvider;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -96,6 +102,7 @@ import org.graalvm.compiler.hotspot.stubs.ForeignCallSnippets;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
+import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -123,6 +130,7 @@ import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
+import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.nodes.extended.OSRLocalNode;
@@ -150,6 +158,7 @@ import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.nodes.java.RawMonitorEnterNode;
+import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
@@ -168,6 +177,7 @@ import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyWithDelayedLoweringNode;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.word.WordCastNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -420,11 +430,93 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
                     unsafeSnippets.lower((UnsafeCopyMemoryNode) n, tool);
                 }
+            } else if (n instanceof TypeSwitchNode) {
+                lowerTypeSwitch((TypeSwitchNode) n);
             } else {
                 super.lower(n, tool);
             }
         }
 
+    }
+
+    static final class KeyData {
+        final Constant keyConstant;
+        final int keyPrimitive;
+        final double keyProbability;
+        final int keySuccessor;
+
+        KeyData(Constant keyConstant, int keyPrimitive, double keyProbability, int keySuccessor) {
+            this.keyConstant = keyConstant;
+            this.keyPrimitive = keyPrimitive;
+            this.keyProbability = keyProbability;
+            this.keySuccessor = keySuccessor;
+        }
+    }
+
+    // lowers a `TypeSwitchNode` to an `IntegerSwitchNode` if compressed pointers is enabled
+    private void lowerTypeSwitch(TypeSwitchNode n) {
+        if (GraalOptions.LowerTypeSwitches.getValue(n.graph().getOptions()) && runtime.getVMConfig().useCompressedClassPointers) {
+            CompressEncoding enc = runtime.getVMConfig().getKlassEncoding();
+
+            // compress the value and cast to an int word
+            ValueNode intValue;
+            if (n.value().isConstant() && n.value().asJavaConstant().isNull()) {
+                intValue = n.value();
+            } else {
+                ValueNode value = HotSpotCompressionNode.compress(n.value(), runtime.getVMConfig().getKlassEncoding());
+                WordCastNode wordCast = n.graph().add(WordCastNode.addressToWord(value, JavaKind.Int));
+                n.graph().addBeforeFixed(n, wordCast);
+                intValue = wordCast;
+            }
+
+            // sort keys (required by IntegerSwitchNode)
+            int count = n.keyCount();
+            KeyData[] data = new KeyData[count];
+            for (int i = 0; i < count; i++) {
+                HotSpotConstant key = (HotSpotConstant) n.keyAt(i);
+                long pointer = rawPointer(n.keyAt(i));
+                data[i] = new KeyData(key.compress(), enc.compress(pointer), n.keyProbability(i), n.keySuccessorIndex(i));
+            }
+            Arrays.sort(data, Comparator.comparingInt(a -> a.keyPrimitive));
+
+            // populate arrays based on the sorted keys
+            Constant[] keyConstants = new Constant[count];
+            int[] keyPrimitives = new int[count];
+            double[] keyProbabilities = new double[count + 1];
+            int[] keySuccessors = new int[count + 1];
+            for (int i = 0; i < count; i++) {
+                keyConstants[i] = data[i].keyConstant;
+                keyPrimitives[i] = data[i].keyPrimitive;
+                keyProbabilities[i] = data[i].keyProbability;
+                keySuccessors[i] = data[i].keySuccessor;
+            }
+            keySuccessors[count] = n.defaultSuccessorIndex();
+            keyProbabilities[count] = n.defaultProbability();
+
+            // copy successors
+            AbstractBeginNode[] successors = new AbstractBeginNode[n.getSuccessorCount()];
+            for (int i = 0; i < n.getSuccessorCount(); i++) {
+                successors[i] = n.blockSuccessor(i);
+                // detach successor so it can be added to the integer switch
+                n.setBlockSuccessor(i, null);
+            }
+
+            // replace by the integer switch
+            IntegerSwitchNode intSwitch = n.graph().add(new IntegerSwitchNode(intValue, successors, keyConstants, keyPrimitives, keyProbabilities, keySuccessors));
+            n.replaceAndDelete(intSwitch);
+        }
+    }
+
+    // TODO expose `asRawPointer` in jvmci
+    private long rawPointer(Constant c) {
+        try {
+            MemoryAccessProvider memory = constantReflection.getMemoryAccessProvider();
+            Method m = memory.getClass().getDeclaredMethod("asRawPointer", Constant.class);
+            m.setAccessible(true);
+            return (long) m.invoke(memory, c);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static void lowerComputeObjectAddressNode(ComputeObjectAddressNode n) {

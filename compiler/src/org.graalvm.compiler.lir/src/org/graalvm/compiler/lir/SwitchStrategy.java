@@ -33,12 +33,11 @@ import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * This class encapsulates different strategies on how to generate code for switch instructions.
  *
- * The {@link #getBestStrategy(double[], JavaConstant[], LabelRef[])} method can be used to get
+ * The {@link #getBestStrategy(double[], Constant[], int[], LabelRef[])} method can be used to get
  * strategy with the smallest average effort (average number of comparisons until a decision is
  * reached). The strategy returned by this method will have its averageEffort set, while a strategy
  * constructed directly will not.
@@ -298,16 +297,18 @@ public abstract class SwitchStrategy {
      * Base class for strategies that rely on primitive integer keys.
      */
     private abstract static class PrimitiveStrategy extends SwitchStrategy {
-        protected final JavaConstant[] keyConstants;
+        protected final Constant[] keyConstants;
+        protected final int[] keyPrimitives;
 
-        protected PrimitiveStrategy(double[] keyProbabilities, JavaConstant[] keyConstants) {
+        protected PrimitiveStrategy(double[] keyProbabilities, Constant[] keyConstants, int[] keyPrimitives) {
             super(keyProbabilities);
             assert keyProbabilities.length == keyConstants.length;
             this.keyConstants = keyConstants;
+            this.keyPrimitives = keyPrimitives;
         }
 
         @Override
-        public JavaConstant[] getKeyConstants() {
+        public Constant[] getKeyConstants() {
             return keyConstants;
         }
 
@@ -317,7 +318,7 @@ public abstract class SwitchStrategy {
          */
         protected int getSliceEnd(SwitchClosure closure, int pos) {
             int slice = pos;
-            while (slice < (keyConstants.length - 1) && keyConstants[slice + 1].asLong() == keyConstants[slice].asLong() + 1 && closure.isSameTarget(slice, slice + 1)) {
+            while (slice < (keyPrimitives.length - 1) && keyPrimitives[slice + 1] == keyPrimitives[slice] + 1 && closure.isSameTarget(slice, slice + 1)) {
                 slice++;
             }
             return slice;
@@ -331,8 +332,8 @@ public abstract class SwitchStrategy {
     public static class RangesStrategy extends PrimitiveStrategy {
         private final Integer[] indexes;
 
-        public RangesStrategy(final double[] keyProbabilities, JavaConstant[] keyConstants) {
-            super(keyProbabilities, keyConstants);
+        public RangesStrategy(final double[] keyProbabilities, Constant[] keyConstants, int[] keyPrimitives) {
+            super(keyProbabilities, keyConstants, keyPrimitives);
 
             int keyCount = keyConstants.length;
             indexes = new Integer[keyCount];
@@ -359,7 +360,7 @@ public abstract class SwitchStrategy {
                     closure.conditionalJump(rangeStart, Condition.EQ, false);
                     registerEffort(rangeStart, rangeEnd, ++depth);
                 } else {
-                    if (rangeStart == 0 || keyConstants[rangeStart - 1].asLong() + 1 != keyConstants[rangeStart].asLong()) {
+                    if (rangeStart == 0 || keyPrimitives[rangeStart - 1] + 1 != keyPrimitives[rangeStart]) {
                         closure.conditionalJump(rangeStart, Condition.LT, true);
                         registerDefaultEffort(++depth);
                     }
@@ -374,7 +375,7 @@ public abstract class SwitchStrategy {
                 registerEffort(rangeStart, rangeEnd, ++depth);
                 registerDefaultEffort(depth);
             } else {
-                if (rangeStart == 0 || keyConstants[rangeStart - 1].asLong() + 1 != keyConstants[rangeStart].asLong()) {
+                if (rangeStart == 0 || keyPrimitives[rangeStart - 1] + 1 != keyPrimitives[rangeStart]) {
                     closure.conditionalJump(rangeStart, Condition.LT, true);
                     registerDefaultEffort(++depth);
                 }
@@ -395,8 +396,8 @@ public abstract class SwitchStrategy {
 
         private final double[] probabilitySums;
 
-        public BinaryStrategy(double[] keyProbabilities, JavaConstant[] keyConstants) {
-            super(keyProbabilities, keyConstants);
+        public BinaryStrategy(double[] keyProbabilities, Constant[] keyConstants, int[] keyPrimitives) {
+            super(keyProbabilities, keyConstants, keyPrimitives);
             probabilitySums = new double[keyProbabilities.length + 1];
             double sum = 0;
             for (int i = 0; i < keyConstants.length; i++) {
@@ -424,7 +425,7 @@ public abstract class SwitchStrategy {
 
             if (left + 1 == right) {
                 // only two possible values
-                if (leftBorder || rightBorder || keyConstants[right].asLong() + 1 != keyConstants[right + 1].asLong() || keyConstants[left].asLong() + 1 != keyConstants[right].asLong()) {
+                if (leftBorder || rightBorder || keyPrimitives[right] + 1 != keyPrimitives[right + 1] || keyPrimitives[left] + 1 != keyPrimitives[right]) {
                     closure.conditionalJump(left, Condition.EQ, false);
                     registerEffort(left, left, ++depth);
                     closure.conditionalJumpOrDefault(right, Condition.EQ, rightBorder);
@@ -462,12 +463,12 @@ public abstract class SwitchStrategy {
                     registerEffort(right, right, ++depth);
                     registerDefaultEffort(depth);
                 } else {
-                    if (keyConstants[middle].asLong() + 1 != keyConstants[middle + 1].asLong()) {
+                    if (keyPrimitives[middle] + 1 != keyPrimitives[middle + 1]) {
                         closure.conditionalJump(middle + 1, Condition.LT, true);
                         registerDefaultEffort(++depth);
                     }
                     if (getSliceEnd(closure, middle + 1) == right) {
-                        if (right == keyConstants.length - 1 || keyConstants[right].asLong() + 1 != keyConstants[right + 1].asLong()) {
+                        if (right == keyConstants.length - 1 || keyPrimitives[right] + 1 != keyPrimitives[right + 1]) {
                             closure.conditionalJumpOrDefault(right, Condition.LE, rightBorder);
                             registerEffort(middle + 1, right, ++depth);
                             registerDefaultEffort(depth);
@@ -480,7 +481,7 @@ public abstract class SwitchStrategy {
                     }
                 }
             } else if (getSliceEnd(closure, middle + 1) == right) {
-                if (rightBorder || keyConstants[right].asLong() + 1 != keyConstants[right + 1].asLong()) {
+                if (rightBorder || keyPrimitives[right] + 1 != keyPrimitives[right + 1]) {
                     closure.conditionalJump(right, Condition.GT, true);
                     registerDefaultEffort(++depth);
                 }
@@ -499,9 +500,9 @@ public abstract class SwitchStrategy {
 
     public abstract void run(SwitchClosure closure);
 
-    private static SwitchStrategy[] getStrategies(double[] keyProbabilities, JavaConstant[] keyConstants, LabelRef[] keyTargets) {
-        SwitchStrategy[] strategies = new SwitchStrategy[]{new SequentialStrategy(keyProbabilities, keyConstants), new RangesStrategy(keyProbabilities, keyConstants),
-                        new BinaryStrategy(keyProbabilities, keyConstants)};
+    private static SwitchStrategy[] getStrategies(double[] keyProbabilities, Constant[] keyConstants, int[] keyPrimitives, LabelRef[] keyTargets) {
+        SwitchStrategy[] strategies = new SwitchStrategy[]{new SequentialStrategy(keyProbabilities, keyConstants), new RangesStrategy(keyProbabilities, keyConstants, keyPrimitives),
+                        new BinaryStrategy(keyProbabilities, keyConstants, keyPrimitives)};
         for (SwitchStrategy strategy : strategies) {
             strategy.effortClosure = strategy.new EffortClosure(keyTargets);
             strategy.run(strategy.effortClosure);
@@ -515,8 +516,8 @@ public abstract class SwitchStrategy {
      * Creates all switch strategies for the given switch, evaluates them (based on average effort)
      * and returns the best one.
      */
-    public static SwitchStrategy getBestStrategy(double[] keyProbabilities, JavaConstant[] keyConstants, LabelRef[] keyTargets) {
-        SwitchStrategy[] strategies = getStrategies(keyProbabilities, keyConstants, keyTargets);
+    public static SwitchStrategy getBestStrategy(double[] keyProbabilities, Constant[] keyConstants, int[] keyPrimitives, LabelRef[] keyTargets) {
+        SwitchStrategy[] strategies = getStrategies(keyProbabilities, keyConstants, keyPrimitives, keyTargets);
         double bestEffort = Integer.MAX_VALUE;
         SwitchStrategy bestStrategy = null;
         for (SwitchStrategy strategy : strategies) {

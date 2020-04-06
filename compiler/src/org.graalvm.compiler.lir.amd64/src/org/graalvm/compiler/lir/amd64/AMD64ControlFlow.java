@@ -650,6 +650,7 @@ public class AMD64ControlFlow {
 
     public static final class TableSwitchOp extends AMD64BlockEndOp {
         public static final LIRInstructionClass<TableSwitchOp> TYPE = LIRInstructionClass.create(TableSwitchOp.class);
+        private final Constant[] keyConstants;
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
@@ -657,8 +658,9 @@ public class AMD64ControlFlow {
         @Temp({REG, HINT}) protected Value idxScratch;
         @Temp protected Value scratch;
 
-        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Value index, Variable scratch, Variable idxScratch) {
+        public TableSwitchOp(final Constant[] keyConstants, final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Value index, Variable scratch, Variable idxScratch) {
             super(TYPE);
+            this.keyConstants = keyConstants;
             this.lowKey = lowKey;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
@@ -710,6 +712,8 @@ public class AMD64ControlFlow {
             final int leaDisplacementPosition = afterLea - 4;
             masm.emitInt(jumpTablePos - afterLea, leaDisplacementPosition);
 
+            // TODO register constant pointers
+
             // Emit jump table entries
             for (LabelRef target : targets) {
                 Label label = target.label();
@@ -733,7 +737,8 @@ public class AMD64ControlFlow {
 
     public static final class HashTableSwitchOp extends AMD64BlockEndOp {
         public static final LIRInstructionClass<HashTableSwitchOp> TYPE = LIRInstructionClass.create(HashTableSwitchOp.class);
-        private final JavaConstant[] keys;
+        private final Constant[] keyConstants;
+        private final int[] keyPrimitives;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
         @Alive protected Value value;
@@ -741,9 +746,11 @@ public class AMD64ControlFlow {
         @Temp({REG}) protected Value entryScratch;
         @Temp({REG}) protected Value scratch;
 
-        public HashTableSwitchOp(final JavaConstant[] keys, final LabelRef defaultTarget, LabelRef[] targets, Value value, Value hash, Variable scratch, Variable entryScratch) {
+        public HashTableSwitchOp(final Constant[] keyConstants, final int[] keyPrimitives, final LabelRef defaultTarget, LabelRef[] targets, Value value, Value hash, Variable scratch,
+                        Variable entryScratch) {
             super(TYPE);
-            this.keys = keys;
+            this.keyConstants = keyConstants;
+            this.keyPrimitives = keyPrimitives;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
             this.value = value;
@@ -806,7 +813,8 @@ public class AMD64ControlFlow {
                 Label label = targets[i].label();
 
                 if (defaultTarget != null) {
-                    masm.emitInt(keys[i].asInt());
+                    // TODO emit keyConstants[i] instead
+                    masm.emitInt(keyPrimitives[i]);
                 }
                 if (label.isBound()) {
                     int imm32 = label.position() - jumpTablePos;
@@ -820,7 +828,7 @@ public class AMD64ControlFlow {
                 }
             }
 
-            JumpTable jt = new JumpTable(jumpTablePos, keys[0].asInt(), keys[keys.length - 1].asInt(), entrySize);
+            JumpTable jt = new JumpTable(jumpTablePos, keyPrimitives[0], keyPrimitives[keyPrimitives.length - 1], entrySize);
             crb.compilationResult.addAnnotation(jt);
         }
     }

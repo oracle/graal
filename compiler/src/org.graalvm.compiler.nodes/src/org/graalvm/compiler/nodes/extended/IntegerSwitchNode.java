@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jdk.vm.ci.meta.Constant;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
@@ -61,28 +62,32 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * The {@code IntegerSwitchNode} represents a switch on integer keys, with a sorted array of key
- * values. The actual implementation of the switch will be decided by the backend.
+ * The {@code IntegerSwitchNode} represents a switch on integer keyPrimitives, with a sorted array
+ * of key values. The actual implementation of the switch will be decided by the backend.
  */
 @NodeInfo
 public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable, SwitchFoldable {
     public static final NodeClass<IntegerSwitchNode> TYPE = NodeClass.create(IntegerSwitchNode.class);
 
-    protected final int[] keys;
+    protected final Constant[] keyConstants;
+    protected final int[] keyPrimitives;
 
-    public IntegerSwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
+    public IntegerSwitchNode(ValueNode value, AbstractBeginNode[] successors, Constant[] keyConstants, int[] keyPrimitives, double[] keyProbabilities, int[] keySuccessors) {
         super(TYPE, value, successors, keySuccessors, keyProbabilities);
-        assert keySuccessors.length == keys.length + 1;
-        assert keySuccessors.length == keyProbabilities.length;
-        this.keys = keys;
+        int length = keySuccessors.length;
+        assert length == keyConstants.length + 1;
+        assert length == keyPrimitives.length + 1;
+        assert length == keyProbabilities.length;
+        this.keyPrimitives = keyPrimitives;
+        this.keyConstants = keyConstants;
         assert value.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp && value.stamp(NodeView.DEFAULT).getStackKind().isNumericInteger();
         assert assertSorted();
         assert assertNoUntargettedSuccessor();
     }
 
     private boolean assertSorted() {
-        for (int i = 1; i < keys.length; i++) {
-            assert keys[i - 1] < keys[i];
+        for (int i = 1; i < keyPrimitives.length; i++) {
+            assert keyPrimitives[i - 1] < keyPrimitives[i];
         }
         return true;
     }
@@ -99,8 +104,20 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         return true;
     }
 
-    public IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
-        this(value, new AbstractBeginNode[successorCount], keys, keyProbabilities, keySuccessors);
+    public IntegerSwitchNode(ValueNode value, int successorCount, Constant[] keyConstants, int[] keyPrimitives, double[] keyProbabilities, int[] keySuccessors) {
+        this(value, new AbstractBeginNode[successorCount], keyConstants, keyPrimitives, keyProbabilities, keySuccessors);
+    }
+
+    public IntegerSwitchNode(ValueNode value, int successorCount, int[] keyPrimitives, double[] keyProbabilities, int[] keySuccessors) {
+        this(value, new AbstractBeginNode[successorCount], toConstants(keyPrimitives), keyPrimitives, keyProbabilities, keySuccessors);
+    }
+
+    private static final JavaConstant[] toConstants(int[] primitives) {
+        JavaConstant[] constants = new JavaConstant[primitives.length];
+        for (int i = 0; i < primitives.length; i++) {
+            constants[i] = JavaConstant.forInt(primitives[i]);
+        }
+        return constants;
     }
 
     @Override
@@ -115,8 +132,8 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
      * @return the key at that index
      */
     @Override
-    public JavaConstant keyAt(int i) {
-        return JavaConstant.forInt(keys[i]);
+    public Constant keyAt(int i) {
+        return keyConstants[i];
     }
 
     /**
@@ -124,12 +141,12 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
      */
     @Override
     public int intKeyAt(int i) {
-        return keys[i];
+        return keyPrimitives[i];
     }
 
     @Override
     public int keyCount() {
-        return keys.length;
+        return keyPrimitives.length;
     }
 
     @Override
@@ -138,7 +155,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             return false;
         }
         IntegerSwitchNode other = (IntegerSwitchNode) switchNode;
-        return Arrays.equals(keys, other.keys);
+        return Arrays.equals(keyPrimitives, other.keyPrimitives);
     }
 
     @Override
@@ -152,7 +169,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
 
     public int successorIndexAtKey(int key) {
         for (int i = 0; i < keyCount(); i++) {
-            if (keys[i] == key) {
+            if (keyPrimitives[i] == key) {
                 return keySuccessorIndex(i);
             }
         }
@@ -229,20 +246,22 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     }
 
     static final class KeyData {
-        final int key;
+        final Constant keyConstant;
+        final int keyPrimitive;
         final double keyProbability;
         final int keySuccessor;
 
-        KeyData(int key, double keyProbability, int keySuccessor) {
-            this.key = key;
+        KeyData(Constant keyConstant, int keyPrimitive, double keyProbability, int keySuccessor) {
+            this.keyConstant = keyConstant;
+            this.keyPrimitive = keyPrimitive;
             this.keyProbability = keyProbability;
             this.keySuccessor = keySuccessor;
         }
     }
 
     /**
-     * Remove unreachable keys from the switch based on the stamp of the value, i.e., based on the
-     * known range of the switch value.
+     * Remove unreachable keyPrimitives from the switch based on the stamp of the value, i.e., based
+     * on the known range of the switch value.
      */
     public boolean tryRemoveUnreachableKeys(SimplifierTool tool, Stamp valueStamp) {
         if (!(valueStamp instanceof IntegerStamp)) {
@@ -253,16 +272,16 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             return false;
         }
 
-        List<KeyData> newKeyDatas = new ArrayList<>(keys.length);
+        List<KeyData> newKeyDatas = new ArrayList<>(keyPrimitives.length);
         ArrayList<AbstractBeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
-        for (int i = 0; i < keys.length; i++) {
-            if (integerStamp.contains(keys[i]) && keySuccessor(i) != defaultSuccessor()) {
-                newKeyDatas.add(new KeyData(keys[i], keyProbabilities[i], addNewSuccessor(keySuccessor(i), newSuccessors)));
+        for (int i = 0; i < keyPrimitives.length; i++) {
+            if (integerStamp.contains(keyPrimitives[i]) && keySuccessor(i) != defaultSuccessor()) {
+                newKeyDatas.add(new KeyData(keyConstants[i], keyPrimitives[i], keyProbabilities[i], addNewSuccessor(keySuccessor(i), newSuccessors)));
             }
         }
 
-        if (newKeyDatas.size() == keys.length) {
-            /* All keys are reachable. */
+        if (newKeyDatas.size() == keyPrimitives.length) {
+            /* All keyPrimitives are reachable. */
             return false;
 
         } else if (newKeyDatas.size() == 0) {
@@ -289,7 +308,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
      * The {@link ConstantFieldProvider} of Graal already detects the int[] arrays and marks them as
      * {@link ConstantNode#isDefaultStable() stable}, i.e., the array elements are constant. The
      * code in this method detects array loads from such a stable array and re-wires the switch to
-     * use the keys from the array elements, so that the array load is unnecessary.
+     * use the keyPrimitives from the array elements, so that the array load is unnecessary.
      */
     private boolean tryOptimizeEnumSwitch(SimplifierTool tool) {
         if (!(value() instanceof LoadIndexedNode)) {
@@ -311,7 +330,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         if (arrayConstant == null || ((ConstantNode) loadIndexed.array()).getStableDimension() != 1 || !((ConstantNode) loadIndexed.array()).isDefaultStable()) {
             /*
              * The array is a constant that we can optimize. We require the array elements to be
-             * constant too, since we put them as literal constants into the switch keys.
+             * constant too, since we put them as literal constants into the switch keyPrimitives.
              */
             return false;
         }
@@ -334,30 +353,30 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
 
             /*
              * The value loaded from the array is the old switch key, the index into the array is
-             * the new switch key. We build a mapping from the old switch key to new keys.
+             * the new switch key. We build a mapping from the old switch key to new keyPrimitives.
              */
             reverseArrayMapping.computeIfAbsent(element, e -> new ArrayList<>()).add(i);
         }
 
-        /* Build high-level representation of new switch keys. */
+        /* Build high-level representation of new switch keyPrimitives. */
         List<KeyData> newKeyDatas = new ArrayList<>(arrayLength);
         ArrayList<AbstractBeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
-        for (int i = 0; i < keys.length; i++) {
-            List<Integer> newKeys = reverseArrayMapping.get(keys[i]);
-            if (newKeys == null || newKeys.size() == 0) {
+        for (int i = 0; i < keyPrimitives.length; i++) {
+            List<Integer> newKeyPrimitives = reverseArrayMapping.get(keyPrimitives[i]);
+            if (newKeyPrimitives == null || newKeyPrimitives.size() == 0) {
                 /* The switch case is unreachable, we can ignore it. */
                 continue;
             }
 
             /*
-             * We do not have detailed profiling information about the individual new keys, so we
-             * have to assume they split the probability of the old key.
+             * We do not have detailed profiling information about the individual new keyPrimitives,
+             * so we have to assume they split the probability of the old key.
              */
-            double newKeyProbability = keyProbabilities[i] / newKeys.size();
+            double newKeyProbability = keyProbabilities[i] / newKeyPrimitives.size();
             int newKeySuccessor = addNewSuccessor(keySuccessor(i), newSuccessors);
 
-            for (int newKey : newKeys) {
-                newKeyDatas.add(new KeyData(newKey, newKeyProbability, newKeySuccessor));
+            for (int newKeyPrimitive : newKeyPrimitives) {
+                newKeyDatas.add(new KeyData(JavaConstant.forInt(newKeyPrimitive), newKeyPrimitive, newKeyProbability, newKeySuccessor));
             }
         }
 
@@ -372,8 +391,8 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         graph().addBeforeFixed(this, graph().add(new FixedGuardNode(boundsCheck, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateReprofile)));
 
         /*
-         * Build the low-level representation of the new switch keys and replace ourself with a new
-         * node.
+         * Build the low-level representation of the new switch keyPrimitives and replace ourself
+         * with a new node.
          */
         doReplace(newValue, newKeyDatas, newSuccessors, newDefaultSuccessor, newDefaultProbability);
 
@@ -394,18 +413,20 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     }
 
     private void doReplace(ValueNode newValue, List<KeyData> newKeyDatas, ArrayList<AbstractBeginNode> newSuccessors, int newDefaultSuccessor, double newDefaultProbability) {
-        /* Sort the new keys (invariant of the IntegerSwitchNode). */
-        newKeyDatas.sort(Comparator.comparingInt(k -> k.key));
+        /* Sort the new keyPrimitives (invariant of the IntegerSwitchNode). */
+        newKeyDatas.sort(Comparator.comparingInt(k -> k.keyPrimitive));
 
         /* Create the final data arrays. */
         int newKeyCount = newKeyDatas.size();
-        int[] newKeys = new int[newKeyCount];
+        Constant[] newKeyConstants = new Constant[newKeyCount];
+        int[] newKeyPrimitives = new int[newKeyCount];
         double[] newKeyProbabilities = new double[newKeyCount + 1];
         int[] newKeySuccessors = new int[newKeyCount + 1];
 
         for (int i = 0; i < newKeyCount; i++) {
             KeyData keyData = newKeyDatas.get(i);
-            newKeys[i] = keyData.key;
+            newKeyConstants[i] = keyData.keyConstant;
+            newKeyPrimitives[i] = keyData.keyPrimitive;
             newKeyProbabilities[i] = keyData.keyProbability;
             newKeySuccessors[i] = keyData.keySuccessor;
         }
@@ -444,7 +465,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
          * while removing successors).
          */
         AbstractBeginNode[] successorsArray = newSuccessors.toArray(new AbstractBeginNode[newSuccessors.size()]);
-        SwitchNode newSwitch = graph().add(new IntegerSwitchNode(newValue, successorsArray, newKeys, newKeyProbabilities, newKeySuccessors));
+        SwitchNode newSwitch = graph().add(new IntegerSwitchNode(newValue, successorsArray, newKeyConstants, newKeyPrimitives, newKeyProbabilities, newKeySuccessors));
 
         /* Replace ourselves with the new switch */
         ((FixedWithNextNode) predecessor()).setNext(newSwitch);
@@ -460,9 +481,9 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             for (int i = 0; i < keyCount(); i++) {
                 if (keySuccessor(i) == beginNode) {
                     if (result == null) {
-                        result = StampFactory.forConstant(keyAt(i));
+                        result = StampFactory.intValue();
                     } else {
-                        result = result.meet(StampFactory.forConstant(keyAt(i)));
+                        result = result.meet(StampFactory.intValue());
                     }
                 }
             }
