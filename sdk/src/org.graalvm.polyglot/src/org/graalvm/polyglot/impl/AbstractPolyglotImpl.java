@@ -187,7 +187,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access);
 
-        public abstract void validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> language);
+        public abstract String validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> language);
 
         public abstract Object getImpl(ResourceLimits value);
 
@@ -744,13 +744,15 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getMetaSimpleName(Object receiver);
 
         public abstract boolean isMetaInstance(Object receiver, Object instance);
+
+        public abstract boolean equalsImpl(Object receiver, Object obj);
+
+        public abstract int hashCodeImpl(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);
 
-    public Context getCurrentContext() {
-        throw new IllegalStateException("No current context is available. Make sure the Java method is invoked by a Graal guest language or a context is entered using Context.enter().");
-    }
+    public abstract Context getCurrentContext();
 
     public abstract Collection<Engine> findActiveEngines();
 

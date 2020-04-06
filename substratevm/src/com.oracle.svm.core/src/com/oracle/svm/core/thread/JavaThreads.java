@@ -57,7 +57,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.ReferenceQueueInternals;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.ManagementSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -534,8 +534,12 @@ public abstract class JavaThreads {
 
     protected abstract void yield();
 
-    protected static void interruptVMCondVars() {
-        ReferenceQueueInternals.interruptWaiters();
+    /**
+     * Wake any thread which is waiting by other means, such as VM-internal condition variables, so
+     * that they can check their interrupted status.
+     */
+    protected static void wakeUpVMConditionWaiters() {
+        Heap.getHeap().wakeUpReferencePendingListWaiters();
     }
 
     static StackTraceElement[] getStackTrace(Thread thread) {

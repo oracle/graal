@@ -30,13 +30,12 @@ import java.util.List;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.InvokeNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -50,7 +49,7 @@ import com.oracle.svm.core.snippets.ExceptionUnwind;
  * The {@link ExceptionUnwind exception handling mechanism} of Substrate VM is capable of jumping
  * over methods that have no exception handler registered. That saves us from emitting boilerplate
  * code in every call site in every method that just forwards the exception object from the
- * {@link InvokeWithExceptionNode} to the {@link UnwindNode}.
+ * {@link WithExceptionNode} to the {@link UnwindNode}.
  */
 public class RemoveUnwindPhase extends Phase {
 
@@ -66,19 +65,19 @@ public class RemoveUnwindPhase extends Phase {
             return;
         }
 
-        List<InvokeWithExceptionNode> invocations = new ArrayList<>();
+        List<WithExceptionNode> withExceptionNodes = new ArrayList<>();
         List<BytecodeExceptionNode> bytecodeExceptionNodes = new ArrayList<>();
         for (UnwindNode node : graph.getNodes().filter(UnwindNode.class)) {
-            walkBack(node.predecessor(), node, invocations, bytecodeExceptionNodes);
+            walkBack(node.predecessor(), node, withExceptionNodes, bytecodeExceptionNodes);
         }
 
         /*
-         * Modify graph only after all suitable invocations are found, to avoid problems with
-         * deleted nodes during graph traversal.
+         * Modify graph only after all suitable nodes with exceptions are found, to avoid problems
+         * with deleted nodes during graph traversal.
          */
-        for (InvokeWithExceptionNode node : invocations) {
+        for (WithExceptionNode node : withExceptionNodes) {
             if (node.isAlive()) {
-                node.replaceWithInvoke();
+                node.replaceWithNonThrowing();
             }
         }
         for (BytecodeExceptionNode bytecodeExceptionNode : bytecodeExceptionNodes) {
@@ -89,17 +88,16 @@ public class RemoveUnwindPhase extends Phase {
     }
 
     /**
-     * We walk back from the {@link UnwindNode} to an {@link InvokeWithExceptionNode}. If the
-     * control flow path only contains nodes white-listed in this method, then we know that we have
-     * an invoke that just forwards the exception to the {@link UnwindNode}. Such invokes are
-     * rewritten to a plain {@link InvokeNode}, i.e., no exception handler entry is created for such
-     * invokes.
+     * We walk back from the {@link UnwindNode} to a {@link WithExceptionNode}. If the control flow
+     * path only contains nodes white-listed in this method, then we know that we have a node that
+     * just forwards the exception to the {@link UnwindNode}. Such nodes are rewritten to a variant
+     * without an exception edge, i.e., no exception handler entry is created for such invokes.
      */
-    private static void walkBack(Node n, Node successor, List<InvokeWithExceptionNode> invocations, List<BytecodeExceptionNode> bytecodeExceptionNodes) {
-        if (n instanceof InvokeWithExceptionNode) {
-            InvokeWithExceptionNode node = (InvokeWithExceptionNode) n;
+    private static void walkBack(Node n, Node successor, List<WithExceptionNode> withExceptionNodes, List<BytecodeExceptionNode> bytecodeExceptionNodes) {
+        if (n instanceof WithExceptionNode) {
+            WithExceptionNode node = (WithExceptionNode) n;
             if (node.exceptionEdge() == successor) {
-                invocations.add(node);
+                withExceptionNodes.add(node);
             }
 
         } else if (n instanceof BytecodeExceptionNode) {
@@ -109,11 +107,11 @@ public class RemoveUnwindPhase extends Phase {
         } else if (n instanceof MergeNode) {
             MergeNode node = (MergeNode) n;
             for (ValueNode predecessor : node.cfgPredecessors()) {
-                walkBack(predecessor, node, invocations, bytecodeExceptionNodes);
+                walkBack(predecessor, node, withExceptionNodes, bytecodeExceptionNodes);
             }
 
         } else if (n instanceof EndNode || n instanceof LoopExitNode || n instanceof ExceptionObjectNode) {
-            walkBack(n.predecessor(), n, invocations, bytecodeExceptionNodes);
+            walkBack(n.predecessor(), n, withExceptionNodes, bytecodeExceptionNodes);
         }
     }
 

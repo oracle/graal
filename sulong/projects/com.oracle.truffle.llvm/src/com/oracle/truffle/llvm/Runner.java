@@ -78,7 +78,6 @@ import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
 import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
@@ -491,7 +490,9 @@ final class Runner {
 
         @Override
         LLVMPointer allocate(LLVMContext context) {
-            return accessSymbol.execute();
+            LLVMPointer pointer = accessSymbol.execute();
+            context.registerSymbol(symbol, pointer);
+            return pointer;
         }
     }
 
@@ -709,13 +710,13 @@ final class Runner {
         private final int bitcodeID;
         private final int globalLength;
 
-        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory, boolean lazyParsing, boolean isSulongLibrary, Object moduleName) throws TypeOverflowException {
-            DataLayout dataLayout = res.getDataLayout();
+        InitializeSymbolsNode(LLVMParserResult result, NodeFactory nodeFactory, boolean lazyParsing, boolean isSulongLibrary, Object moduleName) throws TypeOverflowException {
+            DataLayout dataLayout = result.getDataLayout();
             this.nodeFactory = nodeFactory;
-            this.fileScope = res.getRuntime().getFileScope();
+            this.fileScope = result.getRuntime().getFileScope();
             this.checkGlobals = LLVMCheckSymbolNodeGen.create();
-            this.globalLength = res.getSymbolTableSize();
-            this.bitcodeID = res.getRuntime().getBitcodeID();
+            this.globalLength = result.getSymbolTableSize();
+            this.bitcodeID = result.getRuntime().getBitcodeID();
 
             // allocate all non-pointer types as two structs
             // one for read-only and one for read-write
@@ -724,7 +725,7 @@ final class Runner {
             ArrayList<AllocGlobalNode> allocGlobalsList = new ArrayList<>();
             LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
 
-            for (GlobalVariable global : res.getDefinedGlobals()) {
+            for (GlobalVariable global : result.getDefinedGlobals()) {
                 Type type = global.getType().getPointeeType();
                 if (isSpecialGlobalSlot(type)) {
                     allocGlobalsList.add(new AllocPointerGlobalNode(global));
@@ -743,8 +744,8 @@ final class Runner {
              */
 
             ArrayList<AllocFunctionNode> allocFunctionsList = new ArrayList<>();
-            for (FunctionSymbol global : res.getDefinedFunctions()) {
-                LLVMFunction function = fileScope.getFunction(global.getName());
+            for (FunctionSymbol functionSymbol : result.getDefinedFunctions()) {
+                LLVMFunction function = fileScope.getFunction(functionSymbol.getName());
                 if (isSulongLibrary && intrinsicProvider.isIntrinsified(function.getName())) {
                     allocFunctionsList.add(new AllocIntrinsicFunctionNode(function, nodeFactory, intrinsicProvider));
                 } else if (lazyParsing) {
@@ -805,7 +806,9 @@ final class Runner {
                     // already bound before to a different target location
                     LLVMPointer ref = allocGlobal.allocate(roBase, rwBase);
                     writeSymbols.execute(ref, descriptor);
-                    ctx.registerGlobalReverseMap(descriptor, ref);
+                    List<LLVMSymbol> list = new ArrayList<>();
+                    list.add(descriptor);
+                    ctx.registerSymbolReverseMap(list, ref);
                 }
             }
         }
@@ -816,6 +819,9 @@ final class Runner {
                 AllocSymbolNode allocFunctions = allocFuncs[i];
                 LLVMPointer pointer = allocFunctions.allocate(ctx);
                 writeSymbols.execute(pointer, allocFunctions.symbol);
+                List<LLVMSymbol> list = new ArrayList<>();
+                list.add(allocFunctions.symbol);
+                ctx.registerSymbolReverseMap(list, pointer);
             }
         }
 
@@ -1098,7 +1104,11 @@ final class Runner {
 
                 int index = function.getSymbolIndex(false);
                 AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(function.getBitcodeID(false));
-                symbols[index] = new AssumedValue<>("LLVMFunction." + function.getName(), LLVMManagedPointer.create(functionDescriptor));
+                LLVMPointer pointer = LLVMManagedPointer.create(functionDescriptor);
+                symbols[index] = new AssumedValue<>("LLVMFunction." + function.getName(), pointer);
+                List<LLVMSymbol> list = new ArrayList<>();
+                list.add(function);
+                context.registerSymbolReverseMap(list, pointer);
             }
         }
     }
@@ -1458,11 +1468,11 @@ final class Runner {
             for (GlobalSymbol symbol : result.getDefinedGlobals()) {
                 // Cannot override the reserved symbols CONSTRUCTORS_VARNAME and
                 // DECONSTRUCTORS_VARNAME
-                if (symbol.isOverridable() && symbol.getLinkage() != Linkage.APPENDING) {
+                if (symbol.isOverridable() && !symbol.isIntrinsicGlobalVariable()) {
                     LLVMGlobal global = fileScope.getGlobalVariable(symbol.getName());
-                    LLVMSymbol localGlobal = localScope.get(symbol.getName());
+                    LLVMSymbol localGlobal = result.getRuntime().getGlobalScope().get(symbol.getName());
                     // Global symbol from the fileScope will be overridden if there exists a
-                    // different (non-hidden) global symbol of the same name in the localScope
+                    // different (non-hidden) global symbol of the same name in the globalscope
                     if (localGlobal != null && localGlobal.isGlobalVariable() && !(global.equals(localGlobal.asGlobalVariable()))) {
                         // Cannot override with a hidden global symbol from the localScope
                         allocOverrideSymbolsList.add(new AllocExistingSymbolNode(global, LLVMAccessSymbolNodeGen.create(localGlobal)));

@@ -102,7 +102,7 @@ function startLanguageServer(graalVMHome: string) {
 				Promise.all(s).then((servers) => {
 					delegateServers = delegateServers ? delegateServers.concat(',', servers.join()) : servers.join();
 					const lspOpt = delegateServers ? '--lsp.Delegates=' + delegateServers : '--lsp';
-					const serverProcess = cp.spawn(re, ['--jvm', lspOpt, '--experimental-options', '--shell'], { cwd: serverWorkDir });
+					const serverProcess = cp.spawn(re, [lspOpt, '--experimental-options', '--shell'], { cwd: serverWorkDir });
 					if (!serverProcess || !serverProcess.pid) {
 						reject(`Launching server using command ${re} failed.`);
 					} else {
@@ -281,11 +281,7 @@ class GraalVMConfigurationProvider implements vscode.DebugConfigurationProvider 
 						delegateServers = delegateServers ? delegateServers.concat(',', servers.join()) : servers.join();
 						const lspOpt = delegateServers ? '--lsp.Delegates=' + delegateServers : '--lsp';
 						if (config.runtimeArgs) {
-							let idx = config.runtimeArgs.indexOf('--jvm');
-							if (idx < 0) {
-								config.runtimeArgs.unshift('--jvm');
-							}
-							idx = config.runtimeArgs.indexOf('--lsp');
+							let idx = config.runtimeArgs.indexOf('--lsp');
 							if (idx < 0) {
 								config.runtimeArgs.unshift(lspOpt);
 							}
@@ -294,13 +290,15 @@ class GraalVMConfigurationProvider implements vscode.DebugConfigurationProvider 
 								config.runtimeArgs.unshift('--experimental-options');
 							}
 						} else {
-							config.runtimeArgs = ['--jvm', lspOpt, '--experimental-options'];
+							config.runtimeArgs = [lspOpt, '--experimental-options'];
 						}
 						resolve(config);
 					});
 				});
-			} else if (config.program) {
-				vscode.commands.executeCommand('dry_run', pathToFileURL(this.resolveVarRefs(config.program)));
+			} else {
+				if (config.program) {
+					vscode.commands.executeCommand('dry_run', pathToFileURL(this.resolveVarRefs(config.program)));
+				}
 				resolve(config);
 			}
 		});

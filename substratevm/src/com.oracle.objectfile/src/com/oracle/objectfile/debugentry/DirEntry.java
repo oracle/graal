@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +23,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management.libgraal.runtime;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package com.oracle.objectfile.debugentry;
+
+import java.nio.file.Path;
 
 /**
- * Native methods linked to SVM entry points.
+ * Tracks the directory associated with one or more source files.
+ *
+ * This is identified separately from each FileEntry idenityfing files that reside in the directory.
+ * That is necessary because the line info generator needs to collect and write out directory names
+ * into directory tables once only rather than once per file.
  */
-@Platforms(Platform.HOSTED_ONLY.class)
-final class HotSpotToSVMCalls {
+public class DirEntry {
+    private Path path;
 
-    private HotSpotToSVMCalls() {
+    public DirEntry(Path path) {
+        this.path = path;
     }
 
-    static native long[] pollRegistrations(long isolateThreadId);
+    public Path getPath() {
+        return path;
+    }
 
-    static native void finishRegistration(long isolateThreadId, long[] svmRegistrations);
-
-    static native String getObjectName(long isolateThreadId, long svmRegistration);
-
-    static native byte[] getMBeanInfo(long isolateThreadId, long svmRegistration);
-
-    static native byte[] getAttributes(long isolateThreadId, long handle, String[] attributes);
-
-    static native byte[] setAttributes(long isolateThreadId, long handle, byte[] rawData);
-
-    static native byte[] invoke(long isolateThreadId, long handle, String actionName, byte[] rawData, String[] signature);
+    public String getPathString() {
+        return path.toString();
+    }
 }

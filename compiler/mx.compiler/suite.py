@@ -600,23 +600,6 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
-    "org.graalvm.compiler.hotspot.jdk14" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies": ["org.graalvm.compiler.hotspot"],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.hotspot",
-          "jdk.vm.ci.meta"
-        ],
-      },
-      "overlayTarget" : "org.graalvm.compiler.hotspot",
-      "multiReleaseJarVersion" : "14",
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "14+",
-      "workingSets" : "Graal,HotSpot",
-    },
-
     "org.graalvm.compiler.hotspot.management" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -653,14 +636,14 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.libgraal.jni",
-        "org.graalvm.libgraal",
         "org.graalvm.compiler.hotspot.management",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
+      "checkPackagePrefix" : "false",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
       ],
-      "javaCompliance" : "8",
+      "javaCompliance" : "8,11+",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -1849,7 +1832,7 @@ suite = {
         "org.graalvm.compiler.truffle.runtime",
         "org.graalvm.compiler.core.test",
         "truffle:TRUFFLE_SL_TEST",
-        "truffle:TRUFFLE_INSTRUMENT_TEST",
+        "truffle:TRUFFLE_TEST",
       ],
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
@@ -2118,7 +2101,7 @@ suite = {
         "JVMCI_HOTSPOT",
         "GRAAL",
         "truffle:TRUFFLE_SL_TEST",
-        "truffle:TRUFFLE_INSTRUMENT_TEST",
+        "truffle:TRUFFLE_TEST",
       ],
       "exclude" : [
         "mx:JUNIT",
@@ -2238,6 +2221,7 @@ suite = {
           "org.graalvm.compiler.replacements           to jdk.aot",
           "org.graalvm.compiler.serviceprovider        to jdk.aot,jdk.internal.vm.compiler.management",
           "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
+          "org.graalvm.util                            to jdk.internal.vm.compiler.management",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",

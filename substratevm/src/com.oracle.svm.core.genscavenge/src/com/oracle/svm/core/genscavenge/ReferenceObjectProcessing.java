@@ -28,22 +28,22 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PAT
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.heap.ReferenceInternals;
-import com.oracle.svm.core.heap.ReferenceQueueInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 /** Discovers and handles {@link Reference} objects during garbage collection. */
 public class ReferenceObjectProcessing {
+
+    private static Reference<?> discoveredReferencesList;
 
     @AlwaysInline("GC performance")
     public static void discoverIfReference(Object object) {
@@ -58,57 +58,36 @@ public class ReferenceObjectProcessing {
         Reference<?> dr = KnownIntrinsics.convertUnknownValue(obj, Reference.class);
         Log trace = Log.noopLog().string("[ReferenceObjectProcessing.handleDiscoverableReference:");
         trace.string("  dr: ").object(dr);
-        /*
-         * If the Reference has been allocated but not initialized, do not do anything with it. The
-         * referent will be strongly-reachable because it is on the call stack to the constructor so
-         * the Reference does not need to be put on the discovered list.
-         */
-        if (ReferenceInternals.isInitialized(dr)) {
+        if (ReferenceInternals.needsDiscovery(dr)) {
             if (trace.isEnabled()) {
                 trace.string("  referent: ").hex(ReferenceInternals.getReferentPointer(dr));
             }
             addToDiscoveredList(dr);
         } else {
-            trace.string("  uninitialized");
+            trace.string("  does not need to be discovered (uninitialized, already on a list, or null referent)]").newline();
         }
         trace.string("]").newline();
     }
 
-    public static Reference<?> getGCDiscoveredListHead() {
-        return HeapImpl.getHeapImpl().getGCImpl().getDiscoveredReferencesListHead();
-    }
-
-    static void clearDiscoveredList() {
-        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.clearList:").newline();
-        for (Reference<?> current = popDiscoveredReference(); current != null; current = popDiscoveredReference()) {
-            trace.string("  current: ").object(current).string("  referent: ").hex(ReferenceInternals.getReferentPointer(current)).newline();
-            ReferenceInternals.clearDiscovered(current);
-        }
-        setGCDiscoveredListHead(null);
-        trace.string("]");
-    }
-
     private static void addToDiscoveredList(Reference<?> dr) {
-        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.addToDiscoveredList:").string("  this: ").object(dr).string("  referent: ")
-                        .hex(ReferenceInternals.getReferentPointer(dr));
-        if (ReferenceInternals.isDiscovered(dr)) {
-            trace.string("  already on list]").newline();
-            return;
-        }
-        trace.newline().string("  [adding to list:").string("  oldList: ").object(getGCDiscoveredListHead());
-        setGCDiscoveredListHead(ReferenceInternals.setNextDiscovered(dr, getGCDiscoveredListHead()));
-        trace.string("  new list: ").object(getGCDiscoveredListHead()).string("]");
+        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.addToDiscoveredList:").string("  this: ").object(dr)
+                        .string("  referent: ").hex(ReferenceInternals.getReferentPointer(dr));
+        trace.newline().string("  [adding to list:").string("  oldList: ").object(discoveredReferencesList);
+        ReferenceInternals.setNextDiscovered(dr, discoveredReferencesList);
+        discoveredReferencesList = dr;
+        trace.string("  new list: ").object(discoveredReferencesList).string("]");
         trace.string("]").newline();
     }
 
     /**
-     * Updates references according to the liveness of the referent, dirtying cards, and only
-     * retains those references on the list for which the referent won't survive the collection.
+     * Updates discovered references according to the liveness of the referent, dirtying cards, and
+     * clears the discovered status of non-pending references.
+     *
+     * @return a list of those references which are pending to be added to a {@link ReferenceQueue}.
      */
-    static void processDiscoveredReferences() {
-        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.processDiscoveredReferences: ").string("  discoveredList: ").object(getGCDiscoveredListHead()).newline();
-        /* Start a new list. */
-        Reference<?> newList = null;
+    static Reference<?> processDiscoveredReferences() {
+        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.processDiscoveredReferences: ").string("  discoveredList: ").object(discoveredReferencesList).newline();
+        Reference<?> pendingHead = null;
         for (Reference<?> current = popDiscoveredReference(); current != null; current = popDiscoveredReference()) {
             trace.string("  [current: ").object(current).string("  referent before: ").hex(ReferenceInternals.getReferentPointer(current)).string("]").newline();
             /*
@@ -117,14 +96,18 @@ public class ReferenceObjectProcessing {
              */
             if (!processReferent(current)) {
                 trace.string("  unpromoted current: ").object(current).newline();
-                newList = ReferenceInternals.setNextDiscovered(current, newList);
-                HeapImpl.getHeapImpl().dirtyCardIfNecessary(current, newList);
+                if (ReferenceInternals.hasQueue(current)) {
+                    ReferenceInternals.setNextDiscovered(current, pendingHead);
+                    pendingHead = current;
+                }
+                HeapImpl.getHeapImpl().dirtyCardIfNecessary(current, pendingHead);
             } else {
                 trace.string("  promoted current: ").object(current).newline();
             }
         }
-        setGCDiscoveredListHead(newList);
         trace.string("]").newline();
+        assert discoveredReferencesList == null;
+        return pendingHead;
     }
 
     /**
@@ -172,16 +155,12 @@ public class ReferenceObjectProcessing {
     }
 
     private static Reference<?> popDiscoveredReference() {
-        final Reference<?> result = getGCDiscoveredListHead();
+        final Reference<?> result = discoveredReferencesList;
         if (result != null) {
-            setGCDiscoveredListHead(ReferenceInternals.getNextDiscovered(result));
-            ReferenceInternals.clearDiscovered(result);
+            discoveredReferencesList = ReferenceInternals.getNextDiscovered(result);
+            ReferenceInternals.setNextDiscovered(result, null);
         }
         return result;
-    }
-
-    private static void setGCDiscoveredListHead(Reference<?> value) {
-        HeapImpl.getHeapImpl().getGCImpl().setDiscoveredReferencesListHead(value);
     }
 
     public static boolean verify(Reference<?> dr) {
@@ -218,36 +197,6 @@ public class ReferenceObjectProcessing {
         }
         assert !refOldTo : "referent should be in the heap.";
         return true;
-    }
-
-    /** Takes the discovered references from the collector and distributes them to their queues. */
-    static final class Scatterer {
-        private Scatterer() {
-        }
-
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during a collection.")
-        static void distributeReferences() {
-            final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.Scatterer.distributeReferences:").newline();
-            // Put discovered references on their queues
-            for (Reference<?> dr = ReferenceObjectProcessing.getGCDiscoveredListHead(); dr != null; dr = ReferenceInternals.getNextDiscovered(dr)) {
-                enqueueReference(dr, trace);
-            }
-            if (SubstrateOptions.MultiThreaded.getValue()) { // notify waiters on ReferenceQueue
-                trace.string("  broadcasting").newline();
-                ReferenceQueueInternals.signalWaiters();
-            }
-            trace.string("]").newline();
-        }
-
-        private static <T> void enqueueReference(Reference<T> ref, Log trace) {
-            trace.string("  ref: ").object(ref);
-            // Do not call ref.enqueue() because it can be overridden and might allocate or throw
-            boolean enqueued = ReferenceInternals.enqueue(ref);
-            if (enqueued) {
-                trace.string(" (enqueued)");
-            }
-            trace.newline();
-        }
     }
 
 }

@@ -121,7 +121,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleIsHan
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleManagedMallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleManagedToHandleNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleReleaseHandleNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleWriteManagedToGlobalNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleWriteManagedToSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMVirtualMallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed.LLVMArrayTypeIDNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed.LLVMPolyglotAsTyped;
@@ -460,7 +460,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         add("truffle_managed_from_handle", (args, nodeFactory) -> LLVMTruffleHandleToManagedNodeGen.create(args.get(1)));
         add("truffle_is_handle_to_managed", (args, nodeFactory) -> LLVMTruffleIsHandleToManagedNodeGen.create(args.get(1)));
         add("truffle_cannot_be_handle", (args, nodeFactory) -> LLVMTruffleCannotBeHandleNodeGen.create(args.get(1)));
-        add("truffle_assign_managed", (args, nodeFactory) -> LLVMTruffleWriteManagedToGlobalNodeGen.create(args.get(1), args.get(2)));
+        add("truffle_assign_managed", (args, nodeFactory) -> LLVMTruffleWriteManagedToSymbolNodeGen.create(args.get(1), args.get(2)));
         add("truffle_virtual_malloc", (args, nodeFactory) -> LLVMVirtualMallocNodeGen.create(args.get(1)));
     }
 

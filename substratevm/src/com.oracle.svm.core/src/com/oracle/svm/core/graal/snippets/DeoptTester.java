@@ -29,12 +29,14 @@ import java.util.Set;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -47,8 +49,12 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -65,7 +71,7 @@ public class DeoptTester {
 
     private static final Set<Long> handledPCs = new HashSet<>();
 
-    private static int inDeoptTest;
+    private static final FastThreadLocalInt inDeoptTest = FastThreadLocalFactory.createInt();
 
     private static final StackFrameVisitor collectPcVisitor = new StackFrameVisitor() {
 
@@ -94,57 +100,53 @@ public class DeoptTester {
      */
     @NeverInline("deoptTest must have a separate stack frame")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
+    @Uninterruptible(reason = "Prevent recursion while deoptimization testing is not suspended.", calleeMustBe = false)
     public static void deoptTest() {
         assert enabled();
-
-        if (inDeoptTest > 0) {
+        if (inDeoptTest.get() > 0) {
             return;
         }
-        inDeoptTest++;
+        disableDeoptTesting();
         try {
-
-            if (Heap.getHeap().isAllocationDisallowed()) {
-                return;
+            if (Heap.getHeap().isAllocationDisallowed() ||
+                            !CEntryPointSnippets.isIsolateInitialized() ||
+                            ThreadingSupportImpl.isRecurringCallbackPaused() ||
+                            VMOperation.isInProgress() ||
+                            VMThreads.StatusSupport.isStatusIgnoreSafepoints(CurrentIsolate.getCurrentThread()) ||
+                            !JavaThreads.currentJavaThreadInitialized()) {
+                return; // Thread or VM is not in a safe (or sane) state for deoptimization
             }
-            if (!CEntryPointSnippets.isIsolateInitialized()) {
-                return;
-            }
-            if (ThreadingSupportImpl.isRecurringCallbackPaused()) {
-                return;
-            }
-            if (VMOperation.isInProgress()) {
-                return;
-            }
-
             Pointer startSp = KnownIntrinsics.readCallerStackPointer();
-
             int numHandledPCs = handledPCs.size();
-
             JavaStackWalker.walkCurrentThread(startSp, collectPcVisitor);
-
             if (handledPCs.size() > numHandledPCs) {
                 Deoptimizer.deoptimizeAll();
             }
-
         } finally {
-            inDeoptTest--;
+            enableDeoptTesting();
         }
     }
 
-    /*
-     * These methods are a temporary workaround until we have verification in place that ensures
-     * uninterruptible (= safepoint free) methods only call other uninterruptible methods.
+    /**
+     * Temporarily disable deopt testing. Must be paired with a call to {@link #enableDeoptTesting},
+     * best placed in a {@code finally} block. Only use this in code where {@link Uninterruptible}
+     * cannot be used and to which the checks in {@link #deoptTest()} do not apply.
      */
-
+    @Uninterruptible(reason = "Prevent indirect recursion when called from deoptTest(), but safe to inline anywhere.", mayBeInlined = true)
     public static void disableDeoptTesting() {
         if (enabled()) {
-            inDeoptTest++;
+            int newValue = inDeoptTest.get() + 1;
+            assert newValue >= 1;
+            inDeoptTest.set(newValue);
         }
     }
 
+    @Uninterruptible(reason = "Prevent indirect recursion when called from deoptTest(), but safe to inline anywhere.", mayBeInlined = true)
     public static void enableDeoptTesting() {
         if (enabled()) {
-            inDeoptTest--;
+            int newValue = inDeoptTest.get() - 1;
+            assert newValue >= 0;
+            inDeoptTest.set(newValue);
         }
     }
 }

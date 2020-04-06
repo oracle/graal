@@ -238,7 +238,7 @@ public class ErrorTypeTest {
                 testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
             } catch (PolyglotException pe) {
                 try {
-                    TestUtil.validateResult(testRun, null, pe);
+                    TestUtil.validateResult(testRun, null, pe, true);
                 } catch (PolyglotException | AssertionError e) {
                     if (pe.equals(e)) {
                         passed = true;

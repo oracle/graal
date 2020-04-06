@@ -34,7 +34,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
 
-    public final ResolvedJavaField referenceFieldRawReferent = findField(lookupType(Target_java_lang_ref_Reference.class), ReferenceInternals.REFERENT_FIELD_NAME);
+    public final ResolvedJavaField referenceFieldReferent = findField(lookupType(Target_java_lang_ref_Reference.class), ReferenceInternals.REFERENT_FIELD_NAME);
 
     public SubstrateKnownTruffleTypes(MetaAccessProvider metaAccess) {
         super(metaAccess);

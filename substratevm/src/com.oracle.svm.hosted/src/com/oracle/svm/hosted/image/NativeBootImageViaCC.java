@@ -357,7 +357,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
         try (Indent indent = debug.logAndIndent("Writing native image")) {
             // 1. write the relocatable file
-            write(tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
+            write(debug, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
             if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
                 return null;
             }

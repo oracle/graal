@@ -681,52 +681,62 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy {
     // @formatter:off
     // Checkstyle: stop
     @Alias
-    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMMBean")
+    @ClassData("org.graalvm.compiler.hotspot.management.SVMMBean")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassNameComputer.class, isFinal = true)
     private static String HS_BEAN_CLASS_NAME;
 
     @Alias
-    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMMBean")
+    @ClassData("org.graalvm.compiler.hotspot.management.SVMMBean")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassDataComputer.class, isFinal = true)
     private static byte[] HS_BEAN_CLASS;
 
     @Alias
-    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMMBean$Factory")
+    @ClassData("org.graalvm.compiler.hotspot.management.SVMMBean$Factory")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassNameComputer.class, isFinal = true)
     private static String HS_BEAN_FACTORY_CLASS_NAME;
 
     @Alias
-    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMMBean$Factory")
+    @ClassData("org.graalvm.compiler.hotspot.management.SVMMBean$Factory")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassDataComputer.class, isFinal = true)
     private static byte[] HS_BEAN_FACTORY_CLASS;
 
     @Alias
-    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMMBean$PushBackIterator")
+    @ClassData("org.graalvm.compiler.hotspot.management.SVMMBean$IsolateThreadScope")
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassNameComputer.class, isFinal = true)
+    private static String HS_ISOLATE_THREAD_SCOPE_CLASS_NAME;
+
+    @Alias
+    @ClassData("org.graalvm.compiler.hotspot.management.SVMMBean$IsolateThreadScope")
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassDataComputer.class, isFinal = true)
+    private static byte[] HS_ISOLATE_THREAD_SCOPE_CLASS;
+
+    @Alias
+    @ClassData("org.graalvm.compiler.hotspot.management.SVMMBean$PushBackIterator")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassNameComputer.class, isFinal = true)
     private static String HS_PUSHBACK_ITER_CLASS_NAME;
 
     @Alias
-    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMMBean$PushBackIterator")
+    @ClassData("org.graalvm.compiler.hotspot.management.SVMMBean$PushBackIterator")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassDataComputer.class, isFinal = true)
     private static byte[] HS_PUSHBACK_ITER_CLASS;
 
     @Alias
-    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.HotSpotToSVMCalls")
+    @ClassData("org.graalvm.compiler.hotspot.management.HotSpotToSVMCalls")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassNameComputer.class, isFinal = true)
     private static String HS_SVM_CALLS_CLASS_NAME;
 
     @Alias
-    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.HotSpotToSVMCalls")
+    @ClassData("org.graalvm.compiler.hotspot.management.HotSpotToSVMCalls")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassDataComputer.class, isFinal = true)
     private static byte[] HS_SVM_CALLS_CLASS;
 
     @Alias
-    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMToHotSpotEntryPoints")
+    @ClassData("org.graalvm.compiler.hotspot.management.SVMToHotSpotEntryPoints")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassNameComputer.class, isFinal = true)
     private static String SVM_HS_ENTRYPOINTS_CLASS_NAME;
 
     @Alias
-    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMToHotSpotEntryPoints")
+    @ClassData("org.graalvm.compiler.hotspot.management.SVMToHotSpotEntryPoints")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassDataComputer.class, isFinal = true)
     private static byte[] SVM_HS_ENTRYPOINTS_CLASS;
     // Checkstyle: resume
@@ -778,4 +788,9 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy {
             }
         }
     }
+}
+
+@TargetClass(className = "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder", onlyWith = LibGraalFeature.IsEnabled.class)
+@Delete("shouldn't appear in libgraal")
+final class Target_org_graalvm_compiler_hotspot_SymbolicSnippetEncoder {
 }

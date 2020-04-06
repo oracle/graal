@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +23,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management.libgraal.runtime;
 
-import org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMMBean.Factory;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package com.oracle.objectfile.debugentry;
 
 /**
- * Entry points in HotSpot for calls from SVM.
+ * Tracks debug info associated with a Java source file.
  */
-@Platforms(Platform.HOSTED_ONLY.class)
-final class SVMToHotSpotEntryPoints {
+public class FileEntry {
+    private String fileName;
+    private DirEntry dirEntry;
 
-    private SVMToHotSpotEntryPoints() {
+    public FileEntry(String fileName, DirEntry dirEntry) {
+        this.fileName = fileName;
+        this.dirEntry = dirEntry;
     }
 
     /**
-     * @see SVMMBean#getFactory()
+     * The name of the associated file excluding path elements.
      */
-    static Factory getFactory() {
-        Factory factory = SVMMBean.getFactory();
-        return factory;
+    public String getFileName() {
+        return fileName;
+    }
+
+    public String getPathName() {
+        return getDirEntry().getPathString();
+    }
+
+    public String getFullName() {
+        return getDirEntry().getPath().resolve(getFileName()).toString();
     }
 
     /**
-     * @see Factory#signal()
+     * The directory entry associated with this file entry.
      */
-    static void signal(Factory factory) {
-        factory.signal();
+    public DirEntry getDirEntry() {
+        return dirEntry;
     }
 }

@@ -141,7 +141,7 @@ public abstract class VMThreads {
 
     /** Is threading being torn down? */
     @Uninterruptible(reason = "Called from uninterruptible code during tear down.")
-    static boolean isTearingDown() {
+    public static boolean isTearingDown() {
         return initializationState.get() >= STATE_TEARING_DOWN;
     }
 

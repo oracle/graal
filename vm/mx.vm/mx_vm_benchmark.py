@@ -109,6 +109,7 @@ class NativeImageVM(GraalVm):
             self.config_dir = None
             self.profile_dir = None
             self.log_dir = None
+            self.pgo_iteration_num = None
 
         def parse(self, args):
             def add_to_list(arg, name, arg_list):
@@ -139,6 +140,9 @@ class NativeImageVM(GraalVm):
                         found = True
                     if trimmed_arg.startswith('benchmark-name='):
                         self.benchmark_name = trimmed_arg[len('benchmark-name='):]
+                        found = True
+                    if trimmed_arg.startswith('instrumentation-iteration-num='):
+                        self.pgo_iteration_num = trimmed_arg[len('instrumentation-iteration-num='):]
                         found = True
                     if not found:
                         mx.abort("Invalid benchmark argument: " + arg)
@@ -224,7 +228,9 @@ class NativeImageVM(GraalVm):
             config.output_dir = mx.mkdtemp(suffix='bench-' + executable_name, prefix='native-image', dir=non_tmp_dir)
             config.profile_dir = config.output_dir
             config.log_dir = config.output_dir
-            profile_path = os.path.join(config.profile_dir, executable_name + '.iprof')
+            profile_path_no_extension = os.path.join(config.profile_dir, executable_name)
+            extension = '.iprof'
+            profile_path = profile_path_no_extension + extension
             image_path = os.path.join(config.output_dir, executable_name)
 
             # Agent configuration and/or HotSpot profiling
@@ -275,31 +281,39 @@ class NativeImageVM(GraalVm):
 
             # PGO instrumentation
             i = 0
-            while i < self.pgo_instrumented_iterations:
-                instrument_args = ['--pgo-instrument'] + ([] if i == 0 and not self.hotspot_pgo else ['--pgo'])
-                instrument_image_build_args = base_image_build_args + instrument_args
-                mx.log('Building the instrumentation image with: ')
-                mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in instrument_image_build_args]))
-                mx.run(instrument_image_build_args, out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+            instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
+            if not self.hotspot_pgo:
+                pgo_verification_output_path = os.path.join(config.output_dir, executable_name + '-probabilities.log')
+                while i < instrumented_iterations:
+                    pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
+                    instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
+                    instrument_image_build_args = base_image_build_args + instrument_args
+                    mx.log('Building the instrumentation image with: ')
+                    mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in instrument_image_build_args]))
+                    mx.run(instrument_image_build_args, out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
 
-                image_run_cmd = [image_path]
-                image_run_cmd += ['-XX:ProfilesDumpFile=' + profile_path]
-                if config.extra_profile_run_args:
-                    image_run_cmd += config.extra_profile_run_args
-                else:
-                    image_run_cmd += image_run_args + config.extra_run_args
+                    image_run_cmd = [image_path]
+                    profile_path = profile_path_no_extension + (str(i) + extension if i > 0 else extension)
+                    image_run_cmd += ['-XX:ProfilesDumpFile=' + profile_path]
+                    if config.extra_profile_run_args:
+                        image_run_cmd += config.extra_profile_run_args
+                    else:
+                        image_run_cmd += image_run_args + config.extra_run_args
 
-                mx.log('Running the instrumented image with: ')
-                mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
-                inst_stdout_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stdout.log'))
-                inst_stderr_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stderr.log'))
-                with open(inst_stdout_path, 'a') as inst_stdout, open(inst_stderr_path, 'a') as inst_stderr:
-                    mx.log('The standard output saved to ' + inst_stdout_path)
-                    mx.log('The standard error saved to ' + inst_stderr_path)
-                    mx.run(image_run_cmd, out=inst_stdout.write,
-                           err=inst_stderr.write, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+                    mx.log('Running the instrumented image with: ')
+                    mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
+                    inst_stdout_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stdout.log'))
+                    inst_stderr_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stderr.log'))
+                    with open(inst_stdout_path, 'a') as inst_stdout, open(inst_stderr_path, 'a') as inst_stderr:
+                        mx.log('The standard output saved to ' + inst_stdout_path)
+                        mx.log('The standard error saved to ' + inst_stderr_path)
+                        mx.run(image_run_cmd, out=inst_stdout.write,
+                               err=inst_stderr.write, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
 
-                i += 1
+                    image_size = os.stat(image_path).st_size
+                    mx.log('Produced image size is ' + str(image_size) + ' B')
+
+                    i += 1
 
             # Build the final image
             pgo_verification_output_path = os.path.join(config.output_dir, executable_name + '-probabilities.log')
@@ -314,6 +328,9 @@ class NativeImageVM(GraalVm):
             mx.log('Running the produced native executable with: ')
             mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
             mx.run(image_run_cmd, out=out, err=err, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+            image_path = mx.join(config.output_dir, executable_name)
+            image_size = os.stat(image_path).st_size
+            mx.log('Final image size is ' + str(image_size) + ' B')
 
 
 class NativeImageBuildVm(GraalVm):

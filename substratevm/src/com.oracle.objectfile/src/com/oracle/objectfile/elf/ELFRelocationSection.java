@@ -236,6 +236,15 @@ public class ELFRelocationSection extends ELFSection {
         // decisions.get(syms).getDecision(LayoutProperty.Kind.CONTENT);
         // deps.add(BuildDependency.createOrGet(ourContent, symtabContent));
         /* If we're dynamic, it also depends on the vaddr of all referenced sections. */
+
+        // our content depends on the content of the section being relocated
+        // (because entries only get registered during generation)
+        if (relocated != null) {
+            LayoutDecision relocatedSectionContent = decisions.get(relocated).getDecision(LayoutDecision.Kind.CONTENT);
+            deps.add(BuildDependency.createOrGet(ourContent,
+                            relocatedSectionContent));
+        }
+
         if (isDynamic()) {
             Set<ELFSection> referenced = new HashSet<>();
             for (Entry ent : entries.keySet()) {

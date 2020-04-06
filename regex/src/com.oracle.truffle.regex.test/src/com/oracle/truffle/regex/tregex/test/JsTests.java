@@ -83,4 +83,10 @@ public class JsTests extends RegexTestBase {
         test("(a||b){100,200}?", "", "ab", 0, true, 0, 1, 1, 1);
         test("(a||b){100,200}?$", "", "ab", 0, true, 0, 2, 1, 2);
     }
+
+    @Test
+    public void escapedZero() {
+        test("\\0", "u", "\u0000", 0, true, 0, 1);
+    }
+
 }

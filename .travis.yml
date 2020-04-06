@@ -27,6 +27,7 @@ matrix:
   - env: JDK="jdk8" GATE="style,fullbuild" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk8" GATE="build,test,helloworld" PRIMARY="substratevm"
+  - env: JDK="jdk8" GATE="build,test,helloworld_debug" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
   - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong"
     addons:
