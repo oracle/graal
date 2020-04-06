@@ -498,7 +498,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void close() {
         assert Thread.holdsLock(context);
-        assert !context.isActive();
         lazy = null;
         env = null;
     }
