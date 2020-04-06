@@ -72,6 +72,7 @@ import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
+import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordCastNode;
 import org.graalvm.nativeimage.ImageInfo;
@@ -473,10 +474,14 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
-                b.addPush(JavaKind.Object, new SubstrateObjectCloneNode(MacroParams.of(b, targetMethod, object)));
+                b.addPush(JavaKind.Object, objectCloneNode(MacroParams.of(b, targetMethod, object)).asNode());
                 return true;
             }
         });
+    }
+
+    public static ObjectClone objectCloneNode(MacroParams macroParams) {
+        return new SubstrateObjectCloneNode(macroParams);
     }
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean analysis) {
