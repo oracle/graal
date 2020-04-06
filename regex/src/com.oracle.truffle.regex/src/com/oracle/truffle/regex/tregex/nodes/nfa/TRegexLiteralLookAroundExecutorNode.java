@@ -66,7 +66,7 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNod
         negated = lookAround.isNegated();
         matchers = new CharMatcher[lookAround.getLiteralLength()];
         for (int i = 0; i < matchers.length; i++) {
-            CharMatcher matcher = CP16BitMatchers.createMatcher(lookAround.getGroup().getFirstAlternative().get(i).asCharacterClass().getCharSet(), compilationBuffer);
+            CharMatcher matcher = CP16BitMatchers.createMatcher16Bit(lookAround.getGroup().getFirstAlternative().get(i).asCharacterClass().getCharSet(), compilationBuffer);
             matchers[forward ? i : matchers.length - (i + 1)] = insert(matcher);
         }
     }

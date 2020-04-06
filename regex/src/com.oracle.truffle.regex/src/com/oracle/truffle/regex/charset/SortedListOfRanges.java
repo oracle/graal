@@ -129,6 +129,15 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     /**
+     * Returns the largest value contained in the inverse of this set. Must not be called on empty
+     * or full sets.
+     */
+    default int inverseGetMax() {
+        assert !isEmpty() && !matchesEverything();
+        return getMax() == getMaxValue() ? getLo(size() - 1) - 1 : getMaxValue();
+    }
+
+    /**
      * Returns {@code true} if the range {@code [aLo, aHi]} contains the range {@code [bLo, bHi]}.
      */
     static boolean contains(int aLo, int aHi, int bLo, int bHi) {

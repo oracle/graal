@@ -115,6 +115,10 @@ public abstract class TRegexExecutorNode extends Node {
         locals.setIndex(isForward() ? locals.getIndex() + 1 : locals.getIndex() - 1);
     }
 
+    public void inputSkipReverse(TRegexExecutorLocals locals) {
+        locals.setIndex(isForward() ? locals.getIndex() - 1 : locals.getIndex() + 1);
+    }
+
     public void inputIncRaw(TRegexExecutorLocals locals) {
         inputIncRaw(locals, 1);
     }

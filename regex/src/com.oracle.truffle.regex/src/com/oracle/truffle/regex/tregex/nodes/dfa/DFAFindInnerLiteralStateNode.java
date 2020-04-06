@@ -83,7 +83,7 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
                 if (prefixMatcher == null && executor.isSimpleCG()) {
                     locals.getCGData().results[0] = locals.getIndex();
                 }
-                locals.setIndex(locals.getIndex() + innerLiteral.getLiteral().encodedLength());
+                executor.inputIncRaw(locals, innerLiteral.getLiteral().encodedLength());
                 locals.setSuccessorIndex(0);
                 return;
             }

@@ -111,7 +111,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         }
         if (loopbackInitialState && innerLiteral == null) {
             CodePointSet initialCharSet = nfaMap.getMergedInitialStateCharSet(compilationBuffer);
-            loopbackInitialStateMatcher = initialCharSet == null ? null : CP16BitMatchers.createMatcher(initialCharSet, compilationBuffer);
+            loopbackInitialStateMatcher = initialCharSet == null ? null : CP16BitMatchers.createMatcher16Bit(initialCharSet, compilationBuffer);
         }
         nfa.materializeGroupBoundaries();
         matchers = new CharMatcher[nfa.getNumberOfStates()];
@@ -119,7 +119,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         for (int i = 0; i < matchers.length; i++) {
             PureNFAState s = nfa.getState(i);
             if (s.isCharacterClass()) {
-                matchers[i] = insert(CP16BitMatchers.createMatcher(s.getCharSet(), compilationBuffer));
+                matchers[i] = insert(CP16BitMatchers.createMatcher16Bit(s.getCharSet(), compilationBuffer));
             }
             maxTransitions = Math.max(maxTransitions, s.getSuccessors(forward).length);
             s.initIsDeterministic(forward, compilationBuffer);
