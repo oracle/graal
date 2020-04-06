@@ -422,7 +422,7 @@ final class PolyglotLimits {
                     if (executor == null) {
                         cancelExecutor = executor = (ThreadPoolExecutor) Executors.newCachedThreadPool(
                                         new HighPriorityThreadFactory("Polyglot Cancel Thread"));
-                        executor.setKeepAliveTime(1, TimeUnit.SECONDS);
+                        executor.setKeepAliveTime(10, TimeUnit.SECONDS);
                     }
                 }
             }
@@ -436,7 +436,7 @@ final class PolyglotLimits {
                     executor = limitExecutor;
                     if (executor == null) {
                         executor = new ScheduledThreadPoolExecutor(0, new HighPriorityThreadFactory("Polyglot Limit Timer"));
-                        executor.setKeepAliveTime(1, TimeUnit.SECONDS);
+                        executor.setKeepAliveTime(10, TimeUnit.SECONDS);
                         limitExecutor = executor;
                     }
                 }
