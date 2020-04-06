@@ -314,7 +314,8 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 JavaType returnType = cloneMethod.getSignature().getReturnType(null);
                 StampPair returnStampPair = StampFactory.forDeclaredType(null, returnType, false);
 
-                FixedNode cloned = kit.append(SubstrateGraphBuilderPlugins.objectCloneNode(MacroParams.of(InvokeKind.Virtual, method, cloneMethod, bci++, returnStampPair, loadField)).asNode());
+                FixedNode cloned = kit.append(SubstrateGraphBuilderPlugins
+                                .objectCloneNode(MacroParams.of(InvokeKind.Virtual, method, cloneMethod, bci++, returnStampPair, loadField), kit.parsingIntrinsic()).asNode());
                 state.push(returnType.getJavaKind(), cloned);
                 ((StateSplit) cloned).setStateAfter(state.create(bci, (StateSplit) cloned));
                 state.pop(returnType.getJavaKind());

@@ -127,6 +127,14 @@ public interface VirtualizerTool {
     void replaceWithVirtual(VirtualObjectNode virtualObject);
 
     /**
+     * Deletes the current node, which must be a {@link WithExceptionNode}, and replaces it with the
+     * given virtualized object. Kills the exception edge.
+     *
+     * @param virtualObject the virtualized object that should replace the current node.
+     */
+    void replaceWithVirtualAndKillExceptionEdge(VirtualObjectNode virtualObject);
+
+    /**
      * Deletes the current node and replaces it with the given value.
      *
      * @param replacement the value that should replace the current node.

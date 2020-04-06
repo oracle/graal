@@ -283,6 +283,13 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     }
 
     @Override
+    public void replaceWithVirtualAndKillExceptionEdge(VirtualObjectNode virtual) {
+        closure.addVirtualAlias(virtual, current);
+        effects.deleteAndKillExceptionEdge((WithExceptionNode) current);
+        deleted = true;
+    }
+
+    @Override
     public void replaceWithValue(ValueNode replacement) {
         effects.replaceAtUsages(current, closure.getScalarAlias(replacement), position);
         closure.addScalarAlias(current, replacement);

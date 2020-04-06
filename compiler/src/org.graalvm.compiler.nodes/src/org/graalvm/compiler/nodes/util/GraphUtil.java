@@ -73,6 +73,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
@@ -399,6 +400,14 @@ public class GraphUtil {
         FixedNode next = fixed.next();
         fixed.setNext(null);
         fixed.replaceAtPredecessor(next);
+    }
+
+    public static void unlinkAndKillExceptionEdge(WithExceptionNode withException) {
+        assert withException.next() != null && withException.predecessor() != null && withException.isAlive() : withException;
+        FixedNode next = withException.next();
+        withException.setNext(null);
+        withException.replaceAtPredecessor(next);
+        withException.killExceptionEdge();
     }
 
     public static void checkRedundantPhi(PhiNode phiNode) {
