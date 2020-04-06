@@ -1470,9 +1470,9 @@ final class Runner {
                 // DECONSTRUCTORS_VARNAME
                 if (symbol.isOverridable() && !symbol.isIntrinsicGlobalVariable()) {
                     LLVMGlobal global = fileScope.getGlobalVariable(symbol.getName());
-                    LLVMSymbol localGlobal = localScope.get(symbol.getName());
+                    LLVMSymbol localGlobal = result.getRuntime().getGlobalScope().get(symbol.getName());
                     // Global symbol from the fileScope will be overridden if there exists a
-                    // different (non-hidden) global symbol of the same name in the localScope
+                    // different (non-hidden) global symbol of the same name in the globalscope
                     if (localGlobal != null && localGlobal.isGlobalVariable() && !(global.equals(localGlobal.asGlobalVariable()))) {
                         // Cannot override with a hidden global symbol from the localScope
                         allocOverrideSymbolsList.add(new AllocExistingSymbolNode(global, LLVMAccessSymbolNodeGen.create(localGlobal)));
