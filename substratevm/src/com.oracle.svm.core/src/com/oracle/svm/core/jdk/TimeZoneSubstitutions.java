@@ -86,9 +86,8 @@ final class Target_java_util_TimeZone {
         int contentLen = 0;
         PinnedObject pinnedContent = null;
         try {
-            TimeZoneSupport timeZoneSupport = ImageSingletons.lookup(TimeZoneSupport.class);
-            byte[] content = timeZoneSupport.getTzMappingsContent();
-            if (content != null) {
+            if (ImageSingletons.contains(TimeZoneSupport.class)) {
+                byte[] content = ImageSingletons.lookup(TimeZoneSupport.class).getTzMappingsContent();
                 contentLen = content.length;
                 pinnedContent = PinnedObject.create(content);
                 tzMappingsPtr = pinnedContent.addressOfArrayElement(0);
@@ -168,7 +167,6 @@ final class TimeZoneFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
 
         if (OS.getCurrent() != OS.WINDOWS) {
-            ImageSingletons.add(TimeZoneSupport.class, new TimeZoneSupport(null));
             return;
         }
 

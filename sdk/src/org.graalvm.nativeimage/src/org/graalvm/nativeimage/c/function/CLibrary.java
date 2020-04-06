@@ -72,7 +72,7 @@ public @interface CLibrary {
     /**
      * Specifies the name of the libraries this library depends on.
      * 
-     * @since 20.0.1
+     * @since 20.1.0
      */
     String[] dependsOn() default {};
 }
