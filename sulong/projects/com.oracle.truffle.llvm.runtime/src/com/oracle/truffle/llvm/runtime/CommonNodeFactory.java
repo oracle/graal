@@ -152,13 +152,21 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadI64VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadI8VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadPointerVectorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMFloatStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMFloatStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAbstractCompareNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode;
@@ -290,21 +298,21 @@ public class CommonNodeFactory {
     public static LLVMStoreNode createStoreNode(LLVMInteropType.ValueKind kind) {
         switch (kind) {
             case I1:
-                return LLVMI1StoreNodeGen.create(null, null);
+                return LLVMI1StoreNode.create();
             case I8:
-                return LLVMI8StoreNodeGen.create(null, null);
+                return LLVMI8StoreNode.create();
             case I16:
-                return LLVMI16StoreNodeGen.create(null, null);
+                return LLVMI16StoreNode.create();
             case I32:
-                return LLVMI32StoreNodeGen.create(null, null);
+                return LLVMI32StoreNode.create();
             case I64:
-                return LLVMI64StoreNodeGen.create(null, null);
+                return LLVMI64StoreNode.create();
             case FLOAT:
-                return LLVMFloatStoreNodeGen.create(null, null);
+                return LLVMFloatStoreNode.create();
             case DOUBLE:
-                return LLVMDoubleStoreNodeGen.create(null, null);
+                return LLVMDoubleStoreNode.create();
             case POINTER:
-                return LLVMPointerStoreNodeGen.create(null, null);
+                return LLVMPointerStoreNode.create();
             default:
                 throw new IllegalStateException("unexpected interop kind " + kind);
         }

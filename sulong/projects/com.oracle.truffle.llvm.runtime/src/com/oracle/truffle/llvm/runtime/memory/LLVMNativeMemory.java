@@ -304,9 +304,9 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public void putIVarBit(Node location, LLVMNativePointer addr, LLVMIVarBit value) {
+    public void putIVarBit(Node location, long addr, LLVMIVarBit value) {
         byte[] bytes = value.getBytes();
-        long currentptr = addr.asNative();
+        long currentptr = addr;
         for (int i = bytes.length - 1; i >= 0; i--) {
             putI8(location, currentptr, bytes[i]);
             currentptr += Byte.BYTES;

@@ -35,11 +35,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.IntValueProfile;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperationNode {
@@ -54,7 +54,7 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
     protected long doOp(long code, long addr,
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached("createAddressStoreNode()") LLVMPointerStoreNode store) {
-        return exec(code, addr, context, store);
+        return exec(code, LLVMNativePointer.create(addr), context, store);
     }
 
     @Specialization
@@ -66,10 +66,10 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
 
     protected LLVMPointerStoreNode createAddressStoreNode() {
         CompilerAsserts.neverPartOfCompilation();
-        return LLVMPointerStoreNodeGen.create(null, null);
+        return LLVMPointerStoreNode.create();
     }
 
-    private long exec(long code, Object addr, LLVMContext context, LLVMPointerStoreNode store) throws AssertionError {
+    private long exec(long code, LLVMPointer addr, LLVMContext context, LLVMPointerStoreNode store) throws AssertionError {
         switch (profile.profile((int) code)) {
             case LLVMAMD64ArchPrctl.ARCH_SET_FS:
                 context.setThreadLocalStorage(addr);

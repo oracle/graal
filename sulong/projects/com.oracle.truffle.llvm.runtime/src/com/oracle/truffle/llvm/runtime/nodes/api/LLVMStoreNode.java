@@ -32,8 +32,6 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
-import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 @NodeChild(value = "value", type = LLVMExpressionNode.class)
@@ -42,10 +40,6 @@ public abstract class LLVMStoreNode extends LLVMStatementNode {
     public static final LLVMStoreNode[] NO_STORES = {};
 
     public abstract void executeWithTarget(Object address, Object value);
-
-    protected static LLVMObjectWriteNode createForeignWrite() {
-        return LLVMObjectAccessFactory.createWrite();
-    }
 
     public static final LLVMStoreNode create(LLVMInteropType.ValueKind kind) {
         return CommonNodeFactory.createStoreNode(kind);

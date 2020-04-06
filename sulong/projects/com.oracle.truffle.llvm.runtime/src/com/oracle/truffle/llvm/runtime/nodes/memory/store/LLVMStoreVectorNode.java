@@ -40,8 +40,10 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOptimizedStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -56,7 +58,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     public abstract int getVectorLength();
 
-    protected abstract void executeManaged(LLVMManagedPointer address, Object vector);
+    public abstract void executeWithTarget(LLVMPointer address, Object value);
 
     @Specialization(guards = "!isAutoDerefHandle(language, address)")
     @ExplodeLoop
@@ -80,7 +82,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached("createRecursive()") LLVMStoreVectorNode store) {
-        store.executeManaged(getReceiver.execute(address), value);
+        store.executeWithTarget(getReceiver.execute(address), value);
     }
 
     @Specialization(guards = "!isAutoDerefHandle(language, address)")
@@ -172,12 +174,12 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     @ExplodeLoop
     protected void writeVector(LLVMNativePointer address, LLVMPointerVector value,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
-                    @Cached("createPointerStore()") LLVMPointerStoreNode write) {
+                    @Cached LLVMPointerOptimizedStoreNode write) {
         assert value.getLength() == getVectorLength();
-        long currentPtr = address.asNative();
+        long offset = 0;
         for (int i = 0; i < getVectorLength(); i++) {
-            write.executeWithTarget(currentPtr, value.getValue(i));
-            currentPtr += ADDRESS_SIZE_IN_BYTES;
+            write.executeWithTarget(address, offset, value.getValue(i));
+            offset += ADDRESS_SIZE_IN_BYTES;
         }
     }
 
@@ -275,9 +277,5 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
             nativeWrite.writePointer(address.getObject(), curOffset, value.getValue(i));
             curOffset += ADDRESS_SIZE_IN_BYTES;
         }
-    }
-
-    protected static LLVMPointerStoreNode createPointerStore() {
-        return LLVMPointerStoreNodeGen.create(null, null);
     }
 }

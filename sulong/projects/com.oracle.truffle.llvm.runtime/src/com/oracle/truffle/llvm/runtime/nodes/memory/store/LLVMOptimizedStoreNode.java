@@ -27,37 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith;
+package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode.LLVMDoubleOptimizedStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChild(value = "result", type = LLVMExpressionNode.class)
-@NodeChild(value = "a", type = LLVMExpressionNode.class)
-@NodeChild(value = "b", type = LLVMExpressionNode.class)
-@NodeChild(value = "c", type = LLVMExpressionNode.class)
-@NodeChild(value = "d", type = LLVMExpressionNode.class)
-public abstract class LLVMComplexDoubleMul extends LLVMExpressionNode {
+@NodeChild(value = "target", type = LLVMExpressionNode.class)
+@NodeChild(value = "offset", type = LLVMExpressionNode.class)
+@NodeChild(value = "value", type = LLVMExpressionNode.class)
+public abstract class LLVMOptimizedStoreNode extends LLVMNode {
 
-    @Child private LLVMDoubleStoreNode storeReal = LLVMDoubleStoreNode.create();
-    @Child private LLVMDoubleOptimizedStoreNode storeImag = LLVMDoubleOptimizedStoreNode.create();
+    public abstract void executeWithTarget(VirtualFrame frame, LLVMPointer receiver, long offset);
 
-    @Specialization
-    public LLVMPointer doDouble(LLVMPointer result, double a, double b, double c, double d) {
-        double ac = a * c;
-        double bd = b * d;
-        double ad = a * d;
-        double bc = b * c;
-        double zReal = ac - bd;
-        double zImag = ad + bc;
-
-        storeReal.executeWithTarget(result, zReal);
-        storeImag.executeWithTarget(result, DOUBLE_SIZE_IN_BYTES, zImag);
-
-        return result;
-    }
 }
