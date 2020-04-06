@@ -191,21 +191,21 @@ builds += [
   ${x52.c2} ${bench-specjbb2015-forks-c2}                               ${oraclejdk8} { name: "bench-forks-compiler-specjbb2015-linux-x52-c2" }
 
   # JDK 11
-  ${x52.c2-tmpfs10g} ${bench-dacapo-hwloc-forks-c2}                     ${vm_java_11} { name: "bench-forks-compiler-dacapo-11-linux-x52-c2" }
-  ${x52.c2-tmpfs10g} ${bench-scala-dacapo-all-hwloc-forks-c2}           ${vm_java_11} { name: "bench-forks-compiler-scala-dacapo-11-linux-x52-c2" }
-  ${x52.c2} ${bench-specjvm2008-Single-forks-c2-batch0}                 ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch0" }
-  ${x52.c2} ${bench-specjvm2008-Single-forks-c2-batch1}                 ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch1" }
-  ${x52.c2} ${bench-specjvm2008-Single-forks-c2-batch2}                 ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch2" }
-  ${x52.c2} ${bench-specjvm2008-Single-forks-c2-batch3}                 ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch3" }
-  ${x52.c2} ${bench-specjvm2008-Single-forks-c2-batch4}                 ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch4" }
-  ${x52.c2-tmpfs10g} ${bench-renaissance-hwloc-forks-c2-batch0}         ${vm_java_11} { name: "bench-forks-compiler-renaissance-11-linux-x52-c2-batch0" }
-  ${x52.c2-tmpfs10g} ${bench-renaissance-hwloc-forks-c2-batch1}         ${vm_java_11} { name: "bench-forks-compiler-renaissance-11-linux-x52-c2-batch1" }
-  ${x52.c2-tmpfs10g} ${bench-renaissance-hwloc-forks-c2-batch2}         ${vm_java_11} { name: "bench-forks-compiler-renaissance-11-linux-x52-c2-batch2" }
-  ${x52.c2-tmpfs10g} ${bench-renaissance-hwloc-forks-c2-batch3}         ${vm_java_11} { name: "bench-forks-compiler-renaissance-11-linux-x52-c2-batch3" }
-  ${x52.c2-tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-c2-batch0}  ${vm_java_11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-c2-batch0" }
-  ${x52.c2-tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-c2-batch1}  ${vm_java_11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-c2-batch1" }
-  ${x52.c2-tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-c2-batch2}  ${vm_java_11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-c2-batch2" }
-  ${x52.c2-tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-c2-batch3}  ${vm_java_11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-c2-batch3" }
-  ${x52.c2} ${bench-specjbb2005-forks-c2}                               ${vm_java_11} { name: "bench-forks-compiler-specjbb2005-11-linux-x52-c2" }
-  ${x52.c2} ${bench-specjbb2015-forks-c2}                               ${vm_java_11} { name: "bench-forks-compiler-specjbb2015-11-linux-x52-c2" }
+  ${x52.c2-tmpfs10g} ${bench-dacapo-hwloc-forks-c2}                     ${labsjdk11} { name: "bench-forks-compiler-dacapo-11-linux-x52-c2" }
+  ${x52.c2-tmpfs10g} ${bench-scala-dacapo-all-hwloc-forks-c2}           ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-11-linux-x52-c2" }
+  ${x52.c2} ${bench-specjvm2008-Single-forks-c2-batch0}                 ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch0" }
+  ${x52.c2} ${bench-specjvm2008-Single-forks-c2-batch1}                 ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch1" }
+  ${x52.c2} ${bench-specjvm2008-Single-forks-c2-batch2}                 ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch2" }
+  ${x52.c2} ${bench-specjvm2008-Single-forks-c2-batch3}                 ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch3" }
+  ${x52.c2} ${bench-specjvm2008-Single-forks-c2-batch4}                 ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch4" }
+  ${x52.c2-tmpfs10g} ${bench-renaissance-hwloc-forks-c2-batch0}         ${labsjdk11} { name: "bench-forks-compiler-renaissance-11-linux-x52-c2-batch0" }
+  ${x52.c2-tmpfs10g} ${bench-renaissance-hwloc-forks-c2-batch1}         ${labsjdk11} { name: "bench-forks-compiler-renaissance-11-linux-x52-c2-batch1" }
+  ${x52.c2-tmpfs10g} ${bench-renaissance-hwloc-forks-c2-batch2}         ${labsjdk11} { name: "bench-forks-compiler-renaissance-11-linux-x52-c2-batch2" }
+  ${x52.c2-tmpfs10g} ${bench-renaissance-hwloc-forks-c2-batch3}         ${labsjdk11} { name: "bench-forks-compiler-renaissance-11-linux-x52-c2-batch3" }
+  ${x52.c2-tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-c2-batch0}  ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-c2-batch0" }
+  ${x52.c2-tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-c2-batch1}  ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-c2-batch1" }
+  ${x52.c2-tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-c2-batch2}  ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-c2-batch2" }
+  ${x52.c2-tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-c2-batch3}  ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-c2-batch3" }
+  ${x52.c2} ${bench-specjbb2005-forks-c2}                               ${labsjdk11} { name: "bench-forks-compiler-specjbb2005-11-linux-x52-c2" }
+  ${x52.c2} ${bench-specjbb2015-forks-c2}                               ${labsjdk11} { name: "bench-forks-compiler-specjbb2015-11-linux-x52-c2" }
 ]

@@ -205,40 +205,40 @@ builds += [
 
   # JDK 11
   # jargraal
-  ${x52.tmpfs10g} ${bench-dacapo-hwloc-forks}                        ${vm_java_11} { name: "bench-forks-compiler-dacapo-11-linux-x52" }
-  ${x52.tmpfs10g} ${bench-scala-dacapo-all-hwloc-forks}              ${vm_java_11} { name: "bench-forks-compiler-scala-dacapo-11-linux-x52" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch0}            ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch0" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch1}            ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch1" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch2}            ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch2" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch3}            ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch3" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch4}            ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch4" }
-  ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch0}            ${vm_java_11} { name: "bench-forks-compiler-renaissance-11-linux-x52-batch0" }
-  ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch1}            ${vm_java_11} { name: "bench-forks-compiler-renaissance-11-linux-x52-batch1" }
-  ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch2}            ${vm_java_11} { name: "bench-forks-compiler-renaissance-11-linux-x52-batch2" }
-  ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch3}            ${vm_java_11} { name: "bench-forks-compiler-renaissance-11-linux-x52-batch3" }
-  ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch0}     ${vm_java_11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch0" }
-  ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch1}     ${vm_java_11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch1" }
-  ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch2}     ${vm_java_11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch2" }
-  ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch3}     ${vm_java_11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch3" }
-  ${x52.default} ${bench-specjbb2005-forks}                          ${vm_java_11} { name: "bench-forks-compiler-specjbb2005-11-linux-x52" }
-  ${x52.default} ${bench-specjbb2015-forks}                          ${vm_java_11} { name: "bench-forks-compiler-specjbb2015-11-linux-x52" }
+  ${x52.tmpfs10g} ${bench-dacapo-hwloc-forks}                        ${labsjdk11} { name: "bench-forks-compiler-dacapo-11-linux-x52" }
+  ${x52.tmpfs10g} ${bench-scala-dacapo-all-hwloc-forks}              ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-11-linux-x52" }
+  ${x52.default} ${bench-specjvm2008-Single-forks-batch0}            ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch0" }
+  ${x52.default} ${bench-specjvm2008-Single-forks-batch1}            ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch1" }
+  ${x52.default} ${bench-specjvm2008-Single-forks-batch2}            ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch2" }
+  ${x52.default} ${bench-specjvm2008-Single-forks-batch3}            ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch3" }
+  ${x52.default} ${bench-specjvm2008-Single-forks-batch4}            ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch4" }
+  ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch0}            ${labsjdk11} { name: "bench-forks-compiler-renaissance-11-linux-x52-batch0" }
+  ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch1}            ${labsjdk11} { name: "bench-forks-compiler-renaissance-11-linux-x52-batch1" }
+  ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch2}            ${labsjdk11} { name: "bench-forks-compiler-renaissance-11-linux-x52-batch2" }
+  ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch3}            ${labsjdk11} { name: "bench-forks-compiler-renaissance-11-linux-x52-batch3" }
+  ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch0}     ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch0" }
+  ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch1}     ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch1" }
+  ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch2}     ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch2" }
+  ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch3}     ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch3" }
+  ${x52.default} ${bench-specjbb2005-forks}                          ${labsjdk11} { name: "bench-forks-compiler-specjbb2005-11-linux-x52" }
+  ${x52.default} ${bench-specjbb2015-forks}                          ${labsjdk11} { name: "bench-forks-compiler-specjbb2015-11-linux-x52" }
 
   ## libgraal
-  ${x52.tmpfs10g-libgraal} ${bench-dacapo-hwloc-forks}                      ${vm_java_11} { name: "bench-forks-compiler-dacapo-libgraal-11-linux-x52" }
-  ${x52.tmpfs10g-libgraal} ${bench-scala-dacapo-all-hwloc-forks}            ${vm_java_11} { name: "bench-forks-compiler-scala-dacapo-libgraal-11-linux-x52" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch0}          ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch0" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch1}          ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch1" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch2}          ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch2" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch3}          ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch3" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch4}          ${vm_java_11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch4" }
-  ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch0}          ${vm_java_11} { name: "bench-forks-compiler-renaissance-libgraal-11-linux-x52-batch0" }
-  ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch1}          ${vm_java_11} { name: "bench-forks-compiler-renaissance-libgraal-11-linux-x52-batch1" }
-  ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch2}          ${vm_java_11} { name: "bench-forks-compiler-renaissance-libgraal-11-linux-x52-batch2" }
-  ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch3}          ${vm_java_11} { name: "bench-forks-compiler-renaissance-libgraal-11-linux-x52-batch3" }
-  ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch0}   ${vm_java_11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch0" }
-  ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch1}   ${vm_java_11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch1" }
-  ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch2}   ${vm_java_11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch2" }
-  ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch3}   ${vm_java_11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch3" }
-  ${x52.default-libgraal} ${bench-specjbb2005-forks}                        ${vm_java_11} { name: "bench-forks-compiler-specjbb2005-libgraal-11-linux-x52" }
-  ${x52.default-libgraal} ${bench-specjbb2015-forks}                        ${vm_java_11} { name: "bench-forks-compiler-specjbb2015-libgraal-11-linux-x52" }
+  ${x52.tmpfs10g-libgraal} ${bench-dacapo-hwloc-forks}                      ${labsjdk11} { name: "bench-forks-compiler-dacapo-libgraal-11-linux-x52" }
+  ${x52.tmpfs10g-libgraal} ${bench-scala-dacapo-all-hwloc-forks}            ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-libgraal-11-linux-x52" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch0}          ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch0" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch1}          ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch1" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch2}          ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch2" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch3}          ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch3" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch4}          ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch4" }
+  ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch0}          ${labsjdk11} { name: "bench-forks-compiler-renaissance-libgraal-11-linux-x52-batch0" }
+  ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch1}          ${labsjdk11} { name: "bench-forks-compiler-renaissance-libgraal-11-linux-x52-batch1" }
+  ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch2}          ${labsjdk11} { name: "bench-forks-compiler-renaissance-libgraal-11-linux-x52-batch2" }
+  ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch3}          ${labsjdk11} { name: "bench-forks-compiler-renaissance-libgraal-11-linux-x52-batch3" }
+  ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch0}   ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch0" }
+  ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch1}   ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch1" }
+  ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch2}   ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch2" }
+  ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch3}   ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch3" }
+  ${x52.default-libgraal} ${bench-specjbb2005-forks}                        ${labsjdk11} { name: "bench-forks-compiler-specjbb2005-libgraal-11-linux-x52" }
+  ${x52.default-libgraal} ${bench-specjbb2015-forks}                        ${labsjdk11} { name: "bench-forks-compiler-specjbb2015-libgraal-11-linux-x52" }
 ]
