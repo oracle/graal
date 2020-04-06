@@ -72,6 +72,7 @@ import com.oracle.objectfile.ObjectFile.ProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Isolates;
@@ -92,6 +93,7 @@ import com.oracle.svm.core.image.AbstractImageHeapLayouter.ImageHeapLayout;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -104,6 +106,7 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.RelocatableBuffer.Info;
+import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -161,14 +164,16 @@ public abstract class NativeBootImage extends AbstractBootImage {
     @Override
     public abstract String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);
 
-    protected final void write(Path outputFile) {
+    protected final void write(DebugContext context, Path outputFile) {
         try {
             Path outFileParent = outputFile.normalize().getParent();
             if (outFileParent != null) {
                 Files.createDirectories(outFileParent);
             }
             try (FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
-                objectFile.write(channel);
+                objectFile.withDebugContext(context, "ObjectFile.write", () -> {
+                    objectFile.write(channel);
+                });
             }
         } catch (Exception ex) {
             throw shouldNotReachHere(ex);
@@ -456,6 +461,14 @@ public abstract class NativeBootImage extends AbstractBootImage {
             cGlobals.writeData(rwDataBuffer, (offset, symbolName) -> defineDataSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET));
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
 
+            /*
+             * If we constructed debug info give the object file a chance to install it
+             */
+            if (SubstrateOptions.GenerateDebugInfo.getValue(HostedOptionValues.singleton()) > 0) {
+                ImageSingletons.add(SourceManager.class, new SourceManager());
+                DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap);
+                objectFile.installDebugInfo(provider);
+            }
             // - Write the heap, either to its own section, or to the ro and rw data sections.
             RelocatableBuffer heapSectionBuffer = null;
             ProgbitsSectionImpl heapSectionImpl = null;
