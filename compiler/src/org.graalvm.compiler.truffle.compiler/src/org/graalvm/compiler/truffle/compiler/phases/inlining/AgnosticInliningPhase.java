@@ -76,10 +76,10 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
     protected void run(StructuredGraph graph, CoreProviders coreProviders) {
         final InliningPolicy policy = getInliningPolicyProvider().get(request.options, coreProviders);
         final CallTree tree = new CallTree(partialEvaluator, request, policy);
-        tree.dumpBasic("Before Inline", "");
+        tree.dumpBasic("Before Inline");
         if (getPolyglotOptionValue(request.options, PolyglotCompilerOptions.Inlining)) {
             policy.run(tree);
-            tree.dumpBasic("After Inline", "");
+            tree.dumpBasic("After Inline");
             tree.dequeueInlined();
         }
         tree.trace();
