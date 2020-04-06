@@ -74,37 +74,39 @@ abstract class HostToGuestRootNode extends RootNode {
     public final Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         PolyglotLanguageContext languageContext = profileContext(args[0]);
-        assert languageContext != null;
-        PolyglotContextImpl context = languageContext.context;
-        boolean needsEnter = languageContext != null && engine.needsEnter(context);
-        Object prev;
-        if (needsEnter) {
-            if (!seenEnter) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                seenEnter = true;
-            }
-            prev = engine.enter(context);
-        } else {
-            if (!seenNonEnter) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                seenNonEnter = true;
-            }
-            prev = null;
-        }
         try {
-            Object[] arguments = frame.getArguments();
-            Object receiver = getReceiverType().cast(arguments[1]);
-            Object result;
-            result = executeImpl(languageContext, receiver, arguments);
-            assert !(result instanceof TruffleObject);
-            return result;
+            assert languageContext != null;
+            PolyglotContextImpl context = languageContext.context;
+            boolean needsEnter = languageContext != null && engine.needsEnter(context);
+            Object prev;
+            if (needsEnter) {
+                if (!seenEnter) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    seenEnter = true;
+                }
+                prev = engine.enter(context);
+            } else {
+                if (!seenNonEnter) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    seenNonEnter = true;
+                }
+                prev = null;
+            }
+            try {
+                Object[] arguments = frame.getArguments();
+                Object receiver = getReceiverType().cast(arguments[1]);
+                Object result;
+                result = executeImpl(languageContext, receiver, arguments);
+                assert !(result instanceof TruffleObject);
+                return result;
+            } finally {
+                if (needsEnter) {
+                    engine.leave(prev, context);
+                }
+            }
         } catch (Throwable e) {
             CompilerDirectives.transferToInterpreter();
-            throw PolyglotImpl.wrapGuestException((languageContext), e);
-        } finally {
-            if (needsEnter) {
-                engine.leave(prev, context);
-            }
+            throw PolyglotImpl.guestToHostException((languageContext), e);
         }
     }
 
