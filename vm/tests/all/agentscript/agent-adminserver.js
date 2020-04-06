@@ -13,7 +13,7 @@ function initializeAgent(agent, require) {
                 const fn = new Function('agent', data);
                 try {
                     fn(agent);
-                    res.write('T-Trace hook activated\n');
+                    res.write('GraalVM Insight hook activated\n');
                 } finally {
                     res.end();
                 }

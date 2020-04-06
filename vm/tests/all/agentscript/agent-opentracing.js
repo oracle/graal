@@ -49,7 +49,7 @@ let initializeAgent = function (require) {
 
 // See schema https://github.com/jaegertracing/jaeger-client-node/blob/master/src/configuration.js#L37
     var config = {
-        serviceName: 't-trace-demo',
+        serviceName: 'insight-demo',
         reporter: {
             // Provide the traces endpoint; this forces the client to connect directly to the Collector and send
             // spans over HTTP
@@ -65,7 +65,7 @@ let initializeAgent = function (require) {
     };
     var options = {
         tags: {
-            't-trace-demo.version': '1.1.2',
+            'insight-demo.version': '1.1.2',
         },
 //  metrics: metrics,
         logger: console,

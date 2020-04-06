@@ -6,14 +6,14 @@ function log(msg) {
 }
 
 function howAreYou() {
-    log('Hello T-Trace!');
+    log('Hello GraalVM Insight!');
     log('How');
     log('are');
     log('You?');
 }
 
 function howDoYouDo() {
-    log('Hello T-Trace!');
+    log('Hello GraalVM Insight!');
     log('How');
     log('do');
     log('you');
@@ -21,7 +21,7 @@ function howDoYouDo() {
 }
 
 function areYouBad() {
-    log('Hello T-Trace!');
+    log('Hello GraalVM Insight!');
     log('How');
     log('bad');
     log('are');

@@ -1,5 +1,5 @@
 >[7] js --jvm --experimental-options --agentscript=agent-exception.js -f log.js -e "howAreYou()"
-Hello T-Trace.
+Hello GraalVM Insight.
 How
 great you are!
 .*at <js> checkLogging.agent-exception.js:.*
@@ -7,7 +7,7 @@ great you are!
 .*at <js> howAreYou.log.js:11:.*.
 
 >[7] js --experimental-options --agentscript=agent-exception.js -f log.js -e "howAreYou()"
-Hello T-Trace.
+Hello GraalVM Insight.
 How
 great you are!
 .*at <js> checkLogging.agent-exception.js:.*
@@ -15,7 +15,7 @@ great you are!
 .*at <js> howAreYou.log.js:11:.*
 
 >[7] js --experimental-options --agentscript=agent-exception.js -f log.js -e "howDoYouDo()"
-Hello T-Trace!
+Hello GraalVM Insight!
 How
 do
 you feel?
@@ -24,7 +24,7 @@ you feel?
 .*at <js> howDoYouDo.log.js:18:.*
 .*at <js> :program.<eval_script>:1:0-11.
 >[7] js --experimental-options --agentscript=agent-exception.js -f log.js -e "areYouBad()"
-Hello T-Trace!
+Hello GraalVM Insight!
 How
 good you are?
 .*at <js> checkLogging.agent-exception.js:.*
