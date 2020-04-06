@@ -97,6 +97,9 @@ import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
+import java.net.URL;
+import java.net.URLClassLoader;
+import org.graalvm.polyglot.Source;
 
 public class ContextAPITest {
     private static HostAccess CONFIG;
@@ -785,4 +788,77 @@ public class ContextAPITest {
         assertFails(() -> fnc.execute(), IllegalStateException.class);
     }
 
+    @Test
+    public void testDefaultContextClassLoader() {
+        ClassLoader orig = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader cc = new URLClassLoader(new URL[0]);
+            Thread.currentThread().setContextClassLoader(cc);
+            try (Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+                testContextClassLoaderImpl(context, cc);
+                cc = new URLClassLoader(new URL[0]);
+                Thread.currentThread().setContextClassLoader(cc);
+                testContextClassLoaderImpl(context, cc);
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(orig);
+        }
+    }
+
+    @Test
+    public void testExplicitContextClassLoader() {
+        ClassLoader orig = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader hostClassLoader = new URLClassLoader(new URL[0]);
+            try (Context context = Context.newBuilder().hostClassLoader(hostClassLoader).allowHostAccess(HostAccess.ALL).build()) {
+                testContextClassLoaderImpl(context, hostClassLoader);
+                ClassLoader contextClassLoader = new URLClassLoader(new URL[0]);
+                Thread.currentThread().setContextClassLoader(contextClassLoader);
+                testContextClassLoaderImpl(context, hostClassLoader);
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(orig);
+        }
+    }
+
+    @Test
+    public void testExplicitContextClassLoaderMultipleContexts() {
+        ClassLoader orig = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader hostClassLoaderCtx1 = new URLClassLoader(new URL[0]);
+            ClassLoader hostClassLoaderCtx2 = new URLClassLoader(new URL[0]);
+            try (Context context1 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx1).allowHostAccess(HostAccess.ALL).build()) {
+                try (Context context2 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx2).allowHostAccess(HostAccess.ALL).build()) {
+                    try (Context context3 = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                        testContextClassLoaderImpl(context3, orig);
+                        ClassLoader contextClassLoader = new URLClassLoader(new URL[0]);
+                        Thread.currentThread().setContextClassLoader(contextClassLoader);
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                        testContextClassLoaderImpl(context3, contextClassLoader);
+                    }
+                }
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(orig);
+        }
+    }
+
+    private static void testContextClassLoaderImpl(Context context, ClassLoader expectedContextClassLoader) {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new RootNode(this.languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        assertEquals(expectedContextClassLoader, Thread.currentThread().getContextClassLoader());
+                        return true;
+                    }
+                });
+            }
+        });
+        context.eval(Source.newBuilder(ProxyLanguage.ID, "", "test").cached(false).buildLiteral());
+    }
 }

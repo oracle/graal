@@ -780,6 +780,7 @@ public final class Context implements AutoCloseable {
         private Map<String, String> environment;
         private ZoneId zone;
         private Path currentWorkingDirectory;
+        private ClassLoader hostClassLoader;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -972,12 +973,14 @@ public final class Context implements AutoCloseable {
          * {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host access policy} needs to be
          * set or {@link #allowAllAccess(boolean) all access} needs to be set to <code>true</code>.
          * <p>
-         * To load new classes the context uses the the {@link Thread#getContextClassLoader()
-         * context class loader} that will be captured when the context is {@link #build() built}.
-         * If an explicit {@link #engine(Engine) engine} was specified, then the context class
-         * loader at engine {@link Engine.Builder#build() build-time} will be used instead. When the
-         * Java module system is available (>= JDK 9) then only classes are accessible that are
-         * exported to the unnamed module of the captured class loader.
+         * To load new classes the context uses the
+         * {@link Context.Builder#hostClassLoader(java.lang.ClassLoader) hostClassLoader} if
+         * specified or the {@link Thread#getContextClassLoader() context class loader} that will be
+         * captured when the context is {@link #build() built}. If an explicit
+         * {@link #engine(Engine) engine} was specified, then the context class loader at engine
+         * {@link Engine.Builder#build() build-time} will be used instead. When the Java module
+         * system is available (>= JDK 9) then only classes are accessible that are exported to the
+         * unnamed module of the captured class loader.
          * <p>
          * <h3>Example usage with JavaScript:</h3>
          *
@@ -1380,6 +1383,24 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Sets a host class loader. If set the given {@code classLoader} is used to load host
+         * classes and it's also set as a {@link Thread#setContextClassLoader(java.lang.ClassLoader)
+         * context ClassLoader} during code execution. Otherwise the ClassLoader that was captured
+         * when the context was {@link #build() built} is used to to load host classes and the
+         * {@link Thread#setContextClassLoader(java.lang.ClassLoader) context ClassLoader} is not
+         * set during code execution. Setting the hostClassLoader has a negative effect on
+         * performance due to the need of context ClassLoader setting.
+         *
+         * @param classLoader the host class loader
+         * @since 20.1.0
+         */
+        public Builder hostClassLoader(ClassLoader classLoader) {
+            Objects.requireNonNull(classLoader, "ClassLoader must be non null.");
+            this.hostClassLoader = classLoader;
+            return this;
+        }
+
+        /**
          * Creates a new context instance from the configuration provided in the builder. The same
          * context builder can be used to create multiple context instances.
          *
@@ -1470,7 +1491,7 @@ public final class Context implements AutoCloseable {
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
-                                localCurrentWorkingDirectory);
+                                localCurrentWorkingDirectory, hostClassLoader);
                 return ctx;
             } else {
                 if (messageTransport != null) {
@@ -1480,7 +1501,7 @@ public final class Context implements AutoCloseable {
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
-                                localCurrentWorkingDirectory);
+                                localCurrentWorkingDirectory, hostClassLoader);
             }
         }
 

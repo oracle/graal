@@ -77,6 +77,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import java.net.URLClassLoader;
 
 public class HostClassLoadingTest extends AbstractPolyglotTest {
 
@@ -266,6 +267,31 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         Files.deleteIfExists(jar2);
         deleteDir(tempDir1);
         deleteDir(tempDir2);
+    }
+
+    @Test
+    public void testLoadingFromContextClassLoader() throws Exception {
+        Class<?> hostClass = HostClassLoadingTestClass1.class;
+        Path tempDir1 = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        Path tempDir2 = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME_2);
+        Path jar1 = createJar(tempDir1);
+        Path jar2 = createJar(tempDir2);
+        try {
+            ClassLoader hostClassLoader = new URLClassLoader(new URL[]{jar1.toUri().toURL()});
+            setupEnv(Context.newBuilder().allowAllAccess(true).hostClassLoader(hostClassLoader).build());
+            languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar2.toString()));
+
+            Object newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
+            assertEquals(42, read(newSymbol, "staticField"));
+
+            newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME_2);
+            assertEquals(42, read(newSymbol, "staticField"));
+        } finally {
+            Files.deleteIfExists(jar1);
+            Files.deleteIfExists(jar2);
+            deleteDir(tempDir1);
+            deleteDir(tempDir2);
+        }
     }
 
     private static void assertHostClassPath(Env env, final Class<?> hostClass, String newName, TruffleFile classPathEntry) {

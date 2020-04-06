@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 final class PolyglotThreadInfo {
 
     static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null);
+    private static final Object NULL_CLASS_LOADER = new Object();
 
     private final Reference<Thread> thread;
 
@@ -61,6 +62,7 @@ final class PolyglotThreadInfo {
     private volatile long lastEntered;
     private volatile long timeExecuted;
     private boolean deprioritized;
+    private Object originalContextClassLoader = NULL_CLASS_LOADER;
 
     private static volatile ThreadMXBean threadBean;
 
@@ -87,7 +89,12 @@ final class PolyglotThreadInfo {
         if (!engine.noThreadTimingNeeded.isValid() && count == 1) {
             lastEntered = getTime();
         }
-
+        if (!engine.customHostClassLoader.isValid() && count == 1) {
+            ClassLoader hostClassLoader = PolyglotContextImpl.currentEntered(engine).config.hostClassLoader;
+            if (hostClassLoader != null) {
+                originalContextClassLoader = setContextClassLoader(getThread(), hostClassLoader);
+            }
+        }
     }
 
     @TruffleBoundary
@@ -148,6 +155,10 @@ final class PolyglotThreadInfo {
     void leave(PolyglotEngineImpl engine) {
         assert Thread.currentThread() == getThread();
         int count = --enteredCount;
+        if (!engine.customHostClassLoader.isValid() && count == 0 && originalContextClassLoader != NULL_CLASS_LOADER) {
+            setContextClassLoader(getThread(), (ClassLoader) originalContextClassLoader);
+            originalContextClassLoader = NULL_CLASS_LOADER;
+        }
         if (!engine.noThreadTimingNeeded.isValid() && count == 0) {
             long last = this.lastEntered;
             this.lastEntered = 0;
@@ -174,4 +185,10 @@ final class PolyglotThreadInfo {
         return super.toString() + "[thread=" + getThread() + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";
     }
 
+    @TruffleBoundary
+    private static ClassLoader setContextClassLoader(Thread t, ClassLoader contextClassLoader) {
+        ClassLoader original = t.getContextClassLoader();
+        t.setContextClassLoader(contextClassLoader);
+        return original;
+    }
 }

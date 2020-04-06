@@ -1332,7 +1332,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         allowedLanguages,
                         Collections.emptyMap(),
                         fs, internalFs, engine.logHandler, false, null,
-                        EnvironmentAccess.INHERIT, null, null, null);
+                        EnvironmentAccess.INHERIT, null, null, null, null);
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         try {
             context.sourcesToInvalidate = new ArrayList<>();
