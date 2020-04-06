@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
@@ -120,7 +121,7 @@ final class GraphManager {
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
-            InlineInfo inlineInfo = super.shouldInlineInvoke(builder, original, arguments);
+            InlineInfo inlineInfo = asInlineInfo(original);
             if (original.equals(callTargetCallDirect)) {
                 ValueNode arg0 = arguments[1];
                 if (!arg0.isConstant()) {

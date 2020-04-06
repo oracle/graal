@@ -82,7 +82,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
@@ -412,20 +411,26 @@ public abstract class PartialEvaluator {
         }
     }
 
-    // TODO GR-22186 Remove
     public static class PEInlineInvokePlugin implements InlineInvokePlugin {
-        @Override
-        public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
-            TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-            InlineInfo inlineInfo = asInlineInfo(rt.getInlineKind(original, true), original);
-            if (!inlineInfo.allowsInlining()) {
-                return inlineInfo;
+
+        private TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
+
+        protected InlineInfo asInlineInfo(ResolvedJavaMethod method) {
+            final InlineKind inlineKind = rt.getInlineKind(method, true);
+            switch (inlineKind) {
+                case DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION:
+                    return InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
+                case DO_NOT_INLINE_NO_EXCEPTION:
+                    return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
+                case DO_NOT_INLINE_WITH_EXCEPTION:
+                case DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION:
+                    return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+                case INLINE:
+                    return InlineInfo.createStandardInlineInfo(method);
+                default:
+                    throw new IllegalArgumentException(String.valueOf(inlineKind));
             }
-            assert !builder.parsingIntrinsic();
-
-            return inlineInfo;
         }
-
     }
 
     private class PEInliningPlanInvokePlugin extends PEInlineInvokePlugin {
@@ -451,8 +456,7 @@ public abstract class PartialEvaluator {
             if (graph.getNodeCount() > nodeLimit) {
                 throw builder.bailout("Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Limit: " + nodeLimit);
             }
-            TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-            InlineInfo inlineInfo = asInlineInfo(rt.getInlineKind(original, true), original);
+            InlineInfo inlineInfo = asInlineInfo(original);
             if (!inlineInfo.allowsInlining()) {
                 return inlineInfo;
             }
@@ -512,7 +516,7 @@ public abstract class PartialEvaluator {
         }
     }
 
-    private class ParsingInlineInvokePlugin implements InlineInvokePlugin {
+    private class ParsingInlineInvokePlugin extends PEInlineInvokePlugin {
 
         private final ReplacementsImpl replacements;
         private final InvocationPlugins invocationPlugins;
@@ -550,8 +554,7 @@ public abstract class PartialEvaluator {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
 
-            TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-            InlineInfo inlineInfo = asInlineInfo(rt.getInlineKind(original, true), original);
+            InlineInfo inlineInfo = asInlineInfo(original);
             if (!inlineInfo.allowsInlining()) {
                 return inlineInfo;
             }
@@ -982,22 +985,6 @@ public abstract class PartialEvaluator {
                 properties.put("callNode", callNode.toValueString());
                 logInliningWarning(target.toValueString(), "CallTarget changed during compilation. Call node could not be inlined.", properties);
             }
-        }
-    }
-
-    private static InlineInfo asInlineInfo(final TruffleCompilerRuntime.InlineKind inlineKind, final ResolvedJavaMethod method) {
-        switch (inlineKind) {
-            case DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION:
-                return InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
-            case DO_NOT_INLINE_NO_EXCEPTION:
-                return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
-            case DO_NOT_INLINE_WITH_EXCEPTION:
-            case DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION:
-                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            case INLINE:
-                return InlineInfo.createStandardInlineInfo(method);
-            default:
-                throw new IllegalArgumentException(String.valueOf(inlineKind));
         }
     }
 
