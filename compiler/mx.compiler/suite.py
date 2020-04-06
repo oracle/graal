@@ -1849,7 +1849,7 @@ suite = {
         "org.graalvm.compiler.truffle.runtime",
         "org.graalvm.compiler.core.test",
         "truffle:TRUFFLE_SL_TEST",
-        "truffle:TRUFFLE_INSTRUMENT_TEST",
+        "truffle:TRUFFLE_TEST",
       ],
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
@@ -2118,7 +2118,7 @@ suite = {
         "JVMCI_HOTSPOT",
         "GRAAL",
         "truffle:TRUFFLE_SL_TEST",
-        "truffle:TRUFFLE_INSTRUMENT_TEST",
+        "truffle:TRUFFLE_TEST",
       ],
       "exclude" : [
         "mx:JUNIT",

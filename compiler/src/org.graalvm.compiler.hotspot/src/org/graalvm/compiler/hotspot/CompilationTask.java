@@ -304,7 +304,7 @@ public class CompilationTask {
     public HotSpotCompilationRequestResult runCompilation(OptionValues initialOptions) {
         OptionValues options = filterOptions(initialOptions);
         HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
-        try (DebugContext debug = graalRuntime.openDebugContext(options, compilationId, getMethod(), compiler.getDebugHandlersFactories(), DebugContext.DEFAULT_LOG_STREAM)) {
+        try (DebugContext debug = graalRuntime.openDebugContext(options, compilationId, getMethod(), compiler.getDebugHandlersFactories(), DebugContext.getDefaultLogStream())) {
             return runCompilation(debug);
         }
     }

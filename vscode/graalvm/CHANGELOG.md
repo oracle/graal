@@ -1,5 +1,8 @@
 # Change Log
 
+## Version 0.0.7
+* Security: updated dependencies
+
 ## Version 0.0.6
 * Documentation enhanced
 

@@ -39,26 +39,26 @@ import java.nio.ByteOrder;
 import java.util.Map;
 import java.util.Set;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.TEXT_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.TEXT_SECTION_NAME;
 
 /**
- * class from which all DWARF debug sections inherit providing common behaviours.
+ * A class from which all DWARF debug sections inherit providing common behaviours.
  */
 public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
-    protected DwarfSections dwarfSections;
+    protected DwarfDebugInfo dwarfSections;
     protected boolean debug = false;
     protected long debugTextBase = 0;
     protected long debugAddress = 0;
     protected int debugBase = 0;
 
-    public DwarfSectionImpl(DwarfSections dwarfSections) {
+    public DwarfSectionImpl(DwarfDebugInfo dwarfSections) {
         this.dwarfSections = dwarfSections;
     }
 
     /**
-     * creates the target byte[] array used to define the section contents.
+     * Creates the target byte[] array used to define the section contents.
      *
-     * the main task of this method is to precompute the size of the debug section. given the
+     * The main task of this method is to precompute the size of the debug section. given the
      * complexity of the data layouts that invariably requires performing a dummy write of the
      * contents, inserting bytes into a small, scratch buffer only when absolutely necessary.
      * subclasses may also cache some information for use when writing the contents.
@@ -66,9 +66,9 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     public abstract void createContent();
 
     /**
-     * populates the byte[] array used to contain the section contents.
+     * Populates the byte[] array used to contain the section contents.
      *
-     * in most cases this task reruns the operations performed under createContent but this time
+     * In most cases this task reruns the operations performed under createContent but this time
      * actually writing data to the target byte[].
      */
     public abstract void writeContent(DebugContext debugContext);
@@ -76,7 +76,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     @Override
     public boolean isLoadable() {
         /*
-         * even though we're a progbits section impl we're not actually loadable
+         * Even though we're a progbits section impl we're not actually loadable.
          */
         return false;
     }
@@ -93,7 +93,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     protected void enableLog(DebugContext context, int pos) {
         /*
-         * debug output is disabled during the first pass where we size the buffer. this is called
+         * Debug output is disabled during the first pass where we size the buffer. this is called
          * to enable it during the second pass where the buffer gets written, but only if the scope
          * is enabled.
          */
@@ -121,7 +121,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /*
-     * base level put methods that assume a non-null buffer
+     * Base level put methods that assume a non-null buffer.
      */
 
     protected int putByte(byte b, byte[] buffer, int p) {
@@ -185,7 +185,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     protected int putRelocatableCodeOffset(long l, byte[] buffer, int p) {
         int pos = p;
         /*
-         * mark address so it is relocated relative to the start of the text segment
+         * Mark address so it is relocated relative to the start of the text segment.
          */
         markRelocationSite(pos, 8, ObjectFile.RelocationKind.DIRECT, TEXT_SECTION_NAME, false, Long.valueOf(l));
         pos = putLong(0, buffer, pos);
@@ -247,7 +247,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /*
-     * common write methods that check for a null buffer
+     * Common write methods that check for a null buffer.
      */
 
     protected void patchLength(int lengthPos, byte[] buffer, int pos) {
@@ -323,37 +323,37 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /**
-     * identify the section after which this debug section needs to be ordered when sizing and
+     * Identify the section after which this debug section needs to be ordered when sizing and
      * creating content.
      * 
-     * @return the name of the preceding section
+     * @return the name of the preceding section.
      */
     public abstract String targetSectionName();
 
     /**
-     * identify the layout properties of the target section which need to have been decided before
+     * Identify the layout properties of the target section which need to have been decided before
      * the contents of this section can be created.
      * 
-     * @return an array of the relevant decision kinds
+     * @return an array of the relevant decision kinds.
      */
     public abstract LayoutDecision.Kind[] targetSectionKinds();
 
     /**
-     * identify this debug section by name.
+     * Identify this debug section by name.
      * 
-     * @return the name of the debug section
+     * @return the name of the debug section.
      */
     public abstract String getSectionName();
 
     @Override
     public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
         /*
-         * ensure content byte[] has been created before calling super method
+         * Ensure content byte[] has been created before calling super method.
          */
         createContent();
 
         /*
-         * ensure content byte[] has been written before calling super method.
+         * Ensure content byte[] has been written before calling super method.
          *
          * we do this in a nested debug scope derived from the one set up under the object file
          * write
@@ -372,14 +372,14 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         LayoutDecision ourSize = decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
         LayoutDecision.Kind[] targetKinds = targetSectionKinds();
         /*
-         * make our content depend on the size and content of the target
+         * Make our content depend on the size and content of the target.
          */
         for (LayoutDecision.Kind targetKind : targetKinds) {
             LayoutDecision targetDecision = decisions.get(targetSection).getDecision(targetKind);
             deps.add(BuildDependency.createOrGet(ourContent, targetDecision));
         }
         /*
-         * make our size depend on our content
+         * Make our size depend on our content.
          */
         deps.add(BuildDependency.createOrGet(ourSize, ourContent));
 
@@ -387,7 +387,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /**
-     * a scratch buffer used during computation of a section's size.
+     * A scratch buffer used during computation of a section's size.
      */
     protected static final byte[] scratch = new byte[10];
 

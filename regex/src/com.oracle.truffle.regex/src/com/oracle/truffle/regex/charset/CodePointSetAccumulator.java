@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,52 +38,73 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.nodes;
+package com.oracle.truffle.regex.charset;
 
-import static org.graalvm.wasm.ValueTypes.VOID_TYPE;
+import java.util.Iterator;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.constants.TargetOffset;
+import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 
-// TODO: Make this a singleton instance.
-public final class WasmEmptyNode extends WasmNode {
+public class CodePointSetAccumulator implements Iterable<Range> {
 
-    public WasmEmptyNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int byteLength) {
-        super(wasmModule, codeEntry, byteLength);
+    private IntRangesBuffer acc = new IntRangesBuffer();
+    private IntRangesBuffer tmp;
+
+    public CodePointSetAccumulator() {
+    }
+
+    public IntRangesBuffer get() {
+        return acc;
+    }
+
+    private IntRangesBuffer getTmp() {
+        if (tmp == null) {
+            tmp = new IntRangesBuffer();
+        }
+        return tmp;
+    }
+
+    public void addRange(int lo, int hi) {
+        acc.addRange(lo, hi);
+    }
+
+    public void appendRange(Range r) {
+        appendRange(r.lo, r.hi);
+    }
+
+    public void appendRange(int lo, int hi) {
+        acc.appendRange(lo, hi);
+    }
+
+    public void addSet(CodePointSet set) {
+        IntRangesBuffer t = getTmp();
+        tmp = acc;
+        acc = t;
+        SortedListOfRanges.union(tmp, set, acc);
+    }
+
+    public void clear() {
+        acc.clear();
+    }
+
+    public boolean isEmpty() {
+        return acc.isEmpty();
+    }
+
+    public boolean matchesSingleChar() {
+        return acc.matchesSingleChar();
+    }
+
+    public void copyTo(CodePointSetAccumulator other) {
+        other.clear();
+        acc.appendRangesTo(other.acc, 0, acc.size());
+    }
+
+    public CodePointSet toCodePointSet() {
+        return CodePointSet.create(acc);
     }
 
     @Override
-    public TargetOffset execute(WasmContext context, VirtualFrame frame) {
-        // A return value of -1 means no branch to be taken.
-        return TargetOffset.MINUS_ONE;
+    public Iterator<Range> iterator() {
+        return acc.rangesIterator();
     }
-
-    @Override
-    public byte returnTypeId() {
-        return VOID_TYPE;
-    }
-
-    @Override
-    int byteConstantLength() {
-        return 0;
-    }
-
-    @Override
-    int intConstantLength() {
-        return 0;
-    }
-
-    @Override
-    int longConstantLength() {
-        return 0;
-    }
-
-    @Override
-    int branchTableLength() {
-        return 0;
-    }
-
 }

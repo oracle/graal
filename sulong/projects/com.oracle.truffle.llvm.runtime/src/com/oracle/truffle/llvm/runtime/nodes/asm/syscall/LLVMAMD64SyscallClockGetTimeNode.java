@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 import static com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64Time.CLOCK_MONOTONIC;
 import static com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64Time.CLOCK_REALTIME;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
@@ -62,12 +63,18 @@ public abstract class LLVMAMD64SyscallClockGetTimeNode extends LLVMSyscallOperat
         return doI64(clkId, LLVMNativePointer.create(tp));
     }
 
+    // TODO (GR-22032): Remove the TruffleBoundary
+    @CompilerDirectives.TruffleBoundary
+    private static long getCurrentTimeMillis() {
+        return System.currentTimeMillis();
+    }
+
     private int clockGetTime(int clkId, LLVMPointer timespec) {
         long s;
         long ns;
         switch (clkId) {
             case CLOCK_REALTIME: {
-                long t = System.currentTimeMillis();
+                long t = getCurrentTimeMillis();
                 s = t / 1000;
                 ns = (t % 1000) * 1000000;
                 break;

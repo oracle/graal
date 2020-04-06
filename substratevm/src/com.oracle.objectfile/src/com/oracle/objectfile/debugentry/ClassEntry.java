@@ -184,14 +184,14 @@ public class ClassEntry {
     }
 
     public void setCUIndex(int cuIndex) {
-        // should only get set once to a non-negative value
+        // Should only get set once to a non-negative value.
         assert cuIndex >= 0;
         assert this.cuIndex == -1;
         this.cuIndex = cuIndex;
     }
 
     public int getCUIndex() {
-        // should have been set before being read
+        // Should have been set before being read.
         assert cuIndex >= 0;
         return cuIndex;
     }

@@ -90,7 +90,7 @@ some tool support that could be useful for this task.
 
 #### Tracing individual splits
 
-Adding the `-Dgraal.TraceTruffleSplitting=true` argument to the command line
+Adding the `--engine.TraceSplitting` argument to the command line
 when executing your guest language code will, in real time, print information
 about each split the runtime makes. 
 
@@ -107,7 +107,7 @@ said flag enabled follows.
 ```
 #### Tracing a splitting summary
 
-Adding the `-Dgraal.TruffleTraceSplittingSummary=true` argument to the command
+Adding the `--engine.TraceSplittingSummary` argument to the command
 line when executing your guest language code will, after the execution is
 complete, print out a summary of the gathered data regarding splitting. This
 includes how many splits there were, how large is the splitting budget and how
@@ -149,15 +149,71 @@ said flag enabled follows.
 [truffle] class YetAnotherNode                    :          1
 ...
 ```
+#### Tracing polymorphic specializations
+
+NOTE: Consider reading [Splitting](Splitting.md) before this section, as the
+dumped data is directly related to how splitting works.
+
+To better understand how reporting polymorphism impacts which call targets are considered for splitting one can use the `--engine.SplittingTraceEvents` option. 
+This option will print, in real time, a log detailing which nodes are reporting polymorphism and how that is affecting the call targets.
+Let's consider a couple of examples:
+
+##### Example 1
+
+```
+[truffle] [poly-event] Polymorphic event! Source: JSObjectWriteElementTypeCacheNode@e3c0e40   WorkerTask.run
+[truffle] [poly-event] Early return: false callCount: 1, numberOfKnownCallNodes: 1            WorkerTask.run
+```
+This log section tells us that the `JSObjectWriteElementTypeCacheNode` in the `WorkerTask.run` method turned polymorphic and reported it.
+It also tells us that this is the first time that `WorkerTask.run` is being executed (`callCount: 1`), thus we don't mark it as "needs split" (`Early return: false`)
+
+##### Example 2
+
+```
+[truffle] [poly-event] Polymorphic event! Source: WritePropertyNode@50313382                  Packet.addTo
+[truffle] [poly-event] One caller! Analysing parent.                                          Packet.addTo
+[truffle] [poly-event]   One caller! Analysing parent.                                        HandlerTask.run
+[truffle] [poly-event]     One caller! Analysing parent.                                      TaskControlBlock.run
+[truffle] [poly-event]       Early return: false callCount: 1, numberOfKnownCallNodes: 1      Scheduler.schedule
+[truffle] [poly-event]     Return: false                                                      TaskControlBlock.run
+[truffle] [poly-event]   Return: false                                                        HandlerTask.run
+[truffle] [poly-event] Return: false                                                          Packet.addTo
+```
+In this example the source of the polymorphic specialization is `WritePropertyNode` in `Packet.addTo`.
+Since this call target has only one known caller, we analyse it's parent in the call tree (i.e. the caller).
+This is, in the example, `HandlerTask.run` and the same applies to it as well, leading us to `TaskControlBlock.run`, and by the same token to `Scheduler.schedule`.
+`Scheduler.schedule` has a `callCount` of 1 i.e. this is it's first execution, so we don't makr it as "needs split" (`Early return: false`).
+
+##### Example 3
+
+```
+[truffle] [poly-event] Polymorphic event! Source: JSObjectWriteElementTypeCacheNode@3e44f2a5  Scheduler.addTask
+[truffle] [poly-event] Set needs split to true                                                Scheduler.addTask
+[truffle] [poly-event] Return: true                                                           Scheduler.addTask
+```
+In this example the source of the polymorphic specialization is `JSObjectWriteElementTypeCacheNode` in `Scheduler.addTask`.
+This call target is immediately marked as "needs split", since all the criteria to do so are met.
+
+##### Example 3
+
+```
+[truffle] [poly-event] Polymorphic event! Source: WritePropertyNode@479cbee5                  TaskControlBlock.checkPriorityAdd
+[truffle] [poly-event] One caller! Analysing parent.                                          TaskControlBlock.checkPriorityAdd
+[truffle] [poly-event]   Set needs split to true                                              Scheduler.queue
+[truffle] [poly-event]   Return: true                                                         Scheduler.queue
+[truffle] [poly-event] Set needs split to true via parent                                     TaskControlBlock.checkPriorityAdd
+[truffle] [poly-event] Return: true                                                           TaskControlBlock.checkPriorityAdd
+```
+In this example the source of the polymorphic specialization is `WritePropertyNode` in `TaskControlBlock.checkPriorityAdd`.
+Since it has only one caller, we look at that caller (`Scheduler.queue`), and since all the criteria necessary seem to be met, we mark it as "needs split". 
+
 #### Dumping polymorphic specializations to IGV
 
 NOTE: Consider reading [Splitting](Splitting.md) before this section, as the
 dumped data is directly related to how splitting works.
 
-Adding the `-Dgraal.TruffleDumpPolymorphicSpecialize=true` argument to the command
-line when executing your guest language code will, every time a call target is
-marked "needs split" dump a graph showing all the callers of the call target in
-question, as well as a chain of nodes (linked by child connections as well as
-direct call node to callee root node links) ending in the node that called
-`Node#reportPolymorphicSpecialize`.
-
+Adding the `--engine.SplittingDumpDecisions` argument to the command line when
+executing your guest language code will, every time a call target is marked
+"needs split" dump a graph showing a chain of nodes (linked by child
+connections as well as direct call node to callee root node links) ending in
+the node that called `Node#reportPolymorphicSpecialize`.

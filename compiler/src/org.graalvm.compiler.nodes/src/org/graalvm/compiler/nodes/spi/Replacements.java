@@ -74,6 +74,16 @@ public interface Replacements {
                     OptionValues options);
 
     /**
+     * Get the snippet metadata required to inline the snippet.
+     */
+    SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method);
+
+    /**
+     * Return true if the method is a {@link org.graalvm.compiler.api.replacements.Snippet}.
+     */
+    boolean isSnippet(ResolvedJavaMethod method);
+
+    /**
      * Registers a method as snippet.
      */
     void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.regex.charset.Constants;
+import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -63,6 +65,8 @@ public class RegexProperties implements JsonConvertible {
     private boolean negativeLookBehindAssertions = false;
     private boolean largeCountedRepetitions = false;
     private boolean charClassesCanBeMatchedWithMask = true;
+    private boolean fixedCodePointWidthUTF8 = true;
+    private boolean fixedCodePointWidthUTF16 = true;
     private int innerLiteralStart = -1;
     private int innerLiteralEnd = -1;
 
@@ -196,6 +200,47 @@ public class RegexProperties implements JsonConvertible {
 
     public void unsetCharClassesCanBeMatchedWithMask() {
         charClassesCanBeMatchedWithMask = false;
+    }
+
+    /**
+     * Returns {@code true} iff no {@link CharacterClass} node in the expression may match a
+     * variable amount of {@code byte}s in an UTF-8 encoded string, i.e. all {@link CharacterClass}
+     * nodes match characters from exactly one of the following ranges:
+     *
+     * <pre>
+     * [0x0     - 0x7f    ] (one byte)
+     * [0x80    - 0x7ff   ] (two bytes)
+     * [0x800   - 0xffff  ] (three bytes)
+     * [0x10000 - 0x10ffff] (four bytes)
+     * </pre>
+     */
+    public boolean isFixedCodePointWidthUTF8() {
+        return fixedCodePointWidthUTF8;
+    }
+
+    public void setFixedCodePointWidthUTF8(boolean fixedCodePointWidthUTF8) {
+        this.fixedCodePointWidthUTF8 = fixedCodePointWidthUTF8;
+    }
+
+    /**
+     * Returns {@code true} iff no {@link CharacterClass} node in the expression may match a
+     * variable amount of {@code char}s in an UTF-16 encoded string, i.e. all {@link CharacterClass}
+     * nodes match characters from exactly one of the following ranges:
+     *
+     * <pre>
+     * [0x0     - 0xffff  ] (one char)
+     * [0x10000 - 0x10ffff] (two chars)
+     * </pre>
+     *
+     * @see Constants#BMP_RANGE
+     * @see Constants#ASTRAL_SYMBOLS
+     */
+    public boolean isFixedCodePointWidthUTF16() {
+        return fixedCodePointWidthUTF16;
+    }
+
+    public void setFixedCodePointWidthUTF16(boolean fixedCodePointWidthUTF16) {
+        this.fixedCodePointWidthUTF16 = fixedCodePointWidthUTF16;
     }
 
     public void setInnerLiteral(int start, int end) {

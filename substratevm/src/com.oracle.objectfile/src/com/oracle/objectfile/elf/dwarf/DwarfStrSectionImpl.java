@@ -30,14 +30,14 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.StringEntry;
 import org.graalvm.compiler.debug.DebugContext;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_STR_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.TEXT_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_STR_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.TEXT_SECTION_NAME;
 
 /**
- * generator for debug_str section.
+ * Generator for debug_str section.
  */
 public class DwarfStrSectionImpl extends DwarfSectionImpl {
-    public DwarfStrSectionImpl(DwarfSections dwarfSections) {
+    public DwarfStrSectionImpl(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
     }
 
@@ -79,7 +79,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
     }
 
     /**
-     * debug_str section content depends on text section content and offset.
+     * The debug_str section content depends on text section content and offset.
      */
     private static final String TARGET_SECTION_NAME = TEXT_SECTION_NAME;
 
@@ -89,12 +89,12 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
     }
 
     /**
-     * debug_str section content depends on text section content and offset.
+     * The debug_str section content depends on text section content and offset.
      */
     private final LayoutDecision.Kind[] targetSectionKinds = {
                     LayoutDecision.Kind.CONTENT,
                     LayoutDecision.Kind.OFFSET,
-                    /* add this so we can use the text section base address for debug */
+                    /* Add this so we can use the text section base address for debug. */
                     LayoutDecision.Kind.VADDR,
     };
 

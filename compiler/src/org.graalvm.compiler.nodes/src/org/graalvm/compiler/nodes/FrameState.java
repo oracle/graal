@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -581,7 +580,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
          * when it's a substitution or it's null.
          */
         assertTrue(outerFrameState != null || graph() == null || graph().method() == null || code == null || Objects.equals(graph().method(), code.getMethod()) ||
-                        graph().method().getAnnotation(MethodSubstitution.class) != null, "wrong outerFrameState %s != %s", code == null ? "null" : code.getMethod(), graph().method());
+                        graph().isSubstitution(), "wrong outerFrameState %s != %s", code == null ? "null" : code.getMethod(), graph().method());
         if (monitorIds() != null && monitorIds().size() > 0) {
             int depth = outerLockDepth();
             for (MonitorIdNode monitor : monitorIds()) {

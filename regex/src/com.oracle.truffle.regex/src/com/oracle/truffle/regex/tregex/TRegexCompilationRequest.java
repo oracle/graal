@@ -197,7 +197,8 @@ public final class TRegexCompilationRequest {
         if (!(properties.hasAlternations() || properties.hasLookAroundAssertions())) {
             preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
-        if (allowSimpleCG && preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops()) {
+        if (allowSimpleCG && preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops() &&
+                        properties.isFixedCodePointWidthUTF16() && properties.isFixedCodePointWidthUTF8()) {
             try {
                 phaseStart("TraceFinder NFA");
                 traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);

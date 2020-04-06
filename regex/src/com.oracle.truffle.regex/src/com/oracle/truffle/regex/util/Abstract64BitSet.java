@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,94 +38,92 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.automaton;
-
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+package com.oracle.truffle.regex.util;
 
 import java.util.PrimitiveIterator;
 
-public class StateSetBackingBitSet implements StateSetBackingSet {
+public final class Abstract64BitSet {
 
-    private final CompilationFinalBitSet bitSet;
-
-    public StateSetBackingBitSet(int stateIndexSize) {
-        bitSet = new CompilationFinalBitSet(stateIndexSize);
+    private static long toBit(int b) {
+        return 1L << b;
     }
 
-    private StateSetBackingBitSet(StateSetBackingBitSet copy) {
-        bitSet = copy.bitSet.copy();
+    public static boolean isEmpty(long bs) {
+        return bs == 0;
     }
 
-    @Override
-    public StateSetBackingSet copy() {
-        return new StateSetBackingBitSet(this);
+    public static boolean isFull(long bs) {
+        return bs == ~0L;
     }
 
-    @Override
-    public boolean contains(int id) {
-        return bitSet.get(id);
+    public static int size(long bs) {
+        return Long.bitCount(bs);
     }
 
-    @Override
-    public boolean add(int id) {
-        if (bitSet.get(id)) {
-            return false;
+    public static boolean get(long bs, int b) {
+        return b < 64 && (bs & toBit(b)) != 0;
+    }
+
+    public static long set(long bs, int b) {
+        assert b < 64;
+        return bs | toBit(b);
+    }
+
+    public static long clear(long bs, int b) {
+        assert b < 64;
+        return bs & ~toBit(b);
+    }
+
+    public static boolean intersects(long bs1, long bs2) {
+        return !isDisjoint(bs1, bs2);
+    }
+
+    public static boolean isDisjoint(long bs1, long bs2) {
+        return (bs1 & bs2) == 0;
+    }
+
+    public static boolean contains(long bs1, long bs2) {
+        return (bs1 & bs2) == bs2;
+    }
+
+    /**
+     * Compatible with {@link BitSets#hashCode(long[])}.
+     */
+    public static int hashCode(long bs) {
+        long h = 1234 ^ bs;
+        return (int) ((h >> 32) ^ h);
+    }
+
+    public static boolean equals(long bs1, long bs2) {
+        return bs1 == bs2;
+    }
+
+    public static PrimitiveIterator.OfInt iterator(long bs) {
+        return new Abstract64BitSetIterator(bs);
+    }
+
+    private static final class Abstract64BitSetIterator implements PrimitiveIterator.OfInt {
+
+        private long bs;
+        private int i = -1;
+
+        Abstract64BitSetIterator(long bs) {
+            this.bs = bs;
         }
-        bitSet.set(id);
-        return true;
-    }
 
-    @Override
-    public void addBatch(int id) {
-        bitSet.set(id);
-    }
-
-    @Override
-    public void addBatchFinish() {
-    }
-
-    @Override
-    public void replace(int oldId, int newId) {
-        bitSet.clear(oldId);
-        bitSet.set(newId);
-    }
-
-    @Override
-    public boolean remove(int id) {
-        if (bitSet.get(id)) {
-            bitSet.clear(id);
-            return true;
+        @Override
+        public boolean hasNext() {
+            return bs != 0;
         }
-        return false;
-    }
 
-    @Override
-    public void clear() {
-        bitSet.clear();
-    }
-
-    @Override
-    public boolean isDisjoint(StateSetBackingSet other) {
-        return bitSet.isDisjoint(((StateSetBackingBitSet) other).bitSet);
-    }
-
-    @Override
-    public boolean contains(StateSetBackingSet other) {
-        return bitSet.contains(((StateSetBackingBitSet) other).bitSet);
-    }
-
-    @Override
-    public PrimitiveIterator.OfInt iterator() {
-        return bitSet.iterator();
-    }
-
-    @Override
-    public int hashCode() {
-        return bitSet.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return this == obj || obj instanceof StateSetBackingBitSet && bitSet.equals(((StateSetBackingBitSet) obj).bitSet);
+        @Override
+        public int nextInt() {
+            assert hasNext();
+            int trailingZeros = Long.numberOfTrailingZeros(bs);
+            bs >>>= trailingZeros;
+            bs >>>= 1;
+            i += trailingZeros + 1;
+            return i;
+        }
     }
 }

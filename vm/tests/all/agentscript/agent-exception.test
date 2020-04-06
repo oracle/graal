@@ -43,3 +43,9 @@ Error while initializing {id: "agentscript", version: "0.4"}
 Error while initializing {id: "agentscript", version: "0.4"}
 .*at <js> :anonymous.*agent-error.js.*
 .*at <js> .*Unknown.*
+>[7] js --jvm --experimental-options --agentscript=agent-error4.js -f log.js
+Error loading of source log.js.*
+.*at <js>.*agent-error4.js:.*
+>[7] js --experimental-options --agentscript=agent-error4.js -f log.js
+Error loading of source log.js.*
+.*at <js>.*agent-error4.js:.*

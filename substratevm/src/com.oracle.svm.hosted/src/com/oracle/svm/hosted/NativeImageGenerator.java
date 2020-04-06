@@ -611,7 +611,7 @@ public class NativeImageGenerator {
                 codeCache.layoutConstants();
                 codeCache.layoutMethods(debug, imageName, bigbang, compilationExecutor);
 
-                AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, hMetaAccess, heap, debug);
+                AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, hMetaAccess, compileQueue.getCompilationTasks(), heap, debug);
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
             }
             CodeCacheProvider codeCacheProvider = runtime.getRuntimeConfig().getBackendForNormalMethod().getProviders().getCodeCache();
@@ -630,7 +630,7 @@ public class NativeImageGenerator {
                         heapLayouter.initialize();
                         heapLayouter.assignPartitionRelativeOffsets(heap);
 
-                        AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, hMetaAccess, debug);
+                        AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
                         this.image = AbstractBootImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader.getClassLoader());

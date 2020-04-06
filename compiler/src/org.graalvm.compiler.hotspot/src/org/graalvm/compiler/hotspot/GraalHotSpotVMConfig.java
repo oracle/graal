@@ -131,8 +131,17 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useAESCTRIntrinsics = getFlag("UseAESCTRIntrinsics", Boolean.class, false, (JDK == 8 && !IS_OPENJDK) || JDK >= 9);
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
     public final boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class, false, JDK >= 9); // JDK-8073583
-    public final boolean threadLocalHandshakes = getFlag("ThreadLocalHandshakes", Boolean.class, false, JDK >= 10 && JDK < 14); // JDK-8220049
-
+    public final boolean useThreadLocalPolling;
+    {
+        if (JDK >= 14) {
+            // JDK-8220049, JDK-8220051
+            useThreadLocalPolling = true;
+        } else if (JDK >= 10) {
+            useThreadLocalPolling = getFlag("ThreadLocalHandshakes", Boolean.class);
+        } else {
+            useThreadLocalPolling = false;
+        }
+    }
     private final boolean useMultiplyToLenIntrinsic = getFlag("UseMultiplyToLenIntrinsic", Boolean.class);
     private final boolean useSHA1Intrinsics = getFlag("UseSHA1Intrinsics", Boolean.class);
     private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
@@ -357,12 +366,15 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         if (JDK >= 13) {
             return getFieldOffset("JVMCICompileState::" + name, Integer.class, "jbyte");
         }
-        return getFieldOffset("JVMCIEnv::" + name, Integer.class, "jbyte");
+        if (JDK == 12) {
+            return getFieldOffset("JVMCIEnv::" + name, Integer.class, "jbyte");
+        }
+        return Integer.MIN_VALUE;
     }
 
     public final int threadTlabOffset = getFieldOffset("Thread::_tlab", Integer.class, "ThreadLocalAllocBuffer");
     public final int javaThreadAnchorOffset = getFieldOffset("JavaThread::_anchor", Integer.class, "JavaFrameAnchor");
-    public final int javaThreadShouldPostOnExceptionsFlagOffset = getFieldOffset("JavaThread::_should_post_on_exceptions_flag", Integer.class, "int");
+    public final int javaThreadShouldPostOnExceptionsFlagOffset = getFieldOffset("JavaThread::_should_post_on_exceptions_flag", Integer.class, "int", Integer.MIN_VALUE, JVMCI || JDK >= 12);
     public final int threadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "oop");
     public final int osThreadOffset = getFieldOffset("JavaThread::_osthread", Integer.class, "OSThread*");
     public final int threadIsMethodHandleReturnOffset = getFieldOffset("JavaThread::_is_method_handle_return", Integer.class, "int");
@@ -565,8 +577,16 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int logOfHRGrainBytes = getFieldValue("HeapRegion::LogOfHRGrainBytes", Integer.class, "int");
 
-    public final long cardtableStartAddress = getFieldValue("CompilerToVM::Data::cardtable_start_address", Long.class, "jbyte*");
     public final int cardtableShift = getFieldValue("CompilerToVM::Data::cardtable_shift", Integer.class, "int");
+    public final long cardtableStartAddress;
+    {
+        // JDK-8237497
+        if (JDK < 15) {
+            cardtableStartAddress = getFieldValue("CompilerToVM::Data::cardtable_start_address", Long.class, "jbyte*");
+        } else {
+            cardtableStartAddress = getFieldValue("CompilerToVM::Data::cardtable_start_address", Long.class, "CardTable::CardValue*");
+        }
+    }
 
     /**
      * This is the largest stack offset encodeable in an OopMapValue. Offsets larger than this will
@@ -618,8 +638,16 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int basicLockSize = getFieldValue("CompilerToVM::Data::sizeof_BasicLock", Integer.class, "int");
     public final int basicLockDisplacedHeaderOffset = getFieldOffset("BasicLock::_displaced_header", Integer.class, markWord);
 
-    public final int threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "address", -1, JDK >= 10);
     public final int threadAllocatedBytesOffset = getFieldOffset("Thread::_allocated_bytes", Integer.class, "jlong");
+    public final int threadPollingPageOffset;
+    {
+        // JDK-8237497
+        if (JDK < 15) {
+            threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "address", -1, JDK >= 10);
+        } else {
+            threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "volatile void*");
+        }
+    }
 
     public final int tlabRefillWasteIncrement = getFlag("TLABWasteIncrement", Integer.class);
 
@@ -762,10 +790,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long dynamicNewInstanceAddress = getAddress("JVMCIRuntime::dynamic_new_instance");
 
     // Allocation stubs that return null when allocation fails
-    public final long newInstanceOrNullAddress = getAddress("JVMCIRuntime::new_instance_or_null");
-    public final long newArrayOrNullAddress = getAddress("JVMCIRuntime::new_array_or_null");
-    public final long newMultiArrayOrNullAddress = getAddress("JVMCIRuntime::new_multi_array_or_null");
-    public final long dynamicNewInstanceOrNullAddress = getAddress("JVMCIRuntime::dynamic_new_instance_or_null");
+    public final long newInstanceOrNullAddress = getAddress("JVMCIRuntime::new_instance_or_null", 0L, JVMCI || JDK >= 12);
+    public final long newArrayOrNullAddress = getAddress("JVMCIRuntime::new_array_or_null", 0L, JVMCI || JDK >= 12);
+    public final long newMultiArrayOrNullAddress = getAddress("JVMCIRuntime::new_multi_array_or_null", 0L, JVMCI || JDK >= 12);
+    public final long dynamicNewInstanceOrNullAddress = getAddress("JVMCIRuntime::dynamic_new_instance_or_null", 0L, JVMCI || JDK >= 12);
 
     public boolean areNullAllocationStubsAvailable() {
         return newInstanceOrNullAddress != 0L;
@@ -855,6 +883,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int MARKID_OSR_ENTRY = getConstant("CodeInstaller::OSR_ENTRY", Integer.class);
     public final int MARKID_EXCEPTION_HANDLER_ENTRY = getConstant("CodeInstaller::EXCEPTION_HANDLER_ENTRY", Integer.class);
     public final int MARKID_DEOPT_HANDLER_ENTRY = getConstant("CodeInstaller::DEOPT_HANDLER_ENTRY", Integer.class);
+    public final int MARKID_FRAME_COMPLETE = getConstant("CodeInstaller::FRAME_COMPLETE", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK >= 15));
     public final int MARKID_INVOKEINTERFACE = getConstant("CodeInstaller::INVOKEINTERFACE", Integer.class);
     public final int MARKID_INVOKEVIRTUAL = getConstant("CodeInstaller::INVOKEVIRTUAL", Integer.class);
     public final int MARKID_INVOKESTATIC = getConstant("CodeInstaller::INVOKESTATIC", Integer.class);
@@ -867,6 +896,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int MARKID_CARD_TABLE_SHIFT = getConstant("CodeInstaller::CARD_TABLE_SHIFT", Integer.class);
     public final int MARKID_CARD_TABLE_ADDRESS = getConstant("CodeInstaller::CARD_TABLE_ADDRESS", Integer.class);
     public final int MARKID_INVOKE_INVALID = getConstant("CodeInstaller::INVOKE_INVALID", Integer.class);
+
+    public final boolean CPU_HAS_INTEL_JCC_ERRATUM = getFieldValue("VM_Version::_has_intel_jcc_erratum", Boolean.class, "bool",
+                    true, "amd64".equals(osArch) && (JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK >= 15));
 
     /**
      * The following constants are given default values here since they are missing in the native

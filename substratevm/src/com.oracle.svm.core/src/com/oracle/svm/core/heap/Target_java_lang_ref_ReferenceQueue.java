@@ -27,47 +27,20 @@ package com.oracle.svm.core.heap;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
-import com.oracle.svm.core.annotate.Inject;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.UnknownClass;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
 
-/**
- * Substitution of {@link ReferenceQueue}. Implementation methods are in
- * {@link ReferenceQueueInternals} so that subclasses cannot interfere with them.
- */
-@UnknownClass
 @TargetClass(ReferenceQueue.class)
-@Substitute
 final class Target_java_lang_ref_ReferenceQueue<T> {
+    @Alias static Target_java_lang_ref_ReferenceQueue<Object> NULL;
 
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = UninterruptibleUtils.AtomicReference.class) //
-    final UninterruptibleUtils.AtomicReference<Reference<? extends T>> queueHead;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    volatile Reference<? extends T> head;
 
-    @Substitute
-    Target_java_lang_ref_ReferenceQueue() {
-        queueHead = new UninterruptibleUtils.AtomicReference<>(null);
-    }
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    long queueLength;
 
-    @Substitute
-    Reference<? extends T> poll() {
-        return ReferenceQueueInternals.doPoll(this);
-    }
-
-    @Substitute
-    Reference<? extends T> remove() throws InterruptedException {
-        return ReferenceQueueInternals.doRemove(this);
-    }
-
-    @Substitute
-    Reference<? extends T> remove(long timeoutMillis) throws InterruptedException {
-        return ReferenceQueueInternals.doRemove(this, timeoutMillis);
-    }
-
-    @Substitute
-    boolean enqueue(Reference<? extends T> ref) {
-        return ReferenceQueueInternals.doEnqueue(this, ref);
-    }
+    @Alias
+    native boolean enqueue(Target_java_lang_ref_Reference<? extends T> instance);
 }

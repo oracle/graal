@@ -43,12 +43,12 @@ package com.oracle.truffle.regex.tregex.automaton;
 /**
  * Represents a set of NFA transitions to be used in {@link TransitionBuilder}.
  */
-public class TransitionSet<S extends AbstractState<S, T>, T extends AbstractTransition<S, T>> {
+public class TransitionSet<SI extends StateIndex<? super S>, S extends AbstractState<S, T>, T extends AbstractTransition<S, T>> {
 
     private final T[] transitions;
-    private final StateSet<S> targetStateSet;
+    private final StateSet<SI, S> targetStateSet;
 
-    public TransitionSet(T[] transitions, StateSet<S> targetStateSet) {
+    public TransitionSet(T[] transitions, StateSet<SI, S> targetStateSet) {
         this.transitions = transitions;
         this.targetStateSet = targetStateSet;
     }
@@ -57,7 +57,7 @@ public class TransitionSet<S extends AbstractState<S, T>, T extends AbstractTran
         return transitions;
     }
 
-    public StateSet<S> getTargetStateSet() {
+    public StateSet<SI, S> getTargetStateSet() {
         return targetStateSet;
     }
 

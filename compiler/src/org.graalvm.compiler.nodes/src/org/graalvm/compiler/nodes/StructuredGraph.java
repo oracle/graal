@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes;
 
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -420,12 +422,14 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     private static boolean checkIsSubstitutionInvariants(ResolvedJavaMethod method, boolean isSubstitution) {
-        if (method != null) {
-            if (method.getAnnotation(Snippet.class) != null || method.getAnnotation(MethodSubstitution.class) != null) {
-                assert isSubstitution : "Graph for method " + method.format("%H.%n(%p)") +
-                                " annotated by " + Snippet.class.getName() + " or " +
-                                MethodSubstitution.class.getName() +
-                                " must have its `isSubstitution` field set to true";
+        if (!IS_IN_NATIVE_IMAGE) {
+            if (method != null) {
+                if (method.getAnnotation(Snippet.class) != null || method.getAnnotation(MethodSubstitution.class) != null) {
+                    assert isSubstitution : "Graph for method " + method.format("%H.%n(%p)") +
+                                    " annotated by " + Snippet.class.getName() + " or " +
+                                    MethodSubstitution.class.getName() +
+                                    " must have its `isSubstitution` field set to true";
+                }
             }
         }
         return true;

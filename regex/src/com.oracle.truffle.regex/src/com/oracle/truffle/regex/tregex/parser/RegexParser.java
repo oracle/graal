@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -280,7 +281,7 @@ public final class RegexParser {
             throw syntaxError(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
         }
         if (parent.isLookAroundAssertion()) {
-            curSequence = (Sequence) parent.getParent();
+            curSequence = parent.getParent().asSequence();
             curTerm = (Term) parent;
             optimizeLookAround();
         } else {
@@ -330,6 +331,27 @@ public final class RegexParser {
                 }
             }
         }
+        /*
+         * Convert single-character-class negative lookarounds to positive ones by the following
+         * expansion: {@code (?!x) -> (?:$|(?=[^x]))}. This simplifies things for the DFA generator.
+         */
+        if (lookaround.isNegated() && group.size() == 1 && group.getFirstAlternative().isSingleCharClass()) {
+            ast.invertNegativeLookAround(lookaround);
+            CharacterClass cc = group.getFirstAlternative().getFirstTerm().asCharacterClass();
+            // we don't have to expand the inverse in unicode explode mode here, because the
+            // character set is guaranteed to be in BMP range, and its inverse will match all
+            // surrogates
+            assert !flags.isUnicode() || !options.isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
+            assert !group.hasEnclosedCaptureGroups();
+            cc.setCharSet(cc.getCharSet().createInverse());
+            curSequence.removeLastTerm();
+            Group wrapGroup = ast.createGroup();
+            Sequence positionAssertionSeq = wrapGroup.addSequence(ast);
+            positionAssertionSeq.add(ast.createPositionAssertion(lookaround.isLookAheadAssertion() ? PositionAssertion.Type.DOLLAR : PositionAssertion.Type.CARET));
+            Sequence wrapSeq = wrapGroup.addSequence(ast);
+            wrapSeq.add(lookaround);
+            addTerm(wrapGroup);
+        }
     }
 
     private void addTerm(Term term) {
@@ -353,7 +375,7 @@ public final class RegexParser {
 
     private Term translateUnicodeCharClass(Token.CharacterClass token) {
         CodePointSet codePointSet = token.getCodePointSet();
-        if (Constants.BMP_WITHOUT_SURROGATES.contains(token.getCodePointSet())) {
+        if (!options.isUTF16ExplodeAstralSymbols() || Constants.BMP_WITHOUT_SURROGATES.contains(token.getCodePointSet())) {
             return createCharClass(codePointSet, token, token.wasSingleChar());
         }
         Group group = ast.createGroup();
@@ -389,11 +411,11 @@ public final class RegexParser {
         if (astralRanges.matchesSomething()) {
             // completeRanges matches surrogate pairs where leading surrogates can be followed by
             // any trailing surrogates
-            IntRangesBuffer completeRanges = compilationBuffer.getIntRangesBuffer2();
+            CodePointSetAccumulator completeRanges = compilationBuffer.getCodePointSetAccumulator1();
             completeRanges.clear();
 
             char curLead = Character.highSurrogate(astralRanges.getLo(0));
-            IntRangesBuffer curTrails = tmp;
+            CodePointSetAccumulator curTrails = compilationBuffer.getCodePointSetAccumulator2();
             curTrails.clear();
             for (int i = 0; i < astralRanges.size(); i++) {
                 char startLead = Character.highSurrogate(astralRanges.getLo(i));
@@ -402,10 +424,10 @@ public final class RegexParser {
                 final char endTrail = Character.lowSurrogate(astralRanges.getHi(i));
 
                 if (startLead > curLead) {
-                    if (curTrails.matchesSomething()) {
+                    if (!curTrails.isEmpty()) {
                         Sequence finishedAlternative = group.addSequence(ast);
-                        finishedAlternative.add(createCharClass(CodePointSet.create(curLead, curLead), token));
-                        finishedAlternative.add(createCharClass(curTrails, token));
+                        finishedAlternative.add(createCharClass(CodePointSet.create(curLead), token));
+                        finishedAlternative.add(createCharClass(curTrails.toCodePointSet(), token));
                     }
                     curLead = startLead;
                     curTrails.clear();
@@ -419,10 +441,10 @@ public final class RegexParser {
                         startLead = (char) (startLead + 1);
                     }
 
-                    if (curTrails.matchesSomething()) {
+                    if (!curTrails.isEmpty()) {
                         Sequence finishedAlternative = group.addSequence(ast);
-                        finishedAlternative.add(createCharClass(CodePointSet.create(curLead, curLead), token));
-                        finishedAlternative.add(createCharClass(curTrails, token));
+                        finishedAlternative.add(createCharClass(CodePointSet.create(curLead), token));
+                        finishedAlternative.add(createCharClass(curTrails.toCodePointSet(), token));
                     }
                     curLead = endLead;
                     curTrails.clear();
@@ -439,17 +461,17 @@ public final class RegexParser {
 
                 }
             }
-            if (curTrails.matchesSomething()) {
+            if (!curTrails.isEmpty()) {
                 Sequence lastAlternative = group.addSequence(ast);
-                lastAlternative.add(createCharClass(CodePointSet.create(curLead, curLead), token));
-                lastAlternative.add(createCharClass(curTrails, token));
+                lastAlternative.add(createCharClass(CodePointSet.create(curLead), token));
+                lastAlternative.add(createCharClass(curTrails.toCodePointSet(), token));
             }
 
-            if (completeRanges.matchesSomething()) {
+            if (!completeRanges.isEmpty()) {
                 // Complete ranges match more often and so we want them as an early alternative
                 Sequence completeRangesAlt = ast.createSequence();
                 group.insertFirst(completeRangesAlt);
-                completeRangesAlt.add(createCharClass(completeRanges, token));
+                completeRangesAlt.add(createCharClass(completeRanges.toCodePointSet(), token));
                 completeRangesAlt.add(createCharClass(Constants.TRAIL_SURROGATE_RANGE, token));
             }
         }
@@ -475,10 +497,6 @@ public final class RegexParser {
         }
     }
 
-    private CharacterClass createCharClass(IntRangesBuffer buf, Token token) {
-        return createCharClass(CodePointSet.create(buf), token);
-    }
-
     private CharacterClass createCharClass(CodePointSet charSet, Token token) {
         return createCharClass(charSet, token, false);
     }
@@ -488,6 +506,18 @@ public final class RegexParser {
         ast.addSourceSection(characterClass, token);
         if (wasSingleChar) {
             characterClass.setWasSingleChar();
+        }
+        if (charSet.matchesSomething()) {
+            int max = charSet.getMax();
+            if (max >= 0x80) {
+                int min = charSet.getMin();
+                if (min < 0x10000 && max > 0x10000) {
+                    properties.setFixedCodePointWidthUTF16(false);
+                    properties.setFixedCodePointWidthUTF8(false);
+                } else if (min < 0x80 || min < 0x800 && max >= 0x800) {
+                    properties.setFixedCodePointWidthUTF8(false);
+                }
+            }
         }
         return characterClass;
     }
@@ -552,7 +582,7 @@ public final class RegexParser {
         } else {
             assert !unroll || quantifier.getMin() == 0;
             // replace the term to expand with a new wrapper group
-            ((Sequence) toExpand.getParent()).replace(toExpand.getSeqIndex(), createGroup(null, false, false, false, null));
+            toExpand.getParent().asSequence().replace(toExpand.getSeqIndex(), createGroup(null, false, false, false, null));
         }
         // unroll optional part ( x{0,3} -> (x(x(x|)|)|) )
         createOptional(toExpand, quantifier, unroll && quantifier.getMin() > 0, unroll, !unroll || quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1);
@@ -798,7 +828,6 @@ public final class RegexParser {
     private void optimizeGroup() {
         sortAlternatives(curGroup);
         mergeCommonPrefixes(curGroup);
-        singleCharNegativeLookAroundToPositive(curGroup);
     }
 
     private void parseQuantifier(Token.Quantifier quantifier) throws RegexSyntaxException {
@@ -927,7 +956,7 @@ public final class RegexParser {
             int end = findSingleCharAlternatives(group, begin);
             if (end > begin + 1) {
                 group.getAlternatives().subList(begin, end).sort((Sequence a, Sequence b) -> {
-                    return ((CharacterClass) a.getFirstTerm()).getCharSet().getLo(0) - ((CharacterClass) b.getFirstTerm()).getCharSet().getLo(0);
+                    return a.getFirstTerm().asCharacterClass().getCharSet().getMin() - b.getFirstTerm().asCharacterClass().getCharSet().getMin();
                 });
                 begin = end;
             } else {
@@ -1089,29 +1118,6 @@ public final class RegexParser {
             ret = i + 1;
         }
         return ret;
-    }
-
-    /**
-     * Convert single-character-class negative lookarounds to positive ones by the following
-     * expansion: {@code (?!x) -> (?=[^x]|$)}. This simplifies things for the DFA generator.
-     */
-    private void singleCharNegativeLookAroundToPositive(Group group) {
-        if (group.getParent().isLookAroundAssertion() && group.getParent().asLookAroundAssertion().isNegated() && group.size() == 1 && group.getFirstAlternative().isSingleCharClass()) {
-            ast.invertNegativeLookAround((LookAroundAssertion) group.getParent());
-            CharacterClass cc = (CharacterClass) group.getFirstAlternative().getFirstTerm();
-            // we don't have to expand the inverse in unicode mode here, because the character set
-            // is guaranteed to be in BMP range, and its inverse will match all surrogates
-            cc.setCharSet(cc.getCharSet().createInverse());
-            Sequence empty = ast.createSequence();
-            if (group.getParent().isLookAheadAssertion()) {
-                empty.add(ast.createPositionAssertion(PositionAssertion.Type.DOLLAR));
-                properties.setComplexLookAheadAssertions();
-            } else {
-                empty.add(ast.createPositionAssertion(PositionAssertion.Type.CARET));
-                properties.setComplexLookBehindAssertions();
-            }
-            group.add(empty);
-        }
     }
 
     private RegexSyntaxException syntaxError(String msg) {

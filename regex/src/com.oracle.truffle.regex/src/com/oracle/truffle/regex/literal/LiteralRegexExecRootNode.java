@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -221,10 +221,12 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
     public static final class EndsWith extends NonEmptyLiteralRegexExecRootNode {
 
+        private final boolean sticky;
         @Child InputEndsWithNode endsWithNode = InputEndsWithNode.create();
 
         public EndsWith(RegexLanguage language, RegexAST ast, PreCalcResultVisitor preCalcResultVisitor) {
             super(language, ast, preCalcResultVisitor);
+            this.sticky = ast.getFlags().isSticky();
         }
 
         @Override
@@ -234,7 +236,8 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            if (fromIndex <= inputLength(input) - literal.length() && endsWithNode.execute(input, literal, mask)) {
+            int matchStart = inputLength(input) - literal.length();
+            if ((sticky ? fromIndex == matchStart : fromIndex <= matchStart) && endsWithNode.execute(input, literal, mask)) {
                 return resultFactory.createFromEnd(inputLength(input));
             } else {
                 return NoMatchResult.getInstance();

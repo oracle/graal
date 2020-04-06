@@ -303,10 +303,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
         int fileComparison = rm1.getDeclaringClass().getSourceFileName().compareTo(rm2.getDeclaringClass().getSourceFileName());
         if (fileComparison != 0) {
             return fileComparison;
-        } else if (rm1.getLineNumberTable() != null && rm2.getLineNumberTable() != null) {
-            return rm1.getLineNumberTable().getLineNumber(0) - rm2.getLineNumberTable().getLineNumber(0);
         }
-        return 0;
+        int rm1Line = rm1.getLineNumberTable() != null ? rm1.getLineNumberTable().getLineNumber(0) : -1;
+        int rm2Line = rm2.getLineNumberTable() != null ? rm2.getLineNumberTable().getLineNumber(0) : -1;
+        return rm1Line - rm2Line;
     }
 
     private void writeMethodHeader(HostedMethod m, CSourceCodeWriter writer, boolean dynamic) {
@@ -461,8 +461,9 @@ public abstract class NativeBootImage extends AbstractBootImage {
             cGlobals.writeData(rwDataBuffer, (offset, symbolName) -> defineDataSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET));
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
 
-            // if we have constructed any debug info then
-            // give the object file a chance to install it
+            /*
+             * If we constructed debug info give the object file a chance to install it
+             */
             if (SubstrateOptions.GenerateDebugInfo.getValue(HostedOptionValues.singleton()) > 0) {
                 ImageSingletons.add(SourceManager.class, new SourceManager());
                 DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap);

@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
@@ -51,18 +52,18 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.WeakHashMap;
 
 @SuppressWarnings({"unused", "static-method"})
 @ExportLibrary(InteropLibrary.class)
 final class AgentObject implements TruffleObject {
     private final TruffleInstrument.Env env;
-    private final ExcludeAgentScriptsFilter excludeSources = new ExcludeAgentScriptsFilter();
+    private final IgnoreSources excludeSources;
     private final Map<AgentType, Map<Object, EventBinding<?>>> listeners = new EnumMap<>(AgentType.class);
     private Object closeFn;
 
-    AgentObject(TruffleInstrument.Env env) {
+    AgentObject(TruffleInstrument.Env env, IgnoreSources excludeSources) {
         this.env = env;
+        this.excludeSources = excludeSources;
     }
 
     private void registerHandle(AgentType at, EventBinding<?> handle, Object arg) {
@@ -84,26 +85,6 @@ final class AgentObject implements TruffleObject {
         }
         if (remove != null) {
             remove.dispose();
-        }
-    }
-
-    void ignoreSource(Source script) {
-        excludeSources.ignoreSource(script);
-    }
-
-    private static final class ExcludeAgentScriptsFilter implements SourceSectionFilter.SourcePredicate {
-        private final Map<Source, Boolean> ignore = new WeakHashMap<>();
-
-        ExcludeAgentScriptsFilter() {
-        }
-
-        @Override
-        public boolean test(Source source) {
-            return !Boolean.TRUE.equals(ignore.get(source));
-        }
-
-        void ignoreSource(Source source) {
-            ignore.put(source, Boolean.TRUE);
         }
     }
 
@@ -147,10 +128,17 @@ final class AgentObject implements TruffleObject {
                         EventBinding<LoadSourceListener> handle = instrumenter.attachLoadSourceListener(filter, new LoadSourceListener() {
                             @Override
                             public void onLoad(LoadSourceEvent event) {
+                                final Source source = event.getSource();
                                 try {
-                                    interop.execute(args[1], new SourceEventObject(event.getSource()));
+                                    interop.execute(args[1], new SourceEventObject(source));
+                                } catch (RuntimeException ex) {
+                                    if (ex instanceof TruffleException) {
+                                        AgentException.throwWhenExecuted(instrumenter, source, ex);
+                                    } else {
+                                        throw ex;
+                                    }
                                 } catch (InteropException ex) {
-                                    throw AgentException.raise(ex);
+                                    AgentException.throwWhenExecuted(instrumenter, source, ex);
                                 }
                             }
                         }, false);

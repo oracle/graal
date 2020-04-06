@@ -126,22 +126,30 @@ public class GraalHotSpotVMConfigAccess {
     public final String osArch;
 
     protected static final Version JVMCI_0_55 = new Version2(0, 55);
+    protected static final Version JVMCI_20_1_b01 = new Version3(20, 1, 1);
     protected static final Version JVMCI_20_0_b03 = new Version3(20, 0, 3);
     protected static final Version JVMCI_19_3_b03 = new Version3(19, 3, 3);
     protected static final Version JVMCI_19_3_b04 = new Version3(19, 3, 4);
     protected static final Version JVMCI_19_3_b07 = new Version3(19, 3, 7);
 
     public static boolean jvmciGE(Version v) {
-        return !JVMCI_VERSION.isLessThan(v);
+        return JVMCI_PRERELEASE || !JVMCI_VERSION.isLessThan(v);
     }
 
     public static final int JDK = JavaVersionUtil.JAVA_SPEC;
     public static final boolean IS_OPENJDK = getProperty("java.vm.name", "").startsWith("OpenJDK");
-    public static final Version JVMCI_VERSION = Version.parse(getProperty("java.vm.version"));
-    public static final boolean JVMCI = JVMCI_VERSION != null;
+    public static final Version JVMCI_VERSION;
+    public static final boolean JVMCI;
+    public static final boolean JVMCI_PRERELEASE;
+    static {
+        String vmVersion = getProperty("java.vm.version");
+        JVMCI_VERSION = Version.parse(vmVersion);
+        JVMCI_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("internal");
+        JVMCI = JVMCI_VERSION != null || JVMCI_PRERELEASE;
+    }
 
-    private List<String> missing;
-    private List<String> unexpected;
+    private final List<String> missing = new ArrayList<>();
+    private final List<String> unexpected = new ArrayList<>();
 
     /**
      * Records an error if {@code map.contains(name) != expectPresent}. That is, it's an error if
@@ -152,46 +160,64 @@ public class GraalHotSpotVMConfigAccess {
     private boolean isPresent(String name, Map<String, ?> map, boolean expectPresent) {
         if (map.containsKey(name)) {
             if (!expectPresent) {
-                unexpected = recordError(name, unexpected, String.valueOf(map.get(name)));
+                recordError(name, unexpected, String.valueOf(map.get(name)));
             }
             return true;
         }
         if (expectPresent) {
-            missing = recordError(name, missing, null);
+            recordError(name, missing, null);
         }
 
         return false;
     }
 
-    private static List<String> recordError(String name, List<String> list, String unexpectedValue) {
-        List<String> result = list == null ? new ArrayList<>() : list;
-        StackTraceElement[] trace = new Exception().getStackTrace();
+    // Only defer errors while in the GraalHotSpotVMConfig
+    // constructor until reportErrors() is called.
+    private boolean deferErrors = this instanceof GraalHotSpotVMConfig;
+
+    private void recordError(String name, List<String> list, String unexpectedValue) {
+        if (JVMCI_PRERELEASE) {
+            return;
+        }
         String message = name;
-        for (StackTraceElement e : trace) {
-            if (!e.getClassName().equals(GraalHotSpotVMConfigAccess.class.getName())) {
-                message += " at " + e;
-                break;
+        if (deferErrors) {
+            StackTraceElement[] trace = new Exception().getStackTrace();
+            for (StackTraceElement e : trace) {
+                if (e.getClassName().equals(GraalHotSpotVMConfigAccess.class.getName())) {
+                    // Skip methods in GraalHotSpotVMConfigAccess
+                    continue;
+                }
+                // Looking for the field assignment in a constructor
+                if (e.getMethodName().equals("<init>")) {
+                    message += " at " + e;
+                    break;
+                }
             }
         }
         if (unexpectedValue != null) {
             message += " [value: " + unexpectedValue + "]";
         }
-        result.add(message);
-        return result;
+        list.add(message);
+        if (!deferErrors) {
+            reportErrors();
+        }
     }
 
     protected void reportErrors() {
-        if (missing != null || unexpected != null) {
+        deferErrors = false;
+        if (!missing.isEmpty() || !unexpected.isEmpty()) {
             String jvmci = JVMCI_VERSION == null ? "" : " jvmci-" + JVMCI_VERSION;
-            String runtime = String.format("JDK %d%s %s-%s (java.home=%s, java.vm.name=%s)", JDK, jvmci, osName, osArch,
+            String runtime = String.format("JDK %d%s %s-%s (java.home=%s, java.vm.name=%s, java.vm.version=%s)",
+                            JDK, jvmci, osName, osArch,
                             getProperty("java.home"),
-                            getProperty("java.vm.name"));
+                            getProperty("java.vm.name"),
+                            getProperty("java.vm.version"));
             List<String> messages = new ArrayList<>();
-            if (missing != null) {
+            if (!missing.isEmpty()) {
                 messages.add(String.format("VM config values missing that should be present in %s:%n    %s", runtime,
                                 missing.stream().sorted().collect(Collectors.joining(System.lineSeparator() + "    "))));
             }
-            if (unexpected != null) {
+            if (!unexpected.isEmpty()) {
                 messages.add(String.format("VM config values not expected to be present in %s:%n    %s", runtime,
                                 unexpected.stream().sorted().collect(Collectors.joining(System.lineSeparator() + "    "))));
             }
@@ -316,7 +342,7 @@ public class GraalHotSpotVMConfigAccess {
         try {
             return access.getFlag(name, type);
         } catch (JVMCIError e) {
-            missing = recordError(name, missing, null);
+            recordError(name, missing, null);
             return getDefault(type);
         }
     }
@@ -351,10 +377,10 @@ public class GraalHotSpotVMConfigAccess {
             }
             T value = access.getFlag(name, type, sentinel);
             if (value != sentinel) {
-                unexpected = recordError(name, unexpected, String.valueOf(value));
+                recordError(name, unexpected, String.valueOf(value));
             }
         }
-        return notPresent;
+        return access.getFlag(name, type, notPresent);
     }
 
     private static <T> T getDefault(Class<T> type) {

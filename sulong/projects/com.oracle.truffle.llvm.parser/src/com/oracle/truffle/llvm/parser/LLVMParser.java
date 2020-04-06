@@ -43,13 +43,14 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyLLVMIRFunction;
+import com.oracle.truffle.llvm.runtime.LLVMLocalScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -64,10 +65,12 @@ public final class LLVMParser {
     private final LLVMParserRuntime runtime;
     private final LLVMContext context;
     private final ExternalLibrary library;
+    private final LLVMLocalScope localScope;
 
-    public LLVMParser(Source source, LLVMParserRuntime runtime) {
+    public LLVMParser(Source source, LLVMParserRuntime runtime, LLVMLocalScope localScope) {
         this.source = source;
         this.runtime = runtime;
+        this.localScope = localScope;
         this.context = runtime.getContext();
         this.library = runtime.getLibrary();
     }
@@ -127,20 +130,31 @@ public final class LLVMParser {
     private void defineGlobal(GlobalVariable global, List<String> importedSymbols) {
         assert !global.isExternal();
         // handle the file scope
-        LLVMGlobal descriptor = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID());
-        descriptor.define(global.getType(), library);
-        runtime.getFileScope().register(descriptor);
+        LLVMGlobal globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID());
+        globalSymbol.define(global.getType(), library);
+        runtime.getFileScope().register(globalSymbol);
 
         // handle the global scope
         if (global.isExported()) {
-            LLVMSymbol exportedDescriptor = runtime.getGlobalScope().get(global.getName());
-            if (exportedDescriptor == null) {
-                runtime.getGlobalScope().register(descriptor);
-            } else if (exportedDescriptor.isGlobalVariable()) {
+
+            LLVMSymbol exportedSymbolFromLocal = localScope.get(global.getName());
+            if (exportedSymbolFromLocal == null) {
+                localScope.register(globalSymbol);
+            }
+
+            LLVMSymbol exportedSymbolFromGlobal = runtime.getGlobalScope().get(global.getName());
+            if (exportedSymbolFromGlobal == null) {
+                runtime.getGlobalScope().register(globalSymbol);
+            } else if (exportedSymbolFromGlobal.isGlobalVariable()) {
                 importedSymbols.add(global.getName());
             } else {
-                assert exportedDescriptor.isFunction();
-                throw new LLVMLinkerException("The global variable " + global.getName() + " conflicts with a function that has the same name.");
+                assert exportedSymbolFromGlobal.isFunction();
+                // TODO (je) Symbol resolution is currently not correct [GR-21400] - doing
+                // nothing instead of throwing an exception does not make it more wrong but
+                // allows certain use cases to work correctly
+                // This was:
+                // throw new LLVMLinkerException("The global variable " + global.getName() + "
+                // conflicts with a function that has the same name.");
             }
         }
     }
@@ -157,14 +171,25 @@ public final class LLVMParser {
 
         // handle the global scope
         if (functionSymbol.isExported()) {
-            LLVMSymbol exportedDescriptor = runtime.getGlobalScope().get(functionSymbol.getName());
-            if (exportedDescriptor == null) {
+
+            LLVMSymbol exportedSymbolFromLocal = localScope.get(functionSymbol.getName());
+            if (exportedSymbolFromLocal == null) {
+                localScope.register(llvmFunction);
+            }
+
+            LLVMSymbol exportedSymbolFromGlobal = runtime.getGlobalScope().get(functionSymbol.getName());
+            if (exportedSymbolFromGlobal == null) {
                 runtime.getGlobalScope().register(llvmFunction);
-            } else if (exportedDescriptor.isFunction()) {
+            } else if (exportedSymbolFromGlobal.isFunction()) {
                 importedSymbols.add(functionSymbol.getName());
             } else {
-                assert exportedDescriptor.isGlobalVariable();
-                throw new LLVMLinkerException("The function " + functionSymbol.getName() + " conflicts with a global variable that has the same name.");
+                assert exportedSymbolFromGlobal.isGlobalVariable();
+                // TODO (je) Symbol resolution is currently not correct [GR-21400] - doing
+                // nothing instead of throwing an exception does not make it more wrong but
+                // allows certain use cases to work correctly
+                // This was:
+                // throw new LLVMLinkerException("The function " + functionSymbol.getName() + "
+                // conflicts with a global variable that has the same name.");
             }
         }
     }
@@ -202,9 +227,9 @@ public final class LLVMParser {
 
     private void defineAlias(String existingName, boolean existingExported, String newName, boolean newExported, List<String> importedSymbols) {
         // handle the file scope
-        LLVMSymbol aliasTarget = runtime.lookupSymbol(existingName, existingExported);
-        LLVMAlias descriptor = new LLVMAlias(library, newName, aliasTarget);
-        runtime.getFileScope().register(descriptor);
+        LLVMSymbol aliasTarget = runtime.lookupSymbolWithExport(existingName, existingExported);
+        LLVMAlias aliasSymbol = new LLVMAlias(library, newName, aliasTarget);
+        runtime.getFileScope().register(aliasSymbol);
 
         if (existingExported && aliasTarget.getLibrary() != library) {
             importedSymbols.add(aliasTarget.getName());
@@ -212,10 +237,16 @@ public final class LLVMParser {
 
         // handle the global scope
         if (newExported) {
-            LLVMSymbol exportedDescriptor = runtime.getGlobalScope().get(newName);
-            if (exportedDescriptor == null) {
-                runtime.getGlobalScope().register(descriptor);
-            } else if (descriptor.isFunction() && exportedDescriptor.isFunction() || descriptor.isGlobalVariable() && exportedDescriptor.isGlobalVariable()) {
+
+            LLVMSymbol exportedSymbolFromLocal = localScope.get(newName);
+            if (exportedSymbolFromLocal == null) {
+                localScope.register(aliasSymbol);
+            }
+
+            LLVMSymbol exportedSymbolFromGlobal = runtime.getGlobalScope().get(newName);
+            if (exportedSymbolFromGlobal == null) {
+                runtime.getGlobalScope().register(aliasSymbol);
+            } else if (aliasSymbol.isFunction() && exportedSymbolFromGlobal.isFunction() || aliasSymbol.isGlobalVariable() && exportedSymbolFromGlobal.isGlobalVariable()) {
                 importedSymbols.add(newName);
             } else {
                 throw new LLVMLinkerException("The alias " + newName + " conflicts with another symbol that has a different type but the same name.");

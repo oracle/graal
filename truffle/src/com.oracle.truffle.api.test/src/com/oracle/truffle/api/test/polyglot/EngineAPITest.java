@@ -207,7 +207,7 @@ public class EngineAPITest {
 
     @Test
     public void testExperimentalOptionException() {
-        ValueAssert.assertFails(() -> Engine.newBuilder().option("optiontestinstr1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
+        AbstractPolyglotTest.assertFails(() -> Engine.newBuilder().option("optiontestinstr1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
             assertEquals("Option 'optiontestinstr1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(). Do not use experimental options in production environments.",
                             e.getMessage());
         });

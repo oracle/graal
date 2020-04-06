@@ -62,6 +62,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
+import java.lang.ref.WeakReference;
 
 final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -268,7 +269,6 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     void freeInstance(PolyglotLanguageInstance instance) {
         synchronized (engine) {
-            profile.notifyLanguageFreed();
             switch (cache.getPolicy()) {
                 case EXCLUSIVE:
                     // nothing to do
@@ -392,11 +392,9 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     static final class ContextProfile {
 
-        private static final Object UNSET_CONTEXT = new Object();
-
         private final Assumption singleContext;
-        @CompilationFinal private volatile Object cachedSingleContext = UNSET_CONTEXT;
-        @CompilationFinal private volatile Object cachedSingleLanguageContext = UNSET_CONTEXT;
+        @CompilationFinal private volatile WeakReference<Object> cachedSingleContext;
+        @CompilationFinal private volatile WeakReference<PolyglotLanguageContext> cachedSingleLanguageContext;
 
         ContextProfile(PolyglotLanguage language) {
             this.singleContext = language.engine.boundEngine ? Truffle.getRuntime().createAssumption("Language single context.") : NeverValidAssumption.INSTANCE;
@@ -408,10 +406,11 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
         PolyglotLanguageContext profile(Object context) {
             if (singleContext.isValid()) {
-                Object cachedSingle = cachedSingleLanguageContext;
+                WeakReference<PolyglotLanguageContext> ref = cachedSingleLanguageContext;
+                PolyglotLanguageContext cachedSingle = ref == null ? null : ref.get();
                 if (singleContext.isValid()) {
                     assert cachedSingle == context : assertionError(cachedSingle, context);
-                    return (PolyglotLanguageContext) cachedSingle;
+                    return cachedSingle;
                 }
             }
             return (PolyglotLanguageContext) context;
@@ -423,26 +422,19 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
         void notifyContextCreate(PolyglotLanguageContext context, Env env) {
             if (singleContext.isValid()) {
-                Object cachedSingle = this.cachedSingleContext;
+                WeakReference<Object> ref = this.cachedSingleContext;
+                Object cachedSingle = ref == null ? null : ref.get();
                 assert cachedSingle != LANGUAGE.getContext(env) || cachedSingle == null : "Non-null context objects should be distinct";
-                if (cachedSingle == UNSET_CONTEXT) {
+                if (ref == null) {
                     if (singleContext.isValid()) {
-                        this.cachedSingleContext = LANGUAGE.getContext(env);
-                        this.cachedSingleLanguageContext = context;
+                        this.cachedSingleContext = new WeakReference<>(LANGUAGE.getContext(env));
+                        this.cachedSingleLanguageContext = new WeakReference<>(context);
                     }
                 } else {
                     singleContext.invalidate();
-                    cachedSingleContext = UNSET_CONTEXT;
-                    cachedSingleLanguageContext = UNSET_CONTEXT;
+                    cachedSingleContext = null;
+                    cachedSingleLanguageContext = null;
                 }
-            }
-        }
-
-        void notifyLanguageFreed() {
-            if (singleContext.isValid()) {
-                // do not invalidate assumptions if engine is disposed anyway
-                cachedSingleContext = UNSET_CONTEXT;
-                cachedSingleLanguageContext = UNSET_CONTEXT;
             }
         }
     }

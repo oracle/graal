@@ -107,6 +107,19 @@ final class PolyglotProxy implements TruffleObject {
         this.proxy = proxy;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof PolyglotProxy)) {
+            return false;
+        }
+        return proxy == ((PolyglotProxy) obj).proxy;
+    }
+
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(proxy);
+    }
+
     @ExportMessage
     boolean isInstantiable() {
         return proxy instanceof ProxyInstantiable;

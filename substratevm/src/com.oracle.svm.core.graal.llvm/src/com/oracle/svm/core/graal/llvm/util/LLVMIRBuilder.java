@@ -236,6 +236,10 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVM.LLVMPositionBuilderAtEnd(builder, block);
     }
 
+    public void positionBeforeTerminator(LLVMBasicBlockRef block) {
+        LLVM.LLVMPositionBuilderBefore(builder, blockTerminator(block));
+    }
+
     public LLVMValueRef blockTerminator(LLVMBasicBlockRef block) {
         return LLVM.LLVMGetBasicBlockTerminator(block);
     }
@@ -388,6 +392,26 @@ public class LLVMIRBuilder implements AutoCloseable {
         return LLVM.LLVMArrayType(type, length);
     }
 
+    public LLVMTypeRef structType(LLVMTypeRef... types) {
+        return LLVM.LLVMStructTypeInContext(context, new PointerPointer<>(types), types.length, FALSE);
+    }
+
+    public static int countElementTypes(LLVMTypeRef structType) {
+        return LLVM.LLVMCountStructElementTypes(structType);
+    }
+
+    private static LLVMTypeRef getTypeAtIndex(LLVMTypeRef structType, int index) {
+        return LLVM.LLVMStructGetTypeAtIndex(structType, index);
+    }
+
+    private static LLVMTypeRef[] getElementTypes(LLVMTypeRef structType) {
+        LLVMTypeRef[] types = new LLVMTypeRef[countElementTypes(structType)];
+        for (int i = 0; i < types.length; ++i) {
+            types[i] = getTypeAtIndex(structType, i);
+        }
+        return types;
+    }
+
     public LLVMTypeRef vectorType(LLVMTypeRef type, int count) {
         return LLVM.LLVMVectorType(type, count);
     }
@@ -465,6 +489,9 @@ public class LLVMIRBuilder implements AutoCloseable {
             case LLVM.LLVMFunctionTypeKind:
                 String args = Arrays.stream(getParamTypes(type)).map(LLVMIRBuilder::intrinsicType).collect(Collectors.joining(""));
                 return "f_" + intrinsicType(getReturnType(type)) + args + "f";
+            case LLVM.LLVMStructTypeKind:
+                String types = Arrays.stream(getElementTypes(type)).map(LLVMIRBuilder::intrinsicType).collect(Collectors.joining(""));
+                return "sl_" + types + "s";
             default:
                 throw shouldNotReachHere();
         }
@@ -599,8 +626,12 @@ public class LLVMIRBuilder implements AutoCloseable {
         return buildIntrinsicCall("llvm.read_register." + intrinsicType(wordType()), readRegisterType, register);
     }
 
-    private LLVMValueRef buildExtractValue(LLVMValueRef struct, int i) {
+    public LLVMValueRef buildExtractValue(LLVMValueRef struct, int i) {
         return LLVM.LLVMBuildExtractValue(builder, struct, i, DEFAULT_INSTR_NAME);
+    }
+
+    public LLVMValueRef buildInsertValue(LLVMValueRef struct, int i, LLVMValueRef value) {
+        return LLVM.LLVMBuildInsertValue(builder, struct, value, i, DEFAULT_INSTR_NAME);
     }
 
     public LLVMValueRef buildExtractElement(LLVMValueRef vector, LLVMValueRef index) {

@@ -43,6 +43,7 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.tck.DebuggerTester;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -83,11 +84,18 @@ public abstract class LLVMDebugTestBase {
         return testName;
     }
 
+    boolean isCxx() {
+        return testName.endsWith(".cpp");
+    }
+
     @Before
     public void before() {
         final Context.Builder contextBuilder = Context.newBuilder(LANG_ID);
         contextBuilder.allowAllAccess(true);
         contextBuilder.option(OPTION_LAZY_PARSING, String.valueOf(false));
+        if (isCxx()) {
+            contextBuilder.option(SulongEngineOption.LOAD_CXX_LIBRARIES_NAME, "true");
+        }
         setContextOptions(contextBuilder);
         tester = new DebuggerTester(contextBuilder);
     }

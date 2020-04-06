@@ -78,7 +78,7 @@ public class GlobalMetrics {
     /**
      * Prints the values in the object to the file specified by
      * {@link DebugOptions#AggregatedMetricsFile} if present otherwise to
-     * {@link DebugContext#DEFAULT_LOG_STREAM}.
+     * {@link DebugContext#getDefaultLogStream()}.
      */
     public void print(OptionValues options) {
         long[] vals = values;
@@ -88,7 +88,7 @@ public class GlobalMetrics {
             boolean csv = metricsFile != null && (metricsFile.endsWith(".csv") || metricsFile.endsWith(".CSV"));
             PrintStream p = null;
             try {
-                p = metricsFile == null ? DebugContext.DEFAULT_LOG_STREAM : new PrintStream(Files.newOutputStream(Paths.get(metricsFile)));
+                p = metricsFile == null ? DebugContext.getDefaultLogStream() : new PrintStream(Files.newOutputStream(Paths.get(metricsFile)));
                 if (!csv) {
                     if (!map.isEmpty()) {
                         p.println("++ Aggregated Metrics ++");

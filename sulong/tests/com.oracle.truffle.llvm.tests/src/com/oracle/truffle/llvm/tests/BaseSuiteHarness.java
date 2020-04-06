@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -61,6 +61,13 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
 
     private static final List<Path> passingTests = new ArrayList<>();
     private static final List<Path> failingTests = new ArrayList<>();
+
+    /**
+     * Maximum retries on timeout of the reference executable.
+     *
+     * @see #runReference
+     */
+    private static final int MAX_RETRIES = 3;
 
     protected Function<Context.Builder, CaptureOutput> getCaptureOutput() {
         return c -> new CaptureNativeOutput();
@@ -124,7 +131,20 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         String[] inputArgs = getInputArgs(referenceBinary);
         String cmdlineArgs = String.join(" ", inputArgs);
         String cmd = String.join(" ", referenceBinary.toAbsolutePath().toString(), cmdlineArgs);
-        return ProcessUtil.executeNativeCommand(cmd);
+        int retries = 0;
+        for (;;) {
+            try {
+                return ProcessUtil.executeNativeCommand(cmd);
+            } catch (ProcessUtil.TimeoutError e) {
+                /*
+                 * Retry on timeout: This is the reference executable, if that's timing out, it's
+                 * probably not our fault, but some infrastructure issue.
+                 */
+                if (retries++ >= MAX_RETRIES) {
+                    throw e;
+                }
+            }
+        }
     }
 
     @Override

@@ -63,7 +63,6 @@ test-suite-3.2.src/SingleSource/UnitTests/2007-04-10-BitfieldTest.c
 test-suite-3.2.src/SingleSource/UnitTests/2006-02-04-DivRem.c
 test-suite-3.2.src/SingleSource/UnitTests/2003-07-09-LoadShorts.c
 test-suite-3.2.src/SingleSource/UnitTests/SignlessTypes/div.c
-test-suite-3.2.src/SingleSource/UnitTests/SignlessTypes/shr.c
 test-suite-3.2.src/SingleSource/UnitTests/SignlessTypes/cast2.cpp
 test-suite-3.2.src/SingleSource/UnitTests/SignlessTypes/factor.c
 test-suite-3.2.src/SingleSource/UnitTests/Vector/sumarray-dbl.c

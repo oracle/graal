@@ -84,7 +84,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     /**
-     * implementation of the DebugCodeInfo API interface that allows code info to be passed to an
+     * Implementation of the DebugCodeInfo API interface that allows code info to be passed to an
      * ObjectFile when generation of debug info is enabled.
      */
     private class NativeImageDebugCodeInfo implements DebugCodeInfo {
@@ -115,7 +115,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public String fileName() {
             if (fullFilePath != null) {
-                return fullFilePath.getFileName().toString();
+                Path filename = fullFilePath.getFileName();
+                if (filename != null) {
+                    return filename.toString();
+                }
             }
             return "";
         }
@@ -203,7 +206,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     /**
-     * implementation of the DebugLineInfo API interface that allows line number info to be passed
+     * Implementation of the DebugLineInfo API interface that allows line number info to be passed
      * to an ObjectFile when generation of debug info is enabled.
      */
     private class NativeImageDebugLineInfo implements DebugLineInfo {
@@ -226,7 +229,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public String fileName() {
             if (fullFilePath != null) {
-                return fullFilePath.getFileName().toString();
+                Path fileName = fullFilePath.getFileName();
+                if (fileName != null) {
+                    return fileName.toString();
+                }
             }
             return null;
         }
@@ -276,7 +282,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
             /*
              * HostedType and AnalysisType punt calls to getSourceFilename to the wrapped class so
-             * for consistency we need to do the path lookup relative to the wrapped class
+             * for consistency we need to do the path lookup relative to the wrapped class.
              */
             if (declaringClass instanceof HostedType) {
                 declaringClass = ((HostedType) declaringClass).getWrapped();
@@ -290,7 +296,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     /**
-     * implementation of the DebugFrameSizeChange API interface that allows stack frame size change
+     * Implementation of the DebugFrameSizeChange API interface that allows stack frame size change
      * info to be passed to an ObjectFile when generation of debug info is enabled.
      */
     private class NativeImageDebugFrameSizeChange implements DebugFrameSizeChange {

@@ -63,6 +63,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         super(target, optionValues);
     }
 
+    public AMD64MacroAssembler(TargetDescription target, OptionValues optionValues, boolean hasIntelJccErratum) {
+        super(target, optionValues, hasIntelJccErratum);
+    }
+
     public final void decrementq(Register reg, int value) {
         if (value == Integer.MIN_VALUE) {
             subq(reg, value);

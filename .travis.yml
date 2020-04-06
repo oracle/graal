@@ -18,7 +18,7 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-20.0-b02"
+    - JVMCI_VERSION="jvmci-20.1-b01"
     - JDK8_UPDATE_VERSION="242"
     - JDK8_UPDATE_VERSION_SUFFIX=""
 
@@ -27,6 +27,7 @@ matrix:
   - env: JDK="jdk8" GATE="style,fullbuild" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk8" GATE="build,test,helloworld" PRIMARY="substratevm"
+  - env: JDK="jdk8" GATE="build,test,helloworld_debug" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
   - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong"
     addons:
@@ -83,7 +84,7 @@ install:
         if [ "${JDK}" == "jdk8" ]
         then
           export JDT=${MX_PATH}/ecj.jar
-          wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O ${JDT}
+          wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/ecj-4.14.jar -O ${JDT}
         fi
       fi
   - |

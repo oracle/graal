@@ -64,16 +64,8 @@ else
 #   The linker will just copy this section into the final shared object.
 #   Since there is only one bitcode file there is no need for llvm-link.
 # NOTE2: -fembed-bitcode will not work with clang before version 4
-ifndef NO_FEMBED_BITCODE
 %_BC_EMBED_PIC.o: %.bc
 	$(QUIETLY) $(CLANG) -c -fembed-bitcode -O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS} -Wno-everything -fPIC $(CPPFLAGS) $(CFLAGS) -g -o $@ $<
-else
-%_BC_NO_EMBED_PIC.o: %.bc
-	$(QUIETLY) $(CLANG) -c -O0 -Wno-everything -fPIC $(CPPFLAGS) $(CFLAGS) -g -o $@ $<
-
-%_BC_EMBED_PIC.o: %_BC_NO_EMBED_PIC.o %.bc
-	$(QUIETLY) $(LLVM_OBJCOPY) --add-section .llvmbc=$(word 2, $^) --set-section-flags .llvmbc=alloc,contents,load,readonly $< $@
-endif
 
 %$(SO_EXT): %_BC_EMBED_PIC.o
 	$(QUIETLY) $(CLANG) -shared -Wno-everything $(LDFLAGS) -g -o $@ $<

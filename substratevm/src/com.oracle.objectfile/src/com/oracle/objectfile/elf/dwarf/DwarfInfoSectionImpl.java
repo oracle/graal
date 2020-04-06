@@ -34,13 +34,13 @@ import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.LinkedList;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_CODE_compile_unit;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_CODE_subprogram;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_FLAG_true;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_INFO_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_LANG_Java;
-import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_VERSION_2;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_subprogram;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FLAG_true;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_INFO_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_LANG_Java;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_VERSION_2;
 
 /**
  * Section generator for debug_info section.
@@ -51,7 +51,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
      */
     private static final int DW_DIE_HEADER_SIZE = 11;
 
-    public DwarfInfoSectionImpl(DwarfSections dwarfSections) {
+    public DwarfInfoSectionImpl(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
     }
 
@@ -63,7 +63,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     @Override
     public void createContent() {
         /*
-         * we need a single level 0 DIE for each compilation unit (CU). Each CU's Level 0 DIE is
+         * We need a single level 0 DIE for each compilation unit (CU). Each CU's Level 0 DIE is
          * preceded by a fixed header and terminated by a null DIE:
          *
          * <ul>
@@ -82,7 +82,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * a DIE is a recursively defined structure. it starts with a code for the associated abbrev
+         * A DIE is a recursively defined structure. it starts with a code for the associated abbrev
          * entry followed by a series of attribute values, as determined by the entry, terminated by
          * a null value and followed by zero or more child DIEs (zero iff has_children ==
          * no_children).
@@ -101,7 +101,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * note that a null_DIE looks like
+         * Note that a null_DIE looks like:
          *
          * <ul>
          *
@@ -109,7 +109,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * i.e. it also looks like a null_value
+         * i.e. it also looks like a null_value.
          */
 
         byte[] buffer = null;
@@ -121,7 +121,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             assert pos == lengthPos + DW_DIE_HEADER_SIZE;
             pos = writeCU(null, classEntry, buffer, pos);
             /*
-             * no need to backpatch length at lengthPos
+             * No need to backpatch length at lengthPos.
              */
         }
         buffer = new byte[pos];
@@ -140,7 +140,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] size = 0x%08x", pos, size);
         for (ClassEntry classEntry : getPrimaryClasses()) {
             /*
-             * save the offset of this file's CU so it can be used when writing the aranges section
+             * Save the offset of this file's CU so it can be used when writing the aranges section.
              */
             classEntry.setCUIndex(pos);
             int lengthPos = pos;
@@ -149,7 +149,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             assert pos == lengthPos + DW_DIE_HEADER_SIZE;
             pos = writeCU(context, classEntry, buffer, pos);
             /*
-             * backpatch length at lengthPos (excluding length field)
+             * Backpatch length at lengthPos (excluding length field).
              */
             patchLength(lengthPos, buffer, pos);
         }
@@ -159,22 +159,22 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeCUHeader(byte[] buffer, int p) {
         int pos = p;
         if (buffer == null) {
-            /* CU length */
+            /* CU length. */
             pos += putInt(0, scratch, 0);
-            /* dwarf version */
+            /* DWARF version. */
             pos += putShort(DW_VERSION_2, scratch, 0);
-            /* abbrev offset */
+            /* Abbrev offset. */
             pos += putInt(0, scratch, 0);
-            /* address size */
+            /* Address size. */
             return pos + putByte((byte) 8, scratch, 0);
         } else {
-            /* CU length */
+            /* CU length. */
             pos = putInt(0, buffer, pos);
-            /* dwarf version */
+            /* DWARF version. */
             pos = putShort(DW_VERSION_2, buffer, pos);
-            /* abbrev offset */
+            /* Abbrev offset. */
             pos = putInt(0, buffer, pos);
-            /* address size */
+            /* Address size. */
             return putByte((byte) 8, buffer, pos);
         }
     }
@@ -198,7 +198,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writePrimary(context, primaryEntry, buffer, pos);
         }
         /*
-         * write a terminating null attribute for the the level 2 primaries
+         * Write a terminating null attribute for the the level 2 primaries.
          */
         return writeAttrNull(buffer, pos);
 
@@ -216,7 +216,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         verboseLog(context, "  [0x%08x]     hi_pc  0x%08x", pos, primary.getHi());
         pos = writeAttrAddress(primary.getHi(), buffer, pos);
         /*
-         * need to pass true only if method is public
+         * Need to pass true only if method is public.
          */
         verboseLog(context, "  [0x%08x]     external  true", pos);
         return writeFlag(DW_FLAG_true, buffer, pos);
@@ -243,7 +243,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     }
 
     /**
-     * debug_info section content depends on abbrev section content and offset.
+     * The debug_info section content depends on abbrev section content and offset.
      */
     private static final String TARGET_SECTION_NAME = DW_ABBREV_SECTION_NAME;
 

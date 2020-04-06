@@ -81,7 +81,7 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
     }
 
     public static void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean onReturn, Register thread, Register scratch, LIRFrameState state) {
-        if (config.threadLocalHandshakes) {
+        if (config.useThreadLocalPolling) {
             emitThreadLocalPoll(crb, masm, config, onReturn, thread, scratch, state);
         } else {
             emitGlobalPoll(crb, masm, config, onReturn, scratch, state);

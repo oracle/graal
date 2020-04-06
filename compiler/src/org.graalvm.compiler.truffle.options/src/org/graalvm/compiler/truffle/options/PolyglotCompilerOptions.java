@@ -71,8 +71,7 @@ public final class PolyglotCompilerOptions {
     public enum PerformanceWarningKind {
         VIRTUAL_RUNTIME_CALL("call", "Enables virtual call warnings"),
         VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warnings"),
-        VIRTUAL_STORE("store", "Enables virtual store warnings"),
-        BAILOUT("bailout", "Enables bailout warnings");
+        VIRTUAL_STORE("store", "Enables virtual store warnings");
 
         private static final EconomicMap<String, PerformanceWarningKind> kindByName;
         static {
@@ -164,6 +163,15 @@ public final class PolyglotCompilerOptions {
                             } else {
                                 Set<PerformanceWarningKind> result = EnumSet.noneOf(PerformanceWarningKind.class);
                                 for (String name : value.split(",")) {
+                                    if ("bailout".equals(name)) {
+                                        /*
+                                         * The PerformanceWarningKind.BAILOUT was removed but
+                                         * 'bailout' can still appear in option value due to
+                                         * backward compatibility. We need to ignore the 'bailout'
+                                         * option value.
+                                         */
+                                        continue;
+                                    }
                                     try {
                                         result.add(PerformanceWarningKind.forName(name));
                                     } catch (IllegalArgumentException e) {

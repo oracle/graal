@@ -30,8 +30,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 
-import java.util.Set;
-
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -49,6 +47,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
+import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -73,6 +72,9 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     public void maybeInitializeEncoder(OptionValues options) {
+        if (IS_IN_NATIVE_IMAGE) {
+            return;
+        }
         if (IS_BUILDING_NATIVE_IMAGE || UseEncodedGraphs.getValue(options)) {
             synchronized (HotSpotReplacementsImpl.class) {
                 if (snippetEncoder == null) {
@@ -84,20 +86,29 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
     @Override
     public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
-        return method.getAnnotation(HotSpotOperation.class) != null ? HotSpotWordOperationPlugin.class : super.getIntrinsifyingPlugin(method);
+        if (!IS_IN_NATIVE_IMAGE) {
+            if (method.getAnnotation(HotSpotOperation.class) != null) {
+                return HotSpotWordOperationPlugin.class;
+            }
+        }
+        return super.getIntrinsifyingPlugin(method);
     }
 
     @Override
     public void registerMethodSubstitution(MethodSubstitutionPlugin plugin) {
-        if (snippetEncoder != null) {
-            snippetEncoder.registerMethodSubstitution(plugin);
+        if (!IS_IN_NATIVE_IMAGE) {
+            if (snippetEncoder != null) {
+                snippetEncoder.registerMethodSubstitution(plugin);
+            }
         }
     }
 
     @Override
     public void registerConditionalPlugin(InvocationPlugin plugin) {
-        if (snippetEncoder != null) {
-            snippetEncoder.registerConditionalPlugin(plugin);
+        if (!IS_IN_NATIVE_IMAGE) {
+            if (snippetEncoder != null) {
+                snippetEncoder.registerConditionalPlugin(plugin);
+            }
         }
     }
 
@@ -149,10 +160,12 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
     @Override
     public void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
-        if (b.parsingIntrinsic() && snippetEncoder != null) {
-            if (getIntrinsifyingPlugin(method) != null) {
-                snippetEncoder.addDelayedInvocationPluginMethod(method);
-                return;
+        if (!IS_IN_NATIVE_IMAGE) {
+            if (b.parsingIntrinsic() && snippetEncoder != null) {
+                if (getIntrinsifyingPlugin(method) != null) {
+                    snippetEncoder.addDelayedInvocationPluginMethod(method);
+                    return;
+                }
             }
         }
         super.notifyNotInlined(b, method, invoke);
@@ -178,37 +191,58 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
+    public SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method) {
+        if (IS_IN_NATIVE_IMAGE) {
+            OptionValues options = null;
+            if (getEncodedSnippets(options) == null) {
+                throw GraalError.shouldNotReachHere("encoded snippets not found");
+            }
+            return getEncodedSnippets(options).getSnippetParameterInfo(method);
+        }
+        return super.getSnippetParameterInfo(method);
+    }
+
+    @Override
+    public boolean isSnippet(ResolvedJavaMethod method) {
+        if (IS_IN_NATIVE_IMAGE) {
+            if (encodedSnippets == null) {
+                throw GraalError.shouldNotReachHere("encoded snippets not found");
+            }
+            return encodedSnippets.isSnippet(method);
+        }
+        return super.isSnippet(method);
+    }
+
+    @Override
     public void closeSnippetRegistration() {
         snippetRegistrationClosed = true;
     }
 
-    public static SymbolicSnippetEncoder.EncodedSnippets getEncodedSnippets(OptionValues options) {
+    public static EncodedSnippets getEncodedSnippets(OptionValues options) {
         if (!IS_IN_NATIVE_IMAGE && snippetEncoder != null) {
             snippetEncoder.encode(options);
         }
         return encodedSnippets;
     }
 
-    public Set<ResolvedJavaMethod> getSnippetMethods() {
-        if (snippetEncoder != null) {
-            return snippetEncoder.getSnippetMethods();
-        }
-        return null;
+    public void clearSnippetParameterNames() {
+        assert snippetEncoder != null;
+        snippetEncoder.clearSnippetParameterNames();
     }
 
-    static void setEncodedSnippets(SymbolicSnippetEncoder.EncodedSnippets encodedSnippets) {
+    static void setEncodedSnippets(EncodedSnippets encodedSnippets) {
         HotSpotReplacementsImpl.encodedSnippets = encodedSnippets;
     }
 
     public boolean encode(OptionValues options) {
-        SymbolicSnippetEncoder encoder = HotSpotReplacementsImpl.snippetEncoder;
+        SymbolicSnippetEncoder encoder = snippetEncoder;
         if (encoder != null) {
             return encoder.encode(options);
         }
         return false;
     }
 
-    private static volatile SymbolicSnippetEncoder.EncodedSnippets encodedSnippets;
+    private static volatile EncodedSnippets encodedSnippets;
 
     @NativeImageReinitialize private static SymbolicSnippetEncoder snippetEncoder;
 

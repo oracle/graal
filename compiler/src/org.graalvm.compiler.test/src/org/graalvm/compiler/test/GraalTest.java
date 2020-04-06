@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.test;
 
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 import static org.graalvm.compiler.debug.DebugContext.NO_DESCRIPTION;
+import static org.graalvm.compiler.debug.DebugContext.getDefaultLogStream;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -100,10 +100,26 @@ public class GraalTest {
     }
 
     protected Method getMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
-        try {
-            return clazz.getMethod(methodName, parameterTypes);
-        } catch (NoSuchMethodException | SecurityException e) {
-            throw new RuntimeException("method not found: " + methodName + "" + Arrays.toString(parameterTypes));
+        Method found = null;
+        for (Method m : clazz.getMethods()) {
+            if (m.getName().equals(methodName) && Arrays.equals(m.getParameterTypes(), parameterTypes)) {
+                Assert.assertNull(found);
+                found = m;
+            }
+        }
+        if (found == null) {
+            /* Now look for non-public methods (but this does not look in superclasses). */
+            for (Method m : clazz.getDeclaredMethods()) {
+                if (m.getName().equals(methodName) && Arrays.equals(m.getParameterTypes(), parameterTypes)) {
+                    Assert.assertNull(found);
+                    found = m;
+                }
+            }
+        }
+        if (found != null) {
+            return found;
+        } else {
+            throw new RuntimeException("method not found: " + methodName + " " + Arrays.toString(parameterTypes));
         }
     }
 
@@ -440,7 +456,7 @@ public class GraalTest {
         } else {
             descr = new DebugContext.Description(method, id == null ? method.getName() : id);
         }
-        DebugContext debug = DebugContext.create(options, descr, globalMetrics, DEFAULT_LOG_STREAM, getDebugHandlersFactories());
+        DebugContext debug = DebugContext.create(options, descr, globalMetrics, getDefaultLogStream(), getDebugHandlersFactories());
         cached.add(debug);
         return debug;
     }

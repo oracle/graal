@@ -61,6 +61,7 @@ import org.graalvm.compiler.lir.alloc.lsra.Interval.SpillState;
 import org.graalvm.compiler.lir.alloc.lsra.LinearScan.BlockData;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
+import org.graalvm.compiler.lir.util.IndexedValueMap;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -71,7 +72,6 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
-import org.graalvm.compiler.lir.util.IndexedValueMap;
 
 public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
 
@@ -160,8 +160,17 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
     @SuppressWarnings("try")
     void computeLocalLiveSets() {
         int liveSize = allocator.liveSetSize();
-
-        intervalInLoop = new BitMap2D(allocator.operandSize(), allocator.numLoops());
+        int variables = allocator.operandSize();
+        int loops = allocator.numLoops();
+        long nBits = (long) variables * loops;
+        try {
+            if (nBits > Integer.MAX_VALUE) {
+                throw new OutOfMemoryError();
+            }
+            intervalInLoop = new BitMap2D(variables, loops);
+        } catch (OutOfMemoryError e) {
+            throw new PermanentBailoutException(e, "Cannot handle %d variables in %d loops", variables, loops);
+        }
 
         try {
             final BitSet liveGenScratch = new BitSet(liveSize);

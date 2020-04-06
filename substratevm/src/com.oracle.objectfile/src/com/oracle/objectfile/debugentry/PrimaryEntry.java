@@ -72,12 +72,12 @@ public class PrimaryEntry {
 
     public void addSubRange(Range subrange, FileEntry subFileEntry) {
         /*
-         * we should not see a subrange more than once
+         * We should not see a subrange more than once.
          */
         assert !subranges.contains(subrange);
         assert subrangeIndex.get(subrange) == null;
         /*
-         * we need to generate a file table entry for all ranges
+         * We need to generate a file table entry for all ranges.
          */
         subranges.add(subrange);
         subrangeIndex.put(subrange, subFileEntry);

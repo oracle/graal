@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,11 +97,8 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
         flagActive = new CompilationFinalBitSet(graph.size() + EXTRA_INITIAL_CAPACITY);
         for (GraphNode graphNode : graph.getNodes()) {
             for (GraphNode successor : graphNode.getSuccessors(this)) {
-                successor.addPredecessorUnsorted(graphNode);
+                successor.addPredecessor(graphNode);
             }
-        }
-        for (GraphNode n : graph.getNodes()) {
-            n.sortPredecessors();
         }
         graph.setStart(graph.getNodes().get(0));
         domTree = new DominatorTree(graph);
@@ -250,14 +247,13 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
     }
 
     private void handleScc(GraphNode topNode, Set<GraphNode> scc) throws DFANodeSplitBailoutException {
-        StateSet<GraphNode> msed = StateSet.createWithBackingSortedArray(this);
+        StateSet<DFANodeSplit, GraphNode> msed = StateSet.create(this);
         for (GraphNode n : scc) {
             if (n.getDomTreeDepth() == topNode.getDomTreeDepth() + 1) {
                 n.setWeightAndHeaders(this, n, scc);
-                msed.addBatch(n);
+                msed.add(n);
             }
         }
-        msed.addBatchFinish();
         if (msed.size() <= 1) {
             return;
         }

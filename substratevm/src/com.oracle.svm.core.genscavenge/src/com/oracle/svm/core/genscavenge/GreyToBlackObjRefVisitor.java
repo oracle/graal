@@ -76,7 +76,7 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     @Override
     @AlwaysInline("GC performance")
     public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed) {
-        return visitObjectReferenceInline(objRef, 0, compressed, null);
+        return visitObjectReferenceInline(objRef, innerOffset, compressed, null);
     }
 
     /**

@@ -138,6 +138,8 @@ public class DebugOptions {
     public static final OptionKey<Boolean> PrintCFG = new OptionKey<>(false);
     @Option(help = "Enable dumping LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBackendCFG = new OptionKey<>(true);
+    @Option(help = "Enable dumping CFG built during initial BciBlockMapping", type = OptionType.Debug)
+    public static final OptionKey<Boolean> PrintBlockMapping = new OptionKey<>(false);
 
     @Option(help = "file:doc-files/PrintGraphHelp.txt", type = OptionType.Debug)
     public static final EnumOptionKey<PrintGraphTarget> PrintGraph = new EnumOptionKey<>(PrintGraphTarget.File);

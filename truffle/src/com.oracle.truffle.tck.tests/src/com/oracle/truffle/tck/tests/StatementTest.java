@@ -100,10 +100,10 @@ public class StatementTest {
         try {
             try {
                 final Value result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
-                TestUtil.validateResult(testRun, result, null);
+                TestUtil.validateResult(testRun, result, null, true);
                 success = true;
             } catch (PolyglotException pe) {
-                TestUtil.validateResult(testRun, null, pe);
+                TestUtil.validateResult(testRun, null, pe, true);
                 success = true;
             }
         } catch (PolyglotException | AssertionError e) {

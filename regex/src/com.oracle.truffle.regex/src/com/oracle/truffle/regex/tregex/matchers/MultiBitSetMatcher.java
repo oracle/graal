@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,9 +44,11 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.util.Arrays;
+import java.util.Iterator;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
@@ -71,26 +73,29 @@ public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
         CompilationFinalBitSet[] bitSets = new CompilationFinalBitSet[BYTE_RANGE];
         Arrays.fill(bitSets, MATCH_NONE);
         CompilationFinalBitSet cur = new CompilationFinalBitSet(BYTE_RANGE);
-        int curByte = highByte(cps.getLo(0));
-        for (int i = 0; i < cps.size16(); i++) {
-            char rangeLo = cps.getLo16(i);
-            char rangeHi = cps.getHi16(i);
-            if (highByte(rangeLo) > curByte) {
+        Iterator<Range> it = cps.iterator16Bit();
+        int curByte = -1;
+        while (it.hasNext()) {
+            Range r = it.next();
+            if (curByte == -1) {
+                curByte = highByte(r.lo);
+            }
+            if (highByte(r.lo) > curByte) {
                 bitSets[curByte] = cur;
                 cur = new CompilationFinalBitSet(BYTE_RANGE);
-                curByte = highByte(rangeLo);
+                curByte = highByte(r.lo);
             }
-            if (highByte(rangeLo) == highByte(rangeHi)) {
-                cur.setRange(lowByte(rangeLo), lowByte(rangeHi));
+            if (highByte(r.lo) == highByte(r.hi)) {
+                cur.setRange(lowByte(r.lo), lowByte(r.hi));
             } else {
-                cur.setRange(lowByte(rangeLo), BYTE_MAX_VALUE);
+                cur.setRange(lowByte(r.lo), BYTE_MAX_VALUE);
                 bitSets[curByte] = cur;
-                for (int j = highByte(rangeLo) + 1; j < highByte(rangeHi); j++) {
+                for (int j = highByte(r.lo) + 1; j < highByte(r.hi); j++) {
                     bitSets[j] = MATCH_ALL;
                 }
                 cur = new CompilationFinalBitSet(BYTE_RANGE);
-                curByte = highByte(rangeHi);
-                cur.setRange(BYTE_MIN_VALUE, lowByte(rangeHi));
+                curByte = highByte(r.hi);
+                cur.setRange(BYTE_MIN_VALUE, lowByte(r.hi));
             }
         }
         bitSets[curByte] = cur;

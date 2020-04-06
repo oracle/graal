@@ -64,9 +64,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
+import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.UnresolvedFunction;
-import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -127,6 +127,8 @@ public final class LLVMContext {
 
     @CompilationFinal private Env env;
     private final LLVMScope globalScope;
+    private final ArrayList<LLVMLocalScope> localScopes;
+
     private final DynamicLinkChain dynamicLinkChain;
     private final List<RootCallTarget> destructorFunctions;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
@@ -196,6 +198,7 @@ public final class LLVMContext {
         assert !internalLibraryNames.isEmpty() : "No internal libraries?";
 
         this.globalScope = new LLVMScope();
+        this.localScopes = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
 
         this.mainArguments = getMainArguments(env);
@@ -299,7 +302,16 @@ public final class LLVMContext {
             AssumedValue<LLVMPointer>[] symbols = symbolStorage[functionDetail.getBitcodeID(false)];
             symbols[functionDetail.getSymbolIndex(false)] = new AssumedValue<>(LLVMManagedPointer.create(functionDescriptor));
             globalScope.register(functionDetail);
+            LLVMLocalScope localScope = new LLVMLocalScope();
+            localScope.register(functionDetail);
+            localScope.addID(LLVMSymbol.MISCFUNCTION_ID);
+            this.addLocalScope(localScope);
         }
+    }
+
+    public Path getInternalLibraryPath() {
+        assert isInitialized();
+        return internalLibraryPath;
     }
 
     private static long parseStackSize(String v) {
@@ -513,6 +525,17 @@ public final class LLVMContext {
         }
     }
 
+    /**
+     * Inject implicit or modify explicit dependencies for a {@code library}.
+     *
+     * @param library the library for which dependencies might be injected
+     * @param libraries a (potentially unmodifiable) list of dependencies
+     */
+    @SuppressWarnings("unchecked")
+    public List<String> preprocessDependencies(ExternalLibrary library, List<String> libraries) {
+        return language.getCapability(PlatformCapability.class).preprocessDependencies(this, library, libraries);
+    }
+
     public ExternalLibrary addInternalLibrary(String lib, Object reason) {
         CompilerAsserts.neverPartOfCompilation();
         final ExternalLibrary newLib = createExternalLibrary(lib, reason, InternalLibraryLocator.INSTANCE);
@@ -554,8 +577,8 @@ public final class LLVMContext {
     public ExternalLibrary addExternalLibrary(String lib, Object reason, LibraryLocator locator) {
         CompilerAsserts.neverPartOfCompilation();
         ExternalLibrary newLib = createExternalLibrary(lib, reason, locator);
-        if (isInternalLibrary(newLib)) {
-            // Disallow loading internal libraries explicitly.
+        if (isDefaultLibrary(newLib)) {
+            // Disallow loading default libraries explicitly.
             return null;
         }
         ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
@@ -600,8 +623,8 @@ public final class LLVMContext {
      */
     public boolean ensureExternalLibraryAdded(ExternalLibrary newLib) {
         CompilerAsserts.neverPartOfCompilation();
-        if (isInternalLibrary(newLib)) {
-            // Disallow loading internal libraries explicitly.
+        if (isDefaultLibrary(newLib)) {
+            // Disallow loading default libraries explicitly.
             return false;
         }
         ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
@@ -619,6 +642,10 @@ public final class LLVMContext {
         if (lib.getPath() != null) {
             return isInternalLibraryPath(lib.getPath());
         }
+        return isDefaultLibrary(lib);
+    }
+
+    private boolean isDefaultLibrary(ExternalLibrary lib) {
         return internalLibraryNames.contains(lib.getName());
     }
 
@@ -699,6 +726,10 @@ public final class LLVMContext {
 
     public LLVMScope getGlobalScope() {
         return globalScope;
+    }
+
+    public void addLocalScope(LLVMLocalScope scope) {
+        localScopes.add(scope);
     }
 
     public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {
@@ -879,6 +910,11 @@ public final class LLVMContext {
     @TruffleBoundary
     public void registerGlobalReverseMap(LLVMGlobal global, LLVMPointer target) {
         globalsReverseMap.put(target, global);
+    }
+
+    @TruffleBoundary
+    public void replaceGlobalReverseMap(LLVMGlobal oldGlobal, LLVMGlobal newGlobal, LLVMPointer target) {
+        globalsReverseMap.replace(target, oldGlobal, newGlobal);
     }
 
     public void setCleanupNecessary(boolean value) {

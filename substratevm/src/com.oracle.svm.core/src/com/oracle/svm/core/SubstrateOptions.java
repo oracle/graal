@@ -28,7 +28,6 @@ import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitiga
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 import static org.graalvm.compiler.options.OptionType.User;
 
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -120,14 +119,13 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)")//
-    public static final HostedOptionKey<String[]> CLibraryPath = new HostedOptionKey<>(new String[]{
-                    Paths.get("clibraries/" + OS.getCurrent().asPackageName() + "-" + SubstrateUtil.getArchitectureName()).toAbsolutePath().toString()});
+    public static final HostedOptionKey<String[]> CLibraryPath = new HostedOptionKey<>(null);
 
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<String[]> LinkerRPath = new HostedOptionKey<>(null);
 
     @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
-    public static final HostedOptionKey<String> Path = new HostedOptionKey<>(Paths.get(".").toAbsolutePath().normalize().resolve("svmbuild").toString());
+    public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
 
     @APIOption(name = "-ea", customHelp = "enable assertions in the generated image")//
     @APIOption(name = "-da", kind = APIOption.APIOptionKind.Negated, customHelp = "disable assertions in the generated image")//
@@ -430,6 +428,14 @@ public class SubstrateOptions {
     @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.Expert)//
     public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);
 
+    @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
+    public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
+
+    @Option(help = "The interval in minutes between watchdog checks (0 disables the watchdog)", type = OptionType.Expert)//
+    public static final HostedOptionKey<Integer> DeadlockWatchdogInterval = new HostedOptionKey<>(10);
+    @Option(help = "Exit the image builder VM after printing call stacks", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> DeadlockWatchdogExitOnTimeout = new HostedOptionKey<>(true);
+
     /**
      * The alignment for AOT and JIT compiled methods. The value is constant folded during image
      * generation, i.e., cannot be changed at run time, so that it can be used in uninterruptible
@@ -439,6 +445,9 @@ public class SubstrateOptions {
     public static int codeAlignment() {
         return GraalOptions.LoopHeaderAlignment.getValue(HostedOptionValues.singleton());
     }
+
+    @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> UseReferenceHandlerThread = new HostedOptionKey<>(false);
 
     @Option(help = "Insert debug info into the generated native image or library")//
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<Integer>(0) {
@@ -453,7 +462,6 @@ public class SubstrateOptions {
             }
         }
     };
-
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
     public static final HostedOptionKey<String[]> DebugInfoSourceSearchPath = new HostedOptionKey<String[]>(null) {
     };
