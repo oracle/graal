@@ -180,8 +180,7 @@ public abstract class PartialEvaluator {
      * Gets the instrumentation manager associated with this compiler, creating it first if
      * necessary. Each compiler instance has its own instrumentation manager.
      */
-    // TODO GR-22185 Make private, used only in test outside PartialEvaluator
-    public final InstrumentPhase.Instrumentation getInstrumentation() {
+    private InstrumentPhase.Instrumentation getInstrumentation() {
         if (instrumentation == null) {
             synchronized (this) {
                 if (instrumentation == null) {
