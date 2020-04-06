@@ -6,13 +6,13 @@ overlay = 60620159e1b398d870996ef6fa75380987a4371d
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 jdks: {
-  oraclejdk8:      {name : oraclejdk, version : "8u251-jvmci-19.3-b08", platformspecific: true}
-  openjdk8:        {name : openjdk,   version : "8u252-jvmci-19.3-b08", platformspecific: true}
-  oraclejdk8Debug: {name : oraclejdk, version : "8u251-jvmci-19.3-b08-fastdebug", platformspecific: true}
+  oraclejdk8:      {name : oraclejdk, version : "8u251+08-jvmci-19.3-b09", platformspecific: true}
+  openjdk8:        {name : openjdk,   version : "8u252+08-jvmci-19.3-b09", platformspecific: true}
+  oraclejdk8Debug: {name : oraclejdk, version : "8u251+08-jvmci-19.3-b09-fastdebug", platformspecific: true}
   oraclejdk11:     {name : oraclejdk, version : "11.0.3+12", platformspecific: true}
   openjdk11:       {name : openjdk,   version : "11.0.3+7", platformspecific: true}
-  labsjdk-ce-11:   {name : labsjdk,   version : "ce-11.0.7+6-jvmci-19.3-b08", platformspecific: true}
-  labsjdk-ee-11:   {name : labsjdk,   version : "ee-11.0.7+7-jvmci-19.3-b08", platformspecific: true}
+  labsjdk-ce-11:   {name : labsjdk,   version : "ce-11.0.7+9-jvmci-19.3-b09", platformspecific: true}
+  labsjdk-ee-11:   {name : labsjdk,   version : "ee-11.0.7+8-jvmci-19.3-b09", platformspecific: true}
 }
 
 # This must always point to HEAD in the master branch but can be used to point
