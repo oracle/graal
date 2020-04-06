@@ -118,9 +118,10 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
                     if (successors.length == 2) {
                         int successor = (getLoopToSelf() + 1) % 2;
                         CompilerAsserts.partialEvaluationConstant(successor);
-                        locals.setIndex(indexOfResult + 1);
+                        locals.setIndex(indexOfResult);
                         locals.setSuccessorIndex(successor);
                         successorFoundLoop(locals, executor, successor, preLoopIndex);
+                        executor.inputAdvance(locals);
                         return;
                     } else {
                         locals.setIndex(indexOfResult);
@@ -151,10 +152,10 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
 
     private void doTreeMatch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
         final int c = executor.inputRead(locals);
-        executor.inputAdvance(locals);
         int successor = getTreeMatcher().checkMatchTree(locals, executor, this, c);
         assert sameResultAsRegularMatchers(executor, c, compactString, successor) : this.toString();
         locals.setSuccessorIndex(successor);
+        executor.inputAdvance(locals);
     }
 
     /**
@@ -175,16 +176,17 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private boolean checkMatch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
         final int c = executor.inputRead(locals);
-        executor.inputAdvance(locals);
         for (int i = 0; i < matchers.length; i++) {
             if (matchers[i].execute(c, compactString)) {
                 CompilerAsserts.partialEvaluationConstant(i);
                 successorFound(locals, executor, i);
                 locals.setSuccessorIndex(i);
+                executor.inputAdvance(locals);
                 return isLoopToSelf(i);
             }
         }
         locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
+        executor.inputAdvance(locals);
         return false;
     }
 
@@ -213,17 +215,18 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private boolean checkMatchLoop(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString, int preLoopIndex) {
         final int c = executor.inputRead(locals);
-        executor.inputAdvance(locals);
         for (int i = 0; i < matchers.length; i++) {
             if (matchers[i].execute(c, compactString)) {
                 CompilerAsserts.partialEvaluationConstant(i);
                 successorFoundLoop(locals, executor, i, preLoopIndex);
                 locals.setSuccessorIndex(i);
+                executor.inputAdvance(locals);
                 return isLoopToSelf(i);
             }
         }
         locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
         noSuccessorLoop(locals, executor, preLoopIndex);
+        executor.inputAdvance(locals);
         return false;
     }
 
@@ -239,9 +242,9 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(i);
         if (precedingCaptureGroupTransitions.length == 1) {
-            executor.getCGTransitions()[precedingCaptureGroupTransitions[0]].getPartialTransitions()[i].apply(executor, locals.getCGData(), prevIndex(locals));
+            executor.getCGTransitions()[precedingCaptureGroupTransitions[0]].getPartialTransitions()[i].apply(executor, locals.getCGData(), curIndex(locals));
         } else {
-            transitionDispatchNode.applyPartialTransition(locals, executor, locals.getLastTransition(), i, prevIndex(locals));
+            transitionDispatchNode.applyPartialTransition(locals, executor, locals.getLastTransition(), i, curIndex(locals));
         }
         locals.setLastTransition(captureGroupTransitions[i]);
     }
@@ -273,13 +276,13 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(i);
         if (!isLoopToSelf(i)) {
-            applyLoopTransitions(locals, executor, preLoopIndex, prevIndex(locals));
+            applyLoopTransitions(locals, executor, preLoopIndex, curIndex(locals));
             if (executor.isSearching()) {
                 checkFinalStateLoop(locals, executor);
             }
         }
         if (!isLoopToSelf(i) || !canSkipPartialTransitionsOfLoop(executor)) {
-            getCGTransitionToSelf(executor).getPartialTransitions()[i].apply(executor, locals.getCGData(), prevIndex(locals));
+            getCGTransitionToSelf(executor).getPartialTransitions()[i].apply(executor, locals.getCGData(), curIndex(locals));
             locals.setLastTransition(captureGroupTransitions[i]);
         }
     }
@@ -287,7 +290,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     void noSuccessorLoop(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         assert executor.isSearching();
-        applyLoopTransitions(locals, executor, preLoopIndex, prevIndex(locals));
+        applyLoopTransitions(locals, executor, preLoopIndex, curIndex(locals));
         checkFinalStateLoop(locals, executor);
     }
 
@@ -325,8 +328,8 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         CompilerAsserts.partialEvaluationConstant(this);
         assert locals.getLastTransition() == captureGroupTransitions[getLoopToSelf()];
         if (isFinalState()) {
-            getCGTransitionToSelf(executor).getTransitionToFinalState().applyPreFinalStateTransition(executor, locals.getCGData(), executor.isSearching(), prevIndex(locals));
-            unAnchoredFinalStateTransition.applyFinalStateTransition(executor, locals.getCGData(), executor.isSearching(), curIndex(locals));
+            getCGTransitionToSelf(executor).getTransitionToFinalState().applyPreFinalStateTransition(executor, locals.getCGData(), executor.isSearching(), curIndex(locals));
+            unAnchoredFinalStateTransition.applyFinalStateTransition(executor, locals.getCGData(), executor.isSearching(), nextIndex(locals));
             storeResult(locals, executor);
         }
     }

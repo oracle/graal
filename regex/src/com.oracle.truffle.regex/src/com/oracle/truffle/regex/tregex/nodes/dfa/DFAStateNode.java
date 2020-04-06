@@ -225,10 +225,12 @@ public class DFAStateNode extends DFAAbstractStateNode {
                     if (!checkMatch(locals, executor, compactString)) {
                         if (!executor.isSimpleCG()) {
                             // in ignore-capture-groups mode, we can delay the final state check
-                            checkFinalState(locals, executor, prevIndex(locals));
+                            checkFinalState(locals, executor, curIndex(locals));
                         }
+                        executor.inputAdvance(locals);
                         return;
                     }
+                    executor.inputAdvance(locals);
                 }
                 locals.setSuccessorIndex(atEnd(locals, executor));
             }
@@ -239,6 +241,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
             }
             checkFinalState(locals, executor, curIndex(locals));
             checkMatch(locals, executor, compactString);
+            executor.inputAdvance(locals);
         }
     }
 
@@ -271,6 +274,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
             } else {
                 locals.setIndex(indexOfResult);
                 checkMatch(locals, executor, compactString);
+                executor.inputAdvance(locals);
             }
         }
     }
@@ -292,7 +296,6 @@ public class DFAStateNode extends DFAAbstractStateNode {
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private boolean checkMatch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
         final int c = executor.inputRead(locals);
-        executor.inputAdvance(locals);
         if (treeTransitionMatching()) {
             int successor = getTreeMatcher().checkMatchTree(locals, executor, this, c);
             assert sameResultAsRegularMatchers(executor, c, compactString, successor) : this.toString();
@@ -350,7 +353,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     void successorFound(TRegexDFAExecutorLocals locals, @SuppressWarnings("unused") TRegexDFAExecutorNode executor, int i) {
         if (simpleCG != null) {
-            applySimpleCGTransition(simpleCG.getTransitions()[i], locals, prevIndex(locals));
+            applySimpleCGTransition(simpleCG.getTransitions()[i], locals, curIndex(locals));
         }
     }
 
@@ -373,11 +376,6 @@ public class DFAStateNode extends DFAAbstractStateNode {
     int curIndex(TRegexDFAExecutorLocals locals) {
         CompilerAsserts.partialEvaluationConstant(this);
         return locals.getIndex();
-    }
-
-    int prevIndex(TRegexDFAExecutorLocals locals) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        return locals.getIndex() - 1;
     }
 
     int nextIndex(TRegexDFAExecutorLocals locals) {

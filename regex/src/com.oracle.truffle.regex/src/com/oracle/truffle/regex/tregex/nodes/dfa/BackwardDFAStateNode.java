@@ -64,11 +64,6 @@ public class BackwardDFAStateNode extends DFAStateNode {
     }
 
     @Override
-    int prevIndex(TRegexDFAExecutorLocals locals) {
-        return locals.getIndex() + 1;
-    }
-
-    @Override
     int atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         super.atEnd(locals, executor);
         if (hasBackwardPrefixState() && locals.getIndex() > 0) {
