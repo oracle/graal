@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,6 +46,18 @@ import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
+
+    // the first two cases are redundant but much more efficient than the ones below
+
+    @Specialization
+    boolean doCompare(long a, long b) {
+        return a == b;
+    }
+
+    @Specialization
+    boolean doCompare(LLVMNativePointer a, LLVMNativePointer b) {
+        return a.asNative() == b.asNative();
+    }
 
     @Specialization
     boolean doCompare(Object a, Object b,
