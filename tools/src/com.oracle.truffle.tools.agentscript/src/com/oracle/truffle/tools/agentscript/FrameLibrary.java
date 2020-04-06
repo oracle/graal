@@ -42,8 +42,8 @@ import java.util.Set;
 
 /**
  * Encapsulating access to execution frames.
- * <a href="https://github.com/oracle/graal/blob/master/tools/docs/Insight.md">GraalVM Insight</a> scripts
- * can access local variables of the dynamically <a href=
+ * <a href="https://github.com/oracle/graal/blob/master/tools/docs/Insight.md">GraalVM Insight</a>
+ * scripts can access local variables of the dynamically <a href=
  * "https://github.com/oracle/graal/blob/master/tools/docs/Insight-Manual.md#inspecting-values">
  * instrumented source code</a>. This library handles such accesses. {@linkplain ExportLibrary
  * Implement your own} to respond to various messages (like

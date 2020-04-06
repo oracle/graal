@@ -40,7 +40,7 @@ To hide priviledged scripts from [Insight](Insight.md) sight
 
 The [Insight hacker's manual](Insight-Manual.md) shows many examples of using
 [Insight](Insight.md) with `node` - however most of them rely on the command
-line option `--agentscript` and don't benefit from the dynamic nature of
+line option `--insight` and don't benefit from the dynamic nature of
 [Insight](Insight.md) much. Let's fix that by showing how to create an
 *admin server*. Define `adminserver.js`:
 
@@ -83,7 +83,7 @@ which opens an HTTP server at port `9999` and listens for incoming scripts to
 be applied any time later. Invoke your application as
 
 ```bash
-$ node --agentscript=adminserver.js --experimental-options yourapp.js
+$ node --insight=adminserver.js --experimental-options yourapp.js
 Admin ready at 9999
 ```
 

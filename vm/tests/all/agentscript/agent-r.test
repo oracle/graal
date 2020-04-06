@@ -1,6 +1,12 @@
 > cat > ${TMP_DIR}/test.R
 < cat('Ahoj')
 > Rscript --agentscript=agent-r.R --experimental-options ${TMP_DIR}/test.R
+Warning.*agentscript.*deprecated.*insight.*
+R: Initializing GraalVM Insight script
+R: Hooks are ready!
+R: observed loading of.*test.R
+Ahoj
+> Rscript --insight=agent-r.R --experimental-options ${TMP_DIR}/test.R
 R: Initializing GraalVM Insight script
 R: Hooks are ready!
 R: observed loading of.*test.R
@@ -8,6 +14,12 @@ Ahoj
 > cat > ${TMP_DIR}/test.js
 < print('hi js!')
 > polyglot --jvm --agentscript=agent-r.R --experimental-options ${TMP_DIR}/test.js
+Warning.*agentscript.*deprecated.*insight.*
+R: Initializing GraalVM Insight script
+R: Hooks are ready!
+R: observed loading of.*test.js
+hi js!
+> polyglot --jvm --insight=agent-r.R --experimental-options ${TMP_DIR}/test.js
 R: Initializing GraalVM Insight script
 R: Hooks are ready!
 R: observed loading of.*test.js

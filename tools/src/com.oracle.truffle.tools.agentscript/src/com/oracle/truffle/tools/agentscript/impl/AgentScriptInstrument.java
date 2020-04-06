@@ -24,31 +24,12 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.ContextsListener;
-import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
-import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.agentscript.AgentScript;
 import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.util.Map;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -56,21 +37,15 @@ import org.graalvm.options.OptionStability;
 
 // @formatter:off
 @TruffleInstrument.Registration(
-    id = AgentScriptInstrument.ID,
-    name = AgentScriptInstrument.NAME,
-    version = AgentScriptInstrument.VERSION,
+    id = AgentScript.ID,
+    name = "Agent Script",
+    version = AgentScript.VERSION,
     services = { Function.class, AgentScript.class }
 )
 // @formatter:on
-public final class AgentScriptInstrument extends TruffleInstrument implements AgentScript {
-
-    static final String NAME = "Agent Script";
-
-    @Option(stability = OptionStability.EXPERIMENTAL, name = "", help = "Use provided agent script", category = OptionCategory.USER) //
-    static final OptionKey<String> SCRIPT = new OptionKey<>("");
-
-    private Env env;
-    private final IgnoreSources ignoreSources = new IgnoreSources();
+public final class AgentScriptInstrument extends InsightInstrument implements AgentScript {
+    @Option(stability = OptionStability.EXPERIMENTAL, name = "", help = "Deprecated. Use --insight!", category = OptionCategory.USER) //
+    static final OptionKey<String> DEPRECATED = new OptionKey<>("");
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -78,171 +53,24 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
     }
 
     @Override
-    protected void onCreate(Env tmp) {
-        this.env = tmp;
+    OptionKey<String> option() {
+        return DEPRECATED;
+    }
+
+    @Override
+    protected void onCreate(TruffleInstrument.Env env) {
+        super.onCreate(env);
+        try {
+            env.err().write("Warning: Option --agentscript is deprecated. Use --insight option.\n".getBytes());
+        } catch (IOException ex) {
+            // ignore
+        }
         AgentScript as = maybeProxy(AgentScript.class, this);
         env.registerService(as);
-        final Function<?, ?> api = functionApi(this);
-        env.registerService(api);
-        final String path = env.getOptions().get(SCRIPT);
-        if (path != null && path.length() > 0) {
-            registerAgentScript(() -> {
-                try {
-                    TruffleFile file = env.getTruffleFile(path);
-                    if (file == null || !file.exists()) {
-                        throw AgentException.notFound(file);
-                    }
-                    String mimeType = file.getMimeType();
-                    String lang = null;
-                    for (Map.Entry<String, LanguageInfo> e : env.getLanguages().entrySet()) {
-                        if (mimeType != null && e.getValue().getMimeTypes().contains(mimeType)) {
-                            lang = e.getKey();
-                            break;
-                        }
-                    }
-                    if (lang == null) {
-                        throw AgentException.notRecognized(file);
-                    }
-                    return Source.newBuilder(lang, file).uri(file.toUri()).name(file.getName()).build();
-                } catch (IOException ex) {
-                    throw AgentException.raise(ex);
-                }
-            });
-        }
     }
 
     @Override
     public void registerAgentScript(final Source script) {
         registerAgentScript(() -> script);
-    }
-
-    private AutoCloseable registerAgentScript(final Supplier<Source> src) {
-        final Instrumenter instrumenter = env.getInstrumenter();
-        class InitializeAgent implements ContextsListener, AutoCloseable {
-            private AgentObject agent;
-            private EventBinding<?> agentBinding;
-
-            @CompilerDirectives.TruffleBoundary
-            synchronized boolean initializeAgentObject() {
-                if (agent == null) {
-                    agent = new AgentObject(env, ignoreSources);
-                    return true;
-                }
-                return false;
-            }
-
-            @CompilerDirectives.TruffleBoundary
-            void initializeAgent() {
-                if (initializeAgentObject()) {
-                    Source script = src.get();
-                    ignoreSources.ignoreSource(script);
-                    CallTarget target;
-                    try {
-                        target = env.parse(script, "agent");
-                    } catch (IOException ex) {
-                        throw AgentException.raise(ex);
-                    }
-                    target.call(agent);
-                }
-            }
-
-            @Override
-            public void onContextCreated(TruffleContext context) {
-            }
-
-            @Override
-            public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
-            }
-
-            @Override
-            public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-                if (agentBinding != null || language.isInternal()) {
-                    return;
-                }
-                if (context.isEntered()) {
-                    initializeAgent();
-                } else {
-                    class InitializeLater implements ExecutionEventListener {
-
-                        @Override
-                        public void onEnter(EventContext ctx, VirtualFrame frame) {
-                            CompilerDirectives.transferToInterpreter();
-                            agentBinding.dispose();
-                            initializeAgent();
-                        }
-
-                        @Override
-                        public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
-                        }
-
-                        @Override
-                        public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
-                        }
-                    }
-                    final SourceSectionFilter anyRoot = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build();
-                    agentBinding = instrumenter.attachExecutionEventListener(anyRoot, new InitializeLater());
-                }
-            }
-
-            @Override
-            public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
-                if (agent != null) {
-                    agent.onClosed();
-                }
-            }
-
-            @Override
-            public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
-            }
-
-            @Override
-            public void onContextClosed(TruffleContext context) {
-            }
-
-            @Override
-            public void close() {
-                if (agent != null) {
-                    agent.onClosed();
-                }
-                if (agentBinding != null) {
-                    agentBinding.dispose();
-                }
-            }
-        }
-        final InitializeAgent initializeAgent = new InitializeAgent();
-        instrumenter.attachContextsListener(initializeAgent, true);
-        return initializeAgent;
-    }
-
-    @Override
-    protected void onDispose(Env tmp) {
-    }
-
-    private static Function<?, ?> functionApi(AgentScriptInstrument agentScript) {
-        Function<org.graalvm.polyglot.Source, AutoCloseable> f = (text) -> {
-            final Source.LiteralBuilder b = Source.newBuilder(text.getLanguage(), text.getCharacters(), text.getName());
-            b.uri(text.getURI());
-            b.mimeType(text.getMimeType());
-            b.internal(text.isInternal());
-            b.interactive(text.isInteractive());
-            Source src = b.build();
-            return agentScript.registerAgentScript(() -> src);
-        };
-        return maybeProxy(Function.class, f);
-    }
-
-    private static <Interface> Interface maybeProxy(Class<Interface> type, Interface delegate) {
-        if (TruffleOptions.AOT) {
-            return delegate;
-        } else {
-            return proxy(type, delegate);
-        }
-    }
-
-    private static <Interface> Interface proxy(Class<Interface> type, Interface delegate) {
-        InvocationHandler handler = (Object proxy, Method method, Object[] args) -> {
-            return method.invoke(delegate, args);
-        };
-        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, handler));
     }
 }

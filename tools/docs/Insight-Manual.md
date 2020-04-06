@@ -22,11 +22,11 @@ agent.on('source', function(ev) {
     print(`Loading ${ev.characters.length} characters from ${ev.name}`);
 });
 ```
-launch your GraalVM's `bin/node` launcher with the `--agentscript` instrument and
+launch your GraalVM's `bin/node` launcher with the `--insight` instrument and
 observe what scripts are being loaded and evaluated:
 
 ```bash
-$ graalvm/bin/node --experimental-options --js.print --agentscript=source-tracing.js -e "print('The result: ' + 6 * 7)" | tail -n 10
+$ graalvm/bin/node --experimental-options --js.print --insight=source-tracing.js -e "print('The result: ' + 6 * 7)" | tail -n 10
 Loading 29938 characters from url.js
 Loading 345 characters from internal/idna.js
 Loading 12642 characters from punycode.js
@@ -91,7 +91,7 @@ function. The latter is executed when the `node` process execution is over (regi
 `agent.on('close', dumpHistogram)`. Invoke as:
 
 ```bash
-$ graalvm/bin/node --experimental-options --js.print --agentscript=function-histogram-tracing.js -e "print('The result: ' + 6 * 7)"
+$ graalvm/bin/node --experimental-options --js.print --insight=function-histogram-tracing.js -e "print('The result: ' + 6 * 7)"
 The result: 42
 === Histogram ===
 543 calls to isPosixPathSeparator
@@ -143,7 +143,7 @@ a sample script which uses a variant of the Sieve of Erathostenes to compute one
 thousand of prime numbers:
 
 ```bash
-$ graalvm/bin/js --experimental-options --agentscript=function-tracing.js sieve.js | grep -v Computed
+$ graalvm/bin/js --experimental-options --insight=function-tracing.js sieve.js | grep -v Computed
 Just called :program as 1 function invocation
 Just called Natural.next as 17 function invocation
 Just called Natural.next as 33 function invocation
@@ -188,7 +188,7 @@ when you apply the JavaScript instrument to the Ruby program, here is what
 you get:
 
 ```bash
-$ graalvm/bin/ruby --polyglot --experimental-options --agentscript=source-trace.js helloworld.rb
+$ graalvm/bin/ruby --polyglot --experimental-options --insight=source-trace.js helloworld.rb
 JavaScript instrument observed load of helloworld.rb
 Hello from GraalVM Ruby!
 ```
@@ -236,7 +236,7 @@ Hundred thousand prime numbers in 73 ms
 and now let's compare it to execution time when running with the **Insight** script enabled:
 
 ```bash
-$ graalvm/bin/js --experimental-options --agentscript=function-count.js sieve.js  | grep -v Computed
+$ graalvm/bin/js --experimental-options --insight=function-count.js sieve.js  | grep -v Computed
 Hundred thousand prime numbers in 74 ms
 Hundred thousand prime numbers in 74 ms
 Hundred thousand prime numbers in 75 ms
@@ -272,7 +272,7 @@ and then you can launch your `node` application and instrument it with such
 Ruby written script:
 
 ```bash
-$ graalvm/bin/node --experimental-options --js.print --polyglot --agentscript=source-tracing.rb -e "print('With Ruby: ' + 6 * 7)" | grep Ruby:
+$ graalvm/bin/node --experimental-options --js.print --polyglot --insight=source-tracing.rb -e "print('With Ruby: ' + 6 * 7)" | grep Ruby:
 Ruby: Initializing GraalVM Insight script
 Ruby: Hooks are ready!
 Ruby: observed loading of internal/per_context/primordials.js
@@ -310,7 +310,7 @@ cat("R: Hooks are ready!\n")
 and use it to trace your `test.R` program:
 
 ```bash
-$ graalvm/bin/Rscript --agentscript=agent-r.R --experimental-options test.R
+$ graalvm/bin/Rscript --insight=agent-r.R --experimental-options test.R
 R: Initializing GraalVM Insight script
 R: Hooks are ready!
 R: observed loading of test.R
@@ -356,7 +356,7 @@ in `fib.js`, then invoking following command yields detailed information about
 the program execution and parameters passed between function invocations:
 
 ```bash
-$ graalvm/bin/node --experimental-options --js.print --agentscript=fib-trace.js fib.js
+$ graalvm/bin/node --experimental-options --js.print --insight=fib-trace.js fib.js
 fib for 3
 fib for 2
 fib for 1
@@ -371,7 +371,7 @@ programming!
 ### API of **Insight**
 
 The **Insight** functionality is offered as a technology preview and 
-requires one to use `--experimental-options` to enable the `--agentscript`
+requires one to use `--experimental-options` to enable the `--insight`
 instrument. Never the less, the compatibility of the **Insight** API 
 exposed via the `agent` object
 is treated seriously.
@@ -425,7 +425,7 @@ function. Then it removes the probes using `agent.off` and invokes the actual
 access to all the node modules. The script can be used as
 
 ```js
-$ graalvm/bin/node --experimental-options --js.print --agentscript=agent-require.js yourScript.js
+$ graalvm/bin/node --experimental-options --js.print --insight=agent-require.js yourScript.js
 ```
 
 This initialization sequence is known to work on GraalVM's node `v12.10.0`
@@ -467,7 +467,7 @@ and at that moment it emits its own exception effectively interrupting the user
 program execution. As a result one gets:
 
 ```bash
-$ graalvm/bin/js --polyglot --experimental-options --agentscript=term.js seq.js
+$ graalvm/bin/js --polyglot --experimental-options --insight=term.js seq.js
 Hello GraalVM Insight!
 How
 great you are!
@@ -530,7 +530,7 @@ and when the function gets invoked a thousand times, it emits an error
 to terminate the `sieve` execution. Just run the program as:
 
 ```bash
-$ lli --polyglot --agentscript=agent-limit.js --experimental-options sieve
+$ lli --polyglot --insight=agent-limit.js --experimental-options sieve
 Computed 97 primes in 181 ms. Last one is 509
 GraalVM Insight: nextNatural method called 1000 times. enough!
         at <js> :anonymous(<eval>:7:117-185)
@@ -604,7 +604,7 @@ numbers found so far. When the main loop in `measure` is over - e.g. we have
 all hundred thousand prime numbers, we print the result. Let's try it:
 
 ```bash
-$ graalvm/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
+$ graalvm/bin/js --experimental-options  -e "var count=50" --insight=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
 Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
 Hundred thousand prime numbers in 288 ms
 ```
@@ -630,7 +630,7 @@ after storing the `frame.number` into the temporary variable `n` we get followin
 performance results:
 
 ```bash
-$ graalvm/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter2.js --file sieve.js | grep Hundred | tail -n 2
+$ graalvm/bin/js --experimental-options  -e "var count=50" --insight=sieve-filter2.js --file sieve.js | grep Hundred | tail -n 2
 Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
 Hundred thousand prime numbers in 151 ms
 ```
@@ -643,7 +643,7 @@ Luckily we can. [GraalVM EE](https://www.graalvm.org/downloads/) is known for ha
 than GraalVM CE. Let's try to use it:
 
 ```bash
-$ graalvm-ee/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
+$ graalvm-ee/bin/js --experimental-options  -e "var count=50" --insight=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
 Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
 Hundred thousand prime numbers in 76 ms
 ```
