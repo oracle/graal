@@ -28,7 +28,6 @@ import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPo
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -59,8 +58,8 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         this.request = request;
     }
 
-    private static InliningPolicyProvider chosenProvider(List<? extends InliningPolicyProvider> providers, String name) {
-        for (InliningPolicyProvider provider : providers) {
+    private static InliningPolicyProvider chosenProvider(String name) {
+        for (InliningPolicyProvider provider : AgnosticInliningPhase.POLICY_PROVIDERS) {
             if (provider.getName().equals(name)) {
                 return provider;
             }
@@ -70,7 +69,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
 
     private InliningPolicyProvider getInliningPolicyProvider() {
         final String policy = getPolyglotOptionValue(request.options, PolyglotCompilerOptions.InliningPolicy);
-        return policy.equals("") ? POLICY_PROVIDERS.get(0) : chosenProvider(POLICY_PROVIDERS, policy);
+        return policy.equals("") ? POLICY_PROVIDERS.get(0) : chosenProvider(policy);
     }
 
     @Override
