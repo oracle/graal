@@ -89,7 +89,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
                     asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "executeRootNode"),
                     asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "profiledPERoot"),
                     asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "inlinedPERoot"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "callDirect"),
+                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "callDirectOrInlined"),
                     asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode", "call"),
     };
     private final Instrumentation instrumentation;
