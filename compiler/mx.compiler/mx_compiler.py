@@ -1070,7 +1070,11 @@ def java_base_unittest(args):
             extra_args = ['--verbose', '--enable-timing']
         else:
             extra_args = []
-        mx_unittest.unittest(['--suite', 'compiler', '--fail-fast'] + extra_args + args)
+        # the base JDK doesn't include jdwp
+        if _graaljdk_override.debug_args:
+            mx.warn('Ignoring Java debugger arguments because base JDK doesn\'t include jdwp')
+        with mx.DisableJavaDebugging():
+            mx_unittest.unittest(['--suite', 'compiler', '--fail-fast'] + extra_args + args)
     finally:
         _graaljdk_override = None
 

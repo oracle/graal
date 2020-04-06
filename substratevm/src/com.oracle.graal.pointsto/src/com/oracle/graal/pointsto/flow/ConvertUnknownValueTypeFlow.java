@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,20 +29,19 @@ import org.graalvm.compiler.graph.Node;
 import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
 
 /**
- * Models an 'word to object' operation, i.e., reading an object from a pointer. The input is thus
- * the *unknown* type flow, i.e., a place-holder type flow that signifies *any type*. We don't use
- * *all-instantiated* type flow because we don't care about individual types. Operations that use
- * this *value* must first convert it to actual types. See {@link ConvertUnknownValueNode} for
- * details.
+ * Converts an unknown value, i.e., a value resulted from a low level memory read, i.e.,
+ * word-to-object reads, to proper objects to be used by the analysis. If a precise type is
+ * avaialable it is used to reduce the *all-instantiated* type flow. See
+ * {@link ConvertUnknownValueNode} for details.
  */
-public class WordToObjectTypeFlow extends ProxyTypeFlow {
+public class ConvertUnknownValueTypeFlow extends ProxyTypeFlow {
 
-    public WordToObjectTypeFlow(Node source, TypeFlow<?> input) {
+    public ConvertUnknownValueTypeFlow(Node source, TypeFlow<?> input) {
         super(source, input);
     }
 
     @Override
     public String toString() {
-        return "WordToObjectFlow<" + input + ">";
+        return "ConvertUnknownValueTypeFlow<" + input + ">";
     }
 }

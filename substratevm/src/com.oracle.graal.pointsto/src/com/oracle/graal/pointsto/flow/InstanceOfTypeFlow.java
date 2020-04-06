@@ -29,6 +29,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.typestate.TypeState;
 
 /**
  * Reflects all types flow into an instanceof node, i.e., the state of this flow contains all types
@@ -48,6 +49,16 @@ public class InstanceOfTypeFlow extends TypeFlow<ValueNode> {
     public InstanceOfTypeFlow(InstanceOfTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows);
         this.location = original.location;
+    }
+
+    @Override
+    public TypeState filter(BigBang bb, TypeState newState) {
+        /*
+         * Since the InstanceOfTypeFlow needs to reflect all types flowing into an instanceof node
+         * it doesn't implement any filtering. The filtering is done by the associated
+         * FilterTypeFlow.
+         */
+        return newState;
     }
 
     @Override

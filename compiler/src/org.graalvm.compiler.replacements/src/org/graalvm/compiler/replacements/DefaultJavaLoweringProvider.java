@@ -719,7 +719,13 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind readKind = load.accessKind();
         Stamp loadStamp = loadStamp(load.stamp(NodeView.DEFAULT), readKind, compressible);
         AddressNode address = createUnsafeAddress(graph, load.object(), load.offset());
-        ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, barrierSet.readBarrierType(load)));
+        ReadNode memoryRead = null;
+        if (load.isVolatile()) {
+            memoryRead = new VolatileReadNode(address, load.getLocationIdentity(), loadStamp, barrierSet.readBarrierType(load));
+        } else {
+            memoryRead = new ReadNode(address, load.getLocationIdentity(), loadStamp, barrierSet.readBarrierType(load));
+        }
+        memoryRead = graph.add(memoryRead);
         if (guard == null) {
             // An unsafe read must not float otherwise it may float above
             // a test guaranteeing the read is safe.
@@ -762,7 +768,13 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind valueKind = store.accessKind();
         ValueNode value = implicitStoreConvert(graph, valueKind, store.value(), compressible);
         AddressNode address = createUnsafeAddress(graph, store.object(), store.offset());
-        WriteNode write = graph.add(new WriteNode(address, store.getKilledLocationIdentity(), value, barrierSet.storeBarrierType(store)));
+        WriteNode write = null;
+        if (store.isVolatile()) {
+            write = new VolatileWriteNode(address, store.getLocationIdentity(), value, barrierSet.storeBarrierType(store));
+        } else {
+            write = new WriteNode(address, store.getLocationIdentity(), value, barrierSet.storeBarrierType(store));
+        }
+        write = graph.add(write);
         write.setStateAfter(store.stateAfter());
         graph.replaceFixedWithFixed(store, write);
     }

@@ -132,7 +132,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
      * Map ResolvedJavaMethod to Object and not AnalysisMethod because when the type doesn't
      * implement the method the value stored is {@link AnalysisType#NULL_METHOD}.
      */
-    private final ConcurrentHashMap<ResolvedJavaMethod, Object> resolvedMethods = new ConcurrentHashMap<>(AnalysisUniverse.ESTIMATED_METHODS_PER_TYPE);
+    private final ConcurrentHashMap<ResolvedJavaMethod, Object> resolvedMethods = new ConcurrentHashMap<>();
 
     /**
      * Marker used in the {@link AnalysisType#resolvedMethods} map to signal that the type doesn't
@@ -827,6 +827,16 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
             resolvedMethod = oldResolvedMethod != null ? oldResolvedMethod : newResolvedMethod;
         }
         return resolvedMethod == NULL_METHOD ? null : (AnalysisMethod) resolvedMethod;
+    }
+
+    /**
+     * Wrapper for resolveConcreteMethod() that ignores the callerType parameter. The method that
+     * does the resolution, resolveMethod() above, ignores the callerType parameter and uses
+     * substMethod.getDeclaringClass() instead since we don't want any access checks in the
+     * analysis.
+     */
+    public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method) {
+        return (AnalysisMethod) WrappedJavaType.super.resolveConcreteMethod(method, null);
     }
 
     @Override

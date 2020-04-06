@@ -307,6 +307,7 @@ public class ClassInitializationFeature implements Feature {
 
     private void buildClassInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type, DynamicHub hub) {
         ClassInitializationInfo info = null;
+        boolean shouldFindDefaultMethods = true;
         if (classInitializationSupport.shouldInitializeAtRuntime(type)) {
             assert !type.isInitialized();
             AnalysisMethod classInitializer = type.getClassInitializer();
@@ -317,6 +318,8 @@ public class ClassInitializationFeature implements Feature {
                 }
                 info = new ClassInitializationInfo(MethodPointer.factory(classInitializer));
             } else {
+                // Can't read methods from unlinked classes
+                shouldFindDefaultMethods = false;
                 try {
                     /*
                      * Workaround to force linking the type which is not provided by the JVMCI API.
@@ -325,11 +328,14 @@ public class ClassInitializationFeature implements Feature {
                      */
                     type.getDeclaredConstructors();
                     type.getDeclaredMethods();
+                    shouldFindDefaultMethods = true;
                 } catch (VerifyError e) {
                     /* Synthesize a VerifyError to be thrown at run time. */
                     AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwVerifyErrorMethod);
                     access.registerAsCompiled(throwVerifyError);
                     info = new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
+                } catch (NoClassDefFoundError e) {
+                    info = ClassInitializationInfo.FAILED_INFO_SINGLETON;
                 } catch (Throwable t) {
                     // silently ignore other errors
                 }
@@ -348,7 +354,11 @@ public class ClassInitializationFeature implements Feature {
             info = ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
         }
 
-        hub.setClassInitializationInfo(info, hasDefaultMethods(type), declaresDefaultMethods(type));
+        if (shouldFindDefaultMethods) {
+            hub.setClassInitializationInfo(info, hasDefaultMethods(type), declaresDefaultMethods(type));
+        } else {
+            hub.setClassInitializationInfo(info, false, false);
+        }
     }
 
     private static boolean hasDefaultMethods(ResolvedJavaType type) {
