@@ -1493,7 +1493,6 @@ final class Runner {
                     if (localGlobal != null && localGlobal.isGlobalVariable() && !(global.equals(localGlobal.asGlobalVariable()))) {
                         // Cannot override with a hidden global symbol from the localScope
                         allocOverrideSymbolsList.add(new AllocExistingSymbolNode(global, LLVMAccessSymbolNodeGen.create(localGlobal)));
-
                     }
                 }
             }
