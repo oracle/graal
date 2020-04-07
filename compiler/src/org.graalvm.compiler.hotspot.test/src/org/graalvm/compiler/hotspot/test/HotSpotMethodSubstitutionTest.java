@@ -87,6 +87,7 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
     public void testClassSubstitutions() {
         testGraph("getModifiers");
         testGraph("isInterface");
+        testGraph("isHiddenClass");
         testGraph("isArray");
         testGraph("isPrimitive");
         testGraph("getSuperClass");
@@ -95,6 +96,7 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
         for (Class<?> c : new Class<?>[]{getClass(), Cloneable.class, int[].class, String[][].class}) {
             test("getModifiers", c);
             test("isInterface", c);
+            test("isHiddenClass", c);
             test("isArray", c);
             test("isPrimitive", c);
             test("getSuperClass", c);
@@ -110,6 +112,11 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
     @SuppressWarnings("all")
     public static boolean isInterface(Class<?> clazz) {
         return clazz.isInterface();
+    }
+
+    @SuppressWarnings("all")
+    public static boolean isHiddenClass(Class<?> clazz) {
+        return clazz.isHiddenClass();
     }
 
     @SuppressWarnings("all")
