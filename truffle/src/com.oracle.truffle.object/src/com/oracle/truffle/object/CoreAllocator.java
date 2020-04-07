@@ -58,6 +58,7 @@ import com.oracle.truffle.object.CoreLocations.ObjectArrayLocation;
 import com.oracle.truffle.object.CoreLocations.ObjectLocation;
 import com.oracle.truffle.object.CoreLocations.PrimitiveLocationDecorator;
 import com.oracle.truffle.object.CoreLocations.TypedLocation;
+import com.oracle.truffle.object.CoreLocations.ValueLocation;
 
 @SuppressWarnings("deprecation")
 class CoreAllocator extends ShapeImpl.BaseAllocator {
@@ -224,10 +225,10 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
     protected Location locationForValueUpcast(Object value, Location oldLocation, long putFlags) {
         assert !oldLocation.canSet(value);
 
-        if (oldLocation instanceof DeclaredLocation) {
-            return locationForValue(value, false, value != null);
-        } else if (oldLocation instanceof ConstantLocation) {
+        if (oldLocation instanceof ConstantLocation && (Flags.isConstant(putFlags) || getLayout().isLegacyLayout())) {
             return constantLocation(value);
+        } else if (oldLocation instanceof ValueLocation) {
+            return locationForValue(value, false, value != null);
         } else if (oldLocation instanceof TypedLocation && ((TypedLocation) oldLocation).getType().isPrimitive()) {
             if (!shared && ((TypedLocation) oldLocation).getType() == int.class) {
                 LongLocation primLocation = ((PrimitiveLocationDecorator) oldLocation).getInternalLocation();
