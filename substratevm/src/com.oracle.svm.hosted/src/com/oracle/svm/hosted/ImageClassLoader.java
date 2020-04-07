@@ -76,6 +76,11 @@ public final class ImageClassLoader {
 
     private static final String CLASS_EXTENSION = ".class";
     private static final int CLASS_EXTENSION_LENGTH = CLASS_EXTENSION.length();
+
+    /*
+     * This cannot be a HostedOption because the option parsing already relies on the list of loaded
+     * classes.
+     */
     private static final int CLASS_LOADING_MAX_SCALING = 8;
     private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
 
