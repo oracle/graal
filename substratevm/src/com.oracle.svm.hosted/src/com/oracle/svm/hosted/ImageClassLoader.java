@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,6 +76,12 @@ public final class ImageClassLoader {
 
     private static final String CLASS_EXTENSION = ".class";
     private static final int CLASS_EXTENSION_LENGTH = CLASS_EXTENSION.length();
+
+    /*
+     * This cannot be a HostedOption because the option parsing already relies on the list of loaded
+     * classes.
+     */
+    private static final int CLASS_LOADING_MAX_SCALING = 8;
     private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
 
     static {
@@ -136,7 +142,7 @@ public final class ImageClassLoader {
     }
 
     private void initAllClasses() {
-        final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
+        final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             Set<String> modules = new HashSet<>();
@@ -167,7 +173,11 @@ public final class ImageClassLoader {
                                         .collect(Collectors.toList()));
         uniquePaths.parallelStream().forEach(path -> loadClassesFromPath(executor, path));
 
-        executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
+        boolean completed = executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
+        if (!completed) {
+            throw shouldNotReachHere("timed out while initializing classes");
+        }
+        executor.shutdownNow();
     }
 
     static Stream<Path> toClassPathEntries(String classPathEntry) {
