@@ -211,13 +211,7 @@ public final class CallNode extends Node {
         getPolicy().removedNode(this);
     }
 
-    private void updateChildrenList(GraphManager.Entry entry) {
-        for (CallNode child : children) {
-            final Invoke childInvoke = entry.truffleCallNodeToInvoke.get(child.getTruffleCaller());
-            if (childInvoke == null || !childInvoke.isAlive()) {
-                child.remove();
-            }
-        }
+    private void addIndirectChildren(GraphManager.Entry entry) {
         for (Invoke invoke : entry.indirectInvokes) {
             if (invoke != null && invoke.isAlive()) {
                 final CallNode child = new CallNode(null, null, 0, depth + 1);
@@ -231,15 +225,14 @@ public final class CallNode extends Node {
     public void expand() {
         assert state == State.Cutoff : "Cannot expand a non-cutoff node. Node is " + state;
         assert getParent() != null;
-        this.state = State.Expanded;
+        state = State.Expanded;
         getCallTree().expanded++;
-        this.addChildren();
+        addChildren();
         assert state == State.Expanded;
         assert ir == null;
-        GraphManager.Entry entry = getCallTree().getGraphManager().get(truffleAST);
+        GraphManager.Entry entry = getCallTree().getGraphManager().pe(truffleAST);
         ir = copyGraphAndUpdateInvokes(entry);
-        getPolicy().afterPartialEvaluation(this);
-        updateChildrenList(entry);
+        addIndirectChildren(entry);
         getPolicy().afterExpand(this);
     }
 
@@ -271,6 +264,12 @@ public final class CallNode extends Node {
         }
         handleInlineDecisionNode(invoke);
         final UnmodifiableEconomicMap<Node, Node> replacements = getCallTree().getGraphManager().doInline(invoke, ir, truffleAST);
+        updateChildInvokes(replacements);
+        state = State.Inlined;
+        getCallTree().inlined++;
+    }
+
+    private void updateChildInvokes(UnmodifiableEconomicMap<Node, Node> replacements) {
         for (CallNode child : children) {
             if (child.state != State.Removed) {
                 final Node childInvoke = (Node) child.invoke;
@@ -278,12 +277,10 @@ public final class CallNode extends Node {
                     child.remove();
                     continue;
                 }
-                final Invoke value = (Invoke) replacements.get(childInvoke);
-                child.setInvokeOrRemove(value);
+                final Invoke replacementInvoke = (Invoke) replacements.get(childInvoke);
+                child.setInvokeOrRemove(replacementInvoke);
             }
         }
-        state = State.Inlined;
-        getCallTree().inlined++;
     }
 
     /**
