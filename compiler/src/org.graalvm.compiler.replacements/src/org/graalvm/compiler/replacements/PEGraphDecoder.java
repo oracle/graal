@@ -295,7 +295,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     int count = 0;
                     PEGraphDecoder.PEMethodScope scope = methodScope;
                     while (scope != null) {
-                        if (scope.method.equals(callInlinedMethod) || scope.method.equals(callInlinedAgnosticMethod)) {
+                        if (scope.method.equals(peRootForInlining) || scope.method.equals(peRootForAgnosticInlining)) {
                             count++;
                         }
                         scope = scope.caller;
@@ -604,24 +604,24 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     private final NodePlugin[] nodePlugins;
     private final EconomicMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
     private final EconomicMap<ResolvedJavaMethod, Object> invocationPluginCache;
-    private final ResolvedJavaMethod callInlinedMethod;
-    private final ResolvedJavaMethod callInlinedAgnosticMethod;
+    private final ResolvedJavaMethod peRootForInlining;
+    private final ResolvedJavaMethod peRootForAgnosticInlining;
     protected final SourceLanguagePositionProvider sourceLanguagePositionProvider;
 
     public PEGraphDecoder(Architecture architecture, StructuredGraph graph, CoreProviders providers, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
-                    NodePlugin[] nodePlugins, ResolvedJavaMethod callInlinedMethod, ResolvedJavaMethod callInlinedAgnosticMethod, SourceLanguagePositionProvider sourceLanguagePositionProvider) {
+                    NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, ResolvedJavaMethod peRootForAgnosticInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider) {
         super(architecture, graph, providers, true);
         this.loopExplosionPlugin = loopExplosionPlugin;
         this.invocationPlugins = invocationPlugins;
         this.inlineInvokePlugins = inlineInvokePlugins;
         this.parameterPlugin = parameterPlugin;
         this.nodePlugins = nodePlugins;
-        this.callInlinedAgnosticMethod = callInlinedAgnosticMethod;
+        this.peRootForAgnosticInlining = peRootForAgnosticInlining;
         this.specialCallTargetCache = EconomicMap.create(Equivalence.DEFAULT);
         this.invocationPluginCache = EconomicMap.create(Equivalence.DEFAULT);
-        this.callInlinedMethod = callInlinedMethod;
+        this.peRootForInlining = peRootForInlining;
         this.sourceLanguagePositionProvider = sourceLanguagePositionProvider;
     }
 

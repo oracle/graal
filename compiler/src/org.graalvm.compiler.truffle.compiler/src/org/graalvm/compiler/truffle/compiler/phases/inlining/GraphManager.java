@@ -24,75 +24,64 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.options.OptionValues;
-
-import java.util.ArrayList;
-import java.util.List;
 
 final class GraphManager {
 
     private final PartialEvaluator partialEvaluator;
-    private final StructuredGraph rootIR;
-    private final TruffleMetaAccessProvider truffleMetaAccessProvider;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining = EconomicMap.create();
     private final EconomicMap<CompilableTruffleAST, GraphManager.Entry> irCache = EconomicMap.create();
+    private final PartialEvaluator.Request rootRequest;
 
-    GraphManager(StructuredGraph ir, PartialEvaluator partialEvaluator, TruffleMetaAccessProvider truffleMetaAccessProvider) {
+    GraphManager(PartialEvaluator partialEvaluator, PartialEvaluator.Request rootRequest) {
         this.partialEvaluator = partialEvaluator;
-        this.rootIR = ir;
-        this.truffleMetaAccessProvider = truffleMetaAccessProvider;
+        this.rootRequest = rootRequest;
     }
 
-    Entry get(OptionValues options, CompilableTruffleAST truffleAST) {
+    Entry get(CompilableTruffleAST truffleAST) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
-            Cancellable cancellable = rootIR.getCancellable();
-            SpeculationLog log = rootIR.getSpeculationLog();
-            DebugContext debug = rootIR.getDebug();
-            StructuredGraph.AllowAssumptions allowAssumptions = rootIR.getAssumptions() != null ? StructuredGraph.AllowAssumptions.YES : StructuredGraph.AllowAssumptions.NO;
-            CompilationIdentifier id = rootIR.compilationId();
-            final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(truffleMetaAccessProvider, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary(),
+            final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(rootRequest.inliningPlan, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary(),
                             partialEvaluator.getCallIndirectMethod());
-            StructuredGraph graph = partialEvaluator.createGraphForInlining(options, debug, truffleAST, truffleMetaAccessProvider, plugin, allowAssumptions, id, log, cancellable,
-                            graphCacheForInlining);
+            final PartialEvaluator.Request request = partialEvaluator.new Request(rootRequest.options, rootRequest.debug, truffleAST, partialEvaluator.inlineRootForCallTarget(truffleAST),
+                            rootRequest.inliningPlan, rootRequest.allowAssumptions, rootRequest.compilationId, rootRequest.log, rootRequest.cancellable);
+            partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
             final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = plugin.getTruffleCallNodeToInvoke();
             final List<Invoke> indirectInvokes = plugin.getIndirectInvokes();
-            entry = new GraphManager.Entry(graph, truffleCallNodeToInvoke, indirectInvokes);
+            entry = new GraphManager.Entry(request.graph, truffleCallNodeToInvoke, indirectInvokes);
             irCache.put(truffleAST, entry);
         }
         return entry;
     }
 
-    EconomicMap<TruffleCallNode, Invoke> peRoot(OptionValues options, CompilableTruffleAST truffleAST) {
-        final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(truffleMetaAccessProvider, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary(),
+    EconomicMap<TruffleCallNode, Invoke> peRoot() {
+        final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(rootRequest.inliningPlan, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary(),
                         partialEvaluator.getCallIndirectMethod());
-        partialEvaluator.parseRootGraphForInlining(options, truffleAST, rootIR, truffleMetaAccessProvider, plugin, graphCacheForInlining);
+        partialEvaluator.doGraphPE(rootRequest, plugin, graphCacheForInlining);
         return plugin.getTruffleCallNodeToInvoke();
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
-        final UnmodifiableEconomicMap<Node, Node> duplicates = InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTargetAgnostic(truffleAST),
+        final UnmodifiableEconomicMap<Node, Node> duplicates = InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTarget(truffleAST),
                         "cost-benefit analysis", "AgnosticInliningPhase");
         return duplicates;
     }
