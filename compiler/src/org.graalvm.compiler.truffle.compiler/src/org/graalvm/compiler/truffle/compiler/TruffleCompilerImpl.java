@@ -62,6 +62,7 @@ import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
@@ -218,7 +219,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public final TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
         final DebugContext debugContext;
         if (compilation == null) {
-            debugContext = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
+            debugContext = new Builder(TruffleCompilerOptions.getOptions()).build();
         } else {
             TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
             CompilableTruffleAST compilable = ident.getCompilable();

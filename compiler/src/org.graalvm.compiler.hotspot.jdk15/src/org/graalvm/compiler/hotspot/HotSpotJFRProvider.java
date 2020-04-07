@@ -41,7 +41,7 @@ public final class HotSpotJFRProvider implements JFRProvider {
 
     @Override
     public void registerCompilerPhases(String[] phaseNames) {
-        JFR.CompilerPhaseEvent.registerPhases(phaseNames);
+        JFR.CompilerPhaseScope.registerPhases(phaseNames);
     }
 
     @Override
@@ -67,7 +67,7 @@ public final class HotSpotJFRProvider implements JFRProvider {
         @Override
         public void write(String phase, CompilationIdentifier compileId) {
             if (compileId instanceof HotSpotCompilationIdentifier) {
-                JFR.CompilerPhaseEvent.write(startTime, phase, ((HotSpotCompilationIdentifier) compileId).getRequest().getId(), nesting);
+                JFR.CompilerPhaseScope.write(startTime, phase, ((HotSpotCompilationIdentifier) compileId).getRequest().getId(), nesting);
             }
         }
 

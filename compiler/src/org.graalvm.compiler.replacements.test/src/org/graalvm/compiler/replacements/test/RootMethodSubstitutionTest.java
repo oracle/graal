@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -114,7 +115,7 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
 
     private StructuredGraph getIntrinsicGraph(boolean useEncodedGraphs) {
         OptionValues options = new OptionValues(getDebugContext().getOptions(), GraalOptions.UseEncodedGraphs, useEncodedGraphs);
-        DebugContext debugContext = DebugContext.create(options, getDebugContext().getDescription(), getDebugHandlersFactories());
+        DebugContext debugContext = new Builder(options, getDebugHandlersFactories()).description(getDebugContext().getDescription()).build();
         return getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, debugContext, JFRContext.DISABLED_JFR, null);
     }
 

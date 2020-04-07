@@ -318,7 +318,7 @@ public final class DebugContext implements AutoCloseable {
     /**
      * Singleton used to represent a disabled debug context.
      */
-    private static final DebugContext DISABLED = new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), new Immutable(), NO_CONFIG_CUSTOMIZERS);
+    private static final DebugContext DISABLED = new DebugContext(NO_DESCRIPTION, null, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), new Immutable(), NO_CONFIG_CUSTOMIZERS);
 
     /**
      * Create a DebugContext with debugging disabled.
@@ -327,7 +327,7 @@ public final class DebugContext implements AutoCloseable {
         if (options == null || options.getMap().isEmpty()) {
             return DISABLED;
         }
-        return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), Immutable.create(options), NO_CONFIG_CUSTOMIZERS);
+        return new DebugContext(NO_DESCRIPTION, null, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), Immutable.create(options), NO_CONFIG_CUSTOMIZERS);
     }
 
     /**
@@ -380,6 +380,8 @@ public final class DebugContext implements AutoCloseable {
 
     private final Description description;
 
+    private final CompilationListener compilationListener;
+
     /**
      * Gets a description of the computation associated with this debug context.
      *
@@ -387,6 +389,15 @@ public final class DebugContext implements AutoCloseable {
      */
     public Description getDescription() {
         return description;
+    }
+
+    /**
+     * Gets compilation listener associated with this debug context.
+     *
+     * @return {@code null} if no listener is available
+     */
+    public CompilationListener getCompilationListener() {
+        return compilationListener;
     }
 
     /**
@@ -399,43 +410,91 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Creates a {@link DebugContext} based on a given set of option values and {@code factory}.
+     * Object used to create a {@link DebugContext}.
      */
-    public static DebugContext create(OptionValues options, DebugHandlersFactory factory) {
-        return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), Immutable.create(options), Collections.singletonList(factory));
+    public static class Builder {
+        private final OptionValues options;
+        private Description description = NO_DESCRIPTION;
+        private CompilationListener compilationListener;
+        private GlobalMetrics globalMetrics = NO_GLOBAL_METRIC_VALUES;
+        private PrintStream logStream = getDefaultLogStream();
+        private final Iterable<DebugHandlersFactory> factories;
+
+        /**
+         * Builder for a {@link DebugContext} based on {@code options} and
+         * {@link DebugHandlersFactory#LOADER}.
+         */
+        public Builder(OptionValues options) {
+            this.options = options;
+            this.factories = DebugHandlersFactory.LOADER;
+        }
+
+        /**
+         * Builder for a {@link DebugContext} based on {@code options} and {@code factories}. The
+         * {@link DebugHandlersFactory#LOADER} value can be used for the latter.
+         */
+        public Builder(OptionValues options, Iterable<DebugHandlersFactory> factories) {
+            this.options = options;
+            this.factories = factories;
+        }
+
+        /**
+         * Builder for a {@link DebugContext} based {@code options} and {@code factory}. The latter
+         * can be null in which case {@link DebugContext#NO_CONFIG_CUSTOMIZERS} is used.
+         */
+        public Builder(OptionValues options, DebugHandlersFactory factory) {
+            this.options = options;
+            this.factories = factory == null ? NO_CONFIG_CUSTOMIZERS : Collections.singletonList(factory);
+        }
+
+        /**
+         * Sets the description for the debug context. The default is for a context to have no
+         * description.
+         */
+        public Builder description(Description desc) {
+            this.description = desc;
+            return this;
+        }
+
+        /**
+         * Sets the compilation listener for the debug context. The default is for a context to have
+         * no compilation listener.
+         */
+        public Builder compilationListener(CompilationListener listener) {
+            this.compilationListener = listener;
+            return this;
+        }
+
+        public Builder globalMetrics(GlobalMetrics metrics) {
+            this.globalMetrics = metrics;
+            return this;
+        }
+
+        public Builder logStream(PrintStream stream) {
+            this.logStream = stream;
+            return this;
+        }
+
+        public DebugContext build() {
+            return new DebugContext(description,
+                            compilationListener,
+                            globalMetrics,
+                            logStream,
+                            Immutable.create(options),
+                            factories);
+        }
     }
 
-    /**
-     * Creates a {@link DebugContext} based on a given set of option values and {@code factories}.
-     * The {@link DebugHandlersFactory#LOADER} can be used for the latter.
-     */
-    public static DebugContext create(OptionValues options, Iterable<DebugHandlersFactory> factories) {
-        return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), Immutable.create(options), factories);
-    }
-
-    public static DebugContext create(OptionValues options, PrintStream logStream, DebugHandlersFactory factory) {
-        return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, logStream, Immutable.create(options), Collections.singletonList(factory));
-    }
-
-    /**
-     * Creates a {@link DebugContext} based on a given set of option values and {@code factories}.
-     * The {@link DebugHandlersFactory#LOADER} can be used for the latter.
-     */
-    public static DebugContext create(OptionValues options, Description description, Iterable<DebugHandlersFactory> factories) {
-        return new DebugContext(description, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), Immutable.create(options), factories);
-    }
-
-    /**
-     * Creates a {@link DebugContext}.
-     */
-    public static DebugContext create(OptionValues options, Description description, GlobalMetrics globalMetrics, PrintStream logStream, Iterable<DebugHandlersFactory> factories) {
-        return new DebugContext(description, globalMetrics, logStream, Immutable.create(options), factories);
-    }
-
-    private DebugContext(Description description, GlobalMetrics globalMetrics, PrintStream logStream, Immutable immutable, Iterable<DebugHandlersFactory> factories) {
+    private DebugContext(Description description,
+                    CompilationListener compilationListener,
+                    GlobalMetrics globalMetrics,
+                    PrintStream logStream,
+                    Immutable immutable,
+                    Iterable<DebugHandlersFactory> factories) {
         this.immutable = immutable;
         this.description = description;
         this.globalMetrics = globalMetrics;
+        this.compilationListener = compilationListener;
         if (immutable.scopesEnabled) {
             OptionValues options = immutable.options;
             List<DebugDumpHandler> dumpHandlers = new ArrayList<>();

@@ -52,7 +52,7 @@ import org.graalvm.compiler.core.gen.LIRCompilerBackend;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -124,7 +124,7 @@ public abstract class GraalCompilerState {
         this.options = Graal.getRequiredCapability(OptionValues.class);
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = backend.getProviders();
-        this.debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
+        this.debug = new Builder(options).build();
     }
 
     protected boolean useProfilingInfo() {

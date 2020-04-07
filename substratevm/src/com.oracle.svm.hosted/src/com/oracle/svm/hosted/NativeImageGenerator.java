@@ -63,6 +63,7 @@ import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
@@ -533,7 +534,7 @@ public class NativeImageGenerator {
 
         OptionValues options = HostedOptionValues.singleton();
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
-        try (DebugContext debug = DebugContext.create(options, new GraalDebugHandlersFactory(originalSnippetReflection))) {
+        try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(originalSnippetReflection)).build()) {
             setupNativeImage(imageName, options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, originalSnippetReflection, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);

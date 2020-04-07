@@ -52,6 +52,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugOptions;
@@ -353,7 +354,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             }
         }
         Description description = new Description(compilable, compilationId.toString(CompilationIdentifier.Verbosity.ID));
-        return DebugContext.create(compilationOptions, description, metricValues, logStream, factories);
+        return new Builder(compilationOptions, factories).globalMetrics(metricValues).description(description).logStream(logStream).build();
     }
 
     @Override
