@@ -104,12 +104,12 @@ public final class AccessAdvisor {
         }
         // Ignore libjvmcicompiler internal JNI calls:
         // * jdk.vm.ci.services.Services.getJVMCIClassLoader
-        // * org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMToHotSpotEntryPoints
+        // * org.graalvm.compiler.hotspot.management.SVMToHotSpotEntryPoints
         if (callerClass.get() == null && "jdk.vm.ci.services.Services".equals(queriedClass.get()) && "getJVMCIClassLoader".equals(name.get()) &&
                         "()Ljava/lang/ClassLoader;".equals(signature.get())) {
             return true;
         }
-        if (callerClass.get() == null && "org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMToHotSpotEntryPoints".equals(queriedClass.get())) {
+        if (callerClass.get() == null && "org.graalvm.compiler.hotspot.management.SVMToHotSpotEntryPoints".equals(queriedClass.get())) {
             return true;
         }
         /*
