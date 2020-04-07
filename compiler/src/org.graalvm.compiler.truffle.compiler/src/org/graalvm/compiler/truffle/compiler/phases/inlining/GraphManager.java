@@ -57,7 +57,7 @@ final class GraphManager {
         if (entry == null) {
             final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(rootRequest.inliningPlan, partialEvaluator);
             final PartialEvaluator.Request request = partialEvaluator.new Request(rootRequest.options, rootRequest.debug, truffleAST, partialEvaluator.inlineRootForCallTarget(truffleAST),
-                            rootRequest.inliningPlan, rootRequest.allowAssumptions, rootRequest.compilationId, rootRequest.log, rootRequest.cancellable);
+                            rootRequest.inliningPlan, rootRequest.compilationId, rootRequest.log, rootRequest.cancellable);
             partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
             final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = plugin.getTruffleCallNodeToInvoke();
             final List<Invoke> indirectInvokes = plugin.getIndirectInvokes();

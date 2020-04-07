@@ -78,7 +78,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
         });
         RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNode);
         final Object[] arguments = {1};
-        partialEval((OptimizedCallTarget) target, arguments, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
+        partialEval((OptimizedCallTarget) target, arguments, CompilationIdentifier.INVALID_COMPILATION_ID);
     }
 
     @Test(expected = PermanentBailoutException.class)
@@ -109,7 +109,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
                 };
             }
         };
-        partialEval((OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode), new Object[]{}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
+        partialEval((OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode), new Object[]{}, CompilationIdentifier.INVALID_COMPILATION_ID);
     }
 
     private static class TestRootNode extends RootNode {
@@ -157,7 +157,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     private int getBaselineGraphNodeCount(RootNode rootNode) {
         final OptimizedCallTarget baselineGraphTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
-        final StructuredGraph baselineGraph = partialEval(baselineGraphTarget, new Object[]{}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
+        final StructuredGraph baselineGraph = partialEval(baselineGraphTarget, new Object[]{}, CompilationIdentifier.INVALID_COMPILATION_ID);
         return baselineGraph.getNodeCount();
     }
 
@@ -166,7 +166,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
         setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumGraalNodeCount", Integer.toString(nodeLimit)).build());
         RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNodeFactory.get());
         final Object[] arguments = {1};
-        partialEval((OptimizedCallTarget) target, arguments, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
+        partialEval((OptimizedCallTarget) target, arguments, CompilationIdentifier.INVALID_COMPILATION_ID);
     }
 
     private static RootNode createRootNodeWithCall(final RootNode rootNode) {
