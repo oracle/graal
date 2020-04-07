@@ -662,6 +662,55 @@ public class DynamicObjectLibraryTest {
     }
 
     @Test
+    public void testPutConstant1() {
+        DynamicObject o1 = createEmpty();
+        String k1 = "key1";
+        int v1 = 42;
+        int v2 = 43;
+        int flags = 0xf;
+
+        DynamicObjectLibrary setNode1 = createLibraryForKey(k1);
+
+        setNode1.putConstant(o1, k1, v1, 0);
+        assertTrue(o1.getShape().getProperty(k1).getLocation().isConstant());
+        assertEquals(0, o1.getShape().getProperty(k1).getFlags());
+        assertEquals(v1, uncachedGet(o1, k1));
+
+        setNode1.putConstant(o1, k1, v1, flags);
+        assertTrue(o1.getShape().getProperty(k1).getLocation().isConstant());
+        assertEquals(flags, o1.getShape().getProperty(k1).getFlags());
+        assertEquals(v1, uncachedGet(o1, k1));
+
+        setNode1.put(o1, k1, v2);
+        assertFalse(o1.getShape().getProperty(k1).getLocation().isConstant());
+        assertEquals(flags, o1.getShape().getProperty(k1).getFlags());
+        assertEquals(v2, uncachedGet(o1, k1));
+    }
+
+    @Test
+    public void testPutConstant2() {
+        DynamicObject o1 = createEmpty();
+        String k1 = "key1";
+        int v1 = 42;
+        int v2 = 43;
+        int flags = 0xf;
+
+        DynamicObjectLibrary setNode1 = createLibraryForKey(k1);
+
+        setNode1.putConstant(o1, k1, v1, 0);
+        assertTrue(o1.getShape().getProperty(k1).getLocation().isConstant());
+        assertEquals(0, o1.getShape().getProperty(k1).getFlags());
+        assertEquals(v1, uncachedGet(o1, k1));
+
+        setNode1.putWithFlags(o1, k1, v2, flags);
+        if (isNewLayout(o1)) {
+            assertFalse(o1.getShape().getProperty(k1).getLocation().isConstant());
+        }
+        assertEquals(flags, o1.getShape().getProperty(k1).getFlags());
+        assertEquals(v2, uncachedGet(o1, k1));
+    }
+
+    @Test
     public void testCachedShape() {
         String key = "testKey";
         DynamicObject o1 = createEmpty();
