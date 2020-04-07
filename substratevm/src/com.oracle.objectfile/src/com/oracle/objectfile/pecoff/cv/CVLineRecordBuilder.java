@@ -51,9 +51,9 @@ public class CVLineRecordBuilder {
      * to handle this, first we decide if we want to merge this with the previous range (only if same file and start of this range is end of previous range)
      * if we are emitting a new range to the same file, write the range, save it as the previous range and go on
      * If this is a different file, then update the length of the previous file header, write the new file header and write the new range
-     * At the very end, make sure we update the last file header
+     * At the very end, make sure we update the last file header.
      *
-     * In addition, optionally ignore Ranges that point into Graal innards, just adding them to the current enclosing ramge
+     * In addition, optionally ignore Ranges that point into Graal innards, just adding them to the current enclosing range
      */
 
     /**
@@ -125,7 +125,7 @@ public class CVLineRecordBuilder {
         /* is this a new file? if so we emit a new file record */
         boolean wantNewFile = previousRange == null || !previousRange.getFileAsPath().equals(range.getFileAsPath());
         if (wantNewFile) {
-            FileEntry file = cvSections.ensureFileEntry(range);
+            FileEntry file = cvSections.findFile(range.getFileAsPath());
             if (file != null && file.getFileName() != null) {
                 previousRange = null;
                 CVUtil.debug("     processRange: addNewFile: %s\n", file);
@@ -153,7 +153,7 @@ public class CVLineRecordBuilder {
      * @return true if the two ranges can be combined
      */
     private boolean shouldMerge(Range range, Range previousRange) {
-        if (!mergeAdjacentLineRecords) {
+        if (!CVConstants.mergeAdjacentLineRecords) {
             return false;
         }
         if (previousRange == null) {
@@ -162,7 +162,7 @@ public class CVLineRecordBuilder {
         /* if we're in a different class that the primary Class, this is inlined code */
         final boolean isInlinedCode = !range.getClassName().equals(primaryEntry.getClassEntry().getClassName());
         // if (isInlinedCode && skipInlinedCode) { return true; }
-        if (isInlinedCode && skipGraalIntrinsics && CVRootPackages.isGraalIntrinsic(range.getClassName())) {
+        if (isInlinedCode && CVConstants.skipGraalIntrinsics && CVRootPackages.isGraalIntrinsic(range.getClassName())) {
             return true;
         }
         return previousRange.getFileAsPath().equals(range.getFileAsPath()) && (range.getLine() == -1 || previousRange.getLine() == range.getLine());

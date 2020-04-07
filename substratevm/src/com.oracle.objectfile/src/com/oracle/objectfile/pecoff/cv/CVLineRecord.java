@@ -130,7 +130,7 @@ final class CVLineRecord extends CVSymbolRecord {
     }
 
     CVLineRecord(CVSections cvSections, String symbolName, PrimaryEntry entry) {
-        super(cvSections, DEBUG_S_LINES);
+        super(cvSections, CVDebugConstants.DEBUG_S_LINES);
         this.primaryEntry = entry;
         this.symbolName = symbolName;
     }

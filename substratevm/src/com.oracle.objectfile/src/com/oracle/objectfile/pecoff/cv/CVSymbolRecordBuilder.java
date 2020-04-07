@@ -49,7 +49,7 @@ final class CVSymbolRecordBuilder {
     }
 
     /**
-     * build DEBUG_S_SYMBOLS record from all classEntries
+     * build DEBUG_S_SYMBOLS record from all classEntries.
      * (could probably build one per class or one per function)
      */
     void build() {
@@ -60,7 +60,7 @@ final class CVSymbolRecordBuilder {
     }
 
     /**
-     * build all debug info for a classEntry
+     * build all debug info for a classEntry.
      * (does not yet handle member variables)
      *
      * @param classEntry current class
@@ -86,7 +86,7 @@ final class CVSymbolRecordBuilder {
      *   S_FRAMEPROC
      *   S_END
      *   (later: type records as required)
-     *   line number records
+     *   line number records.
      *
      * @param primaryEntry primary entry for this function
      * @param methodName method name alias as it will be seen by the user
@@ -108,7 +108,7 @@ final class CVSymbolRecordBuilder {
     private boolean noMainFound = true;
 
     /**
-     * renames a method name ot something user friendly in the debugger
+     * renames a method name ot something user friendly in the debugger.
      * (does not affect external symbols used by linker)
      *
      * first main function becomes class.main (unless replaceMainFunctionName is non-null)
@@ -154,7 +154,7 @@ final class CVSymbolRecordBuilder {
     }
 
     /**
-     * add type records for function
+     * add type records for function.
      * (later add arglist, and return type and local types)
      * @param entry primaryEntry containing entities whoses type records must be added
      *

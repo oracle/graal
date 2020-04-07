@@ -33,7 +33,7 @@ final class CVStringTableRecord extends CVSymbolRecord {
     private final CVSymbolSectionImpl.CVStringTable stringTable;
 
     CVStringTableRecord(CVSections cvSections, CVSymbolSectionImpl.CVStringTable stringTable) {
-        super(cvSections, DEBUG_S_STRINGTABLE);
+        super(cvSections, CVDebugConstants.DEBUG_S_STRINGTABLE);
         this.stringTable = stringTable;
     }
 

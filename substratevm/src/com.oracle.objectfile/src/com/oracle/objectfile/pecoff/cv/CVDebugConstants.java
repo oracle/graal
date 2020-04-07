@@ -26,32 +26,32 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-public interface CVDebugConstants {
+public abstract class CVDebugConstants {
 
-    //int DEBUG_S_IGNORE      = 0x00;
-    int DEBUG_S_SYMBOLS     = 0xf1;
-    int DEBUG_S_LINES       = 0xf2;
-    int DEBUG_S_STRINGTABLE = 0xf3;
-    int DEBUG_S_FILECHKSMS  = 0xf4;
+    //static final int DEBUG_S_IGNORE      = 0x00;
+    static final int DEBUG_S_SYMBOLS     = 0xf1;
+    static final int DEBUG_S_LINES       = 0xf2;
+    static final int DEBUG_S_STRINGTABLE = 0xf3;
+    static final int DEBUG_S_FILECHKSMS  = 0xf4;
 
     /* subcommands in DEBUG_S_SYMBOLS section */
-    //short S_COMPILE   = 0x0001;
-    short S_SSEARCH   = 0x0005;
-    short S_END       = 0x0006;
-    short S_OBJNAME   = 0x1101;
-    short S_LDATA32_ST = 0x1007;
-    short S_FRAMEPROC = 0x1012;
-    short S_CONSTANT  = 0x1107;
-    short S_UDT       = 0x1108;
-    short S_LDATA32   = 0x110c;
-    short S_GDATA32   = 0x110d;
-    short S_GPROC32   = 0x1110;
-    short S_REGREL32  = 0x1111;
-    short S_COMPILE3  = 0x113c;
-    short S_ENVBLOCK  = 0x113d;
-    short S_GPROC32_ID  = 0x1147;
-    short S_PROC_ID_END = 0x114f;
-    //short S_BUILDINFO   = 0x114c;
+    //static final short S_COMPILE   = 0x0001;
+    static final short S_SSEARCH   = 0x0005;
+    static final short S_END       = 0x0006;
+    static final short S_OBJNAME   = 0x1101;
+    static final short S_LDATA32_ST = 0x1007;
+    static final short S_FRAMEPROC = 0x1012;
+    static final short S_CONSTANT  = 0x1107;
+    static final short S_UDT       = 0x1108;
+    static final short S_LDATA32   = 0x110c;
+    static final short S_GDATA32   = 0x110d;
+    static final short S_GPROC32   = 0x1110;
+    static final short S_REGREL32  = 0x1111;
+    static final short S_COMPILE3  = 0x113c;
+    static final short S_ENVBLOCK  = 0x113d;
+    static final short S_GPROC32_ID  = 0x1147;
+    static final short S_PROC_ID_END = 0x114f;
+    //static final short S_BUILDINFO   = 0x114c;
 
     /* enums are more typesafe but the IDE no longer knows which enum constant is unused
     enum CV_RECORD {

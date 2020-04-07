@@ -30,17 +30,35 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ARGLIST;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ARRAY;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_BCLASS;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_BINTERFACE;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_BITFIELD;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_CLASS;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_INTERFACE;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_MEMBER;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_MODIFIER;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_PAD1;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_PAD2;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_PAD3;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_POINTER;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_PROCEDURE;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_STRUCTURE;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_TYPESERVER2;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_UQUAD;
+
 /*
  * CV Type Record format (little-endian):
  * uint16 length
  * uint16 leaf (a.k.a. record type)
  * (contents)
  */
-abstract class CVTypeRecord implements CVTypeConstants {
+abstract class CVTypeRecord {
 
     protected final short type;
     private int startPosition;
-    private int sequenceNumber; // 1000 on up
+    private int sequenceNumber; /* CodeView type records are numbered 1000 on up */
 
     CVTypeRecord(short type) {
         this.type = type;

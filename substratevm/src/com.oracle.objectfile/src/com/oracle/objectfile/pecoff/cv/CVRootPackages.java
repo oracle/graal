@@ -195,7 +195,7 @@ abstract class CVRootPackages {
     }
 
     /**
-     * is class a Graal intrinsic class
+     * is class a Graal intrinsic class?
      *
      * @param cn class name of code
      * @return true if this is Graal intrinsic code

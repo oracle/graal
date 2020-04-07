@@ -31,7 +31,7 @@ import java.io.PrintStream;
 /*
  * A Symbol record is a top-level record in the CodeView .debug$S section
  */
-abstract class CVSymbolRecord implements CVDebugConstants {
+abstract class CVSymbolRecord {
 
     CVSections cvSections;
     protected int recordStartPosition;

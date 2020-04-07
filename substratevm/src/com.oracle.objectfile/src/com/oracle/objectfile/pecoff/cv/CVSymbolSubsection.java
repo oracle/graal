@@ -37,7 +37,7 @@ class CVSymbolSubsection extends CVSymbolRecord {
     private ArrayList<CVSymbolSubrecord> subcmds = new ArrayList<>(20);
 
     CVSymbolSubsection(CVSections cvSections) {
-        super(cvSections, DEBUG_S_SYMBOLS);
+        super(cvSections, CVDebugConstants.DEBUG_S_SYMBOLS);
     }
 
     void addRecord(CVSymbolSubrecord subcmd) {

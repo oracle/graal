@@ -31,9 +31,11 @@ import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.debugentry.DebugInfoBase;
 import com.oracle.objectfile.pecoff.PECoffMachine;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
+import java.nio.ByteOrder;
 import java.util.Map;
 import java.util.Set;
 
@@ -48,7 +50,8 @@ public final class CVSections extends DebugInfoBase {
     private CVSymbolSectionImpl cvSymbolSection;
     private CVTypeSectionImpl cvTypeSection;
 
-    public CVSections(PECoffMachine targetMachine) {
+    public CVSections(PECoffMachine targetMachine, ByteOrder byteOrder) {
+        super(byteOrder);
         machine = targetMachine;
         cvSymbolSection = new CVSymbolSectionImpl(this);
         cvTypeSection   = new CVTypeSectionImpl();

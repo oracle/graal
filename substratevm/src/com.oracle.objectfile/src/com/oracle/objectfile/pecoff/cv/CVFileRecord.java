@@ -55,7 +55,7 @@ final class CVFileRecord extends CVSymbolRecord {
     private Map<FileEntry, Integer> fileEntryToOffsetMap = new LinkedHashMap<>(FILE_TABLE_INITIAL_SIZE);
 
     CVFileRecord(CVSections cvSections, CVSymbolSectionImpl.CVStringTable strings) {
-        super(cvSections, DEBUG_S_FILECHKSMS);
+        super(cvSections, CVDebugConstants.DEBUG_S_FILECHKSMS);
         this.cvSections = cvSections;
         this.strings = strings;
     }
