@@ -55,28 +55,40 @@ final class GraphManager {
     Entry get(CompilableTruffleAST truffleAST) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
-            final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(rootRequest.inliningPlan, partialEvaluator);
-            final PartialEvaluator.Request request = partialEvaluator.new Request(rootRequest.options, rootRequest.debug, truffleAST, partialEvaluator.inlineRootForCallTarget(truffleAST),
-                            rootRequest.inliningPlan, rootRequest.compilationId, rootRequest.log, rootRequest.cancellable);
+            final PEAgnosticInlineInvokePlugin plugin = newPlugin();
+            final PartialEvaluator.Request request = newRequest(truffleAST);
             partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
-            final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = plugin.getTruffleCallNodeToInvoke();
-            final List<Invoke> indirectInvokes = plugin.getIndirectInvokes();
-            entry = new GraphManager.Entry(request.graph, truffleCallNodeToInvoke, indirectInvokes);
+            entry = new Entry(request.graph, plugin.getTruffleCallNodeToInvoke(), plugin.getIndirectInvokes());
             irCache.put(truffleAST, entry);
         }
         return entry;
     }
 
+    private PartialEvaluator.Request newRequest(CompilableTruffleAST truffleAST) {
+        return partialEvaluator.new Request(
+                        rootRequest.options,
+                        rootRequest.debug,
+                        truffleAST,
+                        partialEvaluator.inlineRootForCallTarget(truffleAST),
+                        rootRequest.inliningPlan,
+                        rootRequest.compilationId,
+                        rootRequest.log,
+                        rootRequest.cancellable);
+    }
+
+    private PEAgnosticInlineInvokePlugin newPlugin() {
+        return new PEAgnosticInlineInvokePlugin(rootRequest.inliningPlan, partialEvaluator);
+    }
+
     EconomicMap<TruffleCallNode, Invoke> peRoot() {
-        final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(rootRequest.inliningPlan, partialEvaluator);
+        final PEAgnosticInlineInvokePlugin plugin = newPlugin();
         partialEvaluator.doGraphPE(rootRequest, plugin, graphCacheForInlining);
         return plugin.getTruffleCallNodeToInvoke();
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
-        final UnmodifiableEconomicMap<Node, Node> duplicates = InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTarget(truffleAST),
+        return InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTarget(truffleAST),
                         "cost-benefit analysis", "AgnosticInliningPhase");
-        return duplicates;
     }
 
     static class Entry {
