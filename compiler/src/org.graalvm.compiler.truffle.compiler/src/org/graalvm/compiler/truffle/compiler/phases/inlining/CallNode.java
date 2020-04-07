@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -233,7 +233,7 @@ public final class CallNode extends Node {
 
     private StructuredGraph copyGraphAndUpdateInvokes(GraphManager.Entry entry) {
         final StructuredGraph graph = entry.graph;
-        return (StructuredGraph) graph.copy(new Consumer<UnmodifiableEconomicMap<Node, Node>>() {
+        return graph.copy(new Consumer<UnmodifiableEconomicMap<Node, Node>>() {
             @Override
             public void accept(UnmodifiableEconomicMap<Node, Node> duplicates) {
                 for (CallNode child : children) {
@@ -248,7 +248,7 @@ public final class CallNode extends Node {
                     }
                 }
             }
-        }, graph.getDebug());
+        }, graph.getDebug(), graph.getJFR());
     }
 
     public void inline() {

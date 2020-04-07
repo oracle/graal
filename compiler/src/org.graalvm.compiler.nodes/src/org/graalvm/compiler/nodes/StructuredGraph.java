@@ -46,6 +46,7 @@ import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
@@ -193,6 +194,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         private final OptionValues options;
         private Cancellable cancellable = null;
         private final DebugContext debug;
+        private JFRContext jfr;
         private NodeSourcePosition callerContext;
         private boolean isSubstitution;
 
@@ -244,6 +246,15 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
         public DebugContext getDebug() {
             return debug;
+        }
+
+        public Builder jfr(JFRContext jfrContext) {
+            this.jfr = jfrContext;
+            return this;
+        }
+
+        public JFRContext getJFR() {
+            return jfr;
         }
 
         public SpeculationLog getSpeculationLog() {
@@ -327,6 +338,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                             compilationId,
                             options,
                             debug,
+                            jfr,
                             cancellable,
                             callerContext);
             // @formatter:on
@@ -349,6 +361,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private final boolean useProfilingInfo;
     private final Cancellable cancellable;
     private final boolean isSubstitution;
+    private JFRContext jfr;
 
     /**
      * The assumptions made while constructing and transforming this graph.
@@ -402,6 +415,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                     CompilationIdentifier compilationId,
                     OptionValues options,
                     DebugContext debug,
+                    JFRContext jfr,
                     Cancellable cancellable,
                     NodeSourcePosition context) {
         super(name, options, debug, trackNodeSourcePosition);
@@ -419,6 +433,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.cancellable = cancellable;
         this.inliningLog = new InliningLog(rootMethod, GraalOptions.TraceInlining.getValue(options));
         this.callerContext = context;
+        this.jfr = jfr != null ? jfr : JFRContext.DISABLED_JFR;
     }
 
     private static boolean checkIsSubstitutionInvariants(ResolvedJavaMethod method, boolean isSubstitution) {
@@ -554,6 +569,47 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    public JFRContext getJFR() {
+        return jfr;
+    }
+
+    /**
+     * Resets the {@link JFRContext} for this graph to a new value. This is useful when a graph is
+     * "handed over" from its creating thread to another thread.
+     */
+    public void resetJFR(JFRContext newJfr) {
+        this.jfr = newJfr;
+    }
+
+    /**
+     * Creates a copy of this graph.
+     *
+     * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
+     *            graph if this graph can be accessed from multiple threads (e.g., it's in a cache
+     *            accessed by multiple threads).
+     * @param jfrForCopy the JFR context for the graph copy. This must not be the JFR for this graph
+     *            if this graph can be accessed from multiple threads (e.g., it's in a cache
+     *            accessed by multiple threads).
+     */
+    public StructuredGraph copy(DebugContext debugForCopy, JFRContext jfrForCopy) {
+        return copy(name, null, compilationId, debugForCopy, jfrForCopy);
+    }
+
+    /**
+     * Creates a copy of this graph.
+     *
+     * @param duplicationMapCallback consumer of the duplication map created during the copying
+     * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
+     *            graph if this graph can be accessed from multiple threads (e.g., it's in a cache
+     *            accessed by multiple threads).
+     * @param jfrForCopy the JFR context for the graph copy. This must not be the JFR for this graph
+     *            if this graph can be accessed from multiple threads (e.g., it's in a cache
+     *            accessed by multiple threads).
+     */
+    public StructuredGraph copy(Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, DebugContext debugForCopy, JFRContext jfrForCopy) {
+        return copy(name, duplicationMapCallback, compilationId, debugForCopy, jfrForCopy);
+    }
+
     /**
      * Creates a copy of this graph.
      *
@@ -567,11 +623,12 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     @Override
     protected Graph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, DebugContext debugForCopy) {
-        return copy(newName, duplicationMapCallback, compilationId, debugForCopy);
+        return copy(newName, duplicationMapCallback, compilationId, debugForCopy, JFRContext.DISABLED_JFR);
     }
 
     @SuppressWarnings("try")
-    private StructuredGraph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, CompilationIdentifier newCompilationId, DebugContext debugForCopy) {
+    private StructuredGraph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, CompilationIdentifier newCompilationId, DebugContext debugForCopy,
+                    JFRContext jfrForCopy) {
         AllowAssumptions allowAssumptions = AllowAssumptions.ifNonNull(assumptions);
         StructuredGraph copy = new StructuredGraph(newName,
                         method(),
@@ -583,7 +640,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                         methods != null ? new ArrayList<>(methods) : null,
                         trackNodeSourcePosition,
                         newCompilationId,
-                        getOptions(), debugForCopy, null, callerContext);
+                        getOptions(), debugForCopy, jfrForCopy, null, callerContext);
         if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
             copy.assumptions.record(assumptions);
         }
@@ -615,9 +672,12 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
      *            graph if this graph can be accessed from multiple threads (e.g., it's in a cache
      *            accessed by multiple threads).
+     * @param jfrForCopy the JFR context for the graph copy. This must not be the JFR for this graph
+     *            if this graph can be accessed from multiple threads (e.g., it's in a cache
+     *            accessed by multiple threads).
      */
-    public StructuredGraph copyWithIdentifier(CompilationIdentifier newCompilationId, DebugContext debugForCopy) {
-        return copy(name, null, newCompilationId, debugForCopy);
+    public StructuredGraph copyWithIdentifier(CompilationIdentifier newCompilationId, DebugContext debugForCopy, JFRContext jfrForCopy) {
+        return copy(name, null, newCompilationId, debugForCopy, jfrForCopy);
     }
 
     public ParameterNode getParameter(int index) {

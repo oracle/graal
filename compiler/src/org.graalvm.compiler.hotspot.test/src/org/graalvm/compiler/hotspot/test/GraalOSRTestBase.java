@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.bytecode.BytecodeStream;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
+import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
@@ -87,7 +88,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
                 return;
             }
         }
-        HotSpotCompilationRequestResult result = task.runCompilation(debug);
+        HotSpotCompilationRequestResult result = task.runCompilation(debug, JFRContext.DISABLED_JFR);
         if (result.getFailure() != null) {
             throw new GraalError(result.getFailureMessage());
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,13 @@
 package org.graalvm.compiler.lir.alloc.lsra;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.core.common.jfr.JFRContext;
+import org.graalvm.compiler.core.common.jfr.JFRProvider.CompilerPhaseEvent;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import static org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
+
+import java.util.function.Consumer;
+
 import org.graalvm.compiler.lir.phases.LIRPhase;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -49,7 +54,10 @@ abstract class LinearScanAllocationPhase {
     @SuppressWarnings("try")
     public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context, boolean dumpLIR) {
         DebugContext debug = lirGenRes.getLIR().getDebug();
-        try (DebugContext.Scope s = debug.scope(getName(), this)) {
+        JFRContext jfr = lirGenRes.getLIR().getJFR();
+        Consumer<CompilerPhaseEvent> eventWriter = event -> event.write(getName().toString(), jfr.compileId());
+        try (DebugContext.Scope s = debug.scope(getName(), this);
+                        JFRContext.Scope compilerPhaseScope = jfr.openCompilerPhaseScope(eventWriter);) {
             run(target, lirGenRes, context);
             if (dumpLIR) {
                 if (debug.isDumpEnabled(DebugContext.VERBOSE_LEVEL)) {

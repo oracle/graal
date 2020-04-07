@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -126,6 +127,10 @@ public class InliningUtil extends ValueMergeUtil {
     private static void printInlining(final ResolvedJavaMethod method, final Invoke invoke, final int inliningDepth, final boolean success, final String msg, final Object... args) {
         if (HotSpotPrintInlining.getValue(invoke.asNode().getOptions())) {
             Util.printInlining(method, invoke.bci(), inliningDepth, success, msg, args);
+        }
+        JFRContext jfr = invoke.asNode().graph().getJFR();
+        if (jfr.isEnabled()) {
+            jfr.notifyInlining(invoke.getContextMethod(), method, success, String.format(msg, args), invoke.bci());
         }
     }
 

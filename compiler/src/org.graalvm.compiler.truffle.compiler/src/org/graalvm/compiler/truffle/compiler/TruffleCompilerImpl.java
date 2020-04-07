@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,6 +56,7 @@ import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
+import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
@@ -253,7 +254,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             final DebugContext callerDebug = ((TruffleDebugContextImpl) truffleDebug).debugContext;
 
             try (DebugContext.Scope s = maybeOpenTruffleScope(compilable, callerDebug)) {
-                actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, callerDebug);
+                actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, callerDebug, JFRContext.DISABLED_JFR);
             } catch (Throwable e) {
                 notifyCompilableOfFailure(compilable, e);
             }
@@ -261,7 +262,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
             try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.getDefaultLogStream());
                             DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
-                actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, graalDebug);
+                actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, graalDebug, JFRContext.DISABLED_JFR);
             } catch (Throwable e) {
                 notifyCompilableOfFailure(compilable, e);
             }
@@ -285,7 +286,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
     private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleInliningPlan inliningPlan, TruffleCompilationTask task, TruffleCompilerListener listener,
                     TruffleCompilationIdentifier compilationId,
-                    CompilableTruffleAST compilable, DebugContext graalDebug) {
+                    CompilableTruffleAST compilable, DebugContext graalDebug, JFRContext jfr) {
         final TruffleCompilationWrapper truffleCompilationWrapper = new TruffleCompilationWrapper(
                         options,
                         getDebugOutputDirectory(),
@@ -295,7 +296,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         inliningPlan,
                         compilationId,
                         listener);
-        truffleCompilationWrapper.run(graalDebug);
+        truffleCompilationWrapper.run(graalDebug, jfr);
     }
 
     /**
@@ -649,7 +650,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         }
 
         @Override
-        protected Void performCompilation(DebugContext debug) {
+        protected Void performCompilation(DebugContext debug, JFRContext jfr) {
             compileAST(options, debug, compilable, inliningPlan, compilationId, task, listener);
             return null;
         }

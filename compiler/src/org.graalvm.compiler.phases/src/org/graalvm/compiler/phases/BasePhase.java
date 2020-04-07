@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,12 @@
 package org.graalvm.compiler.phases;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.jfr.JFRContext;
+import org.graalvm.compiler.core.common.jfr.JFRProvider.CompilerPhaseEvent;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -182,6 +185,15 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return false;
     }
 
+    private JFRContext.Scope openCompilerPhaseScope(StructuredGraph graph) {
+        JFRContext jfr = graph.getJFR();
+        if (this.getClass() != PhaseSuite.class) {
+            Consumer<CompilerPhaseEvent> writer = event -> event.write(getName().toString(), jfr.compileId());
+            return jfr.openCompilerPhaseScope(writer);
+        }
+        return null;
+    }
+
     @SuppressWarnings("try")
     protected final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         graph.checkCancellation();
@@ -191,7 +203,11 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
 
         DebugContext debug = graph.getDebug();
-        try (DebugCloseable a = timer.start(debug); DebugContext.Scope s = debug.scope(getClass(), this); DebugCloseable c = memUseTracker.start(debug)) {
+        try (JFRContext.Scope compilerPhaseScope = openCompilerPhaseScope(graph);
+                        DebugCloseable a = timer.start(debug);
+                        DebugContext.Scope s = debug.scope(getClass(), this);
+                        DebugCloseable c = memUseTracker.start(debug);) {
+
             int sizeBefore = 0;
             Mark before = null;
             OptionValues options = graph.getOptions();

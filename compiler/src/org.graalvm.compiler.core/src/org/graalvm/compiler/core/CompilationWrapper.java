@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Map;
 
+import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
@@ -119,7 +120,7 @@ public abstract class CompilationWrapper<T> {
     /**
      * Handles an uncaught exception.
      *
-     * @param t an exception thrown during {@link #run(DebugContext)}
+     * @param t an exception thrown during {@link #run(DebugContext, JFRContext)}
      * @return a value representing the result of a failed compilation (may be {@code null})
      */
     protected abstract T handleException(Throwable t);
@@ -155,8 +156,9 @@ public abstract class CompilationWrapper<T> {
      * Perform the compilation wrapped by this object.
      *
      * @param debug the debug context to use for the compilation
+     * @param jfr the JFR context to use for the compilation
      */
-    protected abstract T performCompilation(DebugContext debug);
+    protected abstract T performCompilation(DebugContext debug, JFRContext jfr);
 
     /**
      * Gets a value that represents the input to the compilation.
@@ -174,9 +176,9 @@ public abstract class CompilationWrapper<T> {
     protected abstract DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues options, PrintStream logStream);
 
     @SuppressWarnings("try")
-    public final T run(DebugContext initialDebug) {
+    public final T run(DebugContext initialDebug, JFRContext jfr) {
         try {
-            return performCompilation(initialDebug);
+            return performCompilation(initialDebug, jfr);
         } catch (Throwable cause) {
             OptionValues initialOptions = initialDebug.getOptions();
 
@@ -284,7 +286,7 @@ public abstract class CompilationWrapper<T> {
                 ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
                 PrintStream ps = new PrintStream(logBaos);
                 try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps)) {
-                    T res = performCompilation(retryDebug);
+                    T res = performCompilation(retryDebug, JFRContext.DISABLED_JFR);
                     ps.println("There was no exception during retry.");
                     maybeExitVM(action);
                     return res;

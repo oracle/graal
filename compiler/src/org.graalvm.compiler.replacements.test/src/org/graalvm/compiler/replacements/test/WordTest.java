@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.replacements.test;
 
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.Builder;
@@ -47,7 +48,7 @@ public class WordTest extends SnippetsTest {
         // create a copy to assign a valid compilation id
         DebugContext debug = getDebugContext();
         StructuredGraph originalGraph = installer.makeGraph(debug, bytecodeProvider, builder.getMethod(), null, null, false, null);
-        return originalGraph.copyWithIdentifier(builder.getCompilationId(), debug);
+        return originalGraph.copyWithIdentifier(builder.getCompilationId(), debug, JFRContext.DISABLED_JFR);
     }
 
     @Test

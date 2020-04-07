@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -158,7 +159,7 @@ public class CompilationTask {
 
         @SuppressWarnings("try")
         @Override
-        protected HotSpotCompilationRequestResult performCompilation(DebugContext debug) {
+        protected HotSpotCompilationRequestResult performCompilation(DebugContext debug, JFRContext jfr) {
             HotSpotResolvedJavaMethod method = getMethod();
             int entryBCI = getEntryBCI();
             final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
@@ -167,7 +168,7 @@ public class CompilationTask {
             final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), compilationId, method, entryBCI);
 
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
-                result = compiler.compile(method, entryBCI, useProfilingInfo, shouldRetainLocalVariables, compilationId, debug);
+                result = compiler.compile(method, entryBCI, useProfilingInfo, shouldRetainLocalVariables, compilationId, debug, jfr);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -305,12 +306,12 @@ public class CompilationTask {
         OptionValues options = filterOptions(initialOptions);
         HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
         try (DebugContext debug = graalRuntime.openDebugContext(options, compilationId, getMethod(), compiler.getDebugHandlersFactories(), DebugContext.getDefaultLogStream())) {
-            return runCompilation(debug);
+            return runCompilation(debug, JFRContext.DISABLED_JFR);
         }
     }
 
     @SuppressWarnings("try")
-    public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
+    public HotSpotCompilationRequestResult runCompilation(DebugContext debug, JFRContext jfr) {
         HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
         int entryBCI = getEntryBCI();
@@ -331,7 +332,7 @@ public class CompilationTask {
 
         HotSpotCompilationWrapper compilation = new HotSpotCompilationWrapper();
         try (DebugCloseable a = CompilationTime.start(debug)) {
-            return compilation.run(debug);
+            return compilation.run(debug, jfr);
         } finally {
             try {
                 int compiledBytecodes = 0;

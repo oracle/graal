@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,7 +76,7 @@ public class InlineableGraph implements Inlineable {
             // Graph may be modified by specializeGraphToArguments so defensively
             // make a copy. We rely on the frozen state of a graph to denote
             // whether it is shared.
-            original = (StructuredGraph) original.copy(invoke.asNode().getDebug());
+            original = original.copy(invoke.asNode().getDebug(), invoke.asNode().graph().getJFR());
         }
         this.graph = original;
         specializeGraphToArguments(invoke, context, canonicalizer);
@@ -192,7 +192,7 @@ public class InlineableGraph implements Inlineable {
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller, boolean trackNodeSourcePosition) {
         DebugContext debug = caller.getDebug();
         StructuredGraph newGraph = new StructuredGraph.Builder(caller.getOptions(), debug, AllowAssumptions.ifNonNull(caller.getAssumptions())).method(method).trackNodeSourcePosition(
-                        trackNodeSourcePosition).useProfilingInfo(caller.useProfilingInfo()).build();
+                        trackNodeSourcePosition).useProfilingInfo(caller.useProfilingInfo()).jfr(caller.getJFR()).build();
         try (DebugContext.Scope s = debug.scope("InlineGraph", newGraph)) {
             if (!caller.isUnsafeAccessTrackingEnabled()) {
                 newGraph.disableUnsafeAccessTracking();

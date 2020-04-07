@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,11 @@
  */
 package org.graalvm.compiler.lir.phases;
 
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
+import org.graalvm.compiler.core.common.jfr.JFRContext;
+import org.graalvm.compiler.core.common.jfr.JFRProvider.CompilerPhaseEvent;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
@@ -112,8 +115,12 @@ public abstract class LIRPhase<C> {
     @SuppressWarnings("try")
     public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, C context, boolean dumpLIR) {
         DebugContext debug = lirGenRes.getLIR().getDebug();
+        JFRContext jfr = lirGenRes.getLIR().getJFR();
+        Consumer<CompilerPhaseEvent> eventWriter = event -> event.write(getName().toString(), jfr.compileId());
         try (DebugContext.Scope s = debug.scope(getName(), this)) {
-            try (DebugCloseable a = timer.start(debug); DebugCloseable c = memUseTracker.start(debug)) {
+            try (JFRContext.Scope compilerPhaseScope = jfr.openCompilerPhaseScope(eventWriter);
+                            DebugCloseable a = timer.start(debug);
+                            DebugCloseable c = memUseTracker.start(debug);) {
                 run(target, lirGenRes, context);
                 if (dumpLIR && debug.areScopesEnabled()) {
                     dumpAfter(lirGenRes);

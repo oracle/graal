@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,7 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.target.Backend;
@@ -320,7 +321,7 @@ public abstract class GraalCompilerState {
     protected final void prepareRequest() {
         assert originalGraph != null : "call initialzeMethod first";
         CompilationIdentifier compilationId = backend.getCompilationIdentifier(originalGraph.method());
-        graph = originalGraph.copyWithIdentifier(compilationId, originalGraph.getDebug());
+        graph = originalGraph.copyWithIdentifier(compilationId, originalGraph.getDebug(), JFRContext.DISABLED_JFR);
         assert !graph.isFrozen();
         ResolvedJavaMethod installedCodeOwner = graph.method();
         request = new Request<>(graph, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
@@ -376,7 +377,7 @@ public abstract class GraalCompilerState {
         codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
         linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
 
-        LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder, getGraphOptions(), getGraphDebug());
+        LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder, getGraphOptions(), getGraphDebug(), getGraphJFR());
         LIRGenerationProvider lirBackend = (LIRGenerationProvider) request.backend;
         RegisterAllocationConfig registerAllocationConfig = request.backend.newRegisterAllocationConfig(registerConfig, null);
         lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerAllocationConfig, request.graph, stub);
@@ -390,6 +391,10 @@ public abstract class GraalCompilerState {
 
     protected DebugContext getGraphDebug() {
         return graph.getDebug();
+    }
+
+    protected JFRContext getGraphJFR() {
+        return graph.getJFR();
     }
 
     private static ControlFlowGraph deepCopy(ControlFlowGraph cfg) {
