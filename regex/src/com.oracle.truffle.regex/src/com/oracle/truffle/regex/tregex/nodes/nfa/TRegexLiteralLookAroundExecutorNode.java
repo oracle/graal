@@ -43,7 +43,7 @@ package com.oracle.truffle.regex.tregex.nodes.nfa;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.regex.charset.CP16BitMatchers;
+import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
@@ -66,7 +66,7 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNod
         negated = lookAround.isNegated();
         matchers = new CharMatcher[lookAround.getLiteralLength()];
         for (int i = 0; i < matchers.length; i++) {
-            CharMatcher matcher = CP16BitMatchers.createMatcher16Bit(lookAround.getGroup().getFirstAlternative().get(i).asCharacterClass().getCharSet(), compilationBuffer);
+            CharMatcher matcher = CharMatchers.createMatcher16Bit(lookAround.getGroup().getFirstAlternative().get(i).asCharacterClass().getCharSet(), compilationBuffer);
             matchers[forward ? i : matchers.length - (i + 1)] = insert(matcher);
         }
     }

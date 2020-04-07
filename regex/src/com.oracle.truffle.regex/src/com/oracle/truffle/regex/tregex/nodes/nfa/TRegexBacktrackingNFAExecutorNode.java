@@ -46,7 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.RegexRootNode;
-import com.oracle.truffle.regex.charset.CP16BitMatchers;
+import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
@@ -111,7 +111,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         }
         if (loopbackInitialState && innerLiteral == null) {
             CodePointSet initialCharSet = nfaMap.getMergedInitialStateCharSet(compilationBuffer);
-            loopbackInitialStateMatcher = initialCharSet == null ? null : CP16BitMatchers.createMatcher16Bit(initialCharSet, compilationBuffer);
+            loopbackInitialStateMatcher = initialCharSet == null ? null : CharMatchers.createMatcher16Bit(initialCharSet, compilationBuffer);
         }
         nfa.materializeGroupBoundaries();
         matchers = new CharMatcher[nfa.getNumberOfStates()];
@@ -119,7 +119,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         for (int i = 0; i < matchers.length; i++) {
             PureNFAState s = nfa.getState(i);
             if (s.isCharacterClass()) {
-                matchers[i] = insert(CP16BitMatchers.createMatcher16Bit(s.getCharSet(), compilationBuffer));
+                matchers[i] = insert(CharMatchers.createMatcher16Bit(s.getCharSet(), compilationBuffer));
             }
             maxTransitions = Math.max(maxTransitions, s.getSuccessors(forward).length);
             s.initIsDeterministic(forward, compilationBuffer);

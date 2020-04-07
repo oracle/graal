@@ -98,6 +98,7 @@ public final class CodePointSetBMPView extends ImmutableSortedListOfIntRanges {
         return (char) hi;
     }
 
+    @Override
     public int[] toArray() {
         return size * 2 == ranges.length ? ranges : Arrays.copyOf(ranges, size * 2);
     }
@@ -148,19 +149,5 @@ public final class CodePointSetBMPView extends ImmutableSortedListOfIntRanges {
             return buf.isEmpty();
         }
         return size() == buf.length() * 2 && rangesEqual(ranges, buf.getBuffer(), (size() * 2) - 1) && getMax() == (char) buf.getMax();
-    }
-
-    /**
-     * Returns {@code true} iff not all values of this range set have the same high byte, but that
-     * would be the case in the inverse of this range set.
-     */
-    public boolean inverseIsSameHighByte() {
-        if (isEmpty()) {
-            return false;
-        }
-        if (CP16BitMatchers.highByte(getMin()) == CP16BitMatchers.highByte(getMax())) {
-            return false;
-        }
-        return matchesMinAndMax() && CP16BitMatchers.highByte(getHi(0) + 1) == CP16BitMatchers.highByte(getLo(size() - 1) - 1);
     }
 }

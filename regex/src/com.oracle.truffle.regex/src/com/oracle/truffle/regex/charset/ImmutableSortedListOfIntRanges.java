@@ -51,7 +51,7 @@ public abstract class ImmutableSortedListOfIntRanges implements ImmutableSortedL
     protected ImmutableSortedListOfIntRanges(int[] ranges) {
         this.ranges = ranges;
         assert (ranges.length & 1) == 0 : "ranges array must have an even length!";
-        assert rangesAreSortedAndDisjoint();
+        assert rangesAreSortedNonAdjacentAndDisjoint();
     }
 
     @Override
@@ -102,6 +102,22 @@ public abstract class ImmutableSortedListOfIntRanges implements ImmutableSortedL
         assert buf.isEmpty() || rightOf(startIndex, buf, buf.size() - 1);
         System.arraycopy(ranges, startIndex * 2, buf.getBuffer(), buf.length(), bulkLength);
         buf.setLength(newSize);
+    }
+
+    public abstract int[] toArray();
+
+    /**
+     * Returns {@code true} iff not all values of this range set have the same high byte, but that
+     * would be the case in the inverse of this range set.
+     */
+    public boolean inverseIsSameHighByte() {
+        if (isEmpty()) {
+            return false;
+        }
+        if (CharMatchers.highByte(getMin()) == CharMatchers.highByte(getMax())) {
+            return false;
+        }
+        return matchesMinAndMax() && CharMatchers.highByte(getHi(0) + 1) == CharMatchers.highByte(getLo(size() - 1) - 1);
     }
 
     protected static int[] createInverseArray(SortedListOfRanges src) {

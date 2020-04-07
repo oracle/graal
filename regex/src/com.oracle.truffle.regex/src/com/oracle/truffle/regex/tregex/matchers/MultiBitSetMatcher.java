@@ -45,7 +45,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.regex.charset.CodePointSetBMPView;
+import com.oracle.truffle.regex.charset.ImmutableSortedListOfIntRanges;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
@@ -67,7 +67,7 @@ public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
         MATCH_ALL.invert();
     }
 
-    public static MultiBitSetMatcher fromCodePointSet(boolean inverse, CodePointSetBMPView cps) {
+    public static MultiBitSetMatcher fromRanges(boolean inverse, ImmutableSortedListOfIntRanges cps) {
         CompilationFinalBitSet[] bitSets = new CompilationFinalBitSet[BYTE_RANGE];
         Arrays.fill(bitSets, MATCH_NONE);
         CompilationFinalBitSet cur = new CompilationFinalBitSet(BYTE_RANGE);

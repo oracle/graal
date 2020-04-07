@@ -130,7 +130,6 @@ public abstract class TRegexExecutorNode extends Node {
 
     public int countUpTo(TRegexExecutorLocals locals, int max, int nCodePoints) {
         CompilerAsserts.partialEvaluationConstant(nCodePoints);
-        CompilerAsserts.partialEvaluationConstant(max);
         if (nCodePoints > 0) {
             assert isForward();
             int i = 0;
@@ -147,7 +146,6 @@ public abstract class TRegexExecutorNode extends Node {
 
     public int rewindUpTo(TRegexExecutorLocals locals, int min, int nCodePoints) {
         CompilerAsserts.partialEvaluationConstant(nCodePoints);
-        CompilerAsserts.partialEvaluationConstant(min);
         if (nCodePoints > 0) {
             assert isForward();
             int i = 0;

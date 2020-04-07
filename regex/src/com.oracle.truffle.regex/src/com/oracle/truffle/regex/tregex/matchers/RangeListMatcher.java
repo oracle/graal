@@ -45,7 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.regex.charset.CP16BitMatchers;
+import com.oracle.truffle.regex.charset.CharMatchers;
 
 /**
  * Character range matcher using a sorted list of ranges.
@@ -124,6 +124,6 @@ public abstract class RangeListMatcher extends InvertibleCharMatcher {
     @Override
     @TruffleBoundary
     public String toString() {
-        return "list " + modifiersToString() + "[" + CP16BitMatchers.rangesToString(ranges) + "]";
+        return "list " + modifiersToString() + "[" + CharMatchers.rangesToString(ranges) + "]";
     }
 }

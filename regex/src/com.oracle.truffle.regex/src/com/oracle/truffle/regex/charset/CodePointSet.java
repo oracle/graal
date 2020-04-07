@@ -276,6 +276,11 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
         return sb.toString();
     }
 
+    @Override
+    public int[] toArray() {
+        return getRanges();
+    }
+
     public char[] inverseToCharArray() {
         char[] array = new char[inverseValueCount()];
         int index = 0;
