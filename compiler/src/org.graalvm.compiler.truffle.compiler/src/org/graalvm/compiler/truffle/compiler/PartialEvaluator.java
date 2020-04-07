@@ -34,6 +34,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Print
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
 
 import java.net.URI;
+import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -266,6 +267,13 @@ public abstract class PartialEvaluator {
 
         public Request(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, ResolvedJavaMethod method, TruffleInliningPlan inliningPlan,
                         CompilationIdentifier compilationId, SpeculationLog log, Cancellable cancellable) {
+            Objects.requireNonNull(options);
+            Objects.requireNonNull(debug);
+            Objects.requireNonNull(compilable);
+            Objects.requireNonNull(inliningPlan);
+            Objects.requireNonNull(compilationId);
+            Objects.requireNonNull(log);
+            Objects.requireNonNull(cancellable);
             this.options = options;
             this.debug = debug;
             this.compilable = compilable;
@@ -293,17 +301,82 @@ public abstract class PartialEvaluator {
         try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(request.options)) {
             try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
-                fastPartialEvaluation(request, handler);
-                if (request.cancellable != null && request.cancellable.isCancelled()) {
+                inliningGraphPE(request);
+                new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
+                inlineReplacements(request);
+                new ConditionalEliminationPhase(false).apply(request.graph, request.highTierContext);
+                canonicalizer.apply(request.graph, request.highTierContext);
+                partialEscape(request);
+                // recompute loop frequencies now that BranchProbabilities have been canonicalized
+                ComputeLoopFrequenciesClosure.compute(request.graph);
+                applyInstrumentationPhases(request);
+                handler.reportPerformanceWarnings(request.compilable, request.graph);
+                if (request.cancellable.isCancelled()) {
                     return null;
                 }
                 new VerifyFrameDoesNotEscapePhase().apply(request.graph, false);
-                postPartialEvaluation(request.options, request.graph);
-
+                NeverPartOfCompilationNode.verifyNotFoundIn(request.graph);
+                materializeFrames(request.graph);
+                TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
+                setIdentityForValueTypes(request, rt);
+                handleInliningAcrossTruffleBoundary(request, rt);
             } catch (Throwable e) {
                 throw request.debug.handle(e);
             }
             return request.graph;
+        }
+    }
+
+    private void handleInliningAcrossTruffleBoundary(Request request, TruffleCompilerRuntime rt) {
+        if (!getPolyglotOptionValue(request.options, InlineAcrossTruffleBoundary)) {
+            // Do not inline across Truffle boundaries.
+            for (MethodCallTargetNode mct : request.graph.getNodes(MethodCallTargetNode.TYPE)) {
+                InlineKind inlineKind = rt.getInlineKind(mct.targetMethod(), false);
+                if (!inlineKind.allowsInlining()) {
+                    mct.invoke().setUseForInlining(false);
+                }
+            }
+        }
+    }
+
+    private void setIdentityForValueTypes(Request request, TruffleCompilerRuntime rt) {
+        for (VirtualObjectNode virtualObjectNode : request.graph.getNodes(VirtualObjectNode.TYPE)) {
+            if (virtualObjectNode instanceof VirtualInstanceNode) {
+                VirtualInstanceNode virtualInstanceNode = (VirtualInstanceNode) virtualObjectNode;
+                ResolvedJavaType type = virtualInstanceNode.type();
+                if (rt.isValueType(type)) {
+                    virtualInstanceNode.setIdentity(false);
+                }
+            }
+        }
+    }
+
+    private void materializeFrames(StructuredGraph graph) {
+        for (AllowMaterializeNode materializeNode : graph.getNodes(AllowMaterializeNode.TYPE).snapshot()) {
+            materializeNode.replaceAtUsages(materializeNode.getFrame());
+            graph.removeFixed(materializeNode);
+        }
+    }
+
+    @SuppressWarnings({"unused", "try"})
+    private void partialEscape(Request request) {
+        try (DebugContext.Scope pe = request.debug.scope("TrufflePartialEscape", request.graph)) {
+            new PartialEscapePhase(getPolyglotOptionValue(request.options, IterativePartialEscape), canonicalizer, request.graph.getOptions()).apply(request.graph, request.highTierContext);
+        } catch (Throwable t) {
+            request.debug.handle(t);
+        }
+    }
+
+    private void inlineReplacements(Request request) {
+        for (MethodCallTargetNode methodCallTargetNode : request.graph.getNodes(MethodCallTargetNode.TYPE)) {
+            if (methodCallTargetNode.invoke().useForInlining()) {
+                StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(),
+                                request.graph.trackNodeSourcePosition(),
+                                methodCallTargetNode.asNode().getNodeSourcePosition(), request.debug.getOptions());
+                if (inlineGraph != null) {
+                    InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
+                }
+            }
         }
     }
 
@@ -472,60 +545,20 @@ public abstract class PartialEvaluator {
 
     private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation").doc("Time spent in partial evaluation.");
 
-    @SuppressWarnings({"try", "unused"})
-    private void fastPartialEvaluation(Request request, PerformanceInformationHandler handler) {
+    @SuppressWarnings({"unused", "try"})
+    private void inliningGraphPE(Request request) {
         try (DebugCloseable a = PartialEvaluationTimer.start(request.debug)) {
-            agnosticInliningOrGraphPE(request);
+            if (getPolyglotOptionValue(request.options, LanguageAgnosticInlining)) {
+                AgnosticInliningPhase agnosticInlining = new AgnosticInliningPhase(this, request);
+                agnosticInlining.apply(request.graph, providers);
+            } else {
+                final PEInliningPlanInvokePlugin plugin = new PEInliningPlanInvokePlugin(this, request.options, request.inliningPlan, request.graph);
+                doGraphPE(request, plugin, EconomicMap.create());
+            }
+            removeInlineTokenNodes(request.graph);
         }
         request.debug.dump(DebugContext.BASIC_LEVEL, request.graph, "After Partial Evaluation");
-
         request.graph.maybeCompress();
-
-        // Perform deoptimize to guard conversion.
-        new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
-
-        for (MethodCallTargetNode methodCallTargetNode : request.graph.getNodes(MethodCallTargetNode.TYPE)) {
-            if (methodCallTargetNode.invoke().useForInlining()) {
-                StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(),
-                                request.graph.trackNodeSourcePosition(),
-                                methodCallTargetNode.asNode().getNodeSourcePosition(), request.debug.getOptions());
-                if (inlineGraph != null) {
-                    InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
-                }
-            }
-        }
-
-        // Perform conditional elimination.
-        new ConditionalEliminationPhase(false).apply(request.graph, request.highTierContext);
-
-        canonicalizer.apply(request.graph, request.highTierContext);
-
-        // Do single partial escape and canonicalization pass.
-        try (DebugContext.Scope pe = request.debug.scope("TrufflePartialEscape", request.graph)) {
-            new PartialEscapePhase(getPolyglotOptionValue(request.options, IterativePartialEscape), canonicalizer, request.graph.getOptions()).apply(request.graph, request.highTierContext);
-        } catch (Throwable t) {
-            request.debug.handle(t);
-        }
-
-        // recompute loop frequencies now that BranchProbabilities have had time to canonicalize
-        ComputeLoopFrequenciesClosure.compute(request.graph);
-
-        applyInstrumentationPhases(request);
-
-        request.graph.maybeCompress();
-
-        handler.reportPerformanceWarnings(request.compilable, request.graph);
-    }
-
-    private void agnosticInliningOrGraphPE(Request request) {
-        if (getPolyglotOptionValue(request.options, LanguageAgnosticInlining)) {
-            AgnosticInliningPhase agnosticInlining = new AgnosticInliningPhase(this, request);
-            agnosticInlining.apply(request.graph, providers);
-        } else {
-            final PEInliningPlanInvokePlugin plugin = new PEInliningPlanInvokePlugin(this, request.options, request.inliningPlan, request.graph);
-            doGraphPE(request, plugin, EconomicMap.create());
-        }
-        removeInlineTokenNodes(request.graph);
     }
 
     protected void applyInstrumentationPhases(Request request) {
@@ -536,34 +569,7 @@ public abstract class PartialEvaluator {
         if (cfg.instrumentBoundaries) {
             new InstrumentTruffleBoundariesPhase(request.options, snippetReflection, getInstrumentation(), cfg.instrumentBoundariesPerInlineSite).apply(request.graph, request.highTierContext);
         }
-    }
-
-    private static void postPartialEvaluation(OptionValues options, final StructuredGraph graph) {
-        NeverPartOfCompilationNode.verifyNotFoundIn(graph);
-        for (AllowMaterializeNode materializeNode : graph.getNodes(AllowMaterializeNode.TYPE).snapshot()) {
-            materializeNode.replaceAtUsages(materializeNode.getFrame());
-            graph.removeFixed(materializeNode);
-        }
-        TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-        for (VirtualObjectNode virtualObjectNode : graph.getNodes(VirtualObjectNode.TYPE)) {
-            if (virtualObjectNode instanceof VirtualInstanceNode) {
-                VirtualInstanceNode virtualInstanceNode = (VirtualInstanceNode) virtualObjectNode;
-                ResolvedJavaType type = virtualInstanceNode.type();
-                if (rt.isValueType(type)) {
-                    virtualInstanceNode.setIdentity(false);
-                }
-            }
-        }
-
-        if (!getPolyglotOptionValue(options, InlineAcrossTruffleBoundary)) {
-            // Do not inline across Truffle boundaries.
-            for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                TruffleCompilerRuntime.InlineKind inlineKind = rt.getInlineKind(mct.targetMethod(), false);
-                if (!inlineKind.allowsInlining()) {
-                    mct.invoke().setUseForInlining(false);
-                }
-            }
-        }
+        request.graph.maybeCompress();
     }
 
     private static final SpeculationReasonGroup TRUFFLE_BOUNDARY_EXCEPTION_SPECULATIONS = new SpeculationReasonGroup("TruffleBoundaryWithoutException", ResolvedJavaMethod.class);
