@@ -354,9 +354,11 @@ public abstract class Accessor {
 
         public abstract Object asBoxedGuestValue(Object guestObject, Object polyglotLanguageContext);
 
-        public abstract Handler getLogHandler(Object polyglotEngine);
+        public abstract Object createDefaultLoggerCacheSPI();
 
-        public abstract Map<String, Level> getLogLevels(Object polyglotObject);
+        public abstract Handler getLogHandler(Object loggerCacheSPI);
+
+        public abstract Map<String, Level> getLogLevels(Object loggerCacheSPI);
 
         public abstract TruffleLogger getLogger(Object polyglotInstrument, String name);
 
@@ -538,7 +540,7 @@ public abstract class Accessor {
 
         public abstract Object getDefaultLoggers();
 
-        public abstract Object createEngineLoggers(Object polyglotEngine, Map<String, Level> logLevels);
+        public abstract Object createEngineLoggers(Object spi, Map<String, Level> logLevels);
 
         public abstract void closeEngineLoggers(Object loggers);
 

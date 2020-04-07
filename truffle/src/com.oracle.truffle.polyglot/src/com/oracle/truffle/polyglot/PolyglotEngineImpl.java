@@ -1391,10 +1391,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 useErr = INSTRUMENT.createDelegatingOutput(configErr, this.err);
             }
 
-            Handler useHandler = PolyglotLogHandler.asHandler(logHandlerOrStream);
+            Handler useHandler = PolyglotLoggers.asHandler(logHandlerOrStream);
             useHandler = useHandler != null ? useHandler : logHandler;
             useHandler = useHandler != null ? useHandler
-                            : PolyglotLogHandler.createStreamHandler(
+                            : PolyglotLoggers.createStreamHandler(
                                             configErr == null ? INSTRUMENT.getOut(this.err) : configErr,
                                             false, true);
 
@@ -1505,7 +1505,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             synchronized (this) {
                 res = engineLoggers;
                 if (res == null) {
-                    res = LANGUAGE.createEngineLoggers(this, logLevels);
+                    res = LANGUAGE.createEngineLoggers(PolyglotLoggers.createEngineSPI(this), logLevels);
                     for (ContextWeakReference contextRef : contexts) {
                         PolyglotContextImpl context = contextRef.get();
                         if (context != null && !context.config.logLevels.isEmpty()) {

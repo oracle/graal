@@ -506,8 +506,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object createEngineLoggers(Object polyglotEngine, Map<String, Level> logLevels) {
-            return TruffleLogger.createLoggerCache(polyglotEngine, logLevels);
+        public Object createEngineLoggers(Object spi, Map<String, Level> logLevels) {
+            return TruffleLogger.createLoggerCache(spi, logLevels);
         }
 
         @Override
