@@ -1383,7 +1383,7 @@ public class MethodTypeFlowBuilder {
                                 invokeFlow = new StaticInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
                                 break;
                             case Special:
-                                invokeFlow = new SpecialInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+                                invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
                                 break;
                             case Virtual:
                             case Interface:

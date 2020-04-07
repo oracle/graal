@@ -27,12 +27,14 @@ package com.oracle.graal.pointsto;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 
+import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
@@ -140,6 +142,12 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         return new DefaultVirtualInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
+    @Override
+    public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+        return new DefaultSpecialInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+    }
+
     /** Explicitly context insensitive implementation of the invoke virtual type flow update. */
     private static class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
 
@@ -221,6 +229,60 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             return methodFlowsGraphs;
         }
 
+    }
+
+    private static final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
+
+        MethodFlowsGraph calleeFlows = null;
+
+        DefaultSpecialInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+                        TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+            super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+        }
+
+        private DefaultSpecialInvokeTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, DefaultSpecialInvokeTypeFlow original) {
+            super(bb, methodFlows, original);
+        }
+
+        @Override
+        public TypeFlow<MethodCallTargetNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+            return new DefaultSpecialInvokeTypeFlow(bb, methodFlows, this);
+        }
+
+        @Override
+        public void onObservedUpdate(BigBang bb) {
+            assert this.isClone();
+            /* The receiver state has changed. Process the invoke. */
+
+            /*
+             * If this is the first time the invoke is updated then set the callee and link the
+             * calee's type flows. If this invoke is never updated then the callee will never be
+             * set, therefore the callee will be unreachable from this call site.
+             */
+            initCallee();
+            if (calleeFlows == null) {
+                calleeFlows = callee.addContext(bb, bb.contextPolicy().emptyContext(), this);
+                linkCallee(bb, false, calleeFlows);
+            }
+
+            /*
+             * Every time the actual receiver state changes in the caller the formal receiver state
+             * needs to be updated as there is no direct update link between actual and formal
+             * receivers.
+             */
+            updateReceiver(bb, calleeFlows, getReceiver().getState());
+        }
+
+        @Override
+        public Collection<MethodFlowsGraph> getCalleesFlows(BigBang bb) {
+            if (callee == null) {
+                /* This static invoke was not updated. */
+                return Collections.emptyList();
+            } else {
+                MethodFlowsGraph methodFlows = callee.getFlows(bb.contextPolicy().emptyContext());
+                return Collections.singletonList(methodFlows);
+            }
+        }
     }
 
 }
