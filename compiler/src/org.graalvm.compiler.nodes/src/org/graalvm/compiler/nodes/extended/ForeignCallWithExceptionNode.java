@@ -117,7 +117,7 @@ public class ForeignCallWithExceptionNode extends WithExceptionNode implements F
     }
 
     @Override
-    public int getBci() {
+    public int bci() {
         return bci;
     }
 

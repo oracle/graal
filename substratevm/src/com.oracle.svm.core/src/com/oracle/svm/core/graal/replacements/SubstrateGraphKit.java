@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -75,6 +76,7 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -141,8 +143,8 @@ public class SubstrateGraphKit extends GraphKit {
         return unique((FloatingNode) loadIndexed);
     }
 
-    public ValueNode createUnboxing(ValueNode boxed, JavaKind targetKind) {
-        return append(new UnboxNode(boxed, targetKind));
+    public ValueNode createUnboxing(ValueNode boxed, JavaKind targetKind, MetaAccessProvider metaAccess) {
+        return append(new UnboxNode(boxed, targetKind, metaAccess));
     }
 
     public ValueNode createInvokeWithExceptionAndUnwind(Class<?> declaringClass, String name, InvokeKind invokeKind, ValueNode... args) {
@@ -165,13 +167,16 @@ public class SubstrateGraphKit extends GraphKit {
         boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus);
         if (emitTransition) {
             append(new CFunctionPrologueNode(newThreadStatus));
+
         }
 
         InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature, SubstrateCallingConventionType.NativeCall);
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
-            append(new CFunctionEpilogueNode(newThreadStatus));
+            CFunctionEpilogueNode epilogue = new CFunctionEpilogueNode(newThreadStatus);
+            append(epilogue);
+            epilogue.setStateAfter(invoke.stateAfter().duplicateWithVirtualState());
         } else if (emitDeoptTarget) {
             DeoptEntryNode deoptEntry = append(new DeoptEntryNode());
             deoptEntry.setStateAfter(invoke.stateAfter());
@@ -228,7 +233,7 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ValueNode createBoxing(ValueNode value, JavaKind kind, ResolvedJavaType targetType) {
-        return append(new BoxNode(value, targetType, kind));
+        return append(BoxNode.create(value, targetType, kind));
     }
 
     public ValueNode createReturn(ValueNode retValue, JavaKind returnKind) {
@@ -282,5 +287,17 @@ public class SubstrateGraphKit extends GraphKit {
             exceptionState.setRethrowException(true);
             unwindMergeNode.setStateAfter(exceptionState.create(BytecodeFrame.AFTER_EXCEPTION_BCI, unwindMergeNode));
         }
+    }
+
+    public void appendStateSplitProxy(FrameState state) {
+        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+        append(proxy);
+        proxy.setStateAfter(state);
+    }
+
+    public void appendStateSplitProxy(FrameStateBuilder stateBuilder) {
+        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+        append(proxy);
+        proxy.setStateAfter(stateBuilder.create(bci(), proxy));
     }
 }

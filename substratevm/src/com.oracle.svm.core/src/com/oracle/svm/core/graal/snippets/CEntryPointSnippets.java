@@ -116,8 +116,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static final SubstrateForeignCallDescriptor INITIALIZE_ISOLATE = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "initializeIsolate", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor ATTACH_THREAD = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "attachThread", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor ENSURE_JAVA_THREAD = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "ensureJavaThread", false, LocationIdentity.any());
+
     public static final SubstrateForeignCallDescriptor ENTER_ISOLATE_MT = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "enterIsolateMT", false, LocationIdentity.any());
+
     public static final SubstrateForeignCallDescriptor DETACH_THREAD_MT = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "detachThreadMT", false, LocationIdentity.any());
+
     public static final SubstrateForeignCallDescriptor REPORT_EXCEPTION = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "reportException", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor TEAR_DOWN_ISOLATE = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "tearDownIsolate", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor IS_ATTACHED_MT = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "isAttachedMT", false, LocationIdentity.any());
@@ -593,6 +596,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         @Override
         public void lower(CEntryPointEnterNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                return;
+            }
             Arguments args;
             switch (node.getEnterAction()) {
                 case CreateIsolate:
@@ -619,7 +625,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 default:
                     throw shouldNotReachHere();
             }
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            SnippetTemplate template = template(node, args);
+            template.setMayRemoveLocation(true);
+            template.instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -631,6 +639,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         @Override
         public void lower(CEntryPointLeaveNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                return;
+            }
             Arguments args;
             switch (node.getLeaveAction()) {
                 case Leave:
@@ -660,6 +671,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         @Override
         public void lower(CEntryPointUtilityNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                return;
+            }
             Arguments args;
             switch (node.getUtilityAction()) {
                 case IsAttached:

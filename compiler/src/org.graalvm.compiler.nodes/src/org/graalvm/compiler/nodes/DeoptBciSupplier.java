@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,35 +24,22 @@
  */
 package org.graalvm.compiler.nodes;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-
 /**
- * Denotes the merging of multiple control-flow paths.
+ * A marker interface for nodes that represent operations that can deoptimize and thus need a BCI to
+ * deopt to.
  */
-@NodeInfo
-public final class MergeNode extends AbstractMergeNode {
+public interface DeoptBciSupplier {
 
-    public static final NodeClass<MergeNode> TYPE = NodeClass.create(MergeNode.class);
+    /**
+     * @return the byte code index (BCI) associated with the node implementing this interface
+     */
+    int bci();
 
-    public MergeNode() {
-        super(TYPE);
-    }
-
-    public static void removeMergeIfDegenerated(MergeNode node) {
-        if (node.forwardEndCount() == 1 && node.hasNoUsages()) {
-            FixedNode currentNext = node.next();
-            node.setNext(null);
-            EndNode forwardEnd = node.forwardEndAt(0);
-            forwardEnd.replaceAtPredecessor(currentNext);
-            node.markDeleted();
-            forwardEnd.markDeleted();
-        }
-    }
-
-    @Override
-    public boolean verify() {
-        assertTrue(this.forwardEndCount() > 1, "Must merge more than one end.");
-        return super.verify();
-    }
+    /**
+     * Remember the byte code index (BCI) for code generation or lowering purposes. For example,
+     * nodes lowering to foreign calls that can safepoint require a valid BCI for computations of
+     * the during-state of such a foreign call.
+     */
+    @SuppressWarnings("unused")
+    void setBci(int bci);
 }

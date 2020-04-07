@@ -239,7 +239,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
-                b.addPush(JavaKind.Int, new IdentityHashCodeNode(object));
+                b.addPush(JavaKind.Int, new IdentityHashCodeNode(object, b.bci()));
                 return true;
             }
 
@@ -433,7 +433,7 @@ public class HotSpotGraphBuilderPlugins {
         r.register1("identityHashCode", Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                b.addPush(JavaKind.Int, new IdentityHashCodeNode(object));
+                b.addPush(JavaKind.Int, new IdentityHashCodeNode(object, b.bci()));
                 return true;
             }
 

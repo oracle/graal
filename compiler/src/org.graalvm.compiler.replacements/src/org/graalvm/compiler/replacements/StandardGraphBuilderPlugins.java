@@ -833,7 +833,9 @@ public class StandardGraphBuilderPlugins {
                 if (targetMethod.getCodeSize() == 1) {
                     ValueNode object = receiver.get();
                     if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getAssumptions())) {
-                        b.add(new RegisterFinalizerNode(object));
+                        RegisterFinalizerNode regFin = new RegisterFinalizerNode(object);
+                        b.add(regFin);
+                        b.setStateAfter(regFin);
                     }
                     return true;
                 }
@@ -935,7 +937,7 @@ public class StandardGraphBuilderPlugins {
                 }
             }
             ResolvedJavaType resultType = b.getMetaAccess().lookupJavaType(kind.toBoxedJavaClass());
-            b.addPush(JavaKind.Object, new BoxNode(value, resultType, kind));
+            b.addPush(JavaKind.Object, BoxNode.create(value, resultType, kind));
             return true;
         }
 

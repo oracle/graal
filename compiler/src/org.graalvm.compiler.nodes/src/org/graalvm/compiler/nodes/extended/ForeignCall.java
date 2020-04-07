@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.extended;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.nodes.DeoptBciSupplier;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -43,16 +44,11 @@ import jdk.vm.ci.meta.Value;
  * Interface for all nodes implementing a {@linkplain ForeignCallDescriptor foreign} call. Provides
  * implementations for several operations concerning foreign calls.
  */
-public interface ForeignCall extends LIRLowerable, DeoptimizingNode.DeoptDuring, MultiMemoryKill, StateSplit {
+public interface ForeignCall extends LIRLowerable, DeoptimizingNode.DeoptDuring, MultiMemoryKill, StateSplit, DeoptBciSupplier {
 
     NodeInputList<ValueNode> getArguments();
 
-    int getBci();
-
-    /**
-     * Set the {@code bci} of the invoke bytecode for use when converting a stateAfter into a
-     * stateDuring.
-     */
+    @Override
     void setBci(int bci);
 
     ForeignCallsProvider getForeignCalls();
@@ -78,8 +74,8 @@ public interface ForeignCall extends LIRLowerable, DeoptimizingNode.DeoptDuring,
         if ((currentStateAfter.stackSize() > 0 && currentStateAfter.stackAt(currentStateAfter.stackSize() - 1) == this) ||
                         (currentStateAfter.stackSize() > 1 && currentStateAfter.stackAt(currentStateAfter.stackSize() - 2) == this)) {
             // The result of this call is on the top of stack, so roll back to the previous bci.
-            assert getBci() != BytecodeFrame.UNKNOWN_BCI : this;
-            newStateDuring = currentStateAfter.duplicateModified(currentStateAfter.graph(), getBci(), false, true, this.asNode().getStackKind(), null, null);
+            assert bci() != BytecodeFrame.UNKNOWN_BCI : this;
+            newStateDuring = currentStateAfter.duplicateModified(currentStateAfter.graph(), bci(), false, true, this.asNode().getStackKind(), null, null);
         } else {
             newStateDuring = currentStateAfter;
         }

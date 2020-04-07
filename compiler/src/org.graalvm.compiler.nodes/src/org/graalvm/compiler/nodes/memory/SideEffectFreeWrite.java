@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,46 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.extended;
+package org.graalvm.compiler.nodes.memory;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
-
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.AbstractStateSplit;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.word.LocationIdentity;
 
-@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public final class StoreHubNode extends AbstractStateSplit implements Lowerable {
+/**
+ * This is a special form of write node that does not have a side effect to the interpreter, i.e.,
+ * it does not modify memory that is visible to other threads or modifies state beyond what is
+ * captured in {@link FrameState} nodes. Thus is should only be used with caution in sutiable
+ * scenarios.
+ */
+@NodeInfo(nameTemplate = "SideEffectFreeWrite#{p#location/s}")
+public class SideEffectFreeWrite extends WriteNode {
 
-    public static final NodeClass<StoreHubNode> TYPE = NodeClass.create(StoreHubNode.class);
-    @Input ValueNode value;
-    @Input ValueNode object;
+    public static final NodeClass<SideEffectFreeWrite> TYPE = NodeClass.create(SideEffectFreeWrite.class);
 
-    public ValueNode getValue() {
-        return value;
+    protected SideEffectFreeWrite(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
+        super(TYPE, address, location, value, barrierType);
     }
 
-    public ValueNode getObject() {
-        return object;
-    }
-
-    public StoreHubNode(ValueNode object, ValueNode value) {
-        super(TYPE, StampFactory.forVoid());
-        this.value = value;
-        this.object = object;
+    public static WriteNode createWithoutSideEffect(AddressNode address, LocationIdentity location, ValueNode value) {
+        return new SideEffectFreeWrite(address, location, value, BarrierType.NONE);
     }
 
     @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+    public boolean hasSideEffect() {
+        return false;
     }
-
-    @NodeIntrinsic
-    public static native void write(Object object, Object value);
-
 }

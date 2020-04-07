@@ -420,6 +420,11 @@ public class InliningLog {
         }
 
         @Override
+        public void setBci(int bci) {
+            GraalError.shouldNotReachHere();
+        }
+
+        @Override
         public boolean isAlive() {
             return false;
         }

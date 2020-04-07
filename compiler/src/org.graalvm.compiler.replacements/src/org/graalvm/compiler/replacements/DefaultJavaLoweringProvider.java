@@ -45,6 +45,7 @@ import java.util.List;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
@@ -64,6 +65,7 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -76,6 +78,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
@@ -157,6 +160,7 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -262,9 +266,24 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             } else if (n instanceof CommitAllocationNode) {
                 lowerCommitAllocationNode((CommitAllocationNode) n, tool);
             } else if (n instanceof BoxNode) {
-                boxingSnippets.lower((BoxNode) n, tool);
+                if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+                    /*
+                     * We do not perform box canonicalization directly in the node since want
+                     * virtualization of box nodes. Creating a boxed constant early on inhibits PEA
+                     * so we do it after PEA.
+                     */
+                    FloatingNode canonical = canonicalizeBoxing((BoxNode) n, metaAccess, tool.getConstantReflection());
+                    if (canonical != null) {
+                        n.replaceAtUsages(InputType.Memory, (ValueNode) ((BoxNode) n).getLastLocationAccess());
+                        graph.replaceFixedWithFloating((FixedWithNextNode) n, canonical);
+                    }
+                } else if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
+                    boxingSnippets.lower((BoxNode) n, tool);
+                }
             } else if (n instanceof UnboxNode) {
-                boxingSnippets.lower((UnboxNode) n, tool);
+                if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
+                    boxingSnippets.lower((UnboxNode) n, tool);
+                }
             } else if (n instanceof VerifyHeapNode) {
                 lowerVerifyHeap((VerifyHeapNode) n);
             } else if (n instanceof UnaryMathIntrinsicNode) {
@@ -287,6 +306,34 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
             }
         }
+    }
+
+    public static FloatingNode canonicalizeBoxing(BoxNode box, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        ValueNode value = box.getValue();
+        if (value.isConstant() && !GraalOptions.ImmutableCode.getValue(box.getOptions())) {
+            JavaConstant sourceConstant = value.asJavaConstant();
+            if (sourceConstant.getJavaKind() != box.getBoxingKind() && sourceConstant.getJavaKind().isNumericInteger()) {
+                switch (box.getBoxingKind()) {
+                    case Boolean:
+                        sourceConstant = JavaConstant.forBoolean(sourceConstant.asLong() != 0L);
+                        break;
+                    case Byte:
+                        sourceConstant = JavaConstant.forByte((byte) sourceConstant.asLong());
+                        break;
+                    case Char:
+                        sourceConstant = JavaConstant.forChar((char) sourceConstant.asLong());
+                        break;
+                    case Short:
+                        sourceConstant = JavaConstant.forShort((short) sourceConstant.asLong());
+                        break;
+                }
+            }
+            JavaConstant boxedConstant = constantReflection.boxPrimitive(sourceConstant);
+            if (boxedConstant != null && sourceConstant.getJavaKind() == box.getBoxingKind()) {
+                return ConstantNode.forConstant(boxedConstant, metaAccess, box.graph());
+            }
+        }
+        return null;
     }
 
     private void lowerSecondHalf(UnpackEndianHalfNode n) {
@@ -958,6 +1005,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
          * actually be used.
          */
         ArrayList<MonitorEnterNode> enters = null;
+        FrameState stateBefore = SnippetTemplate.findLastFrameState(insertionPoint);
         for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
             List<MonitorIdNode> locks = commit.getLocks(objIndex);
             if (locks.size() > 1) {
@@ -972,6 +1020,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lastDepth = monitorId.getLockDepth();
                 MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], monitorId));
                 graph.addAfterFixed(insertionPoint, enter);
+                enter.setStateAfter(stateBefore);
                 insertionPoint = enter;
                 if (enters == null) {
                     enters = new ArrayList<>();

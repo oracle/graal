@@ -77,10 +77,12 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
 
         @Override
         public void lower(SafepointNode node, LoweringTool tool) {
-            assert SubstrateOptions.MultiThreaded.getValue() : "safepoints are only inserted into the graph in MultiThreaded mode";
+            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+                assert SubstrateOptions.MultiThreaded.getValue() : "safepoints are only inserted into the graph in MultiThreaded mode";
 
-            Arguments args = new Arguments(safepoint, node.graph().getGuardsStage(), tool.getLoweringStage());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                Arguments args = new Arguments(safepoint, node.graph().getGuardsStage(), tool.getLoweringStage());
+                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            }
         }
     }
 

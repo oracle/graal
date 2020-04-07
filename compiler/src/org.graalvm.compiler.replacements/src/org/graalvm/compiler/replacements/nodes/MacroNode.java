@@ -124,6 +124,11 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
     }
 
     @Override
+    public void setBci(int bci) {
+        // nothing to do here, macro nodes get bci during construction
+    }
+
+    @Override
     public ResolvedJavaMethod getTargetMethod() {
         return targetMethod;
     }

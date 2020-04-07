@@ -1041,6 +1041,7 @@ suite = {
         "org.graalvm.compiler.java",
         "org.graalvm.compiler.loop.phases",
         "org.graalvm.compiler.word",
+        "org.graalvm.compiler.virtual"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",

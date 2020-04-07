@@ -43,6 +43,7 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
+
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -169,7 +170,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
     }
 
     @Override
-    public int getBci() {
+    public int bci() {
         return bci;
     }
 

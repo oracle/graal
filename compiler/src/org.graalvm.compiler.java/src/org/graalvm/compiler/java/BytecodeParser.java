@@ -2334,7 +2334,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     if (node instanceof Invoke) {
                         Invoke invoke = (Invoke) node;
                         if (invoke.bci() == BytecodeFrame.UNKNOWN_BCI) {
-                            invoke.replaceBci(bci());
+                            invoke.setBci(bci());
                         }
                         if (node instanceof InvokeWithExceptionNode) {
                             // The graphs for MethodSubsitutions are produced assuming that
@@ -2363,7 +2363,7 @@ public class BytecodeParser implements GraphBuilderContext {
                         }
                     } else if (node instanceof ForeignCallNode) {
                         ForeignCallNode call = (ForeignCallNode) node;
-                        if (call.getBci() == BytecodeFrame.UNKNOWN_BCI) {
+                        if (call.bci() == BytecodeFrame.UNKNOWN_BCI) {
                             call.setBci(bci());
                             if (call.stateAfter() != null && call.stateAfter().bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
                                 call.setStateAfter(inlineScope.stateBefore);
@@ -2776,7 +2776,9 @@ public class BytecodeParser implements GraphBuilderContext {
             ValueNode receiver = graph.start().stateAfter().localAt(0);
             assert receiver != null && receiver.getStackKind() == JavaKind.Object;
             if (RegisterFinalizerNode.mayHaveFinalizer(receiver, graph.getAssumptions())) {
-                append(new RegisterFinalizerNode(receiver));
+                RegisterFinalizerNode regFin = new RegisterFinalizerNode(receiver);
+                append(regFin);
+                regFin.setStateAfter(graph.start().stateAfter());
             }
         }
         genInfoPointNode(InfopointReason.METHOD_END, x);

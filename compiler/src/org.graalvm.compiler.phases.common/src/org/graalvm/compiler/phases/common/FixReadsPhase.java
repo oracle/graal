@@ -89,7 +89,7 @@ import jdk.vm.ci.meta.TriState;
 /**
  * This phase lowers {@link FloatingReadNode FloatingReadNodes} into corresponding fixed reads.
  */
-public class FixReadsPhase extends BasePhase<LowTierContext> {
+public class FixReadsPhase extends BasePhase<CoreProviders> {
 
     private static final CounterKey counterStampsRegistered = DebugContext.counter("FixReads_StampsRegistered");
     private static final CounterKey counterIfsKilled = DebugContext.counter("FixReads_KilledIfs");
@@ -602,7 +602,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
     }
 
     @Override
-    protected void run(StructuredGraph graph, LowTierContext context) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         schedulePhase.apply(graph);
         ScheduleResult schedule = graph.getLastSchedule();
         FixReadsClosure fixReadsClosure = new FixReadsClosure();
