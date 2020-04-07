@@ -58,17 +58,21 @@ public final class CallNode extends Node {
     private final CompilableTruffleAST truffleAST;
     private final TruffleCallNode[] truffleCallees;
     private final double rootRelativeFrequency;
-    // Populated only as part of expansion
-    @Successor private final NodeSuccessorList<CallNode> children;
     private final int depth;
+    // Effectively final, populated only as part of expansion. Cannot be final because of Successor
+    // annotation
+    @Successor private NodeSuccessorList<CallNode> children;
     private State state;
-    // Effectively final, cannot be initialized in the constructor because policies need access to this object.
+    // Effectively final, cannot be because policies need access to the CallNode to create
+    // policyData.
     private Object policyData;
-    // Effectively final, cannot be initialized in the constructor because needs getParent() to calculate
+    // Effectively final, cannot be initialized in the constructor because needs getParent() to
+    // calculate
     private int recursionDepth;
     // Effectively final, populated only as part of expanded
     private StructuredGraph ir;
-    // Effectively final, populated only as part of expanded (unless root, root does not have invoke)
+    // Effectively final, populated only as part of expanded (unless root, root does not have
+    // invoke)
     private Invoke invoke;
 
     // Needs to be protected because of the @NodeInfo annotation
@@ -100,7 +104,7 @@ public final class CallNode extends Node {
         final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = callTree.getGraphManager().peRoot();
         for (CallNode child : root.children) {
             final Invoke invoke = truffleCallNodeToInvoke.get(child.getTruffleCaller());
-            root.putChildInvokeOrRemoveChild(child, invoke);
+            child.setInvokeOrRemove(invoke);
         }
         root.state = State.Inlined;
         callTree.getPolicy().afterExpand(root);
@@ -194,26 +198,29 @@ public final class CallNode extends Node {
         return getCallTree().getPolicy();
     }
 
-    private void putChildInvokeOrRemoveChild(CallNode child, Invoke invoke) {
-        if (invoke == null || !invoke.isAlive()) {
-            child.state = State.Removed;
-            getPolicy().removedNode(this, child);
+    private void setInvokeOrRemove(Invoke newInvoke) {
+        if (newInvoke == null || !newInvoke.isAlive()) {
+            remove();
         } else {
-            child.invoke = invoke;
+            this.invoke = newInvoke;
         }
+    }
+
+    public void remove() {
+        this.state = State.Removed;
+        getPolicy().removedNode(this);
     }
 
     private void updateChildrenList(GraphManager.Entry entry) {
         for (CallNode child : children) {
             final Invoke childInvoke = entry.truffleCallNodeToInvoke.get(child.getTruffleCaller());
             if (childInvoke == null || !childInvoke.isAlive()) {
-                child.state = State.Removed;
-                getPolicy().removedNode(this, child);
+                child.remove();
             }
         }
         for (Invoke invoke : entry.indirectInvokes) {
             if (invoke != null && invoke.isAlive()) {
-                final CallNode child = new CallNode(null, null,  0, depth + 1);
+                final CallNode child = new CallNode(null, null, 0, depth + 1);
                 child.state = State.Indirect;
                 getCallTree().add(child);
                 children.add(child);
@@ -227,18 +234,13 @@ public final class CallNode extends Node {
         this.state = State.Expanded;
         getCallTree().expanded++;
         this.addChildren();
-        final GraphManager.Entry entry = partiallyEvaluate();
-        getPolicy().afterPartialEvaluation(this);
-        updateChildrenList(entry);
-        getPolicy().afterExpand(this);
-    }
-
-    private GraphManager.Entry partiallyEvaluate() {
         assert state == State.Expanded;
         assert ir == null;
         GraphManager.Entry entry = getCallTree().getGraphManager().get(truffleAST);
         ir = copyGraphAndUpdateInvokes(entry);
-        return entry;
+        getPolicy().afterPartialEvaluation(this);
+        updateChildrenList(entry);
+        getPolicy().afterExpand(this);
     }
 
     private StructuredGraph copyGraphAndUpdateInvokes(GraphManager.Entry entry) {
@@ -250,11 +252,10 @@ public final class CallNode extends Node {
                     final TruffleCallNode childTruffleCallNode = child.getTruffleCaller();
                     final Invoke original = entry.truffleCallNodeToInvoke.get(childTruffleCallNode);
                     if (original == null || !original.isAlive()) {
-                        child.state = State.Removed;
-                        getPolicy().removedNode(CallNode.this, child);
+                        child.remove();
                     } else {
                         final Invoke replacement = (Invoke) duplicates.get((Node) original);
-                        putChildInvokeOrRemoveChild(child, replacement);
+                        child.setInvokeOrRemove(replacement);
                     }
                 }
             }
@@ -265,7 +266,7 @@ public final class CallNode extends Node {
         assert state == State.Expanded : "Cannot inline node that is not expanded: " + state;
         assert ir != null && getParent() != null;
         if (!invoke.isAlive()) {
-            state = State.Removed;
+            remove();
             return;
         }
         handleInlineDecisionNode(invoke);
@@ -274,12 +275,11 @@ public final class CallNode extends Node {
             if (child.state != State.Removed) {
                 final Node childInvoke = (Node) child.invoke;
                 if (!childInvoke.isAlive()) {
-                    child.state = State.Removed;
-                    getPolicy().removedNode(this, child);
+                    child.remove();
                     continue;
                 }
                 final Invoke value = (Invoke) replacements.get(childInvoke);
-                putChildInvokeOrRemoveChild(child, value);
+                child.setInvokeOrRemove(value);
             }
         }
         state = State.Inlined;
