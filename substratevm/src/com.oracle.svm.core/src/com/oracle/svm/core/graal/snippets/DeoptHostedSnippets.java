@@ -58,6 +58,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public final class DeoptHostedSnippets extends SubstrateTemplates implements Snippets {
 
@@ -135,6 +136,24 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
         return ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(method);
     }
 
+    public static final class AnalysisSpeculationReason implements SpeculationLog.SpeculationReason {
+        private final String message;
+
+        public AnalysisSpeculationReason(String message) {
+            this.message = message;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+    }
+
+    public static final class AnalysisSpeculation extends SpeculationLog.Speculation {
+        public AnalysisSpeculation(AnalysisSpeculationReason reason) {
+            super(reason);
+        }
+    }
+
     protected class DeoptimizeLowering implements NodeLoweringProvider<DeoptimizeNode> {
 
         private final SnippetInfo deopt = snippet(DeoptHostedSnippets.class, "deoptSnippet");
@@ -144,6 +163,13 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
             LoweringStage loweringStage = tool.getLoweringStage();
             if (loweringStage != LoweringTool.StandardLoweringStage.LOW_TIER) {
                 return;
+            }
+
+            String speculationMessage = null;
+            SpeculationLog.Speculation speculation = node.getSpeculation();
+            if (speculation instanceof AnalysisSpeculation) {
+                AnalysisSpeculationReason reason = (AnalysisSpeculationReason) speculation.getReason();
+                speculationMessage = reason.getMessage();
             }
 
             String message;
@@ -158,7 +184,10 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
                 case UnreachedCode:
                 case TypeCheckedInliningViolated:
                 case NotCompiledExceptionHandler:
-                    message = "Code that was considered unreachable by closed-world analysis was reached";
+                    message = "Code that was considered unreachable by closed-world analysis was reached.";
+                    if (speculationMessage != null) {
+                        message += ' ' + speculationMessage;
+                    }
                     break;
                 case Unresolved:
                     message = "Unresolved element found " + (node.getNodeSourcePosition() != null ? node.getNodeSourcePosition().toString() : "");
