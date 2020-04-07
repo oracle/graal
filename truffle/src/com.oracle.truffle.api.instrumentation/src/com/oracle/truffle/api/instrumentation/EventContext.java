@@ -43,10 +43,12 @@ package com.oracle.truffle.api.instrumentation;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
@@ -96,6 +98,7 @@ public final class EventContext {
         boolean foundStandardTag = false;
         for (Class<?> clazz : StandardTags.ALL_TAGS) {
             if (hasTag((Class<? extends Tag>) clazz)) {
+                assert languageDeclaresTag(probeNode.getRootNode(), clazz);
                 foundStandardTag = true;
             }
         }
@@ -106,6 +109,21 @@ public final class EventContext {
             }
         }
 
+        return true;
+    }
+
+    private static boolean languageDeclaresTag(RootNode root, Class<?> tag) {
+        Object polyglotEngine = InstrumentAccessor.nodesAccess().getPolyglotEngine(root);
+        if (polyglotEngine == null) {
+            return true;
+        }
+        InstrumentationHandler handler = (InstrumentationHandler) InstrumentAccessor.engineAccess().getInstrumentationHandler(polyglotEngine);
+        Set<Class<?>> providedTags = handler.getProvidedTags(root);
+        if (!providedTags.contains(tag)) {
+            TruffleLanguage<?> language = InstrumentAccessor.nodesAccess().getLanguage(root);
+            throw new AssertionError("An instrumentable node returned true for a tag that was not provided by the language '" + root.getLanguageInfo().getId() + "'.\n" +
+                            "Add @ProvidedTags with tag  " + tag + " to " + language.getClass().getName() + ".");
+        }
         return true;
     }
 
@@ -128,7 +146,9 @@ public final class EventContext {
         }
         Node node = getInstrumentedNode();
         if (node instanceof InstrumentableNode) {
-            return ((InstrumentableNode) node).hasTag(tag);
+            boolean has = ((InstrumentableNode) node).hasTag(tag);
+            assert !has || languageDeclaresTag(probeNode.getRootNode(), tag);
+            return has;
         } else {
             return false;
         }

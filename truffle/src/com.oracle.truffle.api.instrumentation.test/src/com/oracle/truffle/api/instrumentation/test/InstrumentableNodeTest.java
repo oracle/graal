@@ -62,6 +62,7 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
@@ -333,6 +334,7 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
     }
 
     @TruffleLanguage.Registration(id = MaterializationLanguage.ID, name = "Materialization Test Language", version = "1.0")
+    @ProvidedTags({StandardTags.StatementTag.class})
     public static class MaterializationLanguage extends ProxyLanguage {
 
         static final String ID = "truffle-materialization-test-language";
