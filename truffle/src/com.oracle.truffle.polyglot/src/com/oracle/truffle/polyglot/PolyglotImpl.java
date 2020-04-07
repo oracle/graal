@@ -452,11 +452,23 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         if (context.closed || context.invalid) {
             exceptionImpl = new PolyglotExceptionImpl(context.engine, e);
         } else {
-            Object prev = context.engine.enterIfNeeded(context);
             try {
-                exceptionImpl = new PolyglotExceptionImpl(languageContext, e);
-            } finally {
-                context.engine.leaveIfNeeded(prev, context);
+                Object prev = context.engine.enterIfNeeded(context);
+                try {
+                    exceptionImpl = new PolyglotExceptionImpl(languageContext, e);
+                } finally {
+                    context.engine.leaveIfNeeded(prev, context);
+                }
+            } catch (Throwable t) {
+                /*
+                 * It is possible that we fail to enter or produce a guest value using a context at
+                 * this point, because the context might be closed or invalidated. This can happen
+                 * as a race condition. We don't want to lock here, because this would be very prone
+                 * to deadlocks. So if we fail to produce a guest value here we construct polyglot
+                 * exception only using the engine, which does not require a context to be entered.
+                 */
+                e.addSuppressed(t);
+                exceptionImpl = new PolyglotExceptionImpl(context.engine, e);
             }
         }
         APIAccess access = getInstance().getAPIAccess();
