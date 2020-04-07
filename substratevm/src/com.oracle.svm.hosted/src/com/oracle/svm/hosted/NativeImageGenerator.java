@@ -1180,7 +1180,7 @@ public class NativeImageGenerator {
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
-                        explicitUnsafeNullChecks, /* registerMathPlugins */false,
+                        explicitUnsafeNullChecks, /* registerForeignCallMath */false,
                         SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JavaVersionUtil.JAVA_SPEC >= 11,
                         JavaVersionUtil.JAVA_SPEC >= 11);
 
