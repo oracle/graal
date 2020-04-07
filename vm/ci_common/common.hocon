@@ -116,7 +116,7 @@ fastr: {
   }
   downloads: {
     F2C_BINARY: { name: "f2c-binary", version: "7", platformspecific: true },
-    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "5", platformspecific: true },
+    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "6", platformspecific: true },
   }
 }
 
@@ -139,16 +139,20 @@ fastr_linux: ${fastr} {
 
 fastr_darwin: ${fastr} {
   packages: {
-    "pcre" : "==8.43"
-    "gnur": "==3.6.1"
+    "gcc": "==8.3.0"
+    "pcre": "==8.43"
+    "gnur": "==3.6.1.8.3.0"
   }
   environment:  {
     # TODO: check these env vars
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
-    FC: "/usr/local/bin/gfortran-4.9"
+    FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
+    FF: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
     TZDIR: "/usr/share/zoneinfo"
     FASTR_LIBZ_VER: "1.2.11"
-    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1/lib/R"
+    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1.8.3.0/lib/R/"
+	PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"
+    PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/8.3.0/lib -L/usr/lib"
   }
 }
 
