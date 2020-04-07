@@ -217,7 +217,9 @@ public class VMThreadMTFeature implements GraalFeature {
         if (isVolatile) {
             b.add(new MembarNode(MemoryBarriers.JMM_PRE_VOLATILE_WRITE));
         }
-        b.add(new StoreVMThreadLocalNode(threadLocalInfo, threadNode, valueNode, BarrierType.NONE));
+        StoreVMThreadLocalNode store = new StoreVMThreadLocalNode(threadLocalInfo, threadNode, valueNode, BarrierType.NONE);
+        b.add(store);
+        assert store.stateAfter() != null : store + " has no state after with graph builder context " + b;
         if (isVolatile) {
             b.add(new MembarNode(MemoryBarriers.JMM_POST_VOLATILE_WRITE));
         }
@@ -226,7 +228,9 @@ public class VMThreadMTFeature implements GraalFeature {
 
     private boolean handleCompareAndSet(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode, ValueNode expect, ValueNode update) {
         VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get());
-        b.addPush(targetMethod.getSignature().getReturnKind(), new CompareAndSetVMThreadLocalNode(threadLocalInfo, threadNode, expect, update));
+        CompareAndSetVMThreadLocalNode cas = new CompareAndSetVMThreadLocalNode(threadLocalInfo, threadNode, expect, update);
+        b.addPush(targetMethod.getSignature().getReturnKind(), cas);
+        assert cas.stateAfter() != null : cas + " has no state after with graph builder context " + b;
         return true;
     }
 

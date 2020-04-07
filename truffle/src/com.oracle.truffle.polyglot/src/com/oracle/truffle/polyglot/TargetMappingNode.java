@@ -167,9 +167,9 @@ abstract class TargetMappingNode extends Node {
                 return converter.apply(value);
             } catch (ClassCastException t) {
                 // we allow class cast exceptions
-                throw new PolyglotClassCastException(t.getMessage());
+                throw PolyglotEngineException.classCast(t.getMessage());
             } catch (Throwable t) {
-                throw PolyglotImpl.wrapHostException(languageContext, t);
+                throw PolyglotImpl.hostToGuestException(languageContext, t);
             }
         }
 
@@ -178,7 +178,7 @@ abstract class TargetMappingNode extends Node {
             try {
                 return predicate.test(convertedValue);
             } catch (Throwable t) {
-                throw PolyglotImpl.wrapHostException(languageContext, t);
+                throw PolyglotImpl.hostToGuestException(languageContext, t);
             }
         }
     }

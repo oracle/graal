@@ -242,7 +242,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             ValueNode arg = graphKit.createLoadIndexed(argumentArray, i, JavaKind.Object);
             if (argKind.isPrimitive()) {
                 arg = createCheckcast(graphKit, arg, graphKit.getMetaAccess().lookupJavaType(argKind.toBoxedJavaClass()), true);
-                arg = graphKit.createUnboxing(arg, argKind);
+                arg = graphKit.createUnboxing(arg, argKind, graphKit.getMetaAccess());
             } else {
                 arg = createCheckcast(graphKit, arg, graphKit.getMetaAccess().lookupJavaType(argTypes[i]), false);
             }
@@ -456,7 +456,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
                                 graphKit.thenPart();
                                 PiNode boxed = graphKit.createPiNode(value, StampFactory.object(typeRef, true));
-                                ValueNode unboxed = graphKit.createUnboxing(boxed, valueKind);
+                                ValueNode unboxed = graphKit.createUnboxing(boxed, valueKind, providers.getMetaAccess());
                                 ValueNode converted = doImplicitCast(graphKit, valueKind, fieldKind, unboxed);
 
                                 graphKit.append(new StoreFieldNode(receiver, targetField, converted));

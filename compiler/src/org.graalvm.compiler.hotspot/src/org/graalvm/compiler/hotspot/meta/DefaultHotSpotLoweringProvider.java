@@ -591,6 +591,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
     private void lowerStoreHubNode(StoreHubNode storeHub, StructuredGraph graph) {
         WriteNode hub = createWriteHub(graph, storeHub.getObject(), storeHub.getValue());
+        hub.setStateAfter(storeHub.stateAfter());
         graph.replaceFixed(storeHub, hub);
     }
 

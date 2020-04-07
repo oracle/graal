@@ -70,9 +70,10 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.DeoptBciSupplier;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -295,7 +296,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     int count = 0;
                     PEGraphDecoder.PEMethodScope scope = methodScope;
                     while (scope != null) {
-                        if (scope.method.equals(callInlinedMethod) || scope.method.equals(callInlinedAgnosticMethod)) {
+                        if (scope.method.equals(peRootForInlining) || scope.method.equals(peRootForAgnosticInlining)) {
                             count++;
                         }
                         scope = scope.caller;
@@ -604,24 +605,24 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     private final NodePlugin[] nodePlugins;
     private final EconomicMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
     private final EconomicMap<ResolvedJavaMethod, Object> invocationPluginCache;
-    private final ResolvedJavaMethod callInlinedMethod;
-    private final ResolvedJavaMethod callInlinedAgnosticMethod;
+    private final ResolvedJavaMethod peRootForInlining;
+    private final ResolvedJavaMethod peRootForAgnosticInlining;
     protected final SourceLanguagePositionProvider sourceLanguagePositionProvider;
 
     public PEGraphDecoder(Architecture architecture, StructuredGraph graph, CoreProviders providers, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
-                    NodePlugin[] nodePlugins, ResolvedJavaMethod callInlinedMethod, ResolvedJavaMethod callInlinedAgnosticMethod, SourceLanguagePositionProvider sourceLanguagePositionProvider) {
+                    NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, ResolvedJavaMethod peRootForAgnosticInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider) {
         super(architecture, graph, providers, true);
         this.loopExplosionPlugin = loopExplosionPlugin;
         this.invocationPlugins = invocationPlugins;
         this.inlineInvokePlugins = inlineInvokePlugins;
         this.parameterPlugin = parameterPlugin;
         this.nodePlugins = nodePlugins;
-        this.callInlinedAgnosticMethod = callInlinedAgnosticMethod;
+        this.peRootForAgnosticInlining = peRootForAgnosticInlining;
         this.specialCallTargetCache = EconomicMap.create(Equivalence.DEFAULT);
         this.invocationPluginCache = EconomicMap.create(Equivalence.DEFAULT);
-        this.callInlinedMethod = callInlinedMethod;
+        this.peRootForInlining = peRootForInlining;
         this.sourceLanguagePositionProvider = sourceLanguagePositionProvider;
     }
 
@@ -819,6 +820,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (graphBuilderContext.invokeConsumed) {
                 /* Nothing to do. */
             } else if (graphBuilderContext.lastInstr != null) {
+                if (graphBuilderContext.lastInstr instanceof DeoptBciSupplier && !BytecodeFrame.isPlaceholderBci(invokeData.invoke.bci()) &&
+                                BytecodeFrame.isPlaceholderBci(((DeoptBciSupplier) graphBuilderContext.lastInstr).bci())) {
+                    ((DeoptBciSupplier) graphBuilderContext.lastInstr).setBci(invokeData.invoke.bci());
+                }
                 registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, true);
                 invoke.asNode().replaceAtUsages(graphBuilderContext.pushedNode);
                 graphBuilderContext.lastInstr.setNext(nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(graphBuilderContext.lastInstr)));
@@ -1159,9 +1164,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         if (node instanceof ForeignCallNode) {
             ForeignCallNode foreignCall = (ForeignCallNode) node;
-            if (foreignCall.getBci() == BytecodeFrame.UNKNOWN_BCI && methodScope.invokeData != null) {
+            if (foreignCall.bci() == BytecodeFrame.UNKNOWN_BCI && methodScope.invokeData != null && !BytecodeFrame.isPlaceholderBci(methodScope.invokeData.invoke.bci())) {
                 foreignCall.setBci(methodScope.invokeData.invoke.bci());
             }
+        } else if (node instanceof DeoptBciSupplier) {
+            ((DeoptBciSupplier) node).setBci(methodScope.invokeData.invoke.bci());
         }
 
         super.handleFixedNode(methodScope, loopScope, nodeOrderId, node);

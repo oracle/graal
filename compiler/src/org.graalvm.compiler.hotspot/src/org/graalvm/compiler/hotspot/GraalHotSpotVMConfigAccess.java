@@ -144,7 +144,7 @@ public class GraalHotSpotVMConfigAccess {
     static {
         String vmVersion = getProperty("java.vm.version");
         JVMCI_VERSION = Version.parse(vmVersion);
-        JVMCI_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("internal");
+        JVMCI_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("internal") || vmVersion.contains("-dev");
         JVMCI = JVMCI_VERSION != null || JVMCI_PRERELEASE;
     }
 

@@ -1715,6 +1715,7 @@ public class NativeImage {
         public static void main(String[] args) {
             if (!IS_AOT) {
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
+                ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler.management", true);
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.xml", false);
             }

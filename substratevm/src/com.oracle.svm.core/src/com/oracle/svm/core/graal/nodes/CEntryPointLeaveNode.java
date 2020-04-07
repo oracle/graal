@@ -28,9 +28,11 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
+import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -41,8 +43,8 @@ import com.oracle.svm.core.c.function.CEntryPointActions;
 
 import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo(cycles = CYCLES_8, size = NodeSize.SIZE_8)
-public class CEntryPointLeaveNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill {
+@NodeInfo(cycles = CYCLES_8, size = NodeSize.SIZE_8, allowedUsageTypes = {InputType.Memory})
+public class CEntryPointLeaveNode extends DeoptimizingFixedWithNextNode implements Lowerable, SingleMemoryKill, DeoptBefore {
 
     public static final NodeClass<CEntryPointLeaveNode> TYPE = NodeClass.create(CEntryPointLeaveNode.class);
 
@@ -85,4 +87,15 @@ public class CEntryPointLeaveNode extends FixedWithNextNode implements Lowerable
     public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public boolean canUseAsStateDuring() {
+        return true;
+    }
+
 }

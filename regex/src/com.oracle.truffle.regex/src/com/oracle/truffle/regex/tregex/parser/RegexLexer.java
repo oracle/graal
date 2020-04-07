@@ -670,7 +670,7 @@ public final class RegexLexer {
         }
         switch (c) {
             case '0':
-                if (flags.isUnicode() && isDecimal(curChar())) {
+                if (flags.isUnicode() && !atEnd() && isDecimal(curChar())) {
                     throw syntaxError(ErrorMessages.INVALID_ESCAPE);
                 }
                 if (!flags.isUnicode() && !atEnd() && isOctal(curChar())) {

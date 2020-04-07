@@ -109,7 +109,7 @@ public class ObjectSnippets implements Snippets {
                         InvokeNode invoke = (InvokeNode) replacements.get(originalNode);
                         assert invoke.asNode().graph() == graph;
                         // Here we need to fix the bci of the invoke
-                        invoke.replaceBci(fn.getBci());
+                        invoke.setBci(fn.getBci());
                         invoke.setStateDuring(null);
                         invoke.setStateAfter(null);
                         invoke.setStateDuring(stateDuringCall);

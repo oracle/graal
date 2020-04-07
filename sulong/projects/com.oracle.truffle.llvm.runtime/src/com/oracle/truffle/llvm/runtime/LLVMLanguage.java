@@ -243,10 +243,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             return new DebugExprExecutableNode(d.parse());
         } catch (DebugExprException | LLVMParserException e) {
             // error found during parsing
+            String errorMessage = e.getMessage();
             return new ExecutableNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    return e.getMessage();
+                    return errorMessage;
                 }
             };
         }

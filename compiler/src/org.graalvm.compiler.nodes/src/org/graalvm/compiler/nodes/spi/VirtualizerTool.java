@@ -30,6 +30,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -136,6 +137,12 @@ public interface VirtualizerTool {
      * Deletes the current node.
      */
     void delete();
+
+    /**
+     * Deletes the current node, which must be a {@link WithExceptionNode}. Kills the exception
+     * edge.
+     */
+    void deleteAndKillExceptionEdge();
 
     /**
      * Replaces an input of the current node.

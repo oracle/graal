@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
@@ -291,6 +292,13 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     @Override
     public void delete() {
         effects.deleteNode(current);
+        deleted = true;
+    }
+
+    @Override
+    public void deleteAndKillExceptionEdge() {
+        WithExceptionNode withExceptionNode = (WithExceptionNode) current;
+        effects.deleteAndKillExceptionEdge(withExceptionNode);
         deleted = true;
     }
 

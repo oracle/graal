@@ -30,13 +30,13 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public final class StoreHubNode extends FixedWithNextNode implements Lowerable {
+public final class StoreHubNode extends AbstractStateSplit implements Lowerable {
 
     public static final NodeClass<StoreHubNode> TYPE = NodeClass.create(StoreHubNode.class);
     @Input ValueNode value;
@@ -63,4 +63,5 @@ public final class StoreHubNode extends FixedWithNextNode implements Lowerable {
 
     @NodeIntrinsic
     public static native void write(Object object, Object value);
+
 }

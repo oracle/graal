@@ -248,7 +248,9 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 returnValue = kit.boxObjectInLocalHandle(returnValue);
             }
         }
-        kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
+        kit.appendStateSplitProxy(state);
+        CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
+        kit.append(leave);
         kit.createReturn(returnValue, returnKind);
 
         return kit.finalizeGraph();

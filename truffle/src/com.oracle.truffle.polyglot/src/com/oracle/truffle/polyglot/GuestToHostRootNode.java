@@ -88,7 +88,7 @@ abstract class GuestToHostRootNode extends RootNode {
         } catch (InteropException e) {
             throw silenceException(RuntimeException.class, e);
         } catch (Throwable e) {
-            throw PolyglotImpl.wrapHostException((PolyglotLanguageContext) arguments[0], e);
+            throw PolyglotImpl.hostToGuestException((PolyglotLanguageContext) arguments[0], e);
         }
     }
 

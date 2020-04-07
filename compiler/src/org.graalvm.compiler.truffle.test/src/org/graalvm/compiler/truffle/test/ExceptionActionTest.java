@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.test.SubprocessUtil;
@@ -159,7 +160,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasOptFailedException(log));
         };
         executeForked(verifier, ExceptionActionTest::createConstantNode,
-                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.callRoot:Bailout"},
+                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
                         "engine.PerformanceWarningsAreFatal", "all");
     }
 
@@ -171,7 +172,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasOptFailedException(log));
         };
         executeForked(verifier, ExceptionActionTest::createConstantNode,
-                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.callRoot:Bailout"},
+                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
                         "engine.TraceCompilationDetails", "true");
     }
 
@@ -267,21 +268,21 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     }
 
     private static boolean hasExit(Path logFile) {
-        return contains(logFile, "Exiting VM");
+        return contains(logFile, Pattern.compile(".*Exiting VM.*"));
     }
 
     private static boolean hasBailout(Path logFile) {
-        return contains(logFile, "BailoutException") || contains(logFile, "Non permanent bailout");
+        return contains(logFile, Pattern.compile("[\\w.]*BailoutException.*")) || contains(logFile, Pattern.compile(".*Non permanent bailout.*"));
     }
 
     private static boolean hasOptFailedException(Path logFile) {
-        return contains(logFile, "OptimizationFailedException");
+        return contains(logFile, Pattern.compile(".*OptimizationFailedException.*"));
     }
 
-    private static boolean contains(Path logFile, String substr) {
+    private static boolean contains(Path logFile, Pattern pattern) {
         try {
             for (String line : Files.readAllLines(logFile)) {
-                if (line.contains(substr)) {
+                if (pattern.matcher(line).matches()) {
                     return true;
                 }
             }

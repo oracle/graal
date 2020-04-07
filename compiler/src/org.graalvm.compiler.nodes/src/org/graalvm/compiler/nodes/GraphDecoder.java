@@ -388,7 +388,8 @@ public class GraphDecoder {
         public final int exceptionNextOrderId;
         public JavaConstant constantReceiver;
 
-        protected InvokeData(Invoke invoke, ResolvedJavaType contextType, int invokeOrderId, int callTargetOrderId, int stateAfterOrderId, int nextOrderId, int nextNextOrderId, int exceptionOrderId,
+        protected InvokeData(Invoke invoke, ResolvedJavaType contextType, int invokeOrderId, int callTargetOrderId, int stateAfterOrderId, int nextOrderId, int nextNextOrderId,
+                        int exceptionOrderId,
                         int exceptionStateOrderId, int exceptionNextOrderId) {
             this.invoke = invoke;
             this.contextType = contextType;
@@ -1486,7 +1487,8 @@ public class GraphDecoder {
         if (node instanceof Invoke) {
             assert node instanceof InvokeNode || node instanceof InvokeWithExceptionNode : "The only two Invoke node classes. Got " + node.getClass();
             if (edges.type() == Edges.Type.Successors) {
-                assert edges.getCount() == (node instanceof InvokeWithExceptionNode ? 2 : 1) : "InvokeNode has one successor (next); InvokeWithExceptionNode has two successors (next, exceptionEdge)";
+                assert edges.getCount() == (node instanceof InvokeWithExceptionNode ? 2
+                                : 1) : "InvokeNode has one successor (next); InvokeWithExceptionNode has two successors (next, exceptionEdge)";
                 return true;
             } else {
                 assert edges.type() == Edges.Type.Inputs;

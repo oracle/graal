@@ -49,7 +49,6 @@ import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
@@ -66,7 +65,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill, MemoryAccess, Canonicalizable {
+public final class ArrayCopyCallNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill, MemoryAccess, Canonicalizable {
 
     public static final NodeClass<ArrayCopyCallNode> TYPE = NodeClass.create(ArrayCopyCallNode.class);
     @Input protected ValueNode src;
@@ -167,7 +166,6 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
                 len = IntegerConvertNode.convert(len, StampFactory.forKind(JavaKind.Long), graph(), NodeView.DEFAULT);
             }
             ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, desc, srcAddr, destAddr, len));
-            call.setStateAfter(stateAfter());
             graph.replaceFixedWithFixed(this, call);
         }
     }

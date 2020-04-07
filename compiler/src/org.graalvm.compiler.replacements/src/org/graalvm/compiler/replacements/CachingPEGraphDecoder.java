@@ -30,7 +30,9 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.Compi
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -67,14 +69,15 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     private final AllowAssumptions allowAssumptions;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache;
     private final BasePhase<? super CoreProviders> postParsingPhase;
+    private static final TimerKey buildGraphTime = DebugContext.timer("TruffleBuildGraphTime");
 
     public CachingPEGraphDecoder(Architecture architecture, StructuredGraph graph, Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     AllowAssumptions allowAssumptions, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
-                    NodePlugin[] nodePlugins, ResolvedJavaMethod callInlinedMethod, ResolvedJavaMethod callInlinedAgnosticMethod, SourceLanguagePositionProvider sourceLanguagePositionProvider,
+                    NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, ResolvedJavaMethod peRootForAgnosticInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
                     BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         super(architecture, graph, providers, loopExplosionPlugin,
-                        invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, callInlinedMethod, callInlinedAgnosticMethod, sourceLanguagePositionProvider);
+                        invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, peRootForInlining, peRootForAgnosticInlining, sourceLanguagePositionProvider);
 
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;
@@ -126,7 +129,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                 cancellable(graph.getCancellable()).
                 build();
         // @formatter:on
-        try (DebugContext.Scope scope = debug.scope("createGraph", graphToEncode)) {
+        try (DebugContext.Scope scope = debug.scope("buildGraph", graphToEncode); DebugCloseable a = buildGraphTime.start(debug)) {
             IntrinsicContext initialIntrinsicContext = intrinsicBytecodeProvider != null
                             ? new IntrinsicContext(method, plugin.getSubstitute(providers.getMetaAccess()), intrinsicBytecodeProvider, INLINE_AFTER_PARSING)
                             : null;

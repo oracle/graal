@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,11 +29,14 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -71,6 +74,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, factories, providers, snippetReflection);
         lowerings.put(SubstrateArraycopyNode.class, new ArraycopyLowering());
+        lowerings.put(ArrayCopyWithExceptionNode.class, new ArrayCopyWithExceptionLowering());
     }
 
     /**
@@ -230,6 +234,19 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
             args.add("toIndex", node.getDestinationPosition());
             args.add("length", node.getLength());
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+        }
+    }
+
+    final class ArrayCopyWithExceptionLowering implements NodeLoweringProvider<ArrayCopyWithExceptionNode> {
+        @Override
+        public void lower(ArrayCopyWithExceptionNode node, LoweringTool tool) {
+            StructuredGraph graph = node.graph();
+            ForeignCallsProvider foreignCalls = tool.getProviders().getForeignCalls();
+            ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(foreignCalls, ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
+                            node.getDestinationPosition(), node.getLength()));
+            call.setStateAfter(node.stateAfter());
+            call.setBci(node.getBci());
+            graph.replaceWithExceptionSplit(node, call);
         }
     }
 }

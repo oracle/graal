@@ -258,4 +258,9 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
             }
         }
     }
+
+    @Override
+    public boolean verify() {
+        return super.verify();
+    }
 }

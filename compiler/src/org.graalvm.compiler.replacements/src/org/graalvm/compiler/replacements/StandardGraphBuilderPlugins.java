@@ -98,6 +98,7 @@ import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
+import org.graalvm.compiler.nodes.extended.RawVolatileLoadNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryStoreNode;
@@ -832,7 +833,9 @@ public class StandardGraphBuilderPlugins {
                 if (targetMethod.getCodeSize() == 1) {
                     ValueNode object = receiver.get();
                     if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getAssumptions())) {
-                        b.add(new RegisterFinalizerNode(object));
+                        RegisterFinalizerNode regFin = new RegisterFinalizerNode(object);
+                        b.add(regFin);
+                        b.setStateAfter(regFin);
                     }
                     return true;
                 }
@@ -934,7 +937,7 @@ public class StandardGraphBuilderPlugins {
                 }
             }
             ResolvedJavaType resultType = b.getMetaAccess().lookupJavaType(kind.toBoxedJavaClass());
-            b.addPush(JavaKind.Object, new BoxNode(value, resultType, kind));
+            b.addPush(JavaKind.Object, BoxNode.create(value, resultType, kind));
             return true;
         }
 
@@ -1123,14 +1126,22 @@ public class StandardGraphBuilderPlugins {
             }
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            if (accessKind.emitBarriers) {
+            boolean isVolatile = accessKind == AccessKind.VOLATILE;
+            boolean emitBarriers = accessKind.emitBarriers && !isVolatile;
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.preReadBarriers));
             }
             // Raw accesses can be turned into floatable field accesses, the membars preserve the
             // access mode. In the case of opaque access, and only for opaque, the location of the
             // wrapping membars can be refined to the field location.
-            createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc));
-            if (accessKind.emitBarriers) {
+            UnsafeNodeConstructor unsafeNodeConstructor = null;
+            if (isVolatile) {
+                unsafeNodeConstructor = (obj, loc) -> new RawVolatileLoadNode(obj, offset, unsafeAccessKind, loc);
+            } else {
+                unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc);
+            }
+            createUnsafeAccess(object, b, unsafeNodeConstructor);
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.postReadBarriers));
             }
             return true;
@@ -1169,15 +1180,17 @@ public class StandardGraphBuilderPlugins {
             }
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            if (accessKind.emitBarriers) {
+            boolean isVolatile = accessKind == AccessKind.VOLATILE;
+            boolean emitBarriers = accessKind.emitBarriers && !isVolatile;
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.preWriteBarriers));
             }
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
             // Raw accesses can be turned into floatable field accesses, the membars preserve the
             // access mode. In the case of opaque access, and only for opaque, the location of the
             // wrapping membars can be refined to the field location.
-            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
-            if (accessKind.emitBarriers) {
+            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc, true, isVolatile));
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.postWriteBarriers));
             }
             return true;

@@ -199,8 +199,9 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
             default:
                 throw VMError.shouldNotReachHere();
         }
-
-        kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
+        kit.appendStateSplitProxy(state);
+        CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
+        kit.append(leave);
         kit.createReturn(result, (result != null) ? result.getStackKind() : JavaKind.Void);
 
         return kit.finalizeGraph();

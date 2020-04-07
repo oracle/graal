@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management.libgraal.runtime;
-
-import org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMMBean.Factory;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package org.graalvm.compiler.nodes;
 
 /**
- * Entry points in HotSpot for calls from SVM.
+ * A marker interface for nodes that represent operations that can deoptimize and thus need a BCI to
+ * deopt to.
  */
-@Platforms(Platform.HOSTED_ONLY.class)
-final class SVMToHotSpotEntryPoints {
-
-    private SVMToHotSpotEntryPoints() {
-    }
+public interface DeoptBciSupplier {
 
     /**
-     * @see SVMMBean#getFactory()
+     * @return the byte code index (BCI) associated with the node implementing this interface
      */
-    static Factory getFactory() {
-        Factory factory = SVMMBean.getFactory();
-        return factory;
-    }
+    int bci();
 
     /**
-     * @see Factory#signal()
+     * Remember the byte code index (BCI) for code generation or lowering purposes. For example,
+     * nodes lowering to foreign calls that can safepoint require a valid BCI for computations of
+     * the during-state of such a foreign call.
      */
-    static void signal(Factory factory) {
-        factory.signal();
-    }
+    @SuppressWarnings("unused")
+    void setBci(int bci);
 }

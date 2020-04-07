@@ -42,9 +42,6 @@ public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, Deoptim
 
     CallTargetNode callTarget();
 
-    @Override
-    int bci();
-
     Node predecessor();
 
     ValueNode classInit();
@@ -119,5 +116,4 @@ public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, Deoptim
         return callTarget().invokeKind();
     }
 
-    void replaceBci(int newBci);
 }

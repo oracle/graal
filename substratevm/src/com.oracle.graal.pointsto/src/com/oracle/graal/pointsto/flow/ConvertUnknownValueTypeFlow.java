@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management.libgraal.runtime;
+package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.compiler.graph.Node;
+
+import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
 
 /**
- * Native methods linked to SVM entry points.
+ * Converts an unknown value, i.e., a value resulted from a low level memory read, i.e.,
+ * word-to-object reads, to proper objects to be used by the analysis. If a precise type is
+ * avaialable it is used to reduce the *all-instantiated* type flow. See
+ * {@link ConvertUnknownValueNode} for details.
  */
-@Platforms(Platform.HOSTED_ONLY.class)
-final class HotSpotToSVMCalls {
+public class ConvertUnknownValueTypeFlow extends ProxyTypeFlow {
 
-    private HotSpotToSVMCalls() {
+    public ConvertUnknownValueTypeFlow(Node source, TypeFlow<?> input) {
+        super(source, input);
     }
 
-    static native long[] pollRegistrations(long isolateThreadId);
-
-    static native void finishRegistration(long isolateThreadId, long[] svmRegistrations);
-
-    static native String getObjectName(long isolateThreadId, long svmRegistration);
-
-    static native byte[] getMBeanInfo(long isolateThreadId, long svmRegistration);
-
-    static native byte[] getAttributes(long isolateThreadId, long handle, String[] attributes);
-
-    static native byte[] setAttributes(long isolateThreadId, long handle, byte[] rawData);
-
-    static native byte[] invoke(long isolateThreadId, long handle, String actionName, byte[] rawData, String[] signature);
+    @Override
+    public String toString() {
+        return "ConvertUnknownValueTypeFlow<" + input + ">";
+    }
 }

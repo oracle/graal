@@ -259,10 +259,10 @@ public abstract class ObjectScanner {
         assert valueObj instanceof Object[];
 
         ScanReason reason = new ArrayScan(arrayType);
-        try {
-            Object[] arrayObject = (Object[]) valueObj;
-            for (int idx = 0; idx < arrayObject.length; idx++) {
-                Object e = arrayObject[idx];
+        Object[] arrayObject = (Object[]) valueObj;
+        for (int idx = 0; idx < arrayObject.length; idx++) {
+            Object e = arrayObject[idx];
+            try {
                 if (e == null) {
                     forNullArrayElement(array, arrayType, idx);
                 } else {
@@ -277,9 +277,9 @@ public abstract class ObjectScanner {
                     forNonNullArrayElement(array, arrayType, elementConstant, elementType, idx);
 
                 }
+            } catch (UnsupportedFeatureException ex) {
+                unsupportedFeature(arrayType.toJavaName(true), ex.getMessage(), reason, previous);
             }
-        } catch (UnsupportedFeatureException ex) {
-            unsupportedFeature(arrayType.toJavaName(true), ex.getMessage(), reason, previous);
         }
     }
 

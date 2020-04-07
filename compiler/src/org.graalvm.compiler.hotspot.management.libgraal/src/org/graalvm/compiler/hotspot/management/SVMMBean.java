@@ -22,9 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management.libgraal.runtime;
-
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+package org.graalvm.compiler.hotspot.management;
 
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
@@ -58,10 +56,7 @@ import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.libgraal.LibGraal;
-import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.util.OptionsEncoder;
@@ -91,9 +86,11 @@ class SVMMBean implements DynamicMBean {
 
     private static volatile Factory factory;
 
+    private final long isolate;
     private final long handle;
 
-    SVMMBean(long handle) {
+    SVMMBean(long isolate, long handle) {
+        this.isolate = isolate;
         this.handle = handle;
     }
 
@@ -130,11 +127,10 @@ class SVMMBean implements DynamicMBean {
      * @param attributes a list of the attributes to be retrieved
      */
     @Override
-    @SuppressWarnings("try")
     public AttributeList getAttributes(String[] attributes) {
-        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            byte[] rawData = HotSpotToSVMCalls.getAttributes(LibGraalScope.getIsolateThread(), handle, attributes);
-            return rawToAttributeList(rawData);
+        try (IsolateThreadScope scope = IsolateThreadScope.open(isolate)) {
+            byte[] rawData = HotSpotToSVMCalls.getAttributes(scope.getIsolateThread(), handle, attributes);
+            return rawToAttributeList(scope, rawData);
         }
     }
 
@@ -146,26 +142,26 @@ class SVMMBean implements DynamicMBean {
      *            the values they are to be set to.
      */
     @Override
-    @SuppressWarnings("try")
     public AttributeList setAttributes(AttributeList attributes) {
-        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+        try (IsolateThreadScope scope = IsolateThreadScope.open(isolate)) {
             Map<String, Object> map = new LinkedHashMap<>();
             for (Object item : attributes) {
                 Attribute attribute = (Attribute) item;
                 map.put(attribute.getName(), attribute.getValue());
             }
             byte[] rawData = OptionsEncoder.encode(map);
-            rawData = HotSpotToSVMCalls.setAttributes(LibGraalScope.getIsolateThread(), handle, rawData);
-            return rawToAttributeList(rawData);
+            rawData = HotSpotToSVMCalls.setAttributes(scope.getIsolateThread(), handle, rawData);
+            return rawToAttributeList(scope, rawData);
         }
     }
 
     /**
      * Decodes an {@link AttributeList} encoded to {@code byte} array using {@link OptionsEncoder}.
      *
+     * @param scope current isolate thread
      * @param rawData the encoded attribute list.
      */
-    private static AttributeList rawToAttributeList(byte[] rawData) {
+    private static AttributeList rawToAttributeList(IsolateThreadScope scope, byte[] rawData) {
         AttributeList res = new AttributeList();
         Map<String, Object> map = OptionsEncoder.decode(rawData);
         for (PushBackIterator<Map.Entry<String, Object>> it = new PushBackIterator<>(map.entrySet().iterator()); it.hasNext();) {
@@ -260,9 +256,8 @@ class SVMMBean implements DynamicMBean {
      *
      */
     @Override
-    @SuppressWarnings("try")
     public Object invoke(String actionName, Object[] params, String[] signature) throws MBeanException, ReflectionException {
-        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+        try (IsolateThreadScope scope = IsolateThreadScope.open(isolate)) {
             Map<String, Object> paramsMap = new LinkedHashMap<>();
             if (params != null) {
                 for (int i = 0; i < params.length; i++) {
@@ -270,11 +265,11 @@ class SVMMBean implements DynamicMBean {
                 }
             }
             byte[] rawData = OptionsEncoder.encode(paramsMap);
-            rawData = HotSpotToSVMCalls.invoke(LibGraalScope.getIsolateThread(), handle, actionName, rawData, signature);
+            rawData = HotSpotToSVMCalls.invoke(scope.getIsolateThread(), handle, actionName, rawData, signature);
             if (rawData == null) {
                 throw new MBeanException(null);
             }
-            AttributeList attributesList = rawToAttributeList(rawData);
+            AttributeList attributesList = rawToAttributeList(scope, rawData);
             return attributesList.isEmpty() ? null : ((Attribute) attributesList.get(0)).getValue();
         }
     }
@@ -285,10 +280,9 @@ class SVMMBean implements DynamicMBean {
      *
      */
     @Override
-    @SuppressWarnings("try")
     public MBeanInfo getMBeanInfo() {
-        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            byte[] rawData = HotSpotToSVMCalls.getMBeanInfo(LibGraalScope.getIsolateThread(), handle);
+        try (IsolateThreadScope scope = IsolateThreadScope.open(isolate)) {
+            byte[] rawData = HotSpotToSVMCalls.getMBeanInfo(scope.getIsolateThread(), handle);
             Map<String, Object> map = OptionsEncoder.decode(rawData);
             String className = null;
             String description = null;
@@ -539,13 +533,13 @@ class SVMMBean implements DynamicMBean {
         private static final int POLL_INTERVAL_MS = 2000;
 
         private MBeanServer platformMBeanServer;
-        private boolean dirty;
+        private final List<Long> todo;
 
         private Factory() {
             super("Libgraal MBean Registration");
+            this.todo = new ArrayList<>();
             this.setPriority(Thread.MIN_PRIORITY);
             this.setDaemon(true);
-            LibGraal.registerNativeMethods(runtime(), HotSpotToSVMCalls.class);
         }
 
         /**
@@ -560,11 +554,11 @@ class SVMMBean implements DynamicMBean {
                 try {
                     synchronized (this) {
                         // Wait until there are deferred registrations to process
-                        while (!dirty) {
+                        while (todo.isEmpty()) {
                             wait();
                         }
                         try {
-                            dirty = !poll();
+                            poll();
                         } catch (SecurityException | UnsatisfiedLinkError | NoClassDefFoundError | UnsupportedOperationException e) {
                             // Without permission to find or create the MBeanServer,
                             // we cannot process any Graal mbeans.
@@ -584,8 +578,8 @@ class SVMMBean implements DynamicMBean {
          * Called by {@code MBeanProxy} in SVM heap to notify the factory thread about new
          * {@link DynamicMBean}s.
          */
-        synchronized void signal() {
-            dirty = true;
+        synchronized void signal(long isolate) {
+            todo.add(isolate);
             notify();
         }
 
@@ -624,31 +618,88 @@ class SVMMBean implements DynamicMBean {
          * @throws NoClassDefFoundError can be thrown by {@link MBeanServer}
          * @throws UnsupportedOperationException can be thrown by {@link MBeanServer}
          */
-        @SuppressWarnings("try")
         private boolean process() {
-            try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-                long[] svmRegistrations = HotSpotToSVMCalls.pollRegistrations(LibGraalScope.getIsolateThread());
-                if (svmRegistrations.length > 0) {
-                    for (long svmRegistration : svmRegistrations) {
-                        SVMMBean bean = new SVMMBean(svmRegistration);
-                        String name = HotSpotToSVMCalls.getObjectName(LibGraalScope.getIsolateThread(), svmRegistration);
-                        try {
+            for (Iterator<Long> todoIt = todo.iterator(); todoIt.hasNext();) {
+                long isolate = todoIt.next();
+                todoIt.remove();
+                try (IsolateThreadScope scope = IsolateThreadScope.open(isolate)) {
+                    long[] svmRegistrations = HotSpotToSVMCalls.pollRegistrations(scope.getIsolateThread());
+                    if (svmRegistrations.length > 0) {
+                        for (long svmRegistration : svmRegistrations) {
+                            SVMMBean bean = new SVMMBean(isolate, svmRegistration);
+                            String name = HotSpotToSVMCalls.getObjectName(scope.getIsolateThread(), svmRegistration);
                             try {
-                                platformMBeanServer.registerMBean(bean, new ObjectName(name));
-                            } catch (InstanceAlreadyExistsException e) {
-                                String newName = name + "_" + Long.toHexString(LibGraalScope.getIsolateThread());
-                                TTY.out.printf("WARNING: The object name '%s' is already used by an existing MBean, using '%s' for libgraal MBean.%n",
-                                                name, newName);
-                                platformMBeanServer.registerMBean(bean, new ObjectName(newName));
+                                try {
+                                    platformMBeanServer.registerMBean(bean, new ObjectName(name));
+                                } catch (InstanceAlreadyExistsException e) {
+                                    String newName = name + "_" + Long.toHexString(scope.getIsolateThread());
+                                    TTY.out.printf("WARNING: The object name '%s' is already used by an existing MBean, using '%s' for libgraal MBean.%n",
+                                                    name, newName);
+                                    platformMBeanServer.registerMBean(bean, new ObjectName(newName));
+                                }
+                            } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
+                                e.printStackTrace(TTY.out);
                             }
-                        } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
-                            e.printStackTrace(TTY.out);
                         }
+                        HotSpotToSVMCalls.finishRegistration(scope.getIsolateThread(), svmRegistrations);
                     }
-                    HotSpotToSVMCalls.finishRegistration(LibGraalScope.getIsolateThread(), svmRegistrations);
                 }
             }
             return true;
+        }
+    }
+
+    private static final class IsolateThreadScope implements AutoCloseable {
+
+        private static final ThreadLocal<IsolateThreadScope> currentIsolateThread = new ThreadLocal<>();
+
+        private final long isolate;
+        private final IsolateThreadScope parent;
+        private long isolateThread;
+
+        private IsolateThreadScope(long isolate, IsolateThreadScope parent) {
+            if (parent != null && parent.isolate != isolate) {
+                throw new IllegalStateException("Thread can be entered only in single isolate.");
+            }
+            this.isolate = isolate;
+            this.parent = parent;
+            this.isolateThread = parent == null ? enterThread(isolate) : parent.isolateThread;
+        }
+
+        long getIsolateThread() {
+            if (isolateThread == 0L) {
+                throw new IllegalStateException("IsolateThreadScope is already closed.");
+            }
+            return isolateThread;
+        }
+
+        @Override
+        public void close() {
+            if (isolateThread != 0L) {
+                if (currentIsolateThread.get() != this) {
+                    throw new IllegalStateException("Unpaired scope close.");
+                }
+                currentIsolateThread.set(parent);
+                if (parent == null) {
+                    leaveThread(isolateThread);
+                }
+                isolateThread = 0L;
+            }
+        }
+
+        private static long enterThread(long isolate) {
+            return HotSpotToSVMCalls.attachThread(isolate);
+        }
+
+        private static void leaveThread(long isolateThread) {
+            HotSpotToSVMCalls.detachThread(isolateThread);
+        }
+
+        static IsolateThreadScope open(long isolate) {
+            IsolateThreadScope parent = currentIsolateThread.get();
+            IsolateThreadScope entered = new IsolateThreadScope(isolate, parent);
+            currentIsolateThread.set(entered);
+            return entered;
         }
     }
 }

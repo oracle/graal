@@ -1153,10 +1153,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 jar_distributions = [
     'substratevm:GRAAL_HOTSPOT_LIBRARY',
     'compiler:GRAAL_LIBGRAAL_JNI',
-    'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL']
-
-if mx_sdk_vm.base_jdk_version() == 8:
-    jar_distributions.append('compiler:GRAAL_MANAGEMENT_LIBGRAAL')
+    'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL',
+    'compiler:GRAAL_MANAGEMENT_LIBGRAAL']
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,

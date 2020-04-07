@@ -139,6 +139,11 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     @Override
+    public boolean isVolatile() {
+        return false;
+    }
+
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         if (!isAnyLocationForced() && getLocationIdentity().isAny()) {
             ValueNode targetObject = object();
@@ -171,7 +176,10 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     @Override
-    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
+    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity, boolean volatileAccess) {
+        if (volatileAccess) {
+            return new RawVolatileLoadNode(object(), location, accessKind(), identity);
+        }
         return new RawLoadNode(object(), location, accessKind(), identity);
     }
 
