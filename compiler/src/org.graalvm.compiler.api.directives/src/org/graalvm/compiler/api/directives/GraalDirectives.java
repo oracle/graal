@@ -72,6 +72,14 @@ public final class GraalDirectives {
     }
 
     /**
+     * A call to this method will assume a stable dimension array if {@code t} is a constant array
+     * and {@code i} a constant integer.
+     */
+    public static <T> T assumeStableDimension(T t, @SuppressWarnings("unused") int i) {
+        return t;
+    }
+
+    /**
      * A call to this method will force the compiler to assume this instruction has a visible memory
      * effect killing all memory locations.
      */

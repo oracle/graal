@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,8 +79,9 @@ public final class InspectorRuntime extends RuntimeDomain {
     // for(let i=0,n=properties.length;i<n;++i)
     // result=result[properties[i]];return result;}
     private static final Pattern FUNCTION_GETTER_PATTERN1 = Pattern.compile(
-                    "function\\s+(?<invokeGetter>\\w+)\\((?<arrayStr>\\w+)\\)\\s*\\{\\s*\\w+\\s+(?<result>\\w+)=this;\\s*\\w*\\s*(?<properties>\\w+)=JSON.parse\\(\\k<arrayStr>\\);" +
-                                    "\\s*for\\(\\w+\\s+(?<i>\\w+)=.*(\\+\\+\\k<i>|\\k<i>\\+\\+|\\-\\-\\k<i>|\\k<i>\\-\\-)\\)\\s*\\{?\\s*\\k<result>=\\k<result>\\[\\k<properties>\\[\\k<i>\\]\\];\\s*\\}?\\s*return\\s+\\k<result>;\\}");
+                    "function\\s+(?<invokeGetter>\\w+)\\((?<arrayStr>\\w+)\\)\\s*\\{\\s*\\w+\\s+(?<result>\\w+)\\s*=\\s*this;\\s*\\w*\\s*(?<properties>\\w+)\\s*=\\s*JSON.parse\\(\\k<arrayStr>\\);" +
+                                    "\\s*for\\s*\\(\\w+\\s+(?<i>\\w+)\\s*=.*(\\+\\+\\k<i>|\\k<i>\\+\\+|\\-\\-\\k<i>|\\k<i>\\-\\-)\\)\\s*\\{?\\s*\\k<result>\\s*=\\s*\\k<result>\\[\\k<properties>\\[\\k<i>\\]\\];\\s*\\}?" +
+                                    "\\s*return\\s+\\k<result>;\\s*\\}");
     // Generic matcher of following function:
     // function remoteFunction(propName) { return this[propName]; }
     private static final Pattern FUNCTION_GETTER_PATTERN2 = Pattern.compile(
@@ -247,9 +248,10 @@ public final class InspectorRuntime extends RuntimeDomain {
                         }
                         if (value == null) {
                             value = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(expression);
+                            suspendedInfo.refreshFrames();
                         }
                         if (returnByValue) {
-                            result = RemoteObject.createJSONResultValue(value, context.getErr());
+                            result = RemoteObject.createJSONResultValue(value, context.areToStringSideEffectsAllowed(), context.getErr());
                         } else {
                             RemoteObject ro = new RemoteObject(value, generatePreview, context);
                             context.getRemoteObjectsHandler().register(ro, objectGroup);
@@ -652,13 +654,14 @@ public final class InspectorRuntime extends RuntimeDomain {
                                             }
                                             code.append(remoteArg.getDebugValue().getName());
                                         } else {
-                                            code.append(arg.get("value"));
+                                            code.append(JSONObject.valueToString(arg.get("value")));
                                         }
                                     }
                                     code.append("]");
                                 }
                                 code.append(")");
                                 DebugValue eval = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(code.toString());
+                                suspendedInfo.refreshFrames();
                                 result = asResult(eval);
                             }
                             json.put("result", result);
@@ -682,7 +685,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                                     context.getRemoteObjectsHandler().register(ro, objectGroup);
                                     result = ro.toJSON();
                                 } else {
-                                    result = RemoteObject.createJSONResultValue(v, context.getErr());
+                                    result = RemoteObject.createJSONResultValue(v, context.areToStringSideEffectsAllowed(), context.getErr());
                                 }
                             }
                             return result;

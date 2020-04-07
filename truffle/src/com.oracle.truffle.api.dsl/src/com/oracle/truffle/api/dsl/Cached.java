@@ -157,7 +157,7 @@ import com.oracle.truffle.api.nodes.Node;
  * instantiated. Alternatively if the <code>replaces</code> relation is omitted then all
  * <code>doCached</code> instances remain but no new instances are created.
  *
- * <code>
+ * <pre>
  * &#064;Specialization(guards = &quot;operand == cachedOperand&quot;)
  * void doCached(int operand, {@code @Cached}(&quot;operand&quot;) int cachedOperand) {
  *    CompilerAsserts.compilationConstant(cachedOperand);
@@ -183,7 +183,7 @@ import com.oracle.truffle.api.nodes.Node;
  * execute(3) => doNormal(3)    // new instantiation of doNormal due to limit overflow
  * execute(1) => doCached(1, 1)
  *
- * </code>
+ * </pre>
  *
  * </li>
  * <li>This next example shows how methods from the enclosing node can be used to initialize cached

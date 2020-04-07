@@ -320,11 +320,6 @@ public class LanguageSPIOrderTest {
             context.disposeContext = nextId();
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
         protected void useLanguage(OrderContext context, String id) {
             // initializes the language
             context.env.parseInternal(Source.newBuilder(id, "", "").build());

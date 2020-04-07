@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,9 +62,11 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Scope;
@@ -77,6 +79,8 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -195,6 +199,8 @@ public abstract class TruffleInstrument {
      */
     @SuppressWarnings("static-method")
     public static final class Env {
+
+        private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
         private final Object polyglotInstrument;
         private final InputStream in;
@@ -315,6 +321,12 @@ public abstract class TruffleInstrument {
             services.add(service);
         }
 
+        @SuppressWarnings("unchecked")
+        @TruffleBoundary
+        static <T extends RuntimeException> RuntimeException engineToInstrumentException(Throwable t) {
+            return InstrumentAccessor.engineAccess().engineToInstrumentException(t);
+        }
+
         /**
          * Queries a {@link TruffleLanguage language implementation} for a special service. The
          * services can be provided by the language by directly implementing them when subclassing
@@ -328,7 +340,11 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public <S> S lookup(LanguageInfo language, Class<S> type) {
-            return InstrumentAccessor.engineAccess().lookup(language, type);
+            try {
+                return InstrumentAccessor.engineAccess().lookup(language, type);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
 
         /**
@@ -345,11 +361,15 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public <S> S lookup(InstrumentInfo instrument, Class<S> type) {
-            Object vm = InstrumentAccessor.langAccess().getPolyglotInstrument(instrument);
-            if (vm == this.polyglotInstrument) {
-                throw new IllegalArgumentException("Not allowed to lookup services from the currrent instrument.");
+            try {
+                Object vm = InstrumentAccessor.langAccess().getPolyglotInstrument(instrument);
+                if (vm == this.polyglotInstrument) {
+                    throw new IllegalArgumentException("Not allowed to lookup services from the currrent instrument.");
+                }
+                return InstrumentAccessor.engineAccess().lookup(instrument, type);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
             }
-            return InstrumentAccessor.engineAccess().lookup(instrument, type);
         }
 
         /**
@@ -359,7 +379,11 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public Map<String, LanguageInfo> getLanguages() {
-            return InstrumentAccessor.engineAccess().getInternalLanguages(polyglotInstrument);
+            try {
+                return InstrumentAccessor.engineAccess().getInternalLanguages(polyglotInstrument);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
 
         /**
@@ -369,7 +393,11 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public Map<String, InstrumentInfo> getInstruments() {
-            return InstrumentAccessor.engineAccess().getInstruments(polyglotInstrument);
+            try {
+                return InstrumentAccessor.engineAccess().getInstruments(polyglotInstrument);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
 
         Object[] onCreate(TruffleInstrument instrument) {
@@ -385,7 +413,7 @@ public abstract class TruffleInstrument {
 
         /**
          * Returns option values for the options described in
-         * {@link TruffleLanguage#getOptionDescriptors()}. The returned options are never
+         * {@link TruffleInstrument#getOptionDescriptors()}. The returned options are never
          * <code>null</code>.
          *
          * @since 0.27
@@ -405,11 +433,16 @@ public abstract class TruffleInstrument {
          *            that can be referenced from the source
          * @return the call target representing the parsed result
          * @throws IOException if the parsing or evaluation fails for some reason
+         * @throws SecurityException
          * @since 0.12
          */
         public CallTarget parse(Source source, String... argumentNames) throws IOException {
-            TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(source.getLanguage(), source.getMimeType());
-            return InstrumentAccessor.langAccess().parse(env, source, null, argumentNames);
+            try {
+                TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(source.getLanguage(), source.getMimeType());
+                return InstrumentAccessor.langAccess().parse(env, source, null, argumentNames);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
 
         /**
@@ -426,18 +459,22 @@ public abstract class TruffleInstrument {
          * @since 0.31
          */
         public ExecutableNode parseInline(Source source, Node node, MaterializedFrame frame) {
-            if (node == null) {
-                throw new IllegalArgumentException("Node must not be null.");
+            try {
+                if (node == null) {
+                    throw new IllegalArgumentException("Node must not be null.");
+                }
+                TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(source.getLanguage(), source.getMimeType());
+                // Assert that the languages match:
+                assert InstrumentAccessor.langAccess().getLanguageInfo(env) == node.getRootNode().getLanguageInfo();
+                ExecutableNode fragment = InstrumentAccessor.langAccess().parseInline(env, source, node, frame);
+                if (fragment != null) {
+                    TruffleLanguage<?> languageSPI = InstrumentAccessor.langAccess().getSPI(env);
+                    fragment = new GuardedExecutableNode(languageSPI, fragment, frame);
+                }
+                return fragment;
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
             }
-            TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(source.getLanguage(), source.getMimeType());
-            // Assert that the languages match:
-            assert InstrumentAccessor.langAccess().getLanguageInfo(env) == node.getRootNode().getLanguageInfo();
-            ExecutableNode fragment = InstrumentAccessor.langAccess().parseInline(env, source, node, frame);
-            if (fragment != null) {
-                TruffleLanguage<?> languageSPI = InstrumentAccessor.langAccess().getSPI(env);
-                fragment = new GuardedExecutableNode(languageSPI, fragment, frame);
-            }
-            return fragment;
         }
 
         /**
@@ -449,7 +486,11 @@ public abstract class TruffleInstrument {
          * @since 19.0
          */
         public TruffleFile getTruffleFile(String path) {
-            return InstrumentAccessor.engineAccess().getTruffleFile(path);
+            try {
+                return InstrumentAccessor.engineAccess().getTruffleFile(path);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
 
         /**
@@ -461,7 +502,11 @@ public abstract class TruffleInstrument {
          * @since 19.0
          */
         public TruffleFile getTruffleFile(URI uri) {
-            return InstrumentAccessor.engineAccess().getTruffleFile(uri);
+            try {
+                return InstrumentAccessor.engineAccess().getTruffleFile(uri);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
 
         private static class GuardedExecutableNode extends ExecutableNode {
@@ -513,7 +558,110 @@ public abstract class TruffleInstrument {
          * @since 0.17
          */
         public boolean isEngineRoot(RootNode root) {
-            return InstrumentAccessor.engineAccess().isEvalRoot(root);
+            try {
+                return InstrumentAccessor.engineAccess().isEvalRoot(root);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
+        }
+
+        /**
+         * Returns the {@link LanguageInfo language info} for a given language class if available.
+         * Language classes are typically obtained by invoking the
+         * {@link InteropLibrary#getLanguage(Object)} message. Throws an
+         * {@link IllegalArgumentException} if the provided language is not registered. Note that
+         * languages may be returned that are not contained in {@link #getLanguages()}. For example,
+         * values originating from the embedder like Java classes or {@link Proxy polyglot proxies}.
+         *
+         * @param languageClass the language class to convert
+         * @return the associated language info
+         * @throws IllegalArgumentException if the language class is not valid.
+         *
+         * @since 20.1
+         */
+        @TruffleBoundary
+        public LanguageInfo getLanguageInfo(Class<? extends TruffleLanguage<?>> languageClass) {
+            try {
+                Objects.requireNonNull(languageClass);
+                return InstrumentAccessor.engineAccess().getLanguageInfo(polyglotInstrument, languageClass);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
+        }
+
+        /**
+         * Wraps the provided value to provide language specific information for primitive and
+         * foreign values. A typical implementation of a given language for this method does the
+         * following:
+         * <ul>
+         * <li>Return the current language as their associated
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}.
+         * <li>Provide a language specific
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display
+         * string} for primitive and foreign values.
+         * <li>Return a language specific
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) metaobject}
+         * primitive or foreign values.
+         * <li>Add members to the object that would implicitly be available for all objects. For
+         * example, any JavaScript object is expected to have a prototype member. Foreign objects,
+         * even if they do not have such a member, are interpreted as if they have.
+         * </ul>
+         *
+         * @param language the language to provide the view for
+         * @param value the value to language specific information for.
+         * @see TruffleLanguage#getLanguageView(Object, Object)
+         * @since 20.1
+         */
+        @TruffleBoundary
+        public Object getLanguageView(LanguageInfo language, Object value) {
+            try {
+                Objects.requireNonNull(language);
+                return InstrumentAccessor.engineAccess().getLanguageView(language, value);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
+        }
+
+        /**
+         * Returns the scoped view of a value for a location in the AST. Allows the language to
+         * augment the perspective that tools have on values depending on location and frame. This
+         * may be useful to apply local specific visibility and accessibility rules. A typical
+         * implementation of this method may do the following:
+         * <ul>
+         * <li>Apply visiblity and scoping rules to the value hiding or removing members from the
+         * object.
+         * <li>Add or remove implicit members that are only available within this source location.
+         * </ul>
+         * <p>
+         * The provided language must match the language of the {@link Node#getRootNode() root node}
+         * of the location provided. The frame must have the same {@link FrameDescriptor} associated
+         * as the {@link RootNode} of the provided location. The provided location must be
+         * {@link InstrumentableNode#isInstrumentable() instrumentable}. If any of these
+         * pre-conditions are violated then an {@link IllegalArgumentException} is thrown.
+         * <p>
+         * If a value is not yet associated with the provided language, then a
+         * {@link #getLanguageView(LanguageInfo, Object) language view} will be requested
+         * implicitly. Only {@link InteropLibrary interop} messages should be used on the result of
+         * this method.
+         *
+         * @param language the language must match the language
+         * @param location the location to provide scope for. Never <code>null</code> and returns
+         *            <code>true</code> for {@link InstrumentableNode#isInstrumentable()}. E.g. any
+         *            location observed using {@link EventContext#getInstrumentedNode()}.
+         * @param frame the frame of the current activation of the parent {@link RootNode}.
+         * @param value the value to provide scope information for.
+         *
+         * @see TruffleLanguage#getScopedView(Object, Node, Frame, Object)
+         * @since 20.1
+         */
+        @TruffleBoundary
+        public Object getScopedView(LanguageInfo language, Node location, Frame frame, Object value) {
+            try {
+                Objects.requireNonNull(language);
+                return InstrumentAccessor.engineAccess().getScopedView(language, location, frame, value);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
 
         /**
@@ -526,34 +674,53 @@ public abstract class TruffleInstrument {
          * @return a human readable string representation of the value.
          * @see #findLanguage(java.lang.Object)
          * @since 0.27
+         * @deprecated in 20.1 for removal, use {@link #getLanguageView(LanguageInfo, Object)} and
+         *             {@link InteropLibrary#toDisplayString(Object)} instead.
          */
+        @Deprecated
+        @TruffleBoundary
         public String toString(LanguageInfo language, Object value) {
-            InstrumentAccessor.interopAccess().checkInteropType(value);
-            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(language);
-            return InstrumentAccessor.langAccess().toStringIfVisible(env, value, false);
+            try {
+                Object displayString = INTEROP.toDisplayString(getLanguageView(language, value));
+                try {
+                    return INTEROP.asString(displayString);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError("Message toDisplayResult does not return a value string.");
+                }
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
 
         /**
-         * Uses the provided language to find a meta-object of a value, if any. The meta-object
+         * Uses the provided language to find a metaobject of a value, if any. The metaobject
          * represents a description of the object, reveals it's kind and it's features. Some
-         * information that a meta-object might define includes the base object's type, interface,
-         * class, methods, attributes, etc. When no meta-object is known, <code>null</code> is
+         * information that a metaobject might define includes the base object's type, interface,
+         * class, methods, attributes, etc. When no metaobject is known, <code>null</code> is
          * returned. For the best results, use the {@link #findLanguage(java.lang.Object) value's
          * language}, if any.
          *
          * @param language a language
-         * @param value a value to find the meta-object of, must be an interop type (i.e. either
+         * @param value a value to find the metaobject of, must be an interop type (i.e. either
          *            implementing TruffleObject or be a primitive value)
-         * @return the meta-object, or <code>null</code>
+         * @return the metaobject, or <code>null</code>
          * @see #findLanguage(java.lang.Object)
          * @since 0.27
+         * @deprecated in 20.1 for removal, use {@link #getLanguageView(LanguageInfo, Object)} and
+         *             {@link InteropLibrary#getMetaObject(Object)} instead.
          */
+        @Deprecated
         public Object findMetaObject(LanguageInfo language, Object value) {
-            InstrumentAccessor.interopAccess().checkInteropType(value);
-            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(language);
-            Object metaObject = InstrumentAccessor.langAccess().findMetaObject(env, value);
-            assert checkNullOrInterop(metaObject);
-            return metaObject;
+            try {
+                InstrumentAccessor.interopAccess().checkInteropType(value);
+                try {
+                    return INTEROP.getMetaObject(getLanguageView(language, value));
+                } catch (UnsupportedMessageException e) {
+                    return null;
+                }
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
 
         /**
@@ -567,11 +734,23 @@ public abstract class TruffleInstrument {
          * @return a source location of the object, or <code>null</code>
          * @see #findLanguage(java.lang.Object)
          * @since 0.27
+         * @deprecated in 20.1 for removal, use {@link InteropLibrary#getSourceLocation(Object)}
+         *             instead.
          */
+        @Deprecated
         public SourceSection findSourceLocation(LanguageInfo language, Object value) {
-            InstrumentAccessor.interopAccess().checkInteropType(value);
-            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(language);
-            return InstrumentAccessor.langAccess().findSourceLocation(env, value);
+            try {
+                try {
+                    Object view = getLanguageView(language, value);
+                    if (INTEROP.hasSourceLocation(view)) {
+                        return INTEROP.getSourceLocation(view);
+                    }
+                } catch (UnsupportedMessageException e) {
+                }
+                return null;
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
 
         /**
@@ -583,21 +762,25 @@ public abstract class TruffleInstrument {
          * @return the language, or <code>null</code> when there is no language associated with the
          *         value.
          * @since 0.27
+         * @deprecated use {@link InteropLibrary#getLanguage(Object)} with
+         *             {@link #getLanguageInfo(Class)} instead.
          */
+        @Deprecated
         public LanguageInfo findLanguage(Object value) {
-            if (value == null ||
-                            value instanceof Boolean ||
-                            value instanceof Byte ||
-                            value instanceof Short ||
-                            value instanceof Integer ||
-                            value instanceof Long ||
-                            value instanceof Float ||
-                            value instanceof Double ||
-                            value instanceof Character ||
-                            value instanceof String) {
-                return null;
+            try {
+                LanguageInfo language = null;
+                if (INTEROP.hasLanguage(value)) {
+                    try {
+                        language = getLanguageInfo(INTEROP.getLanguage(value));
+                    } catch (UnsupportedMessageException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw new AssertionError(e);
+                    }
+                }
+                return language;
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
             }
-            return InstrumentAccessor.engineAccess().getObjectLanguage(value);
         }
 
         /**
@@ -605,9 +788,30 @@ public abstract class TruffleInstrument {
          *
          * @return a read-only map of symbol names and their values
          * @since 0.30
+         * @deprecated Use {@link #getPolyglotBindings()} instead.
          */
+        @Deprecated
         public Map<String, ? extends Object> getExportedSymbols() {
-            return InstrumentAccessor.engineAccess().getExportedSymbols();
+            try {
+                return InstrumentAccessor.engineAccess().getExportedSymbols();
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
+        }
+
+        /**
+         * Returns the polyglot scope - symbols explicitly exported by languages. The polyglot
+         * bindings of the current entered context are returned.
+         *
+         * @return an interop object having the symbol names as properties
+         * @since 20.1
+         */
+        public Object getPolyglotBindings() {
+            try {
+                return InstrumentAccessor.engineAccess().getPolyglotBindingsObject();
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
 
         /**
@@ -632,18 +836,22 @@ public abstract class TruffleInstrument {
          * @since 0.30
          */
         public Iterable<Scope> findLocalScopes(Node node, Frame frame) {
-            RootNode rootNode = node.getRootNode();
-            if (rootNode == null) {
-                throw new IllegalArgumentException("The node " + node + " does not have a RootNode.");
+            try {
+                RootNode rootNode = node.getRootNode();
+                if (rootNode == null) {
+                    throw new IllegalArgumentException("The node " + node + " does not have a RootNode.");
+                }
+                LanguageInfo languageInfo = rootNode.getLanguageInfo();
+                if (languageInfo == null) {
+                    throw new IllegalArgumentException("The root node " + rootNode + " does not have a language associated.");
+                }
+                final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
+                Iterable<Scope> langScopes = InstrumentAccessor.langAccess().findLocalScopes(env, node, frame);
+                assert langScopes != null : languageInfo.getId();
+                return langScopes;
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
             }
-            LanguageInfo languageInfo = rootNode.getLanguageInfo();
-            if (languageInfo == null) {
-                throw new IllegalArgumentException("The root node " + rootNode + " does not have a language associated.");
-            }
-            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
-            Iterable<Scope> langScopes = InstrumentAccessor.langAccess().findLocalScopes(env, node, frame);
-            assert langScopes != null : languageInfo.getId();
-            return langScopes;
         }
 
         /**
@@ -657,12 +865,16 @@ public abstract class TruffleInstrument {
          * @since 0.30
          */
         public Iterable<Scope> findTopScopes(String languageId) {
-            LanguageInfo languageInfo = getLanguages().get(languageId);
-            if (languageInfo == null) {
-                throw new IllegalArgumentException("Unknown language: " + languageId + ". Known languages are: " + getLanguages().keySet());
+            try {
+                LanguageInfo languageInfo = getLanguages().get(languageId);
+                if (languageInfo == null) {
+                    throw new IllegalArgumentException("Unknown language: " + languageId + ". Known languages are: " + getLanguages().keySet());
+                }
+                final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
+                return findTopScopes(env);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
             }
-            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
-            return findTopScopes(env);
         }
 
         /**
@@ -688,7 +900,11 @@ public abstract class TruffleInstrument {
          * @since 19.0
          */
         public TruffleLogger getLogger(String loggerName) {
-            return InstrumentAccessor.engineAccess().getLogger(polyglotInstrument, loggerName);
+            try {
+                return InstrumentAccessor.engineAccess().getLogger(polyglotInstrument, loggerName);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
 
         /**
@@ -832,7 +1048,8 @@ public abstract class TruffleInstrument {
          * @since 0.25
          * @return list of service types that this instrument can provide
          */
-        Class<?>[] services() default {};
+        Class<?>[] services() default {
+        };
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import java.util.ArrayList;
 /**
  * An abstract graph wrapper used by {@link DFANodeSplit}.
  */
-class Graph implements StateIndex<GraphNode> {
+final class Graph implements StateIndex<GraphNode> {
 
     private GraphNode start;
     private final ArrayList<GraphNode> nodes;
@@ -85,6 +85,11 @@ class Graph implements StateIndex<GraphNode> {
     @Override
     public int getNumberOfStates() {
         return size();
+    }
+
+    @Override
+    public int getId(GraphNode state) {
+        return state.getId();
     }
 
     @Override

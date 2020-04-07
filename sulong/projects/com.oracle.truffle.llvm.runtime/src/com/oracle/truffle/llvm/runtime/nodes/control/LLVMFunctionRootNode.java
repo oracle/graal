@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -42,7 +43,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
 
-public final class LLVMFunctionRootNode extends LLVMExpressionNode {
+public abstract class LLVMFunctionRootNode extends LLVMExpressionNode {
 
     private static final FrameSlot[] NO_SLOTS = new FrameSlot[0];
 
@@ -66,8 +67,8 @@ public final class LLVMFunctionRootNode extends LLVMExpressionNode {
         }
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    @Specialization
+    public Object doRun(VirtualFrame frame) {
         nullStack(frame);
         copyArgumentsToFrame(frame);
         uniquesRegionAllocNode.execute(frame);

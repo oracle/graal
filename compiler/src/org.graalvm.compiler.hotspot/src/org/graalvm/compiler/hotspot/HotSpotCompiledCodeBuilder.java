@@ -37,8 +37,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.CodeComment;
@@ -103,7 +101,7 @@ public class HotSpotCompiledCodeBuilder {
                 } else {
                     text = annotation.toString();
                 }
-                comments[i] = new Comment(annotation.position, text);
+                comments[i] = new Comment(annotation.getPosition(), text);
             }
         }
 
@@ -332,7 +330,7 @@ public class HotSpotCompiledCodeBuilder {
 
     private static boolean verifyTrim(NodeSourcePosition sourcePosition) {
         for (NodeSourcePosition sp = sourcePosition; sp != null; sp = sp.getCaller()) {
-            assert (sp.getMethod().getAnnotation(Snippet.class) == null && sp.getMethod().getAnnotation(MethodSubstitution.class) == null);
+            assert !sp.isSubstitution();
         }
         return true;
     }

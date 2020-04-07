@@ -53,16 +53,6 @@ public class KnownIntrinsics {
     public static native DynamicHub readHub(Object obj);
 
     /**
-     * Installs the object header and zeros the rest of the object.
-     */
-    public static native Object formatObject(Pointer memory, Class<?> hub, boolean rememberedSet);
-
-    /**
-     * Installs the array header and zeros the rest of the object.
-     */
-    public static native Object formatArray(Pointer memory, Class<?> hub, int length, boolean rememberedSet, boolean unaligned);
-
-    /**
      * Narrow down the range of values to exclude 0 as the possible pointer value.
      *
      * @param pointer that we are narrowing to non-null
@@ -99,7 +89,7 @@ public class KnownIntrinsics {
      * Note that this is very dangerous. You have to know what you are doing. The parameters are not
      * checked for correctness in any way.
      */
-    public static native void farReturn(Object result, Pointer sp, CodePointer ip);
+    public static native void farReturn(Object result, Pointer sp, CodePointer ip, boolean fromMethodWithCalleeSavedRegisters);
 
     /**
      * For deoptimization testing only. Performs a deoptimization in a regular method, but is a

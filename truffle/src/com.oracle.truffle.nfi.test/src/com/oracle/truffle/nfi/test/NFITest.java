@@ -68,7 +68,7 @@ public class NFITest {
 
     private static CallTarget lookupAndBind;
 
-    private static TruffleObject loadLibrary(String lib) {
+    protected static TruffleObject loadLibrary(String lib) {
         String testBackend = System.getProperty("native.test.backend");
         String sourceString;
         if (testBackend != null) {
@@ -181,7 +181,7 @@ public class NFITest {
         }
     }
 
-    private static TruffleObject lookupAndBind(TruffleObject library, String name, String signature) {
+    protected static TruffleObject lookupAndBind(TruffleObject library, String name, String signature) {
         return (TruffleObject) lookupAndBind.call(library, name, signature);
     }
 }

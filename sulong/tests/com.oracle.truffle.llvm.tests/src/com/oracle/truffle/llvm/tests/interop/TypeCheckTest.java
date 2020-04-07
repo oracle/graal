@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,7 +53,7 @@ public final class TypeCheckTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        Value testLibrary = InteropTestBase.loadTestBitcodeValue("typeCheck");
+        Value testLibrary = loadTestBitcodeValue("typeCheck.c");
         checkTypes = testLibrary.getMember("check_types");
     }
 

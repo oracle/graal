@@ -30,6 +30,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -138,6 +139,12 @@ public interface VirtualizerTool {
     void delete();
 
     /**
+     * Deletes the current node, which must be a {@link WithExceptionNode}. Kills the exception
+     * edge.
+     */
+    void deleteAndKillExceptionEdge();
+
+    /**
      * Replaces an input of the current node.
      *
      * @param oldInput the old input value.
@@ -168,6 +175,15 @@ public interface VirtualizerTool {
      * @return true if materialization happened, false if not.
      */
     boolean ensureMaterialized(VirtualObjectNode virtualObject);
+
+    /**
+     *
+     * Returns whether deoptimization can recover from virtualizing large unsafe accesses to a byte
+     * array.
+     *
+     * @return true if deoptimization can recover, false if not.
+     */
+    boolean canVirtualizeLargeByteArrayUnsafeAccess();
 
     OptionValues getOptions();
 

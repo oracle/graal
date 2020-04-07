@@ -52,6 +52,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
+import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
 /*
  * Test shows how reflective exports are possible. Reflective means that there is no dependency to

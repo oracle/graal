@@ -28,15 +28,12 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.BoxNode;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ConstantTestNode;
 import org.graalvm.compiler.truffle.test.nodes.NonConstantTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -44,19 +41,13 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 import jdk.vm.ci.code.BailoutException;
+import org.graalvm.polyglot.Context;
 
 public class CompilerAssertsTest extends PartialEvaluationTest {
 
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
-
-    @BeforeClass
-    public static void setup() {
-        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
-    }
-
-    @AfterClass
-    public static void tearDown() {
-        immediateCompilationScope.close();
+    @Before
+    public void setup() {
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").build());
     }
 
     public static class NeverPartOfCompilationTestNode extends AbstractTestNode {

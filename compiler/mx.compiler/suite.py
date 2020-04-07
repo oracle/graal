@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "20.0.0",
+  "version" : "20.1.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -70,31 +70,23 @@ suite = {
     # ------------- Libraries -------------
 
     "DACAPO" : {
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach-patched.jar",
-      ],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach-patched.jar"],
       "sha1" : "e39957904b7e79caf4fa54f30e8e4ee74d4e9e37",
     },
 
     "DACAPO_SCALA" : {
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar",
-      ],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar"],
       "sha1" : "59b64c974662b5cf9dbd3cf9045d293853dd7a51",
     },
 
     "DACAPO_D3S" : {
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-d3s.jar",
-        "https://d3s.mff.cuni.cz/software/benchmarking/files/dacapo-9.12-d3s.jar",
-      ],
+      # original: https://d3s.mff.cuni.cz/software/benchmarking/files/dacapo-9.12-d3s.jar
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-d3s.jar"],
       "sha1" : "b072de027141ac81ab5d48706949fda86de62468",
     },
 
     "RENAISSANCE" : {
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.10.0.jar"
-      ],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.10.0.jar"],
       "sha1" : "5f58e281bb5aae161854b036c7e49e593a81186a",
     },
 
@@ -184,52 +176,6 @@ suite = {
       },
       "dependencies": ["JAXB_API_2.1", "ACTIVATION_1.1.1"]
     },
-    "LLVM_WRAPPER_SHADOWED": {
-      "sha1" : "f2d365a8d432d6b2127acda19c5d3418126db9b0",
-      "sourceSha1" : "0801daf22b189bbd9d515614a2b79c92af225d56",
-      "dependencies" : ["JAVACPP_SHADOWED"],
-      "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
-      "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2.jar"],
-      "sourceUrls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-sources.jar"],
-      "license" : "GPLv2-CPE"
-    },
-    "JAVACPP_SHADOWED": {
-      "sha1" : "212aaddcd73448c7b6da781fb6cde934c667dc2c",
-      "sourceSha1" : "3e9cfc02750ba8ea3babc1b8546a50ec36b849a2",
-      "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
-      "urls": ["{urlbase}/javacpp-shadowed-1.5.2.jar"],
-      "sourceUrls": ["{urlbase}/javacpp-shadowed-1.5.2-sources.jar"],
-      "license" : "GPLv2-CPE"
-    },
-    "LLVM_PLATFORM_SPECIFIC_SHADOWED": {
-      "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
-      "os_arch": {
-        "linux": {
-          "amd64": {
-            "sha1": "53acc3692e0f67f3b4a4e5fa5b4a5a1de1aa7947",
-            "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-linux-x86_64.jar"],
-          },
-          "aarch64": {
-            "sha1": "49b2bff3ab0ecea436bd0f8ed64af28e5bdbd03a",
-            "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-linux-arm64.jar"],
-          },
-          "<others>": {
-            "optional": True,
-          },
-        },
-        "darwin": {
-          "amd64": {
-            "sha1": "d1082bfd227b8f084682a2cd3b06e36f5d046e5e",
-            "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-macosx-x86_64.jar"],
-          },
-        },
-        "<others>": {
-          "<others>": {
-            "optional": True,
-          }
-        }
-      },
-    }
   },
 
   "projects" : {
@@ -374,7 +320,7 @@ suite = {
         "org.graalvm.graphio",
         "org.graalvm.compiler.options"
       ],
-      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Debug",
     },
@@ -397,7 +343,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.graph",
       ],
-      "annotationProcessors" : ["GRAAL_SERVICEPROVIDER_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal",
@@ -487,7 +433,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "sdk:GRAAL_SDK",
-        "org.graalvm.compiler.debug",
+        "GRAAL",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,11+",
@@ -583,11 +529,7 @@ suite = {
 
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_COMPILER_MATCH_PROCESSOR",
-        "GRAAL_REPLACEMENTS_PROCESSOR",
-        "GRAAL_OPTIONS_PROCESSOR",
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,HotSpot",
@@ -658,23 +600,6 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
-    "org.graalvm.compiler.hotspot.jdk14" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies": ["org.graalvm.compiler.hotspot"],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.hotspot",
-          "jdk.vm.ci.meta"
-        ],
-      },
-      "overlayTarget" : "org.graalvm.compiler.hotspot",
-      "multiReleaseJarVersion" : "14",
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "14+",
-      "workingSets" : "Graal,HotSpot",
-    },
-
     "org.graalvm.compiler.hotspot.management" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -683,7 +608,7 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,HotSpot",
@@ -700,7 +625,7 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "javaCompliance" : "11+",
       "workingSets" : "Graal,HotSpot",
@@ -711,14 +636,14 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.libgraal.jni",
-        "org.graalvm.libgraal",
         "org.graalvm.compiler.hotspot.management",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
+      "checkPackagePrefix" : "false",
       "annotationProcessors" : [
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
-      "javaCompliance" : "8",
+      "javaCompliance" : "8,11+",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -732,8 +657,7 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
-        "GRAAL_NODEINFO_PROCESSOR"
+        "GRAAL_PROCESSOR"
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,HotSpot,AArch64",
@@ -749,9 +673,7 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_PROCESSOR",
+        "GRAAL_PROCESSOR"
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,HotSpot,AMD64",
@@ -766,7 +688,7 @@ suite = {
         "org.graalvm.compiler.replacements.sparc",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "annotationProcessors" : ["GRAAL_SERVICEPROVIDER_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,HotSpot,SPARC",
     },
@@ -780,8 +702,7 @@ suite = {
         "org.graalvm.compiler.hotspot",
       ],
       "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_PROCESSOR"
+        "GRAAL_PROCESSOR"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -830,7 +751,7 @@ suite = {
         "org.graalvm.compiler.hotspot.test",
         "org.graalvm.compiler.hotspot.aarch64",
       ],
-      "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,HotSpot,AArch64,Test",
@@ -845,7 +766,7 @@ suite = {
         "org.graalvm.compiler.lir.amd64",
         "org.graalvm.compiler.lir.jtt",
       ],
-      "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,HotSpot,AMD64,Test",
@@ -879,8 +800,7 @@ suite = {
       "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
       "annotationProcessors" : [
-        "GRAAL_OPTIONS_PROCESSOR",
-        "GRAAL_NODEINFO_PROCESSOR"
+        "GRAAL_PROCESSOR"
       ],
       "workingSets" : "Graal,Graph",
     },
@@ -895,7 +815,7 @@ suite = {
         "org.graalvm.compiler.graph",
         "org.graalvm.graphio",
       ],
-      "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Graph,Test",
     },
@@ -929,6 +849,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.asm",
       ],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Assembler,AMD64",
@@ -1012,7 +933,7 @@ suite = {
         "org.graalvm.compiler.asm",
         "org.graalvm.compiler.code",
       ],
-      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,LIR",
@@ -1024,7 +945,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.jtt",
       ],
-      "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,LIR",
@@ -1051,7 +972,7 @@ suite = {
         "org.graalvm.compiler.lir",
         "org.graalvm.compiler.asm.aarch64",
       ],
-      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,LIR,AArch64",
@@ -1069,7 +990,7 @@ suite = {
           "jdk.vm.ci.aarch64",
         ],
       },
-      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
       "workingSets" : "Graal,LIR,AArch64",
@@ -1084,7 +1005,7 @@ suite = {
         "org.graalvm.compiler.lir",
         "org.graalvm.compiler.asm.amd64",
       ],
-      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,LIR,AMD64",
@@ -1108,7 +1029,7 @@ suite = {
       "dependencies" : ["org.graalvm.compiler.nodes"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
-      "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "workingSets" : "API,Graal",
     },
 
@@ -1124,27 +1045,9 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "annotationProcessors" : [
-        "GRAAL_OPTIONS_PROCESSOR",
-        "GRAAL_REPLACEMENTS_PROCESSOR",
-        "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Replacements",
-    },
-
-    "org.graalvm.compiler.replacements.llvm" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.core.llvm",
-        "org.graalvm.compiler.replacements",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
-      "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_PROCESSOR",
-      ],
-      "workingSets" : "Graal,Replacements,LLVM",
     },
 
     "org.graalvm.compiler.replacements.aarch64" : {
@@ -1157,8 +1060,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Replacements,AArch64",
     },
@@ -1173,8 +1075,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Replacements,AMD64",
     },
@@ -1198,8 +1099,7 @@ suite = {
         "org.graalvm.compiler.replacements.amd64",
       ],
       "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_PROCESSOR"
+        "GRAAL_PROCESSOR",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -1293,9 +1193,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_PROCESSOR",
-        "GRAAL_OPTIONS_PROCESSOR"
+        "GRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Graph",
     },
@@ -1313,7 +1211,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.nodes"],
-      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Phases",
@@ -1324,8 +1222,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.phases"],
       "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_OPTIONS_PROCESSOR"
+        "GRAAL_PROCESSOR",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -1350,8 +1247,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.phases.common"],
       "annotationProcessors" : [
-        "GRAAL_OPTIONS_PROCESSOR",
-        "GRAAL_NODEINFO_PROCESSOR"
+        "GRAAL_PROCESSOR",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -1392,7 +1288,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.nodes"],
-      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal",
@@ -1417,7 +1313,7 @@ suite = {
      "org.graalvm.compiler.loop",
      "org.graalvm.compiler.phases.common",
        ],
-      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Phases",
@@ -1433,9 +1329,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "annotationProcessors" : [
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
-        "GRAAL_COMPILER_MATCH_PROCESSOR",
-        "GRAAL_OPTIONS_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal",
     },
@@ -1459,8 +1353,7 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_COMPILER_MATCH_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,AArch64",
@@ -1489,9 +1382,7 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_COMPILER_MATCH_PROCESSOR",
-        "GRAAL_OPTIONS_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,AMD64",
@@ -1521,8 +1412,7 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_COMPILER_MATCH_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,SPARC",
@@ -1541,24 +1431,6 @@ suite = {
       "workingSets" : "Graal,SPARC,Test",
     },
 
-    "org.graalvm.compiler.core.llvm" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.core",
-        "LLVM_WRAPPER_SHADOWED",
-        "LLVM_PLATFORM_SPECIFIC_SHADOWED",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_COMPILER_MATCH_PROCESSOR",
-        "GRAAL_OPTIONS_PROCESSOR",
-      ],
-      "javaCompliance" : "8+",
-      "workingSets" : "Graal,LLVM",
-    },
-
     "org.graalvm.compiler.runtime" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1574,7 +1446,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.phases",
       ],
-      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Java",
@@ -1588,7 +1460,7 @@ suite = {
         "org.graalvm.compiler.debug",
         "sdk:GRAAL_SDK",
       ],
-      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Java",
@@ -1602,8 +1474,7 @@ suite = {
         "org.graalvm.compiler.java",
       ],
       "annotationProcessors" : [
-        "GRAAL_OPTIONS_PROCESSOR",
-        "GRAAL_SERVICEPROVIDER_PROCESSOR"
+        "GRAAL_PROCESSOR",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -1656,7 +1527,7 @@ suite = {
         "JAVA_ALLOCATION_INSTRUMENTER",
         "ASM_TREE5",
       ],
-      "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Test",
@@ -1806,11 +1677,7 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
-        "TRUFFLE_COMMON_PROCESSOR",
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_PROCESSOR",
-        "GRAAL_OPTIONS_PROCESSOR",
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Truffle",
@@ -1826,10 +1693,7 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_PROCESSOR",
-        "GRAAL_OPTIONS_PROCESSOR",
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Truffle",
@@ -1872,6 +1736,70 @@ suite = {
       "workingSets" : "Graal,Truffle",
     },
 
+    "org.graalvm.compiler.truffle.jfr" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+      ],
+      "javaCompliance" : "8+",
+      "workingSets" : "Graal,Truffle",
+      "jacoco" : "exclude",
+    },
+
+    "org.graalvm.compiler.truffle.jfr.impl" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.jfr",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+      ],
+      "javaCompliance" : "8+",
+      "workingSets" : "Graal,Truffle",
+      "jacoco" : "exclude",
+    },
+
+    "org.graalvm.compiler.truffle.jfr.impl.jdk8" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.jfr",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+      ],
+      "overlayTarget" : "org.graalvm.compiler.truffle.jfr.impl",
+      "checkPackagePrefix" : "false",
+      "javaCompliance" : "8",
+      "workingSets" : "Graal,Truffle",
+      "jacoco" : "exclude",
+    },
+
+    "org.graalvm.compiler.truffle.jfr.impl.jdk11" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.jfr",
+      ],
+      "requires" : [
+        "jdk.jfr"
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+      ],
+      "overlayTarget" : "org.graalvm.compiler.truffle.jfr.impl",
+      "checkPackagePrefix" : "false",
+      "javaCompliance" : "11+",
+      "multiReleaseJarVersion" : "11",
+      "workingSets" : "Graal,Truffle",
+      "jacoco" : "exclude",
+    },
+
     "org.graalvm.compiler.truffle.runtime" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1879,11 +1807,15 @@ suite = {
         "org.graalvm.compiler.truffle.common",
         "org.graalvm.compiler.truffle.options",
         "org.graalvm.compiler.truffle.runtime.serviceprovider",
+        "org.graalvm.compiler.truffle.jfr",
         "truffle:TRUFFLE_API",
+      ],
+      "uses" : [
+        "org.graalvm.compiler.truffle.jfr.EventFactory.Provider"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
-        "TRUFFLE_COMMON_PROCESSOR",
+        "GRAAL_PROCESSOR",
         "truffle:TRUFFLE_DSL_PROCESSOR",
       ],
       "javaCompliance" : "8+",
@@ -1900,10 +1832,10 @@ suite = {
         "org.graalvm.compiler.truffle.runtime",
         "org.graalvm.compiler.core.test",
         "truffle:TRUFFLE_SL_TEST",
-        "truffle:TRUFFLE_INSTRUMENT_TEST",
+        "truffle:TRUFFLE_TEST",
       ],
       "annotationProcessors" : [
-        "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_PROCESSOR",
         "truffle:TRUFFLE_DSL_PROCESSOR"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1921,7 +1853,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "annotationProcessors" : [
-        "GRAAL_OPTIONS_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Truffle",
     },
@@ -1948,8 +1880,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "annotationProcessors" : [
-        "GRAAL_OPTIONS_PROCESSOR",
-        "GRAAL_SERVICEPROVIDER_PROCESSOR"
+        "GRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Truffle",
     },
@@ -1964,7 +1895,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "annotationProcessors" : [
-          "GRAAL_SERVICEPROVIDER_PROCESSOR",
+          "GRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Truffle",
     },
@@ -1998,9 +1929,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,11+",
       "annotationProcessors" : [
-        "GRAAL_OPTIONS_PROCESSOR",
         "TRUFFLE_LIBGRAAL_PROCESSOR",
-        "GRAAL_SERVICEPROVIDER_PROCESSOR"
       ],
       "workingSets" : "Graal,Truffle",
     },
@@ -2075,7 +2004,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "annotationProcessors" : [
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Truffle",
     },
@@ -2089,7 +2018,7 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
-      "annotationProcessors" : ["GRAAL_SERVICEPROVIDER_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "workingSets" : "Graal,Truffle,SPARC",
     },
 
@@ -2102,7 +2031,7 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
-      "annotationProcessors" : ["GRAAL_SERVICEPROVIDER_PROCESSOR"],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "workingSets" : "Graal,Truffle,AArch64",
     },
 
@@ -2130,110 +2059,10 @@ suite = {
 
     # ------------- Distributions -------------
 
-    "GRAAL_OPTIONS" : {
-      "subDir" : "src",
-      "dependencies" : ["org.graalvm.compiler.options"],
-      "distDependencies" : [
-        "sdk:GRAAL_SDK",
-        "JVMCI_API",
-      ],
-      "maven": False,
-    },
-
     "GRAAL_GRAPHIO" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.graphio"],
-      "distDependencies" : [
-      ],
-      "maven": False,
-    },
-
-    "GRAAL_NODEINFO" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.nodeinfo",
-      ],
-      "maven": False,
-    },
-
-    "GRAAL_SERVICEPROVIDER" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.serviceprovider",
-      ],
-      "distDependencies" : [
-        "JVMCI_SERVICES"
-      ],
-      "maven": False,
-    },
-
-    "GRAAL_API" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.api.replacements",
-        "org.graalvm.compiler.api.runtime",
-        "org.graalvm.compiler.graph",
-      ],
-      "distDependencies" : [
-        "sdk:GRAAL_SDK",
-        "JVMCI_API",
-        "GRAAL_GRAPHIO",
-        "GRAAL_NODEINFO",
-        "GRAAL_OPTIONS",
-        "GRAAL_SERVICEPROVIDER",
-      ],
-      "maven": False,
-    },
-
-    "GRAAL_COMPILER" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.core",
-      ],
-      "distDependencies" : [
-        "GRAAL_API",
-        "GRAAL_SERVICEPROVIDER",
-      ],
-      "maven": False,
-    },
-
-    "GRAAL_RUNTIME" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.replacements",
-        "org.graalvm.compiler.runtime",
-        "org.graalvm.compiler.code",
-        "org.graalvm.compiler.printer",
-        "org.graalvm.compiler.core.aarch64",
-        "org.graalvm.compiler.replacements.aarch64",
-        "org.graalvm.compiler.core.amd64",
-        "org.graalvm.compiler.lir.aarch64",
-        "org.graalvm.compiler.replacements.amd64",
-        "org.graalvm.compiler.core.sparc",
-        "org.graalvm.compiler.replacements.sparc",
-      ],
-      "distDependencies" : [
-        "GRAAL_API",
-        "GRAAL_COMPILER",
-        "GRAAL_GRAPHIO",
-      ],
-      "maven": False,
-    },
-
-    "GRAAL_HOTSPOT" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.hotspot.aarch64",
-        "org.graalvm.compiler.hotspot.amd64",
-        "org.graalvm.compiler.hotspot.sparc",
-        "org.graalvm.compiler.hotspot",
-      ],
-      "distDependencies" : [
-        "JVMCI_HOTSPOT",
-        "GRAAL_LIBGRAAL",
-        "GRAAL_COMPILER",
-        "GRAAL_RUNTIME",
-      ],
+      "distDependencies" : [],
       "maven": False,
     },
 
@@ -2272,7 +2101,7 @@ suite = {
         "JVMCI_HOTSPOT",
         "GRAAL",
         "truffle:TRUFFLE_SL_TEST",
-        "truffle:TRUFFLE_INSTRUMENT_TEST",
+        "truffle:TRUFFLE_TEST",
       ],
       "exclude" : [
         "mx:JUNIT",
@@ -2281,103 +2110,22 @@ suite = {
       "maven": False,
     },
 
-    "GRAAL_TRUFFLE_COMMON" : {
+    "GRAAL_TRUFFLE_JFR_IMPL" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "jdk.internal.vm.compiler.truffle.jfr",
+      },
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.compiler.truffle.common",
+        "org.graalvm.compiler.truffle.jfr.impl",
       ],
       "distDependencies" : [
-        "GRAAL_GRAPHIO",
+        "GRAAL",
       ],
-      "maven": False,
-    },
-
-    "GRAAL_TRUFFLE_OPTIONS" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.truffle.options",
-      ],
-      "distDependencies" : [
-        "truffle:TRUFFLE_API",
-      ],
-      "maven": False,
-    },
-
-    "GRAAL_TRUFFLE_COMMON_HOTSPOT" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.truffle.common.hotspot",
-      ],
-      "distDependencies" : [
-        "GRAAL_RUNTIME",
-        "GRAAL_TRUFFLE_COMMON",
-        "truffle:TRUFFLE_API",
-      ],
-      "maven": False,
-    },
-
-    "GRAAL_LIBGRAAL" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.libgraal",
-      ],
-      "distDependencies" : [
-        "sdk:GRAAL_SDK",
+      "exclude" : [
+        "JVMCI_SERVICES",
+        "JVMCI_API",
         "JVMCI_HOTSPOT",
-        "GRAAL_API",
-      ],
-      "maven": False,
-    },
-
-    "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.truffle.common.hotspot.libgraal",
-      ],
-      "distDependencies" : [
-        "GRAAL_TRUFFLE_COMMON_HOTSPOT",
-      ],
-      "maven": False,
-    },
-
-    "GRAAL_TRUFFLE_COMPILER" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.truffle.compiler",
-      ],
-      "distDependencies" : [
-        "GRAAL_RUNTIME",
-        "GRAAL_TRUFFLE_COMMON",
-        "GRAAL_TRUFFLE_OPTIONS",
-      ],
-      "maven": False,
-    },
-    "GRAAL_TRUFFLE_RUNTIME" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.truffle.runtime.serviceprovider",
-        "org.graalvm.compiler.truffle.runtime",
-      ],
-      "distDependencies" : [
-        "GRAAL_TRUFFLE_COMMON",
-        "GRAAL_TRUFFLE_OPTIONS",
-        "truffle:TRUFFLE_API",
-      ],
-      "maven": False,
-    },
-
-    "GRAAL_TRUFFLE_COMPILER_HOTSPOT" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
-        "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
-        "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
-      ],
-      "distDependencies" : [
-        "GRAAL_TRUFFLE_COMMON_HOTSPOT",
-        "GRAAL_RUNTIME",
-        "GRAAL_HOTSPOT",
-        "GRAAL_TRUFFLE_COMPILER",
       ],
       "maven": False,
     },
@@ -2412,59 +2160,24 @@ suite = {
       "javaCompliance" : "8+",
     },
 
-    "GRAAL_PROCESSOR_COMMON" : {
+    "GRAAL_PROCESSOR" : {
       "subDir": "src",
-      "dependencies" : ["org.graalvm.compiler.processor"],
-      "maven": False,
-    },
-
-    "GRAAL_OPTIONS_PROCESSOR" : {
-      "subDir" : "src",
-      "dependencies" : ["org.graalvm.compiler.options.processor"],
-      "distDependencies" : ["GRAAL_PROCESSOR_COMMON"],
-      "maven": False,
-    },
-
-    "TRUFFLE_COMMON_PROCESSOR" : {
-      "subDir": "src",
-      "dependencies" : ["org.graalvm.compiler.truffle.common.processor"],
-      "distDependencies" : ["GRAAL_PROCESSOR_COMMON", "GRAAL_OPTIONS_PROCESSOR", "GRAAL_TRUFFLE_COMMON"],
+      "dependencies" : [
+        "org.graalvm.compiler.processor",
+        "org.graalvm.compiler.options.processor",
+        "org.graalvm.compiler.truffle.common.processor",
+        "org.graalvm.compiler.serviceprovider.processor",
+        "org.graalvm.compiler.nodeinfo.processor",
+        "org.graalvm.compiler.replacements.processor",
+        "org.graalvm.compiler.core.match.processor"
+       ],
       "maven": False,
     },
 
     "TRUFFLE_LIBGRAAL_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor"],
-      "distDependencies" : [
-        "GRAAL_PROCESSOR_COMMON", "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL"],
-      "maven": False,
-    },
-
-    "GRAAL_SERVICEPROVIDER_PROCESSOR" : {
-      "subDir" : "src",
-      "dependencies" : ["org.graalvm.compiler.serviceprovider.processor"],
-      "distDependencies" : ["GRAAL_PROCESSOR_COMMON"],
-      "maven": False,
-    },
-
-    "GRAAL_NODEINFO_PROCESSOR" : {
-      "subDir" : "src",
-      "dependencies" : ["org.graalvm.compiler.nodeinfo.processor"],
-      "distDependencies" : ["GRAAL_PROCESSOR_COMMON"],
-      "maven": False,
-    },
-
-    "GRAAL_REPLACEMENTS_PROCESSOR" : {
-      "subDir" : "src",
-      "dependencies" : ["org.graalvm.compiler.replacements.processor"],
-      "distDependencies" : ["GRAAL_PROCESSOR_COMMON"],
-      "maven": False,
-    },
-
-    "GRAAL_COMPILER_MATCH_PROCESSOR" : {
-      "subDir" : "src",
-      "dependencies" : ["org.graalvm.compiler.core.match.processor"],
-      "distDependencies" : ["GRAAL_PROCESSOR_COMMON"],
+      "distDependencies" : ["GRAAL_PROCESSOR", "GRAAL"],
       "maven": False,
     },
 
@@ -2507,6 +2220,8 @@ suite = {
           "org.graalvm.compiler.runtime                to jdk.aot",
           "org.graalvm.compiler.replacements           to jdk.aot",
           "org.graalvm.compiler.serviceprovider        to jdk.aot,jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
+          "org.graalvm.util                            to jdk.internal.vm.compiler.management",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
@@ -2533,24 +2248,7 @@ suite = {
         }
       },
       "subDir" : "src",
-      "overlaps" : [
-        "GRAAL_GRAPHIO",
-        "GRAAL_OPTIONS",
-        "GRAAL_NODEINFO",
-        "GRAAL_API",
-        "GRAAL_COMPILER",
-        "GRAAL_RUNTIME",
-        "GRAAL_HOTSPOT",
-        "GRAAL_LIBGRAAL",
-        "GRAAL_SERVICEPROVIDER",
-        "GRAAL_TRUFFLE_COMMON",
-        "GRAAL_TRUFFLE_COMMON_HOTSPOT",
-        "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL",
-        "GRAAL_TRUFFLE_OPTIONS",
-        "GRAAL_TRUFFLE_RUNTIME",
-        "GRAAL_TRUFFLE_COMPILER",
-        "GRAAL_TRUFFLE_COMPILER_HOTSPOT",
-      ],
+      "overlaps" : ["GRAAL_GRAPHIO"],
       "dependencies" : [
         "org.graalvm.libgraal",
         "org.graalvm.compiler.options",
@@ -2583,6 +2281,7 @@ suite = {
         "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
         "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
         "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
+        "org.graalvm.compiler.truffle.jfr",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
@@ -2618,7 +2317,11 @@ suite = {
         "JVMCI_API",
         "JVMCI_HOTSPOT",
       ],
-      "maven": False,
+      "allowsJavadocWarnings": True,
+      "description":  "The GraalVM compiler Management Bean.",
+      "maven" : {
+        "artifactId" : "compiler-management",
+      },
     },
 
     "GRAAL_MANAGEMENT_LIBGRAAL": {
@@ -2630,7 +2333,7 @@ suite = {
       "distDependencies" : [
         "GRAAL_MANAGEMENT",
         "GRAAL_LIBGRAAL_JNI",
-        "GRAAL_LIBGRAAL",
+        "GRAAL",
       ],
       "maven": False,
       "javaCompliance" : "8+",
@@ -2691,22 +2394,5 @@ suite = {
       "testDistribution" : True,
       "maven": False,
     },
-
-    "GRAAL_LLVM" : {
-      "subDir" : "src",
-      "description" : "LLVM compiler backend",
-      "dependencies" : [
-        "org.graalvm.compiler.core.llvm",
-        "org.graalvm.compiler.replacements.llvm",
-      ],
-      "distDependencies" : [
-        "GRAAL",
-      ],
-      "exclude": [
-        "LLVM_WRAPPER_SHADOWED",
-        "LLVM_PLATFORM_SPECIFIC_SHADOWED",
-      ],
-      "maven" : False,
-    }
   },
 }

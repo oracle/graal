@@ -81,11 +81,6 @@ public final class TckLanguage extends TruffleLanguage<Env> {
         return Truffle.getRuntime().createCallTarget(root);
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
     @ExportLibrary(InteropLibrary.class)
     static final class MultiplyNode extends RootNode implements TruffleObject {
         private final Source code;

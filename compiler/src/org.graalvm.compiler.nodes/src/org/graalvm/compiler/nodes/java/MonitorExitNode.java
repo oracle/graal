@@ -32,7 +32,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.MonitorExit;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
@@ -46,7 +46,7 @@ import org.graalvm.word.LocationIdentity;
  * {@link #escapedReturnValue}, so that it will be materialized before releasing the monitor.
  */
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public final class MonitorExitNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorExit, MemoryCheckpoint.Single {
+public final class MonitorExitNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorExit, SingleMemoryKill {
 
     public static final NodeClass<MonitorExitNode> TYPE = NodeClass.create(MonitorExitNode.class);
 
@@ -91,4 +91,5 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
             }
         }
     }
+
 }

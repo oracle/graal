@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,9 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -42,14 +42,14 @@ public final class LLVMParserRuntime {
     private final ExternalLibrary library;
     private final LLVMScope fileScope;
     private final NodeFactory nodeFactory;
-    private final int bcID;
+    private final int bitcodeID;
 
-    public LLVMParserRuntime(LLVMContext context, ExternalLibrary library, LLVMScope fileScope, NodeFactory nodeFactory, int bcID) {
+    public LLVMParserRuntime(LLVMContext context, ExternalLibrary library, LLVMScope fileScope, NodeFactory nodeFactory, int bitcodeID) {
         this.context = context;
         this.library = library;
         this.fileScope = fileScope;
         this.nodeFactory = nodeFactory;
-        this.bcID = bcID;
+        this.bitcodeID = bitcodeID;
     }
 
     public ExternalLibrary getLibrary() {
@@ -72,27 +72,35 @@ public final class LLVMParserRuntime {
         return nodeFactory;
     }
 
-    public int getID() {
-        return bcID;
+    public int getBitcodeID() {
+        return bitcodeID;
     }
 
-    public LLVMFunctionDescriptor lookupFunction(String name, boolean preferGlobalScope) {
-        LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
+    public LLVMFunction lookupFunction(String name) {
+        LLVMSymbol symbol = fileScope.get(name);
         if (symbol != null && symbol.isFunction()) {
             return symbol.asFunction();
         }
-        throw new IllegalStateException("Unknown function: " + name);
+        throw new IllegalStateException("Retrieving unknown function symbol in LLVMParserRuntime: " + name);
     }
 
-    public LLVMGlobal lookupGlobal(String name, boolean preferGlobalScope) {
-        LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
+    public LLVMGlobal lookupGlobal(String name) {
+        LLVMSymbol symbol = fileScope.get(name);
         if (symbol != null && symbol.isGlobalVariable()) {
             return symbol.asGlobalVariable();
         }
-        throw new IllegalStateException("Unknown global: " + name);
+        throw new IllegalStateException("Retrieving unknown global symbol in LLVMParserRuntime: " + name);
     }
 
-    public LLVMSymbol lookupSymbol(String name, boolean preferGlobalScope) {
+    public LLVMSymbol lookupSymbol(String name) {
+        LLVMSymbol symbol = fileScope.get(name);
+        if (symbol != null) {
+            return symbol;
+        }
+        throw new IllegalStateException("Unknown symbol: " + name);
+    }
+
+    public LLVMSymbol lookupSymbolWithExport(String name, boolean preferGlobalScope) {
         LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
         if (symbol != null) {
             return symbol;

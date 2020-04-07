@@ -60,4 +60,8 @@ public final class InlineDecisionInjectNode extends ValueNode implements Iterabl
     public ValueNode getDecision() {
         return decision;
     }
+
+    public ValueNode getArgs() {
+        return args;
+    }
 }

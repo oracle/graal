@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,13 @@
 package com.oracle.truffle.llvm.runtime.nodes.asm;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public class LLVMAMD64Ud2Node extends LLVMStatementNode {
-    @Override
-    public void execute(VirtualFrame frame) {
+public abstract class LLVMAMD64Ud2Node extends LLVMStatementNode {
+
+    @Specialization
+    public void doUd2() {
         CompilerDirectives.transferToInterpreter();
         throw new RuntimeException("Illegal opcode");
     }

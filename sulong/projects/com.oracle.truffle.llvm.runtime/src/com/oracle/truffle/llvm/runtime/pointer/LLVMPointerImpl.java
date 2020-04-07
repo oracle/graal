@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -57,12 +57,21 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer {
     }
 
     @Override
+    @Deprecated
+    @SuppressWarnings("deprecation")
     public boolean equals(Object obj) {
+        CompilerAsserts.neverPartOfCompilation();
         if (!(obj instanceof LLVMPointerImpl)) {
             return false;
         }
         LLVMPointerImpl other = (LLVMPointerImpl) obj;
         return Objects.equals(this.object, other.object) && this.offset == other.offset;
+    }
+
+    @Override
+    public boolean isSame(LLVMPointer o) {
+        LLVMPointerImpl other = (LLVMPointerImpl) o; // can not fail, there is only one subclass
+        return this.object == other.object && this.offset == other.offset;
     }
 
     @Override

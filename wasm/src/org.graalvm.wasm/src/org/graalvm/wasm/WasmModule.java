@@ -69,12 +69,14 @@ public final class WasmModule implements TruffleObject {
     private final SymbolTable symbolTable;
     @CompilationFinal(dimensions = 1) private final byte[] data;
     private boolean isLinked;
+    public final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy;
 
-    public WasmModule(String name, byte[] data) {
+    public WasmModule(String name, byte[] data, WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy) {
         this.name = name;
         this.symbolTable = new SymbolTable(this);
         this.data = data;
         this.isLinked = false;
+        this.storeConstantsPolicy = storeConstantsPolicy;
     }
 
     public SymbolTable symbolTable() {
@@ -229,16 +231,19 @@ public final class WasmModule implements TruffleObject {
         }
 
         @ExportMessage
+        @TruffleBoundary
         boolean hasArrayElements() {
             return true;
         }
 
         @ExportMessage
+        @TruffleBoundary
         boolean isArrayElementReadable(long index) {
             return index >= 0 && index < getArraySize();
         }
 
         @ExportMessage
+        @TruffleBoundary
         long getArraySize() {
             return exportedFunctions.size() + exportedGlobals.size() + memoriesSize();
         }
@@ -248,6 +253,7 @@ public final class WasmModule implements TruffleObject {
         }
 
         @ExportMessage
+        @TruffleBoundary
         Object readArrayElement(long absoluteIndex) throws InvalidArrayIndexException {
             long index = absoluteIndex;
             if (!isArrayElementReadable(index)) {

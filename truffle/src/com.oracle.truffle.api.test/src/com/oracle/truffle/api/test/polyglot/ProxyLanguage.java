@@ -124,6 +124,26 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
+    @Override
+    protected Object getLanguageView(LanguageContext context, Object value) {
+        if (wrapper) {
+            delegate.languageInstance = this;
+            return delegate.getLanguageView(context, value);
+        } else {
+            return super.getLanguageView(context, value);
+        }
+    }
+
+    @Override
+    protected Object getScopedView(LanguageContext context, Node location, Frame frame, Object value) {
+        if (wrapper) {
+            delegate.languageInstance = this;
+            return delegate.getScopedView(context, location, frame, value);
+        } else {
+            return super.getScopedView(context, location, frame, value);
+        }
+    }
+
     @SuppressWarnings("deprecation")
     @Override
     protected Object getLanguageGlobal(LanguageContext context) {
@@ -135,6 +155,7 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         if (wrapper) {
@@ -175,6 +196,7 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected Object findMetaObject(LanguageContext context, Object value) {
         if (wrapper) {
@@ -185,6 +207,7 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected SourceSection findSourceLocation(LanguageContext context, Object value) {
         if (wrapper) {
@@ -277,6 +300,7 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected String toString(LanguageContext context, Object value) {
         if (wrapper) {

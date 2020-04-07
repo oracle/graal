@@ -5,13 +5,14 @@ vm_java_11: ${labsjdk-ce-11} {
   environment: { BASE_JDK_VERSION: "11" }
 }
 svm_suite: /substratevm
-vm_extra_suites: "truffleruby,graalpython,fastr"
+vm_extra_suites: "truffleruby,graalpython,fastr,/wasm"
 custom_vm_linux: {}
 custom_vm_darwin: {}
 vm_profiles: []
 collect_profiles: []
 
 vm_setup: {
+  short_name: ce
   setup: [
     [set-export, VM_ENV, ce]
     [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog-java${BASE_JDK_VERSION}.properties"]
@@ -111,14 +112,14 @@ builds += [
     ]
     name: deploy-vm-maven-darwin-amd64
   }
-  ${deploy_daily_vm_windows} ${maven_base_8_native} {
+  ${deploy_daily_vm_windows} ${svm-common-windows} ${maven_base_8_native} {
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} [--dry-run, "lafo-maven"]
     ]
     name: gate-vm-maven-dry-run-windows-amd64
   }
-  ${deploy_daily_vm_windows} ${maven_base_8_native} {
+  ${deploy_daily_vm_windows} ${svm-common-windows} ${maven_base_8_native} {
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} ["lafo-maven"]
@@ -140,3 +141,5 @@ builds += [
     name: deploy-vm-java11-linux-aarch64
   }
 ]
+
+notify-releaser: [test, [git, rev-parse, --abbrev-ref, HEAD], "!=", master, "||"] ${notify-releaser-service}

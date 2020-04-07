@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,11 +47,13 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.BiConsumer;
 
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.utils.Assert;
 import org.graalvm.wasm.utils.SystemProperties;
 import org.graalvm.wasm.utils.WasmInitialization;
@@ -90,6 +92,16 @@ public abstract class WasmCase {
         return options;
     }
 
+    public ArrayList<Source> getSources() throws IOException, InterruptedException {
+        ArrayList<Source> sources = new ArrayList<>();
+        for (Map.Entry<String, byte[]> entry : createBinaries().entrySet()) {
+            Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(entry.getValue()), entry.getKey());
+            Source source = sourceBuilder.build();
+            sources.add(source);
+        }
+        return sources;
+    }
+
     public abstract Map<String, byte[]> createBinaries() throws IOException, InterruptedException;
 
     public static WasmStringCase create(String name, WasmCaseData data, String program) {
@@ -120,8 +132,8 @@ public abstract class WasmCase {
         return new WasmCaseData((Value result, String output) -> Assert.assertDoubleEquals("Failure: result:", expectedValue, result.as(Double.class), delta));
     }
 
-    public static WasmCaseData expectedThrows(String expectedErrorMessage) {
-        return new WasmCaseData(expectedErrorMessage);
+    public static WasmCaseData expectedThrows(String expectedErrorMessage, WasmCaseData.ErrorType phase) {
+        return new WasmCaseData(expectedErrorMessage.trim(), phase);
     }
 
     public static Collection<WasmCase> collectFileCases(String type, String resource) throws IOException {
@@ -151,7 +163,7 @@ public abstract class WasmCase {
     }
 
     public static WasmCase collectFileCase(String type, String resource, String caseSpec) throws IOException {
-        Map<String, Object> mainContents = new HashMap<>();
+        Map<String, Object> mainContents = new LinkedHashMap<>();
         String caseName;
         if (caseSpec.contains("/")) {
             // Collect multi-module test case.
@@ -193,8 +205,11 @@ public abstract class WasmCase {
             case "double":
                 caseData = WasmCase.expected(Double.parseDouble(resultValue.trim()));
                 break;
+            case "validation":
+                caseData = WasmCase.expectedThrows(resultValue, WasmCaseData.ErrorType.Validation);
+                break;
             case "exception":
-                caseData = WasmCase.expectedThrows(resultValue);
+                caseData = WasmCase.expectedThrows(resultValue, WasmCaseData.ErrorType.Runtime);
                 break;
             default:
                 Assert.fail(String.format("Unknown type in result specification: %s", resultType));
@@ -214,6 +229,18 @@ public abstract class WasmCase {
         }
 
         return null;
+    }
+
+    public static WasmCase loadBenchmarkCase(String resource) throws IOException {
+        final String name = SystemProperties.BENCHMARK_NAME;
+
+        Assert.assertNotNull("Please select a benchmark by setting -D" + SystemProperties.BENCHMARK_NAME_PROPERTY_NAME, name);
+        Assert.assertTrue("Benchmark name must not be empty", !name.trim().isEmpty());
+
+        final WasmCase result = WasmCase.collectFileCase("bench", resource, name);
+        Assert.assertNotNull(String.format("Benchmark %s.%s not found", name, name), result);
+
+        return result;
     }
 
     public static void validateResult(BiConsumer<Value, String> validator, Value result, OutputStream capturedStdout) {

@@ -43,13 +43,16 @@ package com.oracle.truffle.sl.runtime;
 import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.sl.SLLanguage;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber> {
 
     private static final long LONG_MAX_SAFE_DOUBLE = 9007199254740991L; // 2 ** 53 - 1
@@ -202,6 +205,32 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
         } else {
             throw UnsupportedMessageException.create();
         }
+    }
+
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return SLLanguage.class;
+    }
+
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMetaObject() {
+        return SLType.NUMBER;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return value.toString();
     }
 
 }

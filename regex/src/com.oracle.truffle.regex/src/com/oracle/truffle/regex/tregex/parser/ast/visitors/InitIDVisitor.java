@@ -45,7 +45,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
@@ -82,6 +81,7 @@ public final class InitIDVisitor extends DepthFirstTraversalRegexASTVisitor {
     }
 
     private void initID(RegexASTNode node) {
+        assert !node.idInitialized();
         node.setId(nextID++);
         index[node.getId()] = node;
     }
@@ -93,16 +93,18 @@ public final class InitIDVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(Group group) {
+        if (group.getParent() instanceof RegexASTSubtreeRootNode) {
+            initID(group.getSubTreeParent().getAnchoredInitialState());
+            initID(group.getSubTreeParent().getUnAnchoredInitialState());
+        }
         initID(group);
     }
 
     @Override
     protected void leave(Group group) {
         if (group.getParent() instanceof RegexASTSubtreeRootNode) {
-            final MatchFound matchFound = group.getSubTreeParent().getMatchFound();
-            if (!matchFound.idInitialized()) {
-                initID(matchFound);
-            }
+            initID(group.getSubTreeParent().getAnchoredFinalState());
+            initID(group.getSubTreeParent().getMatchFound());
         }
     }
 
@@ -129,10 +131,5 @@ public final class InitIDVisitor extends DepthFirstTraversalRegexASTVisitor {
     @Override
     protected void visit(CharacterClass characterClass) {
         initID(characterClass);
-    }
-
-    @Override
-    protected void visit(MatchFound matchFound) {
-        initID(matchFound);
     }
 }

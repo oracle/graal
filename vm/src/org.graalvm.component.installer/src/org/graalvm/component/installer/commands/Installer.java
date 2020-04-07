@@ -260,7 +260,7 @@ public class Installer extends AbstractInstaller {
             count++;
             relativeSubpath = relative.subpath(0, count);
             Path dir = fileOps.materialize(parent.resolve(n), true);
-            String pathString = relativeSubpath.toString() + "/"; // NOI18N
+            String pathString = SystemUtils.toCommonPath(relativeSubpath) + "/"; // NOI18N
 
             // Need to track either directories, which do not exist (and will be created)
             // AND directories created by other components.
@@ -317,7 +317,7 @@ public class Installer extends AbstractInstaller {
                 feedback.verboseOutput("INSTALL_InstallingFile", eName);
             }
             ensurePathExists(target.getParent());
-            addTrackedPath(getInstallPath().relativize(target).toString());
+            addTrackedPath(SystemUtils.toCommonPath(getInstallPath().relativize(target)));
             if (!isDryRun()) {
                 fileOps.installFile(target, jarStream);
             }
@@ -451,6 +451,11 @@ public class Installer extends AbstractInstaller {
     @Override
     public boolean isRebuildPolyglot() {
         return rebuildPolyglot;
+    }
+
+    @Override
+    public String toString() {
+        return "Installer[" + componentInfo.getId() + ":" + componentInfo.getName() + "=" + componentInfo.getVersion().displayString() + "]"; // NOI18N
     }
 
 }

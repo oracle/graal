@@ -64,29 +64,23 @@ class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
 
     public static boolean isReachable(Pointer ptrToObj) {
         assert ptrToObj.isNonNull();
+        if (HeapImpl.getHeapImpl().isInImageHeap(ptrToObj)) {
+            return true;
+        }
+
         UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(ptrToObj);
+        if (ObjectHeaderImpl.isForwardedHeader(header)) {
+            return true;
+        }
+
+        Space space = HeapChunk.getEnclosingHeapChunk(ptrToObj, header).getSpace();
+        if (!space.isFrom()) {
+            return true;
+        }
+
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        if (ohi.isForwardedHeader(header) || ohi.isBootImageHeader(header)) {
-            return true;
-        }
-
-        Space space = getSpace(ptrToObj, header);
-        if (space == HeapImpl.getHeapImpl().getOldGeneration().getToSpace()) {
-            return true;
-        }
-
-        Class<?> clazz = DynamicHub.toClass(ObjectHeaderImpl.dynamicHubFromObjectHeader(header));
+        Class<?> clazz = DynamicHub.toClass(ohi.dynamicHubFromObjectHeader(header));
         return isWhitelistedClass(clazz);
-    }
-
-    private static Space getSpace(Pointer ptrToObj, UnsignedWord header) {
-        if (ObjectHeaderImpl.getObjectHeaderImpl().isAlignedHeader(header)) {
-            AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingAlignedHeapChunkFromPointer(ptrToObj);
-            return chunk.getSpace();
-        } else {
-            UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunkFromPointer(ptrToObj);
-            return chunk.getSpace();
-        }
     }
 
     /**

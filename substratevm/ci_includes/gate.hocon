@@ -18,12 +18,6 @@ gate-svm-js: {
   ]
 }
 
-gate-svm-truffle-tck: {
-  run: [
-    ${svm-cmd-gate} ["build,truffletck"]
-  ]
-}
-
 builds += [
   ${oraclejdk8} ${svm-common-linux-gate} ${gate-svm-js} ${svm-capabilities-base} {
     name: "gate-svm-js"
@@ -38,7 +32,7 @@ builds += [
       MAVEN_REPO_LOCAL : "$BUILD_DIR/.m2"
     }
     run: [
-      ${svm-cmd-gate} ["build,helloworld,test,relocations,maven"]
+      ${svm-cmd-gate} ["build,helloworld,test,relocations,maven,nativeimagehelp"]
     ]
   }
   ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
@@ -59,9 +53,5 @@ builds += [
     run: [
       ${svm-cmd-gate} ["build,helloworld,svmjunit,maven"]
     ]
-  }
-  ${oraclejdk8} ${svm-common-linux-gate} ${gate-svm-truffle-tck} ${svm-capabilities-base} {
-    name: "gate-svm-truffle-tck"
-    timelimit: "30:00"
   }
 ]

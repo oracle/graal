@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_END_IDENTITY;
+import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_TOP_IDENTITY;
+
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -45,8 +48,9 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
-import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -85,27 +89,23 @@ public final class ThreadLocalAllocation {
         void setUnalignedChunk(UnalignedHeader chunk);
 
         @RawField
-        Pointer getAllocationTop(LocationIdentity topIdentity);
+        Word getAllocationTop(LocationIdentity topIdentity);
 
         @RawField
         void setAllocationTop(Pointer top, LocationIdentity topIdentity);
 
         @RawField
-        Pointer getAllocationEnd(LocationIdentity endIdentity);
+        Word getAllocationEnd(LocationIdentity endIdentity);
 
         @RawField
         void setAllocationEnd(Pointer end, LocationIdentity endIdentity);
     }
 
-    public static final LocationIdentity TOP_IDENTITY = NamedLocationIdentity.mutable("Allocator.top");
-
-    public static final LocationIdentity END_IDENTITY = NamedLocationIdentity.mutable("Allocator.end");
-
     /** TLAB for regular allocations. */
     public static final FastThreadLocalBytes<Descriptor> regularTLAB = FastThreadLocalFactory.createBytes(ThreadLocalAllocation::getRegularTLABSize);
 
     /** A thread-local free list of aligned chunks. */
-    private static final FastThreadLocalWord<AlignedHeader> freeList = FastThreadLocalFactory.createWord();
+    protected static final FastThreadLocalWord<AlignedHeader> freeList = FastThreadLocalFactory.createWord();
 
     private static final OutOfMemoryError arrayAllocationTooLarge = new OutOfMemoryError("Array allocation too large.");
 
@@ -124,8 +124,9 @@ public final class ThreadLocalAllocation {
     }
 
     /** Slow path of instance allocation snippet. */
-    @SubstrateForeignCallTarget
-    private static Object slowPathNewInstance(DynamicHub hub) {
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
+    private static Object slowPathNewInstance(Word objectHeader) {
+        DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
         /* Allocation might cause a collection. */
         final UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
         /* Allocate the requested instance. */
@@ -150,28 +151,28 @@ public final class ThreadLocalAllocation {
 
     static Object allocateNewInstance(DynamicHub hub, ThreadLocalAllocation.Descriptor tlab, boolean rememberedSet) {
         DeoptTester.disableDeoptTesting();
+        try {
+            log().string("[ThreadLocalAllocation.allocateNewInstance: ").string(DynamicHub.toClass(hub).getName()).string(" in tlab ").hex(tlab).newline();
 
-        log().string("[ThreadLocalAllocation.allocateNewInstance: ").string(DynamicHub.toClass(hub).getName()).string(" in tlab ").hex(tlab).newline();
+            // Slow-path check if allocation is disallowed.
+            HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.allocateNewInstance", DynamicHub.toClass(hub).getName());
+            // Policy: Possibly collect before this allocation.
+            HeapImpl.getHeapImpl().getHeapPolicy().getCollectOnAllocationPolicy().maybeCauseCollection();
 
-        // Slow-path check if allocation is disallowed.
-        HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.allocateNewInstance", DynamicHub.toClass(hub).getName());
-        // Policy: Possibly collect before this allocation.
-        HeapImpl.getHeapImpl().getHeapPolicy().getCollectOnAllocationPolicy().maybeCauseCollection();
+            /*
+             * On this path allocation failed in the 'allocation chunk', thus we refill it, i.e..,
+             * add a new allocation chunk at the front of the TLAB's aligned chunks.
+             */
+            AlignedHeader newChunk = prepareNewAllocationChunk(tlab);
 
-        /*
-         * On this path allocation failed in the 'allocation chunk', thus we refill it, i.e.., add a
-         * new allocation chunk at the front of the TLAB's aligned chunks.
-         */
-        AlignedHeader newChunk = prepareNewAllocationChunk(tlab);
+            UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
+            Object result = allocateNewInstanceUninterruptibly(hub, tlab, rememberedSet, size, newChunk);
 
-        UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
-        Object result = allocateNewInstanceUninterruptibly(hub, tlab, rememberedSet, size, newChunk);
-
-        log().string("  ThreadLocalAllocation.allocateNewInstance returns ").object(result).string(" .. ").hex(LayoutEncoding.getObjectEnd(result)).string("]").newline();
-
-        DeoptTester.enableDeoptTesting();
-
-        return result;
+            log().string("  ThreadLocalAllocation.allocateNewInstance returns ").object(result).string(" .. ").hex(LayoutEncoding.getObjectEnd(result)).string("]").newline();
+            return result;
+        } finally {
+            DeoptTester.enableDeoptTesting();
+        }
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory, modifies TLAB")
@@ -186,12 +187,12 @@ public final class ThreadLocalAllocation {
         assert memory.isNonNull();
 
         /* Install the DynamicHub and zero the fields. */
-        return KnownIntrinsics.formatObject(memory, DynamicHub.toClass(hub), rememberedSet);
+        return FormatObjectNode.formatObject(memory, DynamicHub.toClass(hub), rememberedSet, true, true);
     }
 
     /** Slow path of array allocation snippet. */
-    @SubstrateForeignCallTarget
-    private static Object slowPathNewArray(DynamicHub hub, int length) {
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
+    private static Object slowPathNewArray(Word objectHeader, int length) {
         /*
          * Length check allocates an exception and so must be hoisted away from RestrictHeapAccess
          * code
@@ -203,6 +204,7 @@ public final class ThreadLocalAllocation {
         /* Allocation might cause a collection. */
         final UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
         /* Allocate the requested array. */
+        DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
         final Object result = slowPathNewArrayWithoutAllocating(hub, length);
         /* Allow the collector to do stuff now that allocation, etc., is allowed. */
         HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
@@ -210,45 +212,46 @@ public final class ThreadLocalAllocation {
         return result;
     }
 
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocation in the implementation of allocation.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
     private static Object slowPathNewArrayWithoutAllocating(DynamicHub hub, int length) {
         ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.regularTLAB.getAddress();
         return allocateNewArray(hub, length, tlab, false);
     }
 
-    static Object allocateNewArray(DynamicHub hub, int length, ThreadLocalAllocation.Descriptor tlab, boolean rememberedSet) {
+    private static Object allocateNewArray(DynamicHub hub, int length, ThreadLocalAllocation.Descriptor tlab, boolean rememberedSet) {
         DeoptTester.disableDeoptTesting();
+        try {
+            log().string("[ThreadLocalAllocation.allocateNewArray: ").string(DynamicHub.toClass(hub).getName()).string("  length ").signed(length).string("  in tlab ").hex(tlab).newline();
 
-        log().string("[ThreadLocalAllocation.allocateNewArray: ").string(DynamicHub.toClass(hub).getName()).string("  length ").signed(length).string("  in tlab ").hex(tlab).newline();
+            // Slow-path check if allocation is disallowed.
+            HeapImpl.exitIfAllocationDisallowed("Heap.allocateNewArray", DynamicHub.toClass(hub).getName());
+            // Policy: Possibly collect before this allocation.
+            HeapImpl.getHeapImpl().getHeapPolicy().getCollectOnAllocationPolicy().maybeCauseCollection();
 
-        // Slow-path check if allocation is disallowed.
-        HeapImpl.exitIfAllocationDisallowed("Heap.allocateNewArray", DynamicHub.toClass(hub).getName());
-        // Policy: Possibly collect before this allocation.
-        HeapImpl.getHeapImpl().getHeapPolicy().getCollectOnAllocationPolicy().maybeCauseCollection();
-
-        UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
-        Object result;
-        if (size.aboveOrEqual(HeapPolicy.getLargeArrayThreshold())) {
-            /*
-             * Check if the array is really too big. This is an optimistic check because the heap
-             * probably has other objects in it, so the next collection will throw an
-             * OutOfMemoryError if this object is allocated and survives.
-             */
-            if (size.aboveOrEqual(HeapPolicy.getMaximumHeapSize())) {
-                throw arrayAllocationTooLarge;
+            UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
+            Object result;
+            if (size.aboveOrEqual(HeapPolicy.getLargeArrayThreshold())) {
+                /*
+                 * Check if the array is really too big. This is an optimistic check because the
+                 * heap probably has other objects in it, so the next collection will throw an
+                 * OutOfMemoryError if this object is allocated and survives.
+                 */
+                if (size.aboveOrEqual(HeapPolicy.getMaximumHeapSize())) {
+                    throw arrayAllocationTooLarge;
+                }
+                /* Large arrays go into their own unaligned chunk. */
+                UnalignedHeapChunk.UnalignedHeader uChunk = HeapChunkProvider.get().produceUnalignedChunk(size);
+                result = allocateLargeArray(hub, length, size, uChunk, tlab, rememberedSet);
+            } else {
+                /* Small arrays go into the regular aligned chunk. */
+                AlignedHeader newChunk = prepareNewAllocationChunk(tlab);
+                result = allocateSmallArray(hub, length, size, tlab, rememberedSet, newChunk);
             }
-            /* Large arrays go into their own unaligned chunk. */
-            UnalignedHeapChunk.UnalignedHeader uChunk = HeapChunkProvider.get().produceUnalignedChunk(size);
-            result = allocateLargeArray(hub, length, size, uChunk, tlab, rememberedSet);
-        } else {
-            /* Small arrays go into the regular aligned chunk. */
-            AlignedHeader newChunk = prepareNewAllocationChunk(tlab);
-            result = allocateSmallArray(hub, length, size, tlab, rememberedSet, newChunk);
+            log().string("  ThreadLocalAllocation.allocateNewArray returns ").object(result).string(" .. ").hex(LayoutEncoding.getObjectEnd(result)).string("]").newline();
+            return result;
+        } finally {
+            DeoptTester.enableDeoptTesting();
         }
-        log().string("  ThreadLocalAllocation.allocateNewArray returns ").object(result).string(" .. ").hex(LayoutEncoding.getObjectEnd(result)).string("]").newline();
-
-        DeoptTester.enableDeoptTesting();
-        return result;
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory, modifies TLAB")
@@ -262,7 +265,7 @@ public final class ThreadLocalAllocation {
         Pointer memory = allocateMemory(tlab, size);
         assert memory.isNonNull();
         /* Install the DynamicHub and length, and zero the elements. */
-        return KnownIntrinsics.formatArray(memory, DynamicHub.toClass(hub), length, rememberedSet, false);
+        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, rememberedSet, false, true, true);
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory, modifies TLAB")
@@ -276,7 +279,7 @@ public final class ThreadLocalAllocation {
         assert memory.isNonNull();
 
         /* Install the DynamicHub and length, and zero the elements. */
-        return KnownIntrinsics.formatArray(memory, DynamicHub.toClass(hub), length, rememberedSet, true);
+        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, rememberedSet, true, true, true);
     }
 
     /**
@@ -295,13 +298,14 @@ public final class ThreadLocalAllocation {
      * {@linkplain AlignedHeapChunk#allocateMemory(AlignedHeapChunk.AlignedHeader, UnsignedWord)}.
      */
     @Uninterruptible(reason = "returns uninitialized memory, modifies TLAB", callerMustBe = true)
-    public static Pointer allocateMemory(Descriptor allocator, UnsignedWord size) {
-        Pointer top = KnownIntrinsics.nonNullPointer(allocator.getAllocationTop(TOP_IDENTITY));
-        Pointer end = KnownIntrinsics.nonNullPointer(allocator.getAllocationEnd(END_IDENTITY));
+    private static Pointer allocateMemory(Descriptor allocator, UnsignedWord size) {
+        // TLAB top and end cannot be null as we just registered a new chunk
+        Pointer top = KnownIntrinsics.nonNullPointer(allocator.getAllocationTop(TLAB_TOP_IDENTITY));
+        Pointer end = KnownIntrinsics.nonNullPointer(allocator.getAllocationEnd(TLAB_END_IDENTITY));
 
         UnsignedWord available = end.subtract(top);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, size.belowOrEqual(available))) {
-            allocator.setAllocationTop(top.add(size), TOP_IDENTITY);
+            allocator.setAllocationTop(top.add(size), TLAB_TOP_IDENTITY);
             return top;
         } else {
             return WordFactory.nullPointer();
@@ -310,7 +314,7 @@ public final class ThreadLocalAllocation {
 
     static boolean isThreadLocalAllocationSpace(Space space) {
         // Compare "space" to a compile-time constant, rather than accessing a field of the space.
-        return (space == HeapImpl.getHeapImpl().getYoungGeneration().getSpace());
+        return (space == HeapImpl.getHeapImpl().getYoungGeneration().getEden());
     }
 
     /** Stop using the current chunk for thread-local allocation. */
@@ -364,37 +368,8 @@ public final class ThreadLocalAllocation {
         resumeAllocationChunk(regularTLAB.getAddress());
     }
 
-    /** Walk objects in this thread's TLABs. */
-    public static boolean walkObjects(ObjectVisitor visitor) {
-        Descriptor tlab = regularTLAB.getAddress();
-        if (!walkObjects(tlab, visitor)) {
-            return false;
-        }
-        return true;
-    }
-
-    /** Walk the Objects in the TLAB, passing each to a Visitor. */
-    private static boolean walkObjects(Descriptor tlab, ObjectVisitor visitor) {
-        // Visit the Objects in the aligned chunks.
-        AlignedHeapChunk.AlignedHeader aChunk = tlab.getAlignedChunk();
-        while (aChunk.isNonNull()) {
-            if (!AlignedHeapChunk.walkObjectsOfAlignedHeapChunk(aChunk, visitor)) {
-                return false;
-            }
-            aChunk = aChunk.getNext();
-        }
-        // Visit the Objects in the unaligned chunks.
-        UnalignedHeapChunk.UnalignedHeader uChunk = tlab.getUnalignedChunk();
-        while (uChunk.isNonNull()) {
-            if (!UnalignedHeapChunk.walkObjectsOfUnalignedHeapChunk(uChunk, visitor)) {
-                return false;
-            }
-            uChunk = uChunk.getNext();
-        }
-        return true;
-    }
-
     static void retireToSpace(Descriptor tlab, Space space) {
+        assert !space.isOldSpace() : "must not be moved to the old gen - otherwise a remembered set would have to be constructed";
         log().string("[ThreadLocalAllocator.retireToSpace: tlab ").hex(tlab).string(" space ").string(space.getName()).newline();
 
         retireAllocationChunk(tlab);
@@ -410,11 +385,6 @@ public final class ThreadLocalAllocation {
 
             log().string("  aligned chunk ").hex(alignedChunk).newline();
             space.appendAlignedHeapChunk(alignedChunk);
-
-            if (!HeapImpl.getHeapImpl().isYoungGeneration(space)) {
-                log().string("  setting up remembered set for ").hex(alignedChunk).newline();
-                AlignedHeapChunk.constructRememberedSetOfAlignedHeapChunk(alignedChunk);
-            }
 
             alignedChunk = next;
         }
@@ -514,7 +484,7 @@ public final class ThreadLocalAllocation {
 
             Pointer start = AlignedHeapChunk.getAlignedHeapChunkStart(aChunk);
             /* The allocation top has a null top; the TLAB is the one advancing the top pointer. */
-            Pointer top = aChunk.getTop().isNull() ? tlab.getAllocationTop(TOP_IDENTITY) : aChunk.getTop();
+            Pointer top = aChunk.getTop().isNull() ? tlab.getAllocationTop(TLAB_TOP_IDENTITY) : aChunk.getTop();
             UnsignedWord aChunkUsedMemory = top.subtract(start);
             alignedUsedMemory = alignedUsedMemory.add(aChunkUsedMemory);
 
@@ -583,12 +553,12 @@ public final class ThreadLocalAllocation {
      */
     @Uninterruptible(reason = "Modifies TLAB")
     private static void retireAllocationChunk(Descriptor tlab) {
-        Pointer allocationTop = tlab.getAllocationTop(TOP_IDENTITY);
+        Pointer allocationTop = tlab.getAllocationTop(TLAB_TOP_IDENTITY);
         if (allocationTop.isNonNull()) {
             AlignedHeader alignedChunk = tlab.getAlignedChunk();
 
             assert alignedChunk.getTop().isNull();
-            assert alignedChunk.getEnd().equal(tlab.getAllocationEnd(END_IDENTITY));
+            assert alignedChunk.getEnd().equal(tlab.getAllocationEnd(TLAB_END_IDENTITY));
 
             /*
              * While the aligned chunk is the allocation chunk its top value is always 'null' and it
@@ -596,8 +566,8 @@ public final class ThreadLocalAllocation {
              * and only set in the top aligned chunk when it is retired.
              */
             alignedChunk.setTop(allocationTop);
-            tlab.setAllocationTop(WordFactory.nullPointer(), TOP_IDENTITY);
-            tlab.setAllocationEnd(WordFactory.nullPointer(), END_IDENTITY);
+            tlab.setAllocationTop(WordFactory.nullPointer(), TLAB_TOP_IDENTITY);
+            tlab.setAllocationEnd(WordFactory.nullPointer(), TLAB_END_IDENTITY);
         }
     }
 
@@ -606,13 +576,18 @@ public final class ThreadLocalAllocation {
      */
     @Uninterruptible(reason = "Modifies TLAB.")
     static void resumeAllocationChunk(Descriptor tlab) {
-        assert tlab.getAllocationTop(TOP_IDENTITY).isNull();
-        assert tlab.getAllocationTop(END_IDENTITY).isNull();
+        assert tlab.getAllocationTop(TLAB_TOP_IDENTITY).isNull();
+        assert tlab.getAllocationTop(TLAB_END_IDENTITY).isNull();
 
         AlignedHeader alignedChunk = tlab.getAlignedChunk();
         if (alignedChunk.isNonNull()) {
-            tlab.setAllocationTop(alignedChunk.getTop(), TOP_IDENTITY);
-            tlab.setAllocationEnd(alignedChunk.getEnd(), END_IDENTITY);
+            tlab.setAllocationTop(alignedChunk.getTop(), TLAB_TOP_IDENTITY);
+            /*
+             * It happens that prefetch instructions access memory outside the TLAB. At the moment,
+             * this is not an issue as we only support architectures where the prefetch instructions
+             * never cause a segfault, even if they try to access memory that is not accessible.
+             */
+            tlab.setAllocationEnd(alignedChunk.getEnd(), TLAB_END_IDENTITY);
             alignedChunk.setTop(WordFactory.nullPointer());
         }
     }
@@ -620,8 +595,8 @@ public final class ThreadLocalAllocation {
     public static boolean verifyUninitialized(Descriptor tlab) {
         assert tlab.getAlignedChunk().isNull();
         assert tlab.getUnalignedChunk().isNull();
-        assert tlab.getAllocationTop(TOP_IDENTITY).isNull();
-        assert tlab.getAllocationTop(END_IDENTITY).isNull();
+        assert tlab.getAllocationTop(TLAB_TOP_IDENTITY).isNull();
+        assert tlab.getAllocationTop(TLAB_END_IDENTITY).isNull();
         return true;
     }
 

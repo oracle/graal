@@ -24,14 +24,16 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.util.EnumSet;
 import org.graalvm.compiler.truffle.options.OptionValuesImpl;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.SharedTruffleOptions;
 import org.graalvm.options.OptionDescriptor;
@@ -40,6 +42,7 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
+import org.graalvm.collections.Pair;
 
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ArgumentTypeSpeculation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.BackgroundCompilation;
@@ -47,6 +50,8 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsArePrinted;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
@@ -63,6 +68,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Multi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.OSR;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.OSRCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReplaceReprofileCount;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Splitting;
@@ -83,6 +89,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceStackTraceLimit;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
 
 /**
  * Helpers to read and overwrite values of Truffle runtime options. The options themselves are
@@ -91,17 +98,16 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 @SharedTruffleOptions(name = "SharedTruffleRuntimeOptions", runtime = true)
 public final class TruffleRuntimeOptions {
 
+    @NativeImageReinitialize private static volatile OptionValuesImpl optionValues;
+
     private TruffleRuntimeOptions() {
         throw new IllegalStateException("No instance allowed.");
     }
 
-    static class Lazy {
-        static final ThreadLocal<TruffleRuntimeOptionsOverrideScope> overrideScope = new ThreadLocal<>();
-    }
-
-    @NativeImageReinitialize private static volatile OptionValuesImpl optionValues;
-
-    private static OptionValuesImpl getInitialOptions() {
+    /**
+     * Gets the object holding the values of Truffle options.
+     */
+    private static OptionValues getOptions() {
         OptionValuesImpl result = optionValues;
         if (result == null) {
             final EconomicMap<OptionKey<?>, Object> valuesMap = EconomicMap.create();
@@ -120,25 +126,6 @@ public final class TruffleRuntimeOptions {
     }
 
     /**
-     * Gets the object holding the values of Truffle options, taking into account any active
-     * {@linkplain #overrideOptions(OptionKey, Object, Object...) overrides}.
-     */
-    public static OptionValues getOptions() {
-        TruffleRuntimeOptionsOverrideScope scope = Lazy.overrideScope.get();
-        return scope != null ? scope.options : getInitialOptions();
-    }
-
-    /**
-     * Gets the options defined in the current option
-     * {@linkplain #overrideOptions(OptionKey, Object, Object...) override} scope or {@code null} if
-     * there is no override scope active for the current thread.
-     */
-    public static OptionValues getCurrentOptionOverrides() {
-        TruffleRuntimeOptionsOverrideScope scope = Lazy.overrideScope.get();
-        return scope != null ? scope.options : null;
-    }
-
-    /**
      * Get Truffle-related compilation options as a Map to be passed to the compiler. Some
      * Truffle-like options are converted into Graal compiler options.
      */
@@ -153,7 +140,9 @@ public final class TruffleRuntimeOptions {
                 if (!isPrimitiveType(value)) {
                     value = CompilerRuntimeAccessor.engineAccessor().getUnparsedOptionValue(values, key);
                 }
-                map.put(desc.getName(), value);
+                if (value != null) {
+                    map.put(desc.getName(), value);
+                }
             }
         }
 
@@ -168,9 +157,9 @@ public final class TruffleRuntimeOptions {
         if (options != null && options.hasBeenSet(optionKey)) {
             return options.get(optionKey);
         }
-        OptionKey<T> runtimeOptionKey = (OptionKey<T>) POLYGLOT_TO_RUNTIME.get(optionKey);
-        if (runtimeOptionKey != null) {
-            return getValue(runtimeOptionKey);
+        Pair<? extends OptionKey<?>, Function<Object, ?>> runtimeOptionKeyPair = POLYGLOT_TO_RUNTIME.get(optionKey);
+        if (runtimeOptionKeyPair != null) {
+            return (T) runtimeOptionKeyPair.getRight().apply(runtimeOptionKeyPair.getLeft().getValue(getOptions()));
         }
         return optionKey.getDefaultValue();
     }
@@ -179,8 +168,8 @@ public final class TruffleRuntimeOptions {
         if (options != null && options.hasBeenSet(optionKey)) {
             return true;
         }
-        OptionKey<?> runtimeOptionKey = POLYGLOT_TO_RUNTIME.get(optionKey);
-        return runtimeOptionKey == null ? false : getOptions().hasBeenSet(runtimeOptionKey);
+        Pair<? extends OptionKey<?>, Function<Object, ?>> runtimeOptionKeyPair = POLYGLOT_TO_RUNTIME.get(optionKey);
+        return runtimeOptionKeyPair == null ? false : getOptions().hasBeenSet(runtimeOptionKeyPair.getLeft());
     }
 
     private static boolean isPrimitiveType(Object value) {
@@ -196,128 +185,76 @@ public final class TruffleRuntimeOptions {
                         valueClass == String.class;
     }
 
-    public static class TruffleRuntimeOptionsOverrideScope implements AutoCloseable {
-        private final TruffleRuntimeOptionsOverrideScope outer;
-        private final OptionValuesImpl options;
-
-        TruffleRuntimeOptionsOverrideScope(UnmodifiableEconomicMap<OptionKey<?>, Object> overrides) {
-            outer = Lazy.overrideScope.get();
-            options = new OptionValuesImpl(outer == null ? getInitialOptions() : outer.options, overrides);
-            GraalTVMCI.resetEngineData();
-            Lazy.overrideScope.set(this);
-        }
-
-        @Override
-        public void close() {
-            Lazy.overrideScope.set(outer);
-            GraalTVMCI.resetEngineData();
-        }
-    }
-
-    /**
-     * Gets the value of a given Truffle option key taking into account any active
-     * {@linkplain #overrideOptions overrides}.
-     */
-    public static <T> T getValue(OptionKey<T> key) {
-        return key.getValue(getOptions());
-    }
-
-    public static TruffleRuntimeOptionsOverrideScope overrideOptions(final OptionValues values) {
-        return new TruffleRuntimeOptionsOverrideScope(asEconomicMap(values));
-    }
-
-    public static TruffleRuntimeOptionsOverrideScope overrideOptions(OptionKey<?> key1, Object value1, Object... extraOverrides) {
-        final EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
-        map.put(key1, value1);
-        if ((extraOverrides.length & 1) == 1) {
-            throw new IllegalArgumentException("extraOverrides.length must be even: " + extraOverrides.length);
-        }
-        for (int i = 0; i < extraOverrides.length; i += 2) {
-            map.put((OptionKey<?>) extraOverrides[i], extraOverrides[i + 1]);
-        }
-        return new TruffleRuntimeOptionsOverrideScope(map);
-    }
-
-    private static EconomicMap<OptionKey<?>, Object> asEconomicMap(final OptionValues values) {
-        final EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
-        for (OptionDescriptor desc : values.getDescriptors()) {
-            final OptionKey<?> key = desc.getKey();
-            if (values.hasBeenSet(key)) {
-                map.put(key, values.get(key));
-            }
-        }
-        return map;
-    }
-
-    /**
-     * Determines whether an exception during a Truffle compilation should result in calling
-     * {@link System#exit(int)}.
-     *
-     * @param target
-     */
-    public static boolean areTruffleCompilationExceptionsFatal(OptimizedCallTarget target) {
-        /*
-         * This is duplicated in TruffleCompilerOptions#areTruffleCompilationExceptionsFatal.
-         */
-        boolean compilationExceptionsAreFatal = target.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal);
-        boolean performanceWarningsAreFatal = target.getOptionValue(PolyglotCompilerOptions.PerformanceWarningsAreFatal);
-        return compilationExceptionsAreFatal || performanceWarningsAreFatal;
-    }
-
     // Support for mapping PolyglotCompilerOptions to legacy TruffleCompilerOptions.
-    private static final EconomicMap<OptionKey<?>, OptionKey<?>> POLYGLOT_TO_RUNTIME = initializePolyglotToGraalMapping();
+    private static final EconomicMap<OptionKey<?>, Pair<? extends OptionKey<?>, Function<Object, ?>>> POLYGLOT_TO_RUNTIME = initializePolyglotToGraalMapping();
 
-    private static EconomicMap<OptionKey<?>, OptionKey<?>> initializePolyglotToGraalMapping() {
-        EconomicMap<OptionKey<?>, OptionKey<?>> result = EconomicMap.create(Equivalence.IDENTITY);
-        result.put(Compilation, SharedTruffleRuntimeOptions.TruffleCompilation);
-        result.put(CompileOnly, SharedTruffleRuntimeOptions.TruffleCompileOnly);
-        result.put(CompileImmediately, SharedTruffleRuntimeOptions.TruffleCompileImmediately);
-        result.put(BackgroundCompilation, SharedTruffleRuntimeOptions.TruffleBackgroundCompilation);
-        result.put(CompilerThreads, SharedTruffleRuntimeOptions.TruffleCompilerThreads);
-        result.put(CompilationThreshold, SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
-        result.put(MinInvokeThreshold, SharedTruffleRuntimeOptions.TruffleMinInvokeThreshold);
-        result.put(InvalidationReprofileCount, SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
-        result.put(ReplaceReprofileCount, SharedTruffleRuntimeOptions.TruffleReplaceReprofileCount);
-        result.put(ArgumentTypeSpeculation, SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation);
-        result.put(ReturnTypeSpeculation, SharedTruffleRuntimeOptions.TruffleReturnTypeSpeculation);
+    private static EconomicMap<OptionKey<?>, Pair<? extends OptionKey<?>, Function<Object, ?>>> initializePolyglotToGraalMapping() {
+        EconomicMap<OptionKey<?>, Pair<? extends OptionKey<?>, Function<Object, ?>>> result = EconomicMap.create(Equivalence.IDENTITY);
+        result.put(Compilation, identity(SharedTruffleRuntimeOptions.TruffleCompilation));
+        result.put(CompileOnly, identity(SharedTruffleRuntimeOptions.TruffleCompileOnly));
+        result.put(CompileImmediately, identity(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
+        result.put(BackgroundCompilation, identity(SharedTruffleRuntimeOptions.TruffleBackgroundCompilation));
+        result.put(CompilerThreads, identity(SharedTruffleRuntimeOptions.TruffleCompilerThreads));
+        result.put(CompilationThreshold, identity(SharedTruffleRuntimeOptions.TruffleCompilationThreshold));
+        result.put(MinInvokeThreshold, identity(SharedTruffleRuntimeOptions.TruffleMinInvokeThreshold));
+        result.put(InvalidationReprofileCount, identity(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount));
+        result.put(ReplaceReprofileCount, identity(SharedTruffleRuntimeOptions.TruffleReplaceReprofileCount));
+        result.put(ArgumentTypeSpeculation, identity(SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation));
+        result.put(ReturnTypeSpeculation, identity(SharedTruffleRuntimeOptions.TruffleReturnTypeSpeculation));
+        result.put(Profiling, identity(SharedTruffleRuntimeOptions.TruffleProfilingEnabled));
 
-        result.put(MultiTier, SharedTruffleRuntimeOptions.TruffleMultiTier);
-        result.put(FirstTierCompilationThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold);
-        result.put(FirstTierMinInvokeThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierMinInvokeThreshold);
+        result.put(MultiTier, identity(SharedTruffleRuntimeOptions.TruffleMultiTier));
+        result.put(FirstTierCompilationThreshold, identity(SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold));
+        result.put(FirstTierMinInvokeThreshold, identity(SharedTruffleRuntimeOptions.TruffleFirstTierMinInvokeThreshold));
 
-        result.put(CompilationExceptionsArePrinted, SharedTruffleRuntimeOptions.TruffleCompilationExceptionsArePrinted);
-        result.put(CompilationExceptionsAreThrown, SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown);
-        result.put(CompilationExceptionsAreFatal, SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreFatal);
-        result.put(PerformanceWarningsAreFatal, SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal);
+        result.put(CompilationExceptionsArePrinted, identity(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsArePrinted));
+        result.put(CompilationExceptionsAreThrown, identity(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown));
+        result.put(CompilationExceptionsAreFatal, identity(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreFatal));
+        result.put(PerformanceWarningsAreFatal, booleanToPerformanceWarningKind(SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal));
+        result.put(TraceCompilation, identity(SharedTruffleRuntimeOptions.TraceTruffleCompilation));
+        result.put(TraceCompilationDetails, identity(SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails));
+        result.put(TraceCompilationPolymorphism, identity(SharedTruffleRuntimeOptions.TraceTruffleCompilationPolymorphism));
+        result.put(TraceCompilationAST, identity(SharedTruffleRuntimeOptions.TraceTruffleCompilationAST));
+        result.put(TraceCompilationCallTree, identity(SharedTruffleRuntimeOptions.TraceTruffleCompilationCallTree));
+        result.put(TraceAssumptions, identity(SharedTruffleRuntimeOptions.TraceTruffleAssumptions));
+        result.put(TraceStackTraceLimit, identity(SharedTruffleRuntimeOptions.TraceTruffleStackTraceLimit));
+        result.put(CompilationStatistics, identity(SharedTruffleRuntimeOptions.TruffleCompilationStatistics));
+        result.put(CompilationStatisticDetails, identity(SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails));
+        result.put(TraceTransferToInterpreter, identity(SharedTruffleRuntimeOptions.TraceTruffleTransferToInterpreter));
 
-        result.put(TraceCompilation, SharedTruffleRuntimeOptions.TraceTruffleCompilation);
-        result.put(TraceCompilationDetails, SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails);
-        result.put(TraceCompilationPolymorphism, SharedTruffleRuntimeOptions.TraceTruffleCompilationPolymorphism);
-        result.put(TraceCompilationAST, SharedTruffleRuntimeOptions.TraceTruffleCompilationAST);
-        result.put(TraceCompilationCallTree, SharedTruffleRuntimeOptions.TraceTruffleCompilationCallTree);
-        result.put(TraceAssumptions, SharedTruffleRuntimeOptions.TraceTruffleAssumptions);
-        result.put(TraceStackTraceLimit, SharedTruffleRuntimeOptions.TraceTruffleStackTraceLimit);
+        result.put(TraceInlining, identity(SharedTruffleRuntimeOptions.TraceTruffleInlining));
+        result.put(TraceSplitting, identity(SharedTruffleRuntimeOptions.TraceTruffleSplitting));
 
-        result.put(TraceInlining, SharedTruffleRuntimeOptions.TraceTruffleInlining);
-        result.put(TraceSplitting, SharedTruffleRuntimeOptions.TraceTruffleSplitting);
+        result.put(Inlining, identity(SharedTruffleRuntimeOptions.TruffleFunctionInlining));
+        result.put(InliningNodeBudget, identity(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize));
+        result.put(InliningRecursionDepth, identity(SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining));
+        result.put(LanguageAgnosticInlining, identity(SharedTruffleRuntimeOptions.TruffleLanguageAgnosticInlining));
 
-        result.put(Inlining, SharedTruffleRuntimeOptions.TruffleFunctionInlining);
-        result.put(InliningNodeBudget, SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize);
-        result.put(InliningRecursionDepth, SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining);
-        result.put(LanguageAgnosticInlining, SharedTruffleRuntimeOptions.TruffleLanguageAgnosticInlining);
+        result.put(Splitting, identity(SharedTruffleRuntimeOptions.TruffleSplitting));
+        result.put(SplittingMaxCalleeSize, identity(SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize));
+        result.put(SplittingGrowthLimit, identity(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit));
+        result.put(SplittingMaxNumberOfSplitNodes, identity(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes));
+        result.put(SplittingMaxPropagationDepth, identity(SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth));
+        result.put(TraceSplittingSummary, identity(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary));
+        result.put(SplittingTraceEvents, identity(SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents));
+        result.put(SplittingDumpDecisions, identity(SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions));
+        result.put(SplittingAllowForcedSplits, identity(SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits));
 
-        result.put(Splitting, SharedTruffleRuntimeOptions.TruffleSplitting);
-        result.put(SplittingMaxCalleeSize, SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize);
-        result.put(SplittingGrowthLimit, SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit);
-        result.put(SplittingMaxNumberOfSplitNodes, SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes);
-        result.put(SplittingMaxPropagationDepth, SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth);
-        result.put(TraceSplittingSummary, SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
-        result.put(SplittingTraceEvents, SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents);
-        result.put(SplittingDumpDecisions, SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions);
-        result.put(SplittingAllowForcedSplits, SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits);
-
-        result.put(OSR, SharedTruffleRuntimeOptions.TruffleOSR);
-        result.put(OSRCompilationThreshold, SharedTruffleRuntimeOptions.TruffleOSRCompilationThreshold);
+        result.put(OSR, identity(SharedTruffleRuntimeOptions.TruffleOSR));
+        result.put(OSRCompilationThreshold, identity(SharedTruffleRuntimeOptions.TruffleOSRCompilationThreshold));
         return result;
+    }
+
+    private static Pair<OptionKey<?>, Function<Object, ?>> identity(OptionKey<?> key) {
+        return Pair.create(key, Function.identity());
+    }
+
+    private static Pair<OptionKey<Boolean>, Function<Object, ?>> booleanToPerformanceWarningKind(OptionKey<Boolean> key) {
+        return Pair.create(key, new Function<Object, Set<PolyglotCompilerOptions.PerformanceWarningKind>>() {
+            @Override
+            public Set<PolyglotCompilerOptions.PerformanceWarningKind> apply(Object t) {
+                return ((Boolean) t) ? EnumSet.allOf(PolyglotCompilerOptions.PerformanceWarningKind.class) : EnumSet.noneOf(PolyglotCompilerOptions.PerformanceWarningKind.class);
+            }
+        });
     }
 }

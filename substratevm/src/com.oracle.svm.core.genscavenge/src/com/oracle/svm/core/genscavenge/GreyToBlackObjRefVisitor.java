@@ -51,15 +51,32 @@ import com.oracle.svm.core.option.HostedOptionKey;
  * available for performance critical code.
  */
 public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
+    protected final Counters counters;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static GreyToBlackObjRefVisitor factory() {
-        return new GreyToBlackObjRefVisitor();
+    public GreyToBlackObjRefVisitor() {
+        if (Options.GreyToBlackObjRefDemographics.getValue()) {
+            counters = RealCounters.factory();
+        } else {
+            counters = NoopCounters.factory();
+        }
     }
 
     @Override
     public boolean visitObjectReference(final Pointer objRef, boolean compressed) {
-        return visitObjectReferenceInline(objRef, 0, compressed);
+        return visitObjectReferenceInline(objRef, 0, compressed, null);
+    }
+
+    @Override
+    @AlwaysInline("GC performance")
+    public boolean visitObjectReferenceInline(final Pointer objRef, boolean compressed, Object holderObject) {
+        return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
+    }
+
+    @Override
+    @AlwaysInline("GC performance")
+    public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed) {
+        return visitObjectReferenceInline(objRef, innerOffset, compressed, null);
     }
 
     /**
@@ -68,107 +85,68 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
      */
     @Override
     @AlwaysInline("GC performance")
-    public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed) {
+    public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed, Object holderObject) {
         assert innerOffset >= 0;
+        assert !objRef.isNull();
+        counters.noteObjRef();
 
-        getCounters().noteObjRef();
-        final Log trace = Log.noopLog().string("[GreyToBlackObjRefVisitor.visitObjectReferenceInline:").string("  objRef: ").hex(objRef);
-        if (objRef.isNull()) {
-            getCounters().noteNullObjRef();
-            trace.string(" null objRef ").hex(objRef).string("]").newline();
-            return true;
-        }
-        // Read the referenced Object, carefully.
+        // Read the referenced Object carefully.
         final Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
         assert offsetP.isNonNull() || innerOffset == 0;
-        final Pointer p = offsetP.subtract(innerOffset);
 
-        trace.string("  p: ").hex(p);
-        // It might be null.
+        Pointer p = offsetP.subtract(innerOffset);
         if (p.isNull()) {
-            getCounters().noteNullReferent();
-            // Nothing to do.
-            trace.string(" null").string("]").newline();
+            counters.noteNullReferent();
             return true;
         }
-        final ObjectHeaderImpl ohi = HeapImpl.getHeapImpl().getObjectHeaderImpl();
+
+        if (HeapImpl.getHeapImpl().isInImageHeap(p)) {
+            counters.noteNonHeapReferent();
+            return true;
+        }
+
+        // This is the most expensive check as it accesses the heap fairly randomly, which results
+        // in a lot of cache misses.
         final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(p);
-        // It might be a forwarding pointer.
-        if (ohi.isForwardedHeader(header)) {
-            getCounters().noteForwardedReferent();
-            trace.string("  forwards to ");
-            // Update the reference to point to the forwarded Object.
-            final Object obj = ohi.getForwardedObject(p);
-            final Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
-            ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
-            trace.object(obj);
-            if (trace.isEnabled()) {
-                trace.string("  objectHeader: ").string(ohi.toStringFromObject(obj)).string("]").newline();
+        if (GCImpl.getGCImpl().isCompleteCollection() || !ObjectHeaderImpl.hasRememberedSet(header)) {
+            if (ObjectHeaderImpl.isForwardedHeader(header)) {
+                counters.noteForwardedReferent();
+                // Update the reference to point to the forwarded Object.
+                final Object obj = ObjectHeaderImpl.getForwardedObject(p);
+                final Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
+                ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
+                HeapImpl.getHeapImpl().dirtyCardIfNecessary(holderObject, obj);
+                return true;
             }
-            return true;
-        }
-        // It might be a real Object.
-        final Object obj = p.toObject();
-        assert innerOffset < LayoutEncoding.getSizeFromObject(obj).rawValue();
-        // If the object is not a heap object there's nothing to do.
-        if (ohi.isNonHeapAllocatedHeader(header)) {
-            getCounters().noteNonHeapReferent();
-            // Non-heap objects do not get promoted.
-            trace.string("  Non-heap obj: ").object(obj);
-            if (trace.isEnabled()) {
-                trace.string("  objectHeader: ").string(ohi.toStringFromObject(obj)).string("]").newline();
+
+            // Promote the Object if necessary, making it at least grey, and ...
+            Object obj = p.toObject();
+            assert innerOffset < LayoutEncoding.getSizeFromObject(obj).rawValue();
+            Object copy = HeapImpl.getHeapImpl().promoteObject(obj, header);
+            if (copy != obj) {
+                // ... update the reference to point to the copy, making the reference black.
+                counters.noteCopiedReferent();
+                final Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
+                ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
+            } else {
+                counters.noteUnmodifiedReference();
             }
-            return true;
+
+            // The reference will not be updated if a whole chunk is promoted. However, we still
+            // might have to dirty the card.
+            HeapImpl.getHeapImpl().dirtyCardIfNecessary(holderObject, copy);
         }
-        // Otherwise, promote it if necessary, and update the Object reference.
-        trace.string(" ").object(obj);
-        if (trace.isEnabled()) {
-            trace.string("  objectHeader: ").string(ohi.toStringFromObject(obj)).newline();
-        }
-        // Promote the Object if necessary, making it at least grey, and ...
-        final Object copy = HeapImpl.getHeapImpl().promoteObject(obj);
-        trace.string("  copy: ").object(copy);
-        if (trace.isEnabled()) {
-            trace.string("  objectHeader: ").string(ohi.toStringFromObject(copy));
-        }
-        // ... update the reference to point to the copy, making the reference black.
-        if (copy != obj) {
-            getCounters().noteCopiedReferent();
-            trace.string(" updating objRef: ").hex(objRef).string(" with copy: ").object(copy);
-            final Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
-            ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
-        } else {
-            getCounters().noteUnmodifiedReference();
-        }
-        trace.string("]").newline();
         return true;
     }
 
-    protected Counters getCounters() {
-        return counters;
-    }
-
     public Counters openCounters() {
-        return getCounters().open();
+        return counters.open();
     }
 
     public static class Options {
         @Option(help = "Develop demographics of the object references visited.")//
         public static final HostedOptionKey<Boolean> GreyToBlackObjRefDemographics = new HostedOptionKey<>(false);
     }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected GreyToBlackObjRefVisitor() {
-        super();
-        if (Options.GreyToBlackObjRefDemographics.getValue()) {
-            counters = RealCounters.factory();
-        } else {
-            counters = NoopCounters.factory();
-        }
-    }
-
-    // Immutable state.
-    protected final Counters counters;
 
     /** A set of counters. The default implementation is a noop. */
     public interface Counters extends AutoCloseable {
@@ -181,8 +159,6 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         boolean isOpen();
 
         void noteObjRef();
-
-        void noteNullObjRef();
 
         void noteNullReferent();
 
@@ -226,11 +202,6 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         @Override
         public void noteObjRef() {
             objRef += 1L;
-        }
-
-        @Override
-        public void noteNullObjRef() {
-            nullObjRef += 1L;
         }
 
         @Override
@@ -321,11 +292,6 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
         @Override
         public void noteObjRef() {
-            return;
-        }
-
-        @Override
-        public void noteNullObjRef() {
             return;
         }
 

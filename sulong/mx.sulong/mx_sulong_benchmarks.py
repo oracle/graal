@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -100,14 +100,14 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 env['VPATH'] = '..'
 
                 env = vm.prepare_env(env)
-                out = vm.out_file()
+                out = os.path.join(path, vm.out_file())
                 cmdline = ['make', '-f', '../Makefile', out]
                 if mx._opts.verbose:
                     # The Makefiles should have logic to disable the @ sign
                     # so that all executed commands are visible.
                     cmdline += ["MX_VERBOSE=y"]
                 mx.run(cmdline, env=env)
-                self.bench_to_exec[bench] = os.path.abspath(out)
+                self.bench_to_exec[bench] = out
             finally:
                 # reset current Directory
                 os.chdir(currentDir)
@@ -297,8 +297,9 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
 
     def launcher_args(self, args):
         launcher_args = [
-            '--vm.Dgraal.TruffleInliningMaxCallerSize=10000',
-            '--vm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
+            '--experimental-options',
+            '--engine.InliningNodeBudget=10000',
+            '--engine.CompilationFailureAction=ExitVM',
         ]
         return launcher_args + args
 

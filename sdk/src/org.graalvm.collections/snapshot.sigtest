@@ -104,3 +104,5 @@ meth public abstract boolean advance()
 meth public abstract {org.graalvm.collections.UnmodifiableMapCursor%0} getKey()
 meth public abstract {org.graalvm.collections.UnmodifiableMapCursor%1} getValue()
 
+CLSS abstract interface org.graalvm.collections.package-info
+

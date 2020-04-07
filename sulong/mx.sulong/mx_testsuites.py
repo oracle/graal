@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -154,9 +154,9 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
                 for f in files:
                     absPath = os.path.join(path, f)
                     relPath = os.path.relpath(absPath, root)
-                    test, ext = os.path.splitext(relPath)
+                    _, ext = os.path.splitext(relPath)
                     if ext in ['.c', '.cpp', '.ll']:
-                        self._tests.append(test)
+                        self._tests.append(relPath + ".dir")
         return self._tests
 
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
@@ -172,9 +172,12 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
         env['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
         env['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
         env['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
+        env['LLVM_DIS'] = mx_sulong.findBundledLLVMProgram('llvm-dis')
         env['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
         env['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
         env['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
+        if 'OS' not in env:
+            env['OS'] = mx_subst.path_substitutions.substitute("<os>")
         if SulongTestSuite.haveDragonegg():
             env['DRAGONEGG'] = mx_sulong.dragonEggPath()
             env['DRAGONEGG_GCC'] = mx_sulong.getGCC()
@@ -203,7 +206,7 @@ class GeneratedTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ances
             def enlist(line):
                 line = line.strip()
                 if not line.endswith(".ignore"):
-                    self._tests += [line[:-3]]  # Strip the .ll
+                    self._tests += [line + ".dir"]
 
             mx_sulong.llirtestgen(["gen", "--print-filenames"], out=enlist)
         return self._tests

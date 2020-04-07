@@ -40,49 +40,47 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Defines the layout of objects.
- *
- * The layout of instance objects is:
- * <ul>
- * <li>hub (reference)
- * <li>instance fields (references, primitives)
- * <li>optional: hashcode (int)
- * </ul>
- * The hashcode is appended after instance fields and is only present if the identity hashcode is
- * used for that type.
- *
- * The layout of array objects is:
- * <ul>
- * <li>hub (reference)
- * <li>array length (int)
- * <li>hashcode (int)
- * <li>array elements (length * reference or primitive)
- * </ul>
- * The hashcode is always present in arrays. Note that on 64-bit targets it does not impose any size
- * overhead for arrays with 64-bit aligned elements (e.g. arrays of objects).
+ * Immutable class that holds all sizes and offsets that contribute to the object layout.
  */
-public class ObjectLayout {
+public final class ObjectLayout {
 
     private final SubstrateTargetDescription target;
-
     private final int referenceSize;
+    private final int objectAlignment;
     private final int alignmentMask;
     private final int hubOffset;
+    private final int firstFieldOffset;
+    private final int arrayLengthOffset;
+    private final int arrayBaseOffset;
+    private final int arrayZeroingStartOffset;
+    private final boolean useExplicitIdentityHashCodeField;
+    private final int instanceIdentityHashCodeOffset;
+    private final int arrayIdentityHashcodeOffset;
 
-    public ObjectLayout(SubstrateTargetDescription target) {
-        this(target, 0);
-    }
+    public ObjectLayout(SubstrateTargetDescription target, int referenceSize, int objectAlignment, int hubOffset, int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset,
+                    int arrayZeroingStartOffset, boolean useExplicitIdentityHashCodeField, int instanceIdentityHashCodeOffset, int arrayIdentityHashcodeOffset) {
+        assert CodeUtil.isPowerOf2(referenceSize);
+        assert CodeUtil.isPowerOf2(objectAlignment);
+        assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset;
+        assert arrayIdentityHashcodeOffset > 0;
 
-    public ObjectLayout(SubstrateTargetDescription target, int hubOffset) {
         this.target = target;
-        this.referenceSize = target.arch.getPlatformKind(JavaKind.Object).getSizeInBytes();
-        this.alignmentMask = target.wordSize - 1;
+        this.referenceSize = referenceSize;
+        this.objectAlignment = objectAlignment;
+        this.alignmentMask = objectAlignment - 1;
         this.hubOffset = hubOffset;
+        this.firstFieldOffset = firstFieldOffset;
+        this.arrayLengthOffset = arrayLengthOffset;
+        this.arrayBaseOffset = arrayBaseOffset;
+        this.arrayZeroingStartOffset = arrayZeroingStartOffset;
+        this.useExplicitIdentityHashCodeField = useExplicitIdentityHashCodeField;
+        this.instanceIdentityHashCodeOffset = instanceIdentityHashCodeOffset;
+        this.arrayIdentityHashcodeOffset = arrayIdentityHashcodeOffset;
     }
 
     /** The minimum alignment of objects (instances and arrays). */
     public int getAlignment() {
-        return target.wordSize;
+        return objectAlignment;
     }
 
     /** Tests if the given offset or address is aligned according to {@link #getAlignment()}. */
@@ -107,7 +105,7 @@ public class ObjectLayout {
      * The size (in bytes) of values with the given kind.
      */
     public int sizeInBytes(JavaKind kind) {
-        return target.arch.getPlatformKind(kind).getSizeInBytes();
+        return (kind == JavaKind.Object) ? referenceSize : target.arch.getPlatformKind(kind).getSizeInBytes();
     }
 
     public int getArrayIndexShift(JavaKind kind) {
@@ -138,13 +136,8 @@ public class ObjectLayout {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getHubNextOffset() {
-        return getHubOffset() + getReferenceSize();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getFirstFieldOffset() {
-        return getHubNextOffset();
+        return firstFieldOffset;
     }
 
     /*
@@ -152,29 +145,29 @@ public class ObjectLayout {
      * length, [hashcode], element ....
      */
 
-    private static final JavaKind arrayLengthKind = JavaKind.Int;
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getArrayLengthOffset() {
-        return getHubNextOffset();
+        return arrayLengthOffset;
     }
 
-    private int getArrayLengthNextOffset() {
-        return getArrayLengthOffset() + sizeInBytes(arrayLengthKind);
+    public int getArrayZeroingStartOffset() {
+        return arrayZeroingStartOffset;
     }
 
-    private static final JavaKind arrayHashCodeKind = JavaKind.Int;
-
-    public int getArrayHashCodeOffset() {
-        return NumUtil.roundUp(getArrayLengthNextOffset(), sizeInBytes(arrayHashCodeKind));
+    public boolean useExplicitIdentityHashCodeField() {
+        return useExplicitIdentityHashCodeField;
     }
 
-    private int getArrayHashCodeNextOffset() {
-        return getArrayHashCodeOffset() + sizeInBytes(arrayHashCodeKind);
+    public int getInstanceIdentityHashCodeOffset() {
+        return instanceIdentityHashCodeOffset;
+    }
+
+    public int getArrayIdentityHashcodeOffset() {
+        return arrayIdentityHashcodeOffset;
     }
 
     public int getArrayBaseOffset(JavaKind kind) {
-        return NumUtil.roundUp(getArrayHashCodeNextOffset(), sizeInBytes(kind));
+        return NumUtil.roundUp(arrayBaseOffset, sizeInBytes(kind));
     }
 
     public long getArrayElementOffset(JavaKind kind, int index) {

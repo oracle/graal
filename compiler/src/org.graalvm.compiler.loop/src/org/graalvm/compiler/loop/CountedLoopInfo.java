@@ -45,7 +45,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
 import org.graalvm.compiler.nodes.util.SignedIntegerHelper;
 import org.graalvm.compiler.nodes.util.UnsignedIntegerHelper;
@@ -150,6 +149,7 @@ public class CountedLoopInfo {
      */
     public boolean loopMightBeEntered() {
         Stamp stamp = iv.valueNode().stamp(NodeView.DEFAULT);
+        StructuredGraph graph = iv.valueNode().graph();
 
         ValueNode max;
         ValueNode min;
@@ -162,7 +162,7 @@ public class CountedLoopInfo {
             min = end;
         }
         if (oneOff) {
-            max = add(max, ConstantNode.forIntegerStamp(stamp, 1));
+            max = add(graph, max, ConstantNode.forIntegerStamp(stamp, 1), NodeView.DEFAULT);
         }
 
         LogicNode entryCheck = getCounterIntegerHelper().createCompareNode(min, max, NodeView.DEFAULT);
@@ -305,7 +305,6 @@ public class CountedLoopInfo {
         IntegerStamp endStamp = (IntegerStamp) end.stamp(NodeView.DEFAULT);
         ValueNode strideNode = iv.strideNode();
         IntegerStamp strideStamp = (IntegerStamp) strideNode.stamp(NodeView.DEFAULT);
-        GraphUtil.tryKillUnused(strideNode);
         IntegerHelper integerHelper = getCounterIntegerHelper();
         if (getDirection() == Direction.Up) {
             long max = integerHelper.maxValue();

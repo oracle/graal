@@ -140,4 +140,12 @@ public class CommonConstants {
 
     public static final String ARCH_X8664 = "x86_64"; // NOI18N
     public static final String ARCH_AMD64 = "amd64"; // NOI18N
+
+    public static final String OS_MACOS_DARWIN = "darwin"; // NOI18N
+    public static final String OS_TOKEN_MACOS = "macos"; // NOI18N
+
+    /**
+     * Return code which will cause the wrapper to retry operations on locked files.
+     */
+    public static final int WINDOWS_RETCODE_DELAYED_OPERATION = 11;
 }

@@ -86,7 +86,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         setupContext("engine.CompilationExceptionsAreThrown", Boolean.TRUE.toString(), "engine.CompilationExceptionsAreFatal", Boolean.FALSE.toString());
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
         OptimizedCallTarget compilable = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(42));
-        TruffleCompiler compiler = runtime.getTruffleCompiler();
+        TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             try (TruffleDebugContext debug = compiler.openDebugContext(TruffleRuntimeOptions.getOptionsForCompiler(compilable), compilation)) {
                 TruffleInliningPlan inliningPlan = runtime.createInliningPlan(compilable, null);

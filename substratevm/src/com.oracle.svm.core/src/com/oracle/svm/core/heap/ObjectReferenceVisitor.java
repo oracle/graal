@@ -55,4 +55,15 @@ public interface ObjectReferenceVisitor {
     default boolean visitObjectReferenceInline(Pointer objRef, @SuppressWarnings("unused") int innerOffset, boolean compressed) {
         return visitObjectReference(objRef, compressed);
     }
+
+    /** Like visitObjectReference(Pointer), but always inlined for performance. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
+    default boolean visitObjectReferenceInline(Pointer objRef, boolean compressed, @SuppressWarnings("unused") Object holderObject) {
+        return visitObjectReferenceInline(objRef, compressed);
+    }
+
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
+    default boolean visitObjectReferenceInline(Pointer objRef, @SuppressWarnings("unused") int innerOffset, boolean compressed, @SuppressWarnings("unused") Object holderObject) {
+        return visitObjectReferenceInline(objRef, innerOffset, compressed);
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,7 @@ package com.oracle.truffle.api.debug;
 import java.util.Iterator;
 
 import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -63,14 +63,14 @@ public final class DebugScope {
     private final Iterator<Scope> iterator;
     private final DebuggerSession session;
     private final SuspendedEvent event;
-    private final MaterializedFrame frame;
+    private final Frame frame;
     private final RootNode root;
     private final LanguageInfo language;
     private DebugScope parent;
     private ValuePropertiesCollection variables;
 
     DebugScope(Scope scope, Iterator<Scope> iterator, DebuggerSession session,
-                    SuspendedEvent event, MaterializedFrame frame, RootNode root) {
+                    SuspendedEvent event, Frame frame, RootNode root) {
         this(scope, iterator, session, event, frame, root, null);
     }
 
@@ -80,7 +80,7 @@ public final class DebugScope {
     }
 
     private DebugScope(Scope scope, Iterator<Scope> iterator, DebuggerSession session,
-                    SuspendedEvent event, MaterializedFrame frame, RootNode root,
+                    SuspendedEvent event, Frame frame, RootNode root,
                     LanguageInfo language) {
         this.scope = scope;
         this.iterator = iterator;
@@ -145,7 +145,7 @@ public final class DebugScope {
         try {
             Node node = scope.getNode();
             if (node != null) {
-                return session.resolveSection(node.getEncapsulatingSourceSection());
+                return session.resolveSection(node);
             } else {
                 return null;
             }
@@ -269,6 +269,10 @@ public final class DebugScope {
      */
     public DebugValue getDeclaredValue(String name) throws DebugException {
         return getVariables().get(name);
+    }
+
+    RootNode getRoot() {
+        return root;
     }
 
     private ValuePropertiesCollection getVariables() {

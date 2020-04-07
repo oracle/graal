@@ -30,9 +30,9 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 
 /**
@@ -56,8 +56,9 @@ public class OldGeneration extends Generation {
     @Platforms(Platform.HOSTED_ONLY.class)
     OldGeneration(String name) {
         super(name);
-        this.fromSpace = new Space("fromSpace", false);
-        this.toSpace = new Space("toSpace", false);
+        int age = HeapPolicy.getMaxSurvivorSpaces() + 1;
+        this.fromSpace = new Space("oldFromSpace", true, age);
+        this.toSpace = new Space("oldToSpace", false, age);
         this.toGreyObjectsWalker = GreyObjectsWalker.factory();
     }
 
@@ -85,109 +86,51 @@ public class OldGeneration extends Generation {
         return true;
     }
 
-    /** Promote an Object to ToSpace if it is not already in ToSpace. */
+    /**
+     * Promote an Object to ToSpace if it is not already in ToSpace.
+     */
+    @AlwaysInline("GC performance")
     @Override
-    public Object promoteObject(Object original) {
-        final Log trace = Log.noopLog().string("[OldGeneration.promoteObject:").string("  original: ").object(original).newline();
-        Object result;
-        /* Choose between object copying and chunk motion. */
-        if (ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(original)) {
-            trace.string("  aligned header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original)).newline();
-            /* Promote by Object copying to the old generation. */
-            result = promoteAlignedObject(original);
+    public Object promoteObject(Object original, UnsignedWord header) {
+        if (ObjectHeaderImpl.isAlignedHeader(original, header)) {
+            AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
+            Space originalSpace = chunk.getSpace();
+            if (originalSpace.isFrom()) {
+                return promoteAlignedObject(original, originalSpace);
+            }
         } else {
-            trace.string("  unaligned header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original)).newline();
-            /* Promote by HeapChunk motion to the old generation. */
-            result = promoteUnalignedObjectChunk(original);
+            assert ObjectHeaderImpl.isUnalignedHeader(original, header);
+            UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(original);
+            Space originalSpace = chunk.getSpace();
+            if (originalSpace.isFrom()) {
+                promoteUnalignedChunk(chunk, originalSpace);
+            }
         }
-        trace.string("  OldGeneration.promoteObject returns: ").object(result).string("]").newline();
-        return result;
+        return original;
+    }
+
+    @AlwaysInline("GC performance")
+    public Object promoteAlignedObject(Object original, Space originalSpace) {
+        return getToSpace().promoteAlignedObject(original, originalSpace);
+    }
+
+    @AlwaysInline("GC performance")
+    public void promoteUnalignedChunk(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace) {
+        getToSpace().promoteUnalignedHeapChunk(chunk, originalSpace);
+    }
+
+    public void promoteObjectChunk(Object obj) {
+        getToSpace().promoteObjectChunk(obj);
     }
 
     void releaseSpaces() {
         /* Release any spaces associated with this generation after a collection. */
         getFromSpace().release();
-        /* Clean the spaces that have been scanned for grey objects. */
-        getToSpace().cleanRememberedSet();
-    }
-
-    private boolean shouldPromoteFrom(Space originalSpace) {
-        final Log trace = Log.noopLog();
-        trace.string("[OldGeneration.shouldPromoteFrom:").string("  originalSpace: ").string(originalSpace.getName());
-        final boolean result;
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        if (heap.isYoungGeneration(originalSpace)) {
-            /* The most likely case: the original Space is young space. */
-            result = true;
-        } else if (originalSpace == getFromSpace()) {
-            /* The next most likely case: the original Space is from space. */
-            result = true;
-        } else {
-            /* Otherwise, do not promote to old toSpace. */
-            result = false;
+        /* Just clean remember set in complete collection */
+        if (HeapImpl.getHeapImpl().getGCImpl().isCompleteCollection()) {
+            /* Clean the spaces that have been scanned for grey objects. */
+            getToSpace().cleanRememberedSet();
         }
-        trace.string("  returns: ").bool(result);
-        trace.string("]").newline();
-        return result;
-    }
-
-    private Object promoteAlignedObject(Object original) {
-        final Log trace = Log.noopLog().string("[OldGeneration.promoteAlignedObject:").string("  original: ").object(original);
-        assert ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(original);
-        final AlignedHeapChunk.AlignedHeader originalChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
-        final Space originalSpace = originalChunk.getSpace();
-        trace.string("  originalSpace: ").string(originalSpace.getName());
-        Object result = original;
-        if (shouldPromoteFrom(originalSpace)) {
-            trace.string("  promoting");
-            if (HeapOptions.TraceObjectPromotion.getValue()) {
-                final Log promotionTrace = Log.log().string("[OldGeneration.promoteAlignedObject:").string("  original: ").object(original);
-                final UnsignedWord size = LayoutEncoding.getSizeFromObject(original);
-                promotionTrace.string("  size: ").unsigned(size).string("]").newline();
-            }
-            result = getToSpace().promoteAlignedObject(original);
-        } else {
-            trace.string("  not promoting");
-        }
-        trace.string("  returns: ").object(result);
-        if (trace.isEnabled()) {
-            final AlignedHeapChunk.AlignedHeader resultChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(result);
-            final Space resultSpace = resultChunk.getSpace();
-            trace.string("  resultSpace: ").string(resultSpace.getName());
-        }
-        trace.string("]").newline();
-        return result;
-    }
-
-    private Object promoteUnalignedObjectChunk(Object original) {
-        final Log trace = Log.noopLog().string("[OldGeneration.promoteUnalignedObjectChunk:").string("  original: ").object(original);
-        assert ObjectHeaderImpl.getObjectHeaderImpl().isUnalignedObject(original);
-        final UnalignedHeapChunk.UnalignedHeader uChunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(original);
-        final Space originalSpace = uChunk.getSpace();
-        trace.string("  originalSpace: ").string(originalSpace.getName());
-        if (shouldPromoteFrom(originalSpace)) {
-            trace.string("  promoting");
-            /*
-             * Since the object does not move when an UnalignedChunk is promoted, there is no need
-             * to return a possible copy.
-             */
-            if (HeapOptions.TraceObjectPromotion.getValue()) {
-                final Log promotionTrace = Log.log().string("[OldGeneration.promoteUnalignedObjectChunk:").string("  original: ").object(original);
-                final UnsignedWord size = LayoutEncoding.getSizeFromObject(original);
-                promotionTrace.string("  size: ").unsigned(size).string("]").newline();
-            }
-            getToSpace().promoteUnalignedHeapChunk(uChunk);
-        } else {
-            trace.string("  not promoting");
-        }
-        trace.string("  returns: ").object(original);
-        if (trace.isEnabled()) {
-            final UnalignedHeapChunk.UnalignedHeader resultChunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(original);
-            final Space resultSpace = resultChunk.getSpace();
-            trace.string("  resultSpace: ").string(resultSpace.getName());
-        }
-        trace.string("]").newline();
-        return original;
     }
 
     protected void walkDirtyObjects(ObjectVisitor visitor, boolean clean) {
@@ -199,11 +142,13 @@ public class OldGeneration extends Generation {
         getToGreyObjectsWalker().setScanStart(getToSpace());
     }
 
-    protected void scanGreyObjects() {
-        final Log trace = Log.noopLog().string("[OldGeneration.scanGreyObjects:");
-        final GCImpl gc = HeapImpl.getHeapImpl().getGCImpl();
-        getToGreyObjectsWalker().walkGreyObjects(gc.getGreyToBlackObjectVisitor());
-        trace.string("]").newline();
+    protected boolean scanGreyObjects() {
+        if (!getToGreyObjectsWalker().haveGreyObjects()) {
+            return false;
+        }
+
+        getToGreyObjectsWalker().walkGreyObjects();
+        return true;
     }
 
     @Override
@@ -213,11 +158,6 @@ public class OldGeneration extends Generation {
         getToSpace().report(log, traceHeapChunks).newline();
         log.redent(false).string("]");
         return log;
-    }
-
-    @Override
-    protected boolean isValidSpace(Space space) {
-        return space == getFromSpace() || space == getToSpace();
     }
 
     @Override
@@ -256,6 +196,14 @@ public class OldGeneration extends Generation {
             }
         }
         return result;
+    }
+
+    protected void verifyDirtyCards(boolean isTo) {
+        if (isTo) {
+            getToSpace().verifyDirtyCards();
+        } else {
+            getFromSpace().verifyDirtyCards();
+        }
     }
 
     boolean slowlyFindPointer(Pointer p) {

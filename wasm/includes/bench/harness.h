@@ -42,9 +42,32 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
+// ------------------------
+// The following methods
+// can be called inside
+// the benchmarks.
+// ------------------------
+
+#ifdef DISABLE_TEST_API
+void __testutil_save_binary_file(char* filename, unsigned char* data, int size) {
+}
+#else
+extern void __testutil_save_binary_file(char* filename, unsigned char* data, int size);
+#endif
+
+// ------------------------
+// The following methods
+// must be implemented
+// by the benchmarks.
+// ------------------------
+
 int benchmarkWarmupCount();
 
 void benchmarkSetupOnce();
+
+void benchmarkSetupEach();
+
+void benchmarkTeardownEach();
 
 int benchmarkRun();
 
@@ -55,36 +78,46 @@ int benchmarkRun();
 // They need to be called by the harness programmatically,
 // which means that it must be possible to look them up.
 // -------------------------
+
 int (*functionWarmupCount)() = benchmarkWarmupCount;
 
 void (*functionSetupOnce)() = benchmarkSetupOnce;
 
+void (*functionSetupEach)() = benchmarkSetupEach;
+
+void (*functionTeardownEach)() = benchmarkTeardownEach;
+
 int (*functionRun)() = benchmarkRun;
+
 // -------------------------
 // End of the function pointer list.
 // -------------------------
 
-int main() {
-    struct timeval start, end;
-
-    functionSetupOnce();
-
-    // Execute warmup.
-    for (int i = 0; i != functionWarmupCount(); ++i) {
-        double res = functionRun();
-        printf("Warmup iteration %d, res = %f\n", i + 1, res);
-    }
-
-    // Execute the benchmark itself.
-    gettimeofday(&start, NULL);
-    double res = functionRun();
-    gettimeofday(&end, NULL);
-
-    long start_t = start.tv_sec * 1000000 + start.tv_usec;
-    long end_t = end.tv_sec * 1000000 + end.tv_usec;
-    double time = (end_t - start_t) / 1000000.0;
-    printf("time = %.2f\n", time);
-    printf("ops/sec = %.2f\n", 1.0 / time);
-    printf("res = %f\n", res);
-    return 0;
+void runIteration(char* label, int i) {
+  functionSetupEach();
+  struct timeval start, end;
+  gettimeofday(&start, NULL);
+  int result = functionRun();
+  gettimeofday(&end, NULL);
+  long start_t = start.tv_sec * 1000000 + start.tv_usec;
+  long end_t = end.tv_sec * 1000000 + end.tv_usec;
+  double time = (end_t - start_t) / 1000000.0;
+  printf("%s: %d, result = %d, sec = %.3f, ops / sec = %.3f\n",
+    label, i, result, time, 1.0 / time);
+  functionTeardownEach();
 }
+
+int main() {
+  functionSetupOnce();
+
+  // Execute warmup.
+  for (int i = 0; i != functionWarmupCount(); ++i) {
+    runIteration("warmup", i);
+  }
+
+  // Execute the benchmark itself.
+  runIteration("final run", 0);
+
+  return 0;
+}
+

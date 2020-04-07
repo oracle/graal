@@ -229,7 +229,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Notifies the framework about the insertion of one or more nodes during execution. Otherwise,
-     * the framework assumes that {@link com.oracle.truffle.api.instrumentation.Instrumentable
+     * the framework assumes that {@link com.oracle.truffle.api.instrumentation.InstrumentableNode
      * instrumentable} nodes remain unchanged after their root node is first
      * {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame) executed}. Insertions
      * don't need to be notified if it is known that none of the inserted nodes are
@@ -259,9 +259,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     /** @since 0.8 or earlier */
     public final void adoptChildren() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        if (isAdoptable()) {
-            NodeUtil.adoptChildrenHelper(this);
-        }
+        NodeUtil.adoptChildrenHelper(this);
     }
 
     @SuppressWarnings("deprecation")
@@ -601,16 +599,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * @since 0.12
-     * @see com.oracle.truffle.api.instrumentation.InstrumentableNode
-     * @deprecated in 0.33 implement InstrumentableNode#hasTag instead.
-     */
-    @Deprecated
-    protected boolean isTaggedWith(@SuppressWarnings("unused") Class<?> tag) {
-        return false;
-    }
-
-    /**
      * Returns a user-readable description of the purpose of the Node, or "" if no description is
      * available. Can be called on any thread and without a language context.
      *
@@ -672,26 +660,30 @@ public abstract class Node implements NodeInterface, Cloneable {
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected final <T extends TruffleLanguage> LanguageReference<T> lookupLanguageReference(Class<T> languageClass) {
-        if (languageClass == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw new NullPointerException();
-        }
-        ExecutableNode executableNode = getExecutableNode();
-        if (executableNode != null) {
-            if (executableNode.language != null && executableNode.language.getClass() == languageClass) {
-                return NodeAccessor.ACCESSOR.engineSupport().getDirectLanguageReference(executableNode.polyglotEngine,
-                                executableNode.language, languageClass);
-            } else {
-                ReferenceCache cache = executableNode.lookupReferenceCache(languageClass);
-                if (cache != null) {
-                    return (LanguageReference<T>) cache.languageReference;
-                } else {
-                    return NodeAccessor.ACCESSOR.engineSupport().lookupLanguageReference(executableNode.polyglotEngine,
+        try {
+            if (languageClass == null) {
+                CompilerDirectives.transferToInterpreter();
+                throw new NullPointerException();
+            }
+            ExecutableNode executableNode = getExecutableNode();
+            if (executableNode != null) {
+                if (executableNode.language != null && executableNode.language.getClass() == languageClass) {
+                    return NodeAccessor.ACCESSOR.engineSupport().getDirectLanguageReference(executableNode.polyglotEngine,
                                     executableNode.language, languageClass);
+                } else {
+                    ReferenceCache cache = executableNode.lookupReferenceCache(languageClass);
+                    if (cache != null) {
+                        return (LanguageReference<T>) cache.languageReference;
+                    } else {
+                        return NodeAccessor.ACCESSOR.engineSupport().lookupLanguageReference(executableNode.polyglotEngine,
+                                        executableNode.language, languageClass);
+                    }
                 }
             }
+            return lookupUncachedLanguageReference(languageClass);
+        } catch (Throwable t) {
+            throw NodeAccessor.ACCESSOR.engineSupport().engineToLanguageException(t);
         }
-        return lookupUncachedLanguageReference(languageClass);
     }
 
     @SuppressWarnings("unchecked")
@@ -782,26 +774,30 @@ public abstract class Node implements NodeInterface, Cloneable {
      */
     @SuppressWarnings("unchecked")
     protected final <C, T extends TruffleLanguage<C>> ContextReference<C> lookupContextReference(Class<T> languageClass) {
-        if (languageClass == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw new NullPointerException();
-        }
-        ExecutableNode executableNode = getExecutableNode();
-        if (executableNode != null) {
-            if (executableNode.language != null && executableNode.language.getClass() == languageClass) {
-                return NodeAccessor.ACCESSOR.engineSupport().getDirectContextReference(executableNode.polyglotEngine,
-                                executableNode.language, languageClass);
-            } else {
-                ReferenceCache cache = executableNode.lookupReferenceCache(languageClass);
-                if (cache != null) {
-                    return (ContextReference<C>) cache.contextReference;
-                } else {
-                    return NodeAccessor.ACCESSOR.engineSupport().lookupContextReference(executableNode.polyglotEngine,
+        try {
+            if (languageClass == null) {
+                CompilerDirectives.transferToInterpreter();
+                throw new NullPointerException();
+            }
+            ExecutableNode executableNode = getExecutableNode();
+            if (executableNode != null) {
+                if (executableNode.language != null && executableNode.language.getClass() == languageClass) {
+                    return NodeAccessor.ACCESSOR.engineSupport().getDirectContextReference(executableNode.polyglotEngine,
                                     executableNode.language, languageClass);
+                } else {
+                    ReferenceCache cache = executableNode.lookupReferenceCache(languageClass);
+                    if (cache != null) {
+                        return (ContextReference<C>) cache.contextReference;
+                    } else {
+                        return NodeAccessor.ACCESSOR.engineSupport().lookupContextReference(executableNode.polyglotEngine,
+                                        executableNode.language, languageClass);
+                    }
                 }
             }
+            return lookupUncachedContextReference(languageClass);
+        } catch (Throwable t) {
+            throw NodeAccessor.ACCESSOR.engineSupport().engineToLanguageException(t);
         }
-        return lookupUncachedContextReference(languageClass);
     }
 
     private static final Map<Class<?>, ContextReference<?>> UNCACHED_CONTEXT_REFERENCES = new ConcurrentHashMap<>();
@@ -827,7 +823,11 @@ public abstract class Node implements NodeInterface, Cloneable {
                 @Override
                 @TruffleBoundary
                 public Object get() {
-                    return NodeAccessor.ACCESSOR.engineSupport().getCurrentContext(language);
+                    try {
+                        return NodeAccessor.ACCESSOR.engineSupport().getCurrentContext(language);
+                    } catch (Throwable t) {
+                        throw NodeAccessor.ACCESSOR.engineSupport().engineToLanguageException(t);
+                    }
                 }
             };
             UNCACHED_CONTEXT_REFERENCES.put(language, result);
@@ -908,11 +908,6 @@ class NodeSnippets {
             @Override
             protected Object createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
                 return null;
-            }
-
-            @Override
-            protected boolean isObjectOfLanguage(Object object) {
-                return false;
             }
         }
 

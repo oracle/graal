@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.hosted.image;
 
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.code.CompilationResult;
@@ -39,6 +40,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.VMError;
@@ -70,7 +72,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     @SuppressWarnings("try")
     @Override
-    public void layoutMethods(DebugContext debug, String imageName) {
+    public void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool) {
 
         try (Indent indent = debug.logAndIndent("layout methods")) {
 
@@ -142,7 +144,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             Map<Integer, HostedPatcher> patches = new HashMap<>();
             for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
                 if (codeAnnotation instanceof HostedPatcher) {
-                    patches.put(codeAnnotation.position, (HostedPatcher) codeAnnotation);
+                    patches.put(codeAnnotation.getPosition(), (HostedPatcher) codeAnnotation);
                 }
             }
             // ... patch direct call sites.
@@ -213,16 +215,11 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public String[] getCCInputFiles(Path tempDirectory, String imageName) {
-        String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
-        return new String[]{relocatableFileName};
-    }
-
-    @Override
-    public List<ObjectFile.Symbol> getGlobalSymbols(ObjectFile objectFile) {
-        return StreamSupport.stream(objectFile.getSymbolTable().spliterator(), false)
-                        .filter(ObjectFile.Symbol::isGlobal)
-                        .filter(ObjectFile.Symbol::isDefined)
-                        .collect(Collectors.toList());
+    public List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile, boolean onlyGlobal) {
+        Stream<ObjectFile.Symbol> stream = StreamSupport.stream(objectFile.getSymbolTable().spliterator(), false);
+        if (onlyGlobal) {
+            stream = stream.filter(ObjectFile.Symbol::isGlobal);
+        }
+        return stream.filter(ObjectFile.Symbol::isDefined).collect(Collectors.toList());
     }
 }

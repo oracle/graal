@@ -23,8 +23,8 @@
  * questions.
  */
 
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 package com.oracle.svm.core.posix.thread;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform;

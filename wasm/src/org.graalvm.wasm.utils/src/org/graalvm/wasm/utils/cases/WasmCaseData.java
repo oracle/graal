@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,15 +47,32 @@ import java.util.function.BiConsumer;
 public class WasmCaseData {
     BiConsumer<Value, String> resultValidator;
     String expectedErrorMessage;
+    ErrorType expectedErrorType;
+
+    public enum ErrorType {
+        /**
+         * A validation error type implies that subsequent test iterations do not need to be
+         * executed if an error is thrown. It might happen either during compilation time or running
+         * time.
+         */
+        Validation,
+        /**
+         * A runtime error type will check that the error is throw on every iteration of the test.
+         * It might only happen during running time.
+         */
+        Runtime,
+    }
 
     WasmCaseData(BiConsumer<Value, String> resultValidator) {
         this.resultValidator = resultValidator;
         this.expectedErrorMessage = null;
+        this.expectedErrorType = null;
     }
 
-    WasmCaseData(String expectedErrorMessage) {
+    WasmCaseData(String expectedErrorMessage, ErrorType expectedErrorType) {
         this.resultValidator = null;
         this.expectedErrorMessage = expectedErrorMessage;
+        this.expectedErrorType = expectedErrorType;
     }
 
     public BiConsumer<Value, String> resultValidator() {
@@ -64,5 +81,9 @@ public class WasmCaseData {
 
     public String expectedErrorMessage() {
         return expectedErrorMessage;
+    }
+
+    public ErrorType expectedErrorTime() {
+        return expectedErrorType;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -302,12 +302,13 @@ public final class DebuggerSession implements Closeable {
      */
     public Map<String, ? extends DebugValue> getExportedSymbols() {
         return new AbstractMap<String, DebugValue>() {
+            private final DebugValue polyglotBindings = new DebugValue.HeapValue(DebuggerSession.this, "polyglot", debugger.getEnv().getPolyglotBindings());
+
             @Override
             public Set<Map.Entry<String, DebugValue>> entrySet() {
                 Set<Map.Entry<String, DebugValue>> entries = new LinkedHashSet<>();
-                for (Map.Entry<String, ? extends Object> symbol : debugger.getEnv().getExportedSymbols().entrySet()) {
-                    DebugValue value = new DebugValue.HeapValue(DebuggerSession.this, symbol.getKey(), symbol.getValue());
-                    entries.add(new SimpleImmutableEntry<>(symbol.getKey(), value));
+                for (DebugValue property : polyglotBindings.getProperties()) {
+                    entries.add(new SimpleImmutableEntry<>(property.getName(), property));
                 }
                 return Collections.unmodifiableSet(entries);
             }
@@ -318,11 +319,7 @@ public final class DebuggerSession implements Closeable {
                     return null;
                 }
                 String name = (String) key;
-                Object value = debugger.getEnv().getExportedSymbols().get(name);
-                if (value == null) {
-                    return null;
-                }
-                return new DebugValue.HeapValue(DebuggerSession.this, name, value);
+                return polyglotBindings.getProperty(name);
             }
         };
     }
@@ -871,6 +868,10 @@ public final class DebuggerSession implements Closeable {
         return sources.resolve(section);
     }
 
+    SourceSection resolveSection(Node node) {
+        return sources.resolve(DebugSourcesResolver.findEncapsulatedSourceSection(node));
+    }
+
     @TruffleBoundary
     Object notifyCallback(EventContext context, DebuggerNode source, MaterializedFrame frame, SuspendAnchor suspendAnchor,
                     InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
@@ -1392,10 +1393,7 @@ public final class DebuggerSession implements Closeable {
         @Override
         protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
             if (stepping.get() && hasExpressionElement) {
-                SteppingStrategy steppingStrategy = getSteppingStrategy(Thread.currentThread());
-                if (steppingStrategy != null && steppingStrategy.isCollectingInputValues()) {
-                    saveInputValue(frame, inputIndex, inputValue);
-                }
+                saveInputValue(frame, inputIndex, inputValue);
             }
         }
 

@@ -56,6 +56,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.function.BiConsumer;
@@ -85,12 +86,14 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
+import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.ModuleSupport;
 
 public class NativeImage {
 
     private static final String DEFAULT_GENERATOR_CLASS_NAME = "com.oracle.svm.hosted.NativeImageGeneratorRunner";
     private static final String DEFAULT_GENERATOR_9PLUS_SUFFIX = "$JDK9Plus";
+    private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getCanonicalName();
 
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
@@ -146,6 +149,7 @@ public class NativeImage {
         }
     }
 
+    final DefaultOptionHandler defaultOptionHandler;
     final APIOptionHandler apiOptionHandler;
 
     public static final String oH = "-H:";
@@ -179,6 +183,7 @@ public class NativeImage {
     final String oHJNIConfigurationFiles = oH(ConfigurationFiles.Options.JNIConfigurationFiles);
 
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
+    final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
 
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
@@ -394,6 +399,16 @@ public class NativeImage {
         default Path getAgentJAR() {
             return null;
         }
+
+        /**
+         * ResourcesJar packs resources files needed for some jdk services such as xml
+         * serialization.
+         *
+         * @return the path to the resources.jar file
+         */
+        default Optional<Path> getResourcesJar() {
+            return Optional.empty();
+        }
     }
 
     private static class DefaultBuildConfiguration implements BuildConfiguration {
@@ -547,6 +562,10 @@ public class NativeImage {
             return rootDir.resolve(Paths.get("lib", "svm", "builder", "svm.jar"));
         }
 
+        @Override
+        public Optional<Path> getResourcesJar() {
+            return Optional.of(rootDir.resolve(Paths.get("lib", "resources.jar")));
+        }
     }
 
     private ArrayList<String> createFallbackBuildArgs() {
@@ -580,6 +599,13 @@ public class NativeImage {
         buildArgs.add(oHPath + imagePath.toString());
         buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorClasspath) + classpathString);
         buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorMainClass) + mainClass);
+
+        /*
+         * The fallback image on purpose captures the Java home directory used for image generation,
+         * see field FallbackExecutor.buildTimeJavaHome
+         */
+        buildArgs.add(oH + "-" + SubstrateOptions.DetectUserDirectoriesInImageHeap.getName());
+
         buildArgs.add(FallbackExecutor.class.getName());
         buildArgs.add(imageName);
 
@@ -641,7 +667,8 @@ public class NativeImage {
         optionRegistry = new MacroOption.Registry();
 
         /* Default handler needs to be fist */
-        registerOptionHandler(new DefaultOptionHandler(this));
+        defaultOptionHandler = new DefaultOptionHandler(this);
+        registerOptionHandler(defaultOptionHandler);
         apiOptionHandler = new APIOptionHandler(this);
         registerOptionHandler(apiOptionHandler);
         registerOptionHandler(new MacroOptionHandler(this));
@@ -696,7 +723,12 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
-
+        addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
+        /*
+         * The presence of CDS and custom system class loaders disables the use of archived
+         * non-system class and and triggers a warning.
+         */
+        addImageBuilderJavaArgs("-Xshare:off");
         config.getBuilderClasspath().forEach(this::addImageBuilderClasspath);
         config.getImageProvidedClasspath().forEach(this::addImageProvidedClasspath);
         String clibrariesBuilderArg = config.getBuilderCLibrariesPaths()
@@ -731,6 +763,7 @@ public class NativeImage {
             }
 
             config.getBuilderBootClasspath().forEach((Consumer<? super Path>) this::addImageBuilderBootClasspath);
+            config.getResourcesJar().ifPresent(this::addImageBuilderClasspath);
         }
 
         config.getImageClasspath().forEach(this::addCustomImageClasspath);
@@ -1163,7 +1196,7 @@ public class NativeImage {
         command.addAll(createImageBuilderArgs(imageArgs, imagecp));
 
         showVerboseMessage(isVerbose() || dryRun, "Executing [");
-        showVerboseMessage(isVerbose() || dryRun, command.stream().collect(Collectors.joining(" \\\n")));
+        showVerboseMessage(isVerbose() || dryRun, SubstrateUtil.getShellCommandString(command, true));
         showVerboseMessage(isVerbose() || dryRun, "]");
 
         if (dryRun) {
@@ -1436,6 +1469,10 @@ public class NativeImage {
         return verbose;
     }
 
+    boolean useDebugAttach() {
+        return defaultOptionHandler.useDebugAttach;
+    }
+
     protected void setDryRun(boolean val) {
         dryRun = val;
     }
@@ -1678,7 +1715,9 @@ public class NativeImage {
         public static void main(String[] args) {
             if (!IS_AOT) {
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
+                ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler.management", true);
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
+                ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.xml", false);
             }
             NativeImage.main(args);
         }

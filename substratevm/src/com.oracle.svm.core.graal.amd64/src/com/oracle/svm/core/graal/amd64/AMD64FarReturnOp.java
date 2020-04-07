@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,12 +50,14 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
     @Use({REG, ILLEGAL}) AllocatableValue result;
     @Use(REG) AllocatableValue sp;
     @Use(REG) AllocatableValue ip;
+    private final boolean fromMethodWithCalleeSavedRegisters;
 
-    public AMD64FarReturnOp(AllocatableValue result, AllocatableValue sp, AllocatableValue ip) {
+    public AMD64FarReturnOp(AllocatableValue result, AllocatableValue sp, AllocatableValue ip, boolean fromMethodWithCalleeSavedRegisters) {
         super(TYPE);
         this.result = result;
         this.sp = sp;
         this.ip = ip;
+        this.fromMethodWithCalleeSavedRegisters = fromMethodWithCalleeSavedRegisters;
     }
 
     @Override
@@ -68,8 +70,7 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
              * the corresponding RBP value was spilled to the stack by the callee.
              */
             Label done = new Label();
-            masm.cmpq(AMD64.rsp, ValueUtil.asRegister(sp));
-            masm.jcc(ConditionFlag.Equal, done);
+            masm.cmpqAndJcc(AMD64.rsp, ValueUtil.asRegister(sp), ConditionFlag.Equal, done, true);
             /*
              * The callee pushes two word-sized values: first the return address, then the saved
              * RBP. The stack grows downwards, so the offset is negative relative to the new stack
@@ -80,6 +81,20 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
         }
 
         masm.movq(AMD64.rsp, ValueUtil.asRegister(sp));
-        masm.jmp(ValueUtil.asRegister(ip));
+
+        if (fromMethodWithCalleeSavedRegisters) {
+            /*
+             * Restoring the callee saved registers is going to overwrite the register that holds
+             * the new instruction pointern (ip). We therefore spill the new ip to the stack, and do
+             * the indirect jump with an address operand to avoid a temporary register.
+             */
+            AMD64Address ipAddress = new AMD64Address(AMD64.rsp, -FrameAccess.returnAddressSize());
+            masm.movq(ipAddress, ValueUtil.asRegister(ip));
+            AMD64CalleeSavedRegisters.singleton().emitRestore(masm, 0, ValueUtil.asRegister(result));
+            masm.jmp(ipAddress);
+
+        } else {
+            masm.jmp(ValueUtil.asRegister(ip));
+        }
     }
 }

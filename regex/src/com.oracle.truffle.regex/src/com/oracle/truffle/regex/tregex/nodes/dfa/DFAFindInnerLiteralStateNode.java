@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,27 +44,26 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
+import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
 
-    private final String literal;
-    private final String mask;
+    private final InnerLiteral innerLiteral;
     @Child private InputIndexOfStringNode indexOfNode = InputIndexOfStringNode.create();
     @Child private TRegexDFAExecutorNode prefixMatcher;
 
-    public DFAFindInnerLiteralStateNode(short id, short[] successors, String literal, String mask, TRegexDFAExecutorNode prefixMatcher) {
+    public DFAFindInnerLiteralStateNode(short id, short[] successors, InnerLiteral innerLiteral, TRegexDFAExecutorNode prefixMatcher) {
         super(id, successors);
         assert successors.length == 1;
-        this.literal = literal;
-        this.mask = mask;
+        this.innerLiteral = innerLiteral;
         this.prefixMatcher = prefixMatcher;
     }
 
     @Override
     public DFAAbstractStateNode createNodeSplitCopy(short copyID) {
-        return new DFAFindInnerLiteralStateNode(copyID, Arrays.copyOf(getSuccessors(), getSuccessors().length), literal, mask, prefixMatcher);
+        return new DFAFindInnerLiteralStateNode(copyID, Arrays.copyOf(getSuccessors(), getSuccessors().length), innerLiteral, prefixMatcher);
     }
 
     @Override
@@ -74,7 +73,7 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
                 locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
                 return;
             }
-            locals.setIndex(indexOfNode.execute(locals.getInput(), locals.getIndex(), locals.getCurMaxIndex(), literal, mask));
+            locals.setIndex(indexOfNode.execute(locals.getInput(), locals.getIndex(), locals.getCurMaxIndex(), innerLiteral.getLiteral(), innerLiteral.getMask()));
             if (locals.getIndex() < 0) {
                 locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
                 return;
@@ -83,7 +82,7 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
                 if (prefixMatcher == null && executor.isSimpleCG()) {
                     locals.getCGData().results[0] = locals.getIndex();
                 }
-                locals.setIndex(locals.getIndex() + literal.length());
+                locals.setIndex(locals.getIndex() + innerLiteral.getLiteral().length());
                 locals.setSuccessorIndex(0);
                 return;
             }
@@ -103,7 +102,7 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
                         Json.prop("anchoredFinalState", false),
                         Json.prop("finalState", false),
                         Json.prop("loopToSelf", false),
-                        Json.prop("transitions", Json.array(Json.obj(Json.prop("matcher", "innerLiteral(" + literal + ")"), Json.prop("target", successors[0])))));
+                        Json.prop("transitions", Json.array(Json.obj(Json.prop("matcher", "innerLiteral(" + innerLiteral.getLiteral() + ")"), Json.prop("target", successors[0])))));
     }
 
 }

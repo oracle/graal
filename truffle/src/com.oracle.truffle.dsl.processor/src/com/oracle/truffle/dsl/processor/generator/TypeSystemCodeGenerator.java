@@ -56,6 +56,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -227,7 +228,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
     }
 
     @Override
-    public List<CodeTypeElement> create(ProcessorContext context, TypeSystemData typeSystem) {
+    public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, TypeSystemData typeSystem) {
         CodeTypeElement clazz = new TypeClassFactory(context, typeSystem).create();
         return Arrays.asList(clazz);
     }

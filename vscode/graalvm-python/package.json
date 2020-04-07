@@ -2,7 +2,7 @@
 	"name": "graalvm-python",
 	"displayName": "GraalVM Python",
 	"description": "Support for GraalVM Python",
-	"version": "0.0.4",
+	"version": "0.0.7",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "oracle-labs-graalvm",
 	"author": {
@@ -18,7 +18,7 @@
 		"url": "https://github.com/oracle/graal/issues"
 	},
 	"engines": {
-		"vscode": "^1.32.0"
+		"vscode": "^1.33.0"
 	},
 	"categories": [
 		"Programming Languages",
@@ -82,21 +82,21 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "webpack --mode production",
-		"compile": "webpack --mode none",
+		"compile": "webpack --mode development",
 		"info": "webpack --display-modules",
-		"watch": "webpack --mode none --watch",
+		"watch": "webpack --mode development --watch",
 		"test-compile": "tsc -p ./",
-		"postinstall": "node ./node_modules/vscode/bin/install"
+		"lint": "tslint -p ./"
 	},
 	"devDependencies": {
-		"@types/mocha": "^2.2.42",
-		"@types/node": "^8.10.51",
-		"ts-loader": "^6.0.4",
-		"tslint": "^5.18.0",
-		"typescript": "^3.5.3",
-		"vscode": "^1.1.36",
-		"webpack": "^4.39.1",
-		"webpack-cli": "^3.3.6"
+		"@types/mocha": "^5.2.7",
+		"@types/node": "^12.12.30",
+		"@types/vscode": "1.33.0",
+		"ts-loader": "^6.2.1",
+		"tslint": "^6.1.0",
+		"typescript": "^3.8.3",
+		"webpack": "^4.42.0",
+		"webpack-cli": "^3.3.11"
 	},
 	"extensionDependencies": [
 		"oracle-labs-graalvm.graalvm",

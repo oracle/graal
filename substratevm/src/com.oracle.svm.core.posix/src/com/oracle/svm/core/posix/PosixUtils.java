@@ -28,7 +28,10 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.util.function.Function;
 
+import com.oracle.svm.core.c.libc.GLibc;
+import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -36,7 +39,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -91,7 +93,8 @@ public class PosixUtils {
             case "LC_MESSAGES":
                 return Locale.LC_MESSAGES();
         }
-        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)) {
+
+        if (Platform.includedIn(Platform.LINUX.class) && ImageSingletons.lookup(LibCBase.class).getClass().equals(GLibc.class)) {
             switch (category) {
                 case "LC_PAPER":
                     return Locale.LC_PAPER();

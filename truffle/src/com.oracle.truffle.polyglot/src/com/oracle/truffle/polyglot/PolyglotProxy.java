@@ -66,6 +66,7 @@ import org.graalvm.polyglot.proxy.ProxyTimeZone;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -104,6 +105,19 @@ final class PolyglotProxy implements TruffleObject {
     PolyglotProxy(PolyglotLanguageContext context, Proxy proxy) {
         this.languageContext = context;
         this.proxy = proxy;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof PolyglotProxy)) {
+            return false;
+        }
+        return proxy == ((PolyglotProxy) obj).proxy;
+    }
+
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(proxy);
     }
 
     @ExportMessage
@@ -413,7 +427,7 @@ final class PolyglotProxy implements TruffleObject {
 
     @TruffleBoundary
     RuntimeException illegalProxy(String message, Object... parameters) {
-        throw PolyglotImpl.wrapHostException(languageContext, new IllegalStateException(
+        throw PolyglotImpl.hostToGuestException(languageContext, new IllegalStateException(
                         String.format(message, parameters)));
     }
 
@@ -772,6 +786,41 @@ final class PolyglotProxy implements TruffleObject {
             return (Duration) guestToHostCall(library, AS_DURATION, languageContext, proxy);
         }
         throw UnsupportedMessageException.create();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return HostLanguage.class;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    @TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+        try {
+            return this.proxy.toString();
+        } catch (Throwable t) {
+            throw PolyglotImpl.hostToGuestException(languageContext, t);
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMetaObject() {
+        Class<?> javaObject = this.proxy.getClass();
+        return HostObject.forClass(javaObject, languageContext);
     }
 
     public static boolean isProxyGuestObject(TruffleObject value) {

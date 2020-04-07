@@ -29,6 +29,7 @@ import java.io.FileFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -58,9 +59,11 @@ import java.util.stream.Stream;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.DistributionType;
 import org.graalvm.component.installer.model.ManagementStorage;
 
 /**
@@ -262,19 +265,32 @@ public class DirectoryStorage implements ManagementStorage {
         }
     }
 
+    private static String computeTag(Properties data) throws IOException {
+        try (StringWriter wr = new StringWriter()) {
+            data.store(wr, "");
+            // properties store date/time into the stream as a comment. Cannot be disabled
+            // programmatically,
+            // must filter out.
+            return SystemUtils.digestString(wr.toString().replaceAll("#.*\n", ""), false); // NOI18N
+        }
+    }
+
     ComponentInfo loadMetadataFrom(InputStream fileStream) throws IOException {
-        // XX clear 'loaded' field once the loading is over
         loaded = new Properties();
         loaded.load(fileStream);
 
+        String serial = loaded.getProperty(BundleConstants.BUNDLE_SERIAL);
+        if (serial == null) {
+            serial = computeTag(loaded);
+        }
         String id = getRequiredProperty(BundleConstants.BUNDLE_ID);
         String name = getRequiredProperty(BundleConstants.BUNDLE_NAME);
         String version = getRequiredProperty(BundleConstants.BUNDLE_VERSION);
 
-        return propertiesToMeta(loaded, new ComponentInfo(id, name, version));
+        return propertiesToMeta(loaded, new ComponentInfo(id, name, version, serial), feedback);
     }
 
-    public static ComponentInfo propertiesToMeta(Properties loaded, ComponentInfo ci) {
+    public static ComponentInfo propertiesToMeta(Properties loaded, ComponentInfo ci, Feedback fb) {
         String license = loaded.getProperty(BundleConstants.BUNDLE_LICENSE_PATH);
         if (license != null) {
             SystemUtils.checkCommonRelative(null, license);
@@ -345,6 +361,13 @@ public class DirectoryStorage implements ManagementStorage {
             } catch (MalformedURLException ex) {
                 // ignore
             }
+        }
+        String dtn = loaded.getProperty(BundleConstants.BUNDLE_COMPONENT_DISTRIBUTION, DistributionType.OPTIONAL.name());
+        try {
+            ci.setDistributionType(DistributionType.valueOf(dtn.toUpperCase(Locale.ENGLISH)));
+        } catch (IllegalArgumentException ex) {
+            throw new MetadataException(BundleConstants.BUNDLE_COMPONENT_DISTRIBUTION,
+                            fb.withBundle(DirectoryStorage.class).l10n("ERROR_InvalidDistributionType", dtn));
         }
         return ci;
     }
@@ -516,6 +539,10 @@ public class DirectoryStorage implements ManagementStorage {
         p.setProperty(BundleConstants.BUNDLE_ID, info.getId());
         p.setProperty(BundleConstants.BUNDLE_NAME, info.getName());
         p.setProperty(BundleConstants.BUNDLE_VERSION, info.getVersionString());
+        String s = info.getTag();
+        if (s != null && !s.isEmpty()) {
+            p.setProperty(BundleConstants.BUNDLE_SERIAL, s);
+        }
         if (info.getLicensePath() != null) {
             p.setProperty(BundleConstants.BUNDLE_LICENSE_PATH, info.getLicensePath());
         }
@@ -553,6 +580,9 @@ public class DirectoryStorage implements ManagementStorage {
         }
         if (!info.getWorkingDirectories().isEmpty()) {
             p.setProperty(BundleConstants.BUNDLE_WORKDIRS, info.getWorkingDirectories().stream().sequential().collect(Collectors.joining(":")));
+        }
+        if (info.getDistributionType() != DistributionType.OPTIONAL) {
+            p.setProperty(BundleConstants.BUNDLE_COMPONENT_DISTRIBUTION, info.getDistributionType().name().toLowerCase(Locale.ENGLISH));
         }
         URL u = info.getRemoteURL();
         if (u != null) {

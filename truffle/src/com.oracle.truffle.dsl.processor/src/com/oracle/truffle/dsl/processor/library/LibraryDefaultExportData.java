@@ -52,6 +52,10 @@ public final class LibraryDefaultExportData {
         this.receiverType = receiverType;
     }
 
+    public boolean isDefaultObjectExport() {
+        return implType == null;
+    }
+
     public TypeMirror getImplType() {
         return implType;
     }

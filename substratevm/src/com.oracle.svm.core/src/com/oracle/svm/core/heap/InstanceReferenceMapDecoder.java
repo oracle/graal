@@ -25,6 +25,8 @@
 package com.oracle.svm.core.heap;
 
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
@@ -32,28 +34,35 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
+import com.oracle.svm.core.util.TypedMemoryReader;
 
 @DuplicatedInNativeCode
 public class InstanceReferenceMapDecoder {
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
-    public static boolean walkOffsetsFromPointer(Pointer baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor) {
+    public static boolean walkOffsetsFromPointer(Pointer baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor, Object holderObject) {
         assert referenceMapIndex >= CodeInfoQueryResult.EMPTY_REFERENCE_MAP;
         assert referenceMapEncoding.isNonNull();
 
-        int entryCount = NonmovableByteArrayReader.getS4(referenceMapEncoding, referenceMapIndex);
-        assert entryCount >= 0;
+        Pointer position = NonmovableByteArrayReader.pointerTo(referenceMapEncoding, referenceMapIndex);
+        int entryCount = TypedMemoryReader.getS4(position);
+        position = position.add(4);
 
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
         boolean compressed = ReferenceAccess.singleton().haveCompressedReferences();
 
-        long entryStart = referenceMapIndex + InstanceReferenceMapEncoder.MAP_HEADER_SIZE;
-        for (long idx = entryStart; idx < entryStart + entryCount * InstanceReferenceMapEncoder.MAP_ENTRY_SIZE; idx += InstanceReferenceMapEncoder.MAP_ENTRY_SIZE) {
-            int offset = NonmovableByteArrayReader.getS4(referenceMapEncoding, idx);
-            long count = NonmovableByteArrayReader.getU4(referenceMapEncoding, idx + 4);
+        assert entryCount >= 0;
+        UnsignedWord sizeOfEntries = WordFactory.unsigned(InstanceReferenceMapEncoder.MAP_ENTRY_SIZE).multiply(entryCount);
+        Pointer end = position.add(sizeOfEntries);
+        while (position.belowThan(end)) {
+            int offset = TypedMemoryReader.getS4(position);
+            position = position.add(4);
+
+            long count = TypedMemoryReader.getU4(position);
+            position = position.add(4);
 
             Pointer objRef = baseAddress.add(offset);
             for (int c = 0; c < count; c++) {
-                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed);
+                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed, holderObject);
                 if (!visitResult) {
                     return false;
                 }

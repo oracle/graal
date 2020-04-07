@@ -71,6 +71,7 @@ import java.util.logging.Level;
 
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.home.HomeFinder;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
@@ -132,6 +133,19 @@ public final class Engine implements AutoCloseable {
         @SuppressWarnings("unused")
         private static void resetPreInitializedEngine() {
             IMPL.resetPreInitializedEngine();
+        }
+
+        /**
+         * Support for Context pre-initialization debugging in HotSpot.
+         */
+        private static void debugContextPreInitialization() {
+            if (!ImageInfo.inImageCode() && System.getProperty("polyglot.image-build-time.PreinitializeContexts") != null) {
+                IMPL.preInitializeEngine();
+            }
+        }
+
+        static {
+            debugContextPreInitialization();
         }
     }
 
@@ -665,8 +679,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public void validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> languages) {
-            access.validate(languages);
+        public String validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> languages) {
+            return access.validate(languages);
         }
 
     }
@@ -751,6 +765,11 @@ public final class Engine implements AutoCloseable {
                 }
             });
             PolyglotInvalid.AOT = aot.booleanValue();
+        }
+
+        @Override
+        public Context getCurrentContext() {
+            throw noPolyglotImplementationFound();
         }
 
         @Override

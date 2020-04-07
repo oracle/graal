@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,18 +60,17 @@ public final class AArch64CGlobalDataLoadAddressOp extends AArch64LIRInstruction
         if (SubstrateUtil.HOSTED) {
             // AOT compilation: record patch that is fixed up later
             int before = masm.position();
+            Register resultRegister = asRegister(result);
             if (dataInfo.isSymbolReference()) {
                 // Pure symbol reference: the data contains the symbol's address, load it
-                Register resultRegister = asRegister(result);
                 AArch64Address address = AArch64Address.createScaledImmediateAddress(resultRegister, 0x0);
                 masm.adrpLdr(64, resultRegister, address);
-                crb.compilationResult.recordDataPatch(before, new CGlobalDataReference(dataInfo));
             } else {
                 // Data: load its address
                 AArch64Address address = masm.getPlaceholder(before);
-                masm.loadAddress(asRegister(result), address, 1);
-                crb.compilationResult.recordDataPatch(before, new CGlobalDataReference(dataInfo));
+                masm.loadAddress(resultRegister, address, 1);
             }
+            crb.compilationResult.recordDataPatch(before, new CGlobalDataReference(dataInfo));
         } else {
             // Runtime compilation: compute the actual address
             Pointer globalsBase = CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS.get();

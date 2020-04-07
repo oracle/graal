@@ -53,17 +53,17 @@ import org.graalvm.word.LocationIdentity;
 public final class FloatingReadNode extends FloatingAccessNode implements LIRLowerableAccess, Canonicalizable {
     public static final NodeClass<FloatingReadNode> TYPE = NodeClass.create(FloatingReadNode.class);
 
-    @OptionalInput(Memory) MemoryNode lastLocationAccess;
+    @OptionalInput(Memory) MemoryKill lastLocationAccess;
 
-    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryNode lastLocationAccess, Stamp stamp) {
+    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp) {
         this(address, location, lastLocationAccess, stamp, null, BarrierType.NONE);
     }
 
-    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
+    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp, GuardingNode guard) {
         this(address, location, lastLocationAccess, stamp, guard, BarrierType.NONE);
     }
 
-    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
         super(TYPE, address, location, stamp, guard, barrierType);
         this.lastLocationAccess = lastLocationAccess;
 
@@ -73,12 +73,12 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
     }
 
     @Override
-    public MemoryNode getLastLocationAccess() {
+    public MemoryKill getLastLocationAccess() {
         return lastLocationAccess;
     }
 
     @Override
-    public void setLastLocationAccess(MemoryNode newlla) {
+    public void setLastLocationAccess(MemoryKill newlla) {
         updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(newlla));
         lastLocationAccess = newlla;
     }
@@ -97,7 +97,7 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
         }
         if (tool.canonicalizeReads() && getAddress().hasMoreThanOneUsage() && lastLocationAccess instanceof WriteNode) {
             WriteNode write = (WriteNode) lastLocationAccess;
-            if (write.getAddress() == getAddress() && write.getAccessStamp().isCompatible(getAccessStamp())) {
+            if (write.getAddress() == getAddress() && write.getAccessStamp(NodeView.DEFAULT).isCompatible(getAccessStamp(NodeView.DEFAULT))) {
                 // Same memory location with no intervening write
                 return write.value();
             }
@@ -117,13 +117,13 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
 
     @Override
     public boolean verify() {
-        MemoryNode lla = getLastLocationAccess();
+        MemoryKill lla = getLastLocationAccess();
         assert lla != null || getLocationIdentity().isImmutable() : "lastLocationAccess of " + this + " shouldn't be null for mutable location identity " + getLocationIdentity();
         return super.verify();
     }
 
     @Override
-    public Stamp getAccessStamp() {
-        return stamp(NodeView.DEFAULT);
+    public Stamp getAccessStamp(NodeView view) {
+        return stamp(view);
     }
 }

@@ -40,7 +40,7 @@ import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint.FatalExceptionHandler;
-import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -135,7 +135,7 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         } else {
             args.add(objectHandleType); // j<PrimitiveType>Array array;
             if (operation == Operation.GET_ELEMENTS) {
-                args.add(metaAccess.lookupJavaType(CIntPointer.class)); // jboolean *isCopy;
+                args.add(metaAccess.lookupJavaType(CCharPointer.class)); // jboolean *isCopy;
                 returnType = metaAccess.lookupJavaType(WordPointer.class);
             } else if (operation == Operation.RELEASE_ELEMENTS) {
                 args.add(metaAccess.lookupJavaType(WordPointer.class)); // NativeType *elems;

@@ -168,9 +168,9 @@ public class Linker {
      * The intent is to use this functionality only in the test suite and the benchmark suite.
      */
     public void resetModuleState(WasmContext context, WasmModule module, byte[] data, boolean zeroMemory) {
-        final BinaryParser reader = new BinaryParser(language, module, data);
+        final BinaryParser reader = new BinaryParser(language, module, context, data);
         reader.resetGlobalState();
-        reader.resetMemoryState(context, zeroMemory);
+        reader.resetMemoryState(zeroMemory);
     }
 
     void resolveGlobalImport(WasmContext context, WasmModule module, ImportDescriptor importDescriptor, int globalIndex, byte valueType, byte mutability) {
@@ -335,7 +335,7 @@ public class Linker {
             memory.validateAddress(null, baseAddress, byteLength);
             for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                 byte b = data[writeOffset];
-                memory.store_i32_8(baseAddress + writeOffset, b);
+                memory.store_i32_8(null, baseAddress + writeOffset, b);
             }
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();

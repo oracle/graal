@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,10 +44,8 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Set;
 
-import com.oracle.truffle.regex.tregex.automaton.IndexedState;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.automaton.StateSetBackingSetFactory;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAAbstractStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
@@ -56,18 +54,18 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
  * Abstract graph node wrapper with lots of extra fields used by the dominator tree algorithm in
  * {@link DominatorTree} and the node splitting algorithm implemented in {@link DFANodeSplit}.
  */
-final class GraphNode implements Comparable<GraphNode>, IndexedState {
+final class GraphNode implements Comparable<GraphNode> {
 
-    private static final short[] NO_DOM_CHILDREN = new short[0];
+    private static final int[] NO_DOM_CHILDREN = new int[0];
 
     private DFAAbstractStateNode originalDfaNode;
     private DFAAbstractStateNode dfaNode;
     private boolean dfaNodeCopied = false;
     private final short[] successorSet;
-    private final StateSet<GraphNode> predecessorSet;
-    private final StateSet<GraphNode> backEdges;
+    private final StateSet<DFANodeSplit, GraphNode> predecessorSet;
+    private final StateSet<DFANodeSplit, GraphNode> backEdges;
 
-    private short[] domChildren;
+    private int[] domChildren;
     private int nDomChildren;
     private int domTreeDepth;
     private int postOrderIndex;
@@ -80,8 +78,8 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
     GraphNode(DFANodeSplit graph, DFAAbstractStateNode dfaNode, short[] successorSet) {
         this.dfaNode = dfaNode;
         this.successorSet = successorSet;
-        predecessorSet = new StateSet<>(graph, StateSetBackingSetFactory.SORTED_ARRAY);
-        backEdges = new StateSet<>(graph);
+        predecessorSet = StateSet.create(graph);
+        backEdges = StateSet.create(graph);
         domChildren = NO_DOM_CHILDREN;
     }
 
@@ -118,8 +116,7 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
         return getId() - o.getId();
     }
 
-    @Override
-    public short getId() {
+    public int getId() {
         return dfaNode.getId();
     }
 
@@ -167,20 +164,13 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
         return predecessorSet.contains(pre);
     }
 
-    void addPredecessorUnsorted(GraphNode pre) {
-        predecessorSet.addBatch(pre);
-    }
-
-    void sortPredecessors() {
-        predecessorSet.addBatchFinish();
-    }
-
     void addPredecessor(GraphNode pre) {
         predecessorSet.add(pre);
     }
 
     void replacePredecessor(GraphNode pre) {
-        predecessorSet.replace(pre, pre.copy);
+        predecessorSet.remove(pre);
+        predecessorSet.add(pre.copy);
     }
 
     void removePredecessor(GraphNode pre) {
@@ -190,7 +180,7 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
     void addDomChild(GraphNode child) {
         if (nDomChildren == domChildren.length) {
             if (domChildren == NO_DOM_CHILDREN) {
-                domChildren = new short[10];
+                domChildren = new int[10];
             } else {
                 domChildren = Arrays.copyOf(domChildren, domChildren.length * 2);
             }

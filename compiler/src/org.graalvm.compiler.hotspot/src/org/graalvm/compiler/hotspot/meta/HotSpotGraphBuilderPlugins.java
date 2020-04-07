@@ -24,7 +24,9 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
@@ -62,9 +64,9 @@ import org.graalvm.compiler.hotspot.replacements.DigestBaseSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotArraySubstitutions;
 import org.graalvm.compiler.hotspot.replacements.HotSpotClassSubstitutions;
+import org.graalvm.compiler.hotspot.replacements.HotSpotReflectionGetCallerClassNode;
 import org.graalvm.compiler.hotspot.replacements.IdentityHashCodeNode;
 import org.graalvm.compiler.hotspot.replacements.ObjectCloneNode;
-import org.graalvm.compiler.hotspot.replacements.ReflectionGetCallerClassNode;
 import org.graalvm.compiler.hotspot.replacements.ReflectionSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.SHA2Substitutions;
 import org.graalvm.compiler.hotspot.replacements.SHA5Substitutions;
@@ -89,7 +91,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;
-import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -143,16 +145,19 @@ public class HotSpotGraphBuilderPlugins {
                     SnippetReflectionProvider snippetReflection,
                     ForeignCallsProvider foreignCalls,
                     ReplacementsImpl replacements,
-                    OptionValues options, TargetDescription target) {
+                    OptionValues options,
+                    TargetDescription target) {
         InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration);
 
         Plugins plugins = new Plugins(invocationPlugins);
         NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes, target);
-        HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
-        HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(wordOperationPlugin, config, wordTypes);
+        if (!IS_IN_NATIVE_IMAGE) {
+            HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
+            HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(wordOperationPlugin, config, wordTypes);
 
-        plugins.appendTypePlugin(nodePlugin);
-        plugins.appendNodePlugin(nodePlugin);
+            plugins.appendTypePlugin(nodePlugin);
+            plugins.appendNodePlugin(nodePlugin);
+        }
         if (!GeneratePIC.getValue(options)) {
             plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), true));
         }
@@ -284,7 +289,7 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isPrimitive", Receiver.class);
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getSuperclass", Receiver.class);
 
-        if (config.getFieldOffset("ArrayKlass::_component_mirror", Integer.class, "oop", Integer.MAX_VALUE) != Integer.MAX_VALUE) {
+        if (config.getFieldOffset("ArrayKlass::_component_mirror", Integer.class, "oop", Integer.MAX_VALUE, JDK <= 8) != Integer.MAX_VALUE) {
             r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getComponentType", Receiver.class);
         }
     }
@@ -318,7 +323,7 @@ public class HotSpotGraphBuilderPlugins {
         r.register0("getCallerClass", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Object, new ReflectionGetCallerClassNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions())));
+                b.addPush(JavaKind.Object, new HotSpotReflectionGetCallerClassNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions())));
                 return true;
             }
 
@@ -665,7 +670,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerCounterModePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
+        if (isIntrinsicName(config, "com/sun/crypto/provider/CounterMode", "implCrypt")) {
             assert !config.useAESCTRIntrinsics || config.counterModeAESCrypt != 0L;
             Registration r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", replacements);
             r.registerConditionalMethodSubstitution(config.useAESCTRIntrinsics, CounterModeSubstitutions.class, "implCrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class,

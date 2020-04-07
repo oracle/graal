@@ -55,6 +55,7 @@ public class ExecutionState {
     private IntArrayList stackStates;
     private IntArrayList continuationReturnLength;
     private ArrayList<int[]> branchTables;
+    private boolean reachable;
 
     public ExecutionState() {
         this.stackSize = 0;
@@ -65,6 +66,15 @@ public class ExecutionState {
         this.stackStates = new IntArrayList();
         this.continuationReturnLength = new IntArrayList();
         this.branchTables = new ArrayList<>();
+        this.reachable = true;
+    }
+
+    public boolean isReachable() {
+        return this.reachable;
+    }
+
+    public void setReachable(boolean reachable) {
+        this.reachable = reachable;
     }
 
     public void push() {
@@ -85,8 +95,8 @@ public class ExecutionState {
         stackSize -= n;
     }
 
-    public void setStackPointer(int stackPointer) {
-        stackSize = stackPointer;
+    public void setStackSize(int stackSize) {
+        this.stackSize = stackSize;
     }
 
     public void useByteConstant(byte constant) {

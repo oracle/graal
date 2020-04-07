@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -83,6 +83,7 @@ public abstract class LLVMX86_ComparisonNode {
                     rv[0] = (Float.isNaN(left) || Float.isNaN(right)) ? 0 : TRUEMASK;
                     break;
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError("unsupported predicate (not in range 0-7)");
             }
             return LLVMFloatVector.create(rv);

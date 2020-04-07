@@ -24,24 +24,17 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.windows.headers.WinBase;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.windows.headers.SysinfoAPI;
 
-import static org.graalvm.word.WordFactory.nullPointer;
-
-// Checkstyle: stop
-
-@Platforms(Platform.WINDOWS.class)
 class WindowsPhysicalMemory extends PhysicalMemory {
 
     static class WindowsPhysicalMemorySupportImpl implements PhysicalMemorySupport {
@@ -53,15 +46,11 @@ class WindowsPhysicalMemory extends PhysicalMemory {
 
         @Override
         public UnsignedWord size() {
-            WinBase.MEMORYSTATUSEX memStatusEx = StackValue.get(WinBase.MEMORYSTATUSEX.class);
-            memStatusEx.set_dwLength(SizeOf.get(WinBase.MEMORYSTATUSEX.class));
-            if (WinBase.GlobalMemoryStatusEx(memStatusEx)) {
-                return WordFactory.unsigned(memStatusEx.ullTotalPhys());
-            } else {
-                return nullPointer();
-            }
+            SysinfoAPI.MEMORYSTATUSEX memStatusEx = StackValue.get(SysinfoAPI.MEMORYSTATUSEX.class);
+            memStatusEx.set_dwLength(SizeOf.get(SysinfoAPI.MEMORYSTATUSEX.class));
+            SysinfoAPI.GlobalMemoryStatusEx(memStatusEx);
+            return WordFactory.unsigned(memStatusEx.ullTotalPhys());
         }
-
     }
 
     @AutomaticFeature

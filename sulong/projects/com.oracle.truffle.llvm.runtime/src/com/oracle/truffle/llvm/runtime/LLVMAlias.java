@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,35 +33,16 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
-public class LLVMAlias implements LLVMSymbol {
-    private final ExternalLibrary library;
+public class LLVMAlias extends LLVMSymbol {
 
     @CompilationFinal private LLVMSymbol target;
-    @CompilationFinal private String name;
 
     public LLVMAlias(ExternalLibrary library, String name, LLVMSymbol target) {
-        this.library = library;
-        this.name = name;
+        super(name, library, LLVMSymbol.INVALID_ID, LLVMSymbol.INVALID_ID);
         setTarget(target);
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public void setName(String value) {
-        this.name = value;
-    }
-
-    @Override
-    public ExternalLibrary getLibrary() {
-        return library;
     }
 
     public LLVMSymbol getTarget() {
@@ -92,7 +73,12 @@ public class LLVMAlias implements LLVMSymbol {
     }
 
     @Override
-    public LLVMFunctionDescriptor asFunction() {
+    public boolean isAlias() {
+        return true;
+    }
+
+    @Override
+    public LLVMFunction asFunction() {
         return target.asFunction();
     }
 
@@ -103,7 +89,7 @@ public class LLVMAlias implements LLVMSymbol {
 
     @Override
     public String toString() {
-        return name + " -> " + target.getName();
+        return super.getName() + " -> " + target.toString();
     }
 
     private void checkForCycle(LLVMAlias alias, EconomicSet<LLVMAlias> visited) {

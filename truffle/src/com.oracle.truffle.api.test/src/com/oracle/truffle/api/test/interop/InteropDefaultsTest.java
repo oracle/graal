@@ -41,27 +41,22 @@
 package com.oracle.truffle.api.test.interop;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.test.polyglot.ProxyLegacyInteropObject;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 @SuppressWarnings("deprecation")
 public class InteropDefaultsTest extends InteropLibraryBaseTest {
@@ -79,19 +74,26 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         InteropLibrary library = createLibrary(InteropLibrary.class, v);
         assertTrue(library.isBoolean(v));
         assertEquals(expected, library.asBoolean(v));
+        assertEquals(v.toString(), library.toDisplayString(v));
 
+        // assert boolean
         assertNotNull(v);
         assertNoObject(v);
         assertNoArray(v);
-        assertNoNumber(v);
         assertNoString(v);
+        assertNoNumber(v);
         assertNoNative(v);
         assertNotExecutable(v);
         assertNotInstantiable(v);
+        assertNoMetaObject(v);
+        assertHasNoMetaObject(v);
+        assertNoDate(v);
+        assertNoTime(v);
+        assertNoTimeZone(v);
+        assertNoDuration(v);
+        assertNoSourceLocation(v);
+        assertNoLanguage(v);
 
-        if (!(v instanceof LegacyBoxedPrimitive)) {
-            assertBoolean(new LegacyBoxedPrimitive(v), expected);
-        }
     }
 
     @Test
@@ -212,477 +214,30 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertTrue(library.isString(v));
         assertEquals(expectedString, library.asString(v));
 
+        assertNoBoolean(v);
         assertNotNull(v);
         assertNoObject(v);
         assertNoArray(v);
+        // assert string
         assertNoNumber(v);
-        assertNoBoolean(v);
         assertNoNative(v);
         assertNotExecutable(v);
         assertNotInstantiable(v);
+        assertNoMetaObject(v);
+        assertHasNoMetaObject(v);
+        assertNoDate(v);
+        assertNoTime(v);
+        assertNoTimeZone(v);
+        assertNoDuration(v);
+        assertNoSourceLocation(v);
+        assertNoLanguage(v);
 
-        if (!(v instanceof LegacyBoxedPrimitive)) {
-            assertString(new LegacyBoxedPrimitive(v), expectedString);
-        }
-    }
-
-    private static class ArrayDefaults extends ProxyLegacyInteropObject {
-
-        private List<Object> array = new ArrayList<>();
-
-        private boolean hasSize = true;
-        private int readCalls;
-        private int writeCalls;
-        private int removeCalls;
-        private int keyInfo;
-
-        ArrayDefaults(List<Object> array) {
-            this.array = array;
-        }
-
-        @Override
-        public Object read(Number key) throws UnsupportedMessageException, UnknownIdentifierException {
-            readCalls++;
-            int index = key.intValue();
-            if (index < 0 || index >= array.size()) {
-                throw UnknownIdentifierException.create(String.valueOf(index));
-            }
-            return array.get(index);
-        }
-
-        @Override
-        public Object write(Number key, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
-            writeCalls++;
-            int index = key.intValue();
-            if (index < 0 || index >= array.size()) {
-                throw UnknownIdentifierException.create(String.valueOf(index));
-            }
-            return array.set(index, value);
-        }
-
-        @Override
-        public boolean remove(Number key) throws UnsupportedMessageException, UnknownIdentifierException {
-            removeCalls++;
-            int index = key.intValue();
-            if (index < 0 || index >= array.size()) {
-                throw UnknownIdentifierException.create(String.valueOf(index));
-            }
-            Object result = array.remove(index);
-            return result != null;
-        }
-
-        @Override
-        public int getSize() {
-            return array.size();
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public int keyInfo(Number key) {
-            if (keyInfo == 0 && key.intValue() >= 0 && key.intValue() < array.size()) {
-                return com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE | com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
-            }
-            return keyInfo;
-        }
-
-        @Override
-        public boolean hasSize() {
-            return hasSize;
-        }
-
-    }
-
-    private static class ObjectDefaults extends ProxyLegacyInteropObject {
-
-        private Map<String, Object> members = new HashMap<>();
-
-        private int readCalls = 0;
-        private int writeCalls = 0;
-        private int hasKeysCalls = 0;
-        private int removeCalls = 0;
-        private int invokeCalls = 0;
-        private boolean hasKeys = true;
-
-        private int keyInfo;
-
-        @Override
-        public boolean hasKeys() {
-            hasKeysCalls++;
-            return hasKeys;
-        }
-
-        @Override
-        public Object read(String key) throws UnsupportedMessageException, UnknownIdentifierException {
-            readCalls++;
-            return members.get(key);
-        }
-
-        @Override
-        public Object write(String key, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
-            writeCalls++;
-            members.put(key, value);
-            return true;
-        }
-
-        @Override
-        public boolean remove(String key) throws UnsupportedMessageException, UnknownIdentifierException {
-            removeCalls++;
-            members.remove(key);
-            return true;
-        }
-
-        @Override
-        public Object invoke(String key, Object[] arguments) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
-            invokeCalls++;
-            return "invoked " + key + Arrays.toString(arguments);
-        }
-
-        @Override
-        public Object keys() throws UnsupportedMessageException {
-            return new ArrayDefaults(Arrays.asList(members.keySet().toArray()));
-        }
-
-        @Override
-        public int keyInfo(String key) {
-            if (keyInfo == -1) {
-                if (members.containsKey(key)) {
-                    return com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE | com.oracle.truffle.api.interop.KeyInfo.REMOVABLE |
-                                    com.oracle.truffle.api.interop.KeyInfo.INVOCABLE;
-                } else {
-                    return com.oracle.truffle.api.interop.KeyInfo.INSERTABLE;
-                }
-            }
-            return keyInfo;
-        }
-    }
-
-    @Test
-    public void testObjectDefaults() throws InteropException {
-        ObjectDefaults v = new ObjectDefaults();
-        InteropLibrary library = createLibrary(InteropLibrary.class, v);
-
-        assertEquals(0, v.hasKeysCalls);
-        assertTrue(library.hasMembers(v));
-        assertEquals(1, v.hasKeysCalls);
-        v.hasKeys = false;
-        assertFalse(library.hasMembers(v));
-        v.hasKeys = true;
-
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE;
-        assertTrue(library.isMemberReadable(v, ""));
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
-        assertFalse(library.isMemberReadable(v, ""));
-
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.INSERTABLE;
-        assertTrue(library.isMemberInsertable(v, ""));
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
-        assertFalse(library.isMemberInsertable(v, ""));
-
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.INTERNAL;
-        assertTrue(library.isMemberInternal(v, ""));
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
-        assertFalse(library.isMemberInternal(v, ""));
-
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE;
-        assertTrue(library.isMemberModifiable(v, ""));
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
-        assertFalse(library.isMemberModifiable(v, ""));
-
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.INVOCABLE;
-        assertTrue(library.isMemberInvocable(v, ""));
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
-        assertFalse(library.isMemberInvocable(v, ""));
-
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
-        assertTrue(library.isMemberRemovable(v, ""));
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
-        assertFalse(library.isMemberRemovable(v, ""));
-
-        v.keyInfo = -1;
-
-        library.writeMember(v, "foo", "bar");
-        assertEquals(1, v.writeCalls);
-        assertTrue(v.members.containsKey("foo"));
-        assertEquals("bar", v.members.get("foo"));
-
-        Object result = library.readMember(v, "foo");
-        assertEquals(1, v.readCalls);
-        assertEquals("bar", result);
-
-        Object identifiers = library.getMembers(v);
-        InteropLibrary arrayLibrary = createLibrary(InteropLibrary.class, identifiers);
-        assertEquals("foo", arrayLibrary.readArrayElement(identifiers, 0));
-        assertEquals(1, arrayLibrary.getArraySize(identifiers));
-
-        library.removeMember(v, "foo");
-        assertEquals(1, v.removeCalls);
-        assertTrue(v.members.isEmpty());
-
-        // member needs to be invocable for invoke to succeed.
-        library.writeMember(v, "foo", "bar");
-
-        assertEquals("invoked foo[]", library.invokeMember(v, "foo"));
-        assertEquals("invoked foo[a0]", library.invokeMember(v, "foo", "a0"));
-        assertEquals("invoked foo[a0, a1]", library.invokeMember(v, "foo", "a0", "a1"));
-        assertEquals(3, v.invokeCalls);
-
-        assertNotNull(v);
-        assertNoString(v);
-        assertNoArray(v);
-        assertNoNumber(v);
-        assertNoBoolean(v);
-        assertNoNative(v);
-        assertNotExecutable(v);
-        assertNotInstantiable(v);
-    }
-
-    @Test
-    public void testArrayDefaults() throws InteropException {
-        List<Object> array = new ArrayList<>();
-        array.add("foo");
-        array.add("bar");
-        ArrayDefaults v = new ArrayDefaults(array);
-        InteropLibrary library = createLibrary(InteropLibrary.class, v);
-
-        assertTrue(library.hasArrayElements(v));
-        v.hasSize = false;
-        assertFalse(library.hasArrayElements(v));
-        v.hasSize = true;
-
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE;
-        assertTrue(library.isArrayElementReadable(v, 0));
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE;
-        assertFalse(library.isArrayElementReadable(v, 0));
-
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.INSERTABLE;
-        assertTrue(library.isArrayElementInsertable(v, 0));
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE;
-        assertFalse(library.isArrayElementInsertable(v, 0));
-
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE;
-        assertTrue(library.isArrayElementModifiable(v, 0));
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE;
-        assertFalse(library.isArrayElementModifiable(v, 0));
-
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
-        assertTrue(library.isArrayElementRemovable(v, 0));
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE;
-        assertFalse(library.isArrayElementRemovable(v, 0));
-
-        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
-        library.writeArrayElement(v, 0, "baz");
-        assertEquals(1, v.writeCalls);
-        assertEquals("baz", v.array.get(0));
-
-        assertEquals("baz", library.readArrayElement(v, 0));
-        assertEquals(1, v.readCalls);
-
-        assertEquals(2, v.array.size());
-
-        library.removeArrayElement(v, 1);
-        assertEquals(1, v.removeCalls);
-        assertEquals(1, v.array.size());
-
-        assertEquals(1, library.getArraySize(v));
-
-        try {
-            library.readArrayElement(v, 3);
-            fail();
-        } catch (InvalidArrayIndexException e) {
-            assertEquals(3, e.getInvalidIndex());
-        }
-
-        try {
-            library.writeArrayElement(v, -1, "");
-            fail();
-        } catch (InvalidArrayIndexException e) {
-            assertEquals(-1, e.getInvalidIndex());
-        }
-
-        try {
-            library.removeArrayElement(v, 3);
-            fail();
-        } catch (InvalidArrayIndexException e) {
-            assertEquals(3, e.getInvalidIndex());
-        }
-
-        assertNotNull(v);
-        assertNoString(v);
-        assertNoObject(v);
-        assertNoNumber(v);
-        assertNoBoolean(v);
-        assertNoNative(v);
-        assertNotExecutable(v);
-        assertNotInstantiable(v);
-    }
-
-    private static class ExecutableDefaults extends ProxyLegacyInteropObject {
-
-        boolean executable = true;
-
-        @Override
-        public boolean isExecutable() {
-            return executable;
-        }
-
-        @Override
-        @TruffleBoundary
-        public Object execute(Object[] args) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-            return Arrays.toString(args);
-        }
-
-    }
-
-    @Test
-    public void testExecutableDefaults() throws InteropException {
-        ExecutableDefaults v = new ExecutableDefaults();
-        InteropLibrary library = createLibrary(InteropLibrary.class, v);
-
-        assertTrue(library.isExecutable(v));
-        v.executable = false;
-        assertFalse(library.isExecutable(v));
-        v.executable = true;
-
-        assertEquals("[]", library.execute(v));
-        assertEquals("[foo]", library.execute(v, "foo"));
-        assertEquals("[foo, bar]", library.execute(v, "foo", "bar"));
-
-        assertNotNull(v);
-        assertNoString(v);
-        assertNoObject(v);
-        assertNoArray(v);
-        assertNoNumber(v);
-        assertNoBoolean(v);
-        assertNoNative(v);
-        assertNotInstantiable(v);
-    }
-
-    private static class InstantiableDefaults extends ProxyLegacyInteropObject {
-
-        boolean instantiable = true;
-
-        @Override
-        public boolean isInstantiable() {
-            return instantiable;
-        }
-
-        @Override
-        @TruffleBoundary
-        public Object newInstance(Object[] args) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-            return Arrays.toString(args);
-        }
-
-    }
-
-    @Test
-    public void testInstantiableDefaults() throws InteropException {
-        InstantiableDefaults v = new InstantiableDefaults();
-        InteropLibrary library = createLibrary(InteropLibrary.class, v);
-
-        assertTrue(library.isInstantiable(v));
-        v.instantiable = false;
-        assertFalse(library.isInstantiable(v));
-        v.instantiable = true;
-
-        assertEquals("[]", library.instantiate(v));
-        assertEquals("[foo]", library.instantiate(v, "foo"));
-        assertEquals("[foo, bar]", library.instantiate(v, "foo", "bar"));
-
-        assertNotNull(v);
-        assertNoString(v);
-        assertNoObject(v);
-        assertNoArray(v);
-        assertNoNumber(v);
-        assertNoBoolean(v);
-        assertNoNative(v);
-        assertNotExecutable(v);
-    }
-
-    private static class NativeDefaults extends ProxyLegacyInteropObject {
-
-        boolean isPointer = true;
-
-        long pointer;
-        Object toNative = this;
-
-        @Override
-        public boolean isPointer() {
-            return isPointer;
-        }
-
-        @Override
-        public long asPointer() throws UnsupportedMessageException {
-            return pointer;
-        }
-
-        @Override
-        public Object toNative() throws UnsupportedMessageException {
-            return toNative;
-        }
-    }
-
-    @Test
-    public void testNativeDefaults() throws InteropException {
-        NativeDefaults v = new NativeDefaults();
-        InteropLibrary library = createLibrary(InteropLibrary.class, v);
-
-        assertTrue(library.isPointer(v));
-        v.isPointer = false;
-        assertFalse(library.isPointer(v));
-        v.isPointer = true;
-
-        v.pointer = 42;
-        assertEquals(42, library.asPointer(v));
-        library.toNative(v);
-
-        assertNotNull(v);
-        assertNoString(v);
-        assertNoObject(v);
-        assertNoArray(v);
-        assertNoNumber(v);
-        assertNoBoolean(v);
-        assertNotExecutable(v);
-        assertNotInstantiable(v);
-    }
-
-    private static class LegacyValueDefaults extends ProxyLegacyInteropObject {
-
-        boolean isNull = true;
-
-        @Override
-        public boolean isNull() {
-            return isNull;
-        }
-
-    }
-
-    @Test
-    public void testValueDefaults() {
-        LegacyValueDefaults v = new LegacyValueDefaults();
-        InteropLibrary library = createLibrary(InteropLibrary.class, v);
-
-        assertTrue(library.isNull(v));
-        v.isNull = false;
-        assertFalse(library.isNull(v));
-        v.isNull = true;
-
-        assertNoString(v);
-        assertNoObject(v);
-        assertNoArray(v);
-        assertNoNumber(v);
-        assertNoNative(v);
-        assertNoBoolean(v);
-        assertNotExecutable(v);
-        assertNotInstantiable(v);
     }
 
     private void assertNumber(Object v, boolean supportsByte, boolean supportsShort,
                     boolean supportsInt, boolean supportsLong, boolean supportsFloat, boolean supportsDouble) throws InteropException {
 
         Object expectedValue = v;
-        if (v instanceof LegacyBoxedPrimitive) {
-            expectedValue = ((LegacyBoxedPrimitive) v).value;
-        }
 
         InteropLibrary l = createLibrary(InteropLibrary.class, v);
         assertTrue(l.isNumber(v));
@@ -725,36 +280,181 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
             assertUnsupported(() -> l.asDouble(v));
         }
 
+        assertEquals(v.toString(), l.toDisplayString(v));
+
         assertNoBoolean(v);
         assertNotNull(v);
         assertNoObject(v);
         assertNoArray(v);
         assertNoString(v);
+        // assert number
         assertNoNative(v);
         assertNotExecutable(v);
         assertNotInstantiable(v);
-
-        if (!(v instanceof LegacyBoxedPrimitive)) {
-            assertNumber(new LegacyBoxedPrimitive(v), supportsByte, supportsShort, supportsInt, supportsLong, supportsFloat, supportsDouble);
-        }
+        assertNoMetaObject(v);
+        assertHasNoMetaObject(v);
+        assertNoDate(v);
+        assertNoTime(v);
+        assertNoTimeZone(v);
+        assertNoDuration(v);
+        assertNoSourceLocation(v);
+        assertNoLanguage(v);
     }
 
-    static class LegacyBoxedPrimitive extends ProxyLegacyInteropObject {
-        Object value;
+    @Test
+    public void testObjectDefaults() {
+        AtomicBoolean toStringInvoked = new AtomicBoolean();
 
-        LegacyBoxedPrimitive(Object v) {
-            this.value = v;
+        Object v = new TruffleObject() {
+            @Override
+            public String toString() {
+                toStringInvoked.set(true);
+                return super.toString();
+            }
+        };
+        InteropLibrary l = createLibrary(InteropLibrary.class, v);
+        String expectedToString = v.toString();
+        toStringInvoked.set(false);
+        assertEquals(expectedToString, l.toDisplayString(v));
+        assertFalse(toStringInvoked.get());
+        assertNoTypes(v);
+    }
+
+    public static class MetaDataLegacyObject implements TruffleObject {
+
+        final SourceSection section;
+        final Object metaObject;
+
+        MetaDataLegacyObject(SourceSection section, Object metaObject) {
+            this.section = section;
+            this.metaObject = metaObject;
         }
 
-        @Override
-        public boolean isBoxed() {
-            return true;
+    }
+
+    public static class MetaDataLegacyOnlyLangauge implements TruffleObject {
+
+        MetaDataLegacyOnlyLangauge() {
         }
 
-        @Override
-        public Object unbox() throws UnsupportedMessageException {
-            return value;
-        }
+    }
+
+    @Test
+    public void testMetaDataLegacyBehavior() throws InteropException {
+        setupEnv(Context.create(), new ProxyLanguage() {
+            @Override
+            protected boolean isObjectOfLanguage(Object object) {
+                return object instanceof MetaDataLegacyObject || object instanceof MetaDataLegacyOnlyLangauge;
+            }
+
+            @Override
+            protected SourceSection findSourceLocation(LanguageContext c, Object value) {
+                if (value instanceof MetaDataLegacyObject) {
+                    return ((MetaDataLegacyObject) value).section;
+                }
+                return null;
+            }
+
+            @Override
+            protected Object findMetaObject(LanguageContext c, Object value) {
+                if (value instanceof MetaDataLegacyObject) {
+                    return ((MetaDataLegacyObject) value).metaObject;
+                }
+                return null;
+            }
+
+            @Override
+            protected String toString(LanguageContext c, Object value) {
+                if (value instanceof MetaDataLegacyObject) {
+                    return "MetaDataLegacyObject";
+                }
+                return super.toString(c, value);
+            }
+
+        });
+        SourceSection section = Source.newBuilder(ProxyLanguage.ID, "", "").build().createUnavailableSection();
+        Object v1 = new MetaDataLegacyObject(section, "meta-object");
+        InteropLibrary libV1 = createLibrary(InteropLibrary.class, v1);
+
+        assertTrue(libV1.hasLanguage(v1));
+        assertSame(ProxyLanguage.class, libV1.getLanguage(v1));
+        assertTrue(libV1.hasMetaObject(v1));
+        Object metaObject = libV1.getMetaObject(v1);
+        InteropLibrary metaObjectInterop = createLibrary(InteropLibrary.class, metaObject);
+        assertTrue(metaObjectInterop.isMetaObject(metaObject));
+        assertTrue(metaObjectInterop.isMetaInstance(metaObject, v1));
+        assertEquals("meta-object", metaObjectInterop.toDisplayString(metaObject));
+        assertEquals("meta-object", metaObjectInterop.getMetaSimpleName(metaObject));
+        assertEquals("meta-object", metaObjectInterop.getMetaQualifiedName(metaObject));
+        assertTrue(libV1.hasSourceLocation(v1));
+        assertSame(section, libV1.getSourceLocation(v1));
+        assertEquals("MetaDataLegacyObject", libV1.toDisplayString(v1));
+
+        assertNoBoolean(v1);
+        assertNotNull(v1);
+        assertNoObject(v1);
+        assertNoArray(v1);
+        assertNoString(v1);
+        assertNoNumber(v1);
+        assertNoNative(v1);
+        assertNotExecutable(v1);
+        assertNotInstantiable(v1);
+        assertNoMetaObject(v1);
+        // has meta-object
+        assertNoDate(v1);
+        assertNoTime(v1);
+        assertNoTimeZone(v1);
+        assertNoDuration(v1);
+        // has source section
+        // has language
+
+        Object v2 = new MetaDataLegacyOnlyLangauge();
+        InteropLibrary libV2 = createLibrary(InteropLibrary.class, v2);
+        assertTrue(libV2.hasLanguage(v2));
+        assertSame(ProxyLanguage.class, libV2.getLanguage(v2));
+        assertFalse(libV2.hasMetaObject(v2));
+        assertFails(() -> libV2.getMetaObject(v2), UnsupportedMessageException.class);
+        assertFalse(libV2.hasSourceLocation(v2));
+        assertFails(() -> libV2.getSourceLocation(v2), UnsupportedMessageException.class);
+        assertEquals(v2.toString(), libV2.toDisplayString(v2));
+
+        assertNoBoolean(v2);
+        assertNotNull(v2);
+        assertNoObject(v2);
+        assertNoArray(v2);
+        assertNoString(v2);
+        assertNoNumber(v2);
+        assertNoNative(v2);
+        assertNotExecutable(v2);
+        assertNotInstantiable(v2);
+        assertNoMetaObject(v2);
+        assertHasNoMetaObject(v2);
+        assertNoDate(v2);
+        assertNoTime(v2);
+        assertNoTimeZone(v2);
+        assertNoDuration(v2);
+        assertNoSourceLocation(v2);
+        // has language
+    }
+
+    private void assertNoTypes(Object v) {
+        assertNoBoolean(v);
+        assertNotNull(v);
+        assertNoObject(v);
+        assertNoArray(v);
+        assertNoString(v);
+        assertNoNumber(v);
+        assertNoNative(v);
+        assertNotExecutable(v);
+        assertNotInstantiable(v);
+        assertNoMetaObject(v);
+        assertHasNoMetaObject(v);
+        assertNoDate(v);
+        assertNoTime(v);
+        assertNoTimeZone(v);
+        assertNoDuration(v);
+        assertNoSourceLocation(v);
+        assertNoLanguage(v);
     }
 
 }

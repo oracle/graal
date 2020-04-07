@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
+import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,9 +39,7 @@ import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
-import org.graalvm.compiler.nodes.spi.GCProvider;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -57,6 +56,7 @@ import com.oracle.svm.core.MemoryWalker.HeapChunkAccess;
 import com.oracle.svm.core.MemoryWalker.NativeImageHeapRegionAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -69,36 +69,53 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
+import com.oracle.svm.core.locks.VMCondition;
+import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.thread.VMThreads;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 //Checkstyle: stop
 import sun.management.Util;
 //Checkstyle: resume
 
 /** An implementation of a card remembered set generational heap. */
 public class HeapImpl extends Heap {
+    /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
+    private static final VMMutex REF_MUTEX = new VMMutex();
+    private static final VMCondition REF_CONDITION = new VMCondition(REF_MUTEX);
 
+    // Singleton instances, created during image generation.
     private final YoungGeneration youngGeneration;
     private final OldGeneration oldGeneration;
     final HeapChunkProvider chunkProvider;
+    private final ObjectHeaderImpl objectHeaderImpl;
+    private final GCImpl gcImpl;
+    private final HeapPolicy heapPolicy;
 
-    // Singleton instances, created during image generation.
-    private final GenScavengeGCProvider gcProvider;
     private final MemoryMXBean memoryMXBean;
     private final ImageHeapInfo imageHeapInfo;
+    private HeapVerifierImpl heapVerifier;
+    private final StackVerifier stackVerifier;
 
-    // Memory walkers for the image heap
-    private final ReadOnlyPrimitiveMemoryWalkerAccess readOnlyPrimitiveWalker;
-    private final ReadOnlyReferenceMemoryWalkerAccess readOnlyReferenceWalker;
-    private final WritablePrimitiveMemoryWalkerAccess writablePrimitiveWalker;
-    private final WritableReferenceMemoryWalkerAccess writableReferenceWalker;
+    /** The head of the list of currently pending (ready to be enqueued) {@link Reference}s. */
+    private Reference<?> refPendingList;
+    /** Total number of times when a new pending reference list became available. */
+    private long refListOfferCounter;
+    /** Total number of times when threads waiting for a pending reference list were interrupted. */
+    private long refListWaiterWakeUpCounter;
 
     /** A list of all the classes, if someone asks for it. */
     private List<Class<?>> classList;
@@ -112,7 +129,7 @@ public class HeapImpl extends Heap {
         this.heapPolicy = new HeapPolicy(access);
         this.pinHead = new AtomicReference<>();
         /* Pre-allocate verifiers for use during collection. */
-        if (getVerifyHeapBeforeGC() || getVerifyHeapAfterGC() || getVerifyStackBeforeGC() || getVerifyStackAfterGC()) {
+        if (getVerifyHeapBeforeGC() || getVerifyHeapAfterGC() || getVerifyStackBeforeGC() || getVerifyStackAfterGC() || getVerifyDirtyCardBeforeGC() || getVerifyDirtyCardAfterGC()) {
             this.heapVerifier = HeapVerifierImpl.factory();
             this.stackVerifier = new StackVerifier();
         } else {
@@ -120,19 +137,14 @@ public class HeapImpl extends Heap {
             this.stackVerifier = null;
         }
         chunkProvider = new HeapChunkProvider();
-        this.gcProvider = new GenScavengeGCProvider();
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.imageHeapInfo = new ImageHeapInfo();
-        this.readOnlyPrimitiveWalker = new ReadOnlyPrimitiveMemoryWalkerAccess();
-        this.readOnlyReferenceWalker = new ReadOnlyReferenceMemoryWalkerAccess();
-        this.writablePrimitiveWalker = new WritablePrimitiveMemoryWalkerAccess();
-        this.writableReferenceWalker = new WritableReferenceMemoryWalkerAccess();
         this.classList = null;
-        SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(() -> {
-            bootImageHeapBoundariesToLog(Log.log()).newline();
-            zapValuesToLog(Log.log()).newline();
-            report(Log.log(), true).newline();
-            Log.log().newline();
+        SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(log -> {
+            logImageHeapPartitionBoundaries(log).newline();
+            zapValuesToLog(log).newline();
+            report(log, true).newline();
+            log.newline();
         });
     }
 
@@ -150,15 +162,27 @@ public class HeapImpl extends Heap {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public boolean isInImageHeap(Object object) {
-        return objectHeaderImpl.isBootImage(object);
+    public boolean isInImageHeap(Object obj) {
+        // This method is not really uninterruptible (mayBeInlined) but converts arbitrary objects
+        // to pointers. An object that is outside the image heap may be moved by a GC but it will
+        // never be moved into the image heap. So, this is fine.
+        return isInImageHeap(Word.objectToUntrackedPointer(obj));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInImageHeap(Pointer pointer) {
-        return imageHeapInfo.isInReadOnlyPrimitivePartition(pointer) || imageHeapInfo.isInReadOnlyReferencePartition(pointer) ||
-                        imageHeapInfo.isInWritablePrimitivePartition(pointer) || imageHeapInfo.isInWritableReferencePartition(pointer);
+        return imageHeapInfo.isInImageHeap(pointer) || (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(pointer));
+    }
+
+    public boolean isInImageHeapSlow(Object obj) {
+        return isInImageHeapSlow(Word.objectToUntrackedPointer(obj));
+    }
+
+    /** Slow version that is used for verification only. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isInImageHeapSlow(Pointer p) {
+        return imageHeapInfo.isInImageHeapSlow(p) || (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObjectSlow(p));
     }
 
     @Override
@@ -180,7 +204,7 @@ public class HeapImpl extends Heap {
     /** Walk the regions of the heap with a MemoryWalker. */
     public boolean walkMemory(MemoryWalker.Visitor visitor) {
         VMOperation.guaranteeInProgressAtSafepoint("must only be executed at a safepoint");
-        return walkNativeImageHeap(visitor) && getYoungGeneration().walkHeapChunks(visitor) && getOldGeneration().walkHeapChunks(visitor) && HeapChunkProvider.get().walkHeapChunks(visitor);
+        return walkNativeImageHeapRegions(visitor) && getYoungGeneration().walkHeapChunks(visitor) && getOldGeneration().walkHeapChunks(visitor) && HeapChunkProvider.get().walkHeapChunks(visitor);
     }
 
     /** Tear down the heap, return all allocated virtual memory chunks to VirtualMemoryProvider. */
@@ -193,9 +217,6 @@ public class HeapImpl extends Heap {
         return true;
     }
 
-    /** State: Who handles object headers? */
-    private final ObjectHeaderImpl objectHeaderImpl;
-
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public ObjectHeader getObjectHeader() {
@@ -205,9 +226,6 @@ public class HeapImpl extends Heap {
     public ObjectHeaderImpl getObjectHeaderImpl() {
         return objectHeaderImpl;
     }
-
-    /** State: Who handles garbage collection. */
-    private final GCImpl gcImpl;
 
     @Override
     public GC getGC() {
@@ -240,76 +258,43 @@ public class HeapImpl extends Heap {
      * This method has to be final so it can be called (transitively) from the allocation snippets.
      */
     final Space getAllocationSpace() {
-        return getYoungGeneration().getSpace();
+        return getYoungGeneration().getEden();
     }
 
-    public HeapChunk.Header<?> getEnclosingHeapChunk(Object obj) {
-        final ObjectHeaderImpl ohi = getObjectHeaderImpl();
-        if (ohi.isAlignedObject(obj)) {
-            return AlignedHeapChunk.getEnclosingAlignedHeapChunk(obj);
-        } else if (ohi.isUnalignedObject(obj)) {
-            return UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(obj);
-        } else {
-            try (Log failure = Log.log().string("[HeapImpl.getEnclosingHeapChunk:")) {
-                failure.string("  obj: ").hex(Word.objectToUntrackedPointer(obj));
-                /* This might not work: */
-                final UnsignedWord header = ObjectHeaderImpl.readHeaderFromObjectCarefully(obj);
-                failure.string("  header: ").hex(header).string("  is neither aligned nor unaligned").newline();
-                /* This really might not work: */
-                failure.string("  obj: ").object(obj).string("]").newline();
-            }
-            throw VMError.shouldNotReachHere();
-        }
-    }
-
-    public Object promoteObject(Object original) {
+    @AlwaysInline("GC performance")
+    public Object promoteObject(Object original, UnsignedWord header) {
         final Log trace = Log.noopLog().string("[HeapImpl.promoteObject:").string("  original: ").object(original);
 
-        final OldGeneration oldGen = getOldGeneration();
-        final Object result = oldGen.promoteObject(original);
+        Object result;
+        if (HeapPolicy.getMaxSurvivorSpaces() > 0 && !getGCImpl().isCompleteCollection()) {
+            result = getYoungGeneration().promoteObject(original, header);
+        } else {
+            result = getOldGeneration().promoteObject(original, header);
+        }
 
         trace.string("  result: ").object(result).string("]").newline();
         return result;
     }
 
-    boolean hasSurvivedThisCollection(Object obj) {
-        final ObjectHeaderImpl ohi = getObjectHeaderImpl();
-        if (ohi.isBootImage(obj)) {
-            /* If the object is in the native image heap, then it will survive. */
-            return true;
+    @AlwaysInline("GC performance")
+    void dirtyCardIfNecessary(Object holderObject, Object object) {
+        if (HeapPolicy.getMaxSurvivorSpaces() == 0 || holderObject == null || GCImpl.getGCImpl().isCompleteCollection() || !youngGeneration.contains(object)) {
+            return;
         }
-        if (ohi.isHeapAllocated(obj)) {
-            /*
-             * If the object is in the heap, then check if it is in the destination part of the old
-             * generation.
-             */
-            final HeapChunk.Header<?> chunk = getEnclosingHeapChunk(obj);
-            final Space space = chunk.getSpace();
-            final OldGeneration oldGen = getOldGeneration();
-            return space == oldGen.getToSpace();
-        }
-        return false;
-    }
 
-    /** State: Who decides the heap policy? */
-    private final HeapPolicy heapPolicy;
+        final UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(holderObject);
+        if (ObjectHeaderImpl.hasRememberedSet(objectHeader)) {
+            if (ObjectHeaderImpl.isAlignedObject(holderObject)) {
+                AlignedHeapChunk.dirtyCardForObjectOfAlignedHeapChunk(holderObject, false);
+            } else {
+                assert ObjectHeaderImpl.isUnalignedObject(holderObject) : "sanity";
+                UnalignedHeapChunk.dirtyCardForObjectOfUnalignedHeapChunk(holderObject, false);
+            }
+        }
+    }
 
     public HeapPolicy getHeapPolicy() {
         return HeapImpl.getHeapImpl().heapPolicy;
-    }
-
-    /*
-     * There could be a field in a Space that says what generation it is in, and I could fetch that
-     * field and ask if it is the space of the young generation. But this is not a good place to use
-     * that field, because this.getYoungGeneration().isYoungSpace(space) should compile to a test
-     * against a constant because the YoungGeneration and its Space are allocated during image
-     * build, so the *address* of the young generation space is a runtime constant. Compare that to
-     * asking the Space for its generation: a field fetch and then comparing that against the
-     * constant getYoungGeneration().getSpace(), which is not as good.
-     */
-
-    public boolean isYoungGeneration(Space space) {
-        return getYoungGeneration().isYoungSpace(space);
     }
 
     public YoungGeneration getYoungGeneration() {
@@ -320,6 +305,10 @@ public class HeapImpl extends Heap {
         return oldGeneration;
     }
 
+    public boolean isOldGeneration(Space space) {
+        return space.isOldSpace();
+    }
+
     /** The head of the linked list of object pins. */
     private AtomicReference<PinnedObjectImpl> pinHead;
 
@@ -328,9 +317,8 @@ public class HeapImpl extends Heap {
     }
 
     public boolean isPinned(Object instance) {
-        final ObjectHeaderImpl ohi = getObjectHeaderImpl();
         /* The instance is pinned if it is in the image heap. */
-        if (ohi.isBootImage(instance)) {
+        if (isInImageHeap(instance)) {
             return true;
         }
         /* Look down the list of individually pinned objects. */
@@ -353,8 +341,7 @@ public class HeapImpl extends Heap {
     }
 
     UnsignedWord getYoungUsedChunkBytes() {
-        final Space.Accounting young = getYoungGeneration().getSpace().getAccounting();
-        return young.getAlignedChunkBytes().add(young.getUnalignedChunkBytes());
+        return getYoungGeneration().getChunkUsedBytes();
     }
 
     UnsignedWord getOldUsedChunkBytes() {
@@ -364,6 +351,7 @@ public class HeapImpl extends Heap {
         final Space.Accounting to = getOldGeneration().getToSpace().getAccounting();
         final UnsignedWord toBytes = to.getAlignedChunkBytes().add(to.getUnalignedChunkBytes());
         final UnsignedWord result = fromBytes.add(toBytes);
+        // @formatter:off
         if (trace.isEnabled()) {
             trace
                             .string("  fromAligned: ").unsigned(from.getAlignedChunkBytes())
@@ -372,16 +360,21 @@ public class HeapImpl extends Heap {
                             .string("  toUnaligned: ").signed(to.getUnalignedChunkBytes())
                             .string("  returns: ").unsigned(result).string(" ]").newline();
         }
+        // @formatter:on
         return result;
     }
 
     /** Return the size, in bytes, of the actual used memory, not the committed memory. */
     public UnsignedWord getUsedObjectBytes() {
-        final Space youngSpace = getYoungGeneration().getSpace();
-        final UnsignedWord youngBytes = youngSpace.getObjectBytes();
+        final Space edenSpace = getYoungGeneration().getEden();
+        final UnsignedWord edenBytes = edenSpace.getObjectBytes();
+        UnsignedWord survivorFromBytes = WordFactory.zero();
+        for (int i = 0; i < HeapPolicy.getMaxSurvivorSpaces(); i++) {
+            survivorFromBytes = survivorFromBytes.add(getYoungGeneration().getSurvivorFromSpaceAt(i).getObjectBytes());
+        }
         final Space fromSpace = getOldGeneration().getFromSpace();
-        final UnsignedWord fromBytes = fromSpace.getObjectBytes();
-        return youngBytes.add(fromBytes);
+        final UnsignedWord oldFromBytes = fromSpace.getObjectBytes();
+        return edenBytes.add(survivorFromBytes).add(oldFromBytes);
     }
 
     protected void report(Log log) {
@@ -398,17 +391,9 @@ public class HeapImpl extends Heap {
         return log;
     }
 
-    /** Print the boundaries of the native image heap partitions. */
-    Log bootImageHeapBoundariesToLog(Log log) {
+    Log logImageHeapPartitionBoundaries(Log log) {
         log.string("[Native image heap boundaries: ").indent(true);
-        log.string("ReadOnly Primitives: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyPrimitiveObject)).string(" .. ").hex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyPrimitiveObject)).newline();
-        log.string("ReadOnly References: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyReferenceObject)).string(" .. ").hex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyReferenceObject)).newline();
-        log.string("Writable Primitives: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritablePrimitiveObject)).string(" .. ").hex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastWritablePrimitiveObject)).newline();
-        log.string("Writable References: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject)).string(" .. ").hex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject));
+        ImageHeapWalker.logPartitionBoundaries(log, imageHeapInfo);
         log.redent(false).string("]");
         return log;
     }
@@ -418,6 +403,7 @@ public class HeapImpl extends Heap {
         if (HeapPolicy.getZapProducedHeapChunks() || HeapPolicy.getZapConsumedHeapChunks()) {
             log.string("[Heap Chunk zap values: ").indent(true);
             /* Padded with spaces so the columns line up between the int and word variants. */
+            // @formatter:off
             if (HeapPolicy.getZapProducedHeapChunks()) {
                 log.string("  producedHeapChunkZapInt: ")
                                 .string("  hex: ").spaces(8).hex(HeapPolicy.getProducedHeapChunkZapInt())
@@ -442,6 +428,7 @@ public class HeapImpl extends Heap {
                                 .string("  unsigned: ").unsigned(HeapPolicy.getConsumedHeapChunkZapWord());
             }
             log.redent(false).string("]");
+            // @formatter:on
         }
         return log;
     }
@@ -480,9 +467,6 @@ public class HeapImpl extends Heap {
      * Verification.
      */
 
-    /** State: The heap verifier. */
-    private HeapVerifierImpl heapVerifier;
-
     HeapVerifier getHeapVerifier() {
         return getHeapVerifierImpl();
     }
@@ -497,22 +481,32 @@ public class HeapImpl extends Heap {
 
     @Fold
     static boolean getVerifyHeapBeforeGC() {
-        return (HeapOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapBeforeCollection.getValue());
+        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapBeforeCollection.getValue());
     }
 
     @Fold
     static boolean getVerifyHeapAfterGC() {
-        return (HeapOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapAfterCollection.getValue());
+        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapAfterCollection.getValue());
     }
 
     @Fold
     static boolean getVerifyStackBeforeGC() {
-        return (HeapOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackBeforeCollection.getValue());
+        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackBeforeCollection.getValue());
     }
 
     @Fold
     static boolean getVerifyStackAfterGC() {
-        return (HeapOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackAfterCollection.getValue());
+        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackAfterCollection.getValue());
+    }
+
+    @Fold
+    static boolean getVerifyDirtyCardBeforeGC() {
+        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyDirtyCardsBeforeCollection.getValue());
+    }
+
+    @Fold
+    static boolean getVerifyDirtyCardAfterGC() {
+        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyDirtyCardsAfterCollection.getValue());
     }
 
     @NeverInline("Starting a stack walk in the caller frame")
@@ -534,6 +528,11 @@ public class HeapImpl extends Heap {
                 assert false;
             }
         }
+        if (getVerifyDirtyCardBeforeGC()) {
+            assert heapVerifier != null : "No heap verifier!";
+            Log.log().string("[Verify dirtyCard before GC: ");
+            heapVerifier.verifyDirtyCard(false);
+        }
         trace.string("]").newline();
     }
 
@@ -553,6 +552,11 @@ public class HeapImpl extends Heap {
                 assert false;
             }
         }
+        if (getVerifyDirtyCardAfterGC()) {
+            assert heapVerifier != null : "No heap verifier!";
+            Log.log().string("[Verify dirtyCard after GC: ");
+            heapVerifier.verifyDirtyCard(true);
+        }
     }
 
     /** For assertions: Verify that the hub is a reference to where DynamicHubs live in the heap. */
@@ -567,14 +571,6 @@ public class HeapImpl extends Heap {
         return assertHub(hub);
     }
 
-    /** For assertions: Verify that a Space is a valid Space. */
-    public boolean isValidSpace(Space space) {
-        return (getYoungGeneration().isValidSpace(space) || getOldGeneration().isValidSpace(space));
-    }
-
-    /** State: The stack verifier. */
-    private final StackVerifier stackVerifier;
-
     /*
      * Methods for java.lang.Runtime.*Memory(), quoting from that JavaDoc.
      */
@@ -587,7 +583,7 @@ public class HeapImpl extends Heap {
         /*
          * Report "chunk bytes" rather than the slower but more accurate "object bytes".
          */
-        return maxMemory().subtract(HeapPolicy.getBytesAllocatedSinceLastCollection()).subtract(getOldUsedChunkBytes());
+        return maxMemory().subtract(HeapPolicy.getYoungUsedBytes()).subtract(getOldUsedChunkBytes());
     }
 
     /**
@@ -610,11 +606,6 @@ public class HeapImpl extends Heap {
          * it does not include memory in the chunk free list, or memory in the image heap.
          */
         return HeapPolicy.getMaximumHeapSize();
-    }
-
-    @Override
-    public GCProvider getGCProvider() {
-        return gcProvider;
     }
 
     @Override
@@ -648,10 +639,8 @@ public class HeapImpl extends Heap {
     public boolean walkImageHeapObjects(ObjectVisitor visitor) {
         VMOperation.guaranteeInProgressAtSafepoint("Must only be called at a safepoint");
         if (visitor != null) {
-            return walkPartition(imageHeapInfo.firstReadOnlyPrimitiveObject, imageHeapInfo.lastReadOnlyPrimitiveObject, visitor) &&
-                            walkPartition(imageHeapInfo.firstReadOnlyReferenceObject, imageHeapInfo.lastReadOnlyReferenceObject, visitor) &&
-                            walkPartition(imageHeapInfo.firstWritablePrimitiveObject, imageHeapInfo.lastWritablePrimitiveObject, visitor) &&
-                            walkPartition(imageHeapInfo.firstWritableReferenceObject, imageHeapInfo.lastWritableReferenceObject, visitor);
+            return ImageHeapWalker.walkImageHeapObjects(imageHeapInfo, visitor) &&
+                            (!AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkObjects(visitor));
         }
         return true;
     }
@@ -662,39 +651,154 @@ public class HeapImpl extends Heap {
         return getYoungGeneration().walkObjects(visitor) && getOldGeneration().walkObjects(visitor);
     }
 
-    private boolean walkNativeImageHeap(MemoryWalker.Visitor visitor) {
-        return visitor.visitNativeImageHeapRegion(readOnlyPrimitiveWalker) && visitor.visitNativeImageHeapRegion(readOnlyReferenceWalker) &&
-                        visitor.visitNativeImageHeapRegion(writablePrimitiveWalker) && visitor.visitNativeImageHeapRegion(writableReferenceWalker);
+    boolean walkNativeImageHeapRegions(MemoryWalker.Visitor visitor) {
+        return ImageHeapWalker.walkRegions(imageHeapInfo, visitor) &&
+                        (!AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkRegions(visitor));
     }
 
-    private static boolean walkPartition(Object firstObject, Object lastObject, ObjectVisitor visitor) {
-        if (firstObject == null || lastObject == null) {
-            assert firstObject == null && lastObject == null;
-            return true;
+    @Override
+    public CardTableBarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
+        ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
+        return new CardTableBarrierSet(objectArrayType);
+    }
+
+    void addToReferencePendingList(Reference<?> list) {
+        VMOperation.guaranteeGCInProgress("Must only be called during a GC.");
+        if (list == null) {
+            return;
         }
-        final Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
-        final Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
-        Pointer current = firstPointer;
-        while (current.belowOrEqual(lastPointer)) {
-            final Object currentObject = KnownIntrinsics.convertUnknownValue(current.toObject(), Object.class);
-            if (!visitor.visitObject(currentObject)) {
-                return false;
+        REF_MUTEX.lock();
+        try {
+            if (refPendingList != null) { // append
+                Reference<?> current = refPendingList;
+                Reference<?> next = ReferenceInternals.getNextDiscovered(current);
+                while (next != null) {
+                    current = next;
+                    next = ReferenceInternals.getNextDiscovered(current);
+                }
+                ReferenceInternals.setNextDiscovered(current, list);
+                // No need to notify: waiters would have been notified about the existing list
+            } else {
+                refPendingList = list;
+                refListOfferCounter++;
+                REF_CONDITION.broadcast();
             }
-            current = LayoutEncoding.getObjectEnd(currentObject);
+        } finally {
+            REF_MUTEX.unlock();
         }
-        return true;
     }
 
-    private static class GenScavengeGCProvider implements GCProvider {
-        private final BarrierSet barrierSet;
-
-        GenScavengeGCProvider() {
-            this.barrierSet = new CardTableBarrierSet();
+    @Override
+    @Uninterruptible(reason = "Safepoint while holding the lock could lead to a deadlock in GC.")
+    public boolean hasReferencePendingList() {
+        REF_MUTEX.lockNoTransition();
+        try {
+            return (refPendingList != null);
+        } finally {
+            REF_MUTEX.unlock();
         }
+    }
 
-        @Override
-        public BarrierSet getBarrierSet() {
-            return barrierSet;
+    @Override
+    @Uninterruptible(reason = "Safepoint while holding the lock could lead to a deadlock in GC.")
+    public void waitForReferencePendingList() throws InterruptedException {
+        long initialOffers;
+        long initialWakeUps;
+        REF_MUTEX.lockNoTransition();
+        try {
+            if (refPendingList != null) {
+                return;
+            }
+            /*
+             * Remember current counter values to detect changes when waiting in native. We need to
+             * do this right after the above check while holding the lock to prevent lost updates.
+             */
+            initialOffers = refListOfferCounter;
+            initialWakeUps = refListWaiterWakeUpCounter;
+        } finally {
+            REF_MUTEX.unlock();
+        }
+        transitionToParkedInNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    private static void transitionToParkedInNativeThenAwaitPendingRefs(long initialOffers, long initialWakeUps) throws InterruptedException {
+        doTransitionToParkedInNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
+    }
+
+    private static void doTransitionToParkedInNativeThenAwaitPendingRefs(long initialOffers, long initialWakeUps) throws InterruptedException {
+        Thread currentThread = Thread.currentThread();
+        int oldThreadStatus = JavaThreads.getThreadStatus(currentThread);
+        JavaThreads.setThreadStatus(currentThread, ThreadStatus.PARKED);
+        try {
+            boolean offered;
+            do {
+                if (Thread.interrupted()) {
+                    throw new InterruptedException();
+                }
+                offered = transitionToNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
+            } while (!offered);
+        } finally {
+            JavaThreads.setThreadStatus(currentThread, oldThreadStatus);
+        }
+    }
+
+    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
+    private static boolean transitionToNativeThenAwaitPendingRefs(long initialOffers, long initialWakeUps) {
+        // Note that we cannot hold the lock going into or out of native because we could enter a
+        // safepoint during the transition and would risk a deadlock with the VMOperation.
+        CFunctionPrologueNode.cFunctionPrologue(VMThreads.StatusSupport.STATUS_IN_NATIVE);
+        boolean offered = awaitPendingRefsInNative(initialOffers, initialWakeUps);
+        CFunctionEpilogueNode.cFunctionEpilogue(VMThreads.StatusSupport.STATUS_IN_NATIVE);
+        return offered;
+    }
+
+    @Uninterruptible(reason = "In native.")
+    @NeverInline("Provide a return address for the Java frame anchor.")
+    private static boolean awaitPendingRefsInNative(long initialOffers, long initialWakeUps) {
+        /*
+         * This method is executing in native state and must not deal with object references.
+         * Therefore it has to be static and cannot access the `refPendingList` field either. We
+         * work around this by indicating updates and interrupts via counter updates. We can safely
+         * access those counters as fields of HeapImpl as long as we can get the HeapImpl instance
+         * folded to its memory address so that the field accesses become direct memory reads.
+         */
+        REF_MUTEX.lockNoTransition();
+        try {
+            while (getHeapImpl().refListOfferCounter == initialOffers) {
+                REF_CONDITION.blockNoTransition();
+                if (getHeapImpl().refListWaiterWakeUpCounter != initialWakeUps) {
+                    return false;
+                }
+            }
+            return true;
+        } finally {
+            REF_MUTEX.unlock();
+        }
+    }
+
+    @Override
+    @Uninterruptible(reason = "Safepoint while holding the lock could lead to a deadlock in GC.")
+    public void wakeUpReferencePendingListWaiters() {
+        REF_MUTEX.lockNoTransition();
+        try {
+            refListWaiterWakeUpCounter++;
+            REF_CONDITION.broadcast();
+        } finally {
+            REF_MUTEX.unlock();
+        }
+    }
+
+    @Override
+    @Uninterruptible(reason = "Safepoint while holding the lock could lead to a deadlock in GC.")
+    public Reference<?> getAndClearReferencePendingList() {
+        REF_MUTEX.lockNoTransition();
+        try {
+            Reference<?> list = refPendingList;
+            refPendingList = null;
+            return list;
+        } finally {
+            REF_MUTEX.unlock();
         }
     }
 }
@@ -831,8 +935,8 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
      */
 
     @Override
-    public boolean visitNativeImageHeapRegion(NativeImageHeapRegionAccess access) {
-        final UnsignedWord size = access.getSize();
+    public <T> boolean visitNativeImageHeapRegion(T region, NativeImageHeapRegionAccess<T> access) {
+        final UnsignedWord size = access.getSize(region);
         heapUsed = heapUsed.add(size);
         heapCommitted = heapCommitted.add(size);
         return true;
@@ -888,115 +992,5 @@ final class Target_java_lang_Runtime {
     @Substitute
     private void gc() {
         HeapImpl.getHeapImpl().getHeapPolicy().getUserRequestedGCPolicy().maybeCauseCollection(GCCause.JavaLangSystemGC);
-    }
-}
-
-/** A base class with shared logic for all the MemoryWalkerAccessImpl implementations. */
-class BaseMemoryWalkerAccessImpl {
-    /*
-     * This looks like the "firstObject" and "lastObject" parameters could be replaced with instance
-     * fields, initialized in the constructors for the subclasses and used here. That would not work
-     * because the MemoryWalkerAccessImpl instances are created during native image generation at
-     * which point I do not know the location of the first and last objects of each region. So, I
-     * have to indirect through the variables that are relocated during image loading.
-     */
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected BaseMemoryWalkerAccessImpl() {
-    }
-
-    protected UnsignedWord getStart(Object firstObject) {
-        return Word.objectToUntrackedPointer(firstObject);
-    }
-
-    /** Return the distance from the start of the first object to the end of the last object. */
-    protected UnsignedWord getSize(Object firstObject, Object lastObject) {
-        final Pointer firstStart = Word.objectToUntrackedPointer(firstObject);
-        final Pointer lastEnd = LayoutEncoding.getObjectEnd(lastObject);
-        return lastEnd.subtract(firstStart);
-    }
-}
-
-class ReadOnlyPrimitiveMemoryWalkerAccess extends BaseMemoryWalkerAccessImpl implements MemoryWalker.NativeImageHeapRegionAccess {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected ReadOnlyPrimitiveMemoryWalkerAccess() {
-    }
-
-    @Override
-    public UnsignedWord getStart() {
-        return getStart(HeapImpl.getImageHeapInfo().firstReadOnlyPrimitiveObject);
-    }
-
-    @Override
-    public UnsignedWord getSize() {
-        return getSize(HeapImpl.getImageHeapInfo().firstReadOnlyPrimitiveObject, HeapImpl.getImageHeapInfo().lastReadOnlyPrimitiveObject);
-    }
-
-    @Override
-    public String getRegion() {
-        return "read-only primitives";
-    }
-}
-
-class ReadOnlyReferenceMemoryWalkerAccess extends BaseMemoryWalkerAccessImpl implements MemoryWalker.NativeImageHeapRegionAccess {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected ReadOnlyReferenceMemoryWalkerAccess() {
-    }
-
-    @Override
-    public UnsignedWord getStart() {
-        return getStart(HeapImpl.getImageHeapInfo().firstReadOnlyReferenceObject);
-    }
-
-    @Override
-    public UnsignedWord getSize() {
-        return getSize(HeapImpl.getImageHeapInfo().firstReadOnlyReferenceObject, HeapImpl.getImageHeapInfo().lastReadOnlyReferenceObject);
-    }
-
-    @Override
-    public String getRegion() {
-        return "read-only references";
-    }
-}
-
-class WritablePrimitiveMemoryWalkerAccess extends BaseMemoryWalkerAccessImpl implements MemoryWalker.NativeImageHeapRegionAccess {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected WritablePrimitiveMemoryWalkerAccess() {
-    }
-
-    @Override
-    public UnsignedWord getStart() {
-        return getStart(HeapImpl.getImageHeapInfo().firstWritablePrimitiveObject);
-    }
-
-    @Override
-    public UnsignedWord getSize() {
-        return getSize(HeapImpl.getImageHeapInfo().firstWritablePrimitiveObject, HeapImpl.getImageHeapInfo().lastWritablePrimitiveObject);
-    }
-
-    @Override
-    public String getRegion() {
-        return "writable primitives";
-    }
-}
-
-class WritableReferenceMemoryWalkerAccess extends BaseMemoryWalkerAccessImpl implements MemoryWalker.NativeImageHeapRegionAccess {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected WritableReferenceMemoryWalkerAccess() {
-    }
-
-    @Override
-    public UnsignedWord getStart() {
-        return getStart(HeapImpl.getImageHeapInfo().firstWritableReferenceObject);
-    }
-
-    @Override
-    public UnsignedWord getSize() {
-        return getSize(HeapImpl.getImageHeapInfo().firstWritableReferenceObject, HeapImpl.getImageHeapInfo().lastWritableReferenceObject);
-    }
-
-    @Override
-    public String getRegion() {
-        return "writable references";
     }
 }

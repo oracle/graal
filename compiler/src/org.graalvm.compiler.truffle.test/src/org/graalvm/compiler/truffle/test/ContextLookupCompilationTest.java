@@ -30,15 +30,11 @@ import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.word.LocationIdentity;
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -60,19 +56,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
     static final String EXCLUSIVE_LANGUAGE = "ContextLookupCompilationTestExclusive";
     static final String SHARED_LANGUAGE = "ContextLookupCompilationTestShared";
-
-    @BeforeClass
-    public static void classSetup() {
-        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
-    }
-
-    @AfterClass
-    public static void tearDown() {
-        immediateCompilationScope.close();
-    }
 
     @Before
     public void setup() {
@@ -80,6 +65,18 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         // this method resets the host vm level assumption to its initial state
         // independent which tests ran before.
         resetSingleContextState();
+    }
+
+    private static Engine createEngine(Engine.Builder engineBuilder) {
+        return engineBuilder.allowExperimentalOptions(true).option("engine.CompileImmediately", "false").build();
+    }
+
+    private static Context createContext(Engine engine) {
+        return enter(Context.newBuilder().engine(engine).build());
+    }
+
+    private static Context createContext(Context.Builder contextBuilder) {
+        return enter(contextBuilder.allowExperimentalOptions(true).option("engine.CompileImmediately", "false").build());
     }
 
     private static Context enter(Context context) {
@@ -93,13 +90,13 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     public void testNoSharingContextMultiThreading() {
         Context context;
 
-        context = enter(Context.create());
+        context = createContext(Context.newBuilder());
         touchOnThread(context);
         assertLookupsNoSharing();
         context.leave();
         context.close();
 
-        context = enter(Context.create());
+        context = createContext(Context.newBuilder());
         touchOnThread(context);
         assertLookupsNoSharing();
         context.leave();
@@ -110,15 +107,15 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     public void testTwoContextMultiThreading() {
         Context context;
 
-        Engine engine = Engine.create();
+        Engine engine = createEngine(Engine.newBuilder());
 
-        context = enter(Context.newBuilder().engine(engine).build());
+        context = createContext(engine);
         touchOnThread(context);
         assertLookupsSharedMultipleThreads(false);
         context.leave();
         context.close();
 
-        context = enter(Context.newBuilder().engine(engine).build());
+        context = createContext(engine);
         touchOnThread(context);
         assertLookupsSharedMultipleThreads(true);
         context.leave();
@@ -144,7 +141,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     public void testInnerContexts() {
         Context context;
 
-        context = enter(Context.create());
+        context = createContext(Context.newBuilder());
         assertCompiling(createAssertConstantFromRef());
         assertLookupsNoSharing();
 
@@ -166,14 +163,14 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     public void testRefTwoConsecutiveContexts() {
         Context context;
 
-        context = enter(Context.create());
+        context = createContext(Context.newBuilder());
         assertCompiling(createAssertConstantFromRef());
         assertLookupsNoSharing();
 
         context.leave();
         context.close();
 
-        context = enter(Context.create());
+        context = createContext(Context.newBuilder());
         assertCompiling(createAssertConstantFromRef());
         assertLookupsNoSharing();
         context.leave();
@@ -205,12 +202,12 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     @Test
     public void testRefTwoContextsAtTheSameTime() {
-        Context context1 = enter(Context.create());
+        Context context1 = createContext(Context.newBuilder());
         assertCompiling(createAssertConstantFromRef());
         assertLookupsNoSharing();
         context1.leave();
 
-        Context context2 = enter(Context.create());
+        Context context2 = createContext(Context.newBuilder());
         assertCompiling(createAssertConstantFromRef());
         assertLookupsNoSharing();
         context2.leave();
@@ -221,8 +218,8 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     @Test
     public void testRefTwoContextsWithSharedEngine() {
-        Engine engine = Engine.create();
-        Context context1 = enter(Context.newBuilder().engine(engine).build());
+        Engine engine = createEngine(Engine.newBuilder());
+        Context context1 = createContext(engine);
         // context must not be constant
         assertBailout(createAssertConstantFromRef());
         assertLookupsSharedEngine(false);
@@ -233,7 +230,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         assertTrue("and keeps valid", target.isValid());
         context1.leave();
 
-        Context context2 = enter(Context.newBuilder().engine(engine).build());
+        Context context2 = createContext(engine);
         assertTrue("still valid in second Context", target.isValid());
         assertLookupsSharedEngine(true);
         context2.leave();
@@ -358,13 +355,13 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     public void testStaticTwoConsecutiveContexts() {
         Context context;
 
-        context = enter(Context.create());
+        context = createContext(Context.newBuilder());
         assertCompiling(createAssertConstantFromStatic());
         assertLookupsNoSharing();
         context.leave();
         context.close();
 
-        context = enter(Context.create());
+        context = createContext(Context.newBuilder());
         assertCompiling(createAssertConstantFromStatic());
         assertLookupsNoSharing();
         context.leave();
@@ -373,12 +370,12 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     @Test
     public void testStaticTwoContextsAtTheSameTime() {
-        Context context1 = enter(Context.create());
+        Context context1 = createContext(Context.newBuilder());
         assertCompiling(createAssertConstantFromStatic());
         assertLookupsNoSharing();
         context1.leave();
 
-        Context context2 = enter(Context.create());
+        Context context2 = createContext(Context.newBuilder());
         assertBailout(createAssertConstantFromStatic());
         assertLookupsNoSharing();
         context2.leave();
@@ -389,8 +386,8 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     @Test
     public void testStaticTwoContextsWithSharedEngine() {
-        Engine engine = Engine.create();
-        Context context1 = enter(Context.newBuilder().engine(engine).build());
+        Engine engine = createEngine(Engine.newBuilder());
+        Context context1 = createContext(engine);
         // context must not be constant
         assertBailout(createAssertConstantFromStatic());
         assertLookupsSharedEngine(false);
@@ -401,7 +398,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         assertTrue("and keeps valid", target.isValid());
         context1.leave();
 
-        Context context2 = enter(Context.newBuilder().engine(engine).build());
+        Context context2 = createContext(engine);
         assertTrue("still valid in second Context", target.isValid());
         assertLookupsSharedEngine(true);
         context2.leave();
@@ -563,11 +560,6 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
             return true;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
         public static LanguageContext getCurrentContext() {
             return getCurrentContext(Exclusive.class);
         }
@@ -601,11 +593,6 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         @Override
         protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
             return true;
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
         }
 
         @SuppressWarnings("deprecation")

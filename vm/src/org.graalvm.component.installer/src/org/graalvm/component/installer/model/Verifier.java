@@ -183,7 +183,7 @@ public class Verifier {
                     addOrThrow(new DependencyException.Conflict(
                                     existing.getId(), componentInfo.getVersionString(), existing.getVersionString(),
                                     feedback.l10n("VERIFY_ComponentExists",
-                                                    existing.getName(), catalog.shortenComponentId(existing), existing.getVersionString())));
+                                                    existing.getName(), existing, existing.getVersionString())));
                 }
             }
         }

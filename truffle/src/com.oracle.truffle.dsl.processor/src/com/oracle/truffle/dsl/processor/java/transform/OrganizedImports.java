@@ -154,7 +154,7 @@ public final class OrganizedImports {
 
     private String createDeclaredTypeName(Element enclosedElement, DeclaredType type, boolean raw) {
         String name = ElementUtils.fixECJBinaryNameIssue(type.asElement().getSimpleName().toString());
-        if (ElementUtils.isDeprecated((TypeElement) type.asElement())) {
+        if (ElementUtils.isDeprecated(type.asElement())) {
             name = ElementUtils.getQualifiedName(type);
         } else if (classImportUsage.containsKey(name)) {
             String qualifiedImport = classImportUsage.get(name);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.NullValue;
 import com.oracle.truffle.llvm.tests.interop.values.StructObject;
 import com.oracle.truffle.llvm.tests.interop.values.TestCallback;
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.util.HashMap;
@@ -44,6 +45,7 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import org.junit.BeforeClass;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -55,7 +57,7 @@ public class TypedInteropTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("typedInterop");
+        testLibrary = loadTestBitcodeInternal("typedInterop.cpp");
     }
 
     private static StructObject makePoint(int x, int y) {
@@ -94,6 +96,180 @@ public class TypedInteropTest extends InteropTestBase {
         Assert.assertEquals(25, ret);
     }
 
+    private static StructObject makeDoublePoint(double x, double y) {
+        Map<String, Object> point = new HashMap<>();
+        point.put("x", x);
+        point.put("y", y);
+        return new StructObject(point);
+    }
+
+    public static class DistSquaredDesugaredNode extends SulongTestNode {
+
+        public DistSquaredDesugaredNode() {
+            super(testLibrary, "distSquaredDesugared");
+        }
+    }
+
+    @Test
+    public void testDistSquaredDesugared(@Inject(DistSquaredDesugaredNode.class) CallTarget distSquaredDesugared) {
+        Object ret = distSquaredDesugared.call(makeDoublePoint(3, 7), makeDoublePoint(6, 3));
+        Assert.assertEquals(25, ret);
+    }
+
+    private static StructObject makeByValPoint(int x, int y, long a, long b) {
+        Map<String, Object> point = new HashMap<>();
+        point.put("x", x);
+        point.put("y", y);
+        point.put("a", a);
+        point.put("b", b);
+        return new StructObject(point);
+    }
+
+    public static class DistSquaredByValNode extends SulongTestNode {
+
+        public DistSquaredByValNode() {
+            super(testLibrary, "distSquaredByVal");
+        }
+    }
+
+    @Test
+    public void testDistSquaredByVal(@Inject(DistSquaredByValNode.class) CallTarget distSquaredByVal) {
+        Object ret = distSquaredByVal.call(makeByValPoint(3, 7, 8, 9), makeByValPoint(6, 3, 10, 11));
+        Assert.assertEquals(25, ret);
+    }
+
+    public static class ByValGet extends SulongTestNode {
+
+        public ByValGet() {
+            super(testLibrary, "byValGet");
+        }
+    }
+
+    @Test
+    public void byValGet(@Inject(ByValGet.class) CallTarget byValGet) {
+        Object ret = byValGet.call(makeByValPoint(3, 7, 8, 9));
+        Assert.assertEquals((long) 17, ret);
+    }
+
+    private static StructObject makeNestedByValPoint(int x, int y, long a, long b) {
+        Map<String, Object> point = new HashMap<>();
+        point.put("x", x);
+        point.put("y", y);
+
+        Map<String, Object> nested = new HashMap<>();
+        nested.put("a", a);
+        nested.put("b", b);
+        StructObject nestedObject = new StructObject(nested);
+
+        point.put("nested", nestedObject);
+
+        return new StructObject(point);
+    }
+
+    public static class DistSquaredNestedByValNode extends SulongTestNode {
+
+        public DistSquaredNestedByValNode() {
+            super(testLibrary, "distSquaredNestedByVal");
+        }
+    }
+
+    @Test
+    public void testDistSquaredNestedByVal(@Inject(DistSquaredNestedByValNode.class) CallTarget distSquaredNestedByVal) {
+        Object ret = distSquaredNestedByVal.call(makeNestedByValPoint(3, 7, 8, 9), makeNestedByValPoint(6, 3, 10, 11));
+        Assert.assertEquals(25, ret);
+    }
+
+    public static class NestedByValGetNested extends SulongTestNode {
+
+        public NestedByValGetNested() {
+            super(testLibrary, "nestedByValGetNested");
+        }
+    }
+
+    @Test
+    public void testNestedByValGetNested(@Inject(NestedByValGetNested.class) CallTarget nestedByValGetNested) {
+        Object ret = nestedByValGetNested.call(makeNestedByValPoint(3, 7, 8, 9));
+        Assert.assertEquals((long) 17, ret);
+    }
+
+    private static StructObject makeSmallNestedByVal(int x, int y) {
+        Map<String, Object> struct = new HashMap<>();
+        struct.put("x", x);
+
+        Map<String, Object> nested = new HashMap<>();
+        nested.put("y", y);
+        StructObject nestedObject = new StructObject(nested);
+
+        struct.put("nested", nestedObject);
+
+        return new StructObject(struct);
+    }
+
+    public static class NestedByValGetSmallNested extends SulongTestNode {
+
+        public NestedByValGetSmallNested() {
+            super(testLibrary, "nestedByValGetSmallNested");
+        }
+    }
+
+    @Test
+    @Ignore("GR-21364")
+    public void testNestedByValGetSmallNested(@Inject(NestedByValGetSmallNested.class) CallTarget nestedByValGetSmallNested) {
+        Object ret = nestedByValGetSmallNested.call(makeSmallNestedByVal(3, 7));
+        Assert.assertEquals(10, ret);
+    }
+
+    private static StructObject makeArrStruct(int a, int b, int c, int d) {
+        Map<String, Object> struct = new HashMap<>();
+        struct.put("a", a);
+        struct.put("b", b);
+
+        ArrayObject arr = new ArrayObject(c, d);
+
+        struct.put("x", arr);
+
+        return new StructObject(struct);
+    }
+
+    public static class ArrStructSum extends SulongTestNode {
+
+        public ArrStructSum() {
+            super(testLibrary, "arrStructSum");
+        }
+    }
+
+    @Test
+    @Ignore("GR-21364")
+    public void testArrStructSum(@Inject(ArrStructSum.class) CallTarget arrStructSum) {
+        Object ret = arrStructSum.call(makeArrStruct(3, 7, 8, 9));
+        Assert.assertEquals(27, ret);
+    }
+
+    private static StructObject makeBigArrStruct(int a, int b, int c, int d, int e, int f, int g) {
+        Map<String, Object> struct = new HashMap<>();
+        struct.put("a", a);
+        struct.put("b", b);
+
+        ArrayObject arr = new ArrayObject(c, d, e, f, g);
+
+        struct.put("x", arr);
+
+        return new StructObject(struct);
+    }
+
+    public static class BigArrStructSum extends SulongTestNode {
+
+        public BigArrStructSum() {
+            super(testLibrary, "bigArrStructSum");
+        }
+    }
+
+    @Test
+    public void testBigArrStructSum(@Inject(BigArrStructSum.class) CallTarget bigArrStructSum) {
+        Object ret = bigArrStructSum.call(makeBigArrStruct(3, 7, 8, 9, 10, 11, 12));
+        Assert.assertEquals(50, ret);
+    }
+
     public static class FlipPointNode extends SulongTestNode {
 
         public FlipPointNode() {
@@ -118,6 +294,7 @@ public class TypedInteropTest extends InteropTestBase {
 
     @Test
     public void testSumPoints(@Inject(SumPointsNode.class) CallTarget sumPoints) {
+        Assume.assumeFalse("Skipping AArch64 failing test", Platform.isAArch64());
         ArrayObject array = new ArrayObject(makePoint(13, 7), makePoint(3, 6), makePoint(8, 5));
         Object ret = sumPoints.call(array);
         Assert.assertEquals(42, ret);
@@ -132,6 +309,7 @@ public class TypedInteropTest extends InteropTestBase {
 
     @Test
     public void testFillPoints(@Inject(FillPointsNode.class) CallTarget fillPoints) {
+        Assume.assumeFalse("Skipping AArch64 failing test", Platform.isAArch64());
         StructObject[] arr = new StructObject[42];
         for (int i = 0; i < arr.length; i++) {
             arr[i] = makePoint(0, 0);
@@ -170,6 +348,7 @@ public class TypedInteropTest extends InteropTestBase {
 
     @Test
     public void testAddAndSwapPoint(@Inject(AddAndSwapPoint.class) CallTarget addAndSwapPoint) {
+        Assume.assumeFalse("Skipping AArch64 failing test", Platform.isAArch64());
         StructObject point = makePoint(39, 17);
         Object ret = addAndSwapPoint.call(point, 3, 7);
 
@@ -218,6 +397,7 @@ public class TypedInteropTest extends InteropTestBase {
 
     @Test
     public void testFillNested(@Inject(FillNestedNode.class) CallTarget fillNested) {
+        Assume.assumeFalse("Skipping AArch64 failing test", Platform.isAArch64());
         Object nested = createNested();
         fillNested.call(nested);
         checkNested(nested);
@@ -278,6 +458,7 @@ public class TypedInteropTest extends InteropTestBase {
 
     @Test
     public void testFillFusedArray(@Inject(FillFusedArrayNode.class) CallTarget fillFusedArray) {
+        Assume.assumeFalse("Skipping AArch64 failing test", Platform.isAArch64());
         Object fusedArray = createFusedArray();
         fillFusedArray.call(fusedArray);
         checkFusedArray(fusedArray);

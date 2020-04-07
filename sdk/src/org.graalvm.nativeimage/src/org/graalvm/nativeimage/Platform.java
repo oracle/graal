@@ -143,7 +143,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    class LINUX_AMD64 implements LINUX, InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS, AMD64 {
+    class LINUX_AMD64 implements LINUX, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -160,7 +160,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    final class LINUX_AARCH64 implements LINUX, InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS, AARCH64 {
+    final class LINUX_AARCH64 implements LINUX, AARCH64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -177,7 +177,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    class DARWIN_AMD64 implements DARWIN, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS, AMD64 {
+    class DARWIN_AMD64 implements DARWIN, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -193,7 +193,7 @@ public interface Platform {
      *
      * @since 2.0
      */
-    final class DARWIN_AARCH64 implements DARWIN, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS, AARCH64 {
+    final class DARWIN_AARCH64 implements DARWIN, AARCH64 {
 
         /**
          * Instantiates a marker instance of this platform.

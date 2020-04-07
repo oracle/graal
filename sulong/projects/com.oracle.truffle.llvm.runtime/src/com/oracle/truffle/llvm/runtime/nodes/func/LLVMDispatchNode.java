@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,12 +47,14 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Intrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.ResolveFunctionNode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Intrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.ResolveFunctionNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.UnsupportedNativeTypeException;
+import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
@@ -108,21 +110,22 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * Function is defined in the user program (available as LLVM IR)
      */
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function == cachedFunction", "cachedFunction.isLLVMIRFunction()"})
-    protected static Object doDirect(@SuppressWarnings("unused") LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("function") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedFunction,
-                    @Cached("create(cachedFunction.getLLVMIRFunctionSlowPath())") DirectCallNode callNode) {
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "functionCode.isLLVMIRFunction()"})
+    protected static Object doDirect(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
+                    @Cached("descriptor") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
+                    @Cached("cachedDescriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode functionCode,
+                    @Cached("create(functionCode.getLLVMIRFunctionSlowPath())") DirectCallNode callNode) {
         try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
             return callNode.call(arguments);
         }
     }
 
-    @Specialization(replaces = "doDirect", guards = "descriptor.isLLVMIRFunction()")
+    @Specialization(replaces = "doDirect", guards = "descriptor.getFunctionCode().isLLVMIRFunction()")
     protected static Object doIndirect(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached ResolveFunctionNode resolve,
                     @Cached("create()") IndirectCallNode callNode) {
         try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
-            return callNode.call(descriptor.getLLVMIRFunction(resolve), arguments);
+            return callNode.call(descriptor.getFunctionCode().getLLVMIRFunction(resolve), arguments);
         }
     }
 
@@ -137,21 +140,22 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return directCallNode;
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function == cachedFunction", "cachedFunction.isIntrinsicFunctionSlowPath()"})
-    protected Object doDirectIntrinsic(@SuppressWarnings("unused") LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("function") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedFunction,
-                    @Cached("getIntrinsificationCallNode(cachedFunction.getIntrinsicSlowPath())") DirectCallNode callNode) {
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "functionCode.isIntrinsicFunctionSlowPath()"})
+    protected Object doDirectIntrinsic(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
+                    @Cached("descriptor") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
+                    @Cached("cachedDescriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode functionCode,
+                    @Cached("getIntrinsificationCallNode(functionCode.getIntrinsicSlowPath())") DirectCallNode callNode) {
         try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
             return callNode.call(arguments);
         }
     }
 
-    @Specialization(replaces = "doDirectIntrinsic", guards = "descriptor.isIntrinsicFunction(resolve)")
+    @Specialization(replaces = "doDirectIntrinsic", guards = "descriptor.getFunctionCode().isIntrinsicFunction(resolve)")
     protected Object doIndirectIntrinsic(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached ResolveFunctionNode resolve,
                     @Cached("create()") IndirectCallNode callNode) {
         try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
-            return callNode.call(descriptor.getIntrinsic(resolve).cachedCallTarget(type), arguments);
+            return callNode.call(descriptor.getFunctionCode().getIntrinsic(resolve).cachedCallTarget(type), arguments);
         }
     }
 
@@ -160,13 +164,14 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * available. We do a native call.
      */
 
-    @Specialization(limit = "10", guards = {"descriptor == cachedDescriptor", "cachedDescriptor.isNativeFunctionSlowPath()"})
+    @Specialization(limit = "10", guards = {"descriptor == cachedDescriptor", "functionCode.isNativeFunctionSlowPath()"})
     protected Object doCachedNative(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor,
                     Object[] arguments,
                     @Cached("descriptor") LLVMFunctionDescriptor cachedDescriptor,
+                    @Cached("cachedDescriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode functionCode,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
-                    @Cached("bindSymbol(cachedDescriptor)") Object cachedBoundFunction,
+                    @Cached("bindSymbol(functionCode)") Object cachedBoundFunction,
                     @CachedLibrary("cachedBoundFunction") InteropLibrary nativeCall,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
@@ -179,13 +184,13 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return fromNative.executeConvert(returnValue);
     }
 
-    protected Object bindSymbol(LLVMFunctionDescriptor descriptor) {
+    protected Object bindSymbol(LLVMFunctionCode functionCode) {
         CompilerAsserts.neverPartOfCompilation();
-        assert descriptor.getNativeFunctionSlowPath() != null : descriptor.getName();
-        return LLVMNativeCallUtils.bindNativeSymbol(InteropLibrary.getFactory().getUncached(), descriptor.getNativeFunctionSlowPath(), getSignature());
+        assert functionCode.getNativeFunctionSlowPath() != null : functionCode.getLLVMFunction().getName();
+        return LLVMNativeCallUtils.bindNativeSymbol(InteropLibrary.getFactory().getUncached(), functionCode.getNativeFunctionSlowPath(), getSignature());
     }
 
-    @Specialization(replaces = "doCachedNative", guards = "descriptor.isNativeFunction(resolve)")
+    @Specialization(replaces = "doCachedNative", guards = "descriptor.getFunctionCode().isNativeFunction(resolve)")
     protected Object doNative(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
@@ -196,7 +201,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
 
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
-        Object boundSymbol = LLVMNativeCallUtils.bindNativeSymbol(bind, descriptor.getNativeFunction(resolve), getSignature());
+        Object boundSymbol = LLVMNativeCallUtils.bindNativeSymbol(bind, descriptor.getFunctionCode().getNativeFunction(resolve), getSignature());
         Object returnValue;
         try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
             returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, boundSymbol, nativeArgs, descriptor);
@@ -236,7 +241,12 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     @Specialization
     protected static Object doNativeFunction(LLVMNativePointer pointer, Object[] arguments,
                     @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode) {
-        return dispatchNode.executeDispatch(pointer, arguments);
+        try {
+            return dispatchNode.executeDispatch(pointer, arguments);
+        } catch (IllegalStateException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMNativePointerException(dispatchNode, "Invalid native function pointer", e);
+        }
     }
 
     protected LLVMDispatchNode createCachedDispatch() {
@@ -307,8 +317,8 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             Object[] args = new Object[dataEscapeNodes.length];
             int i = 0;
             if (functionType != null) {
-                assert arguments.length == functionType.getParameterLength() + LLVMCallNode.USER_ARGUMENT_OFFSET;
-                for (; i < functionType.getParameterLength(); i++) {
+                assert arguments.length == functionType.getNumberOfParameters() + LLVMCallNode.USER_ARGUMENT_OFFSET;
+                for (; i < functionType.getNumberOfParameters(); i++) {
                     LLVMInteropType argType = functionType.getParameter(i);
                     if (argType instanceof LLVMInteropType.Value) {
                         LLVMInteropType.Structured baseType = ((LLVMInteropType.Value) argType).getBaseType();

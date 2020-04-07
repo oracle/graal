@@ -2,8 +2,6 @@
 #Version 
 
 CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
-meth public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess()
- anno 0 java.lang.Deprecated()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.library.ExportLibrary
  anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.library.ExportLibrary$Repeat)
@@ -11,7 +9,10 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.library.Export
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 innr public abstract interface static !annotation Repeat
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault int priority()
 meth public abstract !hasdefault java.lang.Class<?> receiverType()
+meth public abstract !hasdefault java.lang.String delegateTo()
+meth public abstract !hasdefault java.lang.String transitionLimit()
 meth public abstract java.lang.Class<? extends com.oracle.truffle.api.library.Library> value()
 
 CLSS public com.oracle.truffle.api.nodes.SlowPathException
@@ -202,8 +203,6 @@ meth public abstract java.lang.Class<?> getType()
 CLSS public com.oracle.truffle.api.object.ObjectType
 cons public init()
 meth public boolean equals(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
-meth public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(com.oracle.truffle.api.object.DynamicObject)
- anno 0 java.lang.Deprecated()
 meth public int hashCode(com.oracle.truffle.api.object.DynamicObject)
 meth public java.lang.Class<?> dispatch()
 meth public java.lang.String toString(com.oracle.truffle.api.object.DynamicObject)
@@ -312,6 +311,8 @@ meth public abstract java.lang.Object get(com.oracle.truffle.api.object.DynamicO
 meth public abstract void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object) throws com.oracle.truffle.api.object.FinalLocationException,com.oracle.truffle.api.object.IncompatibleLocationException
 meth public abstract void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,com.oracle.truffle.api.object.Shape) throws com.oracle.truffle.api.object.FinalLocationException,com.oracle.truffle.api.object.IncompatibleLocationException
 meth public abstract void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,com.oracle.truffle.api.object.Shape,com.oracle.truffle.api.object.Shape) throws com.oracle.truffle.api.object.IncompatibleLocationException
+
+CLSS abstract interface com.oracle.truffle.api.object.package-info
 
 CLSS public abstract interface java.io.Serializable
 

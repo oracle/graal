@@ -1,19 +1,11 @@
 # overlay version
-overlay = 66a6d5b786a13ffa8d683174192c466d4c94ea5f
+overlay = 342aa921cb7cc26612d0be82f6141a6d6ff8e41d
 
 # oraclejdk* are released OracleJDK binaries
 # oraclejdk* are JDKs based on OracleJDK binaries
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
-jdks: {
-  oraclejdk8:      {name : oraclejdk, version : "8u231-jvmci-19.3-b06", platformspecific: true}
-  openjdk8:        {name : openjdk,   version : "8u232-jvmci-19.3-b06", platformspecific: true}
-  oraclejdk8Debug: {name : oraclejdk, version : "8u231-jvmci-19.3-b06-fastdebug", platformspecific: true}
-  oraclejdk11:     {name : oraclejdk, version : "11.0.3+12", platformspecific: true}
-  openjdk11:       {name : openjdk,   version : "11.0.3+7", platformspecific: true}
-  labsjdk-ce-11:   {name : labsjdk,   version : "ce-11.0.5+10-jvmci-19.3-b06", platformspecific: true}
-  labsjdk-ee-11:   {name : labsjdk,   version : "ee-11.0.5+10-jvmci-19.3-b06", platformspecific: true}
-}
+include "common.json"
 
 # This must always point to HEAD in the master branch but can be used to point
 # to another branch/commit in a Graal PR when mx changes are required for the PR.
@@ -44,13 +36,15 @@ labsjdk-ee-11 :         { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-11} }}
 
 common : ${mx} {
   timelimit : "30:00"
+  environment : {
+    MX_PYTHON: "python3"
+  }
   catch_files : [
     "Graal diagnostic output saved in (?P<filename>.+\.zip)"
   ]
   packages : {
     "pip:logilab-common ": "==1.4.4"
-    "pip:astroid" : "==1.1.0"
-    "pip:pylint" : "==1.1.0"
+    "pip:pylint" : "==1.9.3"
     "pip:ninja_syntax" : "==1.7.2"
   }
 }
@@ -72,6 +66,11 @@ solaris : ${common} {
 }
 
 darwin : ${common} {
+  environment : {
+    # Required to keep pylint happy on Darwin
+    # https://coderwall.com/p/-k_93g/mac-os-x-valueerror-unknown-locale-utf-8-in-python
+    LC_ALL : "en_US.UTF-8"
+  }
 }
 
 windows : ${common} {
@@ -107,7 +106,7 @@ LARGE_YOUNG_GEN_SIZE : "27G"
 
 eclipse : {
   downloads : {
-    ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
+    ECLIPSE : {name: eclipse, version: "4.14.0", platformspecific: true}
   }
   environment : {
     ECLIPSE_EXE : "$ECLIPSE/eclipse"
@@ -116,7 +115,7 @@ eclipse : {
 
 jdt : {
   downloads : {
-    JDT : {name: ecj, version: "4.5.1", platformspecific: false}
+    JDT : {name: ecj, version: "4.14.0", platformspecific: false}
   }
 }
 
@@ -156,6 +155,7 @@ svm-common: ${mx} {
     "*/*/stripped/*.map"
     "*/callgrind.*"
     "*.bgv"
+    "*.log"
   ]
 }
 

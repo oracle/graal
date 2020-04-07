@@ -112,11 +112,6 @@ public class TagsTest {
             return env;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
     }
 
 }

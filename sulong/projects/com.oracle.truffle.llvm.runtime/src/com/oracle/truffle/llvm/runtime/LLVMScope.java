@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,6 +36,7 @@ import java.util.Map.Entry;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -43,11 +44,14 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
-public final class LLVMScope implements TruffleObject {
+public class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMSymbol> symbols;
     private final ArrayList<String> functionKeys;
@@ -67,26 +71,36 @@ public final class LLVMScope implements TruffleObject {
         return functionKeys.get(idx);
     }
 
+    /**
+     * Lookup a function in the scope by name.
+     *
+     * @param name Function name to lookup.
+     * @return A handle to the function if found, null otherwise.
+     */
     @TruffleBoundary
-    public LLVMFunctionDescriptor getFunction(String name) {
+    public LLVMFunction getFunction(String name) {
         LLVMSymbol symbol = get(name);
         if (symbol != null && symbol.isFunction()) {
             return symbol.asFunction();
         }
-        throw new IllegalStateException("Unknown function: " + name);
+        return null;
     }
 
-    // TODO: AST sharing
+    /**
+     * Lookup a global variable in the scope by name.
+     *
+     * @param name Variable name to lookup.
+     * @return A handle to the global if found, null otherwise.
+     */
     @TruffleBoundary
     public LLVMGlobal getGlobalVariable(String name) {
         LLVMSymbol symbol = get(name);
         if (symbol != null && symbol.isGlobalVariable()) {
             return symbol.asGlobalVariable();
         }
-        throw new IllegalStateException("Unknown global: " + name);
+        return null;
     }
 
-    // TODO: AST sharing
     @TruffleBoundary
     public void register(LLVMSymbol symbol) {
         LLVMSymbol existing = symbols.get(symbol.getName());
@@ -173,9 +187,27 @@ public final class LLVMScope implements TruffleObject {
 
     @ExportMessage
     Object readMember(String globalName,
-                    @Cached BranchProfile exception) throws UnknownIdentifierException {
+                    @Cached BranchProfile exception,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) throws UnknownIdentifierException {
+
         if (contains(globalName)) {
-            return get(globalName);
+            LLVMSymbol symbol = get(globalName);
+            if (symbol != null && symbol.isFunction()) {
+                if (symbol.hasValidIndexAndID()) {
+                    int index = symbol.getSymbolIndex(false);
+                    int bitcodeID = symbol.getBitcodeID(false);
+                    if (context.symbolTableExists(bitcodeID)) {
+                        AssumedValue<LLVMPointer>[] symbolTable = context.findSymbolTable(bitcodeID);
+                        if (index < symbolTable.length) {
+                            LLVMPointer pointer = symbolTable[index].get();
+                            return LLVMManagedPointer.cast(pointer).getObject();
+                        }
+                    }
+                }
+                exception.enter();
+                throw UnknownIdentifierException.create(globalName);
+            }
+            return symbol;
         }
         exception.enter();
         throw UnknownIdentifierException.create(globalName);

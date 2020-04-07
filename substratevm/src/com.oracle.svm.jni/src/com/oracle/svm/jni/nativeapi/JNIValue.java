@@ -86,4 +86,7 @@ public interface JNIValue extends PointerBase {
 
     @CField("l")
     void setObject(JNIObjectHandle l);
+
+    /** @see org.graalvm.nativeimage.c.type.WordPointer#addressOf(int) */
+    JNIValue addressOf(int index);
 }

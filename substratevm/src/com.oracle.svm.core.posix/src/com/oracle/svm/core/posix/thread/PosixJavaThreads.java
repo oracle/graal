@@ -220,6 +220,12 @@ class PosixParkEvent extends ParkEvent {
     /** A condition variable: from the operating system. */
     private final Pthread.pthread_cond_t cond;
 
+    /**
+     * The ticket: false implies unavailable, true implies available. Volatile so it can be safely
+     * updated in {@link #reset()} without holding the lock.
+     */
+    protected volatile boolean event;
+
     PosixParkEvent() {
         /* Create a mutex. */
         mutex = LibC.malloc(SizeOf.unsigned(Pthread.pthread_mutex_t.class));
@@ -235,82 +241,37 @@ class PosixParkEvent extends ParkEvent {
     }
 
     @Override
-    protected WaitResult condWait() {
-        WaitResult result = WaitResult.UNPARKED;
-        /* Lock the mutex in preparation for waiting. */
-        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(): mutex lock");
-        try {
-            if (resetEventBeforeWait) {
-                event = false;
-            }
-            /*
-             * Wait while the ticket is not available. Note that the ticket might already be
-             * available before we enter the loop the first time, in which case we do not want to
-             * wait at all.
-             */
-            while (!event) {
-                /* Before blocking, check if this thread has been interrupted. */
-                if (Thread.interrupted()) {
-                    result = WaitResult.INTERRUPTED;
-                    return result;
-                }
-                /* Wait on the condition variable and give up the mutex. */
-                final int status = Pthread.pthread_cond_wait(cond, mutex);
-                /*
-                 * For some reason, under 2.7 lwp_cond_wait() may return ETIME ... Treat this the
-                 * same as if the wait was interrupted
-                 */
-                if (status == Errno.EINTR() || status == Errno.ETIMEDOUT()) {
-                    result = WaitResult.INTERRUPTED;
-                    break;
-                }
-                PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
-            }
-
-            if (event) {
-                /* If the ticket is available, then someone unparked me. */
-                event = false;
-                result = WaitResult.UNPARKED;
-            }
-        } finally {
-            /* Unlock the mutex. */
-            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(): mutex unlock");
-        }
-        return result;
+    protected void reset() {
+        event = false;
     }
 
     @Override
-    protected WaitResult condTimedWait(long delayNanos) {
+    protected void condWait() {
+        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(): mutex lock");
+        try {
+            while (!event) {
+                int status = Pthread.pthread_cond_wait(cond, mutex);
+                PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
+            }
+            event = false;
+        } finally {
+            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(): mutex unlock");
+        }
+    }
+
+    @Override
+    protected void condTimedWait(long delayNanos) {
         /* Encode the delay as a deadline in a Time.timespec. */
         Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
         PthreadConditionUtils.delayNanosToDeadlineTimespec(delayNanos, deadlineTimespec);
 
-        WaitResult result = WaitResult.UNPARKED;
-        /* Lock the mutex in preparation for waiting. */
         PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(long): mutex lock");
         try {
-            if (resetEventBeforeWait) {
-                event = false;
-            }
             while (!event) {
-                /* Before blocking, check if this thread has been interrupted. */
-                if (Thread.interrupted()) {
-                    result = WaitResult.INTERRUPTED;
-                    return result;
-                }
-                final int status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
+                int status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
                 if (status == Errno.ETIMEDOUT()) {
-                    /* If I was awakened because I ran out of time, do not wait for the ticket. */
-                    result = WaitResult.TIMED_OUT;
                     break;
-                }
-                if (status == Errno.EINTR()) {
-                    /* If I was awakened because I was interrupted, do not wait for the ticket. */
-                    result = WaitResult.INTERRUPTED;
-                    break;
-                }
-                if (status != 0) {
-                    /* Detailed error message. */
+                } else if (status != 0) {
                     Log.log().newline()
                                     .string("[PosixParkEvent.condTimedWait(delayNanos: ").signed(delayNanos).string("): Should not reach here.")
                                     .string("  mutex: ").hex(mutex)
@@ -322,29 +283,17 @@ class PosixParkEvent extends ParkEvent {
                     PosixUtils.checkStatusIs0(status, "park(long): condition variable timed wait");
                 }
             }
-
-            if (event) {
-                /* If the ticket is available, then someone unparked me. */
-                event = false;
-                result = WaitResult.UNPARKED;
-            }
+            event = false;
         } finally {
-            /* Unlock the mutex. */
             PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(long): mutex unlock");
         }
-
-        return result;
     }
 
     @Override
     protected void unpark() {
-        /* Lock the mutex so threads trying to park do not miss my signal. */
         PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "PosixParkEvent.unpark(): mutex lock");
         try {
-            /* Re-establish the ticket. */
             event = true;
-
-            /* Broadcast to any waiters. */
             PosixUtils.checkStatusIs0(Pthread.pthread_cond_broadcast(cond), "PosixParkEvent.unpark(): condition variable broadcast");
         } finally {
             PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "PosixParkEvent.unpark(): mutex unlock");

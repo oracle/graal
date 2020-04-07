@@ -61,20 +61,5 @@ public abstract class InteropException extends Exception {
         super();
     }
 
-    /**
-     * @since 0.14
-     * @deprecated without replacement. Instead always handle interop exceptions directly or rethrow
-     *             them where it is allowed.
-     */
-    @Deprecated
-    public final RuntimeException raise() {
-        return silenceException(RuntimeException.class, this);
-    }
-
-    @SuppressWarnings({"unchecked", "unused"})
-    static <E extends Exception> RuntimeException silenceException(Class<E> type, Exception ex) throws E {
-        throw (E) ex;
-    }
-
     private static final long serialVersionUID = -5173354806966156285L;
 }

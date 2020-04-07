@@ -30,7 +30,8 @@ import pipes
 import mx, mx_benchmark
 import mx_sdk_vm, mx_sdk_vm_impl
 import os
-from os.path import dirname
+import re
+from os.path import dirname, join
 
 
 _suite = mx.suite('vm')
@@ -66,9 +67,6 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
                ['--vm.' + x[1:] if x.startswith('-X') else x for x in self.debug_args] + \
                args
 
-    def dimensions(self, cwd, args, code, out):
-        return super(GraalVm, self).dimensions(cwd, args, code, out)
-
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
         """Run 'java' workloads."""
         self.extract_vm_info(args)
@@ -83,7 +81,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         self.extract_vm_info(args)
         out = mx.TeeOutputCapture(mx.OutputCapture())
         args = self.post_process_launcher_command_line_args(args)
-        mx.log("Running '{}' on '{}' with args: '{}'".format(cmd, self.name(), args))
+        mx.log("Running '{}' on '{}' with args: '{}'".format(cmd, self.name(), " ".join(args)))
         code = mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', cmd)] + args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
         out = out.underlying.data
         dims = self.dimensions(cwd, args, code, out)
@@ -111,6 +109,7 @@ class NativeImageVM(GraalVm):
             self.config_dir = None
             self.profile_dir = None
             self.log_dir = None
+            self.pgo_iteration_num = None
 
         def parse(self, args):
             def add_to_list(arg, name, arg_list):
@@ -141,6 +140,9 @@ class NativeImageVM(GraalVm):
                         found = True
                     if trimmed_arg.startswith('benchmark-name='):
                         self.benchmark_name = trimmed_arg[len('benchmark-name='):]
+                        found = True
+                    if trimmed_arg.startswith('instrumentation-iteration-num='):
+                        self.pgo_iteration_num = trimmed_arg[len('instrumentation-iteration-num='):]
                         found = True
                     if not found:
                         mx.abort("Invalid benchmark argument: " + arg)
@@ -226,7 +228,9 @@ class NativeImageVM(GraalVm):
             config.output_dir = mx.mkdtemp(suffix='bench-' + executable_name, prefix='native-image', dir=non_tmp_dir)
             config.profile_dir = config.output_dir
             config.log_dir = config.output_dir
-            profile_path = os.path.join(config.profile_dir, executable_name + '.iprof')
+            profile_path_no_extension = os.path.join(config.profile_dir, executable_name)
+            extension = '.iprof'
+            profile_path = profile_path_no_extension + extension
             image_path = os.path.join(config.output_dir, executable_name)
 
             # Agent configuration and/or HotSpot profiling
@@ -263,7 +267,7 @@ class NativeImageVM(GraalVm):
                         mx.log(reflect_config.read())
 
             base_image_build_args = [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
-            base_image_build_args += ['--no-fallback']
+            base_image_build_args += ['--no-fallback', '--no-server']
             base_image_build_args += ['-J-ea', '-J-esa', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '-H:+TraceClassInitialization'] if self.is_gate else []
             base_image_build_args += system_properties
             base_image_build_args += classpath_arguments
@@ -272,36 +276,44 @@ class NativeImageVM(GraalVm):
             if needs_config:
                 base_image_build_args += ['-H:ConfigurationFileDirectories=' + config.config_dir]
             if self.is_llvm:
-                base_image_build_args += ['-H:CompilerBackend=llvm', '-H:-SpawnIsolates']
+                base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature']
             base_image_build_args += config.extra_image_build_arguments
 
             # PGO instrumentation
             i = 0
-            while i < self.pgo_instrumented_iterations:
-                instrument_args = ['--pgo-instrument'] + ([] if i == 0 and not self.hotspot_pgo else ['--pgo'])
-                instrument_image_build_args = base_image_build_args + instrument_args
-                mx.log('Building the instrumentation image with: ')
-                mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in instrument_image_build_args]))
-                mx.run(instrument_image_build_args, out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+            instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
+            if not self.hotspot_pgo:
+                pgo_verification_output_path = os.path.join(config.output_dir, executable_name + '-probabilities.log')
+                while i < instrumented_iterations:
+                    pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
+                    instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
+                    instrument_image_build_args = base_image_build_args + instrument_args
+                    mx.log('Building the instrumentation image with: ')
+                    mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in instrument_image_build_args]))
+                    mx.run(instrument_image_build_args, out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
 
-                image_run_cmd = [image_path]
-                image_run_cmd += ['-XX:ProfilesDumpFile=' + profile_path]
-                if config.extra_profile_run_args:
-                    image_run_cmd += config.extra_profile_run_args
-                else:
-                    image_run_cmd += image_run_args + config.extra_run_args
+                    image_run_cmd = [image_path]
+                    profile_path = profile_path_no_extension + (str(i) + extension if i > 0 else extension)
+                    image_run_cmd += ['-XX:ProfilesDumpFile=' + profile_path]
+                    if config.extra_profile_run_args:
+                        image_run_cmd += config.extra_profile_run_args
+                    else:
+                        image_run_cmd += image_run_args + config.extra_run_args
 
-                mx.log('Running the instrumented image with: ')
-                mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
-                inst_stdout_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stdout.log'))
-                inst_stderr_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stderr.log'))
-                with open(inst_stdout_path, 'a') as inst_stdout, open(inst_stderr_path, 'a') as inst_stderr:
-                    mx.log('The standard output saved to ' + inst_stdout_path)
-                    mx.log('The standard error saved to ' + inst_stderr_path)
-                    mx.run(image_run_cmd, out=inst_stdout.write,
-                           err=inst_stderr.write, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+                    mx.log('Running the instrumented image with: ')
+                    mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
+                    inst_stdout_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stdout.log'))
+                    inst_stderr_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stderr.log'))
+                    with open(inst_stdout_path, 'a') as inst_stdout, open(inst_stderr_path, 'a') as inst_stderr:
+                        mx.log('The standard output saved to ' + inst_stdout_path)
+                        mx.log('The standard error saved to ' + inst_stderr_path)
+                        mx.run(image_run_cmd, out=inst_stdout.write,
+                               err=inst_stderr.write, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
 
-                i += 1
+                    image_size = os.stat(image_path).st_size
+                    mx.log('Produced image size is ' + str(image_size) + ' B')
+
+                    i += 1
 
             # Build the final image
             pgo_verification_output_path = os.path.join(config.output_dir, executable_name + '-probabilities.log')
@@ -316,6 +328,9 @@ class NativeImageVM(GraalVm):
             mx.log('Running the produced native executable with: ')
             mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
             mx.run(image_run_cmd, out=out, err=err, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+            image_path = mx.join(config.output_dir, executable_name)
+            image_size = os.stat(image_path).st_size
+            mx.log('Final image size is ' + str(image_size) + ' B')
 
 
 class NativeImageBuildVm(GraalVm):
@@ -380,8 +395,78 @@ class NativeImageBuildBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         ]
 
 
+class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
+    def __init__(self):
+        super(AgentScriptJsBenchmarkSuite, self).__init__()
+        self._benchmarks = {
+            'plain' : [],
+            'triple' : ['--agentscript=sieve-filter1.js', '--experimental-options'],
+            'single' : ['--agentscript=sieve-filter2.js', '--experimental-options'],
+        }
+
+    def group(self):
+        return 'Graal'
+
+    def subgroup(self):
+        return 'graal-js'
+
+    def name(self):
+        return 'agentscript'
+
+    def benchmarkList(self, bmSuiteArgs):
+        return self._benchmarks.keys()
+
+    def failurePatterns(self):
+        return [
+            re.compile(r'error:'),
+            re.compile(r'internal error:'),
+            re.compile(r'Error in'),
+            re.compile(r'\tat '),
+            re.compile(r'Defaulting the .*\. Consider using '),
+            re.compile(r'java.lang.OutOfMemoryError'),
+        ]
+
+    def successPatterns(self):
+        return [
+            re.compile(r'Hundred thousand prime numbers in [0-9]+ ms', re.MULTILINE),
+        ]
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        assert len(benchmarks) == 1
+        return [
+            mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms\n$', {
+                "bench-suite": self.name(),
+                "benchmark": (benchmarks[0], str),
+                "metric.name": "time",
+                "metric.type": "numeric",
+                "metric.unit": "ms",
+                "metric.value": ("<time>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": ("$iteration", int),
+            })
+        ]
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        return self.vmArgs(bmSuiteArgs) + super(AgentScriptJsBenchmarkSuite, self).createCommandLineArgs(benchmarks, bmSuiteArgs)
+
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        return join(_suite.dir, 'benchmarks', 'agentscript')
+
+    def createVmCommandLineArgs(self, benchmarks, runArgs):
+        if not benchmarks:
+            raise mx.abort("Benchmark suite '{}' cannot run multiple benchmarks in the same VM process".format(self.name()))
+        if len(benchmarks) != 1:
+            raise mx.abort("Benchmark suite '{}' can run only one benchmark at a time".format(self.name()))
+        return self._benchmarks[benchmarks[0]] + ['-e', 'count=50'] + runArgs + ['sieve.js']
+
+    def get_vm_registry(self):
+        return mx_benchmark.js_vm_registry
+
+
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='native-image', benchmarks={'js': ['--language:js']}, registry=_native_image_vm_registry))
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={'js': ['js'], 'libpolyglot': ['libpolyglot']}, registry=_gu_vm_registry))
+mx_benchmark.add_bm_suite(AgentScriptJsBenchmarkSuite())
 
 
 def register_graalvm_vms():

@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
@@ -40,12 +42,12 @@ import org.graalvm.word.LocationIdentity;
  * does not include a null check on the object.
  */
 @NodeInfo
-public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode implements Access, IterableNodeType {
+public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode implements AddressableMemoryAccess, GuardedMemoryAccess, OnHeapMemoryAccess, IterableNodeType {
     public static final NodeClass<FixedAccessNode> TYPE = NodeClass.create(FixedAccessNode.class);
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
-
     @Input(InputType.Association) AddressNode address;
+    @OptionalInput(Memory) MemoryKill lastLocationAccess;
     protected final LocationIdentity location;
 
     protected boolean nullCheck;
@@ -110,7 +112,19 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
     }
 
     @Override
+    public MemoryKill getLastLocationAccess() {
+        return lastLocationAccess;
+    }
+
+    @Override
+    public void setLastLocationAccess(MemoryKill lla) {
+        updateUsagesInterface(lastLocationAccess, lla);
+        lastLocationAccess = lla;
+    }
+
+    @Override
     public BarrierType getBarrierType() {
         return barrierType;
     }
+
 }

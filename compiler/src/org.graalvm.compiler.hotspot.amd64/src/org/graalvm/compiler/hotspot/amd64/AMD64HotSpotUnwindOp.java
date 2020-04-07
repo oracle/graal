@@ -69,6 +69,6 @@ final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueBlockEndOp {
         Register returnAddress = asRegister(cc.getArgument(1));
         masm.movq(returnAddress, new AMD64Address(rsp, 0));
 
-        AMD64Call.directJmp(crb, masm, linkage);
+        AMD64Call.directJmp(crb, masm, linkage, null);
     }
 }

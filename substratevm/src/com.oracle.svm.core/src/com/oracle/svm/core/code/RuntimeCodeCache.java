@@ -64,7 +64,7 @@ public class RuntimeCodeCache {
         public static final RuntimeOptionKey<Boolean> TraceCodeCache = new RuntimeOptionKey<>(false);
 
         @Option(help = "Allocate code cache with write access, allowing inlining of objects", type = OptionType.Expert)//
-        public static final RuntimeOptionKey<Boolean> WriteableCodeCache = new RuntimeOptionKey<>(null);
+        public static final RuntimeOptionKey<Boolean> WriteableCodeCache = new RuntimeOptionKey<>(false);
     }
 
     private final RingBuffer<CodeCacheLogEntry> recentCodeCacheOperations = new RingBuffer<>(30, () -> new CodeCacheLogEntry());

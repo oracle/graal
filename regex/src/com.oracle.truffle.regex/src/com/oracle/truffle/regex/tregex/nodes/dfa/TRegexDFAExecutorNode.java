@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -124,10 +124,6 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return states.length;
     }
 
-    public int getNumberOfCaptureGroups() {
-        return props.getNumberOfCaptureGroups();
-    }
-
     public boolean recordExecution() {
         return debugRecorder != null;
     }
@@ -141,9 +137,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return new TRegexDFAExecutorLocals(input, fromIndex, index, maxIndex, createCGData());
     }
 
+    @Override
+    public boolean writesCaptureGroups() {
+        return isSimpleCG();
+    }
+
     private DFACaptureGroupTrackingData createCGData() {
         if (isGenericCG() || isSimpleCG()) {
-            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), props);
+            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), getNumberOfCaptureGroups(), props);
         } else {
             return null;
         }
@@ -305,7 +306,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     private void initResultOrder(TRegexDFAExecutorLocals locals) {
         DFACaptureGroupTrackingData cgData = locals.getCGData();
         for (int i = 0; i < maxNumberOfNFAStates; i++) {
-            cgData.currentResultOrder[i] = i * props.getNumberOfCaptureGroups() * 2;
+            cgData.currentResultOrder[i] = i * getNumberOfCaptureGroups() * 2;
         }
     }
 

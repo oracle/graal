@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,12 +52,12 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * <p>
  * Currently not implemented in TRegex and so any use of this node type causes TRegex to bail out.
  */
-public class BackReference extends Term {
+public class BackReference extends QuantifiableTerm {
 
     private final int groupNr;
 
-    BackReference(int groupNr) {
-        this.groupNr = groupNr;
+    BackReference(int referencedGroupNr) {
+        this.groupNr = referencedGroupNr;
     }
 
     private BackReference(BackReference copy) {
@@ -70,8 +70,42 @@ public class BackReference extends Term {
         return ast.register(new BackReference(this));
     }
 
+    /**
+     * Returns the capture group number this back-reference is referring to, e.g. the referenced
+     * group of {@code \1} is 1.
+     */
     public int getGroupNr() {
         return groupNr;
+    }
+
+    public boolean isNestedBackReference() {
+        return isFlagSet(FLAG_BACK_REFERENCE_IS_NESTED);
+    }
+
+    public void setNestedBackReference() {
+        setFlag(FLAG_BACK_REFERENCE_IS_NESTED, true);
+    }
+
+    public boolean isForwardReference() {
+        return isFlagSet(FLAG_BACK_REFERENCE_IS_FORWARD);
+    }
+
+    public void setForwardReference() {
+        setFlag(FLAG_BACK_REFERENCE_IS_FORWARD, true);
+    }
+
+    /**
+     * Returns {@code true} iff this "back-reference" is actually a reference to its own parent
+     * group or a later group in the expression. In JavaScript, such nested/forward references will
+     * always match the empty string.
+     */
+    public boolean isNestedOrForwardReference() {
+        return isFlagSet(FLAG_BACK_REFERENCE_IS_NESTED | FLAG_BACK_REFERENCE_IS_FORWARD);
+    }
+
+    @Override
+    public boolean isUnrollingCandidate() {
+        return hasQuantifier() && getQuantifier().isUnrollTrivial();
     }
 
     @Override

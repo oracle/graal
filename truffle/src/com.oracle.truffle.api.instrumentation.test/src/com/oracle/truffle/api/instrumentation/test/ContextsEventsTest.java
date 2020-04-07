@@ -40,20 +40,6 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.instrumentation.ContextsListener;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.nodes.LanguageInfo;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import org.junit.Test;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Source;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -61,6 +47,22 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Source;
+import org.junit.Test;
+
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 
 public class ContextsEventsTest {
 
@@ -130,20 +132,28 @@ public class ContextsEventsTest {
             events = test.events;
 
             context.eval(Source.create(InstrumentationTestLanguage.ID, "ROOT(STATEMENT(), CONTEXT(STATEMENT()))"));
+            assertTrue(events.get(0).entered);
             assertTrue(events.get(0).created);
+            assertTrue(events.get(1).entered);
             assertTrue(events.get(1).languageInitialized);
             assertTrue(events.get(2).created);
+            assertFalse(events.get(2).entered);
             assertNotEquals(events.get(0).context, events.get(2).context);
             assertEquals(events.get(0).context, events.get(2).context.getParent());
             assertNull(events.get(2).language);
             assertTrue(events.get(3).created);
+            assertTrue(events.get(3).entered);
             assertEquals(events.get(2).context, events.get(3).context);
             assertNotNull(events.get(3).language);
             assertTrue(events.get(4).languageInitialized);
+            assertTrue(events.get(4).entered);
             assertTrue(events.get(5).languageFinalized);
+            assertTrue(events.get(5).entered);
             assertFalse(events.get(6).created);
+            assertFalse(events.get(6).entered);
             assertEquals(InstrumentationTestLanguage.ID, events.get(6).language.getId());
             assertFalse(events.get(7).created);
+            assertFalse(events.get(7).entered);
             assertNull(events.get(7).language);
         }
         assertEquals(11, events.size());
@@ -281,49 +291,50 @@ public class ContextsEventsTest {
 
         @Override
         public void onContextCreated(TruffleContext context) {
-            events.add(new ContextEvent(true, context, null));
+            events.add(new ContextEvent(context.isEntered(), true, context, null));
         }
 
         @Override
         public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
-            events.add(new ContextEvent(true, context, language));
+            events.add(new ContextEvent(context.isEntered(), true, context, language));
         }
 
         @Override
         public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-            events.add(new ContextEvent(false, context, language, true, false));
+            events.add(new ContextEvent(context.isEntered(), false, context, language, true, false));
         }
 
         @Override
         public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
-            events.add(new ContextEvent(false, context, language, false, true));
+            events.add(new ContextEvent(context.isEntered(), false, context, language, false, true));
         }
 
         @Override
         public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
-            events.add(new ContextEvent(false, context, language));
+            events.add(new ContextEvent(context.isEntered(), false, context, language));
         }
 
         @Override
         public void onContextClosed(TruffleContext context) {
-            events.add(new ContextEvent(false, context, null));
+            events.add(new ContextEvent(context.isEntered(), false, context, null));
         }
 
     }
 
     private static class ContextEvent {
-
+        final boolean entered;
         final boolean created;
         final TruffleContext context;
         final LanguageInfo language;
         final boolean languageInitialized;
         final boolean languageFinalized;
 
-        ContextEvent(boolean created, TruffleContext context, LanguageInfo language) {
-            this(created, context, language, false, false);
+        ContextEvent(boolean entered, boolean created, TruffleContext context, LanguageInfo language) {
+            this(entered, created, context, language, false, false);
         }
 
-        ContextEvent(boolean created, TruffleContext context, LanguageInfo language, boolean languageInitialized, boolean languageFinalized) {
+        ContextEvent(boolean entered, boolean created, TruffleContext context, LanguageInfo language, boolean languageInitialized, boolean languageFinalized) {
+            this.entered = entered;
             this.created = created;
             this.context = context;
             this.language = language;
@@ -331,4 +342,5 @@ public class ContextsEventsTest {
             this.languageFinalized = languageFinalized;
         }
     }
+
 }

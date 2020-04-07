@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
@@ -131,7 +130,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         if (group.isCapturing()) {
             result.setEnd(group.getGroupNumber(), index);
         }
-        if (unrollGroups && group.hasQuantifier()) {
+        if (unrollGroups && group.hasNotUnrolledQuantifier()) {
             assert group.getQuantifier().getMin() == group.getQuantifier().getMax();
             if (groupUnroller == null) {
                 groupUnroller = new PreCalcResultVisitor(extractLiteral, false, index, literal, mask, result);
@@ -165,19 +164,15 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
     @Override
     protected void visit(CharacterClass characterClass) {
         assert !characterClass.hasQuantifier() || characterClass.getQuantifier().getMin() == characterClass.getQuantifier().getMax();
-        for (int i = 0; i < (characterClass.hasQuantifier() ? characterClass.getQuantifier().getMin() : 1); i++) {
+        for (int i = 0; i < (characterClass.hasNotUnrolledQuantifier() ? characterClass.getQuantifier().getMin() : 1); i++) {
             if (extractLiteral) {
                 if (mask == null) {
-                    literal[index] = (char) characterClass.getCharSet().getLo(0);
+                    literal[index] = (char) characterClass.getCharSet().getMin();
                 } else {
                     characterClass.extractSingleChar(literal, mask, index);
                 }
             }
             index++;
         }
-    }
-
-    @Override
-    protected void visit(MatchFound matchFound) {
     }
 }

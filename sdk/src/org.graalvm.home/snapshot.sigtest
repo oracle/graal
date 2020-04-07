@@ -1,6 +1,9 @@
 #Signature file v4.1
 #Version 
 
+CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
+meth public abstract int compareTo({java.lang.Comparable%0})
+
 CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
@@ -23,4 +26,21 @@ meth public abstract java.util.Map<java.lang.String,java.nio.file.Path> getLangu
 meth public abstract java.util.Map<java.lang.String,java.nio.file.Path> getToolHomes()
 meth public static org.graalvm.home.HomeFinder getInstance()
 supr java.lang.Object
+
+CLSS public final org.graalvm.home.Version
+intf java.lang.Comparable<org.graalvm.home.Version>
+meth public !varargs int compareTo(int[])
+meth public !varargs static org.graalvm.home.Version create(int[])
+meth public boolean equals(java.lang.Object)
+meth public boolean isRelease()
+meth public boolean isSnapshot()
+meth public int compareTo(org.graalvm.home.Version)
+meth public int hashCode()
+meth public java.lang.String toString()
+meth public static org.graalvm.home.Version getCurrent()
+meth public static org.graalvm.home.Version parse(java.lang.String)
+supr java.lang.Object
+hfds MIN_VERSION_DIGITS,SNAPSHOT_STRING,SNAPSHOT_SUFFIX,snapshot,suffix,versions
+
+CLSS abstract interface org.graalvm.home.package-info
 

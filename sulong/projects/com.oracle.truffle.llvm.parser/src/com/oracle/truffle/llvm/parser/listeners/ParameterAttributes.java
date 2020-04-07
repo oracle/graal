@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -217,8 +217,8 @@ public class ParameterAttributes implements ParserListener {
         attributes.add(group);
 
         while (buffer.remaining() > 0) {
-            long type = buffer.read();
-            switch ((int) type) {
+            int type = buffer.readInt();
+            switch (type) {
                 case WELL_KNOWN_ATTRIBUTE_KIND: {
                     Attribute.Kind attr = Attribute.Kind.decode(buffer.read());
                     group.addAttribute(new Attribute.KnownAttribute(attr));
@@ -227,7 +227,7 @@ public class ParameterAttributes implements ParserListener {
 
                 case WELL_KNOWN_INTEGER_ATTRIBUTE_KIND: {
                     Attribute.Kind attr = Attribute.Kind.decode(buffer.read());
-                    group.addAttribute(new Attribute.KnownIntegerValueAttribute(attr, buffer.readInt()));
+                    group.addAttribute(new Attribute.KnownIntegerValueAttribute(attr, buffer.read()));
                     break;
                 }
 

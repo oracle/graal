@@ -168,7 +168,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
                 ensureCreated();
             } catch (Throwable t) {
                 if (wrapExceptions) {
-                    throw PolyglotImpl.wrapGuestException(engine, t);
+                    throw PolyglotImpl.guestToHostException(engine, t);
                 } else {
                     throw t;
                 }

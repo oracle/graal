@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.util.function.IntUnaryOperator;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
@@ -37,6 +38,8 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -170,38 +173,22 @@ public class HeapChunk {
     }
 
     /** Apply an ObjectVisitor to all the Objects in the given HeapChunk. */
+    @NeverInline("Not performance critical")
     public static boolean walkObjectsFrom(Header<?> that, Pointer offset, ObjectVisitor visitor) {
-        final Log trace = Log.noopLog().string("[HeapChunk.walkObjectsFrom:");
-        trace.string("  that: ").hex(that).string("  offset: ").hex(offset).string("  getTop(): ").hex(that.getTop());
-        /* Get the Object at the offset, or null. */
-        Object obj = (offset.belowThan(that.getTop()) ? offset.toObject() : null);
-        while (obj != null) {
-            trace.newline().string("  o: ").object(obj).newline();
-            if (!visitor.visitObjectInline(obj)) {
-                trace.string("  visitObject fails").string("  returns false").string("]").newline();
-                return false;
-            }
-            /* Step by Object. */
-            obj = getNextObject(that, obj);
-        }
-        trace.string("  returns true").string("]").newline();
-        return true;
+        return walkObjectsFromInline(that, offset, visitor);
     }
 
-    /** Given an Object, return the next Object in this HeapChunk, or null. */
-    private static Object getNextObject(Header<?> that, Object obj) {
-        final Log trace = Log.noopLog().string("[HeapChunk.getNextObject:").newline();
-        final Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
-        trace.string("  o: ").object(obj).string("  objEnd: ").hex(objEnd).string("  top: ").hex(that.getTop()).newline();
-        /* Check if top is below the proposed next object. */
-        if (that.getTop().belowOrEqual(objEnd)) {
-            trace.string("  returns null").string("]").newline();
-            return null;
+    @AlwaysInline("GC performance")
+    public static boolean walkObjectsFromInline(Header<?> that, Pointer startOffset, ObjectVisitor visitor) {
+        Pointer offset = startOffset;
+        while (offset.belowThan(that.getTop())) {
+            Object obj = offset.toObject();
+            if (!visitor.visitObjectInline(obj)) {
+                return false;
+            }
+            offset = offset.add(LayoutEncoding.getSizeFromObject(obj));
         }
-        final Object result = objEnd.toObject();
-        /* TODO: How do I assert that result is an Object? */
-        trace.string(" returns ").object(result).string("]").newline();
-        return result;
+        return true;
     }
 
     /** How much space is available for objects in a HeapChunk? */
@@ -226,6 +213,26 @@ public class HeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static Pointer asPointer(Header<?> that) {
         return (Pointer) that;
+    }
+
+    public static HeapChunk.Header<?> getEnclosingHeapChunk(Object obj) {
+        assert !HeapImpl.getHeapImpl().isInImageHeap(obj) : "Must be checked before calling this method";
+        assert !ObjectHeaderImpl.isPointerToForwardedObject(Word.objectToUntrackedPointer(obj)) : "Forwarded objects must be a pointer and not an object";
+
+        if (ObjectHeaderImpl.isAlignedObject(obj)) {
+            return AlignedHeapChunk.getEnclosingAlignedHeapChunk(obj);
+        } else {
+            assert ObjectHeaderImpl.isUnalignedObject(obj);
+            return UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(obj);
+        }
+    }
+
+    public static HeapChunk.Header<?> getEnclosingHeapChunk(Pointer ptrToObj, UnsignedWord header) {
+        if (ObjectHeaderImpl.isAlignedHeader(ptrToObj, header)) {
+            return AlignedHeapChunk.getEnclosingAlignedHeapChunkFromPointer(ptrToObj);
+        } else {
+            return UnalignedHeapChunk.getEnclosingUnalignedHeapChunkFromPointer(ptrToObj);
+        }
     }
 
     /** Shared methods for a MemoryWalker to access a heap chunk. */
@@ -292,9 +299,9 @@ public class HeapChunk {
             final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointerCarefully(p);
             final Object o;
 
-            if (ObjectHeaderImpl.getObjectHeaderImpl().isForwardedHeaderCarefully(header)) {
+            if (ObjectHeaderImpl.isForwardedHeaderCarefully(header)) {
                 /* Use the forwarded object to get the size. */
-                o = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(p);
+                o = ObjectHeaderImpl.getForwardedObject(p);
             } else {
                 /* Use the object to get the size. */
                 o = p.toObject();

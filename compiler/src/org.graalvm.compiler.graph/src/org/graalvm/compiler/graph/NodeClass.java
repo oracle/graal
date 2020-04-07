@@ -231,7 +231,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             inputsIteration = computeIterationMask(inputs.type(), inputs.getDirectCount(), inputs.getOffsets());
         }
         try (DebugCloseable t1 = Init_Data.start(debug)) {
-            data = new Fields(fs.data);
+            data = Fields.create(fs.data);
         }
 
         isLeafNode = inputs.getCount() + successors.getCount() == 0;
@@ -308,6 +308,17 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             assert size != null;
             debug.log("Node cost for node of type __| %s |_, cycles:%s,size:%s", clazz, cycles, size);
         }
+        assert verifyMemoryEdgeInvariant(fs) : "Nodes participating in the memory graph should have at most 1 optional memory input.";
+    }
+
+    private static boolean verifyMemoryEdgeInvariant(NodeFieldsScanner fs) {
+        int optionalMemoryInputs = 0;
+        for (InputInfo info : fs.inputs) {
+            if (info.optional && info.inputType == InputType.Memory) {
+                optionalMemoryInputs++;
+            }
+        }
+        return optionalMemoryInputs <= 1;
     }
 
     private final NodeCycles cycles;

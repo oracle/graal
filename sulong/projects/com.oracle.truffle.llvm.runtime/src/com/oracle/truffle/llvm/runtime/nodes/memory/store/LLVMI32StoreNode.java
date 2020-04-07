@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,23 +29,32 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
+@GenerateUncached
 public abstract class LLVMI32StoreNode extends LLVMStoreNodeCommon {
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected void doOp(LLVMNativePointer addr, int value) {
-        getLLVMMemoryCached().putI32(addr, value);
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
+    protected void doOp(LLVMNativePointer addr, int value,
+                    @CachedLanguage LLVMLanguage language) {
+        language.getLLVMMemory().putI32(addr, value);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected void doOpDerefHandle(LLVMNativePointer addr, int value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
-        doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value, nativeWrite);
+        doOpManaged(getReceiver.execute(addr), value, nativeWrite);
     }
 
     @Specialization(limit = "3")

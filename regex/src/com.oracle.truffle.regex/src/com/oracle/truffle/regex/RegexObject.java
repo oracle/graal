@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -222,7 +222,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    public static final class RegexObjectExecMethod implements RegexLanguageObject {
+    public static final class RegexObjectExecMethod extends AbstractRegexObject {
 
         private final RegexObject regex;
 
@@ -262,6 +262,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
                 throw new RuntimeException(e);
             }
         }
+
     }
 
     @ReportPolymorphism

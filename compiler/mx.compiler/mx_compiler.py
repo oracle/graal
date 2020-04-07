@@ -396,6 +396,7 @@ def verify_jvmci_ci_versions(args):
 
     primary_suite = mx.primary_suite()
     hocon_version, hocon_dev = _grep_version(
+        [join(primary_suite.vc_dir, 'common.json')] +
         glob.glob(join(primary_suite.vc_dir, '*.hocon')) +
         glob.glob(join(primary_suite.dir, 'ci*.hocon')) +
         glob.glob(join(primary_suite.dir, 'ci*/*.hocon')), 'hocon')
@@ -429,7 +430,7 @@ class UnitTestRun:
                     extra_args = ['--verbose', '--enable-timing']
                 else:
                     extra_args = []
-                if 'coverage' not in self.tags:
+                if Task.tags is None or 'coverage' not in Task.tags:
                     # If this is a coverage execution, we want maximal coverage
                     # and thus must not fail fast.
                     extra_args += ['--fail-fast']
@@ -663,6 +664,10 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test) as t:
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
+    # ensure -XX:+PreserveFramePointer  still works
+    with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test) as t:
+        if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+
     if isJDK8:
         # temporarily isolate those test (GR-10990)
         cms = ['cms']
@@ -847,12 +852,8 @@ def _check_using_latest_jars(dists):
 def _parseVmArgs(args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
 
-    argsPrefix = []
-    jacocoArgs = mx_gate.get_jacoco_agent_args()
-    if jacocoArgs:
-        argsPrefix.extend(jacocoArgs)
-
     # add default graal.options.file
+    argsPrefix = []
     options_file = join(mx.primary_suite().dir, 'graal.options')
     if exists(options_file):
         argsPrefix.append('-Dgraal.options.file=' + options_file)
@@ -861,6 +862,8 @@ def _parseVmArgs(args, addDefaultArgs=True):
         ignoredArgs = args[args.index('-version') + 1:]
         if len(ignoredArgs) > 0:
             mx.log("Warning: The following options will be ignored by the VM because they come after the '-version' argument: " + ' '.join(ignoredArgs))
+
+    args = jdk.processArgs(args, addDefaultArgs=addDefaultArgs)
 
     # The default for CompilationFailureAction in the code is Silent as this is
     # what we want for GraalVM. When using Graal via mx (e.g. in the CI gates)
@@ -873,7 +876,7 @@ def _parseVmArgs(args, addDefaultArgs=True):
     if not any(a.startswith('-Dgraal.PrintGraph=') for a in args):
         argsPrefix.append('-Dgraal.PrintGraph=Network')
 
-    return jdk.processArgs(argsPrefix + args, addDefaultArgs=addDefaultArgs)
+    return argsPrefix + args
 
 def _check_bootstrap_config(args):
     """
@@ -1067,7 +1070,11 @@ def java_base_unittest(args):
             extra_args = ['--verbose', '--enable-timing']
         else:
             extra_args = []
-        mx_unittest.unittest(['--suite', 'compiler', '--fail-fast'] + extra_args + args)
+        # the base JDK doesn't include jdwp
+        if _graaljdk_override.debug_args:
+            mx.warn('Ignoring Java debugger arguments because base JDK doesn\'t include jdwp')
+        with mx.DisableJavaDebugging():
+            mx_unittest.unittest(['--suite', 'compiler', '--fail-fast'] + extra_args + args)
     finally:
         _graaljdk_override = None
 
@@ -1185,7 +1192,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         graalvm_compiler_short_names = [c.short_name for c in mx_sdk_vm.graalvm_components() if isinstance(c, mx_sdk_vm.GraalVmJvmciComponent) and c.graal_compiler]
         jdk_suffix = '-'.join(graalvm_compiler_short_names)
         if root_module_names:
-            jdk_suffix = jdk_suffix + '-' + hashlib.sha1(','.join(root_module_names)).hexdigest()
+            jdk_suffix = jdk_suffix + '-' + hashlib.sha1(_encode(','.join(root_module_names))).hexdigest()
         dst_jdk_dir = join(graaljdks_dir, 'jdk{}-{}'.format(src_jdk.javaCompliance, jdk_suffix))
         if dst_jdk_dir == src_jdk.home:
             # Avoid overwriting source JDK
@@ -1280,7 +1287,9 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
             module_dists = _graal_config().dists
             _check_using_latest_jars(module_dists)
             vendor_info = {'vendor-version' : vm_name}
-            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names, vendor_info=vendor_info)
+            # Setting dedup_legal_notices=False avoids due to license files conflicting
+            # when switching JAVA_HOME from an OpenJDK to an OracleJDK or vice versa between executions.
+            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names, vendor_info=vendor_info, dedup_legal_notices=False)
             jre_dir = tmp_dst_jdk_dir
             jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
             if export_truffle:
@@ -1395,6 +1404,7 @@ def _jvmci_jars():
         return [
             'compiler:GRAAL',
             'compiler:GRAAL_MANAGEMENT',
+            'compiler:GRAAL_TRUFFLE_JFR_IMPL',
             'compiler:JAOTC',
         ]
     else:
@@ -1402,6 +1412,7 @@ def _jvmci_jars():
         return [
             'compiler:GRAAL',
             'compiler:GRAAL_MANAGEMENT',
+            'compiler:GRAAL_TRUFFLE_JFR_IMPL',
         ]
 
 # The community compiler component
@@ -1414,12 +1425,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJvmciComponent(
     third_party_license_files=[],
     dependencies=['Truffle'],
     jar_distributions=[  # Dev jars (annotation processors)
-        'compiler:GRAAL_PROCESSOR_COMMON',
-        'compiler:GRAAL_OPTIONS_PROCESSOR',
-        'compiler:GRAAL_SERVICEPROVIDER_PROCESSOR',
-        'compiler:GRAAL_NODEINFO_PROCESSOR',
-        'compiler:GRAAL_REPLACEMENTS_PROCESSOR',
-        'compiler:GRAAL_COMPILER_MATCH_PROCESSOR',
+        'compiler:GRAAL_PROCESSOR',
     ],
     jvmci_jars=_jvmci_jars(),
     graal_compiler='graal',

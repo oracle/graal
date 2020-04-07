@@ -24,22 +24,25 @@
  */
 package com.oracle.svm.hosted.image;
 
-import java.io.FileDescriptor;
-import java.lang.reflect.Field;
-import java.nio.Buffer;
-import java.nio.MappedByteBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.image.DisallowedImageHeapObjects;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
-import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Complain if there are types that can not move from the image generator heap to the image heap.
@@ -49,94 +52,101 @@ public class DisallowedImageHeapObjectFeature implements Feature {
 
     private ClassInitializationSupport classInitialization;
 
+    private String[] disallowedSubstrings;
+    private Map<byte[], Charset> disallowedByteSubstrings;
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         classInitialization = ((FeatureImpl.DuringSetupAccessImpl) access).getHostVM().getClassInitializationSupport();
         access.registerObjectReplacer(this::replacer);
-    }
 
-    private static final Class<?> CANCELLABLE_CLASS;
-    static {
-        try {
-            CANCELLABLE_CLASS = Class.forName("sun.nio.fs.Cancellable");
-        } catch (ClassNotFoundException ex) {
-            throw VMError.shouldNotReachHere(ex);
+        if (SubstrateOptions.DetectUserDirectoriesInImageHeap.getValue()) {
+            /*
+             * We do not check for the temp directory name and the user name because they have a too
+             * high chance of being short or generic terms that appear in valid strings.
+             */
+            disallowedSubstrings = new String[]{
+                            System.getProperty("user.home"),
+                            System.getProperty("user.dir"),
+                            System.getProperty("java.home")};
+
+            /* We cannot check all byte[] encodings of strings, but we want to check common ones. */
+            Set<Charset> encodings = new HashSet<>(Arrays.asList(
+                            StandardCharsets.UTF_8,
+                            StandardCharsets.UTF_16,
+                            Charset.forName(System.getProperty("sun.jnu.encoding"))));
+
+            disallowedByteSubstrings = new IdentityHashMap<>();
+            for (int i = 0; i < disallowedSubstrings.length; i++) {
+                String s = disallowedSubstrings[i];
+                for (Charset encoding : encodings) {
+                    disallowedByteSubstrings.put(s.getBytes(encoding), encoding);
+                }
+            }
         }
     }
 
     private Object replacer(Object original) {
-        /* Started Threads can not be in the image heap. */
-        if (original instanceof Thread) {
-            final Thread asThread = (Thread) original;
-            if (asThread instanceof ImageGeneratorThreadMarker) {
-                return ((ImageGeneratorThreadMarker) asThread).asTerminated();
-            }
-            if (asThread.getState() != Thread.State.NEW && asThread.getState() != Thread.State.TERMINATED) {
-                throw error("Detected a started Thread in the image heap. " +
-                                "Threads running in the image generator are no longer running at image run time. " +
-                                classInitialization.objectInstantiationTraceMessage(asThread, "Try avoiding to initialize the class that caused initialization of the Thread."));
-            }
-        }
-        /* FileDescriptors can not be in the image heap. */
-        if (original instanceof FileDescriptor) {
-            final FileDescriptor asFileDescriptor = (FileDescriptor) original;
-            /* Except for a few well-known FileDescriptors. */
-            if (!((asFileDescriptor == FileDescriptor.in) || (asFileDescriptor == FileDescriptor.out) || (asFileDescriptor == FileDescriptor.err) || (!asFileDescriptor.valid()))) {
-                throw error("Detected a FileDescriptor in the image heap. " +
-                                "File descriptors opened during image generation are no longer open at image run time, and the files might not even be present anymore at image run time. " +
-                                classInitialization.objectInstantiationTraceMessage(asFileDescriptor, "Try avoiding to initialize the class that caused initialization of the FileDescriptor."));
-            }
-        }
-        /* Direct ByteBuffers can not be in the image heap. */
-        if (original instanceof MappedByteBuffer) {
-            MappedByteBuffer buffer = (MappedByteBuffer) original;
-            /*
-             * We allow 0-length non-file-based direct buffers, see comment on
-             * Target_java_nio_DirectByteBuffer.
-             */
-            if (buffer.capacity() != 0 || getFileDescriptor(buffer) != null) {
-                throw error("Detected a direct/mapped ByteBuffer in the image heap. " +
-                                "A direct ByteBuffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image run time. " +
-                                "A mapped ByteBuffer references a file descriptor, which is no longer open and mapped at run time. " +
-                                classInitialization.objectInstantiationTraceMessage(buffer, "Try avoiding to initialize the class that caused initialization of the MappedByteBuffer."));
-            }
-        } else if (original instanceof Buffer && ((Buffer) original).isDirect()) {
-            throw error("Detected a direct Buffer in the image heap. " +
-                            "A direct Buffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image run time. " +
-                            classInitialization.objectInstantiationTraceMessage(original, "Try avoiding to initialize the class that caused initialization of the direct Buffer."));
+        if (original instanceof Thread && original instanceof ImageGeneratorThreadMarker) {
+            return ((ImageGeneratorThreadMarker) original).asTerminated();
         }
 
-        /* ZipFiles can not be in the image heap. */
-        if (original instanceof java.util.zip.ZipFile) {
-            throw error("Detected a ZipFile object in the image heap. " +
-                            "A ZipFile object contains pointers to unmanaged C memory and file descriptors, and these resources are no longer available at image run time. " +
-                            classInitialization.objectInstantiationTraceMessage(original, "Try avoiding to initialize the class that caused initialization of the direct Buffer."));
+        if (original instanceof String && disallowedSubstrings != null) {
+            String string = (String) original;
+            for (String disallowedSubstring : disallowedSubstrings) {
+                if (string.contains(disallowedSubstring)) {
+                    throw new UnsupportedFeatureException("Detected a string in the image heap that contains a user directory. " +
+                                    "This means that file system information from the native image build is persisted and available at image run time, which is most likely an error." +
+                                    System.lineSeparator() + "String that is problematic: " + string + System.lineSeparator() +
+                                    "Disallowed substring with user directory: " + disallowedSubstring + System.lineSeparator() +
+                                    "This check can be disabled using the option " + SubstrateOptionsParser.commandArgument(SubstrateOptions.DetectUserDirectoriesInImageHeap, "-"));
+                }
+            }
         }
 
-        if (CANCELLABLE_CLASS.isInstance(original)) {
-            throw error("Detected an instance of a class that extends " + CANCELLABLE_CLASS.getTypeName() + ": " + original.getClass().getTypeName() + ". " +
-                            "It contains a pointer to unmanaged C memory, which is no longer available at image run time. " +
-                            classInitialization.objectInstantiationTraceMessage(original, "Try avoiding to initialize the class that caused initialization of the object."));
+        if (original instanceof byte[] && disallowedByteSubstrings != null) {
+            byte[] bytes = (byte[]) original;
+            for (Map.Entry<byte[], Charset> entry : disallowedByteSubstrings.entrySet()) {
+                byte[] disallowedSubstring = entry.getKey();
+                if (search(bytes, disallowedSubstring)) {
+                    Charset charset = entry.getValue();
+                    throw new UnsupportedFeatureException("Detected a byte[] in the image heap that contains a user directory. " +
+                                    "This means that file system information from the native image build is persisted and available at image run time, which is most likely an error." +
+                                    System.lineSeparator() + "byte[] that is problematic: " + new String(bytes, charset) + System.lineSeparator() +
+                                    "Disallowed substring with user directory: " + new String(disallowedSubstring, charset) + System.lineSeparator() +
+                                    "This check can be disabled using the option " + SubstrateOptionsParser.commandArgument(SubstrateOptions.DetectUserDirectoriesInImageHeap, "-"));
+                }
+            }
         }
 
+        DisallowedImageHeapObjects.check(original, this::error);
         return original;
     }
 
-    private static RuntimeException error(String msg) {
-        throw new UnsupportedFeatureException(msg + " " +
+    private RuntimeException error(String msg, Object obj, String initializerAction) {
+        throw new UnsupportedFeatureException(msg + " " + classInitialization.objectInstantiationTraceMessage(obj, initializerAction) + " " +
                         "The object was probably created by a class initializer and is reachable from a static field. " +
                         "You can request class initialization at image run time by using the option " +
                         SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<class-name>", "initialize-at-run-time") + ". " +
                         "Or you can write your own initialization methods and call them explicitly from your main entry point.");
     }
 
-    private static final Field FILE_DESCRIPTOR_FIELD = ReflectionUtil.lookupField(MappedByteBuffer.class, "fd");
-
-    private static FileDescriptor getFileDescriptor(MappedByteBuffer buffer) {
-        try {
-            return (FileDescriptor) FILE_DESCRIPTOR_FIELD.get(buffer);
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
+    private static boolean search(byte[] haystack, byte[] needle) {
+        byte first = needle[0];
+        for (int start = 0; start < haystack.length - needle.length; start++) {
+            if (haystack[start] == first) {
+                boolean same = true;
+                for (int i = 1; i < needle.length; i++) {
+                    if (haystack[start + i] != needle[i]) {
+                        same = false;
+                        break;
+                    }
+                }
+                if (same) {
+                    return true;
+                }
+            }
         }
+        return false;
     }
 }

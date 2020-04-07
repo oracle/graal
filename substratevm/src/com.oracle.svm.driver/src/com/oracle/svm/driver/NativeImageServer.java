@@ -59,6 +59,7 @@ import java.util.stream.Collectors;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.hosted.server.NativeImageBuildClient;
@@ -565,7 +566,7 @@ final class NativeImageServer extends NativeImage {
         Path logFilePath = serverDir.resolve("server.log");
         command.add(NativeImageBuildServer.LOG_PREFIX + logFilePath);
         showVerboseMessage(isVerbose(), "StartServer [");
-        showVerboseMessage(isVerbose(), String.join(" \\\n", command));
+        showVerboseMessage(isVerbose(), SubstrateUtil.getShellCommandString(command, true));
         showVerboseMessage(isVerbose(), "]");
         int childPid = NativeImageServerHelper.daemonize(() -> {
             try {
@@ -739,7 +740,7 @@ final class NativeImageServer extends NativeImage {
     @Override
     protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
-        if (useServer && !printFlags && !javaArgs.contains("-Xdebug")) {
+        if (useServer && !printFlags && !useDebugAttach()) {
             AbortBuildSignalHandler signalHandler = new AbortBuildSignalHandler();
             sun.misc.Signal.handle(new sun.misc.Signal("TERM"), signalHandler);
             sun.misc.Signal.handle(new sun.misc.Signal("INT"), signalHandler);

@@ -152,7 +152,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     private void argumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         int numArgs = body.module().symbolTable().function(codeEntry().functionIndex()).numArguments();
-        assert args.length == numArgs;
+        assert args.length == numArgs : "Expected number of arguments " + numArgs + ", actual " + args.length;
         for (int i = 0; i != numArgs; ++i) {
             FrameSlot slot = codeEntry.localSlot(i);
             FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(slot);

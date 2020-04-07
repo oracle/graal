@@ -111,6 +111,16 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             return result;
         }
 
+        /**
+         * Native image can suffer high contention when synchronizing resolution and initialization
+         * of a type referenced by a constant pool entry. Such synchronization should be unnecessary
+         * for native-image.
+         */
+        @Override
+        protected Object loadReferenceTypeLock() {
+            return null;
+        }
+
         @Override
         protected void maybeEagerlyResolve(int cpi, int bytecode) {
             try {

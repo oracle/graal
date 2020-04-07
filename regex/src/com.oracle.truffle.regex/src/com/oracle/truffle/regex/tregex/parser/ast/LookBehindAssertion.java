@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,46 +81,14 @@ public class LookBehindAssertion extends LookAroundAssertion {
         return ast.register(new LookBehindAssertion(this, ast, recursive));
     }
 
-    /**
-     * Verifies that the contents of this assertion ({@link #getGroup()}) are in "literal" form.
-     *
-     * This means that there is only a single alternative which is composed of a sequence of
-     * {@link CharacterClass} nodes and terminated by a {@link MatchFound} node.
-     */
-    public boolean isLiteral() {
-        if (getGroup().size() != 1) {
-            return false;
-        }
-        for (Term t : getGroup().getAlternatives().get(0).getTerms()) {
-            if (!(t instanceof CharacterClass)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Returns the length of the words that can be matched by the body of this lookbehind assertion.
-     * <p>
-     * Because we restrict the regular expressions used in lookbehind assertions to "literal"
-     * regular expressions, all strings that match the body of the assertion are guaranteed to be of
-     * the same length. This is critical to how lookbehind is implemented, because it tells us how
-     * much do we have to rewind when matching a regular expression with lookbehind assertions.
-     */
-    public int getLength() {
-        assert isLiteral();
-        return getGroup().getAlternatives().get(0).getTerms().size();
-    }
-
     @Override
     public String getPrefix() {
         return isNegated() ? "?<!" : "?<=";
     }
 
     @Override
-    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
-        assert !hasQuantifier();
-        return this == obj || (obj instanceof LookBehindAssertion && groupEqualsSemantic((LookBehindAssertion) obj));
+    public boolean equalsSemantic(RegexASTNode obj) {
+        return this == obj || (obj.isLookBehindAssertion() && groupEqualsSemantic(obj.asLookBehindAssertion()));
     }
 
     @TruffleBoundary

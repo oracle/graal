@@ -55,11 +55,11 @@ import java.util.Objects;
  * to parse it from a raw string.
  * <p>
  *
- * <h3>Usage example:</h3> This code example compares the the current GraalVM version to be at least
+ * <h3>Usage example:</h3> This code example compares the current GraalVM version to be at least
  * 19.3 and fails if it is not.
  *
  * <pre>
- * if (Version.getCurrent().compareTo(19, 3) <= 0) {
+ * if (Version.getCurrent().compareTo(19, 3) < 0) {
  *     throw new IllegalStateException("Invalid GraalVM version. Must be at least 19.3.");
  * }
  * </pre>

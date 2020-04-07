@@ -31,8 +31,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.InternalPlatform;
-
 import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.SubstrateOperatingSystemMXBean;
@@ -90,12 +88,12 @@ class PosixSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean
     }
 
     private static int fstat(int fd) {
-        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
             return LinuxStat.fstat64(fd, stat);
-        } else if (Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)) {
-            DarwinStat.stat stat = StackValue.get(DarwinStat.stat.class);
-            return DarwinStat.fstat(fd, stat);
+        } else if (Platform.includedIn(Platform.DARWIN.class)) {
+            DarwinStat.stat64 stat = StackValue.get(DarwinStat.stat64.class);
+            return DarwinStat.fstat64(fd, stat);
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,19 @@
  */
 package com.oracle.truffle.regex.tregex.util;
 
-import com.oracle.truffle.regex.tregex.dfa.NFAStateSet;
-import com.oracle.truffle.regex.tregex.nfa.NFA;
-import com.oracle.truffle.regex.tregex.nfa.NFAState;
-import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
-import java.nio.file.StandardOpenOption;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.nfa.NFA;
+import com.oracle.truffle.regex.tregex.nfa.NFAState;
+import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 
 public final class NFAExport {
 
@@ -121,8 +120,8 @@ public final class NFAExport {
         writer.newLine();
         for (NFAState state : nfa.getStates()) {
             if (showState(state)) {
-                for (int i = 0; i < state.getNext(forward).length; i++) {
-                    NFAStateTransition transition = state.getNext(forward)[i];
+                for (int i = 0; i < state.getSuccessors(forward).length; i++) {
+                    NFAStateTransition transition = state.getSuccessors(forward)[i];
                     DotExport.printConnection(writer,
                                     labelState(transition.getSource(forward), true),
                                     labelState(transition.getTarget(forward), true),
@@ -155,7 +154,7 @@ public final class NFAExport {
     }
 
     private void exportLaTex() throws IOException {
-        NFAStateSet visited = new NFAStateSet(nfa);
+        StateSet<NFA, NFAState> visited = StateSet.create(nfa);
         writer.write("\\documentclass{standalone}\n" +
                         "\\usepackage[utf8]{inputenc}\n" +
                         "\\usepackage[T1]{fontenc}\n" +
@@ -220,7 +219,7 @@ public final class NFAExport {
         entryOffset--;
         while (!curStates.isEmpty()) {
             for (NFAState s : curStates) {
-                for (NFAStateTransition t : s.getNext()) {
+                for (NFAStateTransition t : s.getSuccessors()) {
                     if (!(mergeFinalStates && t.getTarget().isFinalState(forward)) && visited.add(t.getTarget())) {
                         nextStates.add(t.getTarget());
                     }
@@ -254,8 +253,8 @@ public final class NFAExport {
             if (s == null) {
                 continue;
             }
-            for (int i = 0; i < s.getNext().length; i++) {
-                NFAStateTransition t = s.getNext()[i];
+            for (int i = 0; i < s.getSuccessors().length; i++) {
+                NFAStateTransition t = s.getSuccessors()[i];
                 if (visited.contains(s) && visited.contains(t.getTarget())) {
                     printLaTexTransition(t, i);
                 }
@@ -327,10 +326,10 @@ public final class NFAExport {
             return false;
         }
         if (nfa.isEntry(state, forward)) {
-            return state.getNext(forward).length > 0;
+            return state.getSuccessors(forward).length > 0;
         }
         if (state.isFinalState(forward)) {
-            return state.getPrev(forward).length > 0;
+            return state.getPredecessors(forward).length > 0;
         }
         return true;
     }

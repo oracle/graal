@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.nfi.impl;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -54,7 +56,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
 final class LibFFILibrary implements TruffleObject {
 
     private static final EmptyKeysArray KEYS = new EmptyKeysArray();
@@ -77,16 +78,19 @@ final class LibFFILibrary implements TruffleObject {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     boolean hasMembers() {
         return true;
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return KEYS;
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     boolean isMemberReadable(@SuppressWarnings("unused") String member) {
         return true;
     }
@@ -122,6 +126,24 @@ final class LibFFILibrary implements TruffleObject {
         }
     }
 
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return NFILanguageImpl.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "LibFFILibrary(" + handle + ")";
+    }
+
     private static final class Destructor extends NativeAllocation.Destructor {
 
         private final long handle;
@@ -140,21 +162,25 @@ final class LibFFILibrary implements TruffleObject {
     static final class EmptyKeysArray implements TruffleObject {
 
         @ExportMessage
+        @SuppressWarnings("static-method")
         boolean hasArrayElements() {
             return true;
         }
 
         @ExportMessage
+        @SuppressWarnings("static-method")
         long getArraySize() {
             return 0;
         }
 
         @ExportMessage
+        @SuppressWarnings("static-method")
         boolean isArrayElementReadable(@SuppressWarnings("unused") long index) {
             return false;
         }
 
         @ExportMessage
+        @SuppressWarnings("static-method")
         Object readArrayElement(long index) throws InvalidArrayIndexException {
             throw InvalidArrayIndexException.create(index);
         }

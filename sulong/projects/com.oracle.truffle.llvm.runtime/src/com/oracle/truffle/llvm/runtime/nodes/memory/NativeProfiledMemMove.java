@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,14 +33,16 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNode.UnitSizeNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.UnitSizeNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.UnitSizeNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -55,7 +57,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
                     UnitSizeNode unitSizeNode) {
         int unitSize = unitSizeNode.execute(helper, length);
         for (long i = 0; i < length; i += unitSize) {
-            helper.moveUnit(target.increment(i), source.increment(i), unitSize);
+            helper.execute(target.increment(i), source.increment(i), unitSize);
         }
     }
 
@@ -64,7 +66,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
                     UnitSizeNode unitSizeNode) {
         int unitSize = unitSizeNode.execute(helper, length);
         for (long i = length - unitSize; i >= 0; i -= unitSize) {
-            helper.moveUnit(target.increment(i), source.increment(i), unitSize);
+            helper.execute(target.increment(i), source.increment(i), unitSize);
         }
     }
 
@@ -120,10 +122,10 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
 
     @Specialization
     protected void doNative(Object target, Object source, long length,
-                    @Cached("getLLVMMemory()") LLVMMemory memory,
+                    @CachedLanguage LLVMLanguage language,
                     @Cached LLVMToNativeNode convertTarget,
                     @Cached LLVMToNativeNode convertSource) {
-        memmove(memory, convertTarget.executeWithTarget(target), convertSource.executeWithTarget(source), length);
+        memmove(language.getLLVMMemory(), convertTarget.executeWithTarget(target), convertSource.executeWithTarget(source), length);
     }
 
     private void memmove(LLVMMemory memory, LLVMNativePointer target, LLVMNativePointer source, long length) {

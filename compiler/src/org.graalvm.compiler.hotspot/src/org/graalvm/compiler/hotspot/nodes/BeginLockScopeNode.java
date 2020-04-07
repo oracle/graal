@@ -35,7 +35,7 @@ import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.extended.MonitorEnter;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.word.Word;
@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.Value;
  * check on the object.
  */
 @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_1)
-public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implements LIRLowerable, MonitorEnter, MemoryCheckpoint.Single {
+public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implements LIRLowerable, MonitorEnter, SingleMemoryKill {
 
     public static final NodeClass<BeginLockScopeNode> TYPE = NodeClass.create(BeginLockScopeNode.class);
     protected int lockDepth;

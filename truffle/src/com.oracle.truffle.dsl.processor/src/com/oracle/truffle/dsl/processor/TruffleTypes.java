@@ -75,9 +75,9 @@ public class TruffleTypes {
     public static final String CompilerDirectives_CompilationFinal_Name = "com.oracle.truffle.api.CompilerDirectives.CompilationFinal";
     public static final String CompilerDirectives_Name = "com.oracle.truffle.api.CompilerDirectives";
     public static final String CompilerDirectives_TruffleBoundary_Name = "com.oracle.truffle.api.CompilerDirectives.TruffleBoundary";
-    public static final String ExplodeLoop_LoopExplosionKind_Name = "com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind";
     public static final String ExplodeLoop_Name = "com.oracle.truffle.api.nodes.ExplodeLoop";
     public static final String Frame_Name = "com.oracle.truffle.api.frame.Frame";
+    public static final String FinalBitSet_Name = "com.oracle.truffle.api.utilities.FinalBitSet";
     public static final String InvalidAssumptionException_Name = "com.oracle.truffle.api.nodes.InvalidAssumptionException";
     public static final String MaterializedFrame_Name = "com.oracle.truffle.api.frame.MaterializedFrame";
     public static final String Node_Child_Name = "com.oracle.truffle.api.nodes.Node.Child";
@@ -106,8 +106,8 @@ public class TruffleTypes {
     public final DeclaredType CompilerDirectives_CompilationFinal = c.getDeclaredType(CompilerDirectives_CompilationFinal_Name);
     public final DeclaredType CompilerDirectives_TruffleBoundary = c.getDeclaredType(CompilerDirectives_TruffleBoundary_Name);
     public final DeclaredType ExplodeLoop = c.getDeclaredType(ExplodeLoop_Name);
-    public final DeclaredType ExplodeLoop_LoopExplosionKind = c.getDeclaredType(ExplodeLoop_LoopExplosionKind_Name);
     public final DeclaredType Frame = c.getDeclaredType(Frame_Name);
+    public final DeclaredType FinalBitSet = c.getDeclaredType(FinalBitSet_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
     public final DeclaredType MaterializedFrame = c.getDeclaredType(MaterializedFrame_Name);
     public final DeclaredType Node = c.getDeclaredType(Node_Name);
@@ -191,6 +191,7 @@ public class TruffleTypes {
 
     // Library API
     public static final String CachedLibrary_Name = "com.oracle.truffle.api.library.CachedLibrary";
+    public static final String DefaultExportProvider_Name = "com.oracle.truffle.api.library.DefaultExportProvider";
     public static final String DynamicDispatchLibrary_Name = "com.oracle.truffle.api.library.DynamicDispatchLibrary";
     public static final String ExportLibrary_Name = "com.oracle.truffle.api.library.ExportLibrary";
     public static final String ExportLibrary_Repeat_Name = "com.oracle.truffle.api.library.ExportLibrary.Repeat";
@@ -202,11 +203,13 @@ public class TruffleTypes {
     public static final String GenerateLibrary_Name = "com.oracle.truffle.api.library.GenerateLibrary";
     public static final String Library_Name = "com.oracle.truffle.api.library.Library";
     public static final String LibraryExport_Name = "com.oracle.truffle.api.library.LibraryExport";
+    public static final String LibraryExport_DelegateExport_Name = "com.oracle.truffle.api.library.LibraryExport.DelegateExport";
     public static final String LibraryFactory_Name = "com.oracle.truffle.api.library.LibraryFactory";
     public static final String Message_Name = "com.oracle.truffle.api.library.Message";
     public static final String ReflectionLibrary_Name = "com.oracle.truffle.api.library.ReflectionLibrary";
 
     public final DeclaredType CachedLibrary = c.getDeclaredType(CachedLibrary_Name);
+    public final DeclaredType DefaultExportProvider = c.getDeclaredType(DefaultExportProvider_Name);
     public final DeclaredType DynamicDispatchLibrary = c.getDeclaredType(DynamicDispatchLibrary_Name);
     public final DeclaredType ExportLibrary = c.getDeclaredType(ExportLibrary_Name);
     public final DeclaredType ExportLibrary_Repeat = c.getDeclaredType(ExportLibrary_Repeat_Name);
@@ -218,6 +221,7 @@ public class TruffleTypes {
     public final DeclaredType GenerateLibrary_DefaultExport = c.getDeclaredType(GenerateLibrary_DefaultExport_Name);
     public final DeclaredType Library = c.getDeclaredType(Library_Name);
     public final DeclaredType LibraryExport = c.getDeclaredType(LibraryExport_Name);
+    public final DeclaredType LibraryExport_DelegateExport = c.getDeclaredType(LibraryExport_DelegateExport_Name);
     public final DeclaredType LibraryFactory = c.getDeclaredType(LibraryFactory_Name);
     public final DeclaredType Message = c.getDeclaredType(Message_Name);
     public final DeclaredType ReflectionLibrary = c.getDeclaredType(ReflectionLibrary_Name);
@@ -226,9 +230,6 @@ public class TruffleTypes {
     public static final String GenerateWrapper_IncomingConverter_Name = "com.oracle.truffle.api.instrumentation.GenerateWrapper.IncomingConverter";
     public static final String GenerateWrapper_Name = "com.oracle.truffle.api.instrumentation.GenerateWrapper";
     public static final String GenerateWrapper_OutgoingConverter_Name = "com.oracle.truffle.api.instrumentation.GenerateWrapper.OutgoingConverter";
-    public static final String Instrumentable_Name = "com.oracle.truffle.api.instrumentation.Instrumentable";
-    public static final String InstrumentableFactory_Name = "com.oracle.truffle.api.instrumentation.InstrumentableFactory";
-    public static final String InstrumentableFactory_WrapperNode_Name = "com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode";
     public static final String InstrumentableNode_Name = "com.oracle.truffle.api.instrumentation.InstrumentableNode";
     public static final String InstrumentableNode_WrapperNode_Name = "com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode";
     public static final String ProbeNode_Name = "com.oracle.truffle.api.instrumentation.ProbeNode";
@@ -243,9 +244,6 @@ public class TruffleTypes {
     public final DeclaredType GenerateWrapper = c.getDeclaredTypeOptional(GenerateWrapper_Name);
     public final DeclaredType GenerateWrapper_IncomingConverter = c.getDeclaredTypeOptional(GenerateWrapper_IncomingConverter_Name);
     public final DeclaredType GenerateWrapper_OutgoingConverter = c.getDeclaredTypeOptional(GenerateWrapper_OutgoingConverter_Name);
-    public final DeclaredType Instrumentable = c.getDeclaredTypeOptional(Instrumentable_Name);
-    public final DeclaredType InstrumentableFactory = c.getDeclaredTypeOptional(InstrumentableFactory_Name);
-    public final DeclaredType InstrumentableFactory_WrapperNode = c.getDeclaredTypeOptional(InstrumentableFactory_WrapperNode_Name);
     public final DeclaredType InstrumentableNode = c.getDeclaredTypeOptional(InstrumentableNode_Name);
     public final DeclaredType InstrumentableNode_WrapperNode = c.getDeclaredTypeOptional(InstrumentableNode_WrapperNode_Name);
     public final DeclaredType ProbeNode = c.getDeclaredTypeOptional(ProbeNode_Name);
@@ -270,22 +268,6 @@ public class TruffleTypes {
     public final DeclaredType DynamicObject = c.getDeclaredTypeOptional(DynamicObject_Name);
     public final DeclaredType ObjectType = c.getDeclaredTypeOptional(ObjectType_Name);
     public final DeclaredType Layout_ImplicitCast = c.getDeclaredTypeOptional(Layout_ImplicitCast_Name);
-
-    // Interop API
-    public static final String MessageResolution_Name = "com.oracle.truffle.api.interop.MessageResolution";
-    public static final String InteropMessage_Name = "com.oracle.truffle.api.interop.Message";
-    public static final String TruffleObject_Name = "com.oracle.truffle.api.interop.TruffleObject";
-    public static final String CanResolve_Name = "com.oracle.truffle.api.interop.CanResolve";
-    public static final String Resolve_Name = "com.oracle.truffle.api.interop.Resolve";
-
-    /*
-     * Interop types may not be available when compiling the interop package itself.
-     */
-    public final DeclaredType MessageResolution = c.getDeclaredTypeOptional(MessageResolution_Name);
-    public final DeclaredType InteropMessage = c.getDeclaredTypeOptional(InteropMessage_Name);
-    public final DeclaredType TruffleObject = c.getDeclaredTypeOptional(TruffleObject_Name);
-    public final DeclaredType Resolve = c.getDeclaredTypeOptional(Resolve_Name);
-    public final DeclaredType CanResolve = c.getDeclaredTypeOptional(CanResolve_Name);
 
     // Checkstyle: resume
 }

@@ -52,19 +52,27 @@ import com.oracle.graal.pointsto.typestate.TypeState;
  */
 public abstract class OffsetStoreTypeFlow extends TypeFlow<ValueNode> {
 
+    /*
+     * The type of the receiver object of the offset store operation. Can be approximated by Object
+     * or Object[] when it cannot be infered from stamps.
+     */
+    private final AnalysisType objectType;
+
     /** The flow of the input value. */
     private final TypeFlow<?> valueFlow;
     /** The flow of the receiver object. */
-    protected final TypeFlow<?> objectFlow;
+    protected TypeFlow<?> objectFlow;
 
-    public OffsetStoreTypeFlow(ValueNode node, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+    public OffsetStoreTypeFlow(ValueNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
         super(node, componentType);
+        this.objectType = objectType;
         this.valueFlow = valueFlow;
         this.objectFlow = objectFlow;
     }
 
     public OffsetStoreTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, OffsetStoreTypeFlow original) {
         super(original, methodFlows);
+        this.objectType = original.objectType;
         this.valueFlow = methodFlows.lookupCloneOf(bb, original.valueFlow);
         this.objectFlow = methodFlows.lookupCloneOf(bb, original.objectFlow);
     }
@@ -89,12 +97,15 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<ValueNode> {
     public abstract void onObservedUpdate(BigBang bb);
 
     /**
-     * Implements an indexed store operation type flow.
+     * Implements the type flow of an indexed store operation. The type state of an indexed store
+     * flow reflects the elements type state of the receiver array objects that triggered the store
+     * operation, i.e., the stored values. The declared type of a store operation is the component
+     * type of the receiver array, if known statically, null otherwise.
      */
     public static class StoreIndexedTypeFlow extends OffsetStoreTypeFlow {
 
-        public StoreIndexedTypeFlow(ValueNode node, AnalysisType elementType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(node, elementType, objectFlow, valueFlow);
+        public StoreIndexedTypeFlow(ValueNode node, AnalysisType arrayType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+            super(node, arrayType, arrayType.getComponentType(), objectFlow, valueFlow);
         }
 
         public StoreIndexedTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, StoreIndexedTypeFlow original) {
@@ -152,8 +163,8 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<ValueNode> {
 
     public abstract static class AbstractUnsafeStoreTypeFlow extends OffsetStoreTypeFlow {
 
-        AbstractUnsafeStoreTypeFlow(ValueNode node, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(node, componentType, objectFlow, valueFlow);
+        AbstractUnsafeStoreTypeFlow(ValueNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+            super(node, objectType, componentType, objectFlow, valueFlow);
         }
 
         AbstractUnsafeStoreTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, OffsetStoreTypeFlow original) {
@@ -236,8 +247,8 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<ValueNode> {
      */
     public static class UnsafeStoreTypeFlow extends AbstractUnsafeStoreTypeFlow {
 
-        public UnsafeStoreTypeFlow(RawStoreNode node, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(node, componentType, objectFlow, valueFlow);
+        public UnsafeStoreTypeFlow(RawStoreNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+            super(node, objectType, componentType, objectFlow, valueFlow);
         }
 
         public UnsafeStoreTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, UnsafeStoreTypeFlow original) {
@@ -260,8 +271,8 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<ValueNode> {
      */
     public static class CompareAndSwapTypeFlow extends AbstractUnsafeStoreTypeFlow {
 
-        public CompareAndSwapTypeFlow(UnsafeCompareAndSwapNode node, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(node, componentType, objectFlow, valueFlow);
+        public CompareAndSwapTypeFlow(UnsafeCompareAndSwapNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+            super(node, objectType, componentType, objectFlow, valueFlow);
         }
 
         public CompareAndSwapTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, CompareAndSwapTypeFlow original) {
@@ -284,8 +295,8 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<ValueNode> {
      */
     public static class AtomicWriteTypeFlow extends AbstractUnsafeStoreTypeFlow {
 
-        public AtomicWriteTypeFlow(AtomicReadAndWriteNode node, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(node, componentType, objectFlow, valueFlow);
+        public AtomicWriteTypeFlow(AtomicReadAndWriteNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+            super(node, objectType, componentType, objectFlow, valueFlow);
         }
 
         public AtomicWriteTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, AtomicWriteTypeFlow original) {
@@ -308,9 +319,9 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<ValueNode> {
         protected final UnsafePartitionKind partitionKind;
         protected final AnalysisType partitionType;
 
-        public UnsafePartitionStoreTypeFlow(AnalysisUnsafePartitionStoreNode node, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow,
+        public UnsafePartitionStoreTypeFlow(AnalysisUnsafePartitionStoreNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow,
                         UnsafePartitionKind partitionKind, AnalysisType partitionType) {
-            super(node, componentType, objectFlow, valueFlow);
+            super(node, objectType, componentType, objectFlow, valueFlow);
             this.partitionKind = partitionKind;
             this.partitionType = partitionType;
         }
@@ -380,8 +391,8 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<ValueNode> {
      */
     public static class JavaWriteTypeFlow extends AbstractUnsafeStoreTypeFlow {
 
-        public JavaWriteTypeFlow(JavaWriteNode node, AnalysisType objectType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(node, objectType, objectFlow, valueFlow);
+        public JavaWriteTypeFlow(JavaWriteNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+            super(node, objectType, componentType, objectFlow, valueFlow);
         }
 
         public JavaWriteTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, JavaWriteTypeFlow original) {

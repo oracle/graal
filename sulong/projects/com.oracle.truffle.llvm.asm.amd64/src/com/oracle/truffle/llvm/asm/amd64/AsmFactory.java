@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -141,7 +141,7 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RdSeedNodeFactory.LLVM
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RdSeedNodeFactory.LLVMAMD64RdSeedqNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RdSeedNodeFactory.LLVMAMD64RdSeedwNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RdtscNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RepNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RepNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RolbNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RollNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RolqNodeGen;
@@ -158,7 +158,7 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarlNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarqNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarwNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SetFlagNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SetFlagNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShlbNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShllNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShlqNodeGen;
@@ -177,7 +177,7 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SublNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SubqNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SubwNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64Ud2Node;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64Ud2NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddbNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddlNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddqNodeGen;
@@ -213,11 +213,11 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteTupelNode
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteTupelNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteValueNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteValueNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInlineAssemblyRootNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceNodeGen;
@@ -266,13 +266,13 @@ class AsmFactory {
     private final Type[] argTypes;
     private final Type retType;
     private final Type[] retTypes;
-    private final int[] retOffsets;
+    private final long[] retOffsets;
 
     private String currentPrefix;
 
     private final LLVMLanguage language;
 
-    AsmFactory(LLVMLanguage language, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets) {
+    AsmFactory(LLVMLanguage language, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, long[] retOffsets) {
         this.language = language;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
@@ -401,7 +401,7 @@ class AsmFactory {
 
     LLVMInlineAssemblyRootNode finishInline() {
         getArguments();
-        return new LLVMInlineAssemblyRootNode(language, frameDescriptor, statements.toArray(LLVMStatementNode.NO_STATEMENTS), arguments, result);
+        return new LLVMInlineAssemblyRootNode(language, frameDescriptor, statements, arguments, result);
     }
 
     void setPrefix(String prefix) {
@@ -411,7 +411,7 @@ class AsmFactory {
     void createInt(AsmImmediateOperand nr) {
         long id = nr.getValue();
         if (id == 3) {
-            statements.add(new LLVMDebugTrapNode());
+            statements.add(LLVMDebugTrapNodeGen.create());
         } else {
             statements.add(LLVMUnsupportedInstructionNode.create(LLVMUnsupportedException.UnsupportedReason.INLINE_ASSEMBLER, "interrupt " + nr));
         }
@@ -421,7 +421,7 @@ class AsmFactory {
         if ("rep".equals(currentPrefix)) {
             LLVMExpressionNode rcx = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
             LLVMAMD64WriteValueNode writeRCX = getStore(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
-            statements.add(new LLVMAMD64RepNode(writeRCX, rcx, body));
+            statements.add(LLVMAMD64RepNodeGen.create(writeRCX, rcx, body));
         } else {
             statements.add(body);
         }
@@ -430,7 +430,7 @@ class AsmFactory {
     void createOperation(String operation) {
         switch (operation) {
             case "cld":
-                statements.add(new LLVMAMD64SetFlagNode(getFlagWrite(LLVMAMD64Flags.DF), false));
+                statements.add(LLVMAMD64SetFlagNodeGen.create(getFlagWrite(LLVMAMD64Flags.DF), false));
                 break;
             case "clc":
             case "cli":
@@ -464,7 +464,7 @@ class AsmFactory {
                 break;
             }
             case "std":
-                statements.add(new LLVMAMD64SetFlagNode(getFlagWrite(LLVMAMD64Flags.DF), true));
+                statements.add(LLVMAMD64SetFlagNodeGen.create(getFlagWrite(LLVMAMD64Flags.DF), true));
                 break;
             case "stc":
             case "sti":
@@ -498,7 +498,7 @@ class AsmFactory {
                 break;
             }
             case "ud2":
-                statements.add(new LLVMAMD64Ud2Node());
+                statements.add(LLVMAMD64Ud2NodeGen.create());
                 break;
             case "syscall": {
                 LLVMExpressionNode rax = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax"));
@@ -508,7 +508,7 @@ class AsmFactory {
                 LLVMExpressionNode r10 = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("r10"));
                 LLVMExpressionNode r8 = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("r8"));
                 LLVMExpressionNode r9 = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("r9"));
-                LLVMExpressionNode syscall = LLVMAMD64SyscallNodeGen.create(rax, rdi, rsi, rdx, r10, r8, r9);
+                LLVMExpressionNode syscall = LLVMSyscallNodeGen.create(rax, rdi, rsi, rdx, r10, r8, r9);
                 statements.add(getOperandStore(PrimitiveType.I64, new AsmRegisterOperand("rax"), syscall));
                 break;
             }

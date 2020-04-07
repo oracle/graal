@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -67,8 +67,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -82,11 +84,13 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -97,12 +101,12 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -114,10 +118,19 @@ import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService2;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService3;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
+import com.oracle.truffle.tck.tests.ValueAssert;
 
 public class LanguageSPITest {
 
     static LanguageContext langContext;
+
+    @After
+    public void cleanup() {
+        langContext = null;
+        ProxyLanguage.setDelegate(new ProxyLanguage());
+        InitializeTestLanguage.initialized = false;
+        InitializeTestInternalLanguage.initialized = false;
+    }
 
     @Test
     public void testContextClose() {
@@ -1406,7 +1419,7 @@ public class LanguageSPITest {
 
     @Test
     public void testBindingsWithInvalidScopes() {
-        setupTopScopes(new ProxyLegacyInteropObject() {
+        setupTopScopes(new TruffleObject() {
         });
         Context c = Context.create();
         assertEquals(0, findScopeInvokes);
@@ -1529,9 +1542,9 @@ public class LanguageSPITest {
         assertFalse(bindings.hasMember(""));
         assertTrue(bindings.getMemberKeys().isEmpty());
         assertNull(bindings.getMember(""));
-        ValueAssert.assertFails(() -> bindings.putMember("", ""), UnsupportedOperationException.class);
+        AbstractPolyglotTest.assertFails(() -> bindings.putMember("", ""), UnsupportedOperationException.class);
         assertFalse(bindings.removeMember(""));
-        assertValue(bindings);
+        ValueAssert.assertValue(bindings);
 
         c.close();
     }
@@ -1554,28 +1567,28 @@ public class LanguageSPITest {
         assertEquals(new HashSet<>(Arrays.asList("foobar")), bindings.getMemberKeys());
         assertNull(bindings.getMember(""));
         assertEquals("baz", bindings.getMember("foobar").asString());
-        ValueAssert.assertFails(() -> bindings.putMember("", ""), UnsupportedOperationException.class);
+        AbstractPolyglotTest.assertFails(() -> bindings.putMember("", ""), UnsupportedOperationException.class);
         assertFalse(bindings.removeMember(""));
-        ValueAssert.assertFails(() -> bindings.removeMember("foobar"), UnsupportedOperationException.class);
-        assertValue(bindings, ValueAssert.Trait.MEMBERS);
+        AbstractPolyglotTest.assertFails(() -> bindings.removeMember("foobar"), UnsupportedOperationException.class);
+        ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.insertable = true;
         bindings.putMember("baz", "val");
         assertEquals("val", scope.values.get("baz"));
         assertEquals("val", bindings.getMember("baz").asString());
-        assertFails(() -> bindings.putMember("foobar", "42"), UnsupportedOperationException.class);
-        assertValue(bindings, ValueAssert.Trait.MEMBERS);
+        AbstractPolyglotTest.assertFails(() -> bindings.putMember("foobar", "42"), UnsupportedOperationException.class);
+        ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.modifiable = true;
         bindings.putMember("foobar", "val");
         assertEquals("val", scope.values.get("foobar"));
         assertEquals("val", bindings.getMember("foobar").asString());
-        assertValue(bindings, ValueAssert.Trait.MEMBERS);
+        ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.removable = true;
         assertFalse(bindings.removeMember(""));
         assertTrue(bindings.removeMember("foobar"));
-        assertValue(bindings, ValueAssert.Trait.MEMBERS);
+        ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         assertEquals(1, findScopeInvokes);
 
@@ -1601,7 +1614,7 @@ public class LanguageSPITest {
         assertFalse(bindings.hasMember(""));
         assertNull(bindings.getMember(""));
 
-        ValueAssert.assertFails(() -> bindings.putMember("foo", "bar"), UnsupportedOperationException.class);
+        AbstractPolyglotTest.assertFails(() -> bindings.putMember("foo", "bar"), UnsupportedOperationException.class);
 
         // test insertion into first insertable scope
         scopes[1].insertable = true;
@@ -1615,7 +1628,7 @@ public class LanguageSPITest {
 
         // test it does not insert early before already existing member
         scopes[0].insertable = true;
-        ValueAssert.assertFails(() -> bindings.putMember("foo", "baz"), UnsupportedOperationException.class);
+        AbstractPolyglotTest.assertFails(() -> bindings.putMember("foo", "baz"), UnsupportedOperationException.class);
         scopes[1].modifiable = true;
         // does not insert in 1 but modifies foo in 2
         bindings.putMember("foo", "baz");
@@ -1632,7 +1645,7 @@ public class LanguageSPITest {
         scopes[3].values.put("bar", "val");
         assertEquals("bar", bindings.getMember("foo").asString());
         assertEquals("baz", bindings.getMember("bar").asString());
-        ValueAssert.assertFails(() -> bindings.removeMember("foo"), UnsupportedOperationException.class);
+        assertFails(() -> bindings.removeMember("foo"), UnsupportedOperationException.class);
         assertTrue(bindings.removeMember("bar"));
         assertNotNull(scopes[2].values.get("foo"));
         assertNull(scopes[2].values.get("bar"));
@@ -1726,44 +1739,6 @@ public class LanguageSPITest {
         service.awaitTermination(100000, TimeUnit.MILLISECONDS);
 
         c.close();
-    }
-
-    @Test
-    public void testPolyglotBindingsPreserveLanguage() {
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        Object bindings = lookupContextReference(ProxyLanguage.class).get().env.getPolyglotBindings();
-                        try {
-                            boundary(bindings);
-                        } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-                            throw new AssertionError(e);
-                        }
-                        return bindings;
-                    }
-
-                    @CompilerDirectives.TruffleBoundary
-                    private void boundary(Object bindings) throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
-                        InteropLibrary.getFactory().getUncached().writeMember(bindings, "exportedValue", "convertOnToString");
-                    }
-                });
-            }
-
-            @Override
-            protected String toString(LanguageContext context, Object value) {
-                if (value.equals("convertOnToString")) {
-                    return "myStringToString";
-                }
-                return super.toString(context, value);
-            }
-        });
-        Context c = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
-        c.eval(ProxyLanguage.ID, "");
-
-        assertEquals("Make sure language specific toString was invoked.", "myStringToString", c.getPolyglotBindings().getMember("exportedValue").toString());
     }
 
     @Test
@@ -2018,6 +1993,100 @@ public class LanguageSPITest {
         context.close();
     }
 
+    @Test
+    public void testInitializeInternalLanguage() {
+        try (Context context = Context.create()) {
+            testInitializeInternalImpl(context, (env) -> env.getInternalLanguages().get(InitializeTestInternalLanguage.ID), (se) -> se == null && InitializeTestInternalLanguage.initialized);
+        }
+    }
+
+    @Test
+    public void testInitializeNonInternalLanguage() {
+        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.newBuilder().allowEval(ProxyLanguage.ID, InitializeTestLanguage.ID).build()).build()) {
+            testInitializeInternalImpl(context, (env) -> env.getPublicLanguages().get(InitializeTestLanguage.ID), (se) -> se == null && InitializeTestLanguage.initialized);
+        }
+    }
+
+    @Test
+    public void testInitializeNonAccessibleLanguage() {
+        try (Context context = Context.create()) {
+            Function<TruffleLanguage.Env, LanguageInfo> languageResolver = (env) -> {
+                InstrumentInfo instrumentInfo = env.getInstruments().get(InitializeTestInstrument.ID);
+                assertNotNull(instrumentInfo);
+                InitializeTestInstrument.Service service = env.lookup(instrumentInfo, InitializeTestInstrument.Service.class);
+                assertNotNull(service);
+                LanguageInfo languageInfo = service.findLanguage(InitializeTestLanguage.ID);
+                assertNotNull(languageInfo);
+                return languageInfo;
+            };
+            testInitializeInternalImpl(context, languageResolver, (se) -> se != null);
+        }
+    }
+
+    private static void testInitializeInternalImpl(Context context, Function<TruffleLanguage.Env, LanguageInfo> languageResolver, Function<SecurityException, Boolean> verifier) {
+        AtomicReference<SecurityException> exception = new AtomicReference<>();
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        Env env = lookupContextReference(ProxyLanguage.class).get().getEnv();
+                        LanguageInfo languageToInitialize = languageResolver.apply(env);
+                        assertNotNull(languageToInitialize);
+                        try {
+                            assertTrue(env.initializeLanguage(languageToInitialize));
+                        } catch (SecurityException se) {
+                            exception.set(se);
+                        }
+                        return true;
+                    }
+                });
+            }
+        });
+        assertTrue(context.eval(ProxyLanguage.ID, "").asBoolean());
+        assertTrue(verifier.apply(exception.get()));
+    }
+
+    @Test
+    public void testInitializeFromServiceInternalLanguage() {
+        try (Context context = Context.create()) {
+            testInitializeFromServiceImpl(context, (env) -> env.getInternalLanguages().get(InitializeTestInternalLanguage.ID), () -> InitializeTestInternalLanguage.initialized);
+        }
+    }
+
+    @Test
+    public void testInitializeFromServiceNonInternalLanguage() {
+        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.newBuilder().allowEval(ProxyLanguage.ID, InitializeTestLanguage.ID).build()).build()) {
+            testInitializeFromServiceImpl(context, (env) -> env.getPublicLanguages().get(InitializeTestLanguage.ID), () -> InitializeTestLanguage.initialized);
+        }
+    }
+
+    private static void testInitializeFromServiceImpl(Context context, Function<Env, LanguageInfo> languageResolver, Supplier<Boolean> verifier) {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        Env env = lookupContextReference(ProxyLanguage.class).get().getEnv();
+                        LanguageInfo languageProvidingService = languageResolver.apply(env);
+                        assertNotNull(languageProvidingService);
+                        InitializeTestBaseLanguage.Service service = env.lookup(languageProvidingService, InitializeTestBaseLanguage.Service.class);
+                        assertNotNull(service);
+                        service.doNotInitialize();
+                        assertFalse(verifier.get());
+                        service.doesInitialize();
+                        assertTrue(verifier.get());
+                        return true;
+                    }
+                });
+            }
+        });
+        assertTrue(context.eval(ProxyLanguage.ID, "").asBoolean());
+        assertTrue(verifier.get());
+    }
+
     @TruffleLanguage.Registration(id = SERVICE_LANGUAGE, name = SERVICE_LANGUAGE, version = "1.0", contextPolicy = ContextPolicy.SHARED, services = {
                     LanguageSPITestLanguageService1.class, LanguageSPITestLanguageService2.class})
     public static class ServiceTestLanguage extends TruffleLanguage<Env> {
@@ -2043,11 +2112,6 @@ public class LanguageSPITest {
             return true;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
         interface LanguageSPITestLanguageService1 {
         }
 
@@ -2059,4 +2123,97 @@ public class LanguageSPITest {
 
     }
 
+    public abstract static class InitializeTestBaseLanguage extends TruffleLanguage<TruffleLanguage.Env> {
+        @Override
+        protected Env createContext(Env env) {
+            env.registerService(new Service() {
+
+                @Override
+                public void doNotInitialize() {
+                }
+
+                @Override
+                public void doesInitialize() {
+                    LanguageInfo language = getLanguageInfo(env);
+                    assertNotNull(language);
+                    env.initializeLanguage(language);
+                }
+            });
+            return env;
+        }
+
+        @Override
+        protected void initializeContext(Env context) throws Exception {
+            setInitialized(true);
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
+        }
+
+        abstract LanguageInfo getLanguageInfo(Env env);
+
+        abstract void setInitialized(boolean value);
+
+        interface Service {
+            void doNotInitialize();
+
+            void doesInitialize();
+        }
+    }
+
+    @TruffleLanguage.Registration(id = InitializeTestLanguage.ID, name = InitializeTestLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.EXCLUSIVE, services = InitializeTestBaseLanguage.Service.class)
+    public static final class InitializeTestLanguage extends InitializeTestBaseLanguage {
+        static final String ID = "LanguageSPITestInitializeTestLanguage";
+
+        static boolean initialized;
+
+        @Override
+        LanguageInfo getLanguageInfo(Env env) {
+            return env.getPublicLanguages().get(ID);
+        }
+
+        @Override
+        void setInitialized(boolean value) {
+            initialized = value;
+        }
+    }
+
+    @TruffleLanguage.Registration(id = InitializeTestInternalLanguage.ID, name = InitializeTestInternalLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.EXCLUSIVE, internal = true, services = InitializeTestBaseLanguage.Service.class)
+    public static final class InitializeTestInternalLanguage extends InitializeTestBaseLanguage {
+        static final String ID = "LanguageSPITestInitializeTestInternalLanguage";
+
+        static boolean initialized;
+
+        @Override
+        LanguageInfo getLanguageInfo(Env env) {
+            return env.getInternalLanguages().get(ID);
+        }
+
+        @Override
+        void setInitialized(boolean value) {
+            initialized = value;
+        }
+    }
+
+    @TruffleInstrument.Registration(id = InitializeTestInstrument.ID, name = InitializeTestInstrument.ID, version = "1.0", services = InitializeTestInstrument.Service.class)
+    public static final class InitializeTestInstrument extends TruffleInstrument {
+
+        static final String ID = "LanguageSPITestInitializeTestInstrument";
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(new Service() {
+                @Override
+                public LanguageInfo findLanguage(String id) {
+                    return env.getLanguages().get(id);
+                }
+            });
+        }
+
+        public interface Service {
+            LanguageInfo findLanguage(String id);
+        }
+    }
 }

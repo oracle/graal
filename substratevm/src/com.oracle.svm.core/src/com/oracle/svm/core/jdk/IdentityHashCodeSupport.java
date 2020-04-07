@@ -26,14 +26,43 @@ package com.oracle.svm.core.jdk;
 
 import java.util.SplittableRandom;
 
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.word.ObjectAccess;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.core.util.VMError;
 
 public final class IdentityHashCodeSupport {
+    public static final LocationIdentity IDENTITY_HASHCODE_LOCATION = NamedLocationIdentity.mutable("identityHashCode");
 
     private static final FastThreadLocalObject<SplittableRandom> hashCodeGeneratorTL = FastThreadLocalFactory.createObject(SplittableRandom.class);
 
-    protected static int generateHashCode() {
+    /**
+     * Initialization can require synchronization which is not allowed during safepoints, so this
+     * method can be called before using identity hash codes during a safepoint operation.
+     */
+    public static void ensureInitialized() {
+        new SplittableRandom().nextInt();
+    }
+
+    public static int generateIdentityHashCode(Object obj, int hashCodeOffset) {
+        UnsignedWord hashCodeOffsetWord = WordFactory.unsigned(hashCodeOffset);
+
+        // generate a new hashcode and try to store it into the object
+        int newHashCode = generateHashCode();
+        if (!GraalUnsafeAccess.getUnsafe().compareAndSwapInt(obj, hashCodeOffset, 0, newHashCode)) {
+            newHashCode = ObjectAccess.readInt(obj, hashCodeOffsetWord, IDENTITY_HASHCODE_LOCATION);
+        }
+        VMError.guarantee(newHashCode != 0, "Missing identity hash code");
+        return newHashCode;
+    }
+
+    private static int generateHashCode() {
         SplittableRandom hashCodeGenerator = hashCodeGeneratorTL.get();
         if (hashCodeGenerator == null) {
             /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallArchPrctlNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallBrkNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallClockGetTimeNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallExitNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallFutexNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetPpidNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetcwdNodeGen;
@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallRtSigac
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallRtSigprocmaskNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallSetTidAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallUnameNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnknownSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.amd64.LinuxAMD64Syscall;
 
 final class LinuxAMD64PlatformCapability extends BasicPlatformCapability<LinuxAMD64Syscall> {
@@ -68,7 +68,7 @@ final class LinuxAMD64PlatformCapability extends BasicPlatformCapability<LinuxAM
                 return new LLVMAMD64SyscallGetpidNode();
             case SYS_exit:
             case SYS_exit_group: // TODO: implement difference to SYS_exit
-                return new LLVMAMD64SyscallExitNode();
+                return new LLVMSyscallExitNode();
             case SYS_uname:
                 return LLVMAMD64SyscallUnameNodeGen.create();
             case SYS_getcwd:
@@ -86,7 +86,7 @@ final class LinuxAMD64PlatformCapability extends BasicPlatformCapability<LinuxAM
             case SYS_clock_gettime:
                 return LLVMAMD64SyscallClockGetTimeNodeGen.create();
             default:
-                return new LLVMAMD64UnknownSyscallNode(syscall);
+                return new LLVMUnknownSyscallNode(syscall);
         }
     }
 }

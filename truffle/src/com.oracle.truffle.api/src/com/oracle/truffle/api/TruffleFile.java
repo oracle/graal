@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,6 +97,8 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+
 import java.util.Random;
 
 /**
@@ -845,7 +847,7 @@ public final class TruffleFile {
     /**
      * Reads a file content as bytes.
      *
-     * @return the created {@link BufferedReader}
+     * @return the created <code>byte[]</code>
      * @throws IOException in case of IO error
      * @throws OutOfMemoryError if an array of a file size cannot be allocated
      * @throws SecurityException if the {@link FileSystem} denied the operation
@@ -1996,15 +1998,10 @@ public final class TruffleFile {
     }
 
     static <T extends Throwable> RuntimeException wrapHostException(T t, FileSystem fs) {
-        if (LanguageAccessor.engineAccess().isDefaultFileSystem(fs)) {
-            throw sthrow(t);
+        if (LanguageAccessor.engineAccess().isInternal(fs)) {
+            throw Env.engineToLanguageException(t);
         }
         throw LanguageAccessor.engineAccess().wrapHostException(null, LanguageAccessor.engineAccess().getCurrentHostContext(), t);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends Throwable> RuntimeException sthrow(Throwable t) throws T {
-        throw (T) t;
     }
 
     private static final class AllFiles implements DirectoryStream.Filter<Path> {

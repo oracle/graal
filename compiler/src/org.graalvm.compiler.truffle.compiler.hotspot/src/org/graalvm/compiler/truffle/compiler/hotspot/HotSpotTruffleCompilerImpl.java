@@ -220,7 +220,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) backend.getCompilationIdentifier(method);
             OptionValues options = getOptions();
             try (DebugContext debug = DebugStubsAndSnippets.getValue(options)
-                            ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories(), DebugContext.DEFAULT_LOG_STREAM)
+                            ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories(), DebugContext.getDefaultLogStream())
                             : DebugContext.disabled(options);
                             Activation a = debug.activate();
                             DebugContext.Scope d = debug.scope("InstallingTruffleStub")) {
@@ -254,8 +254,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     private CompilationResultBuilderFactory getTruffleCallBoundaryInstrumentationFactory(String arch) {
         for (TruffleCallBoundaryInstrumentationFactory factory : GraalServices.load(TruffleCallBoundaryInstrumentationFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
-                factory.init(lastTierProviders.getMetaAccess(), hotspotGraalRuntime.getVMConfig(), hotspotGraalRuntime.getHostProviders().getRegisters());
-                return factory;
+                return factory.create(lastTierProviders.getMetaAccess(), hotspotGraalRuntime.getVMConfig(), hotspotGraalRuntime.getHostProviders().getRegisters());
             }
         }
         // No specialization of OptimizedCallTarget on this platform.

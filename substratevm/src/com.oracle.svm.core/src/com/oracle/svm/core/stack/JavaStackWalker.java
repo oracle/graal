@@ -37,6 +37,7 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -68,7 +69,7 @@ public final class JavaStackWalker {
      * @param startIP the starting IP
      */
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
-    private static boolean initWalk(JavaStackWalk walk, Pointer startSP, CodePointer startIP) {
+    public static boolean initWalk(JavaStackWalk walk, Pointer startSP, CodePointer startIP) {
         walk.setSP(startSP);
         walk.setPossiblyStaleIP(startIP);
         walk.setStartSP(startSP);
@@ -137,27 +138,43 @@ public final class JavaStackWalker {
      *         to iterate
      */
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
-    public static boolean continueWalk(JavaStackWalk walk) {
+    public static boolean continueWalk(JavaStackWalk walk, CodeInfo info) {
         if (walk.getSP().isNull() || walk.getPossiblyStaleIP().isNull()) {
             return false;
         }
 
         Pointer sp = walk.getSP();
+        SimpleCodeInfoQueryResult queryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
 
-        long totalFrameSize;
         DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
-        if (deoptFrame != null) {
-            totalFrameSize = deoptFrame.getSourceTotalFrameSize();
-        } else {
+        if (deoptFrame == null) {
             CodePointer ip = walk.getPossiblyStaleIP(); // no deopt since last call: still current
-            CodeInfo info = CodeInfoAccess.convert(walk.getIPCodeInfo());
-            totalFrameSize = lookupTotalFrameSize0(info, ip);
+            if (info.isNull()) {
+                throw reportUnknownFrameEncountered(walk, sp, deoptFrame);
+            }
+
+            lookupCodeInfoInterruptible(info, ip, queryResult);
+            /* Frame could have been deoptimized during interruptible lookup above, check again. */
+            deoptFrame = Deoptimizer.checkDeoptimized(sp);
         }
 
-        if (totalFrameSize == -1) {
-            throw unknownFrameEncountered(walk, sp, deoptFrame);
+        return continueWalk(walk, queryResult, deoptFrame);
+    }
 
-        } else if (totalFrameSize != CodeInfoQueryResult.ENTRY_POINT_FRAME_SIZE) {
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
+    public static boolean continueWalk(JavaStackWalk walk, SimpleCodeInfoQueryResult queryResult, DeoptimizedFrame deoptFrame) {
+        Pointer sp = walk.getSP();
+
+        long encodedFrameSize;
+        if (deoptFrame != null) {
+            encodedFrameSize = deoptFrame.getSourceEncodedFrameSize();
+        } else {
+            encodedFrameSize = queryResult.getEncodedFrameSize();
+        }
+
+        if (!CodeInfoQueryResult.isEntryPoint(encodedFrameSize)) {
+            long totalFrameSize = CodeInfoQueryResult.getTotalFrameSize(encodedFrameSize);
+
             /* Bump sp *up* over my frame. */
             sp = sp.add(WordFactory.unsigned(totalFrameSize));
             /* Read the return address to my caller. */
@@ -184,8 +201,6 @@ public final class JavaStackWalker {
                 walk.setSP(anchor.getLastJavaSP());
                 walk.setPossiblyStaleIP(anchor.getLastJavaIP());
                 walk.setAnchor(anchor.getPreviousAnchor());
-
-                anchor.getLastJavaIP();
                 walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(anchor.getLastJavaIP()));
                 return true;
 
@@ -194,22 +209,19 @@ public final class JavaStackWalker {
                 walk.setSP(WordFactory.nullPointer());
                 walk.setPossiblyStaleIP(WordFactory.nullPointer());
                 walk.setAnchor(WordFactory.nullPointer());
+                walk.setIPCodeInfo(WordFactory.nullPointer());
                 return false;
             }
         }
     }
 
-    @Uninterruptible(reason = "Wraps the now safe call to look up the frame size.", calleeMustBe = false)
-    private static long lookupTotalFrameSize0(CodeInfo info, CodePointer ip) {
-        return CodeInfoAccess.lookupTotalFrameSize(info, CodeInfoAccess.relativeIP(info, ip));
-        /*
-         * NOTE: the frame could have been deoptimized during this call, but the frame size must
-         * remain the same, and we will move on to the next frame anyway.
-         */
+    @Uninterruptible(reason = "Wrap call to interruptible code.", calleeMustBe = false)
+    private static void lookupCodeInfoInterruptible(CodeInfo codeInfo, CodePointer ip, SimpleCodeInfoQueryResult queryResult) {
+        CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
     }
 
     @Uninterruptible(reason = "Not really uninterruptible, but we are about to fatally fail.", calleeMustBe = false)
-    private static RuntimeException unknownFrameEncountered(JavaStackWalk walk, Pointer sp, DeoptimizedFrame deoptFrame) {
+    public static RuntimeException reportUnknownFrameEncountered(JavaStackWalk walk, Pointer sp, DeoptimizedFrame deoptFrame) {
         Log.log().string("Stack walk must walk only frames of known code:")
                         .string("  startSP=").hex(walk.getStartSP()).string("  startIP=").hex(walk.getStartIP())
                         .string("  sp=").hex(sp).string("  ip=").hex(walk.getPossiblyStaleIP()).string((deoptFrame != null) ? " (possibly before deopt)" : "")
@@ -244,22 +256,23 @@ public final class JavaStackWalker {
     public static boolean walkCurrentThreadWithForcedIPInline(Pointer startSP, CodePointer startIP, StackFrameVisitor visitor) {
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         boolean hasFrames = initWalk(walk, startSP, startIP);
-        return doWalkCurrentThreadInline(walk, visitor, hasFrames);
+        return doWalkInline(walk, visitor, hasFrames);
     }
 
     @AlwaysInline("Avoid virtual call to visitor - for the inlining, the caller must be uninterruptible as well.")
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
-    private static boolean doWalkCurrentThreadInline(JavaStackWalk walk, StackFrameVisitor visitor, boolean hasFrames) {
+    private static boolean doWalkInline(JavaStackWalk walk, StackFrameVisitor visitor, boolean hasFrames) {
         if (hasFrames) {
             while (true) {
                 UntetheredCodeInfo untetheredInfo = walk.getIPCodeInfo();
                 Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+                CodeInfo tetheredInfo = CodeInfoAccess.convert(untetheredInfo, tether);
                 try {
                     // now the value in walk.getIPCodeInfo() can be passed to interruptible code
-                    if (!callVisitorInline(walk, visitor)) {
+                    if (!callVisitorInline(walk, tetheredInfo, visitor)) {
                         return false;
                     }
-                    if (!continueWalk(walk)) {
+                    if (!continueWalk(walk, tetheredInfo)) {
                         break;
                     }
                 } finally {
@@ -272,8 +285,8 @@ public final class JavaStackWalker {
 
     @AlwaysInline("Avoid virtual call to visitor - for the inlining, the caller must be uninterruptible as well.")
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
-    private static boolean callVisitorInline(JavaStackWalk walk, StackFrameVisitor visitor) {
-        return visitor.visitFrame(walk.getSP(), walk.getPossiblyStaleIP(), CodeInfoAccess.convert(walk.getIPCodeInfo()), Deoptimizer.checkDeoptimized(walk.getSP()));
+    private static boolean callVisitorInline(JavaStackWalk walk, CodeInfo info, StackFrameVisitor visitor) {
+        return visitor.visitFrame(walk.getSP(), walk.getPossiblyStaleIP(), info, Deoptimizer.checkDeoptimized(walk.getSP()));
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
@@ -286,6 +299,6 @@ public final class JavaStackWalker {
     public static boolean walkThreadInline(IsolateThread thread, StackFrameVisitor visitor) {
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         boolean hasFrames = initWalk(walk, thread);
-        return doWalkCurrentThreadInline(walk, visitor, hasFrames);
+        return doWalkInline(walk, visitor, hasFrames);
     }
 }

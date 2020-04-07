@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.244.0",
+  "mxversion" : "5.251.0",
   "name" : "sdk",
-  "version" : "20.0.0",
+  "version" : "20.1.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -91,18 +91,18 @@ suite = {
       "os_arch" : {
         "linux" : {
           "amd64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g25943767dd-bgba00100a86-linux-amd64.tar.gz"],
-            "sha1" : "5e26edd8cc0a1072b365937230dd1d0f80eeac00",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-5-g80b1d876fd-bgb66b241662-linux-amd64.tar.gz"],
+            "sha1" : "7fd347a6ebe38b02b7cfe1a9e4352e297962a4fc",
           },
           "aarch64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g25943767dd-bgba00100a86-linux-aarch64.tar.gz"],
-            "sha1" : "685b8cb4f622b0b4c3b989f490acb77b999cf1d8",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-5-g80b1d876fd-bgb66b241662-linux-aarch64.tar.gz"],
+            "sha1" : "8061112dd5cf95ed5e43128199fd2d2959bd9fbf",
           }
         },
         "darwin" : {
           "amd64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g25943767dd-bgba00100a86-darwin-amd64.tar.gz"],
-            "sha1" : "eb8977b5c79edf5627b1c28ab90ee7d0af6e52f1",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-5-g80b1d876fd-bgb66b241662-darwin-amd64.tar.gz"],
+            "sha1" : "a863230a50eddeef4a808742ddb987475c61fd10",
           }
         },
         "<others>": {
@@ -115,13 +115,13 @@ suite = {
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/compiler-rt-llvmorg-9.0.0-4-g25943767dd-bgba00100a86-linux-amd64.tar.gz"],
-      "sha1" : "a2a0716f437db82302a66ebf63ef0c49c71a35d2",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/compiler-rt-llvmorg-9.0.0-5-g80b1d876fd-bgb66b241662-linux-amd64.tar.gz"],
+      "sha1" : "0fde45454791eff6b1cd1dbed21645ebe073c0d2",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_LIBCXX_SRC" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/libcxx-src-llvmorg-9.0.0-4-g25943767dd-bgba00100a86.tar.gz"],
-      "sha1" : "fbfee587bd3f004008567913fecb670aba3ddfa2",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/libcxx-src-llvmorg-9.0.0-5-g80b1d876fd-bgb66b241662.tar.gz"],
+      "sha1" : "5bfe4fd7df77e119834fbfd2567194d093ad338e",
       "license" : "Apache-2.0-LLVM",
     },
   },

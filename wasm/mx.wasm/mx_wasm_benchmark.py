@@ -42,10 +42,12 @@ import mx
 import mx_benchmark
 
 import os
+import re
 import shutil
 import stat
 import tempfile
 import zipfile
+import argparse
 
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
@@ -57,10 +59,15 @@ _suite = mx.suite("wasm")
 
 BENCHMARK_NAME_PREFIX = "-Dwasmbench.benchmarkName="
 SUITE_NAME_SUFFIX = "BenchmarkSuite"
-BENCHMARK_JAR = "wasm-benchmarkcases.jar"
+BENCHMARK_JAR_SUFFIX = "benchmarkcases.jar"
 
 
 node_dir = mx.get_env("NODE_DIR", None)
+
+
+def _toKebabCase(name, skewer="-"):
+    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1" + skewer + r"\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1" + skewer + r"\2", s1).lower()
 
 
 class WasmBenchmarkVm(mx_benchmark.OutputCapturingVm):
@@ -94,8 +101,8 @@ class WasmBenchmarkVm(mx_benchmark.OutputCapturingVm):
         suite = next(iter([arg for arg in args if arg.endswith(SUITE_NAME_SUFFIX)]), None)
         if suite is None:
             mx.abort("Suite must specify a flag that ends with " + SUITE_NAME_SUFFIX)
-        else:
-            suite = suite[:-len(SUITE_NAME_SUFFIX)].lower()
+        suite = suite[:-len(SUITE_NAME_SUFFIX)]
+        suite = _toKebabCase(suite, "/")
 
         benchmark = next(iter([arg for arg in args if arg.startswith(BENCHMARK_NAME_PREFIX)]), None)
         if benchmark is None:
@@ -111,9 +118,9 @@ class WasmBenchmarkVm(mx_benchmark.OutputCapturingVm):
         classpath = args[args.index("-cp") + 1]
         delimiter = ";" if mx.is_windows() else ":"
         jars = classpath.split(delimiter)
-        jar = next(iter([jar for jar in jars if jar.endswith(BENCHMARK_JAR)]), None)
+        jar = next(iter([jar for jar in jars if jar.endswith(BENCHMARK_JAR_SUFFIX)]), None)
         if jar is None:
-            mx.abort("No " + BENCHMARK_JAR + " specified in the classpath.")
+            mx.abort("No benchmark jar file is specified in the classpath.")
 
         suite, benchmark = self.parse_suite_benchmark(args)
         return jar, suite, benchmark
@@ -193,27 +200,104 @@ add_java_vm(NodeWasmBenchmarkVm(), suite=_suite, priority=1)
 add_java_vm(NativeWasmBenchmarkVm(), suite=_suite, priority=1)
 
 
+class WasmJMHJsonRule(mx_benchmark.JMHJsonRule):
+    def getBenchmarkNameFromResult(self, result):
+        name_flag = "-Dwasmbench.benchmarkName="
+        name_arg = next(arg for arg in result["jvmArgs"] if arg.startswith(name_flag))
+        return name_arg[len(name_flag):]
+
+
 class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
     def name(self):
         return "wasm"
 
     def group(self):
-        return "wasm"
+        return "Graal"
+
+    def benchSuiteName(self, bmSuiteArgs):
+        return next(arg for arg in bmSuiteArgs if arg.endswith("BenchmarkSuite"))
 
     def subgroup(self):
-        return "truffle"
+        return "wasm"
 
     def successPatterns(self):
         return []
 
     def isWasmBenchmarkVm(self, bmSuiteArgs):
-        jvm_config = bmSuiteArgs[bmSuiteArgs.index("--jvm-config") + 1]
-        return jvm_config == "node" or jvm_config == "native"
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--jvm-config")
+        jvm_config = parser.parse_known_args(bmSuiteArgs)[0].jvm_config
+        return jvm_config in ("node", "native")
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         if self.isWasmBenchmarkVm(bmSuiteArgs):
             return []
-        return super(WasmBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+        return [WasmJMHJsonRule(mx_benchmark.JMHBenchmarkSuiteBase.jmh_result_file, self.benchSuiteName(bmSuiteArgs))]
 
 
 add_bm_suite(WasmBenchmarkSuite())
+
+
+_suite = mx.suite("wasm")
+
+
+MEMORY_PROFILER_CLASS_NAME = "org.graalvm.wasm.benchmark.MemoryFootprintBenchmarkRunner"
+MEMORY_WARMUP_ITERATIONS = 10
+BENCHMARKCASES_DISTRIBUTION = "WASM_BENCHMARKCASES"
+
+
+class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
+    """
+    Example suite used for testing and as a subclassing template.
+    """
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "wasm"
+
+    def name(self):
+        return "wasm-memory"
+
+    def benchmarkList(self, _):
+        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
+        jvm_args = mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
+        args = jvm_args + [MEMORY_PROFILER_CLASS_NAME, "--list"]
+
+        out = mx.OutputCapture()
+        jdk.run_java(args, out=out)
+        return out.data.split()
+
+    def createCommandLineArgs(self, benchmarks, bm_suite_args):
+        benchmarks = benchmarks if benchmarks is not None else self.benchmarkList(bm_suite_args)
+        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
+        vm_args = self.vmArgs(bm_suite_args) + mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
+        run_args = ["--warmup-iterations", str(MEMORY_WARMUP_ITERATIONS),
+                    "--result-iterations", str(self.getExtraIterationCount(MEMORY_WARMUP_ITERATIONS))]
+        return vm_args + [MEMORY_PROFILER_CLASS_NAME] + run_args + benchmarks
+
+    def rules(self, out, benchmarks, bm_suite_args):
+        return [
+            # We collect all our measures as "warmup"s. `AveragingBenchmarkMixin.addAverageAcrossLatestResults` then
+            # takes care of creating one final "memory" point which is the average of the last N points, where N is
+            # obtained from `AveragingBenchmarkMixin.getExtraIterationCount`.
+            mx_benchmark.StdOutRule(r"(?P<path>.*): (warmup )?iteration\[(?P<iteration>.*)\]: (?P<value>.*) MB", {
+                "benchmark": ("<path>", str),
+                "metric.better": "lower",
+                "metric.name": "warmup",
+                "metric.unit": "MB",
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": ("<iteration>", int)
+            })
+        ]
+
+    def run(self, benchmarks, bmSuiteArgs):
+        results = super(MemoryBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        self.addAverageAcrossLatestResults(results, "memory")
+        return results
+
+
+add_bm_suite(MemoryBenchmarkSuite())

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -89,7 +89,7 @@ import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -99,8 +99,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNuller;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNullerExpression;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNullerExpressionNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNullerNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -113,6 +113,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
 public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
@@ -132,7 +133,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private final List<LLVMPhiManager.Phi> blockPhis;
     private final int argCount;
     private final LLVMSymbolReadResolver symbols;
-    private final LLVMContext.ExternalLibrary library;
+    private final ExternalLibrary library;
     private final ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos;
     private final LLVMRuntimeDebugInformation dbgInfoHandler;
     private final LLVMStack.UniquesRegion uniquesRegion;
@@ -151,7 +152,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private boolean optimizeFrameSlots;
 
     private LLVMBitcodeInstructionVisitor(FrameDescriptor frame, LLVMStack.UniquesRegion uniquesRegion, List<LLVMPhiManager.Phi> blockPhis, int argCount, LLVMSymbolReadResolver symbols,
-                    LLVMContext context, LLVMContext.ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, HashSet<Integer> notNullable,
+                    LLVMContext context, ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, HashSet<Integer> notNullable,
                     LLVMRuntimeDebugInformation dbgInfoHandler, DataLayout dataLayout, NodeFactory nodeFactory) {
         this.context = context;
         this.nodeFactory = nodeFactory;
@@ -322,12 +323,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         if (count instanceof NullConstant) {
             result = nodeFactory.createAlloca(type, alignment);
         } else if (count instanceof IntegerConstant) {
-            long numElements = (int) ((IntegerConstant) count).getValue();
+            long numElements = ((IntegerConstant) count).getValue();
             if (numElements == 1) {
                 result = nodeFactory.createAlloca(type, alignment);
             } else {
-                assert numElements == (int) numElements;
-                ArrayType arrayType = new ArrayType(type, (int) numElements);
+                ArrayType arrayType = new ArrayType(type, numElements);
                 result = nodeFactory.createAlloca(arrayType, alignment);
             }
         } else {
@@ -704,26 +704,30 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final AggregateType aggregateType = (AggregateType) baseType;
 
-        long offset = aggregateType.getOffsetOf(targetIndex, dataLayout);
+        LLVMExpressionNode result;
+        try {
+            long offset = aggregateType.getOffsetOf(targetIndex, dataLayout);
 
-        final Type targetType = aggregateType.getElementType(targetIndex);
-        if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
-            offset += Type.getPadding(offset, targetType, dataLayout);
+            final Type targetType = aggregateType.getElementType(targetIndex);
+            if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
+                offset = Type.addUnsignedExact(offset, Type.getPadding(offset, targetType, dataLayout));
+            }
+
+            if (offset != 0) {
+                final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
+                targetAddress = nodeFactory.createTypedElementPointer(offset, extract.getType(), targetAddress, oneLiteralNode);
+            }
+
+            result = nodeFactory.createExtractValue(resultType, targetAddress);
+        } catch (TypeOverflowException e) {
+            result = Type.handleOverflowExpression(e);
         }
-
-        if (offset != 0) {
-            final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
-            targetAddress = nodeFactory.createTypedElementPointer(offset, extract.getType(), targetAddress, oneLiteralNode);
-        }
-
-        final LLVMExpressionNode result = nodeFactory.createExtractValue(resultType, targetAddress);
         createFrameWrite(result, extract);
     }
 
     @Override
     public void visit(GetElementPointerInstruction gep) {
-        LLVMExpressionNode targetAddress = symbols.resolveElementPointer(gep.getBasePointer(), gep.getIndices(), this::resolveOptimized);
-        createFrameWrite(targetAddress, gep);
+        createFrameWrite(symbols.resolveElementPointer(gep.getBasePointer(), gep.getIndices(), this::resolveOptimized), gep);
     }
 
     @Override
@@ -771,10 +775,16 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final LLVMExpressionNode resultAggregate = nodeFactory.createGetUniqueStackSpace(sourceType, uniquesRegion);
 
-        final long offset = sourceType.getOffsetOf(targetIndex, dataLayout);
-        final LLVMExpressionNode result = nodeFactory.createInsertValue(resultAggregate, sourceAggregate,
-                        sourceType.getSize(dataLayout), offset, valueToInsert, valueType);
+        LLVMExpressionNode result;
+        try {
+            final long offset = sourceType.getOffsetOf(targetIndex, dataLayout);
+            result = nodeFactory.createInsertValue(resultAggregate, sourceAggregate,
+                            sourceType.getSize(dataLayout), offset, valueToInsert, valueType);
 
+        } catch (TypeOverflowException e) {
+            // FIXME is that the right thing to do?
+            result = Type.handleOverflowExpression(e);
+        }
         createFrameWrite(result, insert);
     }
 
@@ -991,15 +1001,15 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         nullerInfo = null;
         if (frameSlots != null) {
             if (instructionNodes.isEmpty()) {
-                instructionNodes.add(new LLVMFrameNuller(frameSlots, null));
+                instructionNodes.add(LLVMFrameNullerNodeGen.create(frameSlots, null));
                 instructionTargets.add(null);
             } else {
                 int index = instructionNodes.size() - 1;
                 LLVMNode node = instructionNodes.get(index);
                 if (node instanceof LLVMStatementNode) {
-                    node = new LLVMFrameNuller(frameSlots, (LLVMStatementNode) node);
+                    node = LLVMFrameNullerNodeGen.create(frameSlots, (LLVMStatementNode) node);
                 } else {
-                    node = new LLVMFrameNullerExpression(frameSlots, (LLVMExpressionNode) node);
+                    node = LLVMFrameNullerExpressionNodeGen.create(frameSlots, (LLVMExpressionNode) node);
                 }
                 instructionNodes.set(instructionNodes.size() - 1, node);
             }
@@ -1075,17 +1085,20 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     }
 
     private LLVMExpressionNode capsuleAddressByValue(LLVMExpressionNode child, Type type, AttributesGroup paramAttr) {
-        final Type pointee = ((PointerType) type).getPointeeType();
-
-        final int size = pointee.getSize(dataLayout);
-        int alignment = pointee.getAlignment(dataLayout);
-        for (Attribute attr : paramAttr.getAttributes()) {
-            if (attr instanceof Attribute.KnownIntegerValueAttribute && ((Attribute.KnownIntegerValueAttribute) attr).getAttr() == Attribute.Kind.ALIGN) {
-                alignment = ((Attribute.KnownIntegerValueAttribute) attr).getValue();
+        try {
+            final Type pointee = ((PointerType) type).getPointeeType();
+            final long size = pointee.getSize(dataLayout);
+            int alignment = pointee.getAlignment(dataLayout);
+            for (Attribute attr : paramAttr.getAttributes()) {
+                if (attr instanceof Attribute.KnownIntegerValueAttribute && ((Attribute.KnownIntegerValueAttribute) attr).getAttr() == Attribute.Kind.ALIGN) {
+                    alignment = ((Attribute.KnownIntegerValueAttribute) attr).getValue();
+                }
             }
-        }
 
-        return nodeFactory.createVarArgCompoundValue(size, alignment, child);
+            return nodeFactory.createVarArgCompoundValue(size, alignment, child);
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
     }
 
     private static boolean isByValue(AttributesGroup parameter) {

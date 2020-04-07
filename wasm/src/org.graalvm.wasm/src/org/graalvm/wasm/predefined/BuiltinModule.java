@@ -52,7 +52,7 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
 import org.graalvm.wasm.predefined.memory.MemoryModule;
@@ -73,7 +73,7 @@ public abstract class BuiltinModule {
     public static WasmModule createBuiltinModule(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
         final BuiltinModule builtinModule = predefinedModules.get(predefinedModuleName);
         if (builtinModule == null) {
-            throw new WasmException("Unknown predefined module: " + predefinedModuleName);
+            throw new WasmValidationException("Unknown predefined module: " + predefinedModuleName);
         }
         return builtinModule.createModule(language, context, name);
     }
@@ -109,6 +109,12 @@ public abstract class BuiltinModule {
         final WasmMemory memory = module.symbolTable().allocateMemory(context, initSize, maxSize);
         module.symbolTable().exportMemory(context, memoryName);
         return memory;
+    }
+
+    protected void importFunction(WasmContext context, WasmModule module, String importModuleName, String importFunctionName, byte[] paramTypes, byte[] retTypes, String exportName) {
+        final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes);
+        final WasmFunction function = module.symbolTable().importFunction(context, importModuleName, importFunctionName, typeIdx);
+        module.symbolTable().exportFunction(context, function.index(), exportName);
     }
 
     protected void importMemory(WasmContext context, WasmModule module, String importModuleName, String memoryName, int initSize, int maxSize) {

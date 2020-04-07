@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,19 +31,28 @@ package com.oracle.truffle.llvm.parser.factories;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
+import com.oracle.truffle.llvm.runtime.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnknownSyscallNode;
 
 public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends PlatformCapability<S> {
 
     public static BasicPlatformCapability<?> create(boolean loadCxxLibraries) {
-        if (LLVMInfo.SYSNAME.equalsIgnoreCase("linux") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
-            return new LinuxAMD64PlatformCapability(loadCxxLibraries);
+        if (LLVMInfo.SYSNAME.equalsIgnoreCase("linux")) {
+            if (LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
+                return new LinuxAMD64PlatformCapability(loadCxxLibraries);
+            }
+            if (LLVMInfo.MACHINE.equalsIgnoreCase("aarch64")) {
+                return new LinuxAArch64PlatformCapability(loadCxxLibraries);
+            }
         }
         if (LLVMInfo.SYSNAME.equalsIgnoreCase("mac os x") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
             return new DarwinAMD64PlatformCapability(loadCxxLibraries);
@@ -54,6 +63,8 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     private static final Path SULONG_LIBDIR = Paths.get("native", "lib");
     public static final String LIBSULONG_FILENAME = "libsulong." + NFIContextExtension.getNativeLibrarySuffix();
     public static final String LIBSULONGXX_FILENAME = "libsulong++." + NFIContextExtension.getNativeLibrarySuffix();
+    public static final String LIBCXXABI_PREFIX = "libc++abi.";
+    public static final String LIBCXX_PREFIX = "libc++.";
 
     private final boolean loadCxxLibraries;
 
@@ -82,11 +93,58 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     }
 
     @Override
+    public List<String> preprocessDependencies(LLVMContext ctx, ExternalLibrary library, List<String> dependencies) {
+        List<String> newDeps = null;
+        boolean libSulongXXAdded = false;
+        // inject libsulong++ dependency
+        if (ctx.isInternalLibrary(library) && library.hasFile()) {
+            Path path = Paths.get(library.getFile().getPath());
+            String remainder = ctx.getInternalLibraryPath().relativize(path).toString();
+            if (remainder.startsWith(LIBCXXABI_PREFIX) || remainder.startsWith(LIBCXX_PREFIX)) {
+                newDeps = new ArrayList<>(dependencies);
+                newDeps.add(LIBSULONGXX_FILENAME);
+                libSulongXXAdded = true;
+            }
+        }
+
+        // replace absolute dependencies to libc++* to relative ones (in the llvm home)
+        for (int i = 0; i < dependencies.size(); i++) {
+            String dep = dependencies.get(i);
+            if (dep.startsWith("/usr/lib/libc++")) {
+                Path namePath = Paths.get(dep).getFileName();
+                if (namePath != null) {
+                    String filename = namePath.toString();
+                    if (filename.startsWith("libc++.") || filename.startsWith("libc++abi.")) {
+                        if (newDeps == null) {
+                            newDeps = new ArrayList<>(dependencies);
+                        }
+                        // replace with file name
+                        newDeps.set(i, filename);
+                        dep = filename;
+                    }
+                }
+            }
+            if (!libSulongXXAdded && (dep.startsWith(LIBCXXABI_PREFIX) || dep.startsWith(LIBCXX_PREFIX))) {
+                // inject libsulong++ dependency
+                if (newDeps == null) {
+                    newDeps = new ArrayList<>(dependencies);
+                }
+                newDeps.add(LIBSULONGXX_FILENAME);
+                libSulongXXAdded = true;
+            }
+        }
+        if (newDeps != null) {
+            return newDeps;
+        }
+        return dependencies;
+    }
+
+    @Override
     public LLVMSyscallOperationNode createSyscallNode(long index) {
         try {
             return createSyscallNode(getSyscall(index));
         } catch (IllegalArgumentException e) {
-            return new LLVMAMD64UnknownSyscallNode(index);
+            return new LLVMUnknownSyscallNode(index);
         }
     }
 

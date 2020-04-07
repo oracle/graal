@@ -267,16 +267,16 @@ public class Option {
         option("TruffleCompilationExceptionsAreFatal")
             .type("Boolean")
             .category("INTERNAL")
-            .def("PolyglotCompilerOptions.PerformanceWarningsAreFatal.getDefaultValue()")
+            .def("PolyglotCompilerOptions.CompilationExceptionsAreFatal.getDefaultValue()")
             .help("Treat compilation exceptions as fatal exceptions that will exit the application")
-            .deprecatedBy("PerformanceWarningsAreFatal"), // COMPILER
+            .deprecatedBy("CompilationExceptionsAreFatal"), // COMPILER
 
         option("TrufflePerformanceWarningsAreFatal")
             .type("Boolean")
             .category("INTERNAL")
-            .def("PolyglotCompilerOptions.CompilationExceptionsAreFatal.getDefaultValue()")
+            .def("false")
             .help("Treat performance warnings as fatal occurrences that will exit the applications")
-            .deprecatedBy("CompilationExceptionsAreFatal"), // COMPILER
+            .deprecatedBy("PerformanceWarningsAreFatal"), // COMPILER
 
         option("TruffleCompilationExceptionsArePrinted")
             .type("Boolean")
@@ -323,26 +323,30 @@ public class Option {
         option("TruffleCompilationStatistics")
             .type("Boolean")
             .category("INTERNAL")
-            .def("false")
-            .help("Print Truffle compilation statistics at the end of a run."),
+            .def("PolyglotCompilerOptions.CompilationStatistics.getDefaultValue()")
+            .help("Print Truffle compilation statistics at the end of a run.")
+            .deprecatedBy("CompilationStatistics"),
 
         option("TruffleCompilationStatisticDetails")
             .type("Boolean")
             .category("INTERNAL")
-            .def("false")
-            .help("Print additional more verbose Truffle compilation statistics at the end of a run."),
+            .def("PolyglotCompilerOptions.CompilationStatisticDetails.getDefaultValue()")
+            .help("Print additional more verbose Truffle compilation statistics at the end of a run.")
+            .deprecatedBy("CompilationStatisticDetails"),
 
         option("TruffleProfilingEnabled")
             .type("Boolean")
             .category("INTERNAL")
-            .def("true")
-            .help("Enable/disable builtin profiles in com.oracle.truffle.api.profiles."),
+            .def("PolyglotCompilerOptions.Profiling.getDefaultValue()")
+            .help("Enable/disable builtin profiles in com.oracle.truffle.api.profiles.")
+            .deprecatedBy("Profiling"),
 
         option("TraceTruffleTransferToInterpreter")
             .type("Boolean")
             .category("INTERNAL")
-            .def("false")
-            .help("Print stack trace on transfer to interpreter."),
+            .def("PolyglotCompilerOptions.TraceTransferToInterpreter.getDefaultValue()")
+            .help("Print stack trace on transfer to interpreter.")
+            .deprecatedBy("TraceTransferToInterpreter"),
 
         option("TruffleMultiTier")
             .type("Boolean")
@@ -350,6 +354,13 @@ public class Option {
             .def("PolyglotCompilerOptions.MultiTier.getDefaultValue()")
             .help("Whether to use multiple Truffle compilation tiers by default.")
             .deprecatedBy("MultiTier"),
+
+        option("PrintTruffleTrees")
+            .type("Boolean")
+            .category("INTERNAL")
+            .def("true")
+            .help("Enable dumping Truffle ASTs to the IdealGraphVisualizer.")
+            .deprecated("Deprecated with no replacement."),
     };
     // @formatter:on
 
@@ -358,7 +369,7 @@ public class Option {
     String type;
     String defaultValue;
     String[] help = {""};
-    String deprecatedBy;
+    String deprecationMessage;
 
     Option name(String value) {
         name = value;
@@ -386,7 +397,12 @@ public class Option {
     }
 
     Option deprecatedBy(String replacement) {
-        deprecatedBy = replacement;
+        deprecationMessage = "Deprecated by {@link PolyglotCompilerOptions#" + replacement + "}.";
+        return this;
+    }
+
+    Option deprecated(String message) {
+        deprecationMessage = message;
         return this;
     }
 

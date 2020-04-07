@@ -50,6 +50,14 @@ public class ResourceAccessVerifier extends AbstractAccessVerifier {
     private boolean verifyGetResources0(JNIEnvironment env, JNIObjectHandle name, @SuppressWarnings("unused") JNIObjectHandle callerClass) {
         // NOTE: like BreakpointInterceptor, we currently don't exclude caller classes.
         String resource = fromJniString(env, name);
-        return configuration.anyMatches(resource);
+        return configuration.anyResourceMatches(resource);
+    }
+
+    public boolean verifyGetBundle(JNIEnvironment env, JNIObjectHandle baseName, @SuppressWarnings("unused") JNIObjectHandle callerClass) {
+        if (shouldApproveWithoutChecks(env, callerClass)) {
+            return true;
+        }
+        String bundleName = fromJniString(env, baseName);
+        return configuration.anyBundleMatches(bundleName);
     }
 }

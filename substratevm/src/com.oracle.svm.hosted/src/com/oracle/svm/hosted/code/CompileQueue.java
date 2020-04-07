@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -98,6 +99,7 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.nodes.MacroNode;
 import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -115,6 +117,7 @@ import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Specialize;
+import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
@@ -316,7 +319,7 @@ public class CompileQueue {
         this.runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
         this.deoptimizeAll = deoptimizeAll;
         this.dataCache = new ConcurrentHashMap<>();
-        this.executor = new CompletionExecutor(universe.getBigBang(), executorService);
+        this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
 
@@ -340,7 +343,7 @@ public class CompileQueue {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
-            UninterruptibleAnnotationChecker.check(debug, universe.getMethods());
+            new UninterruptibleAnnotationChecker(universe.getMethods()).check();
             // Checking @RestrictHeapAccess annotations does not take long enough to justify a
             // timer.
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
@@ -388,6 +391,10 @@ public class CompileQueue {
         phaseSuite.appendPhase(new StrengthenStampsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
         return phaseSuite;
+    }
+
+    public Collection<CompileTask> getCompilationTasks() {
+        return compilations.values();
     }
 
     private void printMethodHistogram() {
@@ -731,28 +738,17 @@ public class CompileQueue {
                         invoke.setUseForInlining(false);
                     }
                     CallTargetNode targetNode = invoke.callTarget();
-                    HostedMethod invokeTarget = (HostedMethod) targetNode.targetMethod();
-                    if (targetNode.invokeKind().isIndirect() || targetNode instanceof IndirectCallTargetNode) {
-                        for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
-                            handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
-                            ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
-                        }
-                    } else {
+                    ensureParsed(method, reason, targetNode, (HostedMethod) targetNode.targetMethod(), targetNode.invokeKind().isIndirect() || targetNode instanceof IndirectCallTargetNode);
+                }
+                for (Node n : graph.getNodes()) {
+                    if (n instanceof MacroNode) {
                         /*
-                         * Direct calls to instance methods (invokespecial bytecode or devirtualized
-                         * calls) can go to methods that are unreachable if the receiver is always
-                         * null. At this time, we do not know the receiver types, so we filter such
-                         * invokes by looking at the reachability status from the point of view of
-                         * the static analysis. Note that we cannot use "isImplementationInvoked"
-                         * because (for historic reasons) it also returns true if a method has a
-                         * graph builder plugin registered. All graph builder plugins are already
-                         * applied during parsing before we reach this point, so we look at the
-                         * "simple" implementation invoked status.
+                         * A MacroNode might be lowered back to a regular invoke. At this point we
+                         * do not know if that happens, but we need to prepared and have the graph
+                         * of the potential callee parsed as if the MacroNode was an Invoke.
                          */
-                        if (invokeTarget.wrapped.isSimplyImplementationInvoked()) {
-                            handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
-                            ensureParsed(invokeTarget, new DirectCallReason(method, reason));
-                        }
+                        MacroNode macroNode = (MacroNode) n;
+                        ensureParsed(method, reason, null, (HostedMethod) macroNode.getTargetMethod(), macroNode.getInvokeKind().isIndirect());
                     }
                 }
 
@@ -764,6 +760,30 @@ public class CompileQueue {
 
         } catch (Throwable e) {
             throw debug.handle(e);
+        }
+    }
+
+    private void ensureParsed(HostedMethod method, CompileReason reason, CallTargetNode targetNode, HostedMethod invokeTarget, boolean isIndirect) {
+        if (isIndirect) {
+            for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
+                handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
+                ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
+            }
+        } else {
+            /*
+             * Direct calls to instance methods (invokespecial bytecode or devirtualized calls) can
+             * go to methods that are unreachable if the receiver is always null. At this time, we
+             * do not know the receiver types, so we filter such invokes by looking at the
+             * reachability status from the point of view of the static analysis. Note that we
+             * cannot use "isImplementationInvoked" because (for historic reasons) it also returns
+             * true if a method has a graph builder plugin registered. All graph builder plugins are
+             * already applied during parsing before we reach this point, so we look at the "simple"
+             * implementation invoked status.
+             */
+            if (invokeTarget.wrapped.isSimplyImplementationInvoked()) {
+                handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
+                ensureParsed(invokeTarget, new DirectCallReason(method, reason));
+            }
         }
     }
 
@@ -1098,6 +1118,10 @@ public class CompileQueue {
             return false;
         }
         if (method.getAnnotation(RestrictHeapAccess.class) != null) {
+            return false;
+        }
+        if (StubCallingConvention.Utils.hasStubCallingConvention(method)) {
+            /* Deoptimization runtime cannot fill the callee saved registers. */
             return false;
         }
         if (universe.getMethodsWithStackValues().contains(method.wrapped)) {

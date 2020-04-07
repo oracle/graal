@@ -41,12 +41,13 @@ import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -687,7 +688,7 @@ final class JNIFunctions {
      */
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class)
     @CEntryPointOptions(prologue = JNIEnvEnterReturnNullWordOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    static WordPointer GetPrimitiveArrayCritical(JNIEnvironment env, JNIObjectHandle harray, CIntPointer isCopy) {
+    static WordPointer GetPrimitiveArrayCritical(JNIEnvironment env, JNIObjectHandle harray, CCharPointer isCopy) {
         Object array = JNIObjectHandles.getObject(harray);
         if (array == null) {
             return WordFactory.nullPointer();
@@ -703,7 +704,7 @@ final class JNIFunctions {
      */
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    static void ReleasePrimitiveArrayCritical(JNIEnvironment env, JNIObjectHandle harray, WordPointer carray, CIntPointer isCopy) {
+    static void ReleasePrimitiveArrayCritical(JNIEnvironment env, JNIObjectHandle harray, WordPointer carray, int mode) {
         JNIThreadLocalPinnedObjects.unpinArrayByAddress(carray);
     }
 
@@ -774,9 +775,9 @@ final class JNIFunctions {
         throw (Throwable) JNIObjectHandles.getObject(handle);
     }
 
-    interface NewObjectWithObjectArgFunctionPointer extends CFunctionPointer {
+    interface NewObjectWithObjectArrayArgFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId ctor, JNIObjectHandle arg);
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId ctor, CLongPointer array);
     }
 
     /*
@@ -788,8 +789,16 @@ final class JNIFunctions {
         Class<?> clazz = JNIObjectHandles.getObject(clazzHandle);
         JNIMethodId ctor = Support.getMethodID(clazz, "<init>", "(Ljava/lang/String;)V", false);
         JNIObjectHandle messageHandle = NewStringUTF(env, message);
-        NewObjectWithObjectArgFunctionPointer newObject = (NewObjectWithObjectArgFunctionPointer) env.getFunctions().getNewObject();
-        JNIObjectHandle exception = newObject.invoke(env, clazzHandle, ctor, messageHandle);
+        /*
+         * The iOS calling convention mandates that variadic functions parameters are all passed on
+         * the stack. As a consequence, calling the newObject method does not work on iOS as the
+         * code generator has no way of telling that the call is variadic, so we use newObjectA
+         * instead.
+         */
+        NewObjectWithObjectArrayArgFunctionPointer newObjectA = (NewObjectWithObjectArrayArgFunctionPointer) env.getFunctions().getNewObjectA();
+        CLongPointer array = StackValue.get(Long.BYTES);
+        array.write(messageHandle.rawValue());
+        JNIObjectHandle exception = newObjectA.invoke(env, clazzHandle, ctor, array);
         throw (Throwable) JNIObjectHandles.getObject(exception);
     }
 
@@ -1064,6 +1073,8 @@ final class JNIFunctions {
 
         static JNIMethodId getMethodID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig, boolean isStatic) {
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
+            DynamicHub.fromClass(clazz).ensureInitialized();
+
             String name = CTypeConversion.toJavaString(cname);
             String signature = CTypeConversion.toJavaString(csig);
             return getMethodID(clazz, name, signature, isStatic);
@@ -1087,13 +1098,15 @@ final class JNIFunctions {
         }
 
         static JNIFieldId getFieldID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig, boolean isStatic) {
-            // TODO: check signature
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
+            DynamicHub.fromClass(clazz).ensureInitialized();
+
             String name = CTypeConversion.toJavaString(cname);
             JNIFieldId fieldID = JNIReflectionDictionary.singleton().getFieldID(clazz, name, isStatic);
             if (fieldID.isNull()) {
                 throw new NoSuchFieldError(clazz.getName() + '.' + name);
             }
+            // TODO: check field signature
             return fieldID;
         }
 

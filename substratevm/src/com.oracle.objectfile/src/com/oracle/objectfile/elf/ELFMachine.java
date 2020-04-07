@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -155,6 +155,10 @@ public enum ELFMachine/* implements Integral */ {
                         return ELFAArch64Relocation.R_AARCH64_LD_PREL_LO19;
                     case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
                         return ELFAArch64Relocation.R_AARCH64_LDST64_ABS_LO12_NC;
+                    case AARCH64_R_AARCH64_LDST32_ABS_LO12_NC:
+                        return ELFAArch64Relocation.R_AARCH64_LDST32_ABS_LO12_NC;
+                    case AARCH64_R_AARCH64_LDST16_ABS_LO12_NC:
+                        return ELFAArch64Relocation.R_AARCH64_LDST16_ABS_LO12_NC;
                     case AARCH64_R_AARCH64_LDST8_ABS_LO12_NC:
                         return ELFAArch64Relocation.R_AARCH64_LDST8_ABS_LO12_NC;
                     default:
@@ -426,7 +430,7 @@ enum ELFX86_64Relocation implements ELFRelocationMethod {
 }
 
 /**
- * Reference: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0056b/IHI0056B_aaelf64.pdf.
+ * Reference: https://developer.arm.com/docs/ihi0056/latest.
  */
 enum ELFAArch64Relocation implements ELFRelocationMethod {
     R_AARCH64_NONE(0),

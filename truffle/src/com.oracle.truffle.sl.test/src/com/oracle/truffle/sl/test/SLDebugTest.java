@@ -179,7 +179,7 @@ public class SLDebugTest {
             String expectedValue = expected[i + 1];
             DebugValue value = valMap.get(expectedIdentifier);
             Assert.assertNotNull(value);
-            Assert.assertEquals(expectedValue, value.as(String.class));
+            Assert.assertEquals(expectedValue, value.toDisplayString());
         }
     }
 
@@ -219,28 +219,28 @@ public class SLDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 8, false, "fac(n - 1)", "n", "2");
                 checkArgs(event.getTopStackFrame(), "n", "2");
-                assertEquals("1", event.getReturnValue().as(String.class));
+                assertEquals("1", event.getReturnValue().toDisplayString());
                 assertTrue(event.getBreakpoints().isEmpty());
                 event.prepareStepOut(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 8, false, "fac(n - 1)", "n", "3");
-                assertEquals("2", event.getReturnValue().as(String.class));
+                assertEquals("2", event.getReturnValue().toDisplayString());
                 assertTrue(event.getBreakpoints().isEmpty());
                 event.prepareStepOut(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 8, false, "fac(n - 1)", "n", "4");
-                assertEquals("6", event.getReturnValue().as(String.class));
+                assertEquals("6", event.getReturnValue().toDisplayString());
                 assertTrue(event.getBreakpoints().isEmpty());
                 event.prepareStepOut(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 8, false, "fac(n - 1)", "n", "5");
-                assertEquals("24", event.getReturnValue().as(String.class));
+                assertEquals("24", event.getReturnValue().toDisplayString());
                 assertTrue(event.getBreakpoints().isEmpty());
                 event.prepareStepOut(1);
             });
@@ -248,7 +248,7 @@ public class SLDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "main", 2, false, "fac(5)");
                 checkArgs(event.getTopStackFrame());
-                assertEquals("120", event.getReturnValue().as(String.class));
+                assertEquals("120", event.getReturnValue().toDisplayString());
                 assertTrue(event.getBreakpoints().isEmpty());
                 event.prepareStepOut(1);
             });
@@ -291,12 +291,12 @@ public class SLDebugTest {
             });
             expectSuspended((SuspendedEvent event) -> {
                 Assert.assertEquals(5, event.getSourceSection().getStartLine());
-                Assert.assertEquals(5, event.getTopStackFrame().getScope().getDeclaredValue("n").as(Number.class).intValue());
+                Assert.assertEquals(5, event.getTopStackFrame().getScope().getDeclaredValue("n").asInt());
                 event.prepareContinue();
             });
             expectSuspended((SuspendedEvent event) -> {
                 Assert.assertEquals(5, event.getSourceSection().getStartLine());
-                Assert.assertEquals(4, event.getTopStackFrame().getScope().getDeclaredValue("n").as(Number.class).intValue());
+                Assert.assertEquals(4, event.getTopStackFrame().getScope().getDeclaredValue("n").asInt());
                 functionBreakpoint[0].dispose();
                 event.prepareContinue();
             });
@@ -390,7 +390,7 @@ public class SLDebugTest {
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "main", 2, false, "fac(5)").prepareStepInto(1);
-                assertEquals("120", event.getReturnValue().as(String.class));
+                assertEquals("120", event.getReturnValue().toDisplayString());
             });
 
             expectDone();
@@ -518,13 +518,13 @@ public class SLDebugTest {
 
                 DebugValue c = scope.getDeclaredValue("c");
                 assertFalse(c.isArray());
-                assertEquals("10", c.as(String.class));
+                assertEquals("10", c.toDisplayString());
                 assertNull(c.getArray());
                 assertNull(c.getProperties());
 
                 DebugValue d = scope.getDeclaredValue("d");
                 assertFalse(d.isArray());
-                assertEquals("str", d.as(String.class));
+                assertEquals("str", d.toDisplayString());
                 assertNull(d.getArray());
                 assertNull(d.getProperties());
 
@@ -538,7 +538,7 @@ public class SLDebugTest {
                 assertTrue(propertiesIt.hasNext());
                 DebugValue p1 = propertiesIt.next();
                 assertEquals("p1", p1.getName());
-                assertEquals("1", p1.as(String.class));
+                assertEquals("1", p1.toDisplayString());
                 assertNull(p1.getScope());
                 assertTrue(propertiesIt.hasNext());
                 DebugValue p2 = propertiesIt.next();
@@ -552,14 +552,14 @@ public class SLDebugTest {
                 assertTrue(propertiesIt.hasNext());
                 DebugValue p21 = propertiesIt.next();
                 assertEquals("p21", p21.getName());
-                assertEquals("21", p21.as(String.class));
+                assertEquals("21", p21.toDisplayString());
                 assertNull(p21.getScope());
                 assertFalse(propertiesIt.hasNext());
 
                 DebugValue ep1 = e.getProperty("p1");
-                assertEquals("1", ep1.as(String.class));
+                assertEquals("1", ep1.toDisplayString());
                 ep1.set(p21);
-                assertEquals("21", ep1.as(String.class));
+                assertEquals("21", ep1.toDisplayString());
                 assertNull(e.getProperty("NonExisting"));
             });
 
@@ -673,19 +673,19 @@ public class SLDebugTest {
 
                 DebugScope scope = frame.getScope();
                 DebugValue v = scope.getDeclaredValue("a");
-                assertEquals("NULL", v.getMetaObject().as(String.class));
+                assertEquals("NULL", v.getMetaObject().toDisplayString());
                 v = scope.getDeclaredValue("b");
-                assertEquals("Boolean", v.getMetaObject().as(String.class));
+                assertEquals("Boolean", v.getMetaObject().toDisplayString());
                 v = scope.getDeclaredValue("c");
-                assertEquals("Number", v.getMetaObject().as(String.class));
+                assertEquals("Number", v.getMetaObject().toDisplayString());
                 v = scope.getDeclaredValue("cBig");
-                assertEquals("Number", v.getMetaObject().as(String.class));
+                assertEquals("Number", v.getMetaObject().toDisplayString());
                 v = scope.getDeclaredValue("d");
-                assertEquals("String", v.getMetaObject().as(String.class));
+                assertEquals("String", v.getMetaObject().toDisplayString());
                 v = scope.getDeclaredValue("e");
-                assertEquals("Object", v.getMetaObject().as(String.class));
+                assertEquals("Object", v.getMetaObject().toDisplayString());
                 v = scope.getDeclaredValue("f");
-                assertEquals("Function", v.getMetaObject().as(String.class));
+                assertEquals("Function", v.getMetaObject().toDisplayString());
             });
 
             expectDone();
@@ -865,12 +865,12 @@ public class SLDebugTest {
             });
             expectSuspended((SuspendedEvent event) -> {
                 assertEquals(8, event.getTopStackFrame().getSourceSection().getStartLine());
-                assertEquals("7", event.getTopStackFrame().getScope().getDeclaredValue("n").as(String.class));
+                assertEquals("7", event.getTopStackFrame().getScope().getDeclaredValue("n").toDisplayString());
                 event.prepareStepInto(1);
             });
             expectSuspended((SuspendedEvent event) -> {
                 assertEquals(5, event.getTopStackFrame().getSourceSection().getStartLine());
-                assertEquals("6", event.getTopStackFrame().getScope().getDeclaredValue("n").as(String.class));
+                assertEquals("6", event.getTopStackFrame().getScope().getDeclaredValue("n").toDisplayString());
                 event.prepareContinue();
             });
             expectSuspended((SuspendedEvent event) -> {
@@ -1119,7 +1119,7 @@ public class SLDebugTest {
                                 inputBuilder.append(',');
                             }
                             if (v != null) {
-                                inputBuilder.append(v.as(String.class));
+                                inputBuilder.append(v.toDisplayString());
                             } else {
                                 inputBuilder.append("null");
                             }
@@ -1128,7 +1128,7 @@ public class SLDebugTest {
                         input = inputBuilder.toString();
                     }
                     DebugValue returnValue = event.getReturnValue();
-                    String ret = (returnValue != null) ? returnValue.as(String.class) : "<none>";
+                    String ret = (returnValue != null) ? returnValue.toDisplayString() : "<none>";
 
                     String actualPos = "<" + ss.getStartLine() + ":" + ss.getStartColumn() + " - " + ss.getEndLine() + ":" + ss.getEndColumn() + "> " + input + ret;
                     assertEquals(stepPos, actualPos);

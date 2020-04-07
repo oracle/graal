@@ -1,84 +1,16 @@
-# T-Trace: The Ultimate Tracing and Insights Gathering Platform
+# T-Trace: Hacker's Handle to the Ultimate Tracing Framework
 
-**T-Trace** is multipurpose, flexible tool that greatly reduces 
+[T-Trace](T-Trace.md) is multipurpose, flexible tool that greatly reduces
 the effort of writing reliable microservices solutions. The dynamic nature
-of **T-Trace** helps everyone to selectively apply complex tracing
-pointcuts on already deployed applications running at full speed. 
-**T-Trace** further blurs the difference between various DevOps tasks -
+of [T-Trace](T-Trace.md) helps everyone to selectively apply complex tracing
+pointcuts on already deployed applications running at full speed.
+[T-Trace](T-Trace.md) further blurs the difference between various DevOps tasks -
 code once, apply your insights anytime, anywhere!
 
-## Tracing in any Language and any Framework
-
-The traditional tracing solution requires every developer to modify their own code 
-with manually added traces. **T-Trace** brings such experience to another 
-level by using the powerful instrumentation capabilities built 
-into any GraalVM language (JavaScript, Python, Ruby, R)
-and letting you dynamically apply the tracing when needed, without altering the
-original code of the application at all. All GraalVM languages and technologies 
-are designed with support for tracing in mind. 
-Apply the **T-Trace** insights to scripts running in *node.js* or
-*Ruby on Rails* or your *Python* big data computation pipeline. All of that
-is possible and ready to be explored.
-
-Every user can easily create own
-**T-Trace** insights in a language of one's choice. The insights are well
-crafted code that, when enabled, gets automatically spread around the codebase 
-of one's application and is applied at critical tracing pointcuts.
-The code is smoothly blended into bussiness code of the application 
-enriching the core functionality with additional cross cutting concerns
-(for example security).
-
-## Excellent for Research
-
-While common GraalVM **T-Trace** sample scripts primarily targeted
-ease of use in the microservices area, the functionality of **T-Trace**
-pointcuts isn't limited to such area at all!
-
-**T-Trace** is an ideal tool for practicing *aspects oriented programming*
-in a completely language agnostic way. **T-Trace** insights allow detailed
-access to runtime behavior of a program at all possible pointcuts allowing one to
-inspect values, types at invocation or allocation sites, gathering useful information
-and collecting and presenting it in unrestricted ways. The **T-Trace** insights
-allow one to modify computed values, interrupt execution and 
-quickly experiment with behavioral changes without modifying the
-application code.
-
-The applicability of **T-Trace** isn't limited only to scripting
-languages. Any language written using Truffle API can be a target of
-**T-Trace** insights including static languages handled by Sulong
-(e.g. C, C++, Rust, Fortran, etc.). Enrich your static code behavior 
-by attaching your insights written in dynamic languages.
-
-**T-Trace** framework brings powerful cross-language yet language agnostic
-metaprogramming features into hands of every researcher and practitioner.
-
-## Running at Full Speed
-
-GraalVM languages are well known for running with excellent performance and **T-Trace** 
-makes no compromises to that! Your applications are inherently ready for
-tracing without giving up any speed. Launch your application 
-as you are used to. Let it run at full speed. When needed, connect to its GraalVM
-and enable requested **T-Trace** insights. Their code gets automatically
-blended into the code of your application, making them a natural part
-of surrounding code. There is no loss of performance compared to code that
-would be manually tweaked to contain the insights at appropriate places, but
-such modification doesn't have to be done in advance - it can be fully applied
-only when needed.
-
-The flexibility and the power of standard as well as hand written
-**T-Trace** insights makes them an excellent choice for vendors of cloud
-based offerings. There is no other system that could compete with the 
-multi-language offerings of GraalVM. The ability to create custom **T-Trace** 
-based insights in any language brings the combined offering to yet another level.
-GraalVM with **T-Trace** is the dream come true for anyone seeking security,
-embeddablity, configurability, robustness and performance at the cloud scale.
-
-## Hacker's Handle to the Ultimate Tracing Framework
-
 Any moderately skilled hacker can easily create own 
-so called **T-Trace** snippets and dynamically apply them to 
+so called [T-Trace](T-Trace.md) snippets and dynamically apply them to
 the actual programs. That provides ultimate insights into
-execution and behavior of once application without compromising the speed 
+execution and behavior of one's application without compromising the speed
 of the execution. Let's get started with an obligatory Hello World example.
 
 ### Hello World!
@@ -206,7 +138,7 @@ agent.on('enter', function(ev) {
 });
 ```
 
-and run it on top of [sieve.js](https://raw.githubusercontent.com/jtulach/sieve/7e188504e6cbd2809037450c845138b45724e186/js/sieve.js) - 
+and run it on top of [sieve.js](../../vm/benchmarks/agentscript/sieve.js) -
 a sample script which uses a variant of the Sieve of Erathostenes to compute one hundred
 thousand of prime numbers:
 
@@ -226,7 +158,8 @@ Just called Natural.next as 4097 function invocation
 
 **T-Trace** scripts are ready to be used in any environment - be it the
 default `node` implementation, the lightweight `js` command line tool - 
-or your own application that decides to embedd GraalVM scripting capabilities!
+or your own application that decides to [embedd GraalVM scripting](T-Trace-Embedding.md)
+capabilities!
 
 ### Trully Polyglot - T-Trace any Language
 
@@ -288,7 +221,7 @@ agent.on('enter', function(ev) {
 agent.on('close', dumpCount);
 ```
 
-Let's use the script on fifty iterations of [sieve.js](https://raw.githubusercontent.com/jtulach/sieve/7e188504e6cbd2809037450c845138b45724e186/js/sieve.js)
+Let's use the script on fifty iterations of [sieve.js](../../vm/benchmarks/agentscript/sieve.js)
 sample which uses a variant of the Sieve of Erathostenes to compute one hundred
 thousand of prime numbers. Repeating the computation fifty times gives the
 runtime a chance to warm up and properly optimize. Here is the optimal run:
@@ -357,6 +290,36 @@ With Ruby: 42
 
 Write your **T-Trace** scripts in any language you wish! They'll be
 ultimatelly useful accross the whole GraalVM ecosystem.
+
+### Trully Polyglot - T-Tracing with R
+
+The same instrument can be written in the R language opening tracing and
+aspect based programing to our friendly statistical community. Just create
+`agent-r.R` script:
+
+```R
+cat("R: Initializing T-Trace script\n")
+
+agent@on('source', function(env) {
+    cat("R: observed loading of ", env$name, "\n")
+})
+
+cat("R: Hooks are ready!\n")
+```
+
+and use it to trace your `test.R` program:
+
+```bash
+$ graalvm/bin/Rscript --agentscript=agent-r.R --experimental-options test.R
+R: Initializing T-Trace script
+R: Hooks are ready!
+R: observed loading of test.R
+```
+
+The only change is the R language. All the other [T-Trace](T-Trace.md)
+features and 
+[APIs](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html#VERSION)
+remain the same.
 
 ### Inspecting Values
 
@@ -446,7 +409,7 @@ let initializeAgent = function (require) {
 let waitForRequire = function (event) {
   if (typeof process === 'object' && process.mainModule && process.mainModule.require) {
     agent.off('source', waitForRequire);
-    initializeAgent(process.mainModule.require);
+    initializeAgent(process.mainModule.require.bind(process.mainModule));
   }
 };
 
@@ -518,6 +481,177 @@ exceptions. The `seq.js` program could use regular `try { ... } catch (e) { ... 
 block to catch them and deal with them as if they were emitted by the regular
 user code.
 
+### Hack into the C Code!
+
+The polyglot capabilities of GraalVM know no limits. Not only it is possible
+to interpret dynamic languages, but with the help of the
+[lli launcher](https://www.graalvm.org/docs/reference-manual/languages/llvm/)
+one can mix in even *statically compiled* programs written in **C**, **C++**,
+**Fortran**, **Rust**, etc.
+
+Imagine you have a long running program just like
+[sieve.c](https://github.com/oracle/graal/blob/master/vm/tests/all/agentscript/agent-sieve.c)
+(which contains never-ending `for` loop in `main` method) and you'd like to give
+it some execution quota. That is quite easy to do with GraalVM and T-Trace! First
+of all execute the program on GraalVM:
+
+```bash
+$ export TOOLCHAIN_PATH=`graalvm/bin/lli --print-toolchain-path`
+$ ${TOOLCHAIN_PATH}/clang agent-sieve.c -lm -o sieve
+$ graalvm/bin/lli sieve
+```
+
+Why toolchain? The GraalVM `clang` wrapper adds special options
+instructing the regular `clang` to keep the LLVM bitcode information in the `sieve`
+executable along the normal native code.
+The GraalVM's `lli` interpreter can then use the bitcode to interpret the program
+at full speed.  Btw. compare the result of direct native execution via `./sieve`
+and interpreter speed of `graalvm/bin/lli sieve` - quite good result for an
+interpreter, right?
+
+Anyway let's focus on breaking the endless loop. You can do it with a JavaScript
+`agent-limit.js` T-Trace script:
+
+```js
+var counter = 0;
+
+agent.on('enter', function(ctx, frame) {
+    if (++counter === 1000) {
+        throw `T-Trace: ${ctx.name} method called ${counter} times. enough!`;
+    }
+}, {
+    roots: true,
+    rootNameFilter: (n) => n === 'nextNatural'
+});
+```
+
+The script counts the number of invocations of the C `nextNatural` function
+and when the function gets invoked a thousand times, it emits an error
+to terminate the `sieve` execution. Just run the program as:
+
+```bash
+$ lli --polyglot --agentscript=agent-limit.js --experimental-options sieve
+Computed 97 primes in 181 ms. Last one is 509
+T-Trace: nextNatural method called 1000 times. enough!
+        at <js> :anonymous(<eval>:7:117-185)
+        at <llvm> nextNatural(agent-sieve.c:14:186-221)
+        at <llvm> nextPrime(agent-sieve.c:74:1409)
+        at <llvm> measure(agent-sieve.c:104:1955)
+        at <llvm> main(agent-sieve.c:123:2452)
+```
+
+The mixture of `lli`, polyglot and T-Trace opens enormous possibilities in tracing,
+controlling and interactive or batch debugging of native programs. Write in
+C, C++, Fortran, Rust and inspect with JavaScript, Ruby & co.!
+
+### Minimal Overhead when Accessing Locals
+
+[T-Trace](T-Trace.md) is capable to access local variables. Is that for free
+or is there an inherent slowdown associated with each variable access? The answer
+is: **it depends**!
+
+Let's demonstrate the issue on [sieve.js](../../vm/benchmarks/agentscript/sieve.js) -
+an algorithm to compute hundred thousand of prime numbers. It keeps the
+so far found prime numbers in a linked list constructed via following
+function:
+
+```js
+function Filter(number) {
+    this.number = number;
+    this.next = null;
+    this.last = this;
+}
+```
+
+First of all let's test the behavior by invoking the computation fifty times
+and measuring time it takes to finish the last round:
+
+```bash
+$ graalvm/bin/js -e "var count=50" --file sieve.js | grep Hundred | tail -n 1
+Hundred thousand prime numbers in 73 ms
+```
+
+and now let's tease the system by observing each allocation of a new prime
+number slot - e.g. the call to `new Filter` constructor:
+
+```js
+var sum = 0;
+var max = 0;
+
+agent.on('enter', (ctx, frame) => {
+    sum += frame.number;
+    if (frame.number > max) {
+        max = frame.number;
+    }
+}, {
+  roots: true,
+  rootNameFilter: (name) => name === 'Filter'
+});
+
+agent.on('return', (ctx, frame) => {
+    log(`Hundred thousand prime numbers from 2 to ${max} has sum ${sum}`);
+    sum = 0;
+    max = 0;
+}, {
+    roots: true,
+    rootNameFilter: (name) => name === 'measure'
+});
+```
+
+Everytime a `new Filter(number)` is allocated, we capture the maximum value
+of `number` (e.g. the highest prime number found) and also `sum` of all prime
+numbers found so far. When the main loop in `measure` is over - e.g. we have
+all hundred thousand prime numbers, we print the result. Let's try it:
+
+```bash
+$ graalvm/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
+Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
+Hundred thousand prime numbers in 288 ms
+```
+
+Well, there is a significant slowdown. What is it's reason? The primary reason
+for the slowdown is the ability of GraalVM to inline the T-Trace frame access
+to the local variable `frame.number`. Let's demonstrate it. Right now there are three
+accesses - let's replace them with a single one:
+```js
+agent.on('enter', (ctx, frame) => {
+    let n = frame.number;
+    sum += n;
+    if (n > max) {
+        max = n;
+    }
+}, {
+  roots: true,
+  rootNameFilter: (name) => name === 'Filter'
+});
+```
+
+after storing the `frame.number` into the temporary variable `n` we get following
+performance results:
+
+```bash
+$ graalvm/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter2.js --file sieve.js | grep Hundred | tail -n 2
+Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
+Hundred thousand prime numbers in 151 ms
+```
+
+Faster. That confirms our expectations - the access to `frame.number` isn't
+inlined - e.g. it is not optimized enough right now. If we just could get
+better inlining!
+
+Luckily we can. [GraalVM EE](https://www.graalvm.org/downloads/) is known for having better inlining characteristics
+than GraalVM CE. Let's try to use it:
+
+```bash
+$ graalvm-ee/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
+Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
+Hundred thousand prime numbers in 76 ms
+```
+
+Voilà! [T-Trace](T-Trace.md) gives us great instrumentation capabilities - when combined with
+the great inlining algorithms of [GraalVM Enterprise Edition](http://graalvm.org/downloads)
+we can even access local variables with almost no performance penalty!
+
 <!--
 
 ### TODO:
@@ -534,9 +668,6 @@ in a completely language agnostic way.
 - inspect values, types at invocation or allocation sites, gathering useful information
 - modify computed values, interrupt execution 
 
-- C, C++, Rust, Fortran, etc. - Enrich your static code behavior 
-by attaching your insights written in dynamic languages.
-
 - powerful tools to help you write, debug, manage, and organize
 your **T-Trace** insights scripts. It is a matter of pressing a single button
 to enable selected **T-Trace** insight and a matter of another click to 
@@ -550,68 +681,5 @@ virtual machines. Connect to them on demand. Apply selected insights. Let
 them gather their data. Obtain the data and analyze them with the integrated
 graphical tools. Disable the insights and disconnect. Let the application run
 at its original full speed.
-
-### OpenTracing API on top of **T-Trace**
-
-It is possible to use the **T-Trace** system to implement smooth, declarative
-logging via standard OpenTracing API. Use the `npm` command to install
-one of the JavaScript libraries for tracing:
-
-```bash
-$ graalvm/bin/npm install opentracing
-```
-
-Now you can use its API in your instrument `function-tracing.js` via the
-`require` function (once it becomes available):
-
-```js
-var tracer = null;
-var ignore = false;
-var countSpan = 0;
-
-agent.on('enter', function(ev) {
-    if (!ignore) {
-        let prev = ignore;
-        ignore = true;
-        try {
-            if (!tracer) {
-                if (typeof require === 'function') {
-                    let opentracing = require('opentracing');
-                    class MockTracer extends opentracing.Tracer {
-                        startSpan(n) {
-                            return {
-                                'finish' : function() {
-                                    countSpan++;
-                                }
-                            };
-                        }
-                    }
-                    
-                    tracer = new MockTracer();
-                }
-            }
-            if (tracer) {
-                let span = tracer.startSpan(ev.name);
-                span.finish();
-            }
-        } finally {
-            ignore = prev;
-        }
-    }
-}, {
-    roots: true
-});
-
-ttrace.on('close', function() {
-    print(`Used ${countSpan} spans!`);
-});
-```
-
-With such instrument, it is just a matter of selecting the right `ttrace`
-pointcuts - declaratively, selectively, precisely, accuratelly 
-(via specifying the right tags and filtering on function names, location in
-sources and other characteristics) and the OpenTracing will happen 
-automatically and only on demand, without modifying the application code
-at all.
 
 -->

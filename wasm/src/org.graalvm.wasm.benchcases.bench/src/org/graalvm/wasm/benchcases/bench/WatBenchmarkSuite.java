@@ -55,7 +55,7 @@ public class WatBenchmarkSuite extends WasmBenchmarkSuiteBase {
     }
 
     @Benchmark
-    public void watBenchmark(WatBenchmarkState state) {
-        state.setResult(state.benchmarkRun().execute());
+    public void run(WatBenchmarkState state) {
+        state.run();
     }
 }

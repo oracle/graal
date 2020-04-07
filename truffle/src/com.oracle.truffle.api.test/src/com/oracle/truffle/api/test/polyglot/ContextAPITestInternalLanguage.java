@@ -60,9 +60,4 @@ public class ContextAPITestInternalLanguage extends TruffleLanguage<Object> {
         return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(""));
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
 }

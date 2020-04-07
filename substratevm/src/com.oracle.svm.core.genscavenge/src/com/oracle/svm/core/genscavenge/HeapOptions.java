@@ -33,15 +33,18 @@ public class HeapOptions {
     @Option(help = "Print the shape of the heap before and after each collection, if +VerboseGC.")//
     public static final RuntimeOptionKey<Boolean> PrintHeapShape = new RuntimeOptionKey<>(false);
 
+    @Option(help = "Print summary GC information after main completion")//
+    public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Print a time stamp at each collection, if +PrintGC or +VerboseGC.")//
+    public static final RuntimeOptionKey<Boolean> PrintGCTimeStamps = new RuntimeOptionKey<>(false);
+
     @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC.")//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false);
 
     /** This produces a lot of output: be prepared to stream the output to a post-processor. */
     @Option(help = "Trace each object promotion.")//
     public static final HostedOptionKey<Boolean> TraceObjectPromotion = new HostedOptionKey<>(false);
-
-    @Option(help = "Verify the heap before and after each collection.")//
-    public static final HostedOptionKey<Boolean> VerifyHeap = new HostedOptionKey<>(false);
 
     @Option(help = "Verify the heap before and after each collection.")//
     public static final RuntimeOptionKey<Boolean> HeapVerificationFailureIsFatal = new RuntimeOptionKey<>(true);
@@ -63,4 +66,10 @@ public class HeapOptions {
 
     @Option(help = "Trace stack verification.")//
     public static final HostedOptionKey<Boolean> TraceStackVerification = new HostedOptionKey<>(false);
+
+    @Option(help = "Verify dirty cards before each collection.") //
+    public static final HostedOptionKey<Boolean> VerifyDirtyCardsBeforeCollection = new HostedOptionKey<>(false);
+
+    @Option(help = "Verify dirty cards after each collection.") //
+    public static final HostedOptionKey<Boolean> VerifyDirtyCardsAfterCollection = new HostedOptionKey<>(false);
 }

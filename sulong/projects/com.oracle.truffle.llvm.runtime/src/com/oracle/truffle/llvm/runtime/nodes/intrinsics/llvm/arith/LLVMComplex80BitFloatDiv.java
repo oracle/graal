@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNod
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public abstract class LLVMComplex80BitFloatDiv extends LLVMExpressionNode {
 
@@ -62,7 +63,14 @@ public abstract class LLVMComplex80BitFloatDiv extends LLVMExpressionNode {
     }
 
     int getSizeInBytes() {
-        return getDataLayout().getSize(PrimitiveType.X86_FP80);
+        try {
+            long value = getDataLayout().getSize(PrimitiveType.X86_FP80);
+            assert (int) value == value : "Size of X86_F80 does not fit into an int?";
+            return (int) value;
+        } catch (TypeOverflowException e) {
+            // should not reach here
+            throw new AssertionError(e);
+        }
     }
 
     @Specialization

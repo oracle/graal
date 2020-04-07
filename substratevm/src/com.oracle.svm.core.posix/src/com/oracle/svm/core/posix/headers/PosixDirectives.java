@@ -26,13 +26,13 @@ package com.oracle.svm.core.posix.headers;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 public class PosixDirectives implements CContext.Directives {
     private static final String[] commonLibs = new String[]{
@@ -55,7 +55,7 @@ public class PosixDirectives implements CContext.Directives {
     };
 
     private static final String[] darwinLibs = new String[]{
-                    "<CoreFoundation/CoreFoundation.h>",
+                    "<Foundation/Foundation.h>",
                     "<mach/mach.h>",
                     "<mach/mach_time.h>",
                     "<mach-o/dyld.h>",
@@ -65,24 +65,33 @@ public class PosixDirectives implements CContext.Directives {
 
     private static final String[] linuxLibs = new String[]{
                     "<mntent.h>",
+                    "<paths.h>",
     };
 
     @Override
     public boolean isInConfiguration() {
-        return Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class) || Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class);
+        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
     }
 
     @Override
     public List<String> getHeaderFiles() {
         List<String> result = new ArrayList<>(Arrays.asList(commonLibs));
-        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             result.addAll(Arrays.asList(linuxLibs));
-        } else if (Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)) {
+        } else if (Platform.includedIn(Platform.DARWIN.class)) {
             result.addAll(Arrays.asList(darwinLibs));
         } else {
             throw VMError.shouldNotReachHere("Unsupported OS");
         }
         return result;
+    }
+
+    @Override
+    public List<String> getOptions() {
+        if (Platform.includedIn(Platform.DARWIN.class)) {
+            return Collections.singletonList("-ObjC");
+        }
+        return Collections.emptyList();
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
@@ -40,7 +39,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -55,6 +53,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
@@ -65,6 +64,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
+import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.UnresolvedFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -99,12 +101,14 @@ public final class LLVMContext {
     private final Object libraryPathsLock = new Object();
     private final Toolchain toolchain;
     @CompilationFinal private Path internalLibraryPath;
+    @CompilationFinal private TruffleFile internalLibraryPathFile;
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
     private final Object externalLibrariesLock = new Object();
     private final List<String> internalLibraryNames;
 
-    // map that contains all non-native globals, needed for pointer->global lookups
-    private final ConcurrentHashMap<LLVMPointer, LLVMGlobal> globalsReverseMap = new ConcurrentHashMap<>();
+    // A map for pointer-> non-native symbol lookups.
+    // The list contains all the symbols declared from the same symbol defined.
+    private final ConcurrentHashMap<LLVMPointer, List<LLVMSymbol>> symbolsReverseMap = new ConcurrentHashMap<>();
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
     private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
     private final ArrayList<LLVMPointer> globalsReadOnlyStore = new ArrayList<>();
@@ -113,7 +117,6 @@ public final class LLVMContext {
     private final List<LLVMThread> runningThreads = new ArrayList<>();
     @CompilationFinal private LLVMThreadingStack threadingStack;
     private Object[] mainArguments;     // effectively final after initialization
-    private final Map<String, String> environment;
     private final ArrayList<LLVMNativePointer> caughtExceptionStack = new ArrayList<>();
     private ConcurrentHashMap<String, Integer> nativeCallStatistics;        // effectively final
     // after initialization
@@ -125,6 +128,8 @@ public final class LLVMContext {
 
     @CompilationFinal private Env env;
     private final LLVMScope globalScope;
+    private final ArrayList<LLVMLocalScope> localScopes;
+
     private final DynamicLinkChain dynamicLinkChain;
     private final List<RootCallTarget> destructorFunctions;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
@@ -134,7 +139,7 @@ public final class LLVMContext {
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
 
     // private for storing the globals of each bcode file;
-    @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] globalStorage;
+    @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] symbolStorage;
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -154,7 +159,6 @@ public final class LLVMContext {
     private LLVMTracerInstrument tracer;    // effectively final after initialization
 
     private final class LLVMFunctionPointerRegistry {
-        private int currentFunctionIndex = 1;
         private final HashMap<LLVMNativePointer, LLVMFunctionDescriptor> functionDescriptors = new HashMap<>();
 
         synchronized LLVMFunctionDescriptor getDescriptor(LLVMNativePointer pointer) {
@@ -165,9 +169,8 @@ public final class LLVMContext {
             functionDescriptors.put(pointer, desc);
         }
 
-        synchronized LLVMFunctionDescriptor create(String name, FunctionType type, LLVMFunctionDescriptor.Function function, ExternalLibrary library) {
-            int functionId = currentFunctionIndex++;
-            return new LLVMFunctionDescriptor(LLVMContext.this, name, type, functionId, function, library);
+        synchronized LLVMFunctionDescriptor create(LLVMFunction functionDetail) {
+            return new LLVMFunctionDescriptor(LLVMContext.this, functionDetail);
         }
     }
 
@@ -184,7 +187,7 @@ public final class LLVMContext {
         this.sigDfl = LLVMNativePointer.create(0);
         this.sigIgn = LLVMNativePointer.create(1);
         this.sigErr = LLVMNativePointer.create(-1);
-        LLVMMemory memory = language.getCapability(LLVMMemory.class);
+        LLVMMemory memory = language.getLLVMMemory();
         this.handleContainer = memory.createHandleContainer(false, language.getNoCommonHandleAssumption());
         this.derefHandleContainer = memory.createHandleContainer(true, language.getNoDerefHandleAssumption());
         this.functionPointerRegistry = new LLVMFunctionPointerRegistry();
@@ -196,16 +199,16 @@ public final class LLVMContext {
         assert !internalLibraryNames.isEmpty() : "No internal libraries?";
 
         this.globalScope = new LLVMScope();
+        this.localScopes = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
 
         this.mainArguments = getMainArguments(env);
-        this.environment = System.getenv();
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
 
         pThreadContext = new LLVMPThreadContext(this);
 
-        globalStorage = new AssumedValue[10][];
+        symbolStorage = new AssumedValue[10][];
     }
 
     boolean patchContext(Env newEnv) {
@@ -223,7 +226,7 @@ public final class LLVMContext {
         return mainArgs == null ? environment.getApplicationArguments() : (Object[]) mainArgs;
     }
 
-    private static final class InitializeContextNode extends LLVMStatementNode {
+    abstract static class InitializeContextNode extends LLVMStatementNode {
 
         @CompilationFinal private ContextReference<LLVMContext> ctxRef;
         private final FrameSlot stackPointer;
@@ -233,13 +236,17 @@ public final class LLVMContext {
         InitializeContextNode(LLVMContext ctx, FrameDescriptor rootFrame) {
             this.stackPointer = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
 
-            LLVMFunctionDescriptor initContextDescriptor = ctx.globalScope.getFunction("__sulong_init_context");
-            RootCallTarget initContextFunction = initContextDescriptor.getLLVMIRFunctionSlowPath();
+            LLVMFunction function = ctx.globalScope.getFunction("__sulong_init_context");
+            if (function == null) {
+                throw new IllegalStateException("Context cannot be initialized: _sulong_init_context was not found");
+            }
+            LLVMFunctionDescriptor initContextDescriptor = ctx.createFunctionDescriptor(function);
+            RootCallTarget initContextFunction = initContextDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
             this.initContext = DirectCallNode.create(initContextFunction);
         }
 
-        @Override
-        public void execute(VirtualFrame frame) {
+        @Specialization
+        public void doInit(VirtualFrame frame) {
             if (ctxRef == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 ctxRef = lookupContextReference(LLVMLanguage.class);
@@ -250,13 +257,14 @@ public final class LLVMContext {
                 ctx.initialized = true;
                 ctx.cleanupNecessary = true;
                 try (StackPointer sp = ((StackPointer) FrameUtil.getObjectSafe(frame, stackPointer)).newFrame()) {
-                    Object[] args = new Object[]{sp, ctx.getApplicationArguments(), ctx.getEnvironmentVariables(), getRandomValues()};
+                    Object[] args = new Object[]{sp, ctx.getApplicationArguments(), getEnvironmentVariables(), getRandomValues()};
                     initContext.call(args);
                 }
             }
         }
     }
 
+    @SuppressWarnings("unchecked")
     void initialize() {
         this.initializeContextCalled = true;
         assert this.threadingStack == null;
@@ -277,17 +285,34 @@ public final class LLVMContext {
         if (languageHome != null) {
             PlatformCapability<?> sysContextExt = language.getCapability(PlatformCapability.class);
             internalLibraryPath = Paths.get(languageHome).resolve(sysContextExt.getSulongLibrariesPath());
+            internalLibraryPathFile = env.getInternalTruffleFile(internalLibraryPath.toUri());
             // add internal library location also to the external library lookup path
             addLibraryPath(internalLibraryPath.toString());
         }
         Loader loader = getLanguage().getCapability(Loader.class);
         loader.loadDefaults(this, internalLibraryPath);
         if (env.getOptions().get(SulongEngineOption.PRINT_TOOLCHAIN_PATH)) {
-            LLVMFunctionDescriptor functionDescriptor = createFunctionDescriptor(LLVMPrintToolchainPath.NAME, new FunctionType(VoidType.INSTANCE, new Type[0], false),
-                            new LLVMFunctionDescriptor.UnresolvedFunction(), null);
-            functionDescriptor.define(getLanguage().getCapability(LLVMIntrinsicProvider.class), null);
-            globalScope.register(functionDescriptor);
+            Function function = new UnresolvedFunction();
+            // This function currently has the index 0, as it is the first function defined in the
+            // table reserved for misc functions
+            LLVMFunction functionDetail = LLVMFunction.create(LLVMPrintToolchainPath.NAME, null, function, new FunctionType(VoidType.INSTANCE, new Type[0], false), LLVMSymbol.MISCFUNCTION_ID,
+                            LLVMSymbol.getMiscSymbolIndex());
+            LLVMFunctionDescriptor functionDescriptor = createFunctionDescriptor(functionDetail);
+            functionDescriptor.getFunctionCode().define(getLanguage().getCapability(LLVMIntrinsicProvider.class), null);
+            registerSymbolTable(0, new AssumedValue[5]);
+            AssumedValue<LLVMPointer>[] symbols = symbolStorage[functionDetail.getBitcodeID(false)];
+            symbols[functionDetail.getSymbolIndex(false)] = new AssumedValue<>(LLVMManagedPointer.create(functionDescriptor));
+            globalScope.register(functionDetail);
+            LLVMLocalScope localScope = new LLVMLocalScope();
+            localScope.register(functionDetail);
+            localScope.addID(LLVMSymbol.MISCFUNCTION_ID);
+            this.addLocalScope(localScope);
         }
+    }
+
+    public Path getInternalLibraryPath() {
+        assert isInitialized();
+        return internalLibraryPath;
     }
 
     private static long parseStackSize(String v) {
@@ -328,7 +353,7 @@ public final class LLVMContext {
         // we can't do the initialization in the LLVMContext constructor nor in
         // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
         // do it in a delayed way.
-        return new InitializeContextNode(this, rootFrame);
+        return InitializeContextNodeGen.create(this, rootFrame);
     }
 
     public Toolchain getToolchain() {
@@ -353,8 +378,8 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    private LLVMManagedPointer getEnvironmentVariables() {
-        String[] result = environment.entrySet().stream().map((e) -> e.getKey() + "=" + e.getValue()).toArray(String[]::new);
+    private static LLVMManagedPointer getEnvironmentVariables() {
+        String[] result = System.getenv().entrySet().stream().map((e) -> e.getKey() + "=" + e.getValue()).toArray(String[]::new);
         return toTruffleObjects(result);
     }
 
@@ -388,7 +413,7 @@ public final class LLVMContext {
             this.libsulongDatalayout = datalayout;
             datalayoutInitialised = true;
         } else {
-            throw new NullPointerException("The default datalayout cannot be overrwitten.");
+            throw new NullPointerException("The default datalayout cannot be overrwitten");
         }
     }
 
@@ -406,9 +431,21 @@ public final class LLVMContext {
         // - _exit(), _Exit(), or abort(): no cleanup necessary
         if (cleanupNecessary) {
             try {
-                RootCallTarget disposeContext = globalScope.getFunction("__sulong_dispose_context").getLLVMIRFunctionSlowPath();
-                try (StackPointer stackPointer = threadingStack.getStack().newFrame()) {
-                    disposeContext.call(stackPointer);
+                LLVMFunction function = globalScope.getFunction("__sulong_dispose_context");
+                if (function == null) {
+                    throw new IllegalStateException("Context cannot be disposed: _sulong_dispose_context was not found");
+                }
+                AssumedValue<LLVMPointer>[] functions = findSymbolTable(function.getBitcodeID(false));
+                int index = function.getSymbolIndex(false);
+                LLVMPointer pointer = functions[index].get();
+                if (LLVMManagedPointer.isInstance(pointer)) {
+                    LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
+                    RootCallTarget disposeContext = functionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
+                    try (StackPointer stackPointer = threadingStack.getStack().newFrame()) {
+                        disposeContext.call(stackPointer);
+                    }
+                } else {
+                    throw new IllegalStateException("Context cannot be disposed: _sulong_dispose_context is not a function or enclosed inside a LLVMManagedPointer");
                 }
             } catch (ControlFlowException e) {
                 // nothing needs to be done as the behavior is not defined
@@ -458,7 +495,7 @@ public final class LLVMContext {
         }
 
         // free the space which might have been when putting pointer-type globals into native memory
-        for (LLVMPointer pointer : globalsReverseMap.keySet()) {
+        for (LLVMPointer pointer : symbolsReverseMap.keySet()) {
             if (LLVMManagedPointer.isInstance(pointer)) {
                 Object object = LLVMManagedPointer.cast(pointer).getObject();
                 if (object instanceof LLVMGlobalContainer) {
@@ -489,79 +526,148 @@ public final class LLVMContext {
         }
     }
 
-    public ExternalLibrary addInternalLibrary(String lib, boolean isNative) {
+    /**
+     * Inject implicit or modify explicit dependencies for a {@code library}.
+     *
+     * @param library the library for which dependencies might be injected
+     * @param libraries a (potentially unmodifiable) list of dependencies
+     */
+    @SuppressWarnings("unchecked")
+    public List<String> preprocessDependencies(ExternalLibrary library, List<String> libraries) {
+        return language.getCapability(PlatformCapability.class).preprocessDependencies(this, library, libraries);
+    }
+
+    public ExternalLibrary addInternalLibrary(String lib, Object reason) {
         CompilerAsserts.neverPartOfCompilation();
-        Path path = locateInternalLibrary(lib);
-        return getOrAddExternalLibrary(ExternalLibrary.internal(path, isNative));
+        final ExternalLibrary newLib = createExternalLibrary(lib, reason, InternalLibraryLocator.INSTANCE);
+        assert newLib.isInternal() : "Internal library not detected as internal: " + lib;
+        return getOrAddExternalLibrary(newLib);
     }
 
-    @TruffleBoundary
-    private Path locateInternalLibrary(String lib) {
-        if (internalLibraryPath == null) {
-            throw new LLVMLinkerException(String.format("Cannot load \"%s\". Internal library path not set.", lib));
-        }
-        Path absPath = internalLibraryPath.resolve(lib);
-        if (absPath.toFile().exists()) {
-            return absPath;
-        }
-        return Paths.get(lib);
-    }
+    private static final class InternalLibraryLocator extends LibraryLocator {
 
-    public ExternalLibrary addExternalLibrary(String lib, boolean isNative, Object reason) {
-        return addExternalLibrary(lib, isNative, reason, DefaultLibraryLocator.INSTANCE);
+        public static final InternalLibraryLocator INSTANCE = new InternalLibraryLocator();
+
+        @Override
+        protected TruffleFile locateLibrary(LLVMContext context, String lib, Object reason) {
+            if (context.internalLibraryPath == null) {
+                throw new LLVMLinkerException(String.format("Cannot load \"%s\". Internal library path not set", lib));
+            }
+            TruffleFile absPath = context.internalLibraryPathFile.resolve(lib);
+            if (absPath.exists()) {
+                return absPath;
+            }
+            return context.env.getInternalTruffleFile(lib);
+        }
     }
 
     /**
-     * @return null if already loaded
+     * @see #addExternalLibrary(String, Object, LibraryLocator)
      */
-    public ExternalLibrary addExternalLibrary(String lib, boolean isNative, Object reason, LibraryLocator locator) {
+    public ExternalLibrary addExternalLibraryDefaultLocator(String lib, Object reason) {
+        return addExternalLibrary(lib, reason, DefaultLibraryLocator.INSTANCE);
+    }
+
+    /**
+     * Adds a new library to the context (if not already added). It is assumed that the library is a
+     * native one until it is parsed and we know for sure.
+     *
+     * @see ExternalLibrary#makeBitcodeLibrary
+     * @return null if already added
+     */
+    public ExternalLibrary addExternalLibrary(String lib, Object reason, LibraryLocator locator) {
         CompilerAsserts.neverPartOfCompilation();
-        if (isInternalLibrary(lib)) {
-            // Disallow loading internal libraries explicitly.
+        ExternalLibrary newLib = createExternalLibrary(lib, reason, locator);
+        if (isDefaultLibrary(newLib)) {
+            // Disallow loading default libraries explicitly.
             return null;
         }
+        ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
+        if (existingLib == newLib) {
+            return newLib;
+        }
+        LibraryLocator.traceAlreadyLoaded(this, existingLib);
+        return null;
+    }
+
+    /**
+     * Finds an already added library. Note that this might return
+     * {@link ExternalLibrary#isInternal() internal libraries}.
+     *
+     * @return null if not yet loaded
+     */
+    public ExternalLibrary findExternalLibrary(String lib, Object reason, LibraryLocator locator) {
+        final ExternalLibrary newLib = createExternalLibrary(lib, reason, locator);
+        return getExternalLibrary(newLib);
+    }
+
+    /**
+     * Creates a new external library. It is assumed that the library is a native one until it is
+     * parsed and we know for sure.
+     *
+     * @see ExternalLibrary#makeBitcodeLibrary
+     */
+    private ExternalLibrary createExternalLibrary(String lib, Object reason, LibraryLocator locator) {
+        boolean isNative = true;
         TruffleFile tf = locator.locate(this, lib, reason);
-        ExternalLibrary newLib;
         if (tf == null) {
             // Unable to locate the library -> will go to native
             Path path = Paths.get(lib);
             LibraryLocator.traceDelegateNative(this, path);
-            newLib = ExternalLibrary.external(path, isNative);
-        } else {
-            newLib = ExternalLibrary.external(tf, isNative);
+            return ExternalLibrary.createFromPath(path, isNative, isInternalLibraryPath(path));
         }
-        ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
-        if (existingLib == newLib) {
-            return newLib;
-        }
-        LibraryLocator.traceAlreadyLoaded(this, existingLib.path);
-        return null;
+        return ExternalLibrary.createFromFile(tf, isNative, isInternalLibraryFile(tf));
     }
 
     /**
-     * @return null if already loaded
+     * @return true if the library has been added
      */
-    public ExternalLibrary addExternalLibrary(ExternalLibrary newLib) {
+    public boolean ensureExternalLibraryAdded(ExternalLibrary newLib) {
         CompilerAsserts.neverPartOfCompilation();
-        if (isInternalLibrary(newLib.name)) {
-            // Disallow loading internal libraries explicitly.
-            return null;
+        if (isDefaultLibrary(newLib)) {
+            // Disallow loading default libraries explicitly.
+            return false;
         }
         ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
         if (existingLib == newLib) {
-            return newLib;
+            return true;
         }
-        LibraryLocator.traceAlreadyLoaded(this, existingLib.path);
-        return null;
+        LibraryLocator.traceAlreadyLoaded(this, existingLib);
+        return false;
     }
 
-    private boolean isInternalLibrary(String lib) {
-        for (String interalLibs : internalLibraryNames) {
-            if (interalLibs.equals(lib)) {
-                return true;
-            }
+    public boolean isInternalLibrary(ExternalLibrary lib) {
+        if (lib.getFile() != null) {
+            return isInternalLibraryFile(lib.getFile());
         }
-        return false;
+        if (lib.getPath() != null) {
+            return isInternalLibraryPath(lib.getPath());
+        }
+        return isDefaultLibrary(lib);
+    }
+
+    private boolean isDefaultLibrary(ExternalLibrary lib) {
+        return internalLibraryNames.contains(lib.getName());
+    }
+
+    private boolean isInternalLibraryPath(Path path) {
+        return path.normalize().startsWith(internalLibraryPath);
+    }
+
+    private boolean isInternalLibraryFile(TruffleFile file) {
+        return file.normalize().startsWith(internalLibraryPathFile);
+    }
+
+    private ExternalLibrary getExternalLibrary(ExternalLibrary externalLib) {
+        synchronized (externalLibrariesLock) {
+            int index = externalLibraries.indexOf(externalLib);
+            if (index >= 0) {
+                ExternalLibrary ret = externalLibraries.get(index);
+                assert ret.equals(externalLib);
+                return ret;
+            }
+            return null;
+        }
     }
 
     private ExternalLibrary getOrAddExternalLibrary(ExternalLibrary externalLib) {
@@ -606,7 +712,6 @@ public final class LLVMContext {
     }
 
     List<Path> getLibraryPaths() {
-        // TODO (je) should this be unmodifiable?
         synchronized (libraryPathsLock) {
             return libraryPaths;
         }
@@ -624,22 +729,32 @@ public final class LLVMContext {
         return globalScope;
     }
 
-    public AssumedValue<LLVMPointer>[] findGlobalTable(int id) {
-        return globalStorage[id];
+    public void addLocalScope(LLVMLocalScope scope) {
+        localScopes.add(scope);
+    }
+
+    public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {
+        return symbolStorage[id];
+    }
+
+    public boolean symbolTableExists(int id) {
+        return id < symbolStorage.length && symbolStorage[id] != null;
     }
 
     @SuppressWarnings("unchecked")
     @TruffleBoundary
-    public void registerGlobalTable(int index, AssumedValue<LLVMPointer>[] target) {
+    public void registerSymbolTable(int index, AssumedValue<LLVMPointer>[] target) {
         synchronized (this) {
-            if (index < globalStorage.length) {
-                globalStorage[index] = target;
-            } else {
+            if (index < symbolStorage.length && symbolStorage[index] == null) {
+                symbolStorage[index] = target;
+            } else if (index >= symbolStorage.length) {
                 int newLength = (index + 1) + ((index + 1) / 2);
                 AssumedValue<LLVMPointer>[][] temp = new AssumedValue[newLength][];
-                System.arraycopy(globalStorage, 0, temp, 0, globalStorage.length);
-                globalStorage = temp;
-                globalStorage[index] = target;
+                System.arraycopy(symbolStorage, 0, temp, 0, symbolStorage.length);
+                symbolStorage = temp;
+                symbolStorage[index] = target;
+            } else {
+                throw new IllegalStateException("Registering a new symbol table for an existing id. ");
             }
         }
     }
@@ -664,8 +779,8 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public LLVMFunctionDescriptor createFunctionDescriptor(String name, FunctionType type, LLVMFunctionDescriptor.Function function, ExternalLibrary library) {
-        return functionPointerRegistry.create(name, type, function, library);
+    public LLVMFunctionDescriptor createFunctionDescriptor(LLVMFunction functionDetail) {
+        return functionPointerRegistry.create(functionDetail);
     }
 
     @TruffleBoundary
@@ -696,7 +811,7 @@ public final class LLVMContext {
     @TruffleBoundary
     public void registerNativeCall(LLVMFunctionDescriptor descriptor) {
         if (nativeCallStatistics != null) {
-            String name = descriptor.getName() + " " + descriptor.getType();
+            String name = descriptor.getLLVMFunction().getName() + " " + descriptor.getLLVMFunction().getType();
             if (nativeCallStatistics.containsKey(name)) {
                 int count = nativeCallStatistics.get(name) + 1;
                 nativeCallStatistics.put(name, count);
@@ -772,9 +887,24 @@ public final class LLVMContext {
         return sourceContext;
     }
 
+    /**
+     * Retrieve the global symbol associated with the pointer.
+     */
     @TruffleBoundary
     public LLVMGlobal findGlobal(LLVMPointer pointer) {
-        return globalsReverseMap.get(pointer);
+        List<LLVMSymbol> symbols = symbolsReverseMap.get(pointer);
+        if (symbols == null) {
+            return null;
+        }
+        return symbols.get(0).asGlobalVariable();
+    }
+
+    /**
+     * Retrieve the symbol associated with the pointer.
+     */
+    @TruffleBoundary
+    public List<LLVMSymbol> findSymbols(LLVMPointer pointer) {
+        return symbolsReverseMap.get(pointer);
     }
 
     @TruffleBoundary
@@ -793,9 +923,28 @@ public final class LLVMContext {
         }
     }
 
+    /**
+     * Register the list of symbols associated with the pointer.
+     */
     @TruffleBoundary
-    public void registerGlobalReverseMap(LLVMGlobal global, LLVMPointer target) {
-        globalsReverseMap.put(target, global);
+    public void registerSymbolReverseMap(List<LLVMSymbol> symbols, LLVMPointer pointer) {
+        symbolsReverseMap.put(pointer, symbols);
+    }
+
+    /**
+     * Register a symbol to list of symbols associated with the pointer.
+     */
+    @TruffleBoundary
+    public void registerSymbol(LLVMSymbol symbol, LLVMPointer pointer) {
+        symbolsReverseMap.get(pointer).add(symbol);
+    }
+
+    /**
+     * Remove an entry in the map, and return the list of symbols associated with the pointer.
+     */
+    @TruffleBoundary
+    public List<LLVMSymbol> removeSymbolReverseMap(LLVMPointer pointer) {
+        return symbolsReverseMap.remove(pointer);
     }
 
     public void setCleanupNecessary(boolean value) {
@@ -823,138 +972,6 @@ public final class LLVMContext {
 
     public LLVMPThreadContext getpThreadContext() {
         return pThreadContext;
-    }
-
-    public static class ExternalLibrary {
-
-        private final String name;
-        private final Path path;
-        private final TruffleFile file;
-
-        @CompilationFinal private boolean isNative;
-        private final boolean isInternal;
-
-        public static ExternalLibrary external(String name, boolean isNative) {
-            return new ExternalLibrary(name, isNative, false);
-        }
-
-        public static ExternalLibrary internal(String name, boolean isNative) {
-            return new ExternalLibrary(name, isNative, true);
-        }
-
-        public static ExternalLibrary external(Path path, boolean isNative) {
-            return new ExternalLibrary(path, isNative, false);
-        }
-
-        public static ExternalLibrary internal(Path path, boolean isNative) {
-            return new ExternalLibrary(path, isNative, true);
-        }
-
-        public static ExternalLibrary external(TruffleFile file, boolean isNative) {
-            return new ExternalLibrary(file, isNative, false);
-        }
-
-        public ExternalLibrary(String name, boolean isNative, boolean isInternal) {
-            this(name, null, isNative, isInternal);
-        }
-
-        public ExternalLibrary(Path path, boolean isNative, boolean isInternal) {
-            this(extractName(path), path, isNative, isInternal);
-        }
-
-        private static TruffleFile getCanonicalFile(TruffleFile file) {
-            try {
-                return file.getCanonicalFile();
-            } catch (IOException e) {
-                /*
-                 * This should never happen since we've already proven existence of the file, but
-                 * better safe than sorry.
-                 */
-                return file;
-            }
-        }
-
-        public ExternalLibrary(TruffleFile file, boolean isNative, boolean isInternal) {
-            this.path = Paths.get(file.getPath());
-            this.name = extractName(path);
-            this.isNative = isNative;
-            this.isInternal = isInternal;
-            this.file = getCanonicalFile(file);
-        }
-
-        private ExternalLibrary(String name, Path path, boolean isNative, boolean isInternal) {
-            this.name = name;
-            this.path = path;
-            this.isNative = isNative;
-            this.isInternal = isInternal;
-            this.file = null;
-        }
-
-        public boolean hasFile() {
-            return file != null;
-        }
-
-        public TruffleFile getFile() {
-            return file;
-        }
-
-        public Path getPath() {
-            return path;
-        }
-
-        public boolean isNative() {
-            return isNative;
-        }
-
-        public boolean isInternal() {
-            return isInternal;
-        }
-
-        public void setIsNative(boolean isNative) {
-            this.isNative = isNative;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) {
-                return true;
-            } else if (obj instanceof ExternalLibrary) {
-                ExternalLibrary other = (ExternalLibrary) obj;
-                if (file != null) {
-                    // If we have a canonical file already, the file is authoritative.
-                    return file.equals(other.file);
-                }
-                return name.equals(other.name) && Objects.equals(path, other.path);
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return name.hashCode() ^ Objects.hashCode(path);
-        }
-
-        private static String extractName(Path path) {
-            Path filename = path.getFileName();
-            if (filename == null) {
-                throw new IllegalArgumentException("Path " + path + " is empty");
-            }
-            String nameWithExt = filename.toString();
-            int lengthWithoutExt = nameWithExt.lastIndexOf(".");
-            if (lengthWithoutExt > 0) {
-                return nameWithExt.substring(0, lengthWithoutExt);
-            }
-            return nameWithExt;
-        }
-
-        @Override
-        public String toString() {
-            return path == null ? name : name + " (" + path + ")";
-        }
     }
 
     private static class DynamicLinkChain {
@@ -1043,6 +1060,27 @@ public final class LLVMContext {
         }
 
         return lifetimeAnalysisStream;
+    }
+
+    @CompilationFinal private TargetStream llDebugVerboseStream;
+    @CompilationFinal private boolean llDebugVerboseStreamInitialized = false;
+
+    public TargetStream llDebugVerboseStream() {
+        if (!llDebugVerboseStreamInitialized) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+
+            final String opt = env.getOptions().get(SulongEngineOption.LL_DEBUG_VERBOSE);
+            if (SulongEngineOption.optionEnabled(opt)) {
+                if (!env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
+                    throw new IllegalStateException("\'--llvm.llDebug.verbose\' requires \'--llvm.llDebug=true\'");
+                }
+                llDebugVerboseStream = new TargetStream(env, opt);
+            }
+
+            llDebugVerboseStreamInitialized = true;
+        }
+
+        return llDebugVerboseStream;
     }
 
 }

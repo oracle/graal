@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@
 package com.oracle.truffle.regex.tregex.buffer;
 
 import java.util.Arrays;
+import java.util.PrimitiveIterator;
 
 /**
  * This class is designed as a "scratchpad" for generating many char arrays of unknown size. It will
@@ -62,9 +63,14 @@ import java.util.Arrays;
  * }
  * </pre>
  */
-public class IntArrayBuffer extends AbstractArrayBuffer {
+public class IntArrayBuffer extends AbstractArrayBuffer implements Iterable<Integer> {
 
+    private static final int[] EMPTY = {};
     protected int[] buf;
+
+    public IntArrayBuffer() {
+        this(8);
+    }
 
     public IntArrayBuffer(int initialSize) {
         buf = new int[initialSize];
@@ -91,7 +97,56 @@ public class IntArrayBuffer extends AbstractArrayBuffer {
         buf[length++] = c;
     }
 
+    public IntArrayBuffer asFixedSizeArray(int size, int initialValue) {
+        ensureCapacity(size);
+        Arrays.fill(buf, 0, size, initialValue);
+        length = size;
+        return this;
+    }
+
+    public int get(int index) {
+        assert index < length;
+        return buf[index];
+    }
+
+    public void set(int index, int value) {
+        assert index < length;
+        buf[index] = value;
+    }
+
+    public void addAll(IntArrayBuffer o) {
+        ensureCapacity(length + o.length);
+        System.arraycopy(o.buf, 0, buf, length, o.length);
+    }
+
     public int[] toArray() {
-        return Arrays.copyOf(buf, length);
+        return isEmpty() ? EMPTY : Arrays.copyOf(buf, length);
+    }
+
+    @Override
+    public PrimitiveIterator.OfInt iterator() {
+        return new IntArrayBufferIterator(buf, length);
+    }
+
+    private static final class IntArrayBufferIterator implements PrimitiveIterator.OfInt {
+
+        private final int[] buf;
+        private final int size;
+        private int i = 0;
+
+        private IntArrayBufferIterator(int[] buf, int size) {
+            this.buf = buf;
+            this.size = size;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return i < size;
+        }
+
+        @Override
+        public int nextInt() {
+            return buf[i++];
+        }
     }
 }

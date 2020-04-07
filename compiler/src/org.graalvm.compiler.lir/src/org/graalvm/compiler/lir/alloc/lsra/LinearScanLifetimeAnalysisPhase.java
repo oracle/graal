@@ -48,6 +48,7 @@ import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.InstructionStateProcedure;
 import org.graalvm.compiler.lir.InstructionValueConsumer;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
@@ -60,6 +61,7 @@ import org.graalvm.compiler.lir.alloc.lsra.Interval.SpillState;
 import org.graalvm.compiler.lir.alloc.lsra.LinearScan.BlockData;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
+import org.graalvm.compiler.lir.util.IndexedValueMap;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -158,8 +160,17 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
     @SuppressWarnings("try")
     void computeLocalLiveSets() {
         int liveSize = allocator.liveSetSize();
-
-        intervalInLoop = new BitMap2D(allocator.operandSize(), allocator.numLoops());
+        int variables = allocator.operandSize();
+        int loops = allocator.numLoops();
+        long nBits = (long) variables * loops;
+        try {
+            if (nBits > Integer.MAX_VALUE) {
+                throw new OutOfMemoryError();
+            }
+            intervalInLoop = new BitMap2D(variables, loops);
+        } catch (OutOfMemoryError e) {
+            throw new PermanentBailoutException(e, "Cannot handle %d variables in %d loops", variables, loops);
+        }
 
         try {
             final BitSet liveGenScratch = new BitSet(liveSize);
@@ -749,12 +760,34 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                 }
             };
 
-            InstructionValueConsumer stateProc = (op, operand, mode, flags) -> {
+            InstructionValueConsumer nonBasePointersStateProc = (op, operand, mode, flags) -> {
                 if (LinearScan.isVariableOrRegister(operand)) {
                     int opId = op.id();
                     int blockFrom = allocator.getFirstLirInstructionId((allocator.blockForId(opId)));
                     addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getValueKind(), detailedAsserts);
                 }
+            };
+            InstructionValueConsumer basePointerStateProc = (op, operand, mode, flags) -> {
+                if (LinearScan.isVariableOrRegister(operand)) {
+                    int opId = op.id();
+                    int blockFrom = allocator.getFirstLirInstructionId((allocator.blockForId(opId)));
+                    /*
+                     * Setting priority of base pointers to ShouldHaveRegister to avoid
+                     * rematerialization (see #getMaterializedValue).
+                     */
+                    addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.ShouldHaveRegister, operand.getValueKind(), detailedAsserts);
+                }
+            };
+
+            InstructionStateProcedure stateProc = (op, state) -> {
+                IndexedValueMap liveBasePointers = state.getLiveBasePointers();
+                // temporarily unset the base pointers to that the procedure will not visit them
+                state.setLiveBasePointers(null);
+                state.visitEachState(op, nonBasePointersStateProc);
+                // visit the base pointers explicitly
+                liveBasePointers.visitEach(op, OperandMode.ALIVE, null, basePointerStateProc);
+                // reset the base pointers
+                state.setLiveBasePointers(liveBasePointers);
             };
 
             // create a list with all caller-save registers (cpu, fpu, xmm)
@@ -828,7 +861,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                              * the live range is extended to a call site, the value would be in a
                              * register at the call otherwise).
                              */
-                            op.visitEachState(stateProc);
+                            op.forEachState(stateProc);
 
                             // special steps for some instructions (especially moves)
                             handleMethodArguments(op);

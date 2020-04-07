@@ -86,4 +86,5 @@ public final class JavaReadNode extends FixedAccessNode implements Lowerable, Gu
     public Node canonical(CanonicalizerTool tool) {
         return ReadNode.canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);
     }
+
 }

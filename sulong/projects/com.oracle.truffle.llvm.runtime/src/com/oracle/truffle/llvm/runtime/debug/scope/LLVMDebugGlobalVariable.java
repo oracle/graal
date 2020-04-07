@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
  * parser, so that the LLVMToDebugValueNode later on recognizes them.
  */
 @ExportLibrary(InteropLibrary.class)
-public final class LLVMDebugGlobalVariable implements LLVMInternalTruffleObject {
+public final class LLVMDebugGlobalVariable extends LLVMInternalTruffleObject {
 
     private final LLVMGlobal descriptor;
     private final LLVMContext context;

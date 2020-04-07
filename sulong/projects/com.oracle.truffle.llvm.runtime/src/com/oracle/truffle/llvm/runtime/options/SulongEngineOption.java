@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -70,11 +70,14 @@ public final class SulongEngineOption {
             deprecated = true)
     public static final OptionKey<String> SOURCE_PATH = new OptionKey<>("");
 
-    @Option(name = "llvm.loadC++Libraries",
+    public static final String LOAD_CXX_LIBRARIES_NAME = "llvm.loadC++Libraries";
+    @Option(name = LOAD_CXX_LIBRARIES_NAME,
             category = OptionCategory.EXPERT,
             help = "Specifies whether the standard C++ libraries (libc++ and libc++abi) " +
-                   "should be loaded. Enabled by default.")
-    public static final OptionKey<Boolean> LOAD_CXX_LIBRARIES = new OptionKey<>(true);
+                   "should be loaded by default. This should only be needed for running " +
+                   "plain bitcode files, since executables (ELF, Mach-O) usually have a " +
+                   "dependency on both of them. Thus, the option is off by default.")
+    public static final OptionKey<Boolean> LOAD_CXX_LIBRARIES = new OptionKey<>(false);
 
     @Option(name = "llvm.enableExternalNativeAccess",
             category = OptionCategory.USER,
@@ -136,6 +139,12 @@ public final class SulongEngineOption {
             category = OptionCategory.EXPERT,
             help = "Enable IR-level debugging of LLVM bitcode files.")
     public static final OptionKey<Boolean> LL_DEBUG = new OptionKey<>(false);
+
+    @Option(name = "llvm.llDebug.verbose",
+            category = OptionCategory.EXPERT,
+            help = "Enables diagnostics for IR-level debugging (e.g., report missing .ll files). Requires \'--llvm.llDebug=true\'. " +
+                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
+    public static final OptionKey<String> LL_DEBUG_VERBOSE = new OptionKey<>("");
 
     @Option(name = "llvm.llDebug.sources",
             category = OptionCategory.EXPERT,

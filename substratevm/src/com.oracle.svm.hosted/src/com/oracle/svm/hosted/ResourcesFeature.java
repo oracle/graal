@@ -41,10 +41,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+import com.oracle.svm.util.ModuleSupport;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -106,11 +109,26 @@ public final class ResourcesFeature implements Feature {
         if (newResources.isEmpty()) {
             return;
         }
+
         access.requireAnalysisIteration();
-        for (String regExp : newResources) {
-            if (regExp.length() == 0) {
-                continue;
+        DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
+        final Pattern[] patterns = newResources.stream()
+                        .filter(s -> s.length() > 0)
+                        .map(Pattern::compile)
+                        .collect(Collectors.toList())
+                        .toArray(new Pattern[]{});
+
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            try {
+                ModuleSupport.findResourcesInModules(name -> matches(patterns, name),
+                                (resName, content) -> registerResource(debugContext, resName, content));
+            } catch (IOException ex) {
+                throw UserError.abort("Can not read resources from modules. This is possible due to incorrect module " +
+                                "path or missing module visibility directives", ex);
             }
+        }
+
+        for (Pattern pattern : patterns) {
 
             /*
              * Since IncludeResources takes regular expressions it's safer to disallow passing
@@ -121,8 +139,6 @@ public final class ResourcesFeature implements Feature {
              * -H:IncludeResources=nobel/prizes.json -H:IncludeResources=fields/prizes.json
              * @formatter:on
              */
-
-            Pattern pattern = Pattern.compile(regExp);
 
             final Set<File> todo = new HashSet<>();
             // Checkstyle: stop
@@ -140,7 +156,6 @@ public final class ResourcesFeature implements Feature {
             // Checkstyle: resume
             for (File element : todo) {
                 try {
-                    DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
                     if (element.isDirectory()) {
                         scanDirectory(debugContext, element, "", pattern);
                     } else {
@@ -170,7 +185,6 @@ public final class ResourcesFeature implements Feature {
         }
     }
 
-    @SuppressWarnings("try")
     private void scanDirectory(DebugContext debugContext, File f, String relativePath, Pattern... patterns) throws IOException {
         if (f.isDirectory()) {
             File[] files = f.listFiles();
@@ -184,16 +198,12 @@ public final class ResourcesFeature implements Feature {
         } else {
             if (matches(patterns, relativePath)) {
                 try (FileInputStream is = new FileInputStream(f)) {
-                    try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-                        debugContext.log("ResourcesFeature: registerResource: " + relativePath);
-                    }
-                    Resources.registerResource(relativePath, is);
+                    registerResource(debugContext, relativePath, is);
                 }
             }
         }
     }
 
-    @SuppressWarnings("try")
     private static void scanJar(DebugContext debugContext, File element, Pattern... patterns) throws IOException {
         JarFile jf = new JarFile(element);
         Enumeration<JarEntry> en = jf.entries();
@@ -204,10 +214,7 @@ public final class ResourcesFeature implements Feature {
             }
             if (matches(patterns, e.getName())) {
                 try (InputStream is = jf.getInputStream(e)) {
-                    try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-                        debugContext.log("ResourcesFeature: registerResource: " + e.getName());
-                    }
-                    Resources.registerResource(e.getName(), is);
+                    registerResource(debugContext, e.getName(), is);
                 }
             }
         }
@@ -220,5 +227,13 @@ public final class ResourcesFeature implements Feature {
             }
         }
         return false;
+    }
+
+    @SuppressWarnings("try")
+    private static void registerResource(DebugContext debugContext, String resourceName, InputStream resourceStream) {
+        try (DebugContext.Scope s = debugContext.scope("registerResource")) {
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + resourceName);
+            Resources.registerResource(resourceName, resourceStream);
+        }
     }
 }

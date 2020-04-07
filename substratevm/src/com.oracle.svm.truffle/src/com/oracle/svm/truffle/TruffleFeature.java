@@ -79,6 +79,7 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.OptimizedAssumption;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
@@ -129,15 +130,18 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.library.DefaultExportProvider;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.Profile;
+import java.util.ServiceLoader;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
@@ -155,6 +159,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         @Option(help = "Enforce that the Truffle runtime provides the only implementation of Frame")//
         public static final HostedOptionKey<Boolean> TruffleCheckFrameImplementation = new HostedOptionKey<>(true);
+
+        @Option(help = "Fail if a method known as not suitable for partial evaluation is reachable for runtime compilation")//
+        public static final HostedOptionKey<Boolean> TruffleCheckBlackListedMethods = new HostedOptionKey<>(false);
 
         @Option(help = "Inline trivial methods in Truffle graphs during native image generation")//
         public static final HostedOptionKey<Boolean> TruffleInlineDuringParsing = new HostedOptionKey<>(true);
@@ -231,6 +238,10 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) KnownIntrinsics.convertUnknownValue(target, Object.class);
             OptimizedCallTarget callTarget = callNode.getCallTarget();
             return SubstrateObjectConstant.forObject(callTarget);
+        }
+
+        public BackgroundCompileQueue createBackgroundCompileQueue(@SuppressWarnings("unused") SubstrateTruffleRuntime runtime) {
+            return new BackgroundCompileQueue();
         }
     }
 
@@ -311,7 +322,12 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) runtime;
             truffleRuntime.resetHosted();
         }
-        RuntimeClassInitialization.initializeAtBuildTime("com.oracle.truffle");
+        for (TruffleLanguage.Provider provider : ServiceLoader.load(TruffleLanguage.Provider.class)) {
+            RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
+        }
+        for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class)) {
+            RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
+        }
         initializeTruffleReflectively(Thread.currentThread().getContextClassLoader());
     }
 
@@ -330,9 +346,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         invokeStaticMethod("com.oracle.truffle.polyglot.InstrumentCache", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "resetPreInitializedEngine", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.impl.TruffleLocator", "resetNativeImageState", Collections.emptyList());
-        invokeStaticMethod("com.oracle.truffle.api.interop.Message", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.nodes.Node", "resetNativeImageState", Collections.emptyList());
+        invokeStaticMethod("com.oracle.truffle.api.source.Source", "resetNativeImageState", Collections.emptyList());
     }
 
     public static boolean useTruffleCompiler() {
@@ -399,8 +415,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         getLanguageClasses().forEach(RuntimeReflection::registerForReflectiveInstantiation);
 
+        config.registerHierarchyForReflectiveInstantiation(DefaultExportProvider.class);
         config.registerHierarchyForReflectiveInstantiation(TruffleInstrument.class);
-        config.registerHierarchyForReflectiveInstantiation(com.oracle.truffle.api.instrumentation.InstrumentableFactory.class);
 
         if (useTruffleCompiler()) {
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
@@ -415,7 +431,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
             registerTruffleOptions(config);
 
-            GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getConfigForParsing();
+            GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getConfigPrototype();
 
             if (Options.TruffleInlineDuringParsing.getValue()) {
                 graphBuilderConfig.getPlugins().appendInlineInvokePlugin(
@@ -437,7 +453,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                             partialEvaluator.getProviders().getStampProvider(),
                             snippetReflection,
                             graalFeature.getHostedProviders().getWordTypes(),
-                            graalFeature.getHostedProviders().getGC());
+                            graalFeature.getHostedProviders().getPlatformConfigurationProvider());
             newHostedProviders.setGraphBuilderPlugins(graphBuilderConfig.getPlugins());
 
             graalFeature.initializeRuntimeCompilationConfiguration(newHostedProviders, graphBuilderConfig, this::includeCallee, this::deoptimizeOnException);
@@ -468,7 +484,14 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         String className = lib.getPackage().getName() + "." + lib.getSimpleName() + "Gen";
         Class<?> genClass = config.findClassByName(className);
         if (genClass == null) {
-            throw UserError.abort(String.format("Could not find generated library class '%s'. Did the Java compilation succeed and did the Truffle annotation processor run?", genClass));
+            if (className.startsWith("com.oracle.truffle.api.library.test")) {
+                /*
+                 * The Truffle unit tests contain libraries that don't have generated code as they
+                 * were deliberately containing errors. Ignore them for this check.
+                 */
+                return null;
+            }
+            throw UserError.abort(String.format("Could not find generated library class '%s'. Did the Java compilation succeed and did the Truffle annotation processor run?", className));
         }
         return genClass;
     }
@@ -508,6 +531,16 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             } else if (invocationPlugins.lookupInvocation(original) != null) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             } else if (original.getAnnotation(ExplodeLoop.class) != null) {
+                /*
+                 * We cannot inline a method annotated with @ExplodeLoop, because then loops are no
+                 * longer exploded.
+                 */
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+            } else if (builder.getMethod().getAnnotation(ExplodeLoop.class) != null) {
+                /*
+                 * We cannot inline anything into a method annotated with @ExplodeLoop, because then
+                 * loops of the inlined callee are exploded too.
+                 */
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             } else if (replacements.hasSubstitution(original, builder.bci())) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
@@ -544,11 +577,17 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
          */
         for (AnalysisType type : ((DuringAnalysisAccessImpl) access).getBigBang().getUniverse().getTypes()) {
             for (ExportLibrary library : type.getDeclaredAnnotationsByType(ExportLibrary.class)) {
-                access.registerAsInHeap(findGeneratedLibraryClass(access, library.value()));
+                Class<?> genLib = findGeneratedLibraryClass(access, library.value());
+                if (genLib != null) {
+                    access.registerAsInHeap(genLib);
+                }
             }
             GenerateLibrary generateLibrary = type.getAnnotation(GenerateLibrary.class);
             if (generateLibrary != null) {
-                access.registerAsInHeap(findGeneratedLibraryClass(access, type.getJavaClass()));
+                Class<?> lib = findGeneratedLibraryClass(access, type.getJavaClass());
+                if (lib != null) {
+                    access.registerAsInHeap(lib);
+                }
             }
         }
     }
@@ -659,6 +698,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         blacklistAllMethods(metaAccess, ListIterator.class);
         blacklistAllMethods(metaAccess, ReentrantLock.class);
 
+        whitelistMethod(metaAccess, ReentrantLock.class, "isLocked");
+        whitelistMethod(metaAccess, ReentrantLock.class, "isHeldByCurrentThread");
+
         /* Methods with synchronization are currently not supported as deoptimization targets. */
         blacklistAllMethods(metaAccess, StringBuffer.class);
         blacklistAllMethods(metaAccess, Vector.class);
@@ -685,6 +727,19 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     private void blacklistMethod(MetaAccessProvider metaAccess, Class<?> clazz, String name, Class<?>... parameterTypes) {
         try {
             blacklistMethods.add(metaAccess.lookupJavaMethod(clazz.getDeclaredMethod(name, parameterTypes)));
+        } catch (NoSuchMethodException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    /**
+     * Removes a previously blacklisted method from the blacklist.
+     */
+    private void whitelistMethod(MetaAccessProvider metaAccess, Class<?> clazz, String name, Class<?>... parameterTypes) {
+        try {
+            if (!blacklistMethods.remove(metaAccess.lookupJavaMethod(clazz.getDeclaredMethod(name, parameterTypes)))) {
+                throw VMError.shouldNotReachHere();
+            }
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -720,7 +775,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     public void beforeCompilation(BeforeCompilationAccess config) {
         BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) config;
 
-        if (GraalFeature.Options.PrintRuntimeCompileMethods.getValue() && blacklistViolations.size() > 0) {
+        boolean failBlackListViolations = Options.TruffleCheckBlackListedMethods.getValue();
+        boolean printBlackListViolations = GraalFeature.Options.PrintRuntimeCompileMethods.getValue() || failBlackListViolations;
+        if (printBlackListViolations && blacklistViolations.size() > 0) {
             System.out.println();
             System.out.println("=== Found " + blacklistViolations.size() + " compilation blacklist violations ===");
             System.out.println();
@@ -731,6 +788,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 for (GraalFeature.CallTreeNode cur = node; cur != null; cur = cur.getParent()) {
                     System.out.println("  " + cur.getSourceReference());
                 }
+            }
+            if (failBlackListViolations) {
+                throw VMError.shouldNotReachHere("Blacklisted methods are reachable for runtime compilation");
             }
         }
 
@@ -817,9 +877,9 @@ final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget {
      * start with a fresh profile at run time.
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    int callThreshold;
+    int callCount;
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    int callAndLoopThreshold;
+    int callAndLoopCount;
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     boolean compilationFailed;
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //

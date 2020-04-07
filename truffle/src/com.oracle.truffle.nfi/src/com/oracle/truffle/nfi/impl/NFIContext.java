@@ -77,7 +77,11 @@ class NFIContext {
     @CompilationFinal int RTLD_LOCAL;
     @CompilationFinal int RTLD_LAZY;
     @CompilationFinal int RTLD_NOW;
+    @CompilationFinal int ISOLATED_NAMESPACE;
     // Checkstyle: resume field name check
+
+    // Initialized lazily by native code.
+    private volatile long isolatedNamespaceId;
 
     private static class NativeEnv {
 
@@ -301,6 +305,7 @@ class NFIContext {
 
     private static native long loadLibrary(long nativeContext, String name, int flags);
 
+    @TruffleBoundary
     private static native long lookup(long nativeContext, long library, String name);
 
     static native void freeLibrary(long library);

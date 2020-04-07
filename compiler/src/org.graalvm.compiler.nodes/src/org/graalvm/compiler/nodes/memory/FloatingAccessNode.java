@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.word.LocationIdentity;
 
 @NodeInfo
-public abstract class FloatingAccessNode extends FloatingGuardedNode implements Access, MemoryAccess {
+public abstract class FloatingAccessNode extends FloatingGuardedNode implements AddressableMemoryAccess, GuardedMemoryAccess, OnHeapMemoryAccess {
     public static final NodeClass<FloatingAccessNode> TYPE = NodeClass.create(FloatingAccessNode.class);
 
     @Input(InputType.Association) AddressNode address;

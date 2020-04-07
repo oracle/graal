@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,8 @@ public final class RegexOptions {
     public static final String STEP_EXECUTION_NAME = "StepExecution";
     private static final int ALWAYS_EAGER = 1 << 4;
     public static final String ALWAYS_EAGER_NAME = "AlwaysEager";
+    private static final int UTF_16_EXPLODE_ASTRAL_SYMBOLS = 1 << 5;
+    public static final String UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME = "UTF16ExplodeAstralSymbols";
 
     private static final String FLAVOR_NAME = "Flavor";
     private static final String FLAVOR_PYTHON_STR = "PythonStr";
@@ -88,7 +90,7 @@ public final class RegexOptions {
 
     @CompilerDirectives.TruffleBoundary
     public static RegexOptions parse(String optionsString) throws RegexSyntaxException {
-        int options = 0;
+        int options = UTF_16_EXPLODE_ASTRAL_SYMBOLS;
         RegexFlavor flavor = null;
         RegexFeatureSet featureSet = RegexFeatureSet.DEFAULT;
         for (String propValue : optionsString.split(",")) {
@@ -116,6 +118,9 @@ public final class RegexOptions {
                     break;
                 case ALWAYS_EAGER_NAME:
                     options = parseBooleanOption(optionsString, options, key, value, ALWAYS_EAGER);
+                    break;
+                case UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME:
+                    options = parseBooleanOption(optionsString, options, key, value, UTF_16_EXPLODE_ASTRAL_SYMBOLS);
                     break;
                 case FLAVOR_NAME:
                     flavor = parseFlavor(optionsString, value);
@@ -202,6 +207,23 @@ public final class RegexOptions {
      */
     public boolean isAlwaysEager() {
         return isBitSet(ALWAYS_EAGER);
+    }
+
+    /**
+     * Explode astral symbols ({@code 0x10000 - 0x10FFFF}) into sub-automata where every state
+     * matches one {@code char} as opposed to one code point.
+     *
+     * TODO: enabled by default - disable.
+     */
+    public boolean isUTF16ExplodeAstralSymbols() {
+        return isBitSet(UTF_16_EXPLODE_ASTRAL_SYMBOLS);
+    }
+
+    /**
+     * TODO: remove this.
+     */
+    public RegexOptions withoutUTF16ExplodeAstralSymbols() {
+        return new RegexOptions(options & ~UTF_16_EXPLODE_ASTRAL_SYMBOLS, flavor, featureSet);
     }
 
     public RegexFlavor getFlavor() {
@@ -300,6 +322,11 @@ public final class RegexOptions {
 
         public Builder alwaysEager(boolean enabled) {
             updateOption(enabled, ALWAYS_EAGER);
+            return this;
+        }
+
+        public Builder utf16ExplodeAstralSymbols(boolean enabled) {
+            updateOption(enabled, UTF_16_EXPLODE_ASTRAL_SYMBOLS);
             return this;
         }
 

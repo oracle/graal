@@ -209,6 +209,12 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
                                 flags |= ctx.RTLD_NOW;
                                 lazyOrNow = true;
                                 break;
+                            case "ISOLATED_NAMESPACE":
+                                if (ctx.ISOLATED_NAMESPACE == 0) { // undefined
+                                    throw new IllegalArgumentException("isolated namespace not supported");
+                                }
+                                flags |= ctx.ISOLATED_NAMESPACE;
+                                break;
                         }
                     }
                 }
@@ -229,13 +235,10 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
             @Override
             public Object execute(VirtualFrame frame) {
+                CompilerDirectives.transferToInterpreter();
                 throw new UnsupportedOperationException("illegal access to internal language");
             }
         });
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof LibFFILibrary || object instanceof NativePointer || object instanceof NativeString;
-    }
 }

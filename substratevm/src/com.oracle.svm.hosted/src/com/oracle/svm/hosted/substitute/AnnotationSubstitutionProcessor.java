@@ -275,9 +275,13 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
+    private static String substitutionName(Class<?> originalClass) {
+        return "Target_" + originalClass.getName().replace('.', '_').replace('$', '_');
+    }
+
     private void handleAliasClass(Class<?> annotatedClass, Class<?> originalClass, TargetClass targetClassAnnotation) {
         if (VerifyNamingConventions.getValue() && targetClassAnnotation.classNameProvider() == TargetClass.NoClassNameProvider.class) {
-            String expectedName = "Target_" + originalClass.getName().replace('.', '_').replace('$', '_');
+            String expectedName = substitutionName(originalClass);
             String actualName = annotatedClass.getSimpleName();
             guarantee(actualName.equals(expectedName) || actualName.startsWith(expectedName + "_"),
                             "Naming convention violation: %s must be named %s or %s_<suffix>", annotatedClass, expectedName, expectedName);

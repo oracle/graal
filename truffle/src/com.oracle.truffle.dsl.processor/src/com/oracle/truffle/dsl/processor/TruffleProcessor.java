@@ -44,6 +44,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 
@@ -74,6 +76,8 @@ import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
  */
 public class TruffleProcessor extends AbstractProcessor implements ProcessCallback {
 
+    private final Map<String, Map<String, Element>> serviceRegistrations = new LinkedHashMap<>();
+
     @Override
     public SourceVersion getSupportedSourceVersion() {
         return SourceVersion.latest();
@@ -81,37 +85,33 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        if (!roundEnv.processingOver()) {
-            processImpl(roundEnv);
-        }
-        return false;
-    }
-
-    private final ThreadLocal<List<AnnotationProcessor<?>>> currentProcessors = new ThreadLocal<>();
-
-    private void processImpl(RoundEnvironment env) {
-        // TODO run verifications that other annotations are not processed out of scope of the
-        // operation or type lattice.
         try {
             ProcessorContext.enter(processingEnv, this);
+            if (roundEnv.processingOver()) {
+                for (Entry<String, Map<String, Element>> element : serviceRegistrations.entrySet()) {
+                    AbstractRegistrationProcessor.generateServicesRegistration(element.getKey(), element.getValue());
+                }
+                serviceRegistrations.clear();
+                return true;
+            }
             List<AnnotationProcessor<?>> processors = createGenerators();
             currentProcessors.set(processors);
             for (AnnotationProcessor<?> generator : processors) {
                 AbstractParser<?> parser = generator.getParser();
                 if (parser.getAnnotationType() != null) {
-                    for (Element e : env.getElementsAnnotatedWith(ElementUtils.castTypeElement(parser.getAnnotationType()))) {
+                    for (Element e : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(parser.getAnnotationType()))) {
                         processElement(generator, e, false);
                     }
                     DeclaredType repeat = parser.getRepeatAnnotationType();
                     if (repeat != null) {
-                        for (Element e : env.getElementsAnnotatedWith(ElementUtils.castTypeElement(repeat))) {
+                        for (Element e : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(repeat))) {
                             processElement(generator, e, false);
                         }
                     }
                 }
 
                 for (DeclaredType annotationType : parser.getTypeDelegatedAnnotationTypes()) {
-                    for (Element e : env.getElementsAnnotatedWith(ElementUtils.castTypeElement(annotationType))) {
+                    for (Element e : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(annotationType))) {
                         Optional<TypeElement> processedType;
                         if (parser.isDelegateToRootDeclaredType()) {
                             processedType = ElementUtils.findRootEnclosingType(e);
@@ -122,12 +122,35 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
                     }
                 }
 
+                for (AnnotationProcessor<?> processor : processors) {
+                    for (Entry<String, Map<String, Element>> element : processor.getServiceRegistrations().entrySet()) {
+                        Map<String, Element> currentElements = serviceRegistrations.get(element.getKey());
+                        if (currentElements == null) {
+                            currentElements = new LinkedHashMap<>(element.getValue());
+                            serviceRegistrations.put(element.getKey(), currentElements);
+                        } else {
+                            currentElements.putAll(element.getValue());
+                        }
+                    }
+                }
+
+                for (Entry<String, Map<String, Element>> element : serviceRegistrations.entrySet()) {
+                    String service = element.getKey();
+                    for (Entry<String, Element> serviceElement : element.getValue().entrySet()) {
+                        if (AbstractRegistrationProcessor.shouldGenerateProviderFiles(serviceElement.getValue())) {
+                            AbstractRegistrationProcessor.generateProviderFile(processingEnv, serviceElement.getKey(), service, serviceElement.getValue());
+                        }
+                    }
+                }
             }
         } finally {
             ProcessorContext.leave();
             currentProcessors.set(null);
         }
+        return false;
     }
+
+    private final ThreadLocal<List<AnnotationProcessor<?>>> currentProcessors = new ThreadLocal<>();
 
     private static void processElement(AnnotationProcessor<?> generator, Element e, boolean callback) {
         try {

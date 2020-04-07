@@ -1302,11 +1302,4 @@ public abstract class ShapeImpl extends Shape {
     private static final DebugCounter shapeCacheMissCount = DebugCounter.create("Shape cache misses");
     static final DebugCounter shapeCacheExpunged = DebugCounter.create("Shape cache expunged");
 
-    /** @since 0.17 or earlier */
-    @SuppressWarnings("deprecation")
-    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(DynamicObject object) {
-        return getObjectType().getForeignAccessFactory(object);
-
-    }
-
 }

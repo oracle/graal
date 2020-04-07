@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,15 +31,15 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class, value = "source")
-@NodeFields({@NodeField(name = "length", type = int.class), @NodeField(name = "alignment", type = int.class)})
+@NodeField(name = "length", type = long.class)
+@NodeField(name = "alignment", type = int.class)
 public abstract class LLVMVarArgCompoundAddressNode extends LLVMExpressionNode {
-    public abstract int getLength();
+    public abstract long getLength();
 
     public abstract int getAlignment();
 

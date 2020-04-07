@@ -69,8 +69,8 @@ public class GetTimeOfDay extends WasmBuiltinRootNode {
 
         long now = getCurrentTime();
         WasmMemory memory = module.symbolTable().memory();
-        memory.store_i32(ptr, (int) (now / 1000));
-        memory.store_i32(ptr + 4, (int) (now % 1000 * 1000));
+        memory.store_i32(this, ptr, (int) (now / 1000));
+        memory.store_i32(this, ptr + 4, (int) (now % 1000 * 1000));
 
         return 0;
     }

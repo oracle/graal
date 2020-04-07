@@ -167,7 +167,7 @@ public class SourceAPITest {
         assertSame(sequence, source.getBytes());
         assertEquals("Unnamed", source.getName());
         assertNull(source.getURL());
-        assertEquals("truffle:239e496366395062c28730b535d8286f/Unnamed", source.getURI().toString());
+        assertEquals("truffle:9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a/Unnamed", source.getURI().toString());
     }
 
     @Test

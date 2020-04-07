@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,6 +54,11 @@ public class Driver {
         this(exe, true);
     }
 
+    public Driver() {
+        this.exe = null;
+        this.isBundledTool = false;
+    }
+
     public enum OS {
 
         DARWIN,
@@ -106,12 +111,6 @@ public class Driver {
     }
 
     public Path getSulongHome() {
-        // TODO (GR-18389): Unify system properties and HomeFinder
-        String property = System.getProperty("llvm.home");
-        if (property != null) {
-            return Paths.get(property);
-        }
-
         final Path sulongHome = HomeFinder.getInstance().getLanguageHomes().get("llvm");
         if (sulongHome != null) {
             return sulongHome;
@@ -199,7 +198,7 @@ public class Driver {
         return pb.inheritIO();
     }
 
-    private void printMissingToolMessage() {
+    public void printMissingToolMessage() {
         System.err.println("Tool execution failed. Are you sure the toolchain is available at " + getLLVMBinDir().getParent());
         System.err.println("You can install it via GraalVM updater: `gu install llvm-toolchain`");
         System.err.println();

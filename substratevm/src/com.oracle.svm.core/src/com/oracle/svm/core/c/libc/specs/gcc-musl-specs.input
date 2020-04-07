@@ -1,0 +1,33 @@
+%rename cpp_options old_cpp_options
+
+*cpp_options:
+-nostdinc -isystem __BASE_PATH__/include -isystem include%s %(old_cpp_options)
+
+*cc1:
+%(cc1_cpu) -nostdinc -isystem __BASE_PATH__/include -isystem include%s
+
+*link_libgcc:
+-L__BASE_PATH__/lib -L .%s
+
+*libgcc:
+libgcc.a%s %:if-exists(libgcc_eh.a%s)
+
+*startfile:
+%{!shared: __BASE_PATH__/lib/Scrt1.o} __BASE_PATH__/lib/crti.o crtbeginS.o%s
+
+*endfile:
+crtendS.o%s __BASE_PATH__/lib/crtn.o
+
+*link:
+-dynamic-linker /lib/ld-musl-x86_64.so.1 -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic}
+
+*esp_link:
+
+
+*esp_options:
+
+
+*esp_cpp_options:
+
+
+

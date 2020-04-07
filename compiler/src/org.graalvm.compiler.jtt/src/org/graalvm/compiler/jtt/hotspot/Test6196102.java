@@ -29,9 +29,10 @@ import org.junit.Test;
 import org.graalvm.compiler.jtt.JTTTest;
 
 /**
- * @bug 6196102
- * @summary Integer seems to be greater than {@link Integer#MAX_VALUE}.
+ * Integer seems to be greater than {@link Integer#MAX_VALUE}.
  *
+ * @test
+ * @bug 6196102
  * @run main Test6196102
  */
 public class Test6196102 extends JTTTest {

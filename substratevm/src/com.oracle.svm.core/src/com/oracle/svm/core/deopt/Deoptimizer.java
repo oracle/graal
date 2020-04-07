@@ -59,6 +59,7 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
@@ -232,16 +233,17 @@ public final class Deoptimizer {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static DeoptimizedFrame checkDeoptimized(Pointer sourceSp) {
-        CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
-        /* A frame is deoptimized when the return address was patched to the deoptStub. */
-        if (DeoptimizationSupport.enabled() && returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
-            /* The DeoptimizedFrame instance is stored above the return address. */
-            DeoptimizedFrame result = KnownIntrinsics.convertUnknownValue(sourceSp.readObject(0), DeoptimizedFrame.class);
-            assert result != null;
-            return result;
-        } else {
-            return null;
+        if (DeoptimizationSupport.enabled()) {
+            CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
+            /* A frame is deoptimized when the return address was patched to the deoptStub. */
+            if (returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
+                /* The DeoptimizedFrame instance is stored above the return address. */
+                DeoptimizedFrame result = KnownIntrinsics.convertUnknownValue(sourceSp.readObject(0), DeoptimizedFrame.class);
+                assert result != null;
+                return result;
+            }
         }
+        return null;
     }
 
     private static void installDeoptimizedFrame(Pointer sourceSp, DeoptimizedFrame deoptimizedFrame) {
@@ -680,12 +682,19 @@ public final class Deoptimizer {
             CodeInfoQueryResult targetInfo = CodeInfoTable.lookupDeoptimizationEntrypoint(deoptInfo.getDeoptMethodOffset(), deoptInfo.getEncodedBci());
             if (targetInfo == null || targetInfo.getFrameInfo() == null) {
                 throw VMError.shouldNotReachHere("Deoptimization: no matching target bytecode frame found for bci " +
-                                deoptInfo.getBci() + " (encodedBci " + deoptInfo.getEncodedBci() + ") in method at address " +
+                                FrameInfoDecoder.readableBci(deoptInfo.getEncodedBci()) + " in method at address " +
                                 Long.toHexString(deoptInfo.getDeoptMethodAddress().rawValue()));
             } else if (!targetInfo.getFrameInfo().isDeoptEntry()) {
                 throw VMError.shouldNotReachHere("Deoptimization: target frame information not marked as deoptimization entry point for bci " +
-                                deoptInfo.getBci() + " (encodedBci " + deoptInfo.getEncodedBci() + ") in method at address" +
+                                FrameInfoDecoder.readableBci(deoptInfo.getEncodedBci()) + " in method at address" +
                                 Long.toHexString(deoptInfo.getDeoptMethodAddress().rawValue()));
+            } else if (targetInfo.getFrameInfo().getDeoptMethod() != null && targetInfo.getFrameInfo().getDeoptMethod().hasCalleeSavedRegisters()) {
+                /*
+                 * The deoptMethod is not guaranteed to be available, but this is only a last check,
+                 * to have a better error than the probable segfault.
+                 */
+                throw VMError.shouldNotReachHere("Deoptimization: target method has callee saved registers, which are not properly restored by the deoptimization runtime: " +
+                                targetInfo.getFrameInfo().getDeoptMethod().format("%H.%n(%r)"));
             }
             VirtualFrame virtualFrame = constructTargetFrame(targetInfo, deoptInfo);
             if (previousVirtualFrame != null) {
@@ -716,7 +725,7 @@ public final class Deoptimizer {
         VMError.guarantee(sourceChunk.getTotalFrameSize() >= FrameAccess.wordSize(), "Insufficient space in frame for pointer to DeoptimizedFrame");
 
         /* Allocate a buffer to hold the contents of the new target frame. */
-        DeoptimizedFrame deoptimizedFrame = DeoptimizedFrame.factory(targetContentSize, sourceChunk.getTotalFrameSize(), CodeInfoTable.lookupInstalledCode(pc), topFrame, pc);
+        DeoptimizedFrame deoptimizedFrame = DeoptimizedFrame.factory(targetContentSize, sourceChunk.getEncodedFrameSize(), CodeInfoTable.lookupInstalledCode(pc), topFrame, pc);
 
         installDeoptimizedFrame(sourceSp, deoptimizedFrame);
 
@@ -912,6 +921,7 @@ public final class Deoptimizer {
             case DefaultConstant:
                 return valueInfo.getValue();
             case StackSlot:
+            case Register:
                 return readConstant(sourceSp, WordFactory.signed(valueInfo.getData()), valueInfo.getKind(), valueInfo.isCompressedReference());
             case VirtualObject:
                 Object obj = materializeObject(TypeConversion.asS4(valueInfo.getData()), sourceFrame);
@@ -945,12 +955,15 @@ public final class Deoptimizer {
         DynamicHub hub = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(readValue(encodings[0], sourceFrame)), DynamicHub.class);
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
 
+        boolean materializingByteArray = false;
+
         int curIdx;
         UnsignedWord curOffset;
         if (LayoutEncoding.isArray(hub.getLayoutEncoding())) {
             /* For arrays, the second encoded value is the array length. */
             int length = readValue(encodings[1], sourceFrame).asInt();
             obj = Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), length);
+            materializingByteArray = obj.getClass() == byte[].class;
             curOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
             curIdx = 2;
         } else {
@@ -972,12 +985,66 @@ public final class Deoptimizer {
             ValueInfo value = encodings[curIdx];
             JavaKind kind = value.getKind();
             JavaConstant con = readValue(value, sourceFrame);
+            if (materializingByteArray && kind.isPrimitive()) {
+                /* Escape analysis of byte arrays needs special care. */
+                int byteCount = restoreEscapedByteArrayWriteByteCount(encodings, curIdx);
+                con = restoreByteArrayWriteValue(con, byteCount);
+                /* Realign. curIdx gets reincremented, so we compensate. */
+                curIdx = curIdx + byteCount - 1;
+            }
             writeValueInMaterializedObj(obj, curOffset, con);
             curOffset = curOffset.add(objectLayout.sizeInBytes(kind));
             curIdx++;
         }
 
         return obj;
+    }
+
+    /**
+     * Virtualized byte arrays might look like:
+     * <p>
+     * [b1, b2, INT, ILLEGAL, ILLEGAL, ILLEGAL, b7, b8]
+     * <p>
+     * This indicates that an int was written over 4 slots of a byte array, and this write was
+     * escape analysed.
+     *
+     * The written int should write over the 3 illegals, and we can then simply ignore them
+     * afterwards.
+     */
+    private static int restoreEscapedByteArrayWriteByteCount(ValueInfo[] encodings, int curIdx) {
+        int index = curIdx + 1;
+        while (index < encodings.length &&
+                        encodings[index].getKind() == JavaKind.Illegal) {
+            index++;
+        }
+        return index - curIdx;
+    }
+
+    /**
+     * Given a written value to an escaped byte array and a bytecount, returns a correctly-sized
+     * value to write at once in the array.
+     */
+    private static JavaConstant restoreByteArrayWriteValue(JavaConstant con, int byteCount) {
+        switch (byteCount) {
+            case 1:
+                return JavaConstant.forByte((byte) con.asInt());
+            case 2:
+                return JavaConstant.forChar((char) con.asInt());
+            case 4:
+                if (con.getJavaKind().isNumericFloat()) {
+                    return JavaConstant.forFloat(con.asFloat());
+                } else {
+                    return JavaConstant.forInt(con.asInt());
+                }
+            case 8:
+                if (con.getJavaKind().isNumericFloat()) {
+                    return JavaConstant.forDouble(con.asDouble());
+                } else {
+                    return JavaConstant.forLong(con.asLong());
+                }
+            default:
+                throw VMError.shouldNotReachHere();
+        }
     }
 
     /**
@@ -1065,19 +1132,20 @@ public final class Deoptimizer {
             int count = 0;
             while (sourceFrame != null) {
                 SharedMethod deoptMethod = sourceFrame.getDeoptMethod();
-                int bci = sourceFrame.getBci();
 
                 log.string("        at ");
                 if (deoptMethod != null) {
-                    StackTraceElement element = deoptMethod.asStackTraceElement(bci);
+                    StackTraceElement element = deoptMethod.asStackTraceElement(sourceFrame.getBci());
                     if (element.getFileName() != null && element.getLineNumber() >= 0) {
                         log.string(element.toString());
                     } else {
-                        log.string(deoptMethod.format("%H.%n(%p)")).string(" bci ").signed(bci);
+                        log.string(deoptMethod.format("%H.%n(%p)"));
                     }
                 } else {
-                    log.string("method at ").hex(sourceFrame.getDeoptMethodAddress()).string(" bci ").signed(bci);
+                    log.string("method at ").hex(sourceFrame.getDeoptMethodAddress());
                 }
+                log.string(" bci ");
+                FrameInfoDecoder.logReadableBci(log, sourceFrame.getEncodedBci());
                 log.string("  return address ").hex(targetFrame.returnAddress.returnAddress).newline();
 
                 if (printOnlyTopFrames || Options.TraceDeoptimizationDetails.getValue()) {
@@ -1104,7 +1172,8 @@ public final class Deoptimizer {
             log.string("            ").string(sourceReference).newline();
         }
 
-        log.string("            bci: ").signed(frameInfo.getBci());
+        log.string("            bci: ");
+        FrameInfoDecoder.logReadableBci(log, frameInfo.getEncodedBci());
         log.string("  deoptMethodOffset: ").signed(frameInfo.getDeoptMethodOffset());
         log.string("  deoptMethod: ").hex(frameInfo.getDeoptMethodAddress());
         log.string("  return address: ").hex(virtualFrame.returnAddress.returnAddress).string("  offset: ").signed(virtualFrame.returnAddress.offset);

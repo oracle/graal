@@ -28,20 +28,21 @@ package com.oracle.svm.core;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
-import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -82,7 +83,6 @@ import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.Counter;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
@@ -131,6 +131,38 @@ public class SubstrateUtil {
      */
     public static boolean isInLibgraal() {
         return Services.IS_IN_NATIVE_IMAGE;
+    }
+
+    /**
+     * Pattern for a single shell command argument that does not need to be quoted.
+     */
+    private static final Pattern SAFE_SHELL_ARG = Pattern.compile("[A-Za-z0-9@%_\\-+=:,./]+");
+
+    /**
+     * Reliably quote a string as a single shell command argument.
+     */
+    public static String quoteShellArg(String arg) {
+        if (arg.isEmpty()) {
+            return "''";
+        }
+        Matcher m = SAFE_SHELL_ARG.matcher(arg);
+        if (m.matches()) {
+            return arg;
+        }
+        return "'" + arg.replace("'", "'\"'\"'") + "'";
+    }
+
+    public static String getShellCommandString(List<String> cmd, boolean multiLine) {
+        StringBuilder sb = new StringBuilder();
+        for (String arg : cmd) {
+            sb.append(quoteShellArg(arg));
+            if (multiLine) {
+                sb.append(" \\\n");
+            } else {
+                sb.append(' ');
+            }
+        }
+        return sb.toString();
     }
 
     @TargetClass(com.oracle.svm.core.SubstrateUtil.class)
@@ -247,6 +279,10 @@ public class SubstrateUtil {
 
     private static volatile boolean diagnosticsInProgress = false;
 
+    public static boolean isPrintDiagnosticsInProgress() {
+        return diagnosticsInProgress;
+    }
+
     /**
      * Prints extensive diagnostic information to the given Log.
      */
@@ -254,7 +290,6 @@ public class SubstrateUtil {
     public static void printDiagnostics(Log log, Pointer sp, CodePointer ip) {
         if (diagnosticsInProgress) {
             log.string("Error: printDiagnostics already in progress.").newline();
-            BreakpointNode.breakpoint();
             return;
         }
         diagnosticsInProgress = true;
@@ -344,7 +379,7 @@ public class SubstrateUtil {
         }
 
         try {
-            DiagnosticThunkRegister.getSingleton().callDiagnosticThunks();
+            DiagnosticThunkRegister.getSingleton().callDiagnosticThunks(log);
         } catch (Exception e) {
             dumpException(log, "callThunks", e);
         }
@@ -562,7 +597,7 @@ public class SubstrateUtil {
 
         /** The method to be supplied by the implementor. */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-        void invokeWithoutAllocation();
+        void invokeWithoutAllocation(Log log);
     }
 
     public static class DiagnosticThunkRegister {
@@ -600,9 +635,9 @@ public class SubstrateUtil {
         /* } Checkstyle: disallow synchronization. */
 
         /** Call each registered diagnostic thunk. */
-        void callDiagnosticThunks() {
+        void callDiagnosticThunks(Log log) {
             for (int i = 0; i < diagnosticThunkRegistry.length; i += 1) {
-                diagnosticThunkRegistry[i].invokeWithoutAllocation();
+                diagnosticThunkRegistry[i].invokeWithoutAllocation(log);
             }
         }
     }
@@ -634,25 +669,12 @@ public class SubstrateUtil {
         return list.toArray(new String[list.size()]);
     }
 
-    private static final char[] HEX = "0123456789abcdef".toCharArray();
-
     public static String toHex(byte[] data) {
-        StringBuilder r = new StringBuilder(data.length * 2);
-        for (byte b : data) {
-            r.append(HEX[(b >> 4) & 0xf]);
-            r.append(HEX[b & 0xf]);
-        }
-        return r.toString();
+        return LambdaUtils.toHex(data);
     }
 
     public static String digest(String value) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-1");
-            md.update(value.getBytes("UTF-8"));
-            return toHex(md.digest());
-        } catch (NoSuchAlgorithmException | UnsupportedEncodingException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
+        return LambdaUtils.digest(value);
     }
 
     /**
@@ -762,7 +784,7 @@ public class SubstrateUtil {
             String[] neverInline = SubstrateOptions.NeverInline.getValue();
 
             return GuardedAnnotationAccess.isAnnotationPresent(method, com.oracle.svm.core.annotate.NeverInline.class) ||
-                            (neverInline != null && Arrays.stream(neverInline).anyMatch(re -> MethodFilter.matches(MethodFilter.parse(re), method)));
+                            (neverInline != null && Arrays.stream(neverInline).anyMatch(re -> MethodFilter.parse(re).matches(method)));
         }
     }
 }

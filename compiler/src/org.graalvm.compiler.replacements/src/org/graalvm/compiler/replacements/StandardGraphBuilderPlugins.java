@@ -43,6 +43,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -97,6 +98,7 @@ import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
+import org.graalvm.compiler.nodes.extended.RawVolatileLoadNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryStoreNode;
@@ -113,7 +115,7 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
-import org.graalvm.compiler.nodes.memory.HeapAccess;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -255,7 +257,7 @@ public class StandardGraphBuilderPlugins {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                     b.addPush(JavaKind.Char, new JavaReadNode(JavaKind.Char, new IndexAddressNode(arg1, arg2, JavaKind.Byte), NamedLocationIdentity.getArrayLocation(JavaKind.Byte),
-                                    HeapAccess.BarrierType.NONE, false));
+                                    BarrierType.NONE, false));
                     return true;
                 }
             });
@@ -263,7 +265,7 @@ public class StandardGraphBuilderPlugins {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
                     b.add(new JavaWriteNode(JavaKind.Char, new IndexAddressNode(arg1, arg2, JavaKind.Byte), NamedLocationIdentity.getArrayLocation(JavaKind.Byte), arg3,
-                                    HeapAccess.BarrierType.NONE, false));
+                                    BarrierType.NONE, false));
                     return true;
                 }
             });
@@ -1122,14 +1124,22 @@ public class StandardGraphBuilderPlugins {
             }
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            if (accessKind.emitBarriers) {
+            boolean isVolatile = accessKind == AccessKind.VOLATILE;
+            boolean emitBarriers = accessKind.emitBarriers && !isVolatile;
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.preReadBarriers));
             }
             // Raw accesses can be turned into floatable field accesses, the membars preserve the
             // access mode. In the case of opaque access, and only for opaque, the location of the
             // wrapping membars can be refined to the field location.
-            createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc));
-            if (accessKind.emitBarriers) {
+            UnsafeNodeConstructor unsafeNodeConstructor = null;
+            if (isVolatile) {
+                unsafeNodeConstructor = (obj, loc) -> new RawVolatileLoadNode(obj, offset, unsafeAccessKind, loc);
+            } else {
+                unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc);
+            }
+            createUnsafeAccess(object, b, unsafeNodeConstructor);
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.postReadBarriers));
             }
             return true;
@@ -1168,15 +1178,17 @@ public class StandardGraphBuilderPlugins {
             }
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            if (accessKind.emitBarriers) {
+            boolean isVolatile = accessKind == AccessKind.VOLATILE;
+            boolean emitBarriers = accessKind.emitBarriers && !isVolatile;
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.preWriteBarriers));
             }
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
             // Raw accesses can be turned into floatable field accesses, the membars preserve the
             // access mode. In the case of opaque access, and only for opaque, the location of the
             // wrapping membars can be refined to the field location.
-            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
-            if (accessKind.emitBarriers) {
+            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc, true, isVolatile));
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.postWriteBarriers));
             }
             return true;
@@ -1264,6 +1276,23 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {
                 b.addPush(JavaKind.Int, new SideEffectNode(a));
                 return true;
+            }
+        });
+        r.register2("assumeStableDimension", Object.class, int.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode array, ValueNode dimension) {
+                if (array instanceof ConstantNode && b.getMetaAccess().lookupJavaType(array.asJavaConstant()).isArray()) {
+                    if (dimension instanceof ConstantNode && dimension.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                        int stableDim = dimension.asJavaConstant().asInt();
+                        ConstantNode c = ConstantNode.forConstant(array.asJavaConstant(), stableDim, false, b.getMetaAccess());
+                        b.addPush(JavaKind.Object, c);
+                        return true;
+                    }
+                }
+                throw GraalError.shouldNotReachHere("Illegal usage of stable array intrinsic assumeStableDimension(array, dimension): " +
+                                "This compiler intrinsic can only be used iff array is a constant node (i.e., constant field) and iff " +
+                                "dimension is a constant int. It will replace the constant array with a new constant that additionally sets the stable" +
+                                "dimensions to the int parameter supplied.");
             }
         });
         r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {

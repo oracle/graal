@@ -44,9 +44,7 @@ import java.util.BitSet;
 import java.util.List;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
@@ -84,6 +82,7 @@ import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
@@ -106,6 +105,7 @@ import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryStoreNode;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.AccessIndexedNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -127,17 +127,19 @@ import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.ValueCompareAndSwapNode;
-import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.VolatileReadNode;
+import org.graalvm.compiler.nodes.memory.VolatileWriteNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
-import org.graalvm.compiler.nodes.spi.GCProvider;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
+import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
@@ -173,24 +175,27 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected final MetaAccessProvider metaAccess;
     protected final ForeignCallsProvider foreignCalls;
+    protected final BarrierSet barrierSet;
     protected final TargetDescription target;
     private final boolean useCompressedOops;
-    private final ResolvedJavaType objectArrayType;
+    protected Replacements replacements;
 
     private BoxingSnippets.Templates boxingSnippets;
     private ConstantStringIndexOfSnippets.Templates indexOfSnippets;
 
-    public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, TargetDescription target, boolean useCompressedOops) {
+    public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig, TargetDescription target,
+                    boolean useCompressedOops) {
         this.metaAccess = metaAccess;
         this.foreignCalls = foreignCalls;
+        this.barrierSet = platformConfig.getBarrierSet();
         this.target = target;
         this.useCompressedOops = useCompressedOops;
-        this.objectArrayType = metaAccess.lookupJavaType(Object[].class);
     }
 
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection) {
         boxingSnippets = new BoxingSnippets.Templates(options, factories, factory, providers, snippetReflection, target);
         indexOfSnippets = new ConstantStringIndexOfSnippets.Templates(options, factories, providers, snippetReflection, target);
+        replacements = providers.getReplacements();
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, factories, providers, snippetReflection, target));
     }
 
@@ -200,6 +205,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     public MetaAccessProvider getMetaAccess() {
         return metaAccess;
+    }
+
+    public BarrierSet getBarrierSet() {
+        return barrierSet;
+    }
+
+    public Replacements getReplacements() {
+        return replacements;
     }
 
     @Override
@@ -266,6 +279,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerUTF16IndexOf((StringUTF16IndexOfNode) n);
             } else if (n instanceof UnpackEndianHalfNode) {
                 lowerSecondHalf((UnpackEndianHalfNode) n);
+            } else if (n instanceof VolatileReadNode) {
+                lowerVolatileRead(((VolatileReadNode) n), tool);
+            } else if (n instanceof VolatileWriteNode) {
+                lowerVolatileWrite(((VolatileWriteNode) n), tool);
             } else {
                 throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
             }
@@ -334,7 +351,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         ResolvedJavaMethod method = math.graph().method();
         if (method != null) {
-            if (method.getAnnotation(Snippet.class) != null) {
+            if (replacements.isSnippet(method)) {
                 // In the context of SnippetStub, i.e., Graal-generated stubs, use the LIR
                 // lowering to emit the stub assembly code instead of the Node lowering.
                 return;
@@ -373,12 +390,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         GraphUtil.removeFixedWithUnusedInputs(n);
     }
 
-    protected AddressNode createOffsetAddress(StructuredGraph graph, ValueNode object, long offset) {
+    public AddressNode createOffsetAddress(StructuredGraph graph, ValueNode object, long offset) {
         ValueNode o = ConstantNode.forIntegerKind(target.wordJavaKind, offset, graph);
         return graph.unique(new OffsetAddressNode(object, o));
     }
 
-    protected AddressNode createFieldAddress(StructuredGraph graph, ValueNode object, ResolvedJavaField field) {
+    public AddressNode createFieldAddress(StructuredGraph graph, ValueNode object, ResolvedJavaField field) {
         int offset = fieldOffset(field);
         if (offset >= 0) {
             return createOffsetAddress(graph, object, offset);
@@ -387,7 +404,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
     }
 
-    protected abstract JavaKind getStorageKind(ResolvedJavaField field);
+    public abstract JavaKind getStorageKind(ResolvedJavaField field);
 
     protected void lowerLoadFieldNode(LoadFieldNode loadField, LoweringTool tool) {
         assert loadField.getStackKind() != JavaKind.Illegal;
@@ -401,21 +418,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         assert address != null : "Field that is loaded must not be eliminated: " + field.getDeclaringClass().toJavaName(true) + "." + field.getName();
 
         ReadNode memoryRead = null;
-        if (loadField.isVolatile() && GraalOptions.LateMembars.getValue(graph.getOptions())) {
-            memoryRead = graph.add(new VolatileReadNode(address, fieldLocationIdentity(field), loadStamp, fieldLoadBarrierType(field)));
+        BarrierType barrierType = barrierSet.fieldLoadBarrierType(field, getStorageKind(field));
+        if (loadField.isVolatile()) {
+            memoryRead = graph.add(new VolatileReadNode(address, fieldLocationIdentity(field), loadStamp, barrierType));
         } else {
-            memoryRead = graph.add(new ReadNode(address, fieldLocationIdentity(field), loadStamp, fieldLoadBarrierType(field)));
+            memoryRead = graph.add(new ReadNode(address, fieldLocationIdentity(field), loadStamp, barrierType));
         }
         ValueNode readValue = implicitLoadConvert(graph, getStorageKind(field), memoryRead);
         loadField.replaceAtUsages(readValue);
         graph.replaceFixed(loadField, memoryRead);
-
-        if (loadField.isVolatile() && !GraalOptions.LateMembars.getValue(graph.getOptions())) {
-            MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_READ));
-            graph.addBeforeFixed(memoryRead, preMembar);
-            MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_READ));
-            graph.addAfterFixed(memoryRead, postMembar);
-        }
     }
 
     protected void lowerStoreFieldNode(StoreFieldNode storeField, LoweringTool tool) {
@@ -427,16 +438,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         AddressNode address = createFieldAddress(graph, object, field);
         assert address != null;
 
-        WriteNode memoryWrite = graph.add(new WriteNode(address, fieldLocationIdentity(field), value, fieldStoreBarrierType(storeField.field()), storeField.isVolatile()));
+        BarrierType barrierType = barrierSet.fieldStoreBarrierType(field, getStorageKind(field));
+        WriteNode memoryWrite = null;
+        if (storeField.isVolatile()) {
+            memoryWrite = graph.add(new VolatileWriteNode(address, fieldLocationIdentity(field), value, barrierType));
+        } else {
+            memoryWrite = graph.add(new WriteNode(address, fieldLocationIdentity(field), value, barrierType));
+        }
         memoryWrite.setStateAfter(storeField.stateAfter());
         graph.replaceFixedWithFixed(storeField, memoryWrite);
-
-        if (storeField.isVolatile() && !GraalOptions.LateMembars.getValue(graph.getOptions())) {
-            MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_WRITE));
-            graph.addBeforeFixed(memoryWrite, preMembar);
-            MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_WRITE));
-            graph.addAfterFixed(memoryWrite, postMembar);
-        }
     }
 
     public static final IntegerStamp POSITIVE_ARRAY_INDEX_STAMP = StampFactory.forInteger(32, 0, Integer.MAX_VALUE - 1);
@@ -509,10 +519,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         GuardingNode boundsCheck = getBoundsCheck(storeIndexed, array, tool);
 
-        JavaKind elementKind = storeIndexed.elementKind();
+        JavaKind storageKind = storeIndexed.elementKind();
 
         LogicNode condition = null;
-        if (storeIndexed.getStoreCheck() == null && elementKind == JavaKind.Object && !StampTool.isPointerAlwaysNull(value)) {
+        if (storeIndexed.getStoreCheck() == null && storageKind == JavaKind.Object && !StampTool.isPointerAlwaysNull(value)) {
             /* Array store check. */
             TypeReference arrayType = StampTool.typeReferenceOrNull(array);
             if (arrayType != null && arrayType.isExact()) {
@@ -533,10 +543,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
             }
         }
-
-        AddressNode address = createArrayIndexAddress(graph, array, elementKind, storeIndexed.index(), boundsCheck);
-        WriteNode memoryWrite = graph.add(new WriteNode(address, NamedLocationIdentity.getArrayLocation(elementKind), implicitStoreConvert(graph, elementKind, value),
-                        arrayStoreBarrierType(storeIndexed.elementKind()), false));
+        BarrierType barrierType = barrierSet.arrayStoreBarrierType(storageKind);
+        AddressNode address = createArrayIndexAddress(graph, array, storageKind, storeIndexed.index(), boundsCheck);
+        WriteNode memoryWrite = graph.add(new WriteNode(address, NamedLocationIdentity.getArrayLocation(storageKind), implicitStoreConvert(graph, storageKind, value),
+                        barrierType));
         memoryWrite.setGuard(boundsCheck);
         if (condition != null) {
             tool.createGuard(storeIndexed, condition, DeoptimizationReason.ArrayStoreException, DeoptimizationAction.InvalidateReprofile);
@@ -630,7 +640,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
-        BarrierType barrierType = guessStoreBarrierType(cas.object(), expectedValue);
+        BarrierType barrierType = barrierSet.guessStoreBarrierType(cas.object(), newValue);
         LogicCompareAndSwapNode atomicNode = graph.add(new LogicCompareAndSwapNode(address, cas.getKilledLocationIdentity(), expectedValue, newValue, barrierType));
         atomicNode.setStateAfter(cas.stateAfter());
         graph.replaceFixedWithFixed(cas, atomicNode);
@@ -644,7 +654,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
-        BarrierType barrierType = guessStoreBarrierType(cas.object(), expectedValue);
+        BarrierType barrierType = barrierSet.guessStoreBarrierType(cas.object(), newValue);
         ValueCompareAndSwapNode atomicNode = graph.add(new ValueCompareAndSwapNode(address, expectedValue, newValue, cas.getKilledLocationIdentity(), barrierType));
         ValueNode coercedNode = implicitLoadConvert(graph, valueKind, atomicNode, true);
         atomicNode.setStateAfter(cas.stateAfter());
@@ -659,7 +669,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, n.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(n.object(), n.offset()));
-        BarrierType barrierType = guessStoreBarrierType(n.object(), n.newValue());
+        BarrierType barrierType = barrierSet.guessStoreBarrierType(n.object(), newValue);
         LIRKind lirAccessKind = LIRKind.fromJavaKind(target.arch, valueKind);
         LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(address, n.getKilledLocationIdentity(), newValue, lirAccessKind, barrierType));
         memoryRead.setStateAfter(n.stateAfter());
@@ -674,25 +684,24 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
      * @param tool utility for performing the lowering
      */
     protected void lowerUnsafeLoadNode(RawLoadNode load, LoweringTool tool) {
-        GCProvider gc = tool.getProviders().getGC();
         StructuredGraph graph = load.graph();
         if (load instanceof GuardedUnsafeLoadNode) {
             GuardedUnsafeLoadNode guardedLoad = (GuardedUnsafeLoadNode) load;
             GuardingNode guard = guardedLoad.getGuard();
             if (guard == null) {
                 // can float freely if the guard folded away
-                ReadNode memoryRead = createUnsafeRead(gc, graph, load, null);
+                ReadNode memoryRead = createUnsafeRead(graph, load, null);
                 memoryRead.setForceFixed(false);
                 graph.replaceFixedWithFixed(load, memoryRead);
             } else {
                 // must be guarded, but flows below the guard
-                ReadNode memoryRead = createUnsafeRead(gc, graph, load, guard);
+                ReadNode memoryRead = createUnsafeRead(graph, load, guard);
                 graph.replaceFixedWithFixed(load, memoryRead);
             }
         } else {
             // never had a guarding condition so it must be fixed, creation of the read will force
             // it to be fixed
-            ReadNode memoryRead = createUnsafeRead(gc, graph, load, null);
+            ReadNode memoryRead = createUnsafeRead(graph, load, null);
             graph.replaceFixedWithFixed(load, memoryRead);
         }
     }
@@ -705,12 +714,18 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
     }
 
-    protected ReadNode createUnsafeRead(GCProvider gc, StructuredGraph graph, RawLoadNode load, GuardingNode guard) {
+    protected ReadNode createUnsafeRead(StructuredGraph graph, RawLoadNode load, GuardingNode guard) {
         boolean compressible = load.accessKind() == JavaKind.Object;
         JavaKind readKind = load.accessKind();
         Stamp loadStamp = loadStamp(load.stamp(NodeView.DEFAULT), readKind, compressible);
         AddressNode address = createUnsafeAddress(graph, load.object(), load.offset());
-        ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, gc.getBarrierSet().readBarrierType(load)));
+        ReadNode memoryRead = null;
+        if (load.isVolatile()) {
+            memoryRead = new VolatileReadNode(address, load.getLocationIdentity(), loadStamp, barrierSet.readBarrierType(load));
+        } else {
+            memoryRead = new ReadNode(address, load.getLocationIdentity(), loadStamp, barrierSet.readBarrierType(load));
+        }
+        memoryRead = graph.add(memoryRead);
         if (guard == null) {
             // An unsafe read must not float otherwise it may float above
             // a test guaranteeing the read is safe.
@@ -753,7 +768,13 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind valueKind = store.accessKind();
         ValueNode value = implicitStoreConvert(graph, valueKind, store.value(), compressible);
         AddressNode address = createUnsafeAddress(graph, store.object(), store.offset());
-        WriteNode write = graph.add(new WriteNode(address, store.getKilledLocationIdentity(), value, unsafeStoreBarrierType(store), false));
+        WriteNode write = null;
+        if (store.isVolatile()) {
+            write = new VolatileWriteNode(address, store.getLocationIdentity(), value, barrierSet.storeBarrierType(store));
+        } else {
+            write = new WriteNode(address, store.getLocationIdentity(), value, barrierSet.storeBarrierType(store));
+        }
+        write = graph.add(write);
         write.setStateAfter(store.stateAfter());
         graph.replaceFixedWithFixed(store, write);
     }
@@ -764,7 +785,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind valueKind = store.getKind();
         ValueNode value = implicitStoreConvert(graph, valueKind, store.getValue(), false);
         AddressNode address = graph.addOrUniqueWithInputs(OffsetAddressNode.create(store.getAddress()));
-        WriteNode write = graph.add(new WriteNode(address, store.getKilledLocationIdentity(), value, BarrierType.NONE, false));
+        WriteNode write = graph.add(new WriteNode(address, store.getKilledLocationIdentity(), value, BarrierType.NONE));
         write.setStateAfter(store.stateAfter());
         graph.replaceFixedWithFixed(store, write);
     }
@@ -791,7 +812,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected void lowerJavaWriteNode(JavaWriteNode write) {
         StructuredGraph graph = write.graph();
         ValueNode value = implicitStoreConvert(graph, write.getWriteKind(), write.value(), write.isCompressible());
-        WriteNode memoryWrite = graph.add(new WriteNode(write.getAddress(), write.getKilledLocationIdentity(), value, write.getBarrierType(), false));
+        WriteNode memoryWrite = graph.add(new WriteNode(write.getAddress(), write.getKilledLocationIdentity(), value, write.getBarrierType()));
         memoryWrite.setStateAfter(write.stateAfter());
         graph.replaceFixedWithFixed(write, memoryWrite);
         memoryWrite.setGuard(write.getGuard());
@@ -814,6 +835,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     if (virtual instanceof VirtualInstanceNode) {
                         newObject = graph.add(createNewInstanceFromVirtual(virtual));
                     } else {
+                        assert virtual instanceof VirtualArrayNode;
                         newObject = graph.add(createNewArrayFromVirtual(virtual, ConstantNode.forInt(entryCount, graph)));
                     }
                     // The final STORE_STORE barrier will be emitted by finishAllocatedObjects
@@ -832,11 +854,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                         } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
                             // Constant.illegal is always the defaultForKind, so it is skipped
                             JavaKind valueKind = value.getStackKind();
-                            JavaKind entryKind = virtual.entryKind(i);
+                            JavaKind storageKind = virtual.entryKind(i);
 
                             // Truffle requires some leniency in terms of what can be put where:
-                            assert valueKind.getStackKind() == entryKind.getStackKind() ||
-                                            (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode));
+                            assert valueKind.getStackKind() == storageKind.getStackKind() ||
+                                            (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode) ||
+                                                            (valueKind == JavaKind.Float && virtual instanceof VirtualArrayNode));
                             AddressNode address = null;
                             BarrierType barrierType = null;
                             if (virtual instanceof VirtualInstanceNode) {
@@ -844,14 +867,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                 long offset = fieldOffset(field);
                                 if (offset >= 0) {
                                     address = createOffsetAddress(graph, newObject, offset);
-                                    barrierType = fieldInitializationBarrier(entryKind);
+                                    barrierType = barrierSet.fieldStoreBarrierType(field, getStorageKind(field));
                                 }
                             } else {
-                                address = createOffsetAddress(graph, newObject, metaAccess.getArrayBaseOffset(entryKind) + i * metaAccess.getArrayIndexScale(entryKind));
-                                barrierType = arrayInitializationBarrier(entryKind);
+                                assert virtual instanceof VirtualArrayNode;
+                                address = createOffsetAddress(graph, newObject, metaAccess.getArrayBaseOffset(storageKind) + i * metaAccess.getArrayIndexScale(storageKind));
+                                barrierType = barrierSet.arrayStoreBarrierType(storageKind);
                             }
                             if (address != null) {
-                                WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, entryKind, value), barrierType, false);
+                                WriteNode write = new WriteNode(address, LocationIdentity.init(), arrayImplicitStoreConvert(graph, storageKind, value, commit, virtual, valuePos), barrierType);
                                 graph.addAfterFixed(newObject, graph.add(write));
                             }
                         }
@@ -877,14 +901,16 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                 BarrierType barrierType;
                                 if (virtual instanceof VirtualInstanceNode) {
                                     VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
-                                    address = createFieldAddress(graph, newObject, virtualInstance.field(i));
-                                    barrierType = fieldStoreBarrierType(virtualInstance.field(i));
+                                    ResolvedJavaField field = virtualInstance.field(i);
+                                    address = createFieldAddress(graph, newObject, field);
+                                    barrierType = barrierSet.fieldStoreBarrierType(field, getStorageKind(field));
                                 } else {
+                                    assert virtual instanceof VirtualArrayNode;
                                     address = createArrayAddress(graph, newObject, virtual.entryKind(i), ConstantNode.forInt(i, graph));
-                                    barrierType = arrayStoreBarrierType(virtual.entryKind(i));
+                                    barrierType = barrierSet.arrayStoreBarrierType(virtual.entryKind(i));
                                 }
                                 if (address != null) {
-                                    WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType, false);
+                                    WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType);
                                     graph.addBeforeFixed(commit, graph.add(write));
                                 }
                             }
@@ -894,7 +920,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 }
             }
 
-            finishAllocatedObjects(tool, commit, allocations);
+            finishAllocatedObjects(tool, commit, commit, allocations);
             graph.removeFixed(commit);
 
             for (AbstractNewObjectNode recursiveLowering : recursiveLowerings) {
@@ -912,12 +938,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return new NewArrayNode(((VirtualArrayNode) virtual).componentType(), length, true);
     }
 
-    public void finishAllocatedObjects(LoweringTool tool, CommitAllocationNode commit, ValueNode[] allocations) {
+    public void finishAllocatedObjects(LoweringTool tool, FixedWithNextNode insertAfter, CommitAllocationNode commit, ValueNode[] allocations) {
+        FixedWithNextNode insertionPoint = insertAfter;
         StructuredGraph graph = commit.graph();
         for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
             FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(allocations[objIndex]));
             allocations[objIndex] = anchor;
-            graph.addBeforeFixed(commit, anchor);
+            graph.addAfterFixed(insertionPoint, anchor);
+            insertionPoint = anchor;
         }
         /*
          * Note that the FrameState that is assigned to these MonitorEnterNodes isn't the correct
@@ -943,7 +971,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 assert lastDepth < monitorId.getLockDepth();
                 lastDepth = monitorId.getLockDepth();
                 MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], monitorId));
-                graph.addBeforeFixed(commit, enter);
+                graph.addAfterFixed(insertionPoint, enter);
+                insertionPoint = enter;
                 if (enters == null) {
                     enters = new ArrayList<>();
                 }
@@ -966,7 +995,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
         assert commit.hasNoUsages();
-        insertAllocationBarrier(commit, graph);
+        insertAllocationBarrier(insertAfter, commit, graph);
     }
 
     /**
@@ -974,7 +1003,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
      * include the {@link MemoryBarriers#LOAD_STORE} required for final fields if any final fields
      * are being written, as if {@link FinalFieldBarrierNode} were emitted.
      */
-    private static void insertAllocationBarrier(CommitAllocationNode commit, StructuredGraph graph) {
+    private static void insertAllocationBarrier(FixedWithNextNode insertAfter, CommitAllocationNode commit, StructuredGraph graph) {
         int barrier = MemoryBarriers.STORE_STORE;
         outer: for (VirtualObjectNode vobj : commit.getVirtualObjects()) {
             for (ResolvedJavaField field : vobj.type().getInstanceFields(true)) {
@@ -984,59 +1013,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 }
             }
         }
-        graph.addAfterFixed(commit, graph.add(new MembarNode(barrier, LocationIdentity.init())));
-    }
-
-    /**
-     * @param field the field whose barrier type should be returned
-     */
-    protected BarrierType fieldLoadBarrierType(ResolvedJavaField field) {
-        return BarrierType.NONE;
-    }
-
-    protected BarrierType fieldStoreBarrierType(ResolvedJavaField field) {
-        if (getStorageKind(field) == JavaKind.Object) {
-            return BarrierType.FIELD;
-        }
-        return BarrierType.NONE;
-    }
-
-    protected BarrierType arrayStoreBarrierType(JavaKind elementKind) {
-        if (elementKind == JavaKind.Object) {
-            return BarrierType.ARRAY;
-        }
-        return BarrierType.NONE;
-    }
-
-    public BarrierType fieldInitializationBarrier(JavaKind entryKind) {
-        return entryKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
-    }
-
-    public BarrierType arrayInitializationBarrier(JavaKind entryKind) {
-        return entryKind == JavaKind.Object ? BarrierType.ARRAY : BarrierType.NONE;
-    }
-
-    private BarrierType unsafeStoreBarrierType(RawStoreNode store) {
-        if (!store.needsBarrier()) {
-            return BarrierType.NONE;
-        }
-        return guessStoreBarrierType(store.object(), store.value());
-    }
-
-    private BarrierType guessStoreBarrierType(ValueNode object, ValueNode value) {
-        if (value.getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object) {
-            ResolvedJavaType type = StampTool.typeOrNull(object);
-            // Array types must use a precise barrier, so if the type is unknown or is a supertype
-            // of Object[] then treat it as an array.
-            if (type != null && type.isArray()) {
-                return BarrierType.ARRAY;
-            } else if (type == null || type.isAssignableFrom(objectArrayType)) {
-                return BarrierType.UNKNOWN;
-            } else {
-                return BarrierType.FIELD;
-            }
-        }
-        return BarrierType.NONE;
+        graph.addAfterFixed(insertAfter, graph.add(new MembarNode(barrier, LocationIdentity.init())));
     }
 
     public abstract int fieldOffset(ResolvedJavaField field);
@@ -1113,6 +1090,36 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 return new ZeroExtendNode(value, 32);
         }
         return value;
+    }
+
+    public ValueNode arrayImplicitStoreConvert(StructuredGraph graph,
+                    JavaKind entryKind,
+                    ValueNode value,
+                    CommitAllocationNode commit,
+                    VirtualObjectNode virtual,
+                    int valuePos) {
+        if (!virtual.isVirtualByteArray()) {
+            return implicitStoreConvert(graph, entryKind, value);
+        }
+        // A virtual entry in a byte array can span multiple bytes. This shortens the entry to fit
+        // in its declared size.
+        int entryIndex = valuePos + 1;
+        int bytes = 1;
+        while (entryIndex < commit.getValues().size() && commit.getValues().get(entryIndex).isIllegalConstant()) {
+            bytes++;
+            entryIndex++;
+        }
+        assert bytes <= value.getStackKind().getByteCount();
+        ValueNode entry = value;
+        if (value.getStackKind() == JavaKind.Float) {
+            entry = graph.addOrUnique(ReinterpretNode.create(JavaKind.Int, entry, NodeView.DEFAULT));
+        } else if (value.getStackKind() == JavaKind.Double) {
+            entry = graph.addOrUnique(ReinterpretNode.create(JavaKind.Long, entry, NodeView.DEFAULT));
+        }
+        if (bytes < value.getStackKind().getByteCount()) {
+            entry = graph.unique(new NarrowNode(entry, bytes << 3));
+        }
+        return entry;
     }
 
     public final ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {
@@ -1212,5 +1219,33 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         int shift = CodeUtil.log2(metaAccess.getArrayIndexScale(elementKind));
         ValueNode ret = graph.unique(new RightShiftNode(scaledIndex, ConstantNode.forInt(shift, graph)));
         return IntegerConvertNode.convert(ret, StampFactory.forKind(JavaKind.Int), graph, NodeView.DEFAULT);
+    }
+
+    private static void lowerVolatileRead(VolatileReadNode n, LoweringTool tool) {
+        if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+            return;
+        }
+        final StructuredGraph graph = n.graph();
+        MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_READ));
+        graph.addBeforeFixed(n, preMembar);
+        MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_READ));
+        graph.addAfterFixed(n, postMembar);
+        n.replaceAtUsages(InputType.Memory, postMembar);
+        ReadNode nonVolatileRead = graph.add(new ReadNode(n.getAddress(), n.getLocationIdentity(), n.getAccessStamp(NodeView.DEFAULT), n.getBarrierType()));
+        graph.replaceFixedWithFixed(n, nonVolatileRead);
+    }
+
+    private static void lowerVolatileWrite(VolatileWriteNode n, LoweringTool tool) {
+        if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+            return;
+        }
+        final StructuredGraph graph = n.graph();
+        MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_WRITE));
+        graph.addBeforeFixed(n, preMembar);
+        MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_WRITE));
+        graph.addAfterFixed(n, postMembar);
+        n.replaceAtUsages(InputType.Memory, postMembar);
+        WriteNode nonVolatileWrite = graph.add(new WriteNode(n.getAddress(), n.getLocationIdentity(), n.value(), n.getBarrierType()));
+        graph.replaceFixedWithFixed(n, nonVolatileWrite);
     }
 }

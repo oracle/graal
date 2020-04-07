@@ -34,6 +34,7 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.NonmovableByteArrayTypeReader;
@@ -283,6 +284,16 @@ public class FrameInfoDecoder {
         return decodeBci(encodedBci) +
                         ((encodedBci & DURING_CALL_MASK) != 0 ? " duringCall" : "") +
                         ((encodedBci & RETHROW_EXCEPTION_MASK) != 0 ? " rethrowException" : "");
+    }
+
+    public static void logReadableBci(Log log, long encodedBci) {
+        log.signed(decodeBci(encodedBci));
+        if ((encodedBci & DURING_CALL_MASK) != 0) {
+            log.string(" duringCall");
+        }
+        if ((encodedBci & RETHROW_EXCEPTION_MASK) != 0) {
+            log.string(" rethrowException");
+        }
     }
 
     protected static final int TYPE_BITS = 3;

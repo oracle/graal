@@ -24,8 +24,8 @@
  */
 package com.oracle.graal.pointsto.util;
 
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 import static org.graalvm.compiler.debug.DebugContext.NO_GLOBAL_METRIC_VALUES;
+import static org.graalvm.compiler.debug.DebugContext.getDefaultLogStream;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,6 +66,7 @@ public final class CompletionExecutor {
     private volatile CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
 
     private final ForkJoinPool executorService;
+    private final Runnable heartbeatCallback;
 
     private BigBang bb;
     private Timing timing;
@@ -83,8 +84,9 @@ public final class CompletionExecutor {
         void print();
     }
 
-    public CompletionExecutor(BigBang bb, ForkJoinPool forkJoin) {
+    public CompletionExecutor(BigBang bb, ForkJoinPool forkJoin, Runnable heartbeatCallback) {
         this.bb = bb;
+        this.heartbeatCallback = heartbeatCallback;
         executorService = forkJoin;
         state = new AtomicReference<>(State.UNUSED);
         postedOperations = new LongAdder();
@@ -128,7 +130,7 @@ public final class CompletionExecutor {
          * creating a {@link DebugContext} if one is not needed.
          */
         default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
-            return DebugContext.create(options, getDescription(), NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, factories);
+            return DebugContext.create(options, getDescription(), NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), factories);
         }
     }
 
@@ -152,6 +154,7 @@ public final class CompletionExecutor {
                 }
 
                 if (isSequential()) {
+                    heartbeatCallback.run();
                     try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
                                     Scope s = debug.scope("Operation")) {
                         command.run(debug);
@@ -164,6 +167,7 @@ public final class CompletionExecutor {
                         if (timing != null) {
                             startTime = System.nanoTime();
                         }
+                        heartbeatCallback.run();
                         Throwable thrown = null;
                         try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
                                         Scope s = debug.scope("Operation");

@@ -50,6 +50,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected int nextEndIndex;
     protected int unswitches;
     protected int splits;
+    protected int peelings;
     protected int inversionCount;
     protected LoopType loopType;
     protected int unrollFactor;
@@ -205,6 +206,14 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     public void incrementSplits() {
         splits++;
+    }
+
+    public int peelings() {
+        return peelings;
+    }
+
+    public void incrementPeelings() {
+        peelings++;
     }
 
     @Override

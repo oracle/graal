@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,11 @@ package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -57,7 +57,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
-import com.oracle.truffle.regex.RegexLanguageObject;
+import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
@@ -116,7 +116,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    public final class RegexResultGetStartMethod implements RegexLanguageObject {
+    public final class RegexResultGetStartMethod extends AbstractRegexObject {
 
         private final RegexResult result;
 
@@ -144,7 +144,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    public final class RegexResultGetEndMethod implements RegexLanguageObject {
+    public final class RegexResultGetEndMethod extends AbstractRegexObject {
 
         private final RegexResult result;
 

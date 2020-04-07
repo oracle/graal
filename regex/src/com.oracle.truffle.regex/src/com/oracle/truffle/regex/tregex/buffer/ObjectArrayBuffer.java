@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@
 package com.oracle.truffle.regex.tregex.buffer;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Iterator;
 
 /**
@@ -65,7 +66,7 @@ import java.util.Iterator;
  * }
  * </pre>
  */
-public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iterable<Object> {
+public final class ObjectArrayBuffer<T> extends AbstractArrayBuffer implements Iterable<T> {
 
     private Object[] buf;
 
@@ -87,15 +88,12 @@ public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iter
         buf = Arrays.copyOf(buf, newSize);
     }
 
-    public Object get(int i) {
-        return buf[i];
+    @SuppressWarnings("unchecked")
+    public T get(int i) {
+        return (T) buf[i];
     }
 
-    public Object getLast() {
-        return buf[length() - 1];
-    }
-
-    public void add(Object o) {
+    public void add(T o) {
         if (length == buf.length) {
             grow(length * 2);
         }
@@ -103,8 +101,14 @@ public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iter
         length++;
     }
 
-    public void addAll(ObjectArrayBuffer other) {
+    public void addAll(ObjectArrayBuffer<T> other) {
         addAll(other.buf, 0, other.length);
+    }
+
+    public void addAll(Object[] arr) {
+        ensureCapacity(length + arr.length);
+        System.arraycopy(arr, 0, buf, length, arr.length);
+        length += arr.length;
     }
 
     public void addAll(Object[] arr, int fromIndex, int toIndex) {
@@ -123,20 +127,25 @@ public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iter
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T[] toArray(T[] a) {
+    public void sort(Comparator<T> comparator) {
+        Arrays.sort((T[]) buf, 0, length, comparator);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <ST> ST[] toArray(ST[] a) {
         if (a.length < length) {
-            return (T[]) Arrays.copyOf(buf, length, a.getClass());
+            return (ST[]) Arrays.copyOf(buf, length, a.getClass());
         }
         System.arraycopy(buf, 0, a, 0, length);
         return a;
     }
 
     @Override
-    public Iterator<Object> iterator() {
-        return new ObjectBufferIterator(buf, length);
+    public Iterator<T> iterator() {
+        return new ObjectBufferIterator<>(buf, length);
     }
 
-    private static final class ObjectBufferIterator implements Iterator<Object> {
+    private static final class ObjectBufferIterator<T> implements Iterator<T> {
 
         private final Object[] buf;
         private final int size;
@@ -152,9 +161,10 @@ public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iter
             return i < size;
         }
 
+        @SuppressWarnings("unchecked")
         @Override
-        public Object next() {
-            return buf[i++];
+        public T next() {
+            return (T) buf[i++];
         }
     }
 }

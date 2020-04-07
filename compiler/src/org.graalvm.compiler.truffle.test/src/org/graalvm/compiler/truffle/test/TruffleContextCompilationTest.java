@@ -95,11 +95,6 @@ public class TruffleContextCompilationTest extends PartialEvaluationTest {
             return env;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
         public static Env getCurrentContext() {
             return getCurrentContext(Language.class);
         }

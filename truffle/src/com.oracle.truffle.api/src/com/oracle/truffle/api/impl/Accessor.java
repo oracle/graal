@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,9 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.io.FileSystem;
@@ -96,8 +98,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.options.OptionKey;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -131,13 +131,15 @@ public abstract class Accessor {
         getTVMCI().reloadEngineOptions(runtimeData, optionValues);
     }
 
+    protected void onEngineClosed(Object runtimeData) {
+        getTVMCI().onEngineClosed(runtimeData);
+    }
+
     public abstract static class NodeSupport {
 
         public abstract boolean isInstrumentable(RootNode rootNode);
 
         public abstract void setCallTarget(RootNode rootNode, RootCallTarget callTarget);
-
-        public abstract boolean isTaggedWith(Node node, Class<?> tag);
 
         public abstract boolean isCloneUninitializedSupported(RootNode rootNode);
 
@@ -168,6 +170,8 @@ public abstract class Accessor {
 
         public abstract void applyPolyglotEngine(RootNode from, RootNode to);
 
+        public abstract void forceAdoption(Node parent, Node child);
+
     }
 
     public abstract static class SourceSupport {
@@ -187,6 +191,8 @@ public abstract class Accessor {
         public abstract SourceBuilder newBuilder(String language, File origin);
 
         public abstract void setFileSystemContext(SourceBuilder builder, Object fileSystemContext);
+
+        public abstract void invalidateAfterPreinitialiation(Source source);
     }
 
     public abstract static class DumpSupport {
@@ -204,15 +210,22 @@ public abstract class Accessor {
         public abstract Object createDefaultNodeObject(Node node);
 
         public abstract boolean isValidNodeObject(Object obj);
+
+        public abstract Object createLegacyMetaObjectWrapper(Object receiver, Object result);
+
+        public abstract Object unwrapLegacyMetaObjectWrapper(Object receiver);
     }
 
     public abstract static class EngineSupport {
+        public abstract <T> Iterable<T> loadServices(Class<T> type);
 
         public abstract Object getInstrumentationHandler(Object polyglotObject);
 
         public abstract void exportSymbol(Object polyglotLanguageContext, String symbolName, Object value);
 
         public abstract Map<String, ? extends Object> getExportedSymbols();
+
+        public abstract Object getPolyglotBindingsObject();
 
         public abstract Object importSymbol(Object polyglotLanguageContext, Env env, String symbolName);
 
@@ -240,7 +253,7 @@ public abstract class Accessor {
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
 
-        public abstract LanguageInfo getObjectLanguage(Object obj);
+        public abstract Env getLegacyLanguageEnv(Object obj, boolean nullForHost);
 
         public abstract ContextReference<Object> getCurrentContextReference(Object polyglotLanguage);
 
@@ -276,7 +289,7 @@ public abstract class Accessor {
 
         public abstract boolean isNativeAccessAllowed(Object polyglotLanguageContext, Env env);
 
-        public abstract boolean inContextPreInitialization(Object polyglotLanguageContext);
+        public abstract boolean inContextPreInitialization(Object polyglotObject);
 
         public abstract Object createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, TruffleContext spiContext);
 
@@ -287,6 +300,8 @@ public abstract class Accessor {
         public abstract void leaveInternalContext(Object polyglotContext, Object prev);
 
         public abstract void closeInternalContext(Object polyglotContext);
+
+        public abstract boolean isInternalContextEntered(Object polyglotContext);
 
         public abstract void reportAllLanguageContexts(Object polyglotEngine, Object contextsListener);
 
@@ -328,7 +343,9 @@ public abstract class Accessor {
 
         public abstract Object findMetaObjectForLanguage(Object polyglotLanguageContext, Object value);
 
-        public abstract boolean isDefaultFileSystem(FileSystem fs);
+        public abstract boolean isInternal(FileSystem fs);
+
+        public abstract boolean hasAllAccess(FileSystem fs);
 
         public abstract String getLanguageHome(Object engineObject);
 
@@ -406,6 +423,28 @@ public abstract class Accessor {
         public abstract Set<String> getInternalIds();
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
+
+        public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
+
+        public abstract void onSourceCreated(Source source);
+
+        public abstract String getReinitializedPath(TruffleFile truffleFile);
+
+        public abstract URI getReinitializedURI(TruffleFile truffleFile);
+
+        public abstract LanguageInfo getLanguageInfo(Object polyglotInstrument, Class<? extends TruffleLanguage<?>> languageClass);
+
+        public abstract <C> Object getDefaultLanguageView(TruffleLanguage<C> truffleLanguage, C context, Object value);
+
+        public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
+
+        public abstract Object getScopedView(LanguageInfo viewLanguage, Node location, Frame frame, Object value);
+
+        public abstract boolean initializeLanguage(Object polyglotLanguageContext, LanguageInfo targetLanguage);
+
+        public abstract RuntimeException engineToLanguageException(Throwable t);
+
+        public abstract RuntimeException engineToInstrumentException(Throwable t);
     }
 
     public abstract static class LanguageSupport {
@@ -441,11 +480,19 @@ public abstract class Accessor {
 
         public abstract ExecutableNode parseInline(Env env, Source code, Node context, MaterializedFrame frame);
 
-        public abstract String toStringIfVisible(Env env, Object obj, boolean checkVisibility);
+        public abstract boolean isVisible(Env env, Object value);
 
-        public abstract Object findMetaObject(Env env, Object value);
+        public abstract String legacyToString(Env env, Object obj);
 
-        public abstract SourceSection findSourceLocation(Env env, Object value);
+        public abstract <C> String legacyToString(TruffleLanguage<C> language, C context, Object obj);
+
+        public abstract Object legacyFindMetaObject(Env env, Object value);
+
+        public abstract <C> Object legacyFindMetaObject(TruffleLanguage<C> language, C context, Object value);
+
+        public abstract SourceSection legacyFindSourceLocation(Env env, Object value);
+
+        public abstract <C> SourceSection legacyFindSourceLocation(TruffleLanguage<C> language, C context, Object value);
 
         public abstract boolean isObjectOfLanguage(Env env, Object value);
 
@@ -512,7 +559,7 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
 
-        public abstract boolean isDefaultFileSystem(Object fileSystemContext);
+        public abstract boolean hasAllAccess(Object fileSystemContext);
 
         public abstract TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
 
@@ -523,6 +570,11 @@ public abstract class Accessor {
         public abstract FileSystem getFileSystem(TruffleFile truffleFile);
 
         public abstract Path getPath(TruffleFile truffleFile);
+
+        public abstract Object getScopedView(TruffleLanguage.Env env, Node node, Frame frame, Object value);
+
+        public abstract Object getLanguageView(TruffleLanguage.Env env, Object value);
+
     }
 
     public abstract static class InstrumentSupport {
@@ -594,6 +646,8 @@ public abstract class Accessor {
         public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 
         public abstract boolean isInputValueSlotIdentifier(Object identifier);
+
+        public abstract boolean isInstrumentable(Node node);
 
     }
 
@@ -702,6 +756,7 @@ public abstract class Accessor {
             case "com.oracle.truffle.api.test.polyglot.FileSystemsTest$TestAPIAccessor":
             case "com.oracle.truffle.api.impl.TVMCIAccessor":
             case "org.graalvm.compiler.truffle.runtime.CompilerRuntimeAccessor":
+            case "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor":
             case "com.oracle.truffle.api.library.LibraryAccessor":
                 // OK, classes allowed to use accessors
                 break;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,41 +30,53 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
+@GenerateUncached
 public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected void doOp(LLVMNativePointer address, long value) {
-        getLLVMMemoryCached().putI64(address, value);
+    @Specialization(guards = "!isAutoDerefHandle(language, address)")
+    protected void doOp(LLVMNativePointer address, long value,
+                    @CachedLanguage LLVMLanguage language) {
+        language.getLLVMMemory().putI64(address, value);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected void doOpDerefHandleI64(LLVMNativePointer addr, long value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
-        doOpManagedI64(getDerefHandleGetReceiverNode().execute(addr), value, nativeWrite);
+        doOpManagedI64(getReceiver.execute(addr), value, nativeWrite);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)", replaces = "doOpDerefHandleI64")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doOpDerefHandleI64")
     protected void doOpDerefHandle(LLVMNativePointer addr, Object value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
-        doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value, nativeWrite);
+        doOpManaged(getReceiver.execute(addr), value, nativeWrite);
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected void doOpNative(LLVMNativePointer address, LLVMNativePointer value) {
-        getLLVMMemoryCached().putI64(address, value.asNative());
+    @Specialization(guards = "!isAutoDerefHandle(language, address)")
+    protected void doOpNative(LLVMNativePointer address, LLVMNativePointer value,
+                    @CachedLanguage LLVMLanguage language) {
+        language.getLLVMMemory().putI64(address, value.asNative());
     }
 
-    @Specialization(replaces = "doOpNative", guards = "!isAutoDerefHandle(addr)")
+    @Specialization(replaces = "doOpNative", guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, Object value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress) {
-        getLLVMMemoryCached().putI64(addr, toAddress.executeWithTarget(value).asNative());
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress,
+                    @CachedLanguage LLVMLanguage language) {
+        language.getLLVMMemory().putI64(addr, toAddress.executeWithTarget(value).asNative());
     }
 
     @Specialization(limit = "3")

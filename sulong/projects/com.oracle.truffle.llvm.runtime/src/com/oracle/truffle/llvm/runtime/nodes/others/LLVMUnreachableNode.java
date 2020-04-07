@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -39,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 @GenerateWrapper
-public class LLVMUnreachableNode extends LLVMControlFlowNode {
+public abstract class LLVMUnreachableNode extends LLVMControlFlowNode {
 
     public static class LLVMUnreachableException extends ControlFlowException {
         private static final long serialVersionUID = 1L;
@@ -55,7 +56,10 @@ public class LLVMUnreachableNode extends LLVMControlFlowNode {
         return null;
     }
 
-    public void execute(@SuppressWarnings("unused") VirtualFrame frame) {
+    public abstract void execute(VirtualFrame frame);
+
+    @Specialization
+    void doUnreachable() {
         CompilerDirectives.transferToInterpreter();
         throw new LLVMUnreachableException();
     }
@@ -64,4 +68,16 @@ public class LLVMUnreachableNode extends LLVMControlFlowNode {
     public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
         return new LLVMUnreachableNodeWrapper(this, probe);
     }
+
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract boolean isStatement();
+
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract void setStatement(boolean statementTag);
 }

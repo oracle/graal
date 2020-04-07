@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,38 +40,57 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.StateTransitionCanonicalizer;
+import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
+import com.oracle.truffle.regex.tregex.nfa.NFA;
+import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 
-import java.util.Iterator;
+public final class DFATransitionCanonicalizer extends StateTransitionCanonicalizer<NFA, NFAState, NFAStateTransition, DFAStateTransitionBuilder> {
 
-public class DFATransitionCanonicalizer extends StateTransitionCanonicalizer<NFATransitionSet, DFAStateTransitionBuilder> {
+    private final DFAGenerator dfaGen;
 
-    private final boolean genericCG;
-
-    public DFATransitionCanonicalizer(boolean genericCG) {
-        this.genericCG = genericCG;
+    public DFATransitionCanonicalizer(DFAGenerator dfaGen) {
+        super(dfaGen.getNfa(), dfaGen.isForward(), dfaGen.isForward());
+        this.dfaGen = dfaGen;
     }
 
     @Override
-    protected boolean isSameTargetMergeAllowed(DFAStateTransitionBuilder a, DFAStateTransitionBuilder b) {
-        if (!genericCG) {
-            return true;
-        }
-        assert a.getTransitionSet().isForward() && b.getTransitionSet().isForward();
-        assert a.getTransitionSet().equals(b.getTransitionSet());
-        Iterator<NFAStateTransition> ia = a.getTransitionSet().iterator();
-        Iterator<NFAStateTransition> ib = b.getTransitionSet().iterator();
-        while (ia.hasNext()) {
-            final NFAStateTransition lastA = ia.next();
-            final NFAStateTransition lastB = ib.next();
-            // implied by a.getTransitionSet().equals(b.getTransitionSet())
-            assert lastA.getTarget().equals(lastB.getTarget());
-            if (!(lastA.getSource().equals(lastB.getSource()) && lastA.getGroupBoundaries().equals(lastB.getGroupBoundaries()))) {
+    protected boolean canMerge(DFAStateTransitionBuilder a, DFAStateTransitionBuilder b) {
+        TransitionSet<NFA, NFAState, NFAStateTransition> tsA = a.getTransitionSet();
+        TransitionSet<NFA, NFAState, NFAStateTransition> tsB = b.getTransitionSet();
+        if (isPrioritySensitive()) {
+            if (tsA.size() != tsB.size()) {
                 return false;
             }
+            for (int i = 0; i < tsA.size(); i++) {
+                final NFAStateTransition tA = tsA.getTransition(i);
+                final NFAStateTransition tB = tsB.getTransition(i);
+                // implied by a.getTransitionSet().equals(b.getTransitionSet())
+                if (!tA.getTarget().equals(tB.getTarget())) {
+                    return false;
+                }
+                if (dfaGen.isGenericCG() && !(tA.getSource().equals(tB.getSource()) && tA.getGroupBoundaries().equals(tB.getGroupBoundaries()))) {
+                    return false;
+                }
+            }
+            return true;
+        } else {
+            return tsA.getTargetStateSet().equals(tsB.getTargetStateSet());
         }
-        return true;
+    }
+
+    @Override
+    protected DFAStateTransitionBuilder createTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFA, NFAState> targetStateSet, CodePointSet matcherBuilder) {
+        return dfaGen.isGenericCG() ? new DFACaptureGroupTransitionBuilder(transitions, targetStateSet, matcherBuilder, dfaGen)
+                        : new DFAStateTransitionBuilder(transitions, targetStateSet, matcherBuilder);
+    }
+
+    @Override
+    protected NFAStateTransition[] createTransitionArray(int size) {
+        return new NFAStateTransition[size];
     }
 
     @Override

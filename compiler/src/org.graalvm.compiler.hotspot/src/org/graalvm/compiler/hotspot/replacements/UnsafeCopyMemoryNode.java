@@ -36,14 +36,14 @@ import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
-import org.graalvm.compiler.nodes.memory.MemoryNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_16, allowedUsageTypes = {Memory})
-public class UnsafeCopyMemoryNode extends AbstractStateSplit implements Lowerable, MemoryCheckpoint.Single, MemoryAccess {
+public class UnsafeCopyMemoryNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill, MemoryAccess {
 
     public static final NodeClass<UnsafeCopyMemoryNode> TYPE = NodeClass.create(UnsafeCopyMemoryNode.class);
 
@@ -90,12 +90,12 @@ public class UnsafeCopyMemoryNode extends AbstractStateSplit implements Lowerabl
     }
 
     @Override
-    public MemoryNode getLastLocationAccess() {
-        return (MemoryNode) lastLocationAccess;
+    public MemoryKill getLastLocationAccess() {
+        return (MemoryKill) lastLocationAccess;
     }
 
     @Override
-    public void setLastLocationAccess(MemoryNode lla) {
+    public void setLastLocationAccess(MemoryKill lla) {
         Node newLla = ValueNodeUtil.asNode(lla);
         updateUsages(lastLocationAccess, newLla);
         lastLocationAccess = newLla;

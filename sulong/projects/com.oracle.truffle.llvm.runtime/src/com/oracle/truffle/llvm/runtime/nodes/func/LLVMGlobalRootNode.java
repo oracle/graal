@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,10 +40,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
@@ -55,13 +57,13 @@ public class LLVMGlobalRootNode extends RootNode {
     private final DirectCallNode startFunction;
     private final int mainFunctionType;
     private final String applicationPath;
-    private final LLVMFunctionDescriptor mainFunctionDesc;
+    @Child LLVMAccessSymbolNode accessMainFunction;
 
-    public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, LLVMFunctionDescriptor mainFunctionDescriptor, CallTarget startFunction, String applicationPath) {
+    public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, LLVMFunction mainFunction, CallTarget startFunction, String applicationPath) {
         super(language, descriptor);
         this.startFunction = Truffle.getRuntime().createDirectCallNode(startFunction);
-        this.mainFunctionType = getMainFunctionType(mainFunctionDescriptor);
-        this.mainFunctionDesc = mainFunctionDescriptor;
+        this.mainFunctionType = getMainFunctionType(mainFunction);
+        this.accessMainFunction = LLVMAccessSymbolNodeGen.create(mainFunction);
         this.applicationPath = applicationPath;
     }
 
@@ -81,7 +83,7 @@ public class LLVMGlobalRootNode extends RootNode {
             try {
                 Object appPath = new LLVMArgumentBuffer(applicationPath);
                 LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(appPath));
-                Object[] realArgs = new Object[]{basePointer, mainFunctionType, applicationPathObj, LLVMManagedPointer.create(mainFunctionDesc)};
+                Object[] realArgs = new Object[]{basePointer, mainFunctionType, applicationPathObj, accessMainFunction.execute()};
                 Object result = startFunction.call(realArgs);
                 getContext().awaitThreadTermination();
                 return (int) result;
@@ -104,10 +106,10 @@ public class LLVMGlobalRootNode extends RootNode {
      * with the correct signature. This is necessary because languages like Rust use non-standard C
      * main functions.
      */
-    private static int getMainFunctionType(LLVMFunctionDescriptor mainFunctionDescriptor) {
+    private static int getMainFunctionType(LLVMFunction function) {
         CompilerAsserts.neverPartOfCompilation();
-        Type returnType = mainFunctionDescriptor.getType().getReturnType();
-        Type[] argumentTypes = mainFunctionDescriptor.getType().getArgumentTypes();
+        Type returnType = function.getType().getReturnType();
+        Type[] argumentTypes = function.getType().getArgumentTypes();
         if (argumentTypes.length > 0 && argumentTypes[0] instanceof PrimitiveType) {
             if (((PrimitiveType) argumentTypes[0]).getPrimitiveKind() == PrimitiveKind.I64) {
                 return 1;

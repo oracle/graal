@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,6 +36,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
@@ -46,8 +47,8 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @TypeSystemReference(LLVMTypes.class)
 public abstract class LLVMNode extends Node {
@@ -72,16 +73,6 @@ public abstract class LLVMNode extends Node {
     public static final int I1_SIZE_IN_BYTES = 1;
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;
-
-    public static LLVMMemory getLLVMMemory() {
-        CompilerAsserts.neverPartOfCompilation();
-        return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
-    }
-
-    public static UnsafeArrayAccess getUnsafeArrayAccess() {
-        CompilerAsserts.neverPartOfCompilation();
-        return LLVMLanguage.getLanguage().getCapability(UnsafeArrayAccess.class);
-    }
 
     protected static PrintStream nativeCallStatisticsStream(ContextReference<LLVMContext> context) {
         CompilerAsserts.neverPartOfCompilation();
@@ -191,5 +182,17 @@ public abstract class LLVMNode extends Node {
             }
         }
         return String.valueOf(value);
+    }
+
+    public static boolean isAutoDerefHandle(LLVMLanguage language, LLVMNativePointer addr) {
+        return isAutoDerefHandle(language, addr.asNative());
+    }
+
+    public static boolean isAutoDerefHandle(LLVMLanguage language, long addr) {
+        // checking the bit is cheaper than getting the assumption in interpreted mode
+        if (CompilerDirectives.inCompiledCode() && language.getNoDerefHandleAssumption().isValid()) {
+            return false;
+        }
+        return LLVMNativeMemory.isDerefHandleMemory(addr);
     }
 }

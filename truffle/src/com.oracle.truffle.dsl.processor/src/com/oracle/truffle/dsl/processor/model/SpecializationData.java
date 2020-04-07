@@ -86,18 +86,21 @@ public final class SpecializationData extends TemplateMethod {
     private int index;
     private DSLExpression limitExpression;
     private SpecializationData excludeCompanion;
+    private final boolean reportPolymorphism;
 
-    public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions, boolean hasUnexpectedResultRewrite) {
+    public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions, boolean hasUnexpectedResultRewrite,
+                    boolean reportPolymorphism) {
         super(template);
         this.node = node;
         this.kind = kind;
         this.exceptions = exceptions;
         this.hasUnexpectedResultRewrite = hasUnexpectedResultRewrite;
         this.index = template.getNaturalOrder();
+        this.reportPolymorphism = reportPolymorphism;
     }
 
     public SpecializationData copy() {
-        SpecializationData copy = new SpecializationData(node, this, kind, new ArrayList<>(exceptions), hasUnexpectedResultRewrite);
+        SpecializationData copy = new SpecializationData(node, this, kind, new ArrayList<>(exceptions), hasUnexpectedResultRewrite, reportPolymorphism);
         copy.guards.addAll(guards);
         copy.caches = new ArrayList<>(caches);
         copy.assumptionExpressions = new ArrayList<>(assumptionExpressions);
@@ -149,6 +152,10 @@ public final class SpecializationData extends TemplateMethod {
 
     public void setReachesFallback(boolean reachesFallback) {
         this.reachesFallback = reachesFallback;
+    }
+
+    public boolean isReportPolymorphism() {
+        return reportPolymorphism;
     }
 
     public boolean isReachesFallback() {
@@ -331,7 +338,7 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind) {
-        this(node, template, kind, new ArrayList<SpecializationThrowsData>(), false);
+        this(node, template, kind, new ArrayList<SpecializationThrowsData>(), false, true);
     }
 
     public Set<SpecializationData> getReplaces() {
@@ -385,6 +392,9 @@ public final class SpecializationData extends TemplateMethod {
 
         if (!getCaches().isEmpty()) {
             for (CacheExpression cache : getCaches()) {
+                if (cache.isEagerInitialize()) {
+                    continue;
+                }
                 if (!cache.isAlwaysInitialized() || cache.isCachedContext() || cache.isCachedLanguage()) {
                     return true;
                 }

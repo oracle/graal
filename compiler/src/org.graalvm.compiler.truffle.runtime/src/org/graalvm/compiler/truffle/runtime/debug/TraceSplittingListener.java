@@ -59,6 +59,17 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
         }
     }
 
+    @Override
+    public void onCompilationSplitFailed(OptimizedDirectCallNode callNode, CharSequence reason) {
+        OptimizedCallTarget callTarget = callNode.getCallTarget();
+        if (callTarget.getOptionValue(PolyglotCompilerOptions.TraceSplitting)) {
+            String label = String.format("split failed " + reason);
+            final Map<String, Object> debugProperties = callTarget.getDebugProperties(null);
+            debugProperties.put("SourceSection", extractSourceSection(callNode));
+            TruffleCompilerRuntime.getRuntime().logEvent(0, label, callTarget.toString(), debugProperties);
+        }
+    }
+
     private static String extractSourceSection(OptimizedDirectCallNode node) {
         Node cnode = node;
         while (cnode.getSourceSection() == null && !(cnode instanceof RootNode)) {

@@ -24,28 +24,33 @@
  */
 package com.oracle.svm.truffle.nfi.posix;
 
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.posix.headers.Dlfcn;
-import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError;
-import com.oracle.truffle.api.CompilerDirectives;
-import org.graalvm.nativeimage.hosted.Feature;
+import static com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.LM_ID_NEWLM;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.truffle.nfi.TruffleNFISupport;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posix.headers.Dlfcn;
+import com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.Lmid_t;
+import com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.Lmid_tPointer;
+import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError;
+import com.oracle.svm.truffle.nfi.TruffleNFISupport;
+import com.oracle.truffle.api.CompilerDirectives;
+
 @AutomaticFeature
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public final class PosixTruffleNFIFeature implements Feature {
 
     @Override
@@ -55,6 +60,9 @@ public final class PosixTruffleNFIFeature implements Feature {
 }
 
 final class PosixTruffleNFISupport extends TruffleNFISupport {
+
+    static final int ISOLATED_NAMESPACE_FLAG = 0x10000;
+
     static void initialize() {
         ImageSingletons.add(TruffleNFISupport.class, new PosixTruffleNFISupport());
     }
@@ -64,10 +72,10 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     }
 
     private static String getErrnoGetterFunctionName() {
-        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             return "__errno_location";
         }
-        if (Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)) {
+        if (Platform.includedIn(Platform.DARWIN.class)) {
             return "__error";
         }
         throw VMError.unsupportedFeature("unsupported platform for TruffleNFIFeature");
@@ -78,15 +86,67 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
         return LibC.strdup(src);
     }
 
+    private static PointerBase dlmopen(Lmid_t lmid, String filename, int mode) {
+        try (CTypeConversion.CCharPointerHolder pathPin = CTypeConversion.toCString(filename)) {
+            CCharPointer pathPtr = pathPin.get();
+            return Dlfcn.GNUExtensions.dlmopen(lmid, pathPtr, mode);
+        }
+    }
+
+    /**
+     * A single linking namespace is created lazily and registered on the NFI context instance.
+     */
+    private static PointerBase loadLibraryInNamespace(long nativeContext, String name, int mode) {
+        assert (mode & ISOLATED_NAMESPACE_FLAG) == 0;
+        Target_com_oracle_truffle_nfi_impl_NFIContextLinux context = //
+                        KnownIntrinsics.convertUnknownValue(getContext(nativeContext), Target_com_oracle_truffle_nfi_impl_NFIContextLinux.class);
+
+        // Double-checked locking on the NFI context instance.
+        long namespaceId = context.isolatedNamespaceId;
+        if (namespaceId == 0) {
+            // Checkstyle: allow synchronization
+            synchronized (context) {
+                namespaceId = context.isolatedNamespaceId;
+                if (namespaceId == 0) {
+                    PointerBase handle = dlmopen(WordFactory.signed(LM_ID_NEWLM()), name, mode);
+                    if (handle.equal(WordFactory.zero())) {
+                        return handle;
+                    }
+
+                    Lmid_tPointer namespacePtr = StackValue.get(Lmid_tPointer.class);
+                    int ret = Dlfcn.GNUExtensions.dlinfo(handle, Dlfcn.GNUExtensions.RTLD_DI_LMID(), namespacePtr);
+                    if (ret != 0) {
+                        CompilerDirectives.transferToInterpreter();
+                        String error = PosixUtils.dlerror();
+                        throw VMError.shouldNotReachHere("dlinfo failed to obtain link-map list (namespace) of '" + name + "': " + error);
+                    }
+                    namespaceId = namespacePtr.read().rawValue();
+                    assert namespaceId != 0;
+                    context.isolatedNamespaceId = namespaceId;
+                    return handle;
+                }
+            }
+        }
+
+        // Namespace already created.
+        assert namespaceId != 0;
+        return dlmopen(WordFactory.signed(namespaceId), name, mode);
+    }
+
     @Override
     protected long loadLibraryImpl(long nativeContext, String name, int flags) {
-        PointerBase ret = PosixUtils.dlopen(name, flags);
-        if (ret.equal(WordFactory.zero())) {
+        PointerBase handle;
+        if (Platform.includedIn(Platform.LINUX.class) && (flags & ISOLATED_NAMESPACE_FLAG) != 0) {
+            handle = loadLibraryInNamespace(nativeContext, name, flags & ~ISOLATED_NAMESPACE_FLAG);
+        } else {
+            handle = PosixUtils.dlopen(name, flags);
+        }
+        if (handle.equal(WordFactory.zero())) {
             CompilerDirectives.transferToInterpreter();
             String error = PosixUtils.dlerror();
             throw new UnsatisfiedLinkError(error);
         }
-        return ret.rawValue();
+        return handle.rawValue();
     }
 
     @Override

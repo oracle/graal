@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
@@ -92,12 +91,16 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
     private boolean done = false;
     private boolean reverse = false;
 
-    public void run(RegexASTNode runRoot) {
+    protected void run(RegexASTNode runRoot) {
         run(runRoot, false);
     }
 
-    public void runReverse(RegexASTNode runRoot) {
+    protected void runReverse(RegexASTNode runRoot) {
         run(runRoot, true);
+    }
+
+    protected boolean isForward() {
+        return !reverse;
     }
 
     protected boolean isReverse() {
@@ -129,8 +132,6 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
         }
         if (cur instanceof RegexASTVisitorIterable) {
             return advance((RegexASTVisitorIterable) cur);
-        } else if (cur instanceof MatchFound) {
-            return advance((MatchFound) cur);
         } else {
             return advanceLeafNode(cur);
         }
@@ -165,10 +166,6 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
     }
 
     @Override
-    protected void visit(MatchFound matchFound) {
-    }
-
-    @Override
     protected void leave(Group group) {
     }
 
@@ -193,15 +190,6 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
         doLeave(cur);
         cur = ((RegexASTNode) iterable).getParent();
         return true;
-    }
-
-    private boolean advance(MatchFound matchFound) {
-        if (cur.getParent() != null) {
-            cur = matchFound.getParent();
-            return true;
-        }
-        // all MatchFound nodes must have a parent
-        throw new IllegalStateException();
     }
 
     private boolean advanceLeafNode(RegexASTNode node) {

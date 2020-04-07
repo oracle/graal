@@ -40,7 +40,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
@@ -66,7 +66,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
     @Input private ValueNode fromIndex;
     @Input private NodeInputList<ValueNode> searchValues;
 
-    @OptionalInput(InputType.Memory) private MemoryNode lastLocationAccess;
+    @OptionalInput(InputType.Memory) private MemoryKill lastLocationAccess;
     @OptionalInput(InputType.State) protected FrameState stateBefore;
 
     public AMD64ArrayIndexOfDispatchNode(@ConstantNodeParameter ForeignCallDescriptor stubCallDescriptor, @ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind,
@@ -165,12 +165,12 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
     }
 
     @Override
-    public MemoryNode getLastLocationAccess() {
+    public MemoryKill getLastLocationAccess() {
         return lastLocationAccess;
     }
 
     @Override
-    public void setLastLocationAccess(MemoryNode lla) {
+    public void setLastLocationAccess(MemoryKill lla) {
         updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
         lastLocationAccess = lla;
     }

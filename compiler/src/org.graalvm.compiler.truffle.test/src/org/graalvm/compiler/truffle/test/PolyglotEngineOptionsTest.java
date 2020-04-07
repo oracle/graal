@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.Assert;
@@ -75,6 +76,17 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Inlining));
         Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Splitting));
         Assert.assertEquals(PolyglotCompilerOptions.EngineModeEnum.LATENCY, target.getOptionValue(PolyglotCompilerOptions.Mode));
+    }
+
+    @Test
+    public void testEngineModeLatency() {
+        Assert.assertEquals(OptionStability.STABLE, Engine.create().getOptions().get("engine.Mode").getStability());
+
+        setupContext("engine.Mode", "latency");
+        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        Assert.assertEquals(PolyglotCompilerOptions.EngineModeEnum.LATENCY, target.getOptionValue(PolyglotCompilerOptions.Mode));
+        Assert.assertEquals(false, target.engine.inlining);
+        Assert.assertEquals(false, target.engine.splitting);
     }
 
     @Test(expected = IllegalArgumentException.class)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,15 +102,15 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         for (NFAState s : states) {
             assert this.states[s.getId()] == null;
             this.states[s.getId()] = s;
-            if (s.getNext() == null) {
+            if (s.getSuccessors() == null) {
                 continue;
             }
-            for (NFAStateTransition t : s.getNext()) {
+            for (NFAStateTransition t : s.getSuccessors()) {
                 assert this.transitions[t.getId()] == null || (s == dummyInitialState && this.transitions[t.getId()] == t);
                 this.transitions[t.getId()] = t;
             }
             if (s == dummyInitialState) {
-                for (NFAStateTransition t : s.getPrev()) {
+                for (NFAStateTransition t : s.getPredecessors()) {
                     assert this.transitions[t.getId()] == null;
                     this.transitions[t.getId()] = t;
                 }
@@ -127,7 +127,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     }
 
     public boolean hasReverseUnAnchoredEntry() {
-        return reverseUnAnchoredEntry != null && reverseUnAnchoredEntry.getSource().getPrev().length > 0;
+        return reverseUnAnchoredEntry != null && reverseUnAnchoredEntry.getSource().getPredecessors().length > 0;
     }
 
     public RegexAST getAst() {
@@ -220,6 +220,11 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     }
 
     @Override
+    public int getId(NFAState state) {
+        return state.getId();
+    }
+
+    @Override
     public NFAState getState(int id) {
         return states[id];
     }
@@ -233,10 +238,10 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     }
 
     public void setInitialLoopBack(boolean enable) {
-        if (getUnAnchoredInitialState().getNext().length == 0) {
+        if (getUnAnchoredInitialState().getSuccessors().length == 0) {
             return;
         }
-        NFAStateTransition lastInitTransition = getUnAnchoredInitialState().getNext()[getUnAnchoredInitialState().getNext().length - 1];
+        NFAStateTransition lastInitTransition = getUnAnchoredInitialState().getSuccessors()[getUnAnchoredInitialState().getSuccessors().length - 1];
         if (enable) {
             if (lastInitTransition != initialLoopBack) {
                 getUnAnchoredInitialState().addLoopBackNext(initialLoopBack);
@@ -263,13 +268,13 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     @TruffleBoundary
     public JsonValue toJson(boolean forward) {
         boolean anchoredFinalStateReachable = false;
-        CompilationFinalBitSet bitSet = new CompilationFinalBitSet(transitions.length);
+        CompilationFinalBitSet reachable = new CompilationFinalBitSet(transitions.length);
         for (NFAState s : states) {
             if (s == null || s == dummyInitialState) {
                 continue;
             }
-            for (NFAStateTransition t : s.getNext(forward)) {
-                bitSet.set(t.getId());
+            for (NFAStateTransition t : s.getSuccessors(forward)) {
+                reachable.set(t.getId());
                 if (t.getTarget(forward).isAnchoredFinalState(forward)) {
                     anchoredFinalStateReachable = true;
                 }
@@ -278,7 +283,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         final boolean afsReachable = anchoredFinalStateReachable;
         return Json.obj(Json.prop("states",
                         Arrays.stream(states).map(x -> x == null || x == dummyInitialState || (x.isAnchoredFinalState(forward) && !afsReachable) ? Json.nullValue() : x.toJson(forward))),
-                        Json.prop("transitions", Arrays.stream(transitions).map(x -> x == null || !bitSet.get(x.getId()) ? Json.nullValue() : x.toJson(forward))),
+                        Json.prop("transitions", Arrays.stream(transitions).map(x -> x == null || !reachable.get(x.getId()) ? Json.nullValue() : x.toJson(forward))),
                         Json.prop("anchoredEntry", forward ? fwdEntryToJson(anchoredEntry) : revEntryToJson(reverseAnchoredEntry)),
                         Json.prop("unAnchoredEntry", forward ? fwdEntryToJson(unAnchoredEntry) : revEntryToJson(reverseUnAnchoredEntry)),
                         Json.prop("preCalculatedResults", Json.array(preCalculatedResults)));

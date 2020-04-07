@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,9 @@ package com.oracle.truffle.llvm.parser;
 
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashSet;
 import java.util.List;
@@ -63,9 +65,10 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.nodes.LLVMBitcodeInstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConverter;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyToTruffleConverter;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -76,7 +79,10 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMUnpackVarargsNodeGen;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.types.AggregateType;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -276,33 +282,15 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         }
     }
 
-    private List<LLVMStatementNode> copyArgumentsToFrame(FrameDescriptor frame) {
-        List<FunctionParameter> parameters = method.getParameters();
-        List<LLVMStatementNode> formalParamInits = new ArrayList<>();
-        LLVMExpressionNode stackPointerNode = runtime.getNodeFactory().createFunctionArgNode(0, PrimitiveType.I64);
-        formalParamInits.add(runtime.getNodeFactory().createFrameWrite(PointerType.VOID, stackPointerNode, frame.findFrameSlot(LLVMStack.FRAME_ID)));
-
-        int argIndex = 1;
-        if (method.getType().getReturnType() instanceof StructureType) {
-            argIndex++;
-        }
-        for (FunctionParameter parameter : parameters) {
-            LLVMExpressionNode parameterNode = runtime.getNodeFactory().createFunctionArgNode(argIndex++, parameter.getType());
-            FrameSlot slot = LLVMSymbolReadResolver.findOrAddFrameSlot(frame, parameter);
-            if (isStructByValue(parameter)) {
-                Type type = ((PointerType) parameter.getType()).getPointeeType();
-                formalParamInits.add(
-                                runtime.getNodeFactory().createFrameWrite(parameter.getType(),
-                                                runtime.getNodeFactory().createCopyStructByValue(type, GetStackSpaceFactory.createAllocaFactory(), parameterNode), slot));
-            } else {
-                formalParamInits.add(runtime.getNodeFactory().createFrameWrite(parameter.getType(), parameterNode, slot));
-            }
-        }
-        return formalParamInits;
-    }
-
-    private static boolean isStructByValue(FunctionParameter parameter) {
-        if (parameter.getType() instanceof PointerType && parameter.getParameterAttribute() != null) {
+    /**
+     * True when the function parameter has an LLVM byval attribute attached to it. This usually is
+     * the case for value parameters (e.g. struct Point p) which the compiler decides to pass
+     * through a pointer instead (by creating a copy sometime between the caller and the callee and
+     * passing a pointer to that copy). In bitcode the copy's pointer is then tagged with a byval
+     * attribute.
+     */
+    private static boolean functionParameterHasByValueAttribute(FunctionParameter parameter) {
+        if (parameter.getParameterAttribute() != null) {
             for (Attribute a : parameter.getParameterAttribute().getAttributes()) {
                 if (a instanceof KnownAttribute && ((KnownAttribute) a).getAttr() == Kind.BYVAL) {
                     return true;
@@ -310,5 +298,127 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             }
         }
         return false;
+    }
+
+    /**
+     * Create an expression node that, when executed, will provide an address where the respective
+     * argument should either be copied from or copied into. This is important when passing struct
+     * arguments by value, this node uses getelementptr to infer the location from the source types
+     * into the destination frame slot.
+     *
+     * @param baseAddress Base address from which to calculate the offsets.
+     * @param sourceType Type to index into.
+     * @param indices List of indices to reach a member or element from the base address.
+     */
+    private LLVMExpressionNode getTargetAddress(LLVMExpressionNode baseAddress, Type sourceType, ArrayDeque<Long> indices) {
+        NodeFactory nf = runtime.getNodeFactory();
+
+        int indicesSize = indices.size();
+        Long[] indicesArr = new Long[indicesSize];
+        LLVMExpressionNode[] indexNodes = new LLVMExpressionNode[indicesSize];
+
+        int i = indicesSize - 1;
+        for (Long idx : indices) {
+            indicesArr[i] = idx;
+            indexNodes[i] = nf.createLiteral(idx.longValue(), PrimitiveType.I64);
+            i--;
+        }
+        assert i == -1;
+
+        PrimitiveType[] indexTypes = new PrimitiveType[indicesSize];
+        Arrays.fill(indexTypes, PrimitiveType.I64);
+
+        LLVMExpressionNode nestedGEPs = CommonNodeFactory.createNestedElementPointerNode(
+                        nf,
+                        dataLayout,
+                        indexNodes,
+                        indicesArr,
+                        indexTypes,
+                        baseAddress,
+                        sourceType);
+
+        return nestedGEPs;
+    }
+
+    /**
+     * This function creates a list of statements that, together, copy a value of type
+     * {@code topLevelPointerType} from argument {@code argIndex} to the frame slot {@code
+     * slot} by recursing over the structure of {@code topLevelPointerType}.
+     *
+     * The recursive cases go over the elements (for arrays) and over the members (for structs). The
+     * base case is for everything else ("primitives"), where cascades of getelementptrs are created
+     * for reading from the source and writing into the target frame slot. The cascades of
+     * getelementptr nodes are created by the calls to
+     * {@link LazyToTruffleConverterImpl#getTargetAddress} and then used to load or store from the
+     * source and into the destination respectively.
+     *
+     * @param initializers The accumulator where copy statements are going to be inserted.
+     * @param slot Target frame slot.
+     * @param currentType Current member (for structs) or element (for arrays) type.
+     * @param indices List of indices to reach this member or element from the toplevel object.
+     */
+    private void copyStructArgumentsToFrame(List<LLVMStatementNode> initializers, NodeFactory nodeFactory, FrameSlot slot, int argIndex, PointerType topLevelPointerType, Type currentType,
+                    ArrayDeque<Long> indices) {
+        if (currentType instanceof StructureType || currentType instanceof ArrayType) {
+            AggregateType t = (AggregateType) currentType;
+
+            for (long i = 0; i < t.getNumberOfElements(); i++) {
+                indices.push(i);
+                copyStructArgumentsToFrame(initializers, nodeFactory, slot, argIndex, topLevelPointerType, t.getElementType(i), indices);
+                indices.pop();
+            }
+        } else {
+            LLVMExpressionNode targetAddress = getTargetAddress(CommonNodeFactory.createFrameRead(topLevelPointerType, slot), topLevelPointerType.getPointeeType(), indices);
+            /*
+             * In case the source is a varargs list (va_list), we need to create a node that would
+             * unpack it if it is, and do nothing if it isn't.
+             */
+            LLVMExpressionNode argMaybeUnpack = LLVMUnpackVarargsNodeGen.create(nodeFactory.createFunctionArgNode(argIndex, topLevelPointerType));
+            LLVMExpressionNode sourceAddress = getTargetAddress(argMaybeUnpack, topLevelPointerType.getPointeeType(), indices);
+            LLVMExpressionNode sourceLoadNode = CommonNodeFactory.createLoad(currentType, sourceAddress);
+            LLVMStatementNode storeNode = nodeFactory.createStore(targetAddress, sourceLoadNode, currentType);
+            initializers.add(storeNode);
+        }
+    }
+
+    /**
+     * Copies arguments to the current frame, handling normal "primitives" and byval pointers (e.g.
+     * for structs).
+     */
+    private List<LLVMStatementNode> copyArgumentsToFrame(FrameDescriptor frame) {
+        NodeFactory nodeFactory = runtime.getNodeFactory();
+        List<FunctionParameter> parameters = method.getParameters();
+        List<LLVMStatementNode> formalParamInits = new ArrayList<>();
+        LLVMExpressionNode stackPointerNode = nodeFactory.createFunctionArgNode(0, PrimitiveType.I64);
+        formalParamInits.add(nodeFactory.createFrameWrite(PointerType.VOID, stackPointerNode, frame.findFrameSlot(LLVMStack.FRAME_ID)));
+
+        // There's a struct return type.
+        int argIndex = 1;
+        if (method.getType().getReturnType() instanceof StructureType) {
+            argIndex++;
+        }
+
+        for (FunctionParameter parameter : parameters) {
+            FrameSlot slot = LLVMSymbolReadResolver.findOrAddFrameSlot(frame, parameter);
+
+            if (parameter.getType() instanceof PointerType && functionParameterHasByValueAttribute(parameter)) {
+                // It's a struct passed as a pointer but originally passed by value (because LLVM
+                // and/or ABI), treat it as such.
+                PointerType pointerType = (PointerType) parameter.getType();
+                Type pointeeType = pointerType.getPointeeType();
+                GetStackSpaceFactory allocaFactory = GetStackSpaceFactory.createAllocaFactory();
+                LLVMExpressionNode allocation = allocaFactory.createGetStackSpace(nodeFactory, pointeeType);
+
+                formalParamInits.add(nodeFactory.createFrameWrite(pointerType, allocation, slot));
+
+                ArrayDeque<Long> indices = new ArrayDeque<>();
+                copyStructArgumentsToFrame(formalParamInits, nodeFactory, slot, argIndex++, pointerType, pointeeType, indices);
+            } else {
+                LLVMExpressionNode parameterNode = nodeFactory.createFunctionArgNode(argIndex++, parameter.getType());
+                formalParamInits.add(nodeFactory.createFrameWrite(parameter.getType(), parameterNode, slot));
+            }
+        }
+
+        return formalParamInits;
     }
 }

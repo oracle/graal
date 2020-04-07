@@ -29,8 +29,10 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import org.junit.runner.Description;
+import org.junit.runner.Request;
 
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
@@ -41,6 +43,18 @@ public final class JUnitFeature implements Feature {
         public boolean getAsBoolean() {
             return ImageSingletons.contains(JUnitFeature.class);
         }
+    }
+
+    public static boolean isEnabledAndIncludesClass(Class<?> clazz) {
+        if (ImageSingletons.contains(SVMJUnitRunner.class)) {
+            Request request = ImageSingletons.lookup(SVMJUnitRunner.class).getJUnitRequest();
+            return includesClass(request.getRunner().getDescription(), clazz);
+        }
+        return false;
+    }
+
+    private static boolean includesClass(Description dn, Class<?> clazz) {
+        return clazz.equals(dn.getTestClass()) || dn.getChildren().stream().anyMatch(child -> includesClass(child, clazz));
     }
 
     @Override

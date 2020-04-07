@@ -249,6 +249,15 @@ final class WindowsVMCondition extends VMCondition {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    public void blockNoTransitionUnspecifiedOwner() {
+        mutex.clearUnspecifiedOwner();
+        WindowsVMLockSupport.checkResult(Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
+                        "SleepConditionVariableCS");
+        mutex.setOwnerToUnspecified();
+    }
+
+    @Override
     public long block(long waitNanos) {
         assert waitNanos >= 0;
         long startTimeInNanos = System.nanoTime();

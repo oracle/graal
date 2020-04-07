@@ -126,12 +126,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                                         try {
                                             final boolean enableAutoflush = true;
                                             FileOutputStream result = new FileOutputStream(name);
-                                            if (!Services.IS_IN_NATIVE_IMAGE) {
-                                                printVMConfig(enableAutoflush, result);
-                                            } else {
-                                                // There are no VM arguments for the libgraal
-                                                // library.
-                                            }
+                                            printVMConfig(enableAutoflush, result);
                                             lazy = result;
                                         } catch (FileNotFoundException e) {
                                             throw new RuntimeException("couldn't open file: " + name, e);

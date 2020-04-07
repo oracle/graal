@@ -96,7 +96,7 @@ public class MidTier extends BaseTier<MidTierContext> {
         appendPhase(new FrameStateAssignmentPhase());
 
         if (PartialUnroll.getValue(options)) {
-            LoopPolicies loopPolicies = createLoopPolicies();
+            LoopPolicies loopPolicies = createLoopPolicies(options);
             appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
         }
 
@@ -114,7 +114,7 @@ public class MidTier extends BaseTier<MidTierContext> {
     }
 
     @Override
-    public LoopPolicies createLoopPolicies() {
+    public LoopPolicies createLoopPolicies(OptionValues options) {
         return new DefaultLoopPolicies();
     }
 }

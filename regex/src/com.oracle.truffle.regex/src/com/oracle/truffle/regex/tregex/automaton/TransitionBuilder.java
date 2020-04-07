@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,86 +40,50 @@
  */
 package com.oracle.truffle.regex.tregex.automaton;
 
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * This class represents a power-set automaton state transition fragment to be used by
  * {@link StateTransitionCanonicalizer}.<br>
  * A transition in a power-set automaton consists of a set of transitions of the NFA that the
- * power-set automaton is being built from.
- *
- * @param <TS> a type that should represent the set of NFA transitions currently contained in this
- *            fragment.
+ * power-set automaton is being built from, and the set of characters it can match.
  */
-public class TransitionBuilder<TS extends TransitionSet> implements JsonConvertible {
+public class TransitionBuilder<SI extends StateIndex<? super S>, S extends AbstractState<S, T>, T extends AbstractTransition<S, T>> implements JsonConvertible {
 
-    private final TS transitionSet;
-    private CharSet matcherBuilder;
-    private TransitionBuilder<TS> next;
+    private final TransitionSet<SI, S, T> transitionSet;
+    private CodePointSet matcherBuilder;
 
-    public TransitionBuilder(TS transitionSet, CharSet matcherBuilder) {
+    public TransitionBuilder(T[] transitions, StateSet<SI, S> targetStateSet, CodePointSet matcherBuilder) {
+        this(new TransitionSet<>(transitions, targetStateSet), matcherBuilder);
+    }
+
+    public TransitionBuilder(TransitionSet<SI, S, T> transitionSet, CodePointSet matcherBuilder) {
         this.transitionSet = transitionSet;
         this.matcherBuilder = matcherBuilder;
     }
 
-    /**
-     * Represents the set of NFA transitions currently contained in this transition fragment.
-     */
-    public TS getTransitionSet() {
+    public TransitionSet<SI, S, T> getTransitionSet() {
         return transitionSet;
     }
 
     /**
      * Represents the character set matched by this transition fragment.
      */
-    public CharSet getMatcherBuilder() {
+    public CodePointSet getMatcherBuilder() {
         return matcherBuilder;
     }
 
-    public void setMatcherBuilder(CharSet matcherBuilder) {
+    public void setMatcherBuilder(CodePointSet matcherBuilder) {
         this.matcherBuilder = matcherBuilder;
-    }
-
-    /**
-     * Used by {@link StateTransitionCanonicalizer} for creating linked lists of
-     * {@link TransitionBuilder} instances on the fly.
-     */
-    public TransitionBuilder<TS> getNext() {
-        return next;
-    }
-
-    /**
-     * Used by {@link StateTransitionCanonicalizer} for creating linked lists of
-     * {@link TransitionBuilder} instances on the fly.
-     */
-    public void setNext(TransitionBuilder<TS> next) {
-        this.next = next;
-    }
-
-    /**
-     * Merge {@code this} and {@code other} into a newly created {@link TransitionBuilder} . The new
-     * {@code transitionSet} is created by calling {@link TransitionSet#createMerged(TransitionSet)}
-     * on {@code this.transitionSet} with {@code other.transitionSet} as parameter. The
-     * {@code matcherBuilder} of the new {@link TransitionBuilder} will be set to
-     * {@code mergedMatcher} directly.
-     * 
-     * @return the newly created {@link TransitionBuilder}. Overriding classes are expected to
-     *         return an instance of their own type!
-     */
-    @SuppressWarnings("unchecked")
-    public TransitionBuilder<TS> createMerged(TransitionBuilder<TS> other, CharSet mergedMatcher) {
-        return new TransitionBuilder<>((TS) transitionSet.createMerged(other.transitionSet), mergedMatcher);
     }
 
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return Json.obj(Json.prop("matcherBuilder", getMatcherBuilder()),
-                        Json.prop("transitionSet", getTransitionSet()));
+        return Json.obj(Json.prop("matcherBuilder", getMatcherBuilder()));
     }
 }

@@ -43,16 +43,7 @@ import com.oracle.truffle.tools.chromeinspector.InspectorDebugger;
 
 public class SLInspectDebugTest {
 
-    private static final String CODE1 = "function main() {\n" +
-                    "  a = 10;\n" +
-                    "  b = factorial(a/2) / 60;\n" +
-                    "  while (b > 0) {\n" +
-                    "    c = a + b;\n" +
-                    "    b = b - c/10;\n" +
-                    "  }\n" +
-                    "  return b;\n" +
-                    "}\n" +
-                    "function factorial(n) {\n" +
+    private static final String FACTORIAL = "function factorial(n) {\n" +
                     "  f = 1;\n" +
                     "  i = 2;\n" +
                     "  while (i <= n) {\n" +
@@ -62,6 +53,15 @@ public class SLInspectDebugTest {
                     "  }\n" +
                     "  return f;\n" +
                     "}";
+    private static final String CODE1 = "function main() {\n" +
+                    "  a = 10;\n" +
+                    "  b = factorial(a/2) / 60;\n" +
+                    "  while (b > 0) {\n" +
+                    "    c = a + b;\n" +
+                    "    b = b - c/10;\n" +
+                    "  }\n" +
+                    "  return b;\n" +
+                    "}\n" + FACTORIAL;
     private static final String CODE2 = "function main() {\n" +
                     "  n = 10;\n" +
                     "  i = 0;\n" +
@@ -590,7 +590,7 @@ public class SLInspectDebugTest {
         } else {
             tester.sendMessage("{\"id\":5,\"method\":\"Runtime.evaluate\",\"params\":{\"expression\":\"foo0\"}}");
             assertTrue(tester.compareReceivedMessages(
-                            "{\"result\":{\"result\":{\"description\":\"Function foo0\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"4\"}},\"id\":5}\n"));
+                            "{\"result\":{\"result\":{\"description\":\"foo0() {\\n  n = 0;}\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"4\"}},\"id\":5}\n"));
             tester.sendMessage("{\"id\":6,\"method\":\"Debugger.setBreakpointOnFunctionCall\",\"params\":{\"objectId\":\"" + (objectId++) + "\"}}");
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"breakpointId\":\"1\"},\"id\":6}\n"));
@@ -1807,7 +1807,7 @@ public class SLInspectDebugTest {
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"bb\",\"value\":{\"description\":\"true\",\"type\":\"boolean\",\"value\":true},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"big\",\"value\":{\"description\":\"152415787532388367501905199875019052100\",\"type\":\"number\",\"value\":\"152415787532388367501905199875019052100\"},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"str\",\"value\":{\"description\":\"A String\",\"type\":\"string\",\"value\":\"A String\"},\"configurable\":true,\"writable\":true}," +
-                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"f\",\"value\":{\"description\":\"Function fn\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"4\"},\"configurable\":true,\"writable\":true}," +
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"f\",\"value\":{\"description\":\"fn() {\\n  return 2;\\n}\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"4\"},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"f2\",\"value\":{\"description\":\"0\",\"type\":\"number\",\"value\":0},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":5}\n"));
 
         tester.sendMessage("{\"id\":6,\"method\":\"Debugger.setVariableValue\",\"params\":{\"scopeNumber\":0,\"variableName\":\"m\",\"newValue\":{\"value\":1000},\"callFrameId\":\"0\"}}");
@@ -1844,8 +1844,8 @@ public class SLInspectDebugTest {
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"bb\",\"value\":{\"description\":\"false\",\"type\":\"boolean\",\"value\":false},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"big\",\"value\":{\"description\":\"23230572289118153328333583928030329684079829544396666111742077337982514410000\",\"type\":\"number\",\"value\":\"23230572289118153328333583928030329684079829544396666111742077337982514410000\"},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"str\",\"value\":{\"description\":\"A Different String\",\"type\":\"string\",\"value\":\"A Different String\"},\"configurable\":true,\"writable\":true}," +
-                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"f\",\"value\":{\"description\":\"Function fn\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"8\"},\"configurable\":true,\"writable\":true}," +
-                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"f2\",\"value\":{\"description\":\"Function fn\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"9\"},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":11}\n"));
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"f\",\"value\":{\"description\":\"fn() {\\n  return 2;\\n}\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"8\"},\"configurable\":true,\"writable\":true}," +
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"f2\",\"value\":{\"description\":\"fn() {\\n  return 2;\\n}\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"9\"},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":11}\n"));
 
         // Resume to finish:
         tester.sendMessage("{\"id\":20,\"method\":\"Debugger.resume\"}");
@@ -1930,6 +1930,62 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":6,\"method\":\"Debugger.evaluateOnCallFrame\",\"params\":{\"callFrameId\":\"0\",\"expression\":\"(function(x){var a=[];for(var o=x;o!==null&&typeof o !== 'undefined';o=o.__proto__){a.push(Object.getOwnPropertyNames(o))};return a})(obj)\",\"silent\":true,\"includeCommandLineAPI\":true,\"objectGroup\":\"console\",\"returnByValue\":true}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":{\"type\":\"object\",\"value\":[[\"a\",\"b\",\"c\"]]}},\"id\":6}\n"));
+
+        // Resume to finish:
+        tester.sendMessage("{\"id\":20,\"method\":\"Debugger.resume\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":20}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n"));
+        tester.finish();
+    }
+
+    @Test
+    public void testCompletionUpdate() throws Exception {
+        tester = InspectorTester.start(true);
+        Source source = Source.newBuilder("sl", CODE1, "Code1Compl.sl").build();
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
+        tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
+        tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
+        tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":1}\n" +
+                        "{\"result\":{},\"id\":2}\n" +
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
+        tester.eval(source);
+        long id = tester.getContextId();
+        // Suspend at the beginning of the script:
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":0,\"scriptId\":\"0\",\"endColumn\":0,\"startColumn\":0,\"startLine\":0,\"length\":0,\"executionContextId\":" + id + ",\"url\":\"" + SL_BUILTIN_URI + "\",\"hash\":\"ffffffffffffffffffffffffffffffffffffffff\"}}\n" +
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":18,\"scriptId\":\"1\",\"endColumn\":1,\"startColumn\":0,\"startLine\":0,\"length\":245,\"executionContextId\":" + id + ",\"url\":\"" + slTestURI + "\",\"hash\":\"f8058ed0f3c2f0acf3e37e59f953127afdba90e5\"}}\n" +
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"1\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":1}," +
+                                                 "\"url\":\"" + slTestURI + "\"}]}}\n"));
+        // Get global completion:
+        tester.sendMessage("{\"id\":6,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"2\",\"ownProperties\":false,\"accessorPropertiesOnly\":false,\"generatePreview\":false}}");
+        String functionDescription = FACTORIAL.replace("\n", "\\n").substring("function ".length());
+        String globals = tester.receiveMessages(true,
+                        "{\"result\":{\"result\":[",
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"factorial\",\"value\":{\"description\":\"" + functionDescription + "\",\"className\":\"Function\",\"type\":\"function\"",
+                                                 "]},\"id\":6}\n");
+        assertFalse(globals.contains("foo0") || globals.contains("foo1"));
+        tester.sendMessage("{\"id\":7,\"method\":\"Debugger.evaluateOnCallFrame\",\"params\":{\"callFrameId\":\"0\",\"expression\":\"function foo0() {n = 0;} function foo1() {n = 1;}\",\"silent\":true,\"includeCommandLineAPI\":true,\"objectGroup\":\"console\",\"returnByValue\":true}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{\"result\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"value\":null}},\"id\":7}\n"));
+
+        // Get new global completion:
+        tester.sendMessage("{\"id\":8,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"2\",\"ownProperties\":false,\"accessorPropertiesOnly\":false,\"generatePreview\":false}}");
+        tester.receiveMessages(true,
+                        "{\"result\":{\"result\":[",
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"factorial\",\"value\":{\"description\":\"" + functionDescription + "\",\"className\":\"Function\",\"type\":\"function\"",
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"foo0\",\"value\":{\"description\":\"foo0() {n = 0;}\",\"className\":\"Function\",\"type\":\"function\"",
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"foo1\",\"value\":{\"description\":\"foo1() {n = 1;}\",\"className\":\"Function\",\"type\":\"function\"",
+                                                 "]},\"id\":8}\n");
 
         // Resume to finish:
         tester.sendMessage("{\"id\":20,\"method\":\"Debugger.resume\"}");

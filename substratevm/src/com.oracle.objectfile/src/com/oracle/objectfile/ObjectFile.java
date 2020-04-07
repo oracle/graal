@@ -24,8 +24,8 @@
  */
 package com.oracle.objectfile;
 
+import java.io.Closeable;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -43,13 +43,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
-import sun.misc.Unsafe;
+import sun.nio.ch.DirectBuffer;
+import org.graalvm.compiler.debug.DebugContext;
 
 /**
  * Abstract superclass for object files. An object file is a binary container for sections,
@@ -114,6 +117,13 @@ public abstract class ObjectFile {
      */
     public interface ValueEnum {
         long value();
+    }
+
+    private final int pageSize;
+
+    public ObjectFile(int pageSize) {
+        assert pageSize > 0 : "invalid page size";
+        this.pageSize = pageSize;
     }
 
     /*
@@ -206,25 +216,25 @@ public abstract class ObjectFile {
         }
     }
 
-    private static ObjectFile getNativeObjectFile(boolean runtimeDebugInfoGeneration) {
+    private static ObjectFile getNativeObjectFile(int pageSize, boolean runtimeDebugInfoGeneration) {
         switch (ObjectFile.getNativeFormat()) {
             case ELF:
-                return new ELFObjectFile(runtimeDebugInfoGeneration);
+                return new ELFObjectFile(pageSize, runtimeDebugInfoGeneration);
             case MACH_O:
-                return new MachOObjectFile();
+                return new MachOObjectFile(pageSize);
             case PECOFF:
-                return new PECoffObjectFile();
+                return new PECoffObjectFile(pageSize);
             default:
                 throw new AssertionError("unreachable");
         }
     }
 
-    public static ObjectFile getNativeObjectFile() {
-        return getNativeObjectFile(true);
+    public static ObjectFile getNativeObjectFile(int pageSize) {
+        return getNativeObjectFile(pageSize, true);
     }
 
-    public static ObjectFile createRuntimeDebugInfo() {
-        return getNativeObjectFile(true);
+    public static ObjectFile createRuntimeDebugInfo(int pageSize) {
+        return getNativeObjectFile(pageSize, true);
     }
 
     /*
@@ -274,6 +284,8 @@ public abstract class ObjectFile {
         AARCH64_R_LD_PREL_LO19,
         AARCH64_R_GOT_LD_PREL19,
         AARCH64_R_AARCH64_LDST64_ABS_LO12_NC,
+        AARCH64_R_AARCH64_LDST32_ABS_LO12_NC,
+        AARCH64_R_AARCH64_LDST16_ABS_LO12_NC,
         AARCH64_R_AARCH64_LDST8_ABS_LO12_NC,
         AARCH64_R_AARCH64_LDST128_ABS_LO12_NC;
 
@@ -1077,6 +1089,17 @@ public abstract class ObjectFile {
         // flag compatibility
     }
 
+    /**
+     * API method provided to allow a native image generator to provide details of types, code and
+     * heap data inserted into a native image.
+     * 
+     * @param debugInfoProvider an implementation of the provider interface that communicates
+     *            details of the relevant types, code and heap data.
+     */
+    public void installDebugInfo(@SuppressWarnings("unused") DebugInfoProvider debugInfoProvider) {
+        // do nothing by default
+    }
+
     protected static Iterable<LayoutDecision> allDecisions(final Map<Element, LayoutDecisionMap> decisions) {
         return () -> StreamSupport.stream(decisions.values().spliterator(), false)
                         .flatMap(layoutDecisionMap -> StreamSupport.stream(layoutDecisionMap.spliterator(), false)).iterator();
@@ -1199,13 +1222,15 @@ public abstract class ObjectFile {
     private final Map<Element, List<BuildDependency>> dependenciesByDependingElement = new IdentityHashMap<>();
     private final Map<Element, List<BuildDependency>> dependenciesByDependedOnElement = new IdentityHashMap<>();
 
+    @SuppressWarnings("try")
     public final void write(FileChannel outputChannel) {
         List<Element> sortedObjectFileElements = new ArrayList<>();
         int totalSize = bake(sortedObjectFileElements);
         try {
             ByteBuffer buffer = outputChannel.map(MapMode.READ_WRITE, 0, totalSize);
-            writeBuffer(sortedObjectFileElements, buffer);
-            outputChannel.close();
+            try (Closeable ignored = () -> ((DirectBuffer) buffer).cleaner().clean()) {
+                writeBuffer(sortedObjectFileElements, buffer);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -1620,37 +1645,8 @@ public abstract class ObjectFile {
 
     protected abstract int getMinimumFileSize();
 
-    private static Unsafe getUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-        }
-    }
-
-    private static int hostPageSize = getHostPageSize();
-
-    public static int getHostPageSize() {
-        try {
-            return getUnsafe().pageSize();
-        } catch (IllegalArgumentException e) {
-            return 4096;
-        }
-    }
-
-    private int pageSize = hostPageSize;
-
-    public void setPageSize(int pageSize) {
-        this.pageSize = pageSize;
-    }
-
     public int getPageSize() {
+        assert pageSize > 0 : "must be initialized";
         return pageSize;
     }
 
@@ -1741,6 +1737,52 @@ public abstract class ObjectFile {
             return t;
         } else {
             return createSymbolTable();
+        }
+    }
+
+    /**
+     * Temporary storage for a debug context installed in a nested scope under a call. to
+     * {@link #withDebugContext}
+     */
+    private DebugContext debugContext = null;
+
+    /**
+     * Allows a task to be executed with a debug context in a named subscope bound to the object
+     * file and accessible to code executed during the lifetime of the task. Invoked code may obtain
+     * access to the debug context using method {@link #debugContext}.
+     * 
+     * @param context a context to be bound to the object file for the duration of the task
+     *            execution.
+     * @param scopeName a name to be used to define a subscope current while the task is being
+     *            executed.
+     * @param task a task to be executed while the context is bound to the object file.
+     */
+    @SuppressWarnings("try")
+    public void withDebugContext(DebugContext context, String scopeName, Runnable task) {
+        try (DebugContext.Scope s = context.scope(scopeName)) {
+            this.debugContext = context;
+            task.run();
+        } catch (Throwable e) {
+            throw debugContext.handle(e);
+        } finally {
+            debugContext = null;
+        }
+    }
+
+    /**
+     * Allows a consumer to retrieve the debug context currently bound to this object file. This
+     * method must only called underneath an invocation of method {@link #withDebugContext}.
+     * 
+     * @param scopeName a name to be used to define a subscope current while the consumer is active.
+     * @param action an action parameterised by the debug context.
+     */
+    @SuppressWarnings("try")
+    public void debugContext(String scopeName, Consumer<DebugContext> action) {
+        assert debugContext != null;
+        try (DebugContext.Scope s = debugContext.scope(scopeName)) {
+            action.accept(debugContext);
+        } catch (Throwable e) {
+            throw debugContext.handle(e);
         }
     }
 }

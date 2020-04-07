@@ -69,6 +69,8 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
 
     private String uniqueName;
 
+    private final boolean ignoreUnexpected;
+
     public ExecutableTypeData(NodeData node, TypeMirror returnType, String uniqueName, TypeMirror frameParameter, List<TypeMirror> evaluatedParameters) {
         this.node = node;
         this.returnType = returnType;
@@ -76,12 +78,14 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
         this.evaluatedParameters = evaluatedParameters;
         this.uniqueName = uniqueName;
         this.method = null;
+        this.ignoreUnexpected = false;
     }
 
-    public ExecutableTypeData(NodeData node, ExecutableElement method, int signatureSize, List<TypeMirror> frameTypes) {
+    public ExecutableTypeData(NodeData node, ExecutableElement method, int signatureSize, List<TypeMirror> frameTypes, boolean ignoreUnexpected) {
         this.node = node;
         this.method = method;
         this.returnType = method.getReturnType();
+        this.ignoreUnexpected = ignoreUnexpected;
         TypeMirror foundFrameParameter = null;
         List<? extends VariableElement> parameters = method.getParameters();
 
@@ -188,7 +192,10 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
     }
 
     public boolean hasUnexpectedValue() {
-        return method == null ? false : ElementUtils.canThrowTypeExact(method.getThrownTypes(), types.UnexpectedResultException);
+        if (ignoreUnexpected || method == null) {
+            return false;
+        }
+        return ElementUtils.canThrowTypeExact(method.getThrownTypes(), types.UnexpectedResultException);
     }
 
     public boolean isFinal() {

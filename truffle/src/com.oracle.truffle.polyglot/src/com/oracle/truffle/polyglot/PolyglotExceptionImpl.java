@@ -57,7 +57,6 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -66,16 +65,17 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 
-final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
+final class PolyglotExceptionImpl extends AbstractExceptionImpl {
 
     private static final String CAUSE_CAPTION = "Caused by host exception: ";
 
     private static final boolean TRACE_STACK_TRACE_WALKING = false;
 
-    private PolyglotException api;
+    private PolyglotException impl;
 
+    final PolyglotImpl polyglot;
+    final PolyglotEngineImpl engine;
     final PolyglotContextImpl context;
-    private final PolyglotEngineImpl engine;
     final Throwable exception;
     private final List<TruffleStackTraceElement> guestFrames;
 
@@ -95,17 +95,21 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
     // Exception coming from a language
     PolyglotExceptionImpl(PolyglotLanguageContext languageContext, Throwable original) {
-        this(languageContext.getImpl(), languageContext.getEngine(), languageContext, original);
+        this(languageContext.getImpl(), languageContext.context.engine, languageContext, original);
     }
 
-    // Exception coming from an instrument
     PolyglotExceptionImpl(PolyglotEngineImpl engine, Throwable original) {
         this(engine.impl, engine, null, original);
     }
 
-    private PolyglotExceptionImpl(AbstractPolyglotImpl impl, PolyglotEngineImpl engine, PolyglotLanguageContext languageContext, Throwable original) {
-        super(impl);
-        Objects.requireNonNull(engine);
+    // Exception coming from an instrument
+    PolyglotExceptionImpl(PolyglotImpl polyglot, Throwable original) {
+        this(polyglot, null, null, original);
+    }
+
+    private PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, PolyglotLanguageContext languageContext, Throwable original) {
+        super(polyglot);
+        this.polyglot = polyglot;
         this.engine = engine;
         this.context = (languageContext != null) ? languageContext.context : null;
         this.exception = original;
@@ -122,17 +126,17 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
             com.oracle.truffle.api.source.SourceSection section = truffleException.getSourceLocation();
             if (section != null) {
-                Objects.requireNonNull(languageContext, "Source location can not be accepted without language context.");
                 com.oracle.truffle.api.source.Source truffleSource = section.getSource();
                 String language = truffleSource.getLanguage();
                 if (language == null) {
-                    PolyglotLanguage foundLanguage = languageContext.getEngine().findLanguage(null, language, truffleSource.getMimeType(), false, true);
+                    Objects.requireNonNull(engine, "Source location can not be accepted without language context.");
+                    PolyglotLanguage foundLanguage = engine.findLanguage(null, language, truffleSource.getMimeType(), false, true);
                     if (foundLanguage != null) {
                         language = foundLanguage.getId();
                     }
                 }
-                Source source = getAPIAccess().newSource(language, truffleSource);
-                this.sourceLocation = getAPIAccess().newSourceSection(source, section);
+                Source source = polyglot.getAPIAccess().newSource(language, truffleSource);
+                this.sourceLocation = polyglot.getAPIAccess().newSourceSection(source, section);
             } else {
                 this.sourceLocation = null;
             }
@@ -195,7 +199,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
     @Override
     public void onCreate(PolyglotException instance) {
-        this.api = instance;
+        this.impl = instance;
     }
 
     @Override
@@ -206,7 +210,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
     @Override
     public Throwable asHostException() {
         if (!(exception instanceof HostException)) {
-            throw new PolyglotUnsupportedException(
+            throw PolyglotEngineException.unsupported(
                             String.format("Unsupported operation %s.%s. You can ensure that the operation is supported using %s.%s.",
                                             PolyglotException.class.getSimpleName(), "asHostException()",
                                             PolyglotException.class.getSimpleName(), "isHostException()"));
@@ -230,7 +234,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
         synchronized (s.lock()) {
             // Print our stack trace
             if (isInternalError() || getMessage() == null || getMessage().isEmpty()) {
-                s.println(api);
+                s.println(impl);
             } else {
                 s.println(getMessage());
             }
@@ -239,12 +243,12 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             int languageIdLength = 0; // java
             for (StackFrame traceElement : getPolyglotStackTrace()) {
                 if (!traceElement.isHostFrame()) {
-                    languageIdLength = Math.max(languageIdLength, getAPIAccess().getImpl(traceElement).getLanguage().getId().length());
+                    languageIdLength = Math.max(languageIdLength, polyglot.getAPIAccess().getImpl(traceElement).getLanguage().getId().length());
                 }
             }
 
             for (StackFrame traceElement : getPolyglotStackTrace()) {
-                s.println("\tat " + getAPIAccess().getImpl(traceElement).toStringImpl(languageIdLength));
+                s.println("\tat " + polyglot.getAPIAccess().getImpl(traceElement).toStringImpl(languageIdLength));
             }
 
             // Print cause, if any
@@ -287,11 +291,6 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
     @Override
     public StackTraceElement[] getStackTrace() {
         return getJavaStackTrace().clone();
-    }
-
-    @Override
-    public PolyglotEngineImpl getEngine() {
-        return engine;
     }
 
     @Override
@@ -440,7 +439,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
         StackFrameIterator(PolyglotExceptionImpl impl) {
             this.impl = impl;
-            this.apiAccess = impl.getAPIAccess();
+            this.apiAccess = impl.polyglot.getAPIAccess();
 
             Throwable cause = impl.exception;
             while (cause.getCause() != null && cause.getStackTrace().length == 0) {
@@ -479,7 +478,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                 throw new NoSuchElementException();
             }
             fetchedNext = null;
-            return apiAccess.newPolyglotStackTraceElement(impl.api, next);
+            return apiAccess.newPolyglotStackTraceElement(impl.impl, next);
         }
 
         PolyglotExceptionFrame fetchNext() {
@@ -592,7 +591,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
             StackTraceElement element = firstElement;
             int index = nextElementIndex;
-            while (isGuestToHostReflectiveCall(element) && nextElementIndex < hostStack.length) {
+            while (isGuestToHostReflectiveCall(element) && index < hostStack.length) {
                 element = hostStack[index++];
             }
             if (isGuestToHostCallFromHostInterop(element)) {

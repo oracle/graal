@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,10 +59,10 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.test.options.WasmTestOptions;
 import org.graalvm.wasm.utils.cases.WasmCase;
+import org.graalvm.wasm.utils.cases.WasmCaseData;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.Truffle;
@@ -125,32 +125,35 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return prid != null;
     }
 
-    private static Value runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) {
+    private static void runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) {
         boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
 
         final PrintStream oldOut = System.out;
-        resetStatus(oldOut, PHASE_PARSE_ICON, "parsing");
-        for (Source source : sources) {
-            context.eval(source);
-        }
-
-        // The sequence of WebAssembly functions to execute.
-        // Run custom initialization.
-        // Execute the main function (exported as "_main").
-        // Then, optionally save memory and globals, and compare them.
-        // Execute a special function, which resets memory and globals to their default values.
-        Value mainFunction = context.getBindings("wasm").getMember("_main");
-        Value resetContext = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_CONTEXT);
-        Value customInitialize = context.getBindings("wasm").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
-        Value saveContext = context.getBindings("wasm").getMember(TestutilModule.Names.SAVE_CONTEXT);
-        Value compareContexts = context.getBindings("wasm").getMember(TestutilModule.Names.COMPARE_CONTEXTS);
-
-        Value result = null;
-        resetStatus(oldOut, phaseIcon, phaseLabel);
-        ByteArrayOutputStream capturedStdout;
-        Object firstIterationContextState = null;
-
         try {
+            resetStatus(oldOut, PHASE_PARSE_ICON, "parsing");
+
+            try {
+                sources.forEach(context::eval);
+            } catch (PolyglotException e) {
+                validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
+                return;
+            }
+
+            // The sequence of WebAssembly functions to execute.
+            // Run custom initialization.
+            // Execute the main function (exported as "_main").
+            // Then, optionally save memory and globals, and compare them.
+            // Execute a special function, which resets memory and globals to their default values.
+            Value mainFunction = context.getBindings("wasm").getMember("_main");
+            Value resetContext = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_CONTEXT);
+            Value customInitialize = context.getBindings("wasm").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+            Value saveContext = context.getBindings("wasm").getMember(TestutilModule.Names.SAVE_CONTEXT);
+            Value compareContexts = context.getBindings("wasm").getMember(TestutilModule.Names.COMPARE_CONTEXTS);
+
+            resetStatus(oldOut, phaseIcon, phaseLabel);
+            ByteArrayOutputStream capturedStdout;
+            Object firstIterationContextState = null;
+
             for (int i = 0; i != iterations; ++i) {
                 try {
                     capturedStdout = new ByteArrayOutputStream();
@@ -162,7 +165,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                     }
 
                     // Execute benchmark.
-                    result = mainFunction.execute();
+                    final Value result = mainFunction.execute();
 
                     // Save context state, and check that it's consistent with the previous one.
                     if (iterationNeedsStateCheck(i)) {
@@ -182,20 +185,21 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 } catch (PolyglotException e) {
                     // We cannot label the tests with polyglot errors, because they might
                     // semantically be return values of the test.
-                    validateThrown(testCase.data().expectedErrorMessage(), e);
+                    if (testCase.data().expectedErrorTime() == WasmCaseData.ErrorType.Validation) {
+                        validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
+                        return;
+                    }
+                    validateThrown(testCase.data(), WasmCaseData.ErrorType.Runtime, e);
                 } catch (Throwable t) {
                     final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
                     e.setStackTrace(new StackTraceElement[0]);
                     throw e;
-                } finally {
-                    System.setOut(oldOut);
                 }
             }
         } finally {
+            System.setOut(oldOut);
             context.close(true);
         }
-
-        return result;
     }
 
     private static boolean iterationNeedsStateCheck(int i) {
@@ -231,14 +235,18 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
     private WasmTestStatus runTestCase(WasmCase testCase) {
         try {
-            Map<String, byte[]> binaries = testCase.createBinaries();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
+            contextBuilder.allowExperimentalOptions(true);
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
             }
 
-            contextBuilder.allowExperimentalOptions(true);
+            if (WasmTestOptions.STORE_CONSTANTS_POLICY != null && !WasmTestOptions.STORE_CONSTANTS_POLICY.equals("")) {
+                contextBuilder.option("wasm.StoreConstantsPolicy", WasmTestOptions.STORE_CONSTANTS_POLICY);
+                System.out.println("wasm.StoreConstantsPolicy: " + WasmTestOptions.STORE_CONSTANTS_POLICY);
+            }
+
             contextBuilder.option("wasm.Builtins", includedExternalModules());
             String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {
@@ -246,13 +254,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             }
 
             Context context;
-
-            ArrayList<Source> sources = new ArrayList<>();
-            for (Map.Entry<String, byte[]> entry : binaries.entrySet()) {
-                Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(entry.getValue()), entry.getKey());
-                Source source = sourceBuilder.build();
-                sources.add(source);
-            }
+            ArrayList<Source> sources = testCase.getSources();
 
             // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
             int interpreterIterations = Integer.parseInt(testCase.options().getProperty("interpreter-iterations", String.valueOf(DEFAULT_INTERPRETER_ITERATIONS)));
@@ -296,14 +298,11 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         }
     }
 
-    private static void validateThrown(String expectedErrorMessage, PolyglotException e) throws PolyglotException {
-        if (expectedErrorMessage != null) {
-            if (!expectedErrorMessage.equals(e.getMessage())) {
-                throw e;
-            }
-        } else {
+    private static void validateThrown(WasmCaseData data, WasmCaseData.ErrorType phase, PolyglotException e) throws PolyglotException {
+        if (data.expectedErrorMessage() == null || !data.expectedErrorMessage().equals(e.getMessage())) {
             throw e;
         }
+        Assert.assertEquals("Unexpected error phase (should not have been thrown during the running phase).", data.expectedErrorTime(), phase);
     }
 
     @Override

@@ -25,6 +25,7 @@
 package com.oracle.svm.core.code;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
@@ -216,11 +217,9 @@ public final class CodeInfoAccess {
     }
 
     public static long lookupTotalFrameSize(CodeInfo info, long ip) {
-        return CodeInfoDecoder.lookupTotalFrameSize(info, ip);
-    }
-
-    public static long lookupExceptionOffset(CodeInfo info, long ip) {
-        return CodeInfoDecoder.lookupExceptionOffset(info, ip);
+        SimpleCodeInfoQueryResult codeInfoQueryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
+        lookupCodeInfo(info, ip, codeInfoQueryResult);
+        return CodeInfoQueryResult.getTotalFrameSize(codeInfoQueryResult.getEncodedFrameSize());
     }
 
     public static NonmovableArray<Byte> getReferenceMapEncoding(CodeInfo info) {
@@ -231,8 +230,12 @@ public final class CodeInfoAccess {
         return CodeInfoDecoder.lookupReferenceMapIndex(info, ip);
     }
 
-    public static void lookupCodeInfo(CodeInfo info, long ip, CodeInfoQueryResult codeInfo) {
-        CodeInfoDecoder.lookupCodeInfo(info, ip, codeInfo);
+    public static void lookupCodeInfo(CodeInfo info, long ip, CodeInfoQueryResult codeInfoQueryResult) {
+        CodeInfoDecoder.lookupCodeInfo(info, ip, codeInfoQueryResult);
+    }
+
+    public static void lookupCodeInfo(CodeInfo info, long ip, SimpleCodeInfoQueryResult codeInfoQueryResult) {
+        CodeInfoDecoder.lookupCodeInfo(info, ip, codeInfoQueryResult);
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")

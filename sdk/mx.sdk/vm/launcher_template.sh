@@ -45,7 +45,7 @@ for e in "${relative_cp[@]}"; do
     absolute_cp+=("${location}/${e}")
 done
 
-jvm_args=("-Dorg.graalvm.launcher.shell=true")
+jvm_args=("-Dorg.graalvm.launcher.shell=true" "-Dorg.graalvm.launcher.executablename=$0")
 launcher_args=()
 
 # Unfortunately, parsing of `--jvm.*` and `--vm.*` arguments has to be done blind:
@@ -99,6 +99,15 @@ for o in "$@"; do
                 absolute_cp+=("${e}")
             done
         fi
+    elif [[ "$o" == --native || "$o" == --native.* ]]; then
+        >&2 echo "The native version of '$(basename "$source")' does not exist: cannot use '$o'."
+        if [[ $(basename "$source") == polyglot ]]; then
+            extra=' --language:all'
+        else
+            extra=''
+        fi
+        >&2 echo "If native-image is installed, you may build it with 'native-image --macro:<macro_name>$extra'."
+        exit 1
     else
         launcher_args+=("$o")
     fi
@@ -110,4 +119,4 @@ if [[ "${VERBOSE_GRAALVM_LAUNCHERS}" == "true" ]]; then
     set -x
 fi
 
-exec "${location}/<jre_bin>/java" "${jvm_args[@]}" <extra_jvm_args> -cp "${cp}" '<main_class>' "${launcher_args[@]}"
+exec "${location}/<jre_bin>/java" <extra_jvm_args> "${jvm_args[@]}" -cp "${cp}" '<main_class>' "${launcher_args[@]}"

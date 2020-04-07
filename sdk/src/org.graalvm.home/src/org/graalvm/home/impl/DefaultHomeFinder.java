@@ -162,7 +162,7 @@ public final class DefaultHomeFinder extends HomeFinder {
         }
 
         final Path home;
-        if (ImageInfo.inImageCode()) {
+        if (ImageInfo.inImageRuntimeCode()) {
             final String graalvmHomeValue = System.getProperty("org.graalvm.home");
             if (graalvmHomeValue != null) {
                 verbose("GraalVM home already set to: ", graalvmHomeValue);
@@ -259,7 +259,22 @@ public final class DefaultHomeFinder extends HomeFinder {
                 res = Collections.unmodifiableMap(collectStandaloneHomes());
             } else {
                 Path languages = JAVA_SPEC <= 8 ? Paths.get("jre", "languages") : Paths.get("languages");
-                res = Collections.unmodifiableMap(collectHomes(home.resolve(languages)));
+                res = collectHomes(home.resolve(languages));
+                for (Object property : System.getProperties().keySet()) {
+                    if (property instanceof String) {
+                        String name = ((String) property);
+                        if (name.startsWith("org.graalvm.language.") && name.endsWith(".home")) {
+                            String after = name.substring("org.graalvm.language.".length());
+                            if (after.length() > ".home".length()) {
+                                String languageId = after.substring(0, after.length() - ".home".length());
+                                if (!languageId.contains(".")) {
+                                    res.put(languageId, Paths.get(System.getProperty(name)));
+                                }
+                            }
+                        }
+                    }
+                }
+                res = Collections.unmodifiableMap(res);
             }
             if (!ImageInfo.inImageBuildtimeCode()) {
                 languageHomes = res;

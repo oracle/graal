@@ -24,13 +24,13 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.options.OptionValuesImpl;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.File;
 
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.options.OptionValuesImpl;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -61,7 +61,7 @@ final class TruffleDebugOptions {
     /**
      * Shadows {@code org.graalvm.compiler.debug.DebugOptions.PrintGraphTarget}.
      */
-    public enum PrintGraphTarget {
+    enum PrintGraphTarget {
         File,
         Network,
         Disable;
@@ -79,7 +79,8 @@ final class TruffleDebugOptions {
         OptionValuesImpl result = optionValues;
         if (result == null) {
             final EconomicMap<OptionKey<?>, Object> valuesMap = EconomicMap.create();
-            final OptionDescriptors descriptors = new TruffleDebugOptionsOptionDescriptors();
+            final OptionDescriptors descriptors = OptionDescriptors.createUnion(new TruffleDebugOptionsOptionDescriptors(),
+                            new SharedTruffleRuntimeOptionsOptionDescriptors());
             for (Map.Entry<String, Object> e : TruffleCompilerRuntime.getRuntime().getOptions().entrySet()) {
                 final OptionDescriptor descriptor = descriptors.get(e.getKey());
                 final OptionKey<?> k = descriptor != null ? descriptor.getKey() : null;
@@ -98,6 +99,6 @@ final class TruffleDebugOptions {
     }
 
     // Initialized by the options of the same name in org.graalvm.compiler.debug.DebugOptions
-    @Option(help = "", category = OptionCategory.INTERNAL) public static final OptionKey<PrintGraphTarget> PrintGraph = new OptionKey<>(File, PrintGraphTarget.getOptionType());
-    @Option(help = "", category = OptionCategory.INTERNAL) public static final OptionKey<Boolean> PrintTruffleTrees = new OptionKey<>(true);
+    @Option(help = "", category = OptionCategory.INTERNAL) //
+    static final OptionKey<PrintGraphTarget> PrintGraph = new OptionKey<>(File, PrintGraphTarget.getOptionType());
 }

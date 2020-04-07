@@ -40,10 +40,7 @@
  */
 package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 
 /**
@@ -98,32 +95,4 @@ public class ObjectType {
         return null;
     }
 
-    /**
-     * Create a {@link ForeignAccess} to access a specific {@link DynamicObject}.
-     *
-     * @param object the object to be accessed
-     * @since 0.8 or earlier
-     * @deprecated use {@link #dispatch()} instead.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(DynamicObject object) {
-        return null;
-    }
-
-    @SuppressWarnings("deprecation")
-    static com.oracle.truffle.api.interop.ForeignAccess createDefaultForeignAccess() {
-        return com.oracle.truffle.api.interop.ForeignAccess.create(new com.oracle.truffle.api.interop.ForeignAccess.Factory() {
-            @TruffleBoundary
-            @Override
-            public boolean canHandle(TruffleObject obj) {
-                throw new IllegalArgumentException(obj.toString() + " cannot be shared");
-            }
-
-            @Override
-            public CallTarget accessMessage(com.oracle.truffle.api.interop.Message tree) {
-                throw UnsupportedMessageException.raise(tree);
-            }
-        });
-    }
 }

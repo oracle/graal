@@ -46,6 +46,15 @@ public class NodeCostUtil {
     private static final CounterKey sizeComputationCount = DebugContext.counter("GraphCostComputationCount_Size");
     private static final CounterKey sizeVerificationCount = DebugContext.counter("GraphCostVerificationCount_Size");
 
+    public static int computeNodesSize(Iterable<Node> nodes) {
+        int size = 0;
+        for (Node n : nodes) {
+            size += n.estimatedNodeSize().value;
+        }
+        assert size >= 0;
+        return size;
+    }
+
     @SuppressWarnings("try")
     public static int computeGraphSize(StructuredGraph graph) {
         sizeComputationCount.increment(graph.getDebug());

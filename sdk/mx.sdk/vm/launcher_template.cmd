@@ -30,6 +30,7 @@
 setlocal enabledelayedexpansion
 
 set location=%~dp0
+set executablename=%~f0
 
 set "relcp=<classpath>"
 set "realcp="
@@ -43,7 +44,7 @@ for /f "tokens=1* delims=;" %%i in ("%relcp%") do (
 )
 if not "%relcp_next%"=="%relcp%" set "relcp=%relcp_next%" & goto :nextcp
 
-set "jvm_args=-Dorg.graalvm.launcher.shell=true"
+set "jvm_args=-Dorg.graalvm.launcher.shell=true "-Dorg.graalvm.launcher.executablename=%executablename%""
 set "launcher_args="
 set "args_delim="
 
@@ -71,6 +72,12 @@ if not "%~1"=="" (
     set "jvm_arg=-!u_arg:~5!"
   ) else if "!u_arg:~0,6!"=="--jvm." (
     set "jvm_arg=-!u_arg:~6!"
+  ) else if "!u_arg:~0,9!"=="--native." (
+    echo "The native version of this launcher does not exist: cannot use '--native.*'."
+    exit /b 1
+  ) else if "!u_arg!"=="--native" (
+    echo "The native version of this launcher does not exist: cannot use '--native'."
+    exit /b 1
   )
 
   if not "!jvm_arg!"=="" (
@@ -101,4 +108,4 @@ if not "%~1"=="" (
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
-"%location%<jre_bin>\java" %jvm_args% <extra_jvm_args> -cp "%realcp%" <main_class> %launcher_args%
+"%location%<jre_bin>\java" <extra_jvm_args> %jvm_args% -cp "%realcp%" <main_class> %launcher_args%

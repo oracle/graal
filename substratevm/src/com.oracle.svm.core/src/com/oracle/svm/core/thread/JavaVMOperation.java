@@ -30,7 +30,9 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.SubstrateUtil.Thunk;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.jdk.SplittableRandomAccessors;
 
 /**
  * The abstract base class for all VM operations that are allocated on the Java heap. Allocating the
@@ -52,6 +54,12 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
 
     protected JavaVMOperation(String name, SystemEffect systemEffect) {
         super(name, systemEffect);
+        /*
+         * Calling SplittableRandomAccessors#getDefaultGen() here to prevent
+         * SplittableRandomAccessors#initialize synchronized method call inside VMOperation lock,
+         * that can leads to deadlock.
+         */
+        SplittableRandomAccessors.getDefaultGen();
         VMError.guarantee(!SubstrateUtil.HOSTED, "must not be created at image build time");
     }
 
@@ -75,6 +83,7 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void setQueuingThread(NativeVMOperationData data, IsolateThread thread) {
         queuingThread = thread;
     }
@@ -85,6 +94,7 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void setFinished(NativeVMOperationData data, boolean value) {
         finished = value;
     }

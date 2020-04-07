@@ -1,0 +1,5 @@
+>[0] javac Embedding*.java -d ${TMP_DIR}
+>[0] java -ea -cp .:${TMP_DIR} Embedding
+Everything is OK!
+>[0] java -ea -cp ${TMP_DIR} EmbeddingDoubled
+Everything is OK!

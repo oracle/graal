@@ -60,11 +60,13 @@ final class PolyglotThreadInfo {
     volatile boolean cancelled;
     private volatile long lastEntered;
     private volatile long timeExecuted;
+    private boolean deprioritized;
 
     private static volatile ThreadMXBean threadBean;
 
     PolyglotThreadInfo(Thread thread) {
         this.thread = new WeakReference<>(thread);
+        this.deprioritized = false;
     }
 
     Thread getThread() {
@@ -77,10 +79,26 @@ final class PolyglotThreadInfo {
 
     void enter(PolyglotEngineImpl engine) {
         assert Thread.currentThread() == getThread();
+        if (!engine.noPriorityChangeNeeded.isValid() && !deprioritized) {
+            lowerPriority();
+            deprioritized = true;
+        }
         int count = ++enteredCount;
         if (!engine.noThreadTimingNeeded.isValid() && count == 1) {
             lastEntered = getTime();
         }
+
+    }
+
+    @TruffleBoundary
+    private void lowerPriority() {
+        getThread().setPriority(Thread.MIN_PRIORITY);
+    }
+
+    @TruffleBoundary
+    private void raisePriority() {
+        // this will be ineffective unless the JVM runs with corresponding system privileges
+        getThread().setPriority(Thread.NORM_PRIORITY);
     }
 
     void resetTiming() {
@@ -135,6 +153,11 @@ final class PolyglotThreadInfo {
             this.lastEntered = 0;
             this.timeExecuted += getTime() - last;
         }
+        if (!engine.noPriorityChangeNeeded.isValid() && deprioritized && count == 0) {
+            raisePriority();
+            deprioritized = false;
+        }
+
     }
 
     boolean isLastActive() {
@@ -150,4 +173,5 @@ final class PolyglotThreadInfo {
     public String toString() {
         return super.toString() + "[thread=" + getThread() + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";
     }
+
 }

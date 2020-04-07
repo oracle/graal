@@ -34,7 +34,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -171,6 +170,9 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                 } else {
                     asm.decrementq(rsp, frameSize);
                 }
+                if (config.MARKID_FRAME_COMPLETE != -1) {
+                    crb.recordMark(config.MARKID_FRAME_COMPLETE);
+                }
                 if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
                     final int intSize = 4;
                     for (int i = 0; i < frameSize / intSize; ++i) {
@@ -211,10 +213,12 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
         OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
-        boolean omitFrame = CanOmitFrame.getValue(options) && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall();
+        boolean omitFrame = CanOmitFrame.getValue(options) && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall() &&
+                        !((AMD64FrameMap) frameMap).useStandardFrameProlog();
 
         Stub stub = gen.getStub();
-        Assembler masm = new AMD64MacroAssembler(getTarget());
+        AMD64MacroAssembler masm = new AMD64MacroAssembler(getTarget(), options, config.CPU_HAS_INTEL_JCC_ERRATUM);
+        masm.setCodePatchShifter(compilationResult::shiftCodePatch);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame, config.preserveFramePointer);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, Register.None);
@@ -266,6 +270,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                                              // c1_LIRAssembler_x86.cpp
             Register receiver = asRegister(cc.getArgument(0));
             AMD64Address src = new AMD64Address(receiver, config.hubOffset);
+            int before;
 
             if (config.useCompressedClassPointers) {
                 Register register = r10;
@@ -284,11 +289,11 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                         }
                     }
                 }
-                asm.cmpq(inlineCacheKlass, register);
+                before = asm.cmpqAndJcc(inlineCacheKlass, register, ConditionFlag.NotEqual, null, false);
             } else {
-                asm.cmpq(inlineCacheKlass, src);
+                before = asm.cmpqAndJcc(inlineCacheKlass, src, ConditionFlag.NotEqual, null, false);
             }
-            AMD64Call.directConditionalJmp(crb, asm, getForeignCalls().lookupForeignCall(IC_MISS_HANDLER), ConditionFlag.NotEqual);
+            AMD64Call.recordDirectCall(crb, asm, getForeignCalls().lookupForeignCall(IC_MISS_HANDLER), before);
         }
 
         asm.align(config.codeEntryAlignment);
@@ -302,8 +307,8 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
             if (!frameContext.isStub) {
                 crb.recordInlineDataInCodeWithNote(new HotSpotSentinelConstant(LIRKind.value(AMD64Kind.QWORD), JavaKind.Long), HotSpotConstantLoadAction.MAKE_NOT_ENTRANT);
                 asm.movq(AMD64.rax, asm.getPlaceholder(-1));
-                asm.testq(AMD64.rax, AMD64.rax);
-                AMD64Call.directConditionalJmp(crb, asm, getForeignCalls().lookupForeignCall(WRONG_METHOD_HANDLER), ConditionFlag.NotZero);
+                int before = asm.testqAndJcc(AMD64.rax, AMD64.rax, ConditionFlag.NotZero, null, false);
+                AMD64Call.recordDirectCall(crb, asm, getForeignCalls().lookupForeignCall(WRONG_METHOD_HANDLER), before);
             }
         }
     }
@@ -328,7 +333,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
             crb.recordMark(config.MARKID_EXCEPTION_HANDLER_ENTRY);
             AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, false, null);
             crb.recordMark(config.MARKID_DEOPT_HANDLER_ENTRY);
-            AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(DEOPTIMIZATION_HANDLER), null, false, null);
+            AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), null, false, null);
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries

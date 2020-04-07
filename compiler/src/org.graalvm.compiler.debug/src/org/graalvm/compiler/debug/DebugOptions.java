@@ -122,6 +122,8 @@ public class DebugOptions {
     public static final OptionKey<Boolean> DebugStubsAndSnippets = new OptionKey<>(false);
     @Option(help = "Send compiler IR to dump handlers on error.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DumpOnError = new OptionKey<>(false);
+    @Option(help = "Disable intercepting exceptions in debug scopes.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> DisableIntercept = new OptionKey<>(false);
     @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)
     public static final OptionKey<Boolean> InterceptBailout = new OptionKey<>(false);
     @Option(help = "Enable more verbose log output when available", type = OptionType.Debug)
@@ -136,6 +138,8 @@ public class DebugOptions {
     public static final OptionKey<Boolean> PrintCFG = new OptionKey<>(false);
     @Option(help = "Enable dumping LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBackendCFG = new OptionKey<>(true);
+    @Option(help = "Enable dumping CFG built during initial BciBlockMapping", type = OptionType.Debug)
+    public static final OptionKey<Boolean> PrintBlockMapping = new OptionKey<>(false);
 
     @Option(help = "file:doc-files/PrintGraphHelp.txt", type = OptionType.Debug)
     public static final EnumOptionKey<PrintGraphTarget> PrintGraph = new EnumOptionKey<>(PrintGraphTarget.File);

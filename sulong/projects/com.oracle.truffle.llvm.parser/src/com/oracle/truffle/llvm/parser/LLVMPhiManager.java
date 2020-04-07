@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -110,10 +110,10 @@ public final class LLVMPhiManager {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public static ArrayList<Phi>[] getPhisForSuccessors(TerminatingInstruction terminatingInstruction, List<Phi> phis) {
         assert phis != null;
 
-        @SuppressWarnings("unchecked")
         ArrayList<Phi>[] phisPerSuccessor = new ArrayList[terminatingInstruction.getSuccessorCount()];
         for (int i = 0; i < phisPerSuccessor.length; i++) {
             phisPerSuccessor[i] = new ArrayList<>();

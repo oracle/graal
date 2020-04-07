@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -47,7 +48,10 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * Object that is returned when a bitcode library is parsed.
@@ -59,19 +63,32 @@ public final class SulongLibrary implements TruffleObject {
     private final String name;
     private final LLVMScope scope;
     private final CallTarget main;
+    private final LLVMContext context;
 
-    public SulongLibrary(String name, LLVMScope scope, CallTarget main) {
+    public SulongLibrary(String name, LLVMScope scope, CallTarget main, LLVMContext context) {
         this.name = name;
         this.scope = scope;
         this.main = main;
+        this.context = context;
     }
 
+    /**
+     * Get a function descriptor for a function called {@code symbolName}.
+     *
+     * @param symbolName Function name.
+     * @return Function descriptor for the function called {@code symbolName} and {@code null} if
+     *         the function name cannot be found.
+     */
     private LLVMFunctionDescriptor lookupFunctionDescriptor(String symbolName) {
-        LLVMSymbol symbol = scope.get(symbolName);
-        if (symbol != null && symbol.isFunction()) {
-            return symbol.asFunction();
+        LLVMFunction function = scope.getFunction(symbolName);
+        if (function == null) {
+            return null;
         }
-        return null;
+        int index = function.getSymbolIndex(false);
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(function.getBitcodeID(false));
+        LLVMPointer pointer = symbols[index].get();
+        LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
+        return functionDescriptor;
     }
 
     public String getName() {
@@ -169,5 +186,23 @@ public final class SulongLibrary implements TruffleObject {
                         @Cached("create()") IndirectCallNode call) {
             return call.call(library.main, args);
         }
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"unused", "static-method"})
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"static-method"})
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return LLVMLanguage.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "LLVMLibrary:" + getName();
     }
 }

@@ -82,17 +82,6 @@ public final class UnknownIdentifierException extends InteropException {
     }
 
     /**
-     * @since 0.11
-     * @deprecated use {@link #create(String)} instead. Interop exceptions should directly be thrown
-     *             and no longer be hidden as runtime exceptions.
-     */
-    @Deprecated
-    public static RuntimeException raise(String unknownIdentifier) {
-        CompilerDirectives.transferToInterpreter();
-        return silenceException(RuntimeException.class, new UnknownIdentifierException(unknownIdentifier));
-    }
-
-    /**
      * Creates an {@link UnknownIdentifierException} to indicate that an identifier is missing.
      *
      * @param unknownIdentifier the identifier that could not be accessed

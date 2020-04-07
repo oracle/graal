@@ -25,7 +25,7 @@
 package org.graalvm.compiler.hotspot.stubs;
 
 import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.clearPendingException;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.getPendingException;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;

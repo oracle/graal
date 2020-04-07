@@ -29,10 +29,10 @@ import org.junit.Test;
 import org.graalvm.compiler.jtt.JTTTest;
 
 /**
+ * Strange optimisation in for loop with cyclic integer condition.
+ *
  * @test
  * @bug 6753639
- * @summary Strange optimisation in for loop with cyclic integer condition
- *
  * @run main/othervm -Xbatch Test6753639
  */
 // @formatter:off

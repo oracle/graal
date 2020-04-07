@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -66,7 +66,7 @@ private static final class BailoutErrorListener extends BaseErrorListener {
     }
 }
 
-public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets) {
+public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, long[] retOffsets) {
     InlineAssemblyLexer lexer = new InlineAssemblyLexer(CharStreams.fromString(asmSnippet));
     InlineAssemblyParser parser = new InlineAssemblyParser(new CommonTokenStream(lexer));
     lexer.removeErrorListeners();

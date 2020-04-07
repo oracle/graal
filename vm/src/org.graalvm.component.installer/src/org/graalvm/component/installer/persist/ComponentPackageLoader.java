@@ -29,6 +29,7 @@ import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.InstallerStopException;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
@@ -40,6 +41,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
@@ -47,9 +49,11 @@ import java.util.Set;
 import java.util.function.Function;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
+import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.DistributionType;
 
 /**
  * Loads information from the component's bundle.
@@ -103,16 +107,33 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
      */
     private boolean noVerifySymlinks;
 
+    private final String componentTag;
+
+    private final Properties props = new Properties();
+
     static final ResourceBundle BUNDLE = ResourceBundle.getBundle("org.graalvm.component.installer.persist.Bundle");
 
-    public ComponentPackageLoader(Function<String, String> supplier, Feedback feedback) {
+    public ComponentPackageLoader(String tag, Function<String, String> supplier, Feedback feedback) {
         this.feedback = feedback.withBundle(ComponentPackageLoader.class);
         this.valueSupplier = supplier;
+        this.componentTag = tag;
+    }
+
+    public ComponentPackageLoader(Function<String, String> supplier, Feedback feedback) {
+        this(null, supplier, feedback);
     }
 
     @Override
     public Archive getArchive() {
         return null;
+    }
+
+    private String value(String key) {
+        String v = valueSupplier.apply(key);
+        if (v != null && (componentTag == null || componentTag.isEmpty())) {
+            props.put(key, v);
+        }
+        return v;
     }
 
     @Override
@@ -126,7 +147,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     }
 
     private HeaderParser parseHeader2(String header, Function<String, String> fn) throws MetadataException {
-        String s = valueSupplier.apply(header);
+        String s = value(header);
         if (fn != null) {
             s = fn.apply(s);
         }
@@ -134,7 +155,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     }
 
     private HeaderParser parseHeader(String header, String defValue) throws MetadataException {
-        String s = valueSupplier.apply(header);
+        String s = value(header);
         if (s == null) {
             if (defValue == null) {
                 return new HeaderParser(header, s, feedback);
@@ -181,6 +202,23 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         return errors;
     }
 
+    /**
+     * Computes some component hash/tag. Computes a digest from each read/present value in the
+     * manifest.
+     */
+    private void supplyComponentTag() {
+        String ct = info.getTag();
+        if (ct != null && !ct.isEmpty()) {
+            return;
+        }
+        try (StringWriter wr = new StringWriter()) {
+            props.store(wr, ""); // NOI18N
+            info.setTag(SystemUtils.digestString(wr.toString().replaceAll("#.*\n", ""), false)); // NOI18N
+        } catch (IOException ex) {
+            throw new FailedOperationException(ex.getLocalizedMessage(), ex);
+        }
+    }
+
     private void loadWorkingDirectories(ComponentInfo nfo) {
         String val = parseHeader(BundleConstants.BUNDLE_WORKDIRS, null).getContents("");
         Set<String> workDirs = new LinkedHashSet<>();
@@ -193,23 +231,30 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         nfo.addWorkingDirectories(workDirs);
     }
 
+    private String findComponentTag() {
+        String t = value(BundleConstants.BUNDLE_SERIAL);
+        return t != null && !t.isEmpty() ? t : componentTag;
+    }
+
     protected ComponentInfo createBaseComponentInfo() {
         parse(
                         () -> id = parseHeader(BundleConstants.BUNDLE_ID).parseSymbolicName(),
                         () -> name = parseHeader(BundleConstants.BUNDLE_NAME).getContents(id),
                         () -> version = parseHeader(BundleConstants.BUNDLE_VERSION).version(),
                         () -> {
-                            info = new ComponentInfo(id, name, version);
+                            info = new ComponentInfo(id, name, version, findComponentTag());
                             info.addRequiredValues(parseHeader(BundleConstants.BUNDLE_REQUIRED).parseRequiredCapabilities());
                             info.addProvidedValues(parseHeader(BundleConstants.BUNDLE_PROVIDED, "").parseProvidedCapabilities());
                             info.setDependencies(parseHeader(BundleConstants.BUNDLE_DEPENDENCY, "").parseDependencies());
                         });
+        supplyComponentTag();
         return info;
     }
 
     protected ComponentInfo loadExtendedMetadata(ComponentInfo base) {
         parse(
                         () -> base.setPolyglotRebuild(parseHeader(BundleConstants.BUNDLE_POLYGLOT_PART, null).getBoolean(Boolean.FALSE)),
+                        () -> base.setDistributionType(parseDistributionType()),
                         () -> loadWorkingDirectories(base),
                         () -> loadMessages(base),
                         () -> loadLicenseType(base));
@@ -219,6 +264,16 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     public ComponentInfo createComponentInfo() {
         ComponentInfo nfo = createBaseComponentInfo();
         return loadExtendedMetadata(nfo);
+    }
+
+    private DistributionType parseDistributionType() {
+        String dtString = parseHeader(BundleConstants.BUNDLE_COMPONENT_DISTRIBUTION, null).getContents(DistributionType.OPTIONAL.name());
+        try {
+            return DistributionType.valueOf(dtString.toUpperCase(Locale.ENGLISH));
+        } catch (IllegalArgumentException ex) {
+            throw new MetadataException(BundleConstants.BUNDLE_COMPONENT_DISTRIBUTION,
+                            feedback.l10n("ERROR_InvalidDistributionType", dtString));
+        }
     }
 
     private void loadLicenseType(ComponentInfo nfo) {

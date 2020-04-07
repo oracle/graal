@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Set;
 import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.CommandTestBase;
+import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.DependencyException;
@@ -224,6 +225,24 @@ public class CatalogInstallTest extends CommandTestBase {
     }
 
     @Test
+    public void testInstallWithIgnoredDeps() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog(null);
+        paramIterable = new CatalogIterable(this, this);
+        textParams.add("r");
+        options.put(Commands.OPTION_NO_DEPENDENCIES, "");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+
+        List<ComponentParam> deps = cmd.getDependencies();
+        assertTrue(deps.isEmpty());
+    }
+
+    @Test
     public void testInstallWithBrokenDeps() throws Exception {
         setupVersion("19.3-dev");
         setupCatalog(null);
@@ -246,6 +265,21 @@ public class CatalogInstallTest extends CommandTestBase {
         }
     }
 
+    @Test
+    public void testInstallWithBrokenIgnoredDeps() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog(null);
+        paramIterable = new CatalogIterable(this, this);
+        textParams.add("additional");
+        options.put(Commands.OPTION_NO_DEPENDENCIES, "");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+    }
+
     /**
      * Checks that a dependency that is already installed is not installed again.
      */
@@ -266,6 +300,84 @@ public class CatalogInstallTest extends CommandTestBase {
 
         cmd.executeStep(cmd::prepareInstallation, false);
         assertTrue(cmd.getDependencies().isEmpty());
+    }
+
+    /**
+     * Checks that if a dependency is specified also on the commandline, the component is actually
+     * installed just once.
+     */
+    @Test
+    public void testInstallDepsOnCommandLine() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog(null);
+        paramIterable = new CatalogIterable(this, this);
+        textParams.add("r");
+        textParams.add("llvm-toolchain");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+
+        List<Installer> instSequence = cmd.getInstallers();
+        assertEquals(2, instSequence.size());
+        ComponentInfo ci = instSequence.get(0).getComponentInfo();
+        assertEquals("org.graalvm.llvm-toolchain", ci.getId());
+        ci = instSequence.get(1).getComponentInfo();
+        assertEquals("org.graalvm.r", ci.getId());
+    }
+
+    /**
+     * Checks that dependencies precede the component that uses them. In this case ruby >
+     * native-image > llvm-toolchain, so they should be installed in the opposite order.
+     */
+    @Test
+    public void testDepsBeforeUsage() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog(null);
+        paramIterable = new CatalogIterable(this, this);
+        textParams.add("ruby");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+
+        List<Installer> instSequence = cmd.getInstallers();
+        assertEquals(3, instSequence.size());
+        ComponentInfo ci = instSequence.get(0).getComponentInfo();
+        assertEquals("org.graalvm.llvm-toolchain", ci.getId());
+        ci = instSequence.get(1).getComponentInfo();
+        assertEquals("org.graalvm.native-image", ci.getId());
+        ci = instSequence.get(2).getComponentInfo();
+        assertEquals("org.graalvm.ruby", ci.getId());
+    }
+
+    /**
+     * Checks that two same components on the commandline are merged, including their dependencies.
+     */
+    @Test
+    public void testTwoSameComponentsCommandLineDeps() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog(null);
+        paramIterable = new CatalogIterable(this, this);
+        textParams.add("r");
+        textParams.add("r");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+
+        List<Installer> instSequence = cmd.getInstallers();
+        assertEquals(2, instSequence.size());
+        ComponentInfo ci = instSequence.get(0).getComponentInfo();
+        assertEquals("org.graalvm.llvm-toolchain", ci.getId());
+        ci = instSequence.get(1).getComponentInfo();
+        assertEquals("org.graalvm.r", ci.getId());
     }
 
     CatalogFactory catalogFactory = null;
@@ -306,5 +418,45 @@ public class CatalogInstallTest extends CommandTestBase {
 
         cmd.executeStep(cmd::prepareInstallation, false);
         assertFalse(cmd.getDependencies().isEmpty());
+    }
+
+    /**
+     * Tests, that a correct java version flavour gets selected if the catalog contains two flavours
+     * of the component in the requested version.
+     */
+    @Test
+    public void testInstallCorrectJavaVersion8() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_JAVA_VERSION, "8");
+        setupVersion("1.0.0.0");
+        setupCatalog("catalogMultiFlavours.properties");
+
+        paramIterable = new CatalogIterable(this, this);
+        textParams.add("ruby");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+        List<Installer> installers = cmd.getInstallers();
+        assertEquals(1, installers.size());
+    }
+
+    @Test
+    public void testInstallCorrectJavaVersion11() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_JAVA_VERSION, "11");
+        setupVersion("1.0.0.0");
+        setupCatalog("catalogMultiFlavours.properties");
+
+        paramIterable = new CatalogIterable(this, this);
+        textParams.add("ruby");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+        List<Installer> installers = cmd.getInstallers();
+        assertEquals(1, installers.size());
     }
 }

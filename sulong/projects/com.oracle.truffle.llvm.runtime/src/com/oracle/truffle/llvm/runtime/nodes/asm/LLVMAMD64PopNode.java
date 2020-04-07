@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,10 +31,12 @@ package com.oracle.truffle.llvm.runtime.nodes.asm;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
@@ -50,7 +52,8 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
         @Specialization
         protected short doI16(VirtualFrame frame,
                         @Cached("getStackPointerSlot()") FrameSlot slot,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+                        @CachedLanguage LLVMLanguage language) {
+            LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
             long sp = basePointer.get(memory);
             short value = memory.getI16(sp);
@@ -64,7 +67,8 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
         @Specialization
         protected int doI32(VirtualFrame frame,
                         @Cached("getStackPointerSlot()") FrameSlot slot,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+                        @CachedLanguage LLVMLanguage language) {
+            LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
             long sp = basePointer.get(memory);
             int value = memory.getI32(sp);
@@ -78,7 +82,8 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
         @Specialization
         protected long doI64(VirtualFrame frame,
                         @Cached("getStackPointerSlot()") FrameSlot slot,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+                        @CachedLanguage LLVMLanguage language) {
+            LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
             long sp = basePointer.get(memory);
             long value = memory.getI64(sp);

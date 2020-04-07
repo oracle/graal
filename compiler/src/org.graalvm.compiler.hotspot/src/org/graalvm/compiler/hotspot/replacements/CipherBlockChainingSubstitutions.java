@@ -25,7 +25,7 @@
 package org.graalvm.compiler.hotspot.replacements;
 
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_METAACCESS;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_INTRINSIC_CONTEXT;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_INTRINSIC_CONTEXT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_WITH_ORIGINAL_KEY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ENCRYPT;

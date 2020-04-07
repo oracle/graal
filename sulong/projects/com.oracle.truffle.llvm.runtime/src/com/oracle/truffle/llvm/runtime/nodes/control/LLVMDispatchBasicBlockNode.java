@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.control;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -48,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnreachableNode;
 
-public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
+public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
     private final FrameSlot exceptionValueSlot;
 
@@ -59,9 +60,9 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
         this.bodyNodes = bodyNodes;
     }
 
-    @Override
+    @Specialization
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
-    public Object executeGeneric(VirtualFrame frame) {
+    public Object doDispatch(VirtualFrame frame) {
         Object returnValue = null;
 
         CompilerAsserts.compilationConstant(bodyNodes.length);
@@ -116,7 +117,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 Object condition = switchNode.executeCondition(frame);
                 int[] successors = switchNode.getSuccessors();
                 for (int i = 0; i < successors.length - 1; i++) {
-                    if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), switchNode.executeIsCase(frame, i, condition))) {
+                    if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), switchNode.checkCase(frame, i, condition))) {
                         if (CompilerDirectives.inInterpreter()) {
                             bb.increaseBranchProbability(i);
                             if (successors[i] <= basicBlockIndex) {
@@ -245,6 +246,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
         }
         assert backEdgeCounter >= 0;
         LoopNode.reportLoopCount(this, backEdgeCounter);
+        assert returnValue != null;
         return returnValue;
     }
 

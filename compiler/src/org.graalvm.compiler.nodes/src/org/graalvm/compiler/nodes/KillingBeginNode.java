@@ -30,11 +30,15 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.word.LocationIdentity;
 
+/**
+ * A begin node that kills a single memory location. See {@link MultiKillingBeginNode} for a version
+ * with multiple killed locations.
+ */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_0, size = SIZE_0)
-public final class KillingBeginNode extends AbstractBeginNode implements MemoryCheckpoint.Single {
+public final class KillingBeginNode extends AbstractBeginNode implements SingleMemoryKill {
 
     public static final NodeClass<KillingBeginNode> TYPE = NodeClass.create(KillingBeginNode.class);
     protected LocationIdentity locationIdentity;

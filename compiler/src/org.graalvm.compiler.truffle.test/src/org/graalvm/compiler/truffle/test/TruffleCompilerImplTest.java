@@ -24,31 +24,35 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Assume;
 
 public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
 
-    protected final TruffleCompilerImpl truffleCompiler;
+    private final TruffleCompilerImpl truffleCompiler;
+    private final AtomicBoolean compilerInitialized = new AtomicBoolean();
     private Context activeContext;
 
     protected TruffleCompilerImplTest() {
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-        Assume.assumeTrue("cannot get whitebox interface to Truffle compiler", runtime.getTruffleCompiler() instanceof TruffleCompilerImpl);
-        beforeInitialization();
         TruffleCompiler compiler = runtime.newTruffleCompiler();
+        Assume.assumeTrue("cannot get whitebox interface to Truffle compiler", compiler instanceof TruffleCompilerImpl);
         this.truffleCompiler = (TruffleCompilerImpl) compiler;
     }
 
-    /**
-     * Executed before initialization. This hook can be used to override specific flags.
-     */
-    protected void beforeInitialization() {
+    protected final TruffleCompilerImpl getTruffleCompiler(OptimizedCallTarget callTarget) {
+        if (compilerInitialized.compareAndSet(false, true)) {
+            truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
+        }
+        return truffleCompiler;
     }
 
     protected final void setupContext(Context newContext) {
@@ -58,7 +62,11 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
     }
 
     protected final void setupContext() {
-        setupContext(Context.newBuilder().allowAllAccess(true).option("engine.InstrumentExceptionsAreThrown", "true").build());
+        setupContext(Context.newBuilder());
+    }
+
+    protected final void setupContext(Context.Builder builder) {
+        setupContext(builder.allowAllAccess(true).option("engine.InstrumentExceptionsAreThrown", "true").build());
     }
 
     protected final Context getContext() {

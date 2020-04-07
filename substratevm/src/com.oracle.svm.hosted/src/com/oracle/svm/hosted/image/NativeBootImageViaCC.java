@@ -40,14 +40,16 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.macho.MachOSymtab;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -100,16 +102,19 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
              */
             if (!SubstrateOptions.StaticExecutable.getValue()) {
                 try {
-                    List<String> exportedSymbols = new ArrayList<>();
-                    exportedSymbols.add("{");
-                    codeCache.getGlobalSymbols(getOrCreateDebugObjectFile()).stream()
-                                    .map(symbol -> "\"" + symbol.getName() + "\";")
-                                    .forEachOrdered(exportedSymbols::add);
-                    exportedSymbols.add("};");
+                    StringBuilder exportedSymbols = new StringBuilder();
+                    exportedSymbols.append("{\n");
+                    for (String symbol : getImageSymbols(true)) {
+                        exportedSymbols.append('\"').append(symbol).append("\";\n");
+                    }
+                    exportedSymbols.append("};");
                     Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                    Files.write(exportedSymbolsPath, exportedSymbols);
+                    Files.write(exportedSymbolsPath, Collections.singleton(exportedSymbols.toString()));
                     additionalPreOptions.add("-Wl,--dynamic-list");
                     additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
+
+                    // Drop global symbols in linked static libraries: not covered by --dynamic-list
+                    additionalPreOptions.add("-Wl,--exclude-libs,ALL");
                 } catch (IOException e) {
                     VMError.shouldNotReachHere();
                 }
@@ -118,6 +123,16 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
+
+            LibCBase currentLibc = ImageSingletons.lookup(LibCBase.class);
+            additionalPreOptions.addAll(currentLibc.getLinkerPreOptions());
+        }
+
+        @Override
+        public List<String> getImageSymbols(boolean onlyGlobal) {
+            return codeCache.getSymbols(getOrCreateDebugObjectFile(), onlyGlobal).stream()
+                            .map(ObjectFile.Symbol::getName)
+                            .collect(Collectors.toList());
         }
 
         @Override
@@ -141,7 +156,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
 
         DarwinCCLinkerInvocation() {
-            if (!SubstrateOptions.CompilerBackend.getValue().equals("llvm")) {
+            if (!SubstrateOptions.useLLVMBackend()) {
                 additionalPreOptions.add("-Wl,-no_compact_unwind");
             }
 
@@ -155,11 +170,8 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
              * as global symbols in the dynamic symbol table of the image.
              */
             try {
-                List<ObjectFile.Symbol> exportedSymbols = codeCache.getGlobalSymbols(getOrCreateDebugObjectFile());
                 Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                Files.write(exportedSymbolsPath, exportedSymbols.stream()
-                                .map(symbol -> ((MachOSymtab.Entry) symbol).getNameInObject())
-                                .collect(Collectors.toList()));
+                Files.write(exportedSymbolsPath, getImageSymbols(true));
                 additionalPreOptions.add("-Wl,-exported_symbols_list");
                 additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
             } catch (IOException e) {
@@ -179,13 +191,20 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         }
 
         @Override
+        public List<String> getImageSymbols(boolean onlyGlobal) {
+            return codeCache.getSymbols(getOrCreateDebugObjectFile(), onlyGlobal).stream()
+                            .map(symbol -> ((MachOSymtab.Entry) symbol).getNameInObject())
+                            .collect(Collectors.toList());
+        }
+
+        @Override
         protected void setOutputKind(List<String> cmd) {
             switch (kind) {
                 case STATIC_EXECUTABLE:
                     throw UserError.abort(OS.getCurrent().name() + " does not support building static executable images.");
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
-                    if (Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)) {
+                    if (Platform.includedIn(Platform.DARWIN.class)) {
                         cmd.add("-undefined");
                         cmd.add("dynamic_lookup");
                     }
@@ -195,10 +214,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     }
 
     class WindowsCCLinkerInvocation extends CCLinkerInvocation {
-
-        WindowsCCLinkerInvocation() {
-            setCompilerCommand("CL");
-        }
 
         @Override
         protected void setOutputKind(List<String> cmd) {
@@ -219,31 +234,40 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         }
 
         @Override
-        public List<String> getCommand() {
-            ArrayList<String> cmd = new ArrayList<>();
-            cmd.add(getCompilerCommand());
+        public List<String> getImageSymbols(boolean onlyGlobal) {
+            return codeCache.getSymbols(getOrCreateDebugObjectFile(), onlyGlobal).stream()
+                            .map(ObjectFile.Symbol::getName)
+                            .collect(Collectors.toList());
+        }
 
+        @Override
+        public List<String> getCommand() {
+            List<String> compilerCmd = getCompilerCommand(additionalPreOptions);
+
+            List<String> cmd = new ArrayList<>(compilerCmd);
             setOutputKind(cmd);
 
             // Add debugging info
             cmd.add("/Zi");
 
-            if (removeUnusedSymbols()) {
-                additionalPreOptions.add("/OPT:REF");
-            }
-
-            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
-                cmd.add("/PDBSTRIPPED");
-            }
-
-            cmd.add("/Fe" + outputFile.toString());
-
-            cmd.addAll(inputFilenames);
             for (Path staticLibrary : nativeLibs.getStaticLibraries()) {
                 cmd.add(staticLibrary.toString());
             }
 
-            cmd.add("/link /INCREMENTAL:NO /NODEFAULTLIB:LIBCMT");
+            cmd.add("/link");
+            cmd.add("/INCREMENTAL:NO");
+            cmd.add("/NODEFAULTLIB:LIBCMT");
+
+            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                String outputFileString = getOutputFile().toString();
+                String outputFileSuffix = getOutputKind().getFilenameSuffix();
+                String pdbFile = outputFileString.substring(0, outputFileString.length() - outputFileSuffix.length()) + ".stripped.pdb";
+                cmd.add("/PDBSTRIPPED:" + pdbFile);
+            }
+
+            if (removeUnusedSymbols()) {
+                cmd.add("/OPT:REF");
+            }
 
             // Add clibrary paths to command
             for (String libraryPath : nativeLibs.getLibraryPaths()) {
@@ -261,6 +285,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
 
+            Collections.addAll(cmd, Options.NativeLinkerOption.getValue());
             return cmd;
         }
     }
@@ -286,12 +311,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         inv.setOutputFile(outputFile);
         inv.setOutputKind(getOutputKind());
 
-        /*
-         * Libraries defined via @CLibrary annotations are added at the end of the list of libraries
-         * so that the written object file AND the static JDK libraries can depend on them.
-         */
-        nativeLibs.processAnnotated();
-
         inv.addLibPath(tempDirectory.toString());
         for (String libraryPath : nativeLibs.getLibraryPaths()) {
             inv.addLibPath(libraryPath);
@@ -305,12 +324,12 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             inv.addLinkedLibrary(library);
         }
 
-        for (String filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
+        for (Path filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
             inv.addInputFile(filename);
         }
 
         for (Path staticLibraryPath : nativeLibs.getStaticLibraries()) {
-            inv.addInputFile(staticLibraryPath.toString());
+            inv.addInputFile(staticLibraryPath);
         }
 
         return inv;
@@ -338,21 +357,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
         try (Indent indent = debug.logAndIndent("Writing native image")) {
             // 1. write the relocatable file
-
-            // Since we're using FileChannel.map, and we can't unmap the file,
-            // we have to copy the file or the linker will fail to open it.
-            if (OS.getCurrent() == OS.WINDOWS) {
-                Path tempFile = tempDirectory.resolve(imageName + ".tmp");
-                write(tempFile);
-                try {
-                    Files.copy(tempFile, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
-                    // Files.delete(tempFile);
-                } catch (IOException e) {
-                    throw new RuntimeException("Failed to create Object file " + e);
-                }
-            } else {
-                write(tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
-            }
+            write(debug, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
             if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
                 return null;
             }
@@ -368,20 +373,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             for (Function<LinkerInvocation, LinkerInvocation> fn : config.getLinkerInvocationTransformers()) {
                 inv = fn.apply(inv);
             }
-            List<String> cmd = inv.getCommand();
-            StringBuilder sb = new StringBuilder();
-            for (String s : cmd) {
-                if (s.indexOf(' ') != -1) {
-                    // Quote command line arguments that contain a space
-                    sb.append('\'').append(s).append('\'');
-                } else {
-                    sb.append(s);
-                }
-                sb.append(' ');
-            }
-            String commandLine = sb.toString().trim();
             try (DebugContext.Scope s = debug.scope("InvokeCC")) {
-                debug.log("Running command: %s", sb);
+                List<String> cmd = inv.getCommand();
+                String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
+                debug.log("Using CompilerCommand: %s", commandLine);
 
                 if (NativeImageOptions.MachODebugInfoTesting.getValue()) {
                     System.out.printf("Testing Mach-O debuginfo generation - SKIP %s%n", commandLine);
@@ -402,7 +397,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                         throw handleLinkerFailure(e.toString(), commandLine, null);
                     }
 
-                    debug.log("%s", output);
+                    debug.log(DebugContext.VERBOSE_LEVEL, "%s", output);
 
                     if (status != 0) {
                         throw handleLinkerFailure("Linker command exited with " + status, commandLine, output.toString());

@@ -26,24 +26,42 @@
 
 package org.graalvm.compiler.nodes.memory;
 
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-@NodeInfo(nameTemplate = "Read#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_1)
-public class VolatileReadNode extends ReadNode implements MemoryCheckpoint.Single {
+@NodeInfo(nameTemplate = "VolatileRead#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_1)
+public class VolatileReadNode extends ReadNode implements SingleMemoryKill, Lowerable, Simplifiable {
     public static final NodeClass<VolatileReadNode> TYPE = NodeClass.create(VolatileReadNode.class);
 
     public VolatileReadNode(AddressNode address, LocationIdentity location, Stamp stamp, BarrierType barrierType) {
         super(TYPE, address, location, stamp, null, barrierType, false, null);
-        assert GraalOptions.LateMembars.getValue(address.getOptions());
+    }
+
+    @Override
+    public void generate(NodeLIRBuilderTool gen) {
+        throw new GraalError("Shouldn't be generated");
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (lastLocationAccess != null && hasOnlyUsagesOfType(Memory)) {
+            replaceAtUsages(Memory, lastLocationAccess.asNode());
+            assert hasNoUsages();
+            graph().removeFixed(this);
+        }
     }
 
     @SuppressWarnings("try")
@@ -65,6 +83,11 @@ public class VolatileReadNode extends ReadNode implements MemoryCheckpoint.Singl
     @Override
     public boolean canNullCheck() {
         return false;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
     }
 
 }

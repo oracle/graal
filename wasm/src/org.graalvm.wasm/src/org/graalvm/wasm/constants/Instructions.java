@@ -42,6 +42,7 @@ package org.graalvm.wasm.constants;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.Locale;
 
 public final class Instructions {
 
@@ -244,7 +245,7 @@ public final class Instructions {
             for (Field f : Instructions.class.getDeclaredFields()) {
                 if (Modifier.isStatic(f.getModifiers()) && f.getType().isPrimitive()) {
                     int code = f.getInt(null);
-                    String representation = f.getName().toLowerCase();
+                    String representation = f.getName().toLowerCase(Locale.ENGLISH);
                     if (representation.startsWith("i32") || representation.startsWith("i64") ||
                                     representation.startsWith("f32") || representation.startsWith("f64") ||
                                     representation.startsWith("local") || representation.startsWith("global")) {

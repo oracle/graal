@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,7 @@ import java.util.Arrays;
  * <p>
  * Usage Example:
  * </p>
- * 
+ *
  * <pre>
  * ByteArrayBuffer buf = new ByteArrayBuffer();
  * List<byte[]> results = new ArrayList<>();
@@ -63,6 +63,7 @@ import java.util.Arrays;
  */
 public class ByteArrayBuffer extends AbstractArrayBuffer {
 
+    private static final byte[] EMPTY = {};
     private byte[] buf;
 
     public ByteArrayBuffer() {
@@ -96,6 +97,6 @@ public class ByteArrayBuffer extends AbstractArrayBuffer {
     }
 
     public byte[] toArray() {
-        return Arrays.copyOf(buf, length);
+        return isEmpty() ? EMPTY : Arrays.copyOf(buf, length);
     }
 }

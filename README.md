@@ -26,6 +26,8 @@ images or shared objects.
 
 * [Sulong](sulong/README.md) is an engine for running LLVM bitcode on GraalVM.
 
+* [GraalWasm](wasm/README.md) is an engine for running WebAssembly programs on GraalVM.
+
 * [TRegex](regex/README.md) is an implementation of regular expressions which leverages GraalVM for efficient compilation of automata.
 
 * [VM](vm/README.md) includes the components to build a modular GraalVM image.
@@ -56,5 +58,6 @@ Each GraalVM component is licensed:
 * [GraalVM compiler](/compiler/) is licensed under the [GPL 2 with Classpath exception](compiler/LICENSE.md).
 * [Substrate VM](/substratevm/) is licensed under the [GPL 2 with Classpath exception](substratevm/LICENSE).
 * [Sulong](/sulong/) is licensed under [3-clause BSD](sulong/LICENSE).
+* [GraalWasm](/wasm/) is licensed under the [Universal Permissive License](wasm/LICENSE).
 * [VM](/vm/) is licensed under the [GPL 2 with Classpath exception](vm/LICENSE_GRAALVM_CE).
 * [VS Code](/vscode/) extensions are distributed under the [UPL 1.0 license](/vscode/graalvm/LICENSE.txt).

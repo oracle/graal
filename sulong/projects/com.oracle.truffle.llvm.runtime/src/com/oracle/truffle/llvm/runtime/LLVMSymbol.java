@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,23 +29,105 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
-public interface LLVMSymbol {
-    String getName();
+public abstract class LLVMSymbol {
 
-    void setName(String name);
+    @CompilationFinal private String name;
+    @CompilationFinal private ExternalLibrary library;
+    private final int moduleId;
+    private final int symbolIndex;
 
-    ExternalLibrary getLibrary();
+    // Index for non-parsed symbols, such as alias, and function symbol for inline assembly.
+    public static final int INVALID_INDEX = -1;
 
-    boolean isDefined();
+    // ID for non-parsed symbols, such as alias, function symbol for inline assembly.
+    public static final int INVALID_ID = -1;
 
-    boolean isGlobalVariable();
+    // ID reserved for non-parsed miscellaneous functions.
+    public static final int MISCFUNCTION_ID = 0;
 
-    boolean isFunction();
+    // Index reserved for non-parsed miscellaneous functions.
+    private static int miscFunctionIndex = 0;
 
-    LLVMFunctionDescriptor asFunction();
+    public LLVMSymbol(String name, ExternalLibrary library, int bitcodeID, int symbolIndex) {
+        this.name = name;
+        this.library = library;
+        this.moduleId = bitcodeID;
+        this.symbolIndex = symbolIndex;
+    }
 
-    LLVMGlobal asGlobalVariable();
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public ExternalLibrary getLibrary() {
+        return library;
+    }
+
+    public void setLibrary(ExternalLibrary library) {
+        this.library = library;
+    }
+
+    public static int getMiscSymbolIndex() {
+        int index = miscFunctionIndex;
+        miscFunctionIndex++;
+        return index;
+    }
+
+    public String getKind() {
+        return this.getClass().getSimpleName();
+    }
+
+    /**
+     * Get the unique index of the symbol. The index is assigned during parsing. Symbols that are
+     * not created from parsing or that are alias have the value of -1.
+     *
+     * @param illegalOK if symbols created not from bitcode files can be retrieved.
+     */
+    public int getSymbolIndex(boolean illegalOK) {
+        if (symbolIndex >= 0 || illegalOK) {
+            return symbolIndex;
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw new LLVMIllegalSymbolIndexException("Invalid function index: " + symbolIndex);
+    }
+
+    /**
+     * Get the unique module ID for the symbol. The ID is assigned during parsing. The module ID is
+     * unqiue per bitcode file. Symbols that are not created from parsing or that are alias have the
+     * value of -1.
+     *
+     * @param illegalOK if symbols created not from bitcode files can be retrieved.
+     */
+    public int getBitcodeID(boolean illegalOK) {
+        if (moduleId >= 0 || illegalOK) {
+            return moduleId;
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw new LLVMIllegalSymbolIndexException("Invalid function ID: " + moduleId);
+    }
+
+    public boolean hasValidIndexAndID() {
+        return symbolIndex >= 0 && moduleId >= 0;
+    }
+
+    public abstract boolean isDefined();
+
+    public abstract boolean isGlobalVariable();
+
+    public abstract boolean isFunction();
+
+    public abstract boolean isAlias();
+
+    public abstract LLVMFunction asFunction();
+
+    public abstract LLVMGlobal asGlobalVariable();
 }

@@ -85,7 +85,7 @@ class ReflectionProcessor extends AbstractProcessor {
             case "getSystemResources":
                 String literal = singleElement(args);
                 String regex = Pattern.quote(literal);
-                resourceConfiguration.add(regex);
+                resourceConfiguration.addResourcePattern(regex);
                 return;
         }
         String clazz = (String) entry.get("class");
@@ -97,6 +97,7 @@ class ReflectionProcessor extends AbstractProcessor {
         boolean unsafeAccess = false;
         String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
         switch (function) {
+            case "loadClass":
             case "forName": {
                 assert clazz.equals("java.lang.Class");
                 expectSize(args, 1);
@@ -194,6 +195,17 @@ class ReflectionProcessor extends AbstractProcessor {
                 } else {
                     configuration.getOrCreateType(clazz).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, "()V", ConfigurationMemberKind.DECLARED);
                 }
+                break;
+            }
+
+            case "getBundleImplJDK8OrEarlier": {
+                expectSize(args, 4);
+                resourceConfiguration.addBundle((String) args.get(0));
+                break;
+            }
+            case "getBundleImplJDK11OrLater": {
+                expectSize(args, 5);
+                resourceConfiguration.addBundle((String) args.get(2));
                 break;
             }
         }

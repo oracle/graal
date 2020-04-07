@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -46,11 +46,14 @@ import mx
 import mx_subst
 import os
 import shutil
+import tempfile
 
 from os.path import join, exists, isfile, isdir, dirname, basename, relpath
 from zipfile import ZipFile, ZIP_DEFLATED
+from binascii import b2a_hex
 
 from mx_javamodules import as_java_module, JavaModuleDescriptor
+
 
 def _with_metaclass(meta, *bases):
     """Create a base class with a metaclass."""
@@ -70,7 +73,7 @@ def _with_metaclass(meta, *bases):
         @classmethod
         def __prepare__(mcs, name, this_bases):
             return meta.__prepare__(name, bases)
-    return type.__new__(MetaClass, '_with_metaclass({}, {})'.format(meta, bases), (), {}) #pylint: disable=unused-variable
+    return type.__new__(MetaClass, '_with_metaclass({}, {})'.format(meta, bases), (), {})  # pylint: disable=unused-variable
 
 
 _graalvm_components = dict()  # By short_name
@@ -78,14 +81,14 @@ _graalvm_components_by_name = dict()
 _vm_configs = []
 _graalvm_hostvm_configs = [
     ('jvm', [], ['--jvm'], 50),
-    ('jvm-la-inline', [], ['--jvm', '--vm.Dgraal.TruffleLanguageAgnosticInlining=true'], 30),
+    ('jvm-la-inline', [], ['--jvm', '--experimental-options', '--engine.LanguageAgnosticInlining'], 30),
     ('native', [], ['--native'], 100),
-    ('native-la-inline', [], ['--native', '--vm.Dgraal.TruffleLanguageAgnosticInlining=true'], 40)
+    ('native-la-inline', [], ['--native', '--experimental-options', '--engine.LanguageAgnosticInlining'], 40)
 ]
 
 
 class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
-    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False): # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -306,6 +309,8 @@ class GraalVmTool(GraalVmTruffleComponent):
 class GraalVMSvmMacro(GraalVmComponent):
     pass
 
+class GraalVMSvmStaticLib(GraalVmComponent):
+    pass
 
 class GraalVmJdkComponent(GraalVmComponent):
     pass
@@ -333,7 +338,6 @@ class GraalVmJvmciComponent(GraalVmJreComponent):
 def register_graalvm_component(component):
     """
     :type component: GraalVmComponent
-    :type suite: mx.Suite
     """
     def _log_ignored_component(kept, ignored):
         """
@@ -413,6 +417,8 @@ def get_graalvm_hostvm_configs():
 
 
 _base_jdk = None
+
+
 def base_jdk():
     global _base_jdk
     if _base_jdk is None:
@@ -435,8 +441,41 @@ def jdk_enables_jvmci_by_default(jdk):
         setattr(jdk, '.enables_jvmci_by_default', any('EnableJVMCI' in line and 'true' in line for line in out.lines))
     return getattr(jdk, '.enables_jvmci_by_default')
 
+def jdk_has_new_jlink_options(jdk):
+    """
+    Determines if the jlink executable in `jdk` supports the options added by
+    https://bugs.openjdk.java.net/browse/JDK-8232080.
+    """
+    if not hasattr(jdk, '.supports_new_jlink_options'):
+        output = mx.OutputCapture()
+        jlink_exe = jdk.javac.replace('javac', 'jlink')
+        mx.run([jlink_exe, '--list-plugins'], out=output)
+        setattr(jdk, '.supports_new_jlink_options', '--add-options=' in output.data)
+    return getattr(jdk, '.supports_new_jlink_options')
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True, vendor_info=None):
+def jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable=invalid-name
+    """
+    Determines if the `jdk` suppresses a warning about ThreadPriorityPolicy when it
+    is non-zero if the value is set from the jimage.
+    https://bugs.openjdk.java.net/browse/JDK-8235908.
+    """
+    if not hasattr(jdk, '.omits_ThreadPriorityPolicy_warning'):
+        out = mx.OutputCapture()
+        sink = lambda x: x
+        tmpdir = tempfile.mkdtemp(prefix='jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy')
+        jlink_exe = jdk.javac.replace('javac', 'jlink')
+        mx.run([jlink_exe, '--add-options=-XX:ThreadPriorityPolicy=1', '--output=' + join(tmpdir, 'jdk'), '--add-modules=java.base'])
+        mx.run([mx.exe_suffix(join(tmpdir, 'jdk', 'bin', 'java')), '-version'], out=sink, err=out)
+        shutil.rmtree(tmpdir)
+        setattr(jdk, '.omits_ThreadPriorityPolicy_warning', '-XX:ThreadPriorityPolicy=1 may require system level permission' not in out.data)
+    return getattr(jdk, '.omits_ThreadPriorityPolicy_warning')
+
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
+                  root_module_names=None,
+                  missing_export_target_action='create',
+                  with_source=lambda x: True,
+                  vendor_info=None,
+                  dedup_legal_notices=True):
     """
     Uses jlink from `jdk` to create a new JDK image in `dst_jdk_dir` with `module_dists` and
     their dependencies added to the JDK image, replacing any existing modules of the same name.
@@ -472,7 +511,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
     if not isdir(jmods_dir):
         mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since ' + jmods_dir + ' is missing or is not a directory')
 
-    jdk_modules = {jmd.name : jmd for jmd in jdk.get_modules()}
+    jdk_modules = {jmd.name: jmd for jmd in jdk.get_modules()}
     modules = [as_java_module(dist, jdk) for dist in module_dists]
     all_module_names = frozenset(list(jdk_modules.keys()) + [m.name for m in modules])
 
@@ -505,16 +544,16 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
             extra_modules = []
             for name, requires in target_requires.items():
                 module_jar = join(build_dir, name + '.jar')
-                jmd = JavaModuleDescriptor(name, {}, requires={module : [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
+                jmd = JavaModuleDescriptor(name, {}, requires={module: [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
                 extra_modules.append(jmd)
                 module_build_dir = mx.ensure_dir_exists(join(build_dir, name))
                 module_info_java = join(module_build_dir, 'module-info.java')
                 module_info_class = join(module_build_dir, 'module-info.class')
                 with open(module_info_java, 'w') as fp:
                     print(jmd.as_module_info(), file=fp)
-                mx.run([jdk.javac, '-d', module_build_dir, \
-                        '--limit-modules=java.base,' + ','.join(jmd.requires.keys()), \
-                        '--module-path=' + os.pathsep.join((m.jarpath for m in modules)), \
+                mx.run([jdk.javac, '-d', module_build_dir,
+                        '--limit-modules=java.base,' + ','.join(jmd.requires.keys()),
+                        '--module-path=' + os.pathsep.join((m.jarpath for m in modules)),
                         module_info_java])
                 with ZipFile(module_jar, 'w') as zf:
                     zf.write(module_info_class, basename(module_info_class))
@@ -537,9 +576,36 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
         else:
             mx.warn("'{}' does not exist or is not a file".format(jdk_src_zip))
 
+        # Edit lib/security/default.policy in java.base
+        patched_java_base = join(build_dir, 'java.base.jmod')
+        with open(join(jmods_dir, 'java.base.jmod'), 'rb') as src_f, open(patched_java_base, 'wb') as dst_f:
+            jmod_header = src_f.read(4)
+            if len(jmod_header) != 4 or jmod_header != b'JM\x01\x00':
+                raise mx.abort("Unexpected jmod header: " + b2a_hex(jmod_header).decode('ascii'))
+            dst_f.write(jmod_header)
+            policy_result = 'not found'
+            with ZipFile(src_f, 'r') as src_zip, ZipFile(dst_f, 'w', src_zip.compression) as dst_zip:
+                for i in src_zip.infolist():
+                    if i.filename[-1] == '/':
+                        continue
+                    src_member = src_zip.read(i)
+                    if i.filename == 'lib/security/default.policy':
+                        if 'grant codeBase "jrt:/com.oracle.graal.graal_enterprise"'.encode('utf-8') in src_member:
+                            policy_result = 'unmodified'
+                        else:
+                            policy_result = 'modified'
+                            src_member += """
+grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
+    permission java.security.AllPermission;
+};
+""".encode('utf-8')
+                    dst_zip.writestr(i, src_member)
+            if policy_result == 'not found':
+                raise mx.abort("Couldn't find `lib/security/default.policy` in " + join(jmods_dir, 'java.base.jmod'))
+
         for jmd in modules:
             # Remove existing sources for all the modules that we include
-            dst_src_zip_contents = {key : dst_src_zip_contents[key] for key in dst_src_zip_contents if not key.startswith(jmd.name)}
+            dst_src_zip_contents = {key: dst_src_zip_contents[key] for key in dst_src_zip_contents if not key.startswith(jmd.name)}
 
             if with_source(jmd.dist):
                 # Add the sources that we can share.
@@ -556,7 +622,6 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
                 dst_src_zip_contents[jmd.name + '/module-info.java'] = jmd.as_module_info(extras_as_comments=False)
 
         # Now build the new JDK image with jlink
-        jlink_exe = jdk.javac.replace('javac', 'jlink')
         jlink = [jdk.javac.replace('javac', 'jlink')]
 
         if jdk_enables_jvmci_by_default(jdk):
@@ -570,24 +635,33 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
         else:
             jlink.append('--add-modules=' + ','.join(sorted(all_module_names)))
 
-        module_path = jmods_dir
+        module_path = patched_java_base + os.pathsep + jmods_dir
         if modules:
             module_path = os.pathsep.join((m.get_jmod_path(respect_stripping=True) for m in modules)) + os.pathsep + module_path
         jlink.append('--module-path=' + module_path)
         jlink.append('--output=' + dst_jdk_dir)
 
-        # These options are inspired by how OpenJDK runs jlink to produce the final runtime image.
+        # These options are derived from how OpenJDK runs jlink to produce the final runtime image.
         jlink.extend(['-J-XX:+UseSerialGC', '-J-Xms32M', '-J-Xmx512M', '-J-XX:TieredStopAtLevel=1'])
         jlink.append('-J-Dlink.debug=true')
-        jlink.append('--dedup-legal-notices=error-if-not-same-content')
+        if dedup_legal_notices:
+            jlink.append('--dedup-legal-notices=error-if-not-same-content')
         jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
 
-        # https://bugs.openjdk.java.net/browse/JDK-8232080
-        output = mx.OutputCapture()
-        mx.run([jlink_exe, '--list-plugins'], out=output)
-        if '--add-options=' in output.data:
-            assert '--vendor-version=' in output.data
-            jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions')
+        if jdk_has_new_jlink_options(jdk):
+            if jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk):
+                thread_priority_policy_option = ' -XX:ThreadPriorityPolicy=1'
+            else:
+                mx.logv('[Creating JDK without -XX:ThreadPriorityPolicy=1]')
+                thread_priority_policy_option = ''
+
+            if any((m.name == 'jdk.internal.vm.compiler' for m in modules)):
+                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
+            else:
+                # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
+                # This avoids unexpected issues with using the out-of-date Graal compiler in
+                # the JDK itself.
+                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UseJVMCICompiler -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
             if vendor_info is not None:
                 for name, value in vendor_info.items():
                     jlink.append('--' + name + '=' + value)
@@ -598,7 +672,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
         #       This is apparently not so important if a CDS archive is available.
         # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.
         #       See https://github.com/openjdk/jdk/blob/master/make/GenerateLinkOptData.gmk
-        mx.logv('[Creating JDK image]')
+        mx.logv('[Creating JDK image in {}]'.format(dst_jdk_dir))
         mx.run(jlink)
 
         dst_src_zip = join(dst_jdk_dir, 'lib', 'src.zip')

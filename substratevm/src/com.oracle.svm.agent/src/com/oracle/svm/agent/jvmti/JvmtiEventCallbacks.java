@@ -50,4 +50,7 @@ public interface JvmtiEventCallbacks extends PointerBase {
 
     @CField
     void setNativeMethodBind(CFunctionPointer callback);
+
+    @CField
+    void setClassPrepare(CFunctionPointer callback);
 }

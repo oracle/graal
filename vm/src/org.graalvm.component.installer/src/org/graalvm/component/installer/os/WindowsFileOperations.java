@@ -48,7 +48,11 @@ import java.util.concurrent.Callable;
 import org.graalvm.component.installer.FileOperations;
 
 /**
- *
+ * Windows-specific FileOperations, with delayed deletes and renames. {@link #setDelayDeletedList}
+ * and {@link #setCopyContents} must be used prior to working with files so the failed operations
+ * are recorded for the post-run batch processing. In SVM mode, these properties are unset, so any
+ * file operation failure will be reported immediately.
+ * 
  * @author sdedic
  */
 public class WindowsFileOperations extends FileOperations {
@@ -139,7 +143,7 @@ public class WindowsFileOperations extends FileOperations {
             for (Map.Entry<Path, Path> e : copiedPaths.entrySet()) {
                 Path orig = e.getKey();
                 if (Files.exists(orig)) {
-                    String s = orig.toString() + "|" + e.getValue().toString();
+                    String s = orig.toAbsolutePath().toString() + "|" + e.getValue().toAbsolutePath().toString();
                     lines.add(s);
                     // do not delete the directory's contents.
                     delayDeletedPaths.remove(orig);
@@ -156,7 +160,7 @@ public class WindowsFileOperations extends FileOperations {
         if (delayDeletedList != null) {
             List<String> lines = new ArrayList<>(delayDeletedPaths.size());
             for (Path p : delayDeletedPaths) {
-                lines.add(p.toString());
+                lines.add(p.toAbsolutePath().toString());
             }
             if (!lines.isEmpty()) {
                 r = true;
@@ -171,12 +175,19 @@ public class WindowsFileOperations extends FileOperations {
 
     @Override
     protected void handleUndeletableFile(IOException ex, Path p) throws IOException {
+        if (delayDeletedList == null) {
+            super.handleUndeletableFile(ex, p);
+            return;
+        }
         delayDeletedPaths.add(p);
         feedback().output("FILE_CannotDeleteFileTryDelayed", p, ex.getLocalizedMessage());
     }
 
     @Override
     protected Path handleUnmodifiableFile(IOException ex, Path p, InputStream content) throws IOException {
+        if (copyContents == null) {
+            return super.handleUnmodifiableFile(ex, p, content);
+        }
         Path fn = p.getFileName();
         Path parentDir = p.getParent();
         assert parentDir != null;
@@ -205,6 +216,9 @@ public class WindowsFileOperations extends FileOperations {
      */
     @Override
     public Path materialize(Path p, boolean write) {
+        if (copyContents == null || delayDeletedList == null) {
+            return super.materialize(p, write);
+        }
         Path parentDir = p.getParent();
         Path copy = copiedPaths.get(parentDir);
         Path fn = p.getFileName();

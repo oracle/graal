@@ -199,7 +199,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
         exception.expect(MainErrorException.class);
 
         try {
-            main.createOptions(args);
+            main.interpretOptions(main.createOptions(args));
         } finally {
             assertMsg("ERROR_MissingCommand", false);
         }
@@ -212,7 +212,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
     public void testHelpOption() {
         args = new LinkedList<>();
         args.add("--help");
-        assertNull(main.createOptions(args));
+        assertNull(main.interpretOptions(main.createOptions(args)));
         assertMsg("INFO_Usage", true);
 
         main = new MockInstallerMain(new String[0]);
@@ -580,7 +580,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
         setupReleaseCatalog();
         args.add("avail");
 
-        URL u = getClass().getResource("remote/catalog");
+        URL u = getClass().getResource("remote/catalog.properties");
         String urlString = releaseURL + "_2";
         Handler.bind(urlString, u);
         // note: the releaseURL is NOT bound, FileNotFoundException will be thrown

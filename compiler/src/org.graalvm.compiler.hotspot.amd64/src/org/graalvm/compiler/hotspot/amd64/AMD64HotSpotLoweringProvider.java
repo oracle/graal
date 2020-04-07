@@ -26,7 +26,6 @@ package org.graalvm.compiler.hotspot.amd64;
 
 import static org.graalvm.compiler.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
 
-import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.amd64.AMD64LoweringProviderMixin;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -42,6 +41,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfDispatchNode;
 import org.graalvm.compiler.replacements.amd64.AMD64ConvertSnippets;
@@ -61,8 +61,8 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     private AMD64X87MathSnippets.Templates mathSnippets;
 
     public AMD64HotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
-                    HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
-        super(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
+                    HotSpotConstantReflectionProvider constantReflection, PlatformConfigurationProvider platformConfig, TargetDescription target) {
+        super(runtime, metaAccess, foreignCalls, registers, constantReflection, platformConfig, target);
     }
 
     @Override
@@ -99,12 +99,10 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         }
         StructuredGraph graph = math.graph();
         ResolvedJavaMethod method = graph.method();
-        if (method != null) {
-            if (method.getAnnotation(Snippet.class) != null) {
-                // In the context of SnippetStub, i.e., Graal-generated stubs, use the LIR
-                // lowering to emit the stub assembly code instead of the Node lowering.
-                return;
-            }
+        if (method != null && getReplacements().isSnippet(method)) {
+            // In the context of SnippetStub, i.e., Graal-generated stubs, use the LIR
+            // lowering to emit the stub assembly code instead of the Node lowering.
+            return;
         }
         if (!GraalArithmeticStubs.getValue(graph.getOptions())) {
             switch (math.getOperation()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,14 +30,14 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.rmw;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -45,10 +45,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @NodeChild(type = LLVMExpressionNode.class, value = "pointerNode")
 @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
 public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
-
-    protected static LLVMI64LoadNode createRead() {
-        return LLVMI64LoadNodeGen.create(null);
-    }
 
     protected static LLVMI64StoreNode createWrite() {
         return LLVMI64StoreNodeGen.create(null, null);
@@ -58,13 +54,13 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndSetI64(address, value);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndSetI64(address, value);
         }
 
         @Specialization
         protected Object doOp(LLVMManagedPointer address, long value,
-                        @Cached("createRead()") LLVMI64LoadNode read,
+                        @Cached LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 Object result = read.executeWithTarget(address);
@@ -78,14 +74,14 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndAddI64(address, value);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndAddI64(address, value);
         }
 
         @Specialization
         protected long doOp(LLVMManagedPointer address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("createRead()") LLVMI64LoadNode read,
+                        @Cached LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 long result = toNative.executeWithTarget(read.executeWithTarget(address)).asNative();
@@ -99,14 +95,14 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndSubI64(address, value);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndSubI64(address, value);
         }
 
         @Specialization
         protected long doOp(LLVMManagedPointer address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("createRead()") LLVMI64LoadNode read,
+                        @Cached LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 long result = toNative.executeWithTarget(read.executeWithTarget(address)).asNative();
@@ -120,14 +116,14 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI64(address, value, (a, b) -> a & b);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndOpI64(address, value, (a, b) -> a & b);
         }
 
         @Specialization
         protected long doOp(LLVMManagedPointer address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("createRead()") LLVMI64LoadNode read,
+                        @Cached LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 long result = toNative.executeWithTarget(read.executeWithTarget(address)).asNative();
@@ -141,14 +137,14 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI64(address, value, (a, b) -> ~(a & b));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndOpI64(address, value, (a, b) -> ~(a & b));
         }
 
         @Specialization
         protected long doOp(LLVMManagedPointer address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("createRead()") LLVMI64LoadNode read,
+                        @Cached LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 long result = toNative.executeWithTarget(read.executeWithTarget(address)).asNative();
@@ -162,14 +158,14 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI64(address, value, (a, b) -> a | b);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndOpI64(address, value, (a, b) -> a | b);
         }
 
         @Specialization
         protected long doOp(LLVMManagedPointer address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("createRead()") LLVMI64LoadNode read,
+                        @Cached LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 long result = toNative.executeWithTarget(read.executeWithTarget(address)).asNative();
@@ -183,14 +179,14 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI64(address, value, (a, b) -> a ^ b);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndOpI64(address, value, (a, b) -> a ^ b);
         }
 
         @Specialization
         protected long doOp(LLVMManagedPointer address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("createRead()") LLVMI64LoadNode read,
+                        @Cached LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 long result = toNative.executeWithTarget(read.executeWithTarget(address)).asNative();

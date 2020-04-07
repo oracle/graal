@@ -27,8 +27,8 @@ package org.graalvm.compiler.hotspot.replacements;
 import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_OPTIONVALUES;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_OPTIONVALUES;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.nodes.AcquiredCASLockNode.mark;
 import static org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode.beginLockScope;
 import static org.graalvm.compiler.hotspot.nodes.EndLockScopeNode.endLockScope;
@@ -754,7 +754,7 @@ public class MonitorSnippets implements Snippets {
 
         private final SnippetInfo monitorenter = snippet(MonitorSnippets.class, "monitorenter");
         private final SnippetInfo monitorexit = snippet(MonitorSnippets.class, "monitorexit", DISPLACED_MARK_WORD_LOCATION, OBJECT_MONITOR_OWNER_LOCATION, OBJECT_MONITOR_CXQ_LOCATION,
-                        OBJECT_MONITOR_ENTRY_LIST_LOCATION, OBJECT_MONITOR_RECURSION_LOCATION, OBJECT_MONITOR_SUCC_LOCATION);
+                        OBJECT_MONITOR_ENTRY_LIST_LOCATION, OBJECT_MONITOR_RECURSION_LOCATION, OBJECT_MONITOR_SUCC_LOCATION, MARK_WORD_LOCATION);
         private final SnippetInfo monitorenterStub = snippet(MonitorSnippets.class, "monitorenterStub");
         private final SnippetInfo monitorexitStub = snippet(MonitorSnippets.class, "monitorexitStub");
         private final SnippetInfo initCounter = snippet(MonitorSnippets.class, "initCounter");

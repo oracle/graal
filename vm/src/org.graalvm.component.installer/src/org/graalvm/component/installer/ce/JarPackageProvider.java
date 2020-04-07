@@ -39,12 +39,24 @@ import org.graalvm.component.installer.ComponentArchiveReader;
  */
 public final class JarPackageProvider implements ComponentArchiveReader {
     @Override
-    public MetadataLoader createLoader(Path p, byte[] magic, Feedback feedback, boolean verify) throws IOException {
+    public MetadataLoader createLoader(Path p, byte[] magic, String serial, Feedback feedback, boolean verify) throws IOException {
         if ((magic[0] == 0x50) && (magic[1] == 0x4b) &&
                         (magic[2] == 0x03) && (magic[3] == 0x04)) {
-            JarFile jf = null;
-            jf = new JarFile(p.toFile(), verify);
-            return new JarMetaLoader(jf, feedback);
+            JarFile jf = new JarFile(p.toFile(), verify);
+            boolean ok = false;
+            try {
+                JarMetaLoader ldr = new JarMetaLoader(jf, serial, feedback);
+                ok = true;
+                return ldr;
+            } finally {
+                if (!ok) {
+                    try {
+                        jf.close();
+                    } catch (IOException ex) {
+                        feedback.error("ERR_ClosingJarFile", ex, ex.getLocalizedMessage());
+                    }
+                }
+            }
         } else {
             return null;
         }

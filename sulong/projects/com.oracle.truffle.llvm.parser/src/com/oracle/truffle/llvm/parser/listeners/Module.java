@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -72,7 +72,7 @@ public final class Module implements ParserListener {
 
     private final LLSourceBuilder llSource;
 
-    private final AtomicInteger globalIndex;
+    private final AtomicInteger index;
 
     Module(ModelModule module, StringTable stringTable, IRScope scope, LLSourceBuilder llSource) {
         this.module = module;
@@ -82,7 +82,7 @@ public final class Module implements ParserListener {
         this.llSource = llSource;
         this.paramAttributes = new ParameterAttributes(types);
         functionQueue = new ArrayDeque<>();
-        globalIndex = new AtomicInteger(0);
+        index = new AtomicInteger(0);
     }
 
     // private static final int STRTAB_RECORD_OFFSET = 2;
@@ -139,12 +139,12 @@ public final class Module implements ParserListener {
         }
 
         if (isPrototype) {
-            final FunctionDeclaration function = new FunctionDeclaration(functionType, linkage, paramAttr);
+            final FunctionDeclaration function = new FunctionDeclaration(functionType, linkage, paramAttr, index.getAndIncrement());
             module.addFunctionDeclaration(function);
             scope.addSymbol(function, function.getType());
             assignNameFromStrTab(name, function);
         } else {
-            final FunctionDefinition function = new FunctionDefinition(functionType, linkage, visibility, paramAttr);
+            final FunctionDefinition function = new FunctionDefinition(functionType, linkage, visibility, paramAttr, index.getAndIncrement());
             module.addFunctionDefinition(function);
             scope.addSymbol(function, function.getType());
             assignNameFromStrTab(name, function);
@@ -182,7 +182,7 @@ public final class Module implements ParserListener {
             visibility = buffer.read();
         }
 
-        GlobalVariable global = GlobalVariable.create(isConstant, (PointerType) type, align, linkage, visibility, scope.getSymbols(), initialiser, globalIndex.getAndIncrement());
+        GlobalVariable global = GlobalVariable.create(isConstant, (PointerType) type, align, linkage, visibility, scope.getSymbols(), initialiser, index.getAndIncrement());
         assignNameFromStrTab(name, global);
         module.addGlobalVariable(global);
         scope.addSymbol(global, global.getType());

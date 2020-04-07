@@ -104,6 +104,21 @@ public final class TypeHandler {
         return profiles;
     }
 
+    static String getMetaObjectString(TruffleInstrument.Env env, final LanguageInfo language, Object argument) {
+        Object view = env.getLanguageView(language, argument);
+        InteropLibrary viewLib = InteropLibrary.getFactory().getUncached(view);
+        String retType = null;
+        if (viewLib.hasMetaObject(view)) {
+            try {
+                retType = INTEROP.asString(INTEROP.getMetaQualifiedName(viewLib.getMetaObject(view)));
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
+            }
+        }
+        return retType;
+    }
+
     public static final class SectionTypeProfile {
 
         private final SourceSection sourceSection;
@@ -171,7 +186,8 @@ public final class TypeHandler {
                             for (long i = 0; i < size; i++) {
                                 String key = INTEROP.asString(INTEROP.readArrayElement(keys, i));
                                 Object argument = INTEROP.readMember(argsObject, key);
-                                final String retType = env.toString(language, env.findMetaObject(language, argument));
+
+                                String retType = getMetaObjectString(env, language, argument);
                                 SourceSection argSection = getArgSection(section, key);
                                 if (argSection != null) {
                                     profileMap.computeIfAbsent(argSection, s -> new SectionTypeProfile(s)).types.add(retType);
@@ -182,6 +198,7 @@ public final class TypeHandler {
                         }
                     }
                 }
+
             };
         }
 
@@ -189,7 +206,7 @@ public final class TypeHandler {
         private void processReturnValue(final Object result, final Node node, final SourceSection section) {
             if (result != null) {
                 final LanguageInfo language = node.getRootNode().getLanguageInfo();
-                final String retType = env.toString(language, env.findMetaObject(language, result));
+                final String retType = getMetaObjectString(env, language, result);
                 profileMap.computeIfAbsent(section, s -> new SectionTypeProfile(s)).types.add(retType);
             }
         }

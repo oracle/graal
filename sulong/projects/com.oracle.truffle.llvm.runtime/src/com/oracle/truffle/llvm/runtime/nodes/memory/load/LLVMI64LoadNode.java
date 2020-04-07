@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,33 +29,48 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.LongValueProfile;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-public abstract class LLVMI64LoadNode extends LLVMAbstractLoadNode {
+@GenerateUncached
+public abstract class LLVMI64LoadNode extends LLVMLoadNode {
 
-    private final LongValueProfile profile = LongValueProfile.createIdentityProfile();
-
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected long doI64Native(LLVMNativePointer addr) {
-        return profile.profile(getLLVMMemoryCached().getI64(addr));
+    public static LLVMI64LoadNode create() {
+        return LLVMI64LoadNodeGen.create((LLVMExpressionNode) null);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)", rewriteOn = UnexpectedResultException.class)
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
+    protected long doI64Native(LLVMNativePointer addr,
+                    @Cached("createIdentityProfile()") LongValueProfile profile,
+                    @CachedLanguage LLVMLanguage language) {
+        return profile.profile(language.getLLVMMemory().getI64(addr));
+    }
+
+    @Specialization(guards = "isAutoDerefHandle(language, addr)", rewriteOn = UnexpectedResultException.class)
     protected long doI64DerefHandle(LLVMNativePointer addr,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) throws UnexpectedResultException {
-        return doI64Managed(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
+        return doI64Managed(getReceiver.execute(addr), nativeRead);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)", replaces = "doI64DerefHandle")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doI64DerefHandle")
     protected Object doGenericI64DerefHandle(LLVMNativePointer addr,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
-        return doGenericI64Managed(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
+        return doGenericI64Managed(getReceiver.execute(addr), nativeRead);
     }
 
     @Specialization(limit = "3", rewriteOn = UnexpectedResultException.class)

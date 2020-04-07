@@ -57,10 +57,8 @@ public interface OptionValues {
     /**
      * Sets the value of {@code optionKey} to {@code value}.
      *
-     * @throws IllegalArgumentException if the given value is not {@link OptionType#validate(Object)
-     *             validated} by the {@link OptionKey#getType() option type} of the key. Note that
-     *             the operation succeeds if the option key is not described by any of the
-     *             associated {@link #getDescriptors() descriptors}.
+     * @throws UnsupportedOperationException because this operation has been deprecated and is no
+     *             longer supported, in order for OptionValues to be read-only.
      *
      * @since 19.0
      * @deprecated {@link OptionValues} should be read-only. If the value of an option needs to be

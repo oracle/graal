@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.MonitorEnter;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
@@ -51,7 +51,7 @@ import org.graalvm.word.LocationIdentity;
           cyclesRationale = "Rough estimation of the enter operation",
           size = SIZE_64)
 // @formatter:on
-public final class RawMonitorEnterNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorEnter, MemoryCheckpoint.Single {
+public final class RawMonitorEnterNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorEnter, SingleMemoryKill {
 
     public static final NodeClass<RawMonitorEnterNode> TYPE = NodeClass.create(RawMonitorEnterNode.class);
 
@@ -94,4 +94,5 @@ public final class RawMonitorEnterNode extends AccessMonitorNode implements Virt
     public ValueNode getHub() {
         return hub;
     }
+
 }

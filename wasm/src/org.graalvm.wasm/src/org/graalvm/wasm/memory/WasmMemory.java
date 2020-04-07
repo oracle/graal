@@ -71,56 +71,62 @@ public abstract class WasmMemory implements TruffleObject {
      */
     public abstract long byteSize();
 
-    public abstract boolean grow(long extraSize);
+    public abstract boolean grow(long extraPageSize);
+
+    public boolean growToAddress(long address) {
+        final long requiredPageCount = address / PAGE_SIZE + 1;
+        final long extraPageCount = Math.max(0, requiredPageCount - pageSize());
+        return grow(extraPageCount);
+    }
 
     public abstract long maxPageSize();
 
     // Checkstyle: stop
-    public abstract int load_i32(long address);
+    public abstract int load_i32(Node node, long address);
 
-    public abstract long load_i64(long address);
+    public abstract long load_i64(Node node, long address);
 
-    public abstract float load_f32(long address);
+    public abstract float load_f32(Node node, long address);
 
-    public abstract double load_f64(long address);
+    public abstract double load_f64(Node node, long address);
 
-    public abstract int load_i32_8s(long address);
+    public abstract int load_i32_8s(Node node, long address);
 
-    public abstract int load_i32_8u(long address);
+    public abstract int load_i32_8u(Node node, long address);
 
-    public abstract int load_i32_16s(long address);
+    public abstract int load_i32_16s(Node node, long address);
 
-    public abstract int load_i32_16u(long address);
+    public abstract int load_i32_16u(Node node, long address);
 
-    public abstract long load_i64_8s(long address);
+    public abstract long load_i64_8s(Node node, long address);
 
-    public abstract long load_i64_8u(long address);
+    public abstract long load_i64_8u(Node node, long address);
 
-    public abstract long load_i64_16s(long address);
+    public abstract long load_i64_16s(Node node, long address);
 
-    public abstract long load_i64_16u(long address);
+    public abstract long load_i64_16u(Node node, long address);
 
-    public abstract long load_i64_32s(long address);
+    public abstract long load_i64_32s(Node node, long address);
 
-    public abstract long load_i64_32u(long address);
+    public abstract long load_i64_32u(Node node, long address);
 
-    public abstract void store_i32(long address, int value);
+    public abstract void store_i32(Node node, long address, int value);
 
-    public abstract void store_i64(long address, long value);
+    public abstract void store_i64(Node node, long address, long value);
 
-    public abstract void store_f32(long address, float value);
+    public abstract void store_f32(Node node, long address, float value);
 
-    public abstract void store_f64(long address, double value);
+    public abstract void store_f64(Node node, long address, double value);
 
-    public abstract void store_i32_8(long address, byte value);
+    public abstract void store_i32_8(Node node, long address, byte value);
 
-    public abstract void store_i32_16(long address, short value);
+    public abstract void store_i32_16(Node node, long address, short value);
 
-    public abstract void store_i64_8(long address, byte value);
+    public abstract void store_i64_8(Node node, long address, byte value);
 
-    public abstract void store_i64_16(long address, short value);
+    public abstract void store_i64_16(Node node, long address, short value);
 
-    public abstract void store_i64_32(long address, int value);
+    public abstract void store_i64_32(Node node, long address, int value);
     // Checkstyle: resume
 
     public abstract void clear();
@@ -130,13 +136,13 @@ public abstract class WasmMemory implements TruffleObject {
     long[] view(long address, int length) {
         long[] chunk = new long[length / 8];
         for (long p = address; p < address + length; p += 8) {
-            chunk[(int) (p - address) / 8] = load_i64(p);
+            chunk[(int) (p - address) / 8] = load_i64(null, p);
         }
         return chunk;
     }
 
     String viewByte(long address) {
-        final int value = load_i32_8u(address);
+        final int value = load_i32_8u(null, address);
         String result = Integer.toHexString(value);
         if (result.length() == 1) {
             result = "0" + result;
@@ -213,7 +219,7 @@ public abstract class WasmMemory implements TruffleObject {
             transferToInterpreter();
             throw InvalidArrayIndexException.create(address);
         }
-        return load_i32_8u(address);
+        return load_i32_8u(null, address);
     }
 
     @ExportMessage(limit = "3")
@@ -229,6 +235,6 @@ public abstract class WasmMemory implements TruffleObject {
         } else {
             throw UnsupportedTypeException.create(new Object[]{value}, "Only bytes can be stored into WebAssembly memory.");
         }
-        store_i32_8(address, rawValue);
+        store_i32_8(null, address, rawValue);
     }
 }

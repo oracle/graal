@@ -40,23 +40,22 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
-
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 public final class ASTDotExportVisitor extends DepthFirstTraversalRegexASTVisitor {
 
@@ -157,11 +156,5 @@ public final class ASTDotExportVisitor extends DepthFirstTraversalRegexASTVisito
     protected void visit(CharacterClass characterClass) {
         writeln(String.format("%s [label=\"%s\", shape=box%s];", nodeName(characterClass), characterClass.toString().replace("\\", "\\\\"), deadStyle(characterClass)));
         printParentNextPrev(characterClass);
-    }
-
-    @Override
-    protected void visit(MatchFound matchFound) {
-        writeln(String.format("%s [label=\"%s\", shape=box%s];", nodeName(matchFound), matchFound, deadStyle(matchFound)));
-        printParentNextPrev(matchFound);
     }
 }

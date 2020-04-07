@@ -42,6 +42,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
@@ -62,6 +63,7 @@ import org.graalvm.word.WordBase;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
@@ -108,15 +110,23 @@ public final class NativeLibraries {
     private final CAnnotationProcessorCache cache;
 
     public final Path tempDirectory;
+    public final DebugContext debug;
+
+    /*
+     * Static JDK libraries compiled with different LibCBase versions are placed inside of <GraalVM
+     * Root>/lib/<this path>
+     */
+    private static final Path CUSTOM_LIBC_STATIC_DIST_PATH = Paths.get("svm", "static-libs");
 
     public NativeLibraries(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, TargetDescription target,
-                    ClassInitializationSupport classInitializationSupport, Path tempDirectory) {
+                    ClassInitializationSupport classInitializationSupport, Path tempDirectory, DebugContext debug) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.snippetReflection = snippetReflection;
         this.target = target;
         this.classInitializationSupport = classInitializationSupport;
         this.tempDirectory = tempDirectory;
+        this.debug = debug;
 
         elementToInfo = new HashMap<>();
         errors = new ArrayList<>();
@@ -172,7 +182,10 @@ public final class NativeLibraries {
 
         /* Probe for static JDK libraries in JDK lib directory */
         try {
-            Path jdkLibDir = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
+            Path baseSearchPath = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
+            String currentLibcDir = ImageSingletons.lookup(LibCBase.class).getJDKStaticLibsPath();
+            Path jdkLibDir = currentLibcDir.equals(LibCBase.PATH_DEFAULT) ? baseSearchPath : baseSearchPath.resolve(CUSTOM_LIBC_STATIC_DIST_PATH).resolve(currentLibcDir);
+
             List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltInLibraries);
             Predicate<String> hasStaticLibrary = s -> Files.isRegularFile(jdkLibDir.resolve(libPrefix + s + libSuffix));
             if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibrary)) {
@@ -373,8 +386,7 @@ public final class NativeLibraries {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());
                 libraryPaths.addAll(context.getDirectives().getLibraryPaths());
-
-                new CAnnotationProcessor(this, context, tempDirectory).process(cache);
+                new CAnnotationProcessor(this, context).process(cache);
             }
         }
     }

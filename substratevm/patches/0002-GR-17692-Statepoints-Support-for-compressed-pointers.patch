@@ -1,4 +1,4 @@
-From bb52415270e2c6f7a633d7d9596d5a20b164ff6f Mon Sep 17 00:00:00 2001
+From 9bea76aef2e2b990461a56714608a3e08f3b0c4a Mon Sep 17 00:00:00 2001
 From: Loic Ottet <loic.ottet@oracle.com>
 Date: Mon, 23 Sep 2019 16:55:33 +0200
 Subject: [PATCH 2/4] [GR-17692] [Statepoints] Support for compressed pointers
@@ -130,7 +130,7 @@ index 0c6461c9078f..6329db91a1ec 100644
      uint64_t ID, uint32_t NumPatchBytes, Value *ActualInvokee,
      BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Use> InvokeArgs,
 diff --git a/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp b/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp
-index c358258d24cf..b291da9a9c16 100644
+index c358258d24cf..50d7dff07161 100644
 --- a/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp
 +++ b/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp
 @@ -309,12 +309,12 @@ static void findLiveSetAtInst(Instruction *inst, GCPtrLivenessData &Data,
@@ -238,7 +238,7 @@ index c358258d24cf..b291da9a9c16 100644
    return "live-through";
  }
  
-+static void getCompressedGCArgs(std::vector<Value *> CompressedArgsVector,
++static void getCompressedGCArgs(std::vector<Value *> &CompressedArgsVector,
 +                                ArrayRef<Value *> GCArgs) {
 +  for (Value *LiveVal : GCArgs) {
 +    if (auto *PT = dyn_cast<PointerType>(LiveVal->getType()))

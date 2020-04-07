@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,37 +24,14 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
-import java.io.FileDescriptor;
 import java.nio.channels.spi.SelectorProvider;
-
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(className = "sun.nio.ch.Util")
-final class Target_sun_nio_ch_Util {
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    private static Target_java_nio_DirectByteBuffer newMappedByteBuffer(int size, long addr, FileDescriptor fd, Runnable unmapper) {
-        return new Target_java_nio_DirectByteBuffer(size, addr, fd, unmapper);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK14OrLater.class) //
-    static Target_java_nio_DirectByteBufferR newMappedByteBufferR(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
-        return new Target_java_nio_DirectByteBufferR(size, addr, fd, unmapper, isSync);
-    }
-}
-
-@TargetClass(java.nio.channels.spi.SelectorProvider.class)
+@TargetClass(className = "java.nio.channels.spi.SelectorProvider", onlyWith = JDK14OrEarlier.class)
 final class Target_java_nio_channels_spi_SelectorProvider {
 
     @Alias//
@@ -80,40 +57,29 @@ final class Target_java_nio_channels_spi_SelectorProvider {
     }
 }
 
-@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
-@SuppressWarnings({"unused"})
-@TargetClass(sun.nio.ch.Net.class)
-final class Target_sun_nio_ch_Net {
+@TargetClass(className = "java.nio.channels.spi.SelectorProvider", innerClass = "Holder", onlyWith = JDK15OrLater.class)
+final class Target_java_nio_channels_spi_SelectorProvider_Holder {
+
+    @Alias//
+    static SelectorProvider INSTANCE;
 
     @Substitute
-    static int getInterface4(FileDescriptor fd) {
-        throw VMError.unsupportedFeature("Unimplemented:  sun.nio.ch.Net.getInterface4(FileDescriptor)");
+    static SelectorProvider provider() {
+        VMError.guarantee(INSTANCE != null, "java.nio.channels.spi.SelectorProvider.Holder.INSTANCE must be initialized during image generation");
+        return INSTANCE;
     }
 
-    @Substitute
-    static int getInterface6(FileDescriptor fd) {
-        throw VMError.unsupportedFeature("Unimplemented:  sun.nio.ch.Net.getInterface6(FileDescriptor)");
-    }
-
-    @Substitute
-    static void setInterface4(FileDescriptor fd, int interf) {
-        throw VMError.unsupportedFeature("Unimplemented: sun.nio.ch.Net.setInterface4(FileDescriptor, int)");
-    }
-
-    @Substitute
-    static void setInterface6(FileDescriptor fd, int index) {
-        throw VMError.unsupportedFeature("Unimplemented:  sun.nio.ch.Net.setInterface6(FileDescriptor, int)");
-    }
-}
-
-@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
-@SuppressWarnings({"unused"})
-@TargetClass(className = "sun.nio.ch.DatagramDispatcher")
-final class Target_sun_nio_ch_DatagramDispatcher {
-
-    @Substitute
-    static int write0(FileDescriptor fd, long address, int len) {
-        throw VMError.unsupportedFeature("Unimplemented: sun.nio.ch.DatagramChannelImpl.receive0(FileDescriptor, long, int)");
+    static {
+        /*
+         * Calling the method during image generation triggers initialization. This ensures that we
+         * have a correctly initialized provider available at run time. It also means that the
+         * system property and service loader configuration that allow influencing the
+         * SelectorProvider implementation are accessed during image generation, i.e., it is not
+         * possible to overwrite the implementation class at run time anymore by changing the system
+         * property at run time.
+         */
+        SelectorProvider result = java.nio.channels.spi.SelectorProvider.provider();
+        assert result != null;
     }
 }
 

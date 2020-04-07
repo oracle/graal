@@ -134,6 +134,7 @@ meth public org.graalvm.polyglot.Context$Builder allowIO(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowNativeAccess(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
 meth public org.graalvm.polyglot.Context$Builder arguments(java.lang.String,java.lang.String[])
+meth public org.graalvm.polyglot.Context$Builder currentWorkingDirectory(java.nio.file.Path)
 meth public org.graalvm.polyglot.Context$Builder engine(org.graalvm.polyglot.Engine)
 meth public org.graalvm.polyglot.Context$Builder environment(java.lang.String,java.lang.String)
 meth public org.graalvm.polyglot.Context$Builder environment(java.util.Map<java.lang.String,java.lang.String>)
@@ -152,7 +153,7 @@ meth public org.graalvm.polyglot.Context$Builder resourceLimits(org.graalvm.poly
 meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,arguments,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,in,messageTransport,onlyLanguages,options,out,polyglotAccess,processHandler,resourceLimits,sharedEngine,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,in,messageTransport,onlyLanguages,options,out,polyglotAccess,processHandler,resourceLimits,sharedEngine,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
@@ -437,6 +438,7 @@ meth public boolean asBoolean()
 meth public boolean canExecute()
 meth public boolean canInstantiate()
 meth public boolean canInvokeMember(java.lang.String)
+meth public boolean equals(java.lang.Object)
 meth public boolean fitsInByte()
 meth public boolean fitsInDouble()
 meth public boolean fitsInFloat()
@@ -449,8 +451,11 @@ meth public boolean hasMembers()
 meth public boolean isBoolean()
 meth public boolean isDate()
 meth public boolean isDuration()
+meth public boolean isException()
 meth public boolean isHostObject()
 meth public boolean isInstant()
+meth public boolean isMetaInstance(java.lang.Object)
+meth public boolean isMetaObject()
 meth public boolean isNativePointer()
 meth public boolean isNull()
 meth public boolean isNumber()
@@ -464,7 +469,11 @@ meth public byte asByte()
 meth public double asDouble()
 meth public float asFloat()
 meth public int asInt()
+meth public int hashCode()
+meth public java.lang.RuntimeException throwException()
 meth public java.lang.String asString()
+meth public java.lang.String getMetaQualifiedName()
+meth public java.lang.String getMetaSimpleName()
 meth public java.lang.String toString()
 meth public java.time.Duration asDuration()
 meth public java.time.Instant asInstant()
@@ -475,6 +484,7 @@ meth public java.util.Set<java.lang.String> getMemberKeys()
 meth public long asLong()
 meth public long asNativePointer()
 meth public long getArraySize()
+meth public org.graalvm.polyglot.Context getContext()
 meth public org.graalvm.polyglot.SourceSection getSourceLocation()
 meth public org.graalvm.polyglot.Value getArrayElement(long)
 meth public org.graalvm.polyglot.Value getMember(java.lang.String)
@@ -564,6 +574,8 @@ supr java.lang.Object
 hfds stream,type
 hcls Type
 
+CLSS abstract interface org.graalvm.polyglot.io.package-info
+
 CLSS public final org.graalvm.polyglot.management.ExecutionEvent
 meth public boolean isExpression()
 meth public boolean isRoot()
@@ -600,6 +612,10 @@ meth public org.graalvm.polyglot.management.ExecutionListener$Builder sourceFilt
 meth public org.graalvm.polyglot.management.ExecutionListener$Builder statements(boolean)
 supr java.lang.Object
 hfds collectExceptions,collectInputValues,collectReturnValues,expressions,onEnter,onReturn,rootNameFilter,roots,sourceFilter,statements
+
+CLSS abstract interface org.graalvm.polyglot.management.package-info
+
+CLSS abstract interface org.graalvm.polyglot.package-info
 
 CLSS public abstract interface org.graalvm.polyglot.proxy.Proxy
 
@@ -664,4 +680,6 @@ CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyTimeZone
 intf org.graalvm.polyglot.proxy.Proxy
 meth public abstract java.time.ZoneId asTimeZone()
 meth public static org.graalvm.polyglot.proxy.ProxyTimeZone from(java.time.ZoneId)
+
+CLSS abstract interface org.graalvm.polyglot.proxy.package-info
 

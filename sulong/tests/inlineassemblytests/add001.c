@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,17 +31,17 @@
 #include "flags.h"
 
 void test_add(int a, int b) {
-  int out_flags;
+  long out_flags;
   int out;
   __asm__ volatile("pushf\n"
-                   "xorq %%rax, %%rax\n"
-                   "push %%rax\n"
+                   "xorq %[flags], %[flags]\n"
+                   "push %[flags]\n"
                    "popf\n"
                    "addl %[a], %[b]\n"
                    "pushf\n"
-                   "pop %%rax\n"
+                   "pop %[flags]\n"
                    "popf\n"
-                   : "=a"(out_flags), [ b ] "=r"(out)
+                   : [ flags ] "=r"(out_flags), [ b ] "=r"(out)
                    : [ a ] "r"(a), "1"(b));
   printf("%08x:%08x:%08x:%x:%x\n", a, b, out, (out_flags & CC_C) ? 1 : 0, (out_flags & CC_O) ? 1 : 0);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -83,14 +83,12 @@ public final class DebugExprException extends RuntimeException {
 
     @TruffleBoundary
     public static DebugExprException nullObject(String description) {
-        CompilerDirectives.transferToInterpreter();
         return new DebugExprException(null, "member at " + description + " is not available");
     }
 
     @TruffleBoundary
-    public static DebugExprException create(LLVMExpressionNode operation, String message) {
-        CompilerDirectives.transferToInterpreter();
-        return new DebugExprException(operation, message);
+    public static DebugExprException create(LLVMExpressionNode operation, String message, Object... args) {
+        return new DebugExprException(operation, String.format(message, args));
     }
 
     @Override

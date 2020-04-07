@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.image;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import com.oracle.svm.core.image.AbstractImageHeapLayouter.ImageHeapLayout;
 
 /**
@@ -34,7 +31,6 @@ import com.oracle.svm.core.image.AbstractImageHeapLayouter.ImageHeapLayout;
  * image heap consist of multiple {@link ImageHeapPartition}s. Every object in the native image
  * heap, is assigned to a position within a {@link ImageHeapPartition}.
  */
-@Platforms(value = Platform.HOSTED_ONLY.class)
 public interface ImageHeapLayouter {
     void initialize();
 

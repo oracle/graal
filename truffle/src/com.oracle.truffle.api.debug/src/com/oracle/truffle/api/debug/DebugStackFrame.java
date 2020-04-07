@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,10 +45,11 @@ import java.util.Iterator;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugValue.HeapValue;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -163,7 +164,7 @@ public final class DebugStackFrame {
         } else {
             Node callNode = currentFrame.getCallNode();
             if (callNode != null) {
-                return event.getSession().resolveSection(callNode.getEncapsulatingSourceSection());
+                return event.getSession().resolveSection(callNode);
             }
             return null;
         }
@@ -218,7 +219,7 @@ public final class DebugStackFrame {
             return null;
         }
         DebuggerSession session = event.getSession();
-        MaterializedFrame frame = findTruffleFrame();
+        Frame frame = findTruffleFrame(FrameAccess.READ_WRITE);
         try {
             Iterable<Scope> scopes = session.getDebugger().getEnv().findLocalScopes(node, frame);
             Iterator<Scope> it = scopes.iterator();
@@ -231,6 +232,55 @@ public final class DebugStackFrame {
         } catch (Throwable ex) {
             throw new DebugException(session, ex, languageInfo, null, true, null);
         }
+    }
+
+    /**
+     * Returns the current node for this stack frame, or <code>null</code> if the requesting
+     * language class does not match the root node guest language.
+     * 
+     * This method is permitted only if the guest language class is available. This is the case if
+     * you want to utilize the Debugger API directly from within a guest language, or if you are an
+     * instrument bound/dependent on a specific language.
+     *
+     * @param languageClass the Truffle language class for a given guest language
+     * @return the node associated with the frame
+     *
+     * @since 20.1
+     */
+    public Node getRawNode(Class<? extends TruffleLanguage<?>> languageClass) {
+        Objects.requireNonNull(languageClass);
+        RootNode rootNode = findCurrentRoot();
+        if (rootNode == null) {
+            return null;
+        }
+        // check if language class of the root node corresponds to the input language
+        TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
+        return language != null && language.getClass() == languageClass ? getCurrentNode() : null;
+    }
+
+    /**
+     * Returns the underlying frame for this debug stack frame or <code>null</code> if the
+     * requesting language class does not match the root node guest language.
+     *
+     * This method is permitted only if the guest language class is available. This is the case if
+     * you want to utilize the Debugger API directly from within a guest language, or if you are an
+     * instrument bound/dependent on a specific language.
+     *
+     * @param languageClass the Truffle language class for a given guest language
+     * @param access the frame access mode
+     * @return the frame
+     *
+     * @since 20.1
+     */
+    public Frame getRawFrame(Class<? extends TruffleLanguage<?>> languageClass, FrameAccess access) {
+        Objects.requireNonNull(languageClass);
+        RootNode rootNode = findCurrentRoot();
+        if (rootNode == null) {
+            return null;
+        }
+        // check if language class of the root node corresponds to the input language
+        TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
+        return language != null && language.getClass() == languageClass ? findTruffleFrame(access) : null;
     }
 
     DebugValue wrapHeapValue(Object result) {
@@ -289,11 +339,13 @@ public final class DebugStackFrame {
         return Objects.hash(event, currentFrame);
     }
 
-    MaterializedFrame findTruffleFrame() {
+    Frame findTruffleFrame(FrameAccess access) {
         if (currentFrame == null) {
+            // The top frame has already been materialized
+            // so we can safely return that frame
             return event.getMaterializedFrame();
         } else {
-            return currentFrame.getFrame(FrameAccess.MATERIALIZE).materialize();
+            return currentFrame.getFrame(access);
         }
     }
 
@@ -322,6 +374,22 @@ public final class DebugStackFrame {
             Node callNode = currentFrame.getCallNode();
             if (callNode != null) {
                 return callNode.getRootNode();
+            }
+            CallTarget target = currentFrame.getCallTarget();
+            if (target instanceof RootCallTarget) {
+                return ((RootCallTarget) target).getRootNode();
+            }
+            return null;
+        }
+    }
+
+    Node getCurrentNode() {
+        if (currentFrame == null) {
+            return getContext().getInstrumentedNode();
+        } else {
+            Node callNode = currentFrame.getCallNode();
+            if (callNode != null) {
+                return callNode;
             }
             CallTarget target = currentFrame.getCallTarget();
             if (target instanceof RootCallTarget) {

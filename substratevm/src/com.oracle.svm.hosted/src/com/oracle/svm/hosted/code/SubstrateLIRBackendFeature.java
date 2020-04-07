@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.code;
 
-import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
-
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -39,12 +37,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
@@ -54,7 +52,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 class SubstrateLIRBackendFeature implements Feature, GraalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return CompilerBackend.getValue().equals("lir");
+        return !SubstrateOptions.useLLVMBackend();
     }
 
     @Override
@@ -65,7 +63,6 @@ class SubstrateLIRBackendFeature implements Feature, GraalFeature {
                 return new LIRNativeImageCodeCache(compileQueue.getCompilations(), heap);
             }
         });
-        ImageSingletons.add(SnippetRuntime.ExceptionUnwind.class, new SnippetRuntime.ExceptionUnwind());
     }
 
     @Override

@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.sl.runtime;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.sl.SLLanguage;
 
 /**
  * The SL type for a {@code null} (i.e., undefined) value. In Truffle, it is generally discouraged
@@ -78,11 +80,36 @@ public final class SLNull implements TruffleObject {
         return "NULL";
     }
 
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return SLLanguage.class;
+    }
+
     /**
      * {@link SLNull} values are interpreted as null values by other languages.
      */
     @ExportMessage
     boolean isNull() {
         return true;
+    }
+
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMetaObject() {
+        return SLType.NULL;
+    }
+
+    @ExportMessage
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "NULL";
     }
 }

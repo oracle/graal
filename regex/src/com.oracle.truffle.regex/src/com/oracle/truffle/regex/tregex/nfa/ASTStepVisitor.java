@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,9 +48,7 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
@@ -80,11 +78,8 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
     private final List<ASTStep> curLookBehinds = new ArrayList<>();
     private final Deque<ASTStep> lookAroundExpansionQueue = new ArrayDeque<>();
 
-    private final CompilationBuffer compilationBuffer;
-
-    public ASTStepVisitor(RegexAST ast, CompilationBuffer compilationBuffer) {
+    public ASTStepVisitor(RegexAST ast) {
         super(ast);
-        this.compilationBuffer = compilationBuffer;
     }
 
     public ASTStep step(NFAState expandState) {
@@ -146,7 +141,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
 
     @Override
     protected void visit(RegexASTNode target) {
-        ASTSuccessor successor = new ASTSuccessor(compilationBuffer);
+        ASTSuccessor successor = new ASTSuccessor();
         ASTTransition transition = new ASTTransition();
         transition.setGroupBoundaries(getGroupBoundaries());
         if (dollarsOnPath()) {
@@ -157,10 +152,10 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
                 final CharacterClass charClass = (CharacterClass) target;
                 if (!charClass.getLookBehindEntries().isEmpty()) {
                     ArrayList<ASTStep> newLookBehinds = new ArrayList<>(charClass.getLookBehindEntries().size());
-                    for (Group g : charClass.getLookBehindEntries()) {
-                        final ASTStep lbAstStep = new ASTStep(g);
-                        assert g.isLiteral();
-                        lbAstStep.addSuccessor(new ASTSuccessor(compilationBuffer, new ASTTransition(g.getAlternatives().get(0).getFirstTerm())));
+                    for (LookBehindAssertion lb : charClass.getLookBehindEntries()) {
+                        final ASTStep lbAstStep = new ASTStep(lb.getGroup());
+                        assert lb.getGroup().isLiteral();
+                        lbAstStep.addSuccessor(new ASTSuccessor(new ASTTransition(lb.getGroup().getFirstAlternative().getFirstTerm())));
                         newLookBehinds.add(lbAstStep);
                     }
                     successor.setLookBehinds(newLookBehinds);
@@ -171,7 +166,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
                 transition.setTarget((MatchFound) target);
             }
         }
-        successor.addInitialTransition(transition);
+        successor.setInitialTransition(transition);
         if (!curLookAheads.isEmpty()) {
             successor.setLookAheads(new ArrayList<>(curLookAheads));
         }
@@ -223,5 +218,10 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         public int hashCode() {
             return root.hashCode() + 31 * (Boolean.hashCode(canTraverseCaret) + 31 * traversableLookBehindAssertions.hashCode());
         }
+    }
+
+    @Override
+    protected boolean canTraverseLookArounds() {
+        return true;
     }
 }

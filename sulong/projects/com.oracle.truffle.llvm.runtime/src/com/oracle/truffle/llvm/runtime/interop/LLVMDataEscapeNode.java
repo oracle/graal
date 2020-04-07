@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -204,10 +204,15 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
             return Double.doubleToRawLongBits(escapingValue);
         }
 
-        @Specialization(limit = "3", replaces = "escapingPrimitive")
-        static long escapingPointer(Object escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type,
-                        @CachedLibrary("escapingValue") LLVMNativeLibrary library) {
-            return library.toNativePointer(escapingValue).asNative();
+        @Specialization
+        static long escapingNativePointer(LLVMNativePointer escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            return escapingValue.asNative();
+        }
+
+        @Specialization
+        static Object escapingPointer(LLVMManagedPointer escapingValue, LLVMInteropType.Structured type,
+                        @Cached LLVMPointerDataEscapeNode pointerDataEscapeNode) {
+            return pointerDataEscapeNode.executeWithType(escapingValue, type);
         }
     }
 
@@ -274,28 +279,36 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
                 LLVMManagedPointer managed = LLVMManagedPointer.cast(address);
                 Object object = objectProfile.profile(managed.getObject());
                 if (managed.getOffset() == 0) {
+                    // pointer to the beginning of a managed object
                     if (isTypedForeignObject.profile(object instanceof LLVMTypedForeignObject)) {
+                        // foreign object -- unpack it
                         return escapingForeign((LLVMTypedForeignObject) object, type);
                     } else {
                         if (object instanceof LLVMObjectAccess) {
-                            // fallthrough
+                            // internal object -- fallthrough
                         } else if (object instanceof DynamicObject && ((DynamicObject) object).getShape().getObjectType() instanceof LLVMObjectAccess) {
-                            // fallthrough
+                            // internal object -- fallthrough
                         } else if (object instanceof LLVMInternalTruffleObject) {
-                            // fallthrough
+                            // internal object -- fallthrough
                         } else if (LLVMPointer.isInstance(object)) {
-                            // fallthrough
+                            // internal object -- fallthrough
                         } else {
+                            // foreign object -- unpack it
                             return object;
                         }
                     }
                 }
             }
-            if (typedProfile.profile(type == null)) {
+
+            // fallthrough: the value escapes as LLVM pointer object
+
+            if (typedProfile.profile(address.getExportType() != null)) {
+                // the pointer has manually attached type information -- use it
                 return address;
-            } else {
-                return address.export(type);
             }
+
+            // attach known type information
+            return address.export(type);
         }
 
         @Specialization
@@ -313,9 +326,9 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
     public abstract static class LLVMVoidDataEscapeNode extends LLVMDataEscapeNode {
 
         @Specialization
-        public Object doVoid(Object escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-            assert escapingValue == null;
-            return LLVMNativePointer.createNull();
+        public Object doVoid(LLVMPointer escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            assert escapingValue.isNull();
+            return escapingValue;
         }
     }
 }

@@ -125,11 +125,13 @@ fld public final static org.graalvm.polyglot.tck.TypeDescriptor ARRAY
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor BOOLEAN
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor DATE
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor DURATION
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXCEPTION
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE_ANY
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor HOST_OBJECT
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor INSTANTIABLE
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor INSTANTIABLE_ANY
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor META_OBJECT
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor NATIVE_POINTER
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor NULL
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor NUMBER
@@ -153,4 +155,6 @@ meth public static org.graalvm.polyglot.tck.TypeDescriptor forValue(org.graalvm.
 supr java.lang.Object
 hfds NOTYPE,PREDEFINED_TYPES,impl
 hcls ArrayImpl,ExecutableImpl,InstantiableImpl,IntersectionImpl,PrimitiveImpl,PrimitiveKind,TypeDescriptorImpl,UnionImpl
+
+CLSS abstract interface org.graalvm.polyglot.tck.package-info
 

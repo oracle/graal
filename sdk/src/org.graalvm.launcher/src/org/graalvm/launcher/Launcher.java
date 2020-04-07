@@ -75,8 +75,8 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.logging.Level;
-import org.graalvm.home.HomeFinder;
 
+import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
@@ -503,6 +503,8 @@ public abstract class Launcher {
             case Darwin:
             case Solaris:
                 return basename;
+            case Windows:
+                return basename + ".exe";
             default:
                 throw abort("executableName: OS not supported: " + OS.current);
         }
@@ -566,6 +568,26 @@ public abstract class Launcher {
             home = HomeFinder.getInstance().getHomeFolder();
         }
         return home;
+    }
+
+    /**
+     * Returns filename of the binary, depending on OS. Binary will be searched in {@code bin} or
+     * {@code jre/bin} directory.
+     *
+     * @param binaryName binary name, without path.
+     * @return OS-dependent binary filename.
+     */
+    protected final Path getGraalVMBinaryPath(String binaryName) {
+        String executableName = executableName(binaryName);
+        Path graalVMHome = getGraalVMHome();
+        if (graalVMHome == null) {
+            throw abort("Can not exec to GraalVM binary: could not find GraalVM home");
+        }
+        Path jdkBin = graalVMHome.resolve("bin").resolve(executableName);
+        if (Files.exists(jdkBin)) {
+            return jdkBin;
+        }
+        return graalVMHome.resolve("jre").resolve("bin").resolve(executableName);
     }
 
     /**
@@ -973,7 +995,7 @@ public abstract class Launcher {
         }
     }
 
-    enum OS {
+    protected enum OS {
         Darwin,
         Linux,
         Solaris,
@@ -1078,159 +1100,187 @@ public abstract class Launcher {
         if (!IS_AOT) {
             return;
         }
-        nativeAccess.maybeExec(args, isPolyglot, polyglotOptions, VMType.Native);
+        maybeExec(args, isPolyglot, polyglotOptions, getDefaultVMType());
     }
 
-    class Native {
-        // execve() to JVM/polyglot from native if needed.
-        // Only parses --jvm/--native to find the VMType and --vm.* to pass/set the VM options.
-        void maybeExec(List<String> args, boolean isPolyglot, Map<String, String> polyglotOptions, VMType defaultVmType) {
-            assert isAOT();
-            VMType vmType = null;
-            boolean polyglot = false;
-            List<String> jvmArgs = new ArrayList<>();
-            List<String> remainingArgs = new ArrayList<>(args.size());
+    void maybeExec(List<String> args, boolean isPolyglot, Map<String, String> polyglotOptions, VMType defaultVmType) {
+        assert isAOT();
+        VMType vmType = null;
+        boolean polyglot = false;
+        List<String> jvmArgs = new ArrayList<>();
+        List<String> remainingArgs = new ArrayList<>(args.size());
 
-            // move jvm polyglot options to jvmArgs
-            Iterator<Entry<String, String>> polyglotOptionsIterator = polyglotOptions.entrySet().iterator();
-            while (polyglotOptionsIterator.hasNext()) {
-                Map.Entry<String, String> entry = polyglotOptionsIterator.next();
-                if (entry.getKey().startsWith("jvm.")) {
-                    jvmArgs.add('-' + entry.getKey().substring(4));
-                    if (entry.getValue() != null && !entry.getValue().isEmpty()) {
-                        jvmArgs.add(entry.getValue());
-                    }
-                    vmType = VMType.JVM;
-                    polyglotOptionsIterator.remove();
+        // move jvm polyglot options to jvmArgs
+        Iterator<Entry<String, String>> polyglotOptionsIterator = polyglotOptions.entrySet().iterator();
+        while (polyglotOptionsIterator.hasNext()) {
+            Map.Entry<String, String> entry = polyglotOptionsIterator.next();
+            if (entry.getKey().startsWith("jvm.")) {
+                jvmArgs.add('-' + entry.getKey().substring(4));
+                if (entry.getValue() != null && !entry.getValue().isEmpty()) {
+                    jvmArgs.add(entry.getValue());
                 }
+                vmType = VMType.JVM;
+                polyglotOptionsIterator.remove();
             }
+        }
 
-            boolean jvmDotWarned = false;
+        boolean jvmDotWarned = false;
 
-            Iterator<String> iterator = args.iterator();
-            List<String> vmOptions = new ArrayList<>();
-            while (iterator.hasNext()) {
-                String arg = iterator.next();
-                if ((arg.startsWith("--jvm.") && arg.length() > "--jvm.".length()) || arg.equals("--jvm")) {
-                    if (vmType == VMType.Native) {
-                        throw abort("'--jvm' and '--native' options can not be used together.");
-                    }
-                    if (isStandalone()) {
-                        if (arg.equals("--jvm")) {
-                            throw abort("'--jvm' is only supported when this launcher is part of a GraalVM.");
-                        } else {
-                            throw abort("'--jvm.*' options are deprecated and only supported when this launcher is part of a GraalVM.");
-                        }
-                    }
-                    vmType = VMType.JVM;
-                    if (arg.equals("--jvm.help")) {
-                        if (defaultVmType == VMType.JVM) {
-                            warn("'--jvm.help' is deprecated, use '--help:vm' instead.");
-                        } else {
-                            warn("'--jvm.help' is deprecated, use '--jvm --help:vm' instead.");
-                        }
-                        remainingArgs.add("--help:vm");
-                    } else if (arg.startsWith("--jvm.")) {
-                        if (!jvmDotWarned) {
-                            warn("'--jvm.*' options are deprecated, use '--vm.*' instead.");
-                            jvmDotWarned = true;
-                        }
-                        String jvmArg = arg.substring("--jvm.".length());
-                        if (jvmArg.equals("classpath")) {
-                            throw abort("'--jvm.classpath' argument must be of the form '--jvm.classpath=<classpath>', not two separate arguments");
-                        }
-                        if (jvmArg.equals("cp")) {
-                            throw abort("'--jvm.cp' argument must be of the form '--jvm.cp=<classpath>', not two separate arguments");
-                        }
-                        if (jvmArg.startsWith("classpath=") || jvmArg.startsWith("cp=")) {
-                            int eqIndex = jvmArg.indexOf('=');
-                            jvmArgs.add('-' + jvmArg.substring(0, eqIndex));
-                            jvmArgs.add(jvmArg.substring(eqIndex + 1));
-                        } else {
-                            jvmArgs.add('-' + jvmArg);
-                        }
-                    }
-                    iterator.remove();
-                } else if ((arg.startsWith("--native.") && arg.length() > "--native.".length()) || arg.equals("--native")) {
-                    if (vmType == VMType.JVM) {
-                        throw abort("'--jvm' and '--native' options can not be used together.");
-                    }
-                    vmType = VMType.Native;
-                    if (arg.equals("--native.help")) {
-                        if (defaultVmType == VMType.Native) {
-                            warn("'--native.help' is deprecated, use '--help:vm' instead.");
-                        } else {
-                            warn("'--native.help' is deprecated, use '--native --help:vm' instead.");
-                        }
-                        remainingArgs.add("--help:vm");
-                    } else if (arg.startsWith("--native.")) {
-                        if (!jvmDotWarned) {
-                            warn("'--native.*' options are deprecated, use '--vm.*' instead.");
-                            jvmDotWarned = true;
-                        }
-                        setNativeOption(arg.substring("--native.".length()));
-                    }
-                    iterator.remove();
-                } else if (arg.startsWith("--vm.") && arg.length() > "--vm.".length()) {
-                    if (arg.equals("--vm.help")) {
-                        warn("'--vm.help' is deprecated, use '--help:vm' instead.");
-                        remainingArgs.add("--help:vm");
-                    }
-                    String vmArg = arg.substring("--vm.".length());
-                    if (vmArg.equals("classpath")) {
-                        throw abort("'--vm.classpath' argument must be of the form '--vm.classpath=<classpath>', not two separate arguments");
-                    }
-                    if (vmArg.equals("cp")) {
-                        throw abort("'--vm.cp' argument must be of the form '--vm.cp=<classpath>', not two separate arguments");
-                    }
-                    if (vmArg.startsWith("classpath=") || vmArg.startsWith("cp=")) {
-                        int eqIndex = vmArg.indexOf('=');
-                        jvmArgs.add('-' + vmArg.substring(0, eqIndex));
-                        jvmArgs.add(vmArg.substring(eqIndex + 1));
+        Iterator<String> iterator = args.iterator();
+        List<String> vmOptions = new ArrayList<>();
+        while (iterator.hasNext()) {
+            String arg = iterator.next();
+            if ((arg.startsWith("--jvm.") && arg.length() > "--jvm.".length()) || arg.equals("--jvm")) {
+                if (vmType == VMType.Native) {
+                    throw abort("'--jvm' and '--native' options can not be used together.");
+                }
+                if (isStandalone()) {
+                    if (arg.equals("--jvm")) {
+                        throw abort("'--jvm' is only supported when this launcher is part of a GraalVM.");
                     } else {
-                        vmOptions.add(vmArg);
+                        throw abort("'--jvm.*' options are deprecated and only supported when this launcher is part of a GraalVM.");
                     }
-                    iterator.remove();
-                } else if (arg.equals("--polyglot")) {
-                    polyglot = true;
-                } else {
-                    remainingArgs.add(arg);
                 }
+                vmType = VMType.JVM;
+                if (arg.equals("--jvm.help")) {
+                    if (defaultVmType == VMType.JVM) {
+                        warn("'--jvm.help' is deprecated, use '--help:vm' instead.");
+                    } else {
+                        warn("'--jvm.help' is deprecated, use '--jvm --help:vm' instead.");
+                    }
+                    remainingArgs.add("--help:vm");
+                } else if (arg.startsWith("--jvm.")) {
+                    if (!jvmDotWarned) {
+                        warn("'--jvm.*' options are deprecated, use '--vm.*' instead.");
+                        jvmDotWarned = true;
+                    }
+                    String jvmArg = arg.substring("--jvm.".length());
+                    if (jvmArg.equals("classpath")) {
+                        throw abort("'--jvm.classpath' argument must be of the form '--jvm.classpath=<classpath>', not two separate arguments");
+                    }
+                    if (jvmArg.equals("cp")) {
+                        throw abort("'--jvm.cp' argument must be of the form '--jvm.cp=<classpath>', not two separate arguments");
+                    }
+                    if (jvmArg.startsWith("classpath=") || jvmArg.startsWith("cp=")) {
+                        int eqIndex = jvmArg.indexOf('=');
+                        jvmArgs.add('-' + jvmArg.substring(0, eqIndex));
+                        jvmArgs.add(jvmArg.substring(eqIndex + 1));
+                    } else {
+                        jvmArgs.add('-' + jvmArg);
+                    }
+                }
+                iterator.remove();
+            } else if ((arg.startsWith("--native.") && arg.length() > "--native.".length()) || arg.equals("--native")) {
+                if (vmType == VMType.JVM) {
+                    throw abort("'--jvm' and '--native' options can not be used together.");
+                }
+                vmType = VMType.Native;
+                if (arg.equals("--native.help")) {
+                    if (defaultVmType == VMType.Native) {
+                        warn("'--native.help' is deprecated, use '--help:vm' instead.");
+                    } else {
+                        warn("'--native.help' is deprecated, use '--native --help:vm' instead.");
+                    }
+                    remainingArgs.add("--help:vm");
+                } else if (arg.startsWith("--native.")) {
+                    if (!jvmDotWarned) {
+                        warn("'--native.*' options are deprecated, use '--vm.*' instead.");
+                        jvmDotWarned = true;
+                    }
+                    vmOptions.add(arg.substring("--native.".length()));
+                }
+                iterator.remove();
+            } else if (arg.startsWith("--vm.") && arg.length() > "--vm.".length()) {
+                if (arg.equals("--vm.help")) {
+                    warn("'--vm.help' is deprecated, use '--help:vm' instead.");
+                    remainingArgs.add("--help:vm");
+                }
+                String vmArg = arg.substring("--vm.".length());
+                if (vmArg.equals("classpath")) {
+                    throw abort("'--vm.classpath' argument must be of the form '--vm.classpath=<classpath>', not two separate arguments");
+                }
+                if (vmArg.equals("cp")) {
+                    throw abort("'--vm.cp' argument must be of the form '--vm.cp=<classpath>', not two separate arguments");
+                }
+                if (vmArg.startsWith("classpath=") || vmArg.startsWith("cp=")) {
+                    int eqIndex = vmArg.indexOf('=');
+                    jvmArgs.add('-' + vmArg.substring(0, eqIndex));
+                    jvmArgs.add(vmArg.substring(eqIndex + 1));
+                } else {
+                    vmOptions.add(vmArg);
+                }
+                iterator.remove();
+            } else if (arg.equals("--polyglot")) {
+                polyglot = true;
+            } else {
+                remainingArgs.add(arg);
+            }
+        }
+        boolean isDefaultVMType = false;
+        if (vmType == null) {
+            vmType = defaultVmType;
+            isDefaultVMType = true;
+        }
+
+        if (vmType == VMType.JVM) {
+            for (String vmOption : vmOptions) {
+                jvmArgs.add('-' + vmOption);
             }
 
-            if (vmType == null) {
-                vmType = defaultVmType;
+            if (!isPolyglot && polyglot) {
+                remainingArgs.add(0, "--polyglot");
             }
+            assert !isStandalone();
+            executeJVM(nativeAccess == null ? System.getProperty("java.class.path") : nativeAccess.getClasspath(jvmArgs), jvmArgs, remainingArgs, polyglotOptions);
+        } else {
+            assert vmType == VMType.Native;
 
             for (String vmOption : vmOptions) {
-                if (vmType == VMType.JVM) {
-                    jvmArgs.add('-' + vmOption);
-                } else {
-                    assert vmType == VMType.Native;
-                    setNativeOption(vmOption);
-                }
+                nativeAccess.setNativeOption(vmOption);
             }
-
             /*
              * All options are processed, now we can run the startup hooks that can depend on the
              * option values.
              */
             VMRuntime.initialize();
-            if (vmType == VMType.JVM) {
-                if (!isPolyglot && polyglot) {
-                    remainingArgs.add(0, "--polyglot");
-                }
-                assert !isStandalone();
-                execJVM(jvmArgs, remainingArgs, polyglotOptions);
-            } else if (!isPolyglot && polyglot) {
+
+            if (!isPolyglot && polyglot) {
                 assert jvmArgs.isEmpty();
                 if (isStandalone()) {
                     throw abort("--polyglot option is only supported when this launcher is part of a GraalVM.");
                 }
-                execNativePolyglot(remainingArgs, polyglotOptions);
+                executePolyglot(remainingArgs, polyglotOptions, !isDefaultVMType);
             }
         }
+    }
 
+    /**
+     * Called if a JVM has to be started instead of AOT binary. The method is only called in AOT
+     * mode. Subclasses may override to apply different options or launch mechanism
+     *
+     * @param jvmArgs arguments for the VM
+     * @param remainingArgs main arguments
+     * @param polyglotOptions additional polyglot-related options
+     * @param classpath class path to be used with the JVM
+     */
+    protected void executeJVM(String classpath, List<String> jvmArgs, List<String> remainingArgs, Map<String, String> polyglotOptions) {
+        nativeAccess.execJVM(classpath, jvmArgs, remainingArgs, polyglotOptions);
+    }
+
+    /**
+     * Called to execute polyglot binary with the supplied options. Subclasses may eventually
+     * override and implement in a different way.
+     *
+     * @param mainArgs program arguments
+     * @param polyglotOptions polyglot options
+     */
+    protected void executePolyglot(List<String> mainArgs, Map<String, String> polyglotOptions, boolean forceNative) {
+        nativeAccess.executePolyglot(mainArgs, polyglotOptions, forceNative);
+    }
+
+    class Native {
+        // execve() to JVM/polyglot from native if needed.
+        // Only parses --jvm/--native to find the VMType and --vm.* to pass/set the VM options.
         private WeakReference<OptionDescriptors> compilerOptionDescriptors;
         private WeakReference<OptionDescriptors> vmOptionDescriptors;
 
@@ -1440,10 +1490,12 @@ public abstract class Launcher {
             }
         }
 
-        private void execNativePolyglot(List<String> args, Map<String, String> polyglotOptions) {
+        private void executePolyglot(List<String> args, Map<String, String> polyglotOptions, boolean forceNative) {
             List<String> command = new ArrayList<>(args.size() + (polyglotOptions == null ? 0 : polyglotOptions.size()) + 3);
             Path executable = getGraalVMBinaryPath("polyglot");
-            command.add("--native");
+            if (forceNative) {
+                command.add("--native");
+            }
             command.add("--use-launcher");
             command.add(getMainClass());
             serializePolyglotOptions(polyglotOptions, command);
@@ -1451,11 +1503,10 @@ public abstract class Launcher {
             exec(executable, command);
         }
 
-        private void execJVM(List<String> jvmArgs, List<String> args, Map<String, String> polyglotOptions) {
+        private void execJVM(String classpath, List<String> jvmArgs, List<String> args, Map<String, String> polyglotOptions) {
             // TODO use String[] for command to avoid a copy later
             List<String> command = new ArrayList<>(jvmArgs.size() + args.size() + (polyglotOptions == null ? 0 : polyglotOptions.size()) + 4);
             Path executable = getGraalVMBinaryPath("java");
-            String classpath = getClasspath(jvmArgs);
             if (classpath != null) {
                 command.add("-classpath");
                 command.add(classpath);
@@ -1510,19 +1561,6 @@ public abstract class Launcher {
                 return null;
             }
             return sb.substring(0, sb.length() - 1);
-        }
-
-        private Path getGraalVMBinaryPath(String binaryName) {
-            String executableName = executableName(binaryName);
-            Path graalVMHome = getGraalVMHome();
-            if (graalVMHome == null) {
-                throw abort("Can not exec to GraalVM binary: could not find GraalVM home");
-            }
-            Path jdkBin = graalVMHome.resolve("bin").resolve(executableName);
-            if (Files.exists(jdkBin)) {
-                return jdkBin;
-            }
-            return graalVMHome.resolve("jre").resolve("bin").resolve(executableName);
         }
 
         private void exec(Path executable, List<String> command) {

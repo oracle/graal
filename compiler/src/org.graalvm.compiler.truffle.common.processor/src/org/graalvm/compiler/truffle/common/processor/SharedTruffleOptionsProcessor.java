@@ -119,15 +119,10 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                 for (Option option : Option.options) {
                     String defaultValue;
 
-                    String deprecatedByText = null;
-                    if (option.deprecatedBy != null) {
-                        deprecatedByText = "Deprecated by {@link PolyglotCompilerOptions#" + option.deprecatedBy + "}.";
-                    }
-
                     if (isRuntime) {
-                        if (deprecatedByText != null) {
+                        if (option.deprecationMessage != null) {
                             out.printf("    /**\n");
-                            out.printf("     * %s\n", deprecatedByText);
+                            out.printf("     * %s\n", option.deprecationMessage);
                             out.printf("     */\n");
                         }
                         String help;
@@ -165,9 +160,9 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                         }
                         out.printf("     * OptionType: %s\n", optionType);
 
-                        if (deprecatedByText != null) {
+                        if (option.deprecationMessage != null) {
                             out.printf("     *\n");
-                            out.printf("     * %s\n", deprecatedByText);
+                            out.printf("     * %s\n", option.deprecationMessage);
                         }
                         out.printf("     */\n");
 
@@ -175,7 +170,7 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                         List<String> extraHelp = option.help.length > 1 ? Arrays.asList(option.help).subList(1, option.help.length) : new ArrayList<>();
                         info.options.add(new OptionInfo(option.name, optionType, help, extraHelp, option.type, pkg + '.' + className, option.name));
                     }
-                    out.printf("    public static final OptionKey<%s> %s = new OptionKey<>(%s);\n", option.type, option.name, defaultValue);
+                    out.printf("    static final OptionKey<%s> %s = new OptionKey<>(%s);\n", option.type, option.name, defaultValue);
                     out.println();
                 }
                 out.println("}");

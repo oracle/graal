@@ -47,7 +47,9 @@ import static org.junit.Assert.assertTrue;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.test.OSUtils;
+import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,15 +57,23 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import org.graalvm.polyglot.Context;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
 public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         setupEnv();
+        resetLanguageHomes();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        resetLanguageHomes();
     }
 
     @Test
@@ -215,6 +225,25 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         } finally {
             Files.delete(newCwd);
         }
+    }
+
+    @Test
+    public void testRelativePathToLanguageHome() throws IOException {
+        setupEnv(Context.create());
+        Path cwdPath = new File("").toPath().toRealPath();
+        Assume.assumeTrue(cwdPath.getNameCount() > 1);
+        Path langHomePath = cwdPath.getParent().resolve("home");
+        System.setProperty(String.format("org.graalvm.language.%s.home", ProxyLanguage.ID), langHomePath.toString());
+        TruffleFile file = languageEnv.getInternalTruffleFile("../home");
+        file.exists();  // Language home should be accessible
+        file.resolve("file").exists();  // File in language home should be accessible
+    }
+
+    private static void resetLanguageHomes() throws ReflectiveOperationException {
+        Class<?> languageCache = Class.forName("com.oracle.truffle.polyglot.LanguageCache");
+        Method reset = languageCache.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
+        reset.setAccessible(true);
+        reset.invoke(null);
     }
 
     public static class BaseDetector implements TruffleFile.FileTypeDetector {

@@ -132,12 +132,12 @@ public class SuspendedEventTest extends AbstractDebugTest {
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 3, false, "CALL(bar)").prepareStepInto(1);
-                assertEquals("42", event.getReturnValue().as(String.class));
+                assertEquals("42", event.getReturnValue().toDisplayString());
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 4, false, "CALL(foo)").prepareContinue();
-                assertEquals("42", event.getReturnValue().as(String.class));
+                assertEquals("42", event.getReturnValue().toDisplayString());
             });
 
             assertEquals("42", expectDone());
@@ -159,14 +159,14 @@ public class SuspendedEventTest extends AbstractDebugTest {
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 2, false, "STATEMENT(CONSTANT(42))", "a", "41").prepareStepInto(1);
-                assertEquals("42", event.getReturnValue().as(String.class));
+                assertEquals("42", event.getReturnValue().toDisplayString());
                 DebugValue a = event.getTopStackFrame().getScope().getDeclaredValues().iterator().next();
                 assertEquals("a", a.getName());
                 event.setReturnValue(a);
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 3, false, "CALL(bar)", "b", "40").prepareStepInto(1);
-                assertEquals("41", event.getReturnValue().as(String.class));
+                assertEquals("41", event.getReturnValue().toDisplayString());
                 DebugValue b = event.getTopStackFrame().getScope().getDeclaredValues().iterator().next();
                 assertEquals("b", b.getName());
                 event.setReturnValue(b);
@@ -174,7 +174,7 @@ public class SuspendedEventTest extends AbstractDebugTest {
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 4, false, "CALL(foo)", "c", "24").prepareContinue();
-                assertEquals("40", event.getReturnValue().as(String.class));
+                assertEquals("40", event.getReturnValue().toDisplayString());
                 DebugValue c = event.getTopStackFrame().getScope().getDeclaredValues().iterator().next();
                 assertEquals("c", c.getName());
                 event.setReturnValue(c);
@@ -267,7 +267,7 @@ public class SuspendedEventTest extends AbstractDebugTest {
                 for (DebugStackFrame frame : event.getStackFrames()) {
 
                     for (DebugValue value : frame.getScope().getDeclaredValues()) {
-                        runExpectIllegalState(() -> value.as(String.class));
+                        runExpectIllegalState(() -> value.toDisplayString());
                         runExpectIllegalState(() -> {
                             value.set(null);
                             return null;

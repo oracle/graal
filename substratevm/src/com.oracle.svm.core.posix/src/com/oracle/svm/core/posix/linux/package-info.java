@@ -23,8 +23,8 @@
  * questions.
  */
 
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class})
+@Platforms({Platform.LINUX.class})
 package com.oracle.svm.core.posix.linux;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform;

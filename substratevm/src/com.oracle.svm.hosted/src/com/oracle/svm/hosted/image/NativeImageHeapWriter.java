@@ -43,6 +43,7 @@ import org.graalvm.word.WordBase;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -193,18 +194,11 @@ public final class NativeImageHeapWriter {
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
         if (NativeImageHeap.useHeapBase()) {
             long targetOffset = targetInfo.getAddress();
-            long headerBits = objectHeader.getHeaderForImageHeapObject(targetOffset);
-            int reservedBits = objectHeader.getReservedBits();
-            if (reservedBits == 0) {
-                // We only apply a shift to the hub reference if there are no reserved bits in the
-                // header. Otherwise, we would not have any space for the reserved bits.
-                int shift = ImageSingletons.lookup(CompressEncoding.class).getShift();
-                headerBits = headerBits >>> shift;
-            }
+            long headerBits = objectHeader.encodeAsImageHeapObjectHeader(targetOffset);
             writeReferenceValue(buffer, index, headerBits);
         } else {
             // The address of the DynamicHub target will be added by the link editor.
-            long headerBits = objectHeader.getHeaderForImageHeapObject(0L);
+            long headerBits = objectHeader.encodeAsImageHeapObjectHeader(0L);
             addDirectRelocationWithAddend(buffer, index, target, headerBits);
         }
     }
@@ -297,8 +291,9 @@ public final class NativeImageHeapWriter {
          * the object base.
          */
         final RelocatableBuffer buffer = bufferForPartition(info, roBuffer, rwBuffer);
-        final int indexInBuffer = info.getIndexInBuffer(heap.getObjectLayout().getHubOffset());
-        assert heap.getObjectLayout().isAligned(indexInBuffer);
+        ObjectLayout objectLayout = heap.getObjectLayout();
+        final int indexInBuffer = info.getIndexInBuffer(objectLayout.getHubOffset());
+        assert objectLayout.isAligned(indexInBuffer);
 
         final HostedClass clazz = info.getClazz();
         final DynamicHub hub = clazz.getHub();
@@ -357,7 +352,7 @@ public final class NativeImageHeapWriter {
                  * Write the hybrid array length and the array elements.
                  */
                 int length = Array.getLength(hybridArray);
-                buffer.putInt(info.getIndexInBuffer(heap.getObjectLayout().getArrayLengthOffset()), length);
+                buffer.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
                 for (int i = 0; i < length; i++) {
                     final int elementIndex = info.getIndexInBuffer(hybridLayout.getArrayElementOffset(i));
                     final JavaKind elementStorageKind = hybridLayout.getArrayElementStorageKind();
@@ -370,20 +365,20 @@ public final class NativeImageHeapWriter {
             JavaKind kind = clazz.getComponentType().getStorageKind();
             Object array = info.getObject();
             int length = Array.getLength(array);
-            buffer.putInt(info.getIndexInBuffer(heap.getObjectLayout().getArrayLengthOffset()), length);
-            buffer.putInt(info.getIndexInBuffer(heap.getObjectLayout().getArrayHashCodeOffset()), info.getIdentityHashCode());
+            buffer.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
+            buffer.putInt(info.getIndexInBuffer(objectLayout.getArrayIdentityHashcodeOffset()), info.getIdentityHashCode());
             if (array instanceof Object[]) {
                 Object[] oarray = (Object[]) array;
                 assert oarray.length == length;
                 for (int i = 0; i < length; i++) {
-                    final int elementIndex = info.getIndexInBuffer(heap.getObjectLayout().getArrayElementOffset(kind, i));
+                    final int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, i));
                     final Object element = heap.getAnalysisUniverse().replaceObject(oarray[i]);
                     assert (oarray[i] instanceof RelocatedPointer) == (element instanceof RelocatedPointer);
                     writeConstant(buffer, elementIndex, kind, element, info);
                 }
             } else {
                 for (int i = 0; i < length; i++) {
-                    final int elementIndex = info.getIndexInBuffer(heap.getObjectLayout().getArrayElementOffset(kind, i));
+                    final int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, i));
                     final Object element = Array.get(array, i);
                     writeConstant(buffer, elementIndex, kind, element, info);
                 }

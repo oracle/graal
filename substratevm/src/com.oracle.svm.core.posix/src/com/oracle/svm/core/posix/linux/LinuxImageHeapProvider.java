@@ -117,7 +117,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
         UnsignedWord imageHeapSizeInFile = ((Pointer) IMAGE_HEAP_END.get()).subtract(imageHeapBegin);
         UnsignedWord requiredReservedSize = imageHeapSizeInFile.add(imageHeapOffsetInAddressSpace);
         if (reservedAddressSpace.isNonNull() && reservedSize.belowThan(requiredReservedSize)) {
-            return CEntryPointErrors.MAP_HEAP_FAILED;
+            return CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE;
         }
 
         /*
@@ -248,11 +248,11 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             UnsignedWord relocsSize = IMAGE_HEAP_RELOCATABLE_END.get().subtract(IMAGE_HEAP_RELOCATABLE_BEGIN.get());
             if (!isAMultiple(relocsSize, pageSize)) {
                 freeImageHeap(allocatedMemory);
-                return CEntryPointErrors.MAP_HEAP_FAILED;
+                return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
             if (VirtualMemoryProvider.get().commit(relocsBegin, relocsSize, Access.READ | Access.WRITE).isNull()) {
                 freeImageHeap(allocatedMemory);
-                return CEntryPointErrors.MAP_HEAP_FAILED;
+                return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
             memcpy(relocsBegin, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), relocsSize);
             if (VirtualMemoryProvider.get().protect(relocsBegin, relocsSize, Access.READ) != 0) {

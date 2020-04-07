@@ -24,17 +24,22 @@
  */
 package com.oracle.svm.core;
 
-import java.nio.file.Paths;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.None;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
+import static org.graalvm.compiler.options.OptionType.User;
+
 import java.util.List;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -45,6 +50,9 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.XOptions;
+
+import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 
 public class SubstrateOptions {
 
@@ -111,14 +119,13 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)")//
-    public static final HostedOptionKey<String[]> CLibraryPath = new HostedOptionKey<>(new String[]{
-                    Paths.get("clibraries/" + OS.getCurrent().asPackageName() + "-" + SubstrateUtil.getArchitectureName()).toAbsolutePath().toString()});
+    public static final HostedOptionKey<String[]> CLibraryPath = new HostedOptionKey<>(null);
 
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<String[]> LinkerRPath = new HostedOptionKey<>(null);
 
     @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
-    public static final HostedOptionKey<String> Path = new HostedOptionKey<>(Paths.get(".").toAbsolutePath().normalize().resolve("svmbuild").toString());
+    public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
 
     @APIOption(name = "-ea", customHelp = "enable assertions in the generated image")//
     @APIOption(name = "-da", kind = APIOption.APIOptionKind.Negated, customHelp = "disable assertions in the generated image")//
@@ -140,14 +147,51 @@ public class SubstrateOptions {
     @Option(help = "Print summary GC information after each collection")//
     public static final RuntimeOptionKey<Boolean> PrintGC = new RuntimeOptionKey<>(false);
 
-    @Option(help = "Print summary GC information after main completion")//
-    public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false);
-
-    @Option(help = "Print a time stamp at each collection, if +PrintGC or +VerboseGC.")//
-    public static final RuntimeOptionKey<Boolean> PrintGCTimeStamps = new RuntimeOptionKey<>(false);
-
     @Option(help = "Print more information about the heap before and after each collection")//
     public static final RuntimeOptionKey<Boolean> VerboseGC = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Verify the heap before and after each collection.")//
+    public static final HostedOptionKey<Boolean> VerifyHeap = new HostedOptionKey<>(false);
+
+    @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> MinHeapSize = new RuntimeOptionKey<Long>(0L) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+            if (!SubstrateUtil.HOSTED) {
+                XOptions.getXms().setValue(newValue);
+            }
+        }
+    };
+
+    @Option(help = "The maximum heap size at run-time, in bytes.", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> MaxHeapSize = new RuntimeOptionKey<Long>(0L) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+            if (!SubstrateUtil.HOSTED) {
+                XOptions.getXmx().setValue(newValue);
+            }
+        }
+    };
+
+    @Option(help = "The maximum size of the young generation at run-time, in bytes", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> MaxNewSize = new RuntimeOptionKey<Long>(0L) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+            if (!SubstrateUtil.HOSTED) {
+                XOptions.getXmn().setValue(newValue);
+            }
+        }
+    };
+
+    @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<Long>(0L) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+            if (!SubstrateUtil.HOSTED) {
+                XOptions.getXss().setValue(newValue);
+            }
+        }
+    };
 
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
@@ -158,8 +202,26 @@ public class SubstrateOptions {
     @Option(help = "Use only a writable native image heap.")//
     public static final HostedOptionKey<Boolean> UseOnlyWritableBootImageHeap = new HostedOptionKey<>(false);
 
-    @Option(help = "Support multiple isolates. ")//
-    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
+    @Option(help = "Support multiple isolates.") //
+    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<Boolean>(null) {
+        @Override
+        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (!values.containsKey(this)) {
+                /*
+                 * With the LLVM backend, isolate support has a significant performance cost, so we
+                 * disable it unless it is explicitly enabled.
+                 */
+                return !useLLVMBackend();
+            }
+            return (Boolean) values.get(this);
+        }
+
+        @Override
+        public Boolean getValue(OptionValues values) {
+            assert checkDescriptorExists();
+            return getValueOrDefault(values.getMap());
+        }
+    };
 
     @Option(help = "Trace VMOperation execution.")//
     public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
@@ -290,6 +352,9 @@ public class SubstrateOptions {
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
 
+    @Option(help = "Use callee saved registers to reduce spilling for low-frequency calls to stubs (if callee saved registers are supported by the architecture)")//
+    public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
+
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, InTypeCheck).", type = OptionType.Debug)//
     public static final HostedOptionKey<String[]> ReportAnalysisForbiddenType = new HostedOptionKey<>(new String[0]);
 
@@ -306,14 +371,23 @@ public class SubstrateOptions {
                  * functions makes it incoherent with the executable.
                  */
                 RemoveUnusedSymbols.update(values, false);
+                /*
+                 * The LLVM backend doesn't support speculative execution attack mitigation
+                 */
+                MitigateSpeculativeExecutionAttacks.update(values, None);
             }
         }
     };
 
+    @Fold
+    public static boolean useLLVMBackend() {
+        return "llvm".equals(CompilerBackend.getValue());
+    }
+
     @Option(help = "Emit substitutions for UTF16 and latin1 compression", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> EmitStringEncodingSubstitutions = new HostedOptionKey<>(true);
 
-    @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Debug)//
+    @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -340,10 +414,27 @@ public class SubstrateOptions {
     @Option(help = "Fold SecurityManager getter.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> FoldSecurityManagerGetter = new HostedOptionKey<>(true);
 
+    @APIOption(name = "native-compiler-path")//
     @Option(help = "Provide custom path to C compiler used for query code compilation and linking.", type = OptionType.User)//
     public static final HostedOptionKey<String> CCompilerPath = new HostedOptionKey<>(null);
+    @APIOption(name = "native-compiler-options")//
     @Option(help = "Provide custom C compiler option used for query code compilation.", type = OptionType.User)//
     public static final HostedOptionKey<String[]> CCompilerOption = new HostedOptionKey<>(new String[0]);
+
+    @APIOption(name = "native-image-info")//
+    @Option(help = "Show native-toolchain information and image-build settings", type = User)//
+    public static final HostedOptionKey<Boolean> DumpTargetInfo = new HostedOptionKey<>(false);
+
+    @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.Expert)//
+    public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);
+
+    @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
+    public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
+
+    @Option(help = "The interval in minutes between watchdog checks (0 disables the watchdog)", type = OptionType.Expert)//
+    public static final HostedOptionKey<Integer> DeadlockWatchdogInterval = new HostedOptionKey<>(10);
+    @Option(help = "Exit the image builder VM after printing call stacks", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> DeadlockWatchdogExitOnTimeout = new HostedOptionKey<>(true);
 
     /**
      * The alignment for AOT and JIT compiled methods. The value is constant folded during image
@@ -355,4 +446,20 @@ public class SubstrateOptions {
         return GraalOptions.LoopHeaderAlignment.getValue(HostedOptionValues.singleton());
     }
 
+    @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> UseReferenceHandlerThread = new HostedOptionKey<>(false);
+
+    @Option(help = "Insert debug info into the generated native image or library")//
+    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<Integer>(0) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
+            // force update of TrackNodeSourcePosition
+            if (newValue > 0 && !Boolean.TRUE.equals(values.get(TrackNodeSourcePosition))) {
+                TrackNodeSourcePosition.update(values, true);
+            }
+        }
+    };
+    @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
+    public static final HostedOptionKey<String[]> DebugInfoSourceSearchPath = new HostedOptionKey<String[]>(null) {
+    };
 }

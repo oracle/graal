@@ -29,15 +29,21 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URLDecoder;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFileAttributeView;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -575,14 +581,47 @@ public class SystemUtils {
      * @return Strign representation.
      */
     public static String fingerPrint(byte[] digest) {
+        return fingerPrint(digest, true);
+    }
+
+    /**
+     * Formats a digest into a String representation. Prints digest bytes in hex, separates bytes by
+     * doublecolon.
+     * 
+     * @param digest digest bytes
+     * @param delimiter if true, put ':' between each two hex digits
+     * @return Strign representation.
+     */
+    public static String fingerPrint(byte[] digest, boolean delimiter) {
+        if (digest == null) {
+            return null;
+        }
         StringBuilder sb = new StringBuilder(digest.length * 3);
         for (int i = 0; i < digest.length; i++) {
-            if (i > 0) {
+            if (delimiter && i > 0) {
                 sb.append(':');
             }
             sb.append(String.format("%02x", (digest[i] & 0xff)));
         }
         return sb.toString();
+    }
+
+    /**
+     * Hashes a string contents.
+     * 
+     * @param s the input text
+     * @param delimiters use : delimiters in the fingerprint
+     * @return hex fingerprint of the input text
+     */
+    public static String digestString(String s, boolean delimiters) {
+        try {
+            MessageDigest dg = MessageDigest.getInstance("SHA-256"); // NOI18N
+            dg.update(s.getBytes());
+            byte[] digest = dg.digest();
+            return SystemUtils.fingerPrint(digest, delimiters);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new FailedOperationException(ex.getLocalizedMessage(), ex);
+        }
     }
 
     /**
@@ -596,11 +635,62 @@ public class SystemUtils {
         if (arch == null) {
             return null;
         }
-        switch (arch) {
+        switch (arch.toLowerCase(Locale.ENGLISH)) {
             case CommonConstants.ARCH_X8664:
                 return CommonConstants.ARCH_AMD64;
             default:
                 return arch;
+        }
+    }
+
+    /**
+     * Normalizes OS name string.
+     * 
+     * @param os OS name
+     * @param arch arch name
+     * @return normalized os name, or {@code null}.
+     */
+    public static String normalizeOSName(String os, String arch) {
+        if (os == null) {
+            return null;
+        }
+        switch (os.toLowerCase(Locale.ENGLISH)) {
+            case CommonConstants.OS_MACOS_DARWIN:
+                return CommonConstants.OS_TOKEN_MACOS;
+            default:
+                return os;
+        }
+    }
+
+    /**
+     * Computes file digest. The default algorithm is SHA-256
+     * 
+     * @param localFile local file path
+     * @param digestAlgo the hash algorithm
+     * @return digest bytes
+     * @throws java.io.IOException in the case of I/O failure, or a digest failure/not found
+     */
+    public static byte[] computeFileDigest(Path localFile, String digestAlgo) throws IOException {
+        try (SeekableByteChannel s = FileChannel.open(localFile, StandardOpenOption.READ)) {
+            ByteBuffer bb = ByteBuffer.allocate(4096);
+            long size = Files.size(localFile);
+            MessageDigest dg = MessageDigest.getInstance("SHA-256"); // NOI18N
+            while (size > 0) {
+                if (bb.limit() > size) {
+                    bb.limit((int) size);
+                }
+                int r = s.read(bb);
+                if (r < 0) {
+                    break;
+                }
+                bb.flip();
+                dg.update(bb);
+                bb.clear();
+                size -= r;
+            }
+            return dg.digest();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IOException(ex);
         }
     }
 }

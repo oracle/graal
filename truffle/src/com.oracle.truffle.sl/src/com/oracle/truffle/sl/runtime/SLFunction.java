@@ -46,8 +46,11 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -78,6 +81,7 @@ import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
  * encapsulates a {@link SLUndefinedFunctionRootNode}.
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class SLFunction implements TruffleObject {
 
     public static final int INLINE_CACHE_SIZE = 2;
@@ -134,12 +138,14 @@ public final class SLFunction implements TruffleObject {
         return name;
     }
 
-    /**
-     * {@link SLFunction} instances are always visible as executable to other languages.
-     */
-    @SuppressWarnings("static-method")
-    public SourceSection getDeclaredLocation() {
-        return getCallTarget().getRootNode().getSourceSection();
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return SLLanguage.class;
     }
 
     /**
@@ -147,14 +153,53 @@ public final class SLFunction implements TruffleObject {
      */
     @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
+    SourceSection getSourceLocation() {
+        return getCallTarget().getRootNode().getSourceSection();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasSourceLocation() {
+        return true;
+    }
+
+    /**
+     * {@link SLFunction} instances are always visible as executable to other languages.
+     */
+    @ExportMessage
     boolean isExecutable() {
         return true;
+    }
+
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMetaObject() {
+        return SLType.FUNCTION;
+    }
+
+    @ExportMessage
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return name;
     }
 
     /**
      * We allow languages to execute this function. We implement the interop execute message that
      * forwards to a function dispatch.
+     * 
+     * Since invocations are potentially expensive (result in an indirect call, which is expensive
+     * by itself but also limits function inlining which can hinder other optimisations) if the node
+     * turns megamorphic (i.e. cache limit is exceeded) we annotate it with {@ReportPolymorphism}.
+     * This ensures that the runtime is notified when this node turns polymorphic. This, in turn,
+     * may, under certain conditions, cause the runtime to attempt to make node monomorphic again by
+     * duplicating the entire AST containing that node and specialising it for a particular call
+     * site.
      */
+    @ReportPolymorphism
     @ExportMessage
     abstract static class Execute {
 
@@ -192,7 +237,9 @@ public final class SLFunction implements TruffleObject {
          * @see Specialization
          *
          * @param function the dynamically provided function
-         * @param cachedFunction the cached function of the specialization instance
+         * @param arguments the arguments to the function
+         * @param callTargetStable The assumption object assuming the function was not redefined.
+         * @param cachedTarget The call target we aim to invoke
          * @param callNode the {@link DirectCallNode} specifically created for the
          *            {@link CallTarget} in cachedFunction.
          */

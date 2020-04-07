@@ -88,16 +88,23 @@ JNIEXPORT int JNICALL JVM_InitializeSocketLibrary() {
    return 0;
 }
 
-static jlong  _time_offset         = 116444736000000000L;
-static jlong NANOSECS_PER_SEC      = 1000000000L;
-static jint  NANOSECS_PER_MILLISEC = 1000000;
+static const jlong _offset               = 116444736000000000L;
+static const jlong NANOSECS_PER_SEC      = 1000000000L;
+static const jint  NANOSECS_PER_MILLISEC = 1000000;
 
-static jlong getCurrentTimeMillis() {
+// Returns time ticks in (10th of micro seconds)
+static __inline jlong windows_to_time_ticks(FILETIME wt) {
+  jlong a = jlong_from(wt.dwHighDateTime, wt.dwLowDateTime);
+  return (a - _offset);
+}
+
+static __inline jlong getCurrentTimeMillis() {
     jlong a;
     FILETIME wt;
+    jlong ticks;
     GetSystemTimeAsFileTime(&wt);
-    a = jlong_from(wt.dwHighDateTime, wt.dwLowDateTime);
-    return (a - _time_offset) / 10000;
+    ticks = windows_to_time_ticks(wt);
+    return ticks / 10000;
 }
 
 JNIEXPORT jlong JNICALL Java_java_lang_System_nanoTime(void *env, void * ignored) {
@@ -126,6 +133,42 @@ JNIEXPORT jlong JNICALL Java_java_lang_System_currentTimeMillis(void *env, void 
 
 JNIEXPORT jlong JNICALL JVM_CurrentTimeMillis(void *env, void * ignored) {
     return Java_java_lang_System_currentTimeMillis(env, ignored);
+}
+
+static void os_javaTimeSystemUTC(jlong *seconds, jlong *nanos) {
+  FILETIME wt;
+  jlong ticks;
+  jlong secs;
+  GetSystemTimeAsFileTime(&wt);
+  ticks = windows_to_time_ticks(wt); // 10th of micros
+  secs = ticks / 10000000; // 10000 * 1000
+  *seconds = secs;
+  *nanos = ((jlong)(ticks - (secs*10000000))) * 100;
+}
+
+/* Taken from src/hotspot/share/prims/jvm.cpp */
+#define CONST64(x)  (x ## LL)
+
+static const jlong MAX_DIFF_SECS = CONST64(0x0100000000); //  2^32
+static const jlong MIN_DIFF_SECS = -CONST64(0x0100000000); // -2^32
+
+JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(void *env, void *ignored, jlong offset_secs) {
+    jlong seconds;
+    jlong nanos;
+    jlong diff;
+
+    os_javaTimeSystemUTC(&seconds, &nanos);
+
+    diff = seconds - offset_secs;
+    if (diff >= MAX_DIFF_SECS || diff <= MIN_DIFF_SECS) {
+       return -1; // sentinel value: the offset is too far off the target
+    }
+
+    return (diff * (jlong)1000000000) + nanos;
+}
+
+JNIEXPORT jlong JNICALL Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
+    return JVM_GetNanoTimeAdjustment(env, ignored, offset_secs);
 }
 
 JNIEXPORT void JNICALL JVM_BeforeHalt() {
@@ -189,6 +232,16 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
     return NULL;
 }
 
+jboolean VerifyFixClassname(char *utf_name) {
+    fprintf(stderr, "VerifyFixClassname(%s) called:  Unimplemented\n", utf_name);
+    abort();
+}
+
+jboolean VerifyClassname(char *utf_name, jboolean arrayAllowed) {
+    fprintf(stderr, "VerifyClassname(%s, %d) called:  Unimplemented\n", utf_name, arrayAllowed);
+    abort();
+}
+
 int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
   return vfprintf(f, fmt, args);
 }
@@ -217,3 +270,35 @@ int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   return len;
 }
 #endif
+
+/*
+ * Signal support, used to implement the shutdown sequence.  Every VM must
+ * support JVM_SIGINT and JVM_SIGTERM, raising the former for user interrupts
+ * (^C) and the latter for external termination (kill, system shutdown, etc.).
+ * Other platform-dependent signal values may also be supported.
+ */
+#include "JvmFuncs_SignalImpl.h"
+
+JNIEXPORT jint JNICALL JVM_FindSignal(const char *name) {
+  return os__get_signal_number(name);
+}
+
+JNIEXPORT jboolean JNICALL JVM_RaiseSignal(jint sig) {
+  os__signal_raise(sig);
+  return JNI_TRUE;
+}
+
+JNIEXPORT void * JNICALL JVM_RegisterSignal(jint sig, void *handler) {
+  // Copied from classic vm
+  // signals_md.c       1.4 98/08/23
+  void* newHandler = handler == (void *)2
+                   ? os__user_handler()
+                   : handler;
+
+  void* oldHandler = os__signal(sig, newHandler);
+  if (oldHandler == os__user_handler()) {
+      return (void *)2;
+  } else {
+      return oldHandler;
+  }
+}
