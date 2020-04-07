@@ -111,6 +111,10 @@ fi
 module_launcher="<module_launcher>"
 if [[ "${module_launcher}" == "True" ]]; then
     app_path_arg="--module-path"
+    IFS=" " read -ra add_exports <<< "<add_exports>"
+    for e in "${add_exports[@]}"; do
+        jvm_args+=("${e}")
+    done
 else
     app_path_arg="-cp"
 fi

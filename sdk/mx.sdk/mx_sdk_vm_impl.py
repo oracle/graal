@@ -59,6 +59,7 @@ import mx_gate
 import mx_subst
 import mx_sdk
 import mx_sdk_vm
+import mx_javamodules
 
 
 if sys.version_info[0] < 3:
@@ -1770,8 +1771,19 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             image_config = self.subject.native_image_config
             return ' '.join(image_config.option_vars)
 
+        def _get_add_exports():
+            requiredExports = self.subject.native_image_config.requiredExports()
+            add_exports = []
+            for required in requiredExports:
+                target_modules = requiredExports[required]
+                target_modules_str = ','.join(target_module.name for target_module in target_modules)
+                required_module_name, required_package_name = required
+                add_exports.append('--add-exports=' + required_module_name + '/' + required_package_name + "=" + target_modules_str)
+            return ' '.join(sorted(add_exports))
+
         _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
         _template_subst.register_no_arg('module_launcher', _is_module_launcher)
+        _template_subst.register_no_arg('add_exports', _get_add_exports)
         _template_subst.register_no_arg('classpath', _get_classpath)
         _template_subst.register_no_arg('jre_bin', _get_jre_bin)
         _template_subst.register_no_arg('main_class', _get_main_class)

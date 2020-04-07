@@ -826,7 +826,7 @@ def _native_image_launcher_extra_jvm_args():
     if svm_java8():
         return []
     # Support for running as Java module
-    res = ['--add-exports=java.base/jdk.internal.module=org.graalvm.nativeimage.pointsto']
+    res = []
     jdk = mx.get_jdk(tag='default')
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(jdk):
         res.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
