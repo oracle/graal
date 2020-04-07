@@ -273,7 +273,7 @@ public final class CallNode extends Node {
         for (CallNode child : children) {
             if (child.state != State.Removed) {
                 final Node childInvoke = (Node) child.invoke;
-                if (!childInvoke.isAlive()) {
+                if (childInvoke == null || !childInvoke.isAlive()) {
                     child.remove();
                     continue;
                 }
