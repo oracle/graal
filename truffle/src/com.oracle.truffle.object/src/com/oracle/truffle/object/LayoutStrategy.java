@@ -353,8 +353,15 @@ public abstract class LayoutStrategy {
             Property oldProperty = ((DirectReplacePropertyTransition) transition).getPropertyBefore();
             Property newProperty = ((DirectReplacePropertyTransition) transition).getPropertyAfter();
             if (append) {
+                boolean sameLocation = oldProperty.getLocation().equals(newProperty.getLocation());
                 oldProperty = shape.getProperty(oldProperty.getKey());
-                newProperty = newProperty.relocate(shape.allocator().moveLocation(newProperty.getLocation()));
+                Location newLocation;
+                if (sameLocation) {
+                    newLocation = oldProperty.getLocation();
+                } else {
+                    newLocation = shape.allocator().moveLocation(newProperty.getLocation());
+                }
+                newProperty = newProperty.relocate(newLocation);
             }
             return directReplaceProperty(shape, oldProperty, newProperty, append);
         } else {
