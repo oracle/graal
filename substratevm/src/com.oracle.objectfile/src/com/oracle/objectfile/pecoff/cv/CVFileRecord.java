@@ -56,7 +56,6 @@ final class CVFileRecord extends CVSymbolRecord {
 
     CVFileRecord(CVSections cvSections, CVSymbolSectionImpl.CVStringTable strings) {
         super(cvSections, CVDebugConstants.DEBUG_S_FILECHKSMS);
-        this.cvSections = cvSections;
         this.strings = strings;
     }
 

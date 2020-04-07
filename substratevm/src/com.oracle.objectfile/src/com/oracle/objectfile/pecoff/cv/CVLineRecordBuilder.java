@@ -57,7 +57,7 @@ public class CVLineRecordBuilder {
      */
 
     /**
-     * build line number records for a function
+     * Build line number records for a function.
      * @param entry function to build line number table for
      * @return CVLineRecord containing any entries generated, or null if no entries generated
      */
@@ -147,13 +147,13 @@ public class CVLineRecordBuilder {
     }
 
     /**
-     * test to see if two ranges are adjacent, and can be combined into one
+     * Test to see if two ranges are adjacent, and can be combined into one.
      * @param previousRange the first range (lower address)
      * @param range the second range (higher address)
      * @return true if the two ranges can be combined
      */
     private boolean shouldMerge(Range range, Range previousRange) {
-        if (!CVConstants.mergeAdjacentLineRecords) {
+        if (!mergeAdjacentLineRecords) {
             return false;
         }
         if (previousRange == null) {
@@ -162,14 +162,14 @@ public class CVLineRecordBuilder {
         /* if we're in a different class that the primary Class, this is inlined code */
         final boolean isInlinedCode = !range.getClassName().equals(primaryEntry.getClassEntry().getClassName());
         // if (isInlinedCode && skipInlinedCode) { return true; }
-        if (isInlinedCode && CVConstants.skipGraalIntrinsics && CVRootPackages.isGraalIntrinsic(range.getClassName())) {
+        if (isInlinedCode && skipGraalIntrinsics && CVRootPackages.isGraalIntrinsic(range.getClassName())) {
             return true;
         }
         return previousRange.getFileAsPath().equals(range.getFileAsPath()) && (range.getLine() == -1 || previousRange.getLine() == range.getLine());
     }
 
     /**
-     * test to see if a new line record should be emitted
+     * Test to see if a new line record should be emitted.
      * @param previousRange previous range
      * @param range current range
      * @return true if the current range is on a different line or file from the previous one

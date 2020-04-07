@@ -26,8 +26,6 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.pecoff.cv.CVSections.CVSectionImplBase;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -38,7 +36,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_SIGNATURE_C13;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_SYMBOL_SECTION_NAME;
 
-public final class CVSymbolSectionImpl extends CVSectionImplBase {
+public final class CVSymbolSectionImpl extends CVSectionImpl {
 
     private static final int CV_VECTOR_DEFAULT_SIZE = 200;
     private static final int CV_STRINGTABLE_DEFAULT_SIZE = 200;

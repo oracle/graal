@@ -33,7 +33,7 @@ import java.io.PrintStream;
  */
 abstract class CVSymbolRecord {
 
-    CVSections cvSections;
+    protected CVSections cvSections;
     protected int recordStartPosition;
     protected final int type;
 

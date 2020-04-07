@@ -31,7 +31,6 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
-import com.oracle.objectfile.pecoff.cv.CVSections.CVSectionImplBase;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,7 +42,7 @@ import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_SIGNATURE_C13;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_SYMBOL_SECTION_NAME;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_TYPE_SECTION_NAME;
 
-public final class CVTypeSectionImpl extends CVSectionImplBase {
+public final class CVTypeSectionImpl extends CVSectionImpl {
 
     private static final int CV_VECTOR_DEFAULT_SIZE = 200;
     private ArrayList<CVTypeRecord> cvRecords = new ArrayList<>(CV_VECTOR_DEFAULT_SIZE);

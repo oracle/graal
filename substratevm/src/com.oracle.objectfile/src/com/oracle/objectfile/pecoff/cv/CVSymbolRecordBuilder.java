@@ -39,13 +39,11 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_VOID;
 final class CVSymbolRecordBuilder {
 
     private final CVSections cvSections;
-    private final CVTypeSectionImpl typeSection;
     private final CVSymbolSubsection symbolRecord;
 
     CVSymbolRecordBuilder(CVSections cvSections) {
         this.symbolRecord = new CVSymbolSubsection(cvSections);
         this.cvSections = cvSections;
-        this.typeSection = cvSections.getCVTypeSection();
     }
 
     /**
@@ -93,7 +91,7 @@ final class CVSymbolRecordBuilder {
      */
     private void build(PrimaryEntry primaryEntry, String methodName) {
         final Range primaryRange = primaryEntry.getPrimary();
-        CVUtil.debug("addfunc(" + methodName + ") numtypes = %d\n", typeSection.getRecords().size());
+        CVUtil.debug("addfunc(" + methodName + ") numtypes = %d\n", cvSections.getCVTypeSection().getRecords().size());
         int functionTypeIndex = addTypeRecords(primaryEntry);
         byte funcFlags = 0;
         CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvSections, methodName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0, 0, functionTypeIndex, primaryRange.getLo(), (short) 0, funcFlags);

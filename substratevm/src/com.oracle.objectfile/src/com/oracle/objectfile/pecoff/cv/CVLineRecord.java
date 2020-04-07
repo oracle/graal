@@ -106,7 +106,7 @@ final class CVLineRecord extends CVSymbolRecord {
 
         int addr;
         int lineAndFLags;
-/*
+
         LineEntry(int addr, int line, int deltaEnd, boolean isStatement) {
             this.addr = addr;
             assert line <= 0xffffff;
@@ -115,7 +115,7 @@ final class CVLineRecord extends CVSymbolRecord {
             assert deltaEnd >= 0;
             lineAndFLags = line | (deltaEnd << 24) | (isStatement ? 0x80000000 : 0);
         }
-*/
+
         LineEntry(int addr, int line) {
             this.addr = addr;
             this.lineAndFLags = line;

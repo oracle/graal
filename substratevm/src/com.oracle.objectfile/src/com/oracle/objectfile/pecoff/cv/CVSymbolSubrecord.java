@@ -193,7 +193,7 @@ abstract class CVSymbolSubrecord {
          * Example:
          *  cwd = C:\tmp\graal-8
          *  cl = C:\tmp\graal-8\ojdkbuild\tools\toolchain\vs2010e\VC\Bin\x86_amd64\cl.exe
-         *  cmd = -Zi -MT -IC:\tmp\graal-8\ojdkbuild\tools\toolchain\vs2010e\VC\INCLUDE -IC:\tmp\graal-8\ojdkbuild\tools\toolchain\sdk71\INCLUDE -IC:\tmp\graal-8\ojdkbuild\tools\toolchain\sdk71\INCLUDE\gl -TC -X
+         *  cmd = -Zi -MT -IC:\tmp\graal-8\tools\toolchain\vs2010e\VC\INCLUDE -IC:\tmp\graal-8\tools\toolchain\sdk71\INCLUDE -IC:\tmp\graal-8\tools\toolchain\sdk71\INCLUDE\gl -TC -X
          *  src = helloworld.c
          *  pdb = C:\tmp\graal-8\vc100.pdb
          */

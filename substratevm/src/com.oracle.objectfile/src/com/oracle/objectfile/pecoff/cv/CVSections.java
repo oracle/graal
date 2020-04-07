@@ -26,22 +26,14 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.BasicProgbitsSectionImpl;
-import com.oracle.objectfile.BuildDependency;
-import com.oracle.objectfile.LayoutDecision;
-import com.oracle.objectfile.LayoutDecisionMap;
-import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.DebugInfoBase;
 import com.oracle.objectfile.pecoff.PECoffMachine;
-import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
 import java.nio.ByteOrder;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * CVSections is a container class for all the CodeView sections to be emitted in the object file.
- * Currently, that will be .debug$S (CVSymbolSectionImpl) (and .debug$T (CVTypeSectionImpl) when implemented)
+ * Currently, that will be .debug$S (CVSymbolSectionImpl) and .debug$T (CVTypeSectionImpl)
  * Common data (useful to more than one CodeView section) goes here, mostly that gathered by calls to installDebugInfo->addRange() and installDebugInfo->addSubRange()
  */
 public final class CVSections extends DebugInfoBase {
@@ -65,83 +57,4 @@ public final class CVSections extends DebugInfoBase {
         return cvTypeSection;
     }
 
-    abstract static class CVSectionImplBase extends BasicProgbitsSectionImpl {
-
-        int debugLevel = 1;
-        long debugTextBase = 0;
-        long debugAddress = 0;
-        int debugBase = 0;
-
-        CVSectionImplBase() {
-            checkDebug(0);
-        }
-
-        @Override
-        public void setElement(ObjectFile.Element e) {
-            super.setElement(e);
-            /* define the section as a COFF symbol */
-            getOwner().createDefinedSymbol(getSectionName(), getElement(), 0, 0, false, false);
-        }
-
-        void checkDebug(int pos) {
-            /* if the env var relevant to this element type is set then switch on debugging */
-            String envVarName =  "DEBUG_" + getSectionName().substring(1).toUpperCase();
-            if (System.getenv(envVarName) != null) {
-                debugLevel = 1;
-                debugBase = pos;
-                debugAddress = debugTextBase;
-            }
-        }
-
-        @Override
-        public int getAlignment() {
-            return 1;
-        }
-
-        public void debug(String format, Object ... args) {
-            if (debugLevel > 1) {
-                CVUtil.debug(format + "\n", args);
-            }
-        }
-
-        public void info(String format, Object ... args) {
-            if (debugLevel > 0) {
-                CVUtil.debug(format + "\n", args);
-            }
-        }
-
-        @Override
-        public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
-            /* ensure content byte[] has been created before calling super method */
-            createContent();
-
-            /* ensure content byte[] has been written before calling super method */
-            writeContent();
-
-            return super.getOrDecideContent(alreadyDecided, contentHint);
-        }
-
-        @Override
-        public Set<BuildDependency> getDependencies(Map<ObjectFile.Element, LayoutDecisionMap> decisions) {
-            Set<BuildDependency> deps = super.getDependencies(decisions);
-            String targetName = getSectionName();
-            @SuppressWarnings("unused") PECoffObjectFile.PECoffSection targetSection = (PECoffObjectFile.PECoffSection) getElement().getOwner().elementForName(targetName);
-            LayoutDecision ourContent =  decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
-            LayoutDecision ourSize =  decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
-            //LayoutDecision.Kind[] targetKinds = targetSectionKinds();
-            /* make our content depend on the size and content of the target */
-            //for (LayoutDecision.Kind targetKind : targetKinds) {
-            //    LayoutDecision targetDecision =  decisions.get(targetSection).getDecision(targetKind);
-            //    deps.add(BuildDependency.createOrGet(ourContent, targetDecision));
-            //}
-            /* make our size depend on our content */
-            deps.add(BuildDependency.createOrGet(ourSize, ourContent));
-            return deps;
-        }
-
-        //public abstract LayoutDecision.Kind[] targetSectionKinds();
-        public abstract void createContent();
-        public abstract void writeContent();
-        public abstract String getSectionName();
-    }
 }
