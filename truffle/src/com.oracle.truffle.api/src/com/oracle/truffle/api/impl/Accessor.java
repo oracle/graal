@@ -56,7 +56,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -334,7 +333,7 @@ public abstract class Accessor {
 
         public abstract PolyglotException wrapGuestException(String languageId, Throwable exception);
 
-        public abstract <T> T getOrCreateRuntimeData(Object polyglotEngine, BiFunction<OptionValues, Function<String,TruffleLogger>,T> constructor);
+        public abstract <T> T getOrCreateRuntimeData(Object polyglotEngine, BiFunction<OptionValues, Supplier<TruffleLogger>,T> constructor);
 
         public abstract Set<? extends Class<?>> getProvidedTags(LanguageInfo language);
 

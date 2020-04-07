@@ -57,7 +57,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -790,7 +789,7 @@ final class EngineAccessor extends Accessor {
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T> T getOrCreateRuntimeData(Object polyglotEngine, BiFunction<OptionValues, Function<String,TruffleLogger>, T> constructor) {
+        public <T> T getOrCreateRuntimeData(Object polyglotEngine, BiFunction<OptionValues, Supplier<TruffleLogger>, T> constructor) {
             if (polyglotEngine == null) {
                 OptionValues engineOptionValues = PolyglotEngineImpl.getEngineOptionsWithNoEngine();
                 return constructor.apply(engineOptionValues, PolyglotLoggers.createCompilerLoggerProvider(null));
@@ -848,7 +847,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Handler getLogHandler(Object loggerCacheSPI) {
-            return ((PolyglotLoggers.LoggerCacheImplementation)loggerCacheSPI).getLogHandler();
+            return ((PolyglotLoggers.LoggerCache)loggerCacheSPI).getLogHandler();
         }
 
         @Override
@@ -863,7 +862,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Map<String, Level> getLogLevels(final Object loggerCacheSPI) {
-            return ((PolyglotLoggers.LoggerCacheImplementation)loggerCacheSPI).getLogLevels();
+            return ((PolyglotLoggers.LoggerCache)loggerCacheSPI).getLogLevels();
         }
 
         @Override

@@ -62,7 +62,7 @@ import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getPoly
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
@@ -81,9 +81,9 @@ import com.oracle.truffle.api.TruffleLogger;
  */
 public final class EngineData {
 
-    static final BiFunction<OptionValues, Function<String,TruffleLogger>, EngineData> ENGINE_DATA_SUPPLIER = new BiFunction<OptionValues, Function<String,TruffleLogger>, EngineData>() {
+    static final BiFunction<OptionValues, Supplier<TruffleLogger>, EngineData> ENGINE_DATA_SUPPLIER = new BiFunction<OptionValues, Supplier<TruffleLogger>, EngineData>() {
         @Override
-        public EngineData apply(OptionValues engineOptions, Function<String,TruffleLogger> loggerFactory) {
+        public EngineData apply(OptionValues engineOptions, Supplier<TruffleLogger> loggerFactory) {
             return new EngineData(engineOptions, loggerFactory);
         }
     };
@@ -93,7 +93,7 @@ public final class EngineData {
     int splitLimit;
     int splitCount;
     public final long id;
-    private final Function<String,TruffleLogger> loggerFactory;
+    private final Supplier<TruffleLogger> loggerFactory;
     @CompilationFinal OptionValues engineOptions;
     final TruffleSplittingStrategy.SplitStatisticsData splittingStatistics;
     @CompilationFinal public StatisticsListener statisticsListener;
@@ -137,7 +137,10 @@ public final class EngineData {
     @CompilationFinal public int firstTierCallAndLoopThreshold;
     @CompilationFinal public int lastTierCallThreshold;
 
-    EngineData(OptionValues options, Function<String,TruffleLogger> loggerFactory) {
+    // Cached logger
+    private volatile TruffleLogger logger;
+
+    EngineData(OptionValues options, Supplier<TruffleLogger> loggerFactory) {
         this.id = engineCounter.incrementAndGet();
         this.loggerFactory = loggerFactory;
         loadOptions(options);
@@ -245,7 +248,12 @@ public final class EngineData {
     }
 
     public TruffleLogger getLogger() {
-        return loggerFactory.apply(null);
+        TruffleLogger result = logger;
+        if (result == null) {
+            result = loggerFactory.get();
+            logger = result;
+        }
+        return result;
     }
 
 }

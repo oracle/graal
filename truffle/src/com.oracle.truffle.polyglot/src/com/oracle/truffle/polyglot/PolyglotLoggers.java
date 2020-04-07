@@ -74,12 +74,12 @@ final class PolyglotLoggers {
         return Collections.singleton(PolyglotEngineImpl.OPTION_GROUP_ENGINE);
     }
 
-    static LoggerCacheImplementation defaultSPI() {
+    static LoggerCache defaultSPI() {
         return LoggerCacheImpl.DEFAULT;
     }
 
-    static LoggerCacheImplementation createEngineSPI(PolyglotEngineImpl engine) {
-        return new LoggerCacheImpl(new PolyglotLogHandler(engine), Arrays.asList(ContextProvider.INSTANCE, new EngineProvider(engine)));
+    static LoggerCache createEngineSPI(PolyglotEngineImpl engine) {
+        return new LoggerCacheImpl(new PolyglotLogHandler(engine), engine, true);
     }
 
     static LogRecord createLogRecord(final Level level, String loggerName, final String message, final String className, final String methodName, final Object[] parameters, final Throwable thrown) {
@@ -106,7 +106,7 @@ final class PolyglotLoggers {
         return false;
     }
 
-    static Function<String,TruffleLogger> createCompilerLoggerProvider(PolyglotEngineImpl engine) {
+    static Supplier<TruffleLogger> createCompilerLoggerProvider(PolyglotEngineImpl engine) {
         return new CompilerLoggerProvider(engine);
     }
 
@@ -151,38 +151,44 @@ final class PolyglotLoggers {
     }
 
 
-    interface LoggerCacheImplementation {
+    interface LoggerCache {
         Handler getLogHandler();
         Map<String,Level> getLogLevels();
     }
 
-    private static final class LoggerCacheImpl implements LoggerCacheImplementation {
+    private static final class LoggerCacheImpl implements LoggerCache {
 
-        static final LoggerCacheImplementation DEFAULT = new LoggerCacheImpl(PolyglotLogHandler.INSTANCE, Collections.singletonList(ContextProvider.INSTANCE));
-        static final LoggerCacheImplementation DISABLED;
+        static final LoggerCache DEFAULT = new LoggerCacheImpl(PolyglotLogHandler.INSTANCE, true, null);
+        static final LoggerCache DISABLED;
         static {
             Handler handler = new PolyglotStreamHandler(new OutputStream() {
                 @Override
                 public void write(int b) throws IOException {
                 }
             }, false, false);
-            Supplier<Map<String,Level>> provider = new Supplier<Map<String,Level>>() {
-                @Override
-                public Map<String,Level> get() {
-                    return Collections.emptyMap();
-                }
-            };
-            DISABLED = new LoggerCacheImpl(handler, Collections.singletonList(provider));
+            DISABLED = new LoggerCacheImpl(handler, false, Collections.emptyMap());
         }
 
         private final Handler handler;
-        private final List<Supplier<Map<String,Level>>> providers;
+        private final boolean useCurrentContext;
+        private final PolyglotEngineImpl engine;
+        private final Map<String,Level> defaultValue;
 
-        LoggerCacheImpl(Handler handler, List<Supplier<Map<String,Level>>> providers) {
+        LoggerCacheImpl(Handler handler, PolyglotEngineImpl engine, boolean useCurrentContext) {
             Objects.requireNonNull(handler, "Handler must be non null.");
-            Objects.requireNonNull(providers, "Providers must be non null.");
+            Objects.requireNonNull(engine, "Engine must be non null.");
             this.handler = handler;
-            this.providers = providers;
+            this.useCurrentContext = useCurrentContext;
+            this.engine = engine;
+            this.defaultValue = null;
+        }
+
+        private LoggerCacheImpl(Handler handler, boolean useCurrentContext, Map<String,Level> defaultValue) {
+            Objects.requireNonNull(handler, "Handler must be non null.");
+            this.handler = handler;
+            this.useCurrentContext = useCurrentContext;
+            this.engine = null;
+            this.defaultValue = defaultValue;
         }
 
         @Override
@@ -192,42 +198,16 @@ final class PolyglotLoggers {
 
         @Override
         public Map<String, Level> getLogLevels() {
-            for (Supplier<Map<String,Level>> provider : providers) {
-                Map<String, Level> res = provider.get();
-                if (res != null) {
-                    return res;
+            if (useCurrentContext) {
+                PolyglotContextImpl context = getCurrentOuterContext();
+                if (context != null) {
+                    return context.config.logLevels;
                 }
             }
-            return null;
-        }
-    }
-
-    private static final class ContextProvider implements Supplier<Map<String,Level>> {
-
-        static final ContextProvider INSTANCE = new ContextProvider();
-
-        private ContextProvider() {
-        }
-
-        @Override
-        public Map<String, Level> get() {
-            PolyglotContextImpl context = getCurrentOuterContext();
-            return context == null ? null : context.config.logLevels;
-        }
-    }
-
-    private static final class EngineProvider implements Supplier<Map<String,Level>> {
-
-        private final PolyglotEngineImpl engine;
-
-        EngineProvider(PolyglotEngineImpl engine) {
-            Objects.requireNonNull(engine, "Engine must be non null.");
-            this.engine = engine;
-        }
-
-        @Override
-        public Map<String, Level> get() {
-            return engine.logLevels;
+            if (engine != null) {
+                return engine.logLevels;
+            }
+            return defaultValue;
         }
     }
 
@@ -471,7 +451,7 @@ final class PolyglotLoggers {
         }
     }
 
-    private static final class CompilerLoggerProvider implements Function<String,TruffleLogger> {
+    private static final class CompilerLoggerProvider implements Supplier<TruffleLogger> {
 
         private final PolyglotEngineImpl engine;
         private volatile Object loggers;
@@ -481,20 +461,27 @@ final class PolyglotLoggers {
         }
 
         @Override
-        public TruffleLogger apply(String loggerName) {
+        public TruffleLogger get() {
             Object loggersCache = loggers;
             if (loggersCache == null) {
                 synchronized (this) {
                     loggersCache = loggers;
                     if (loggersCache == null) {
-                        loggersCache = engine != null ?
-                                engine.getOrCreateEngineLoggers() :
-                                EngineAccessor.LANGUAGE.createEngineLoggers(LoggerCacheImpl.DISABLED, Collections.emptyMap());
+                        LoggerCache spi;
+                        Map<String,Level> levels;
+                        if (engine != null) {
+                            spi = new LoggerCacheImpl(engine.logHandler, engine, false);
+                            levels = engine.logLevels;
+                        } else {
+                            spi = LoggerCacheImpl.DISABLED;
+                            levels = Collections.emptyMap();
+                        }
+                        loggersCache = EngineAccessor.LANGUAGE.createEngineLoggers(spi, levels);
                         loggers = loggersCache;
                     }
                 }
             }
-            return EngineAccessor.LANGUAGE.getLogger(PolyglotEngineImpl.OPTION_GROUP_ENGINE, loggerName, loggersCache);
+            return EngineAccessor.LANGUAGE.getLogger(PolyglotEngineImpl.OPTION_GROUP_ENGINE, null, loggersCache);
         }
     }
 }
