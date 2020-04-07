@@ -34,10 +34,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -101,7 +105,7 @@ public final class NativeLibraries {
 
     private final LinkedHashSet<CLibrary> annotated;
     private final List<String> libraries;
-    private final List<String> staticLibraries;
+    private final DependencyGraph dependencyGraph;
     private final LinkedHashSet<String> libraryPaths;
 
     private final List<CInterfaceError> errors;
@@ -117,6 +121,103 @@ public final class NativeLibraries {
      * Root>/lib/<this path>
      */
     private static final Path CUSTOM_LIBC_STATIC_DIST_PATH = Paths.get("svm", "static-libs");
+
+    public static final class DependencyGraph {
+
+        private static final class Dependency {
+            private final String name;
+            private final Set<Dependency> dependencies;
+
+            Dependency(String name, Set<Dependency> dependencies) {
+                assert dependencies != null;
+                this.name = name;
+                this.dependencies = dependencies;
+            }
+
+            public String getName() {
+                return name;
+            }
+
+            public Set<Dependency> getDependencies() {
+                return dependencies;
+            }
+
+            @Override
+            public String toString() {
+                String depString = dependencies.stream().map(Dependency::getName).collect(Collectors.joining());
+                return "Dependency{" +
+                                "name='" + name + '\'' +
+                                ", dependencies=[" + depString +
+                                "]}";
+            }
+        }
+
+        private final Map<String, Dependency> allDependencies;
+
+        public DependencyGraph() {
+            allDependencies = new ConcurrentHashMap<>();
+        }
+
+        public void add(String library, String... dependencies) {
+            UserError.guarantee(library != null, "The library name must be not null and not empty");
+
+            Dependency libraryDependency = putWhenAbsent(library, new Dependency(library, new HashSet<>()));
+            Set<Dependency> collectedDependencies = libraryDependency.getDependencies();
+            if (dependencies == null) {
+                return;
+            }
+
+            for (String dependency : dependencies) {
+                collectedDependencies.add(putWhenAbsent(
+                                dependency, new Dependency(dependency, new HashSet<>())));
+            }
+        }
+
+        public List<String> sort() {
+            final Set<Dependency> discovered = new HashSet<>();
+            final Set<Dependency> processed = new LinkedHashSet<>();
+
+            for (Dependency dep : allDependencies.values()) {
+                visit(dep, discovered, processed);
+            }
+
+            LinkedList<String> names = new LinkedList<>();
+            processed.forEach(n -> names.push(n.getName()));
+            return names;
+        }
+
+        private Dependency putWhenAbsent(String libName, Dependency dep) {
+            if (!allDependencies.containsKey(libName)) {
+                allDependencies.put(libName, dep);
+            }
+            return allDependencies.get(libName);
+        }
+
+        private void visit(Dependency dep, Set<Dependency> discovered, Set<Dependency> processed) {
+            if (processed.contains(dep)) {
+                return;
+            }
+            if (discovered.contains(dep)) {
+                String message = String.format("While building list of static libraries dependencies a cycle was discovered for dependency: %s ", dep.getName());
+                UserError.abort(message);
+            }
+
+            discovered.add(dep);
+            dep.getDependencies().forEach(d -> visit(d, discovered, processed));
+            processed.add(dep);
+        }
+
+        @Override
+        public String toString() {
+            String depsStr = allDependencies.values()
+                            .stream()
+                            .map(Dependency::toString)
+                            .collect(Collectors.joining("\n"));
+            return "DependencyGraph{\n" +
+                            depsStr +
+                            '}';
+        }
+    }
 
     public NativeLibraries(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, TargetDescription target,
                     ClassInitializationSupport classInitializationSupport, Path tempDirectory, DebugContext debug) {
@@ -152,7 +253,7 @@ public final class NativeLibraries {
          * libraries that have cyclic dependencies.
          */
         libraries = Collections.synchronizedList(new ArrayList<>());
-        staticLibraries = Collections.synchronizedList(new ArrayList<>());
+        dependencyGraph = new DependencyGraph();
 
         libraryPaths = initCLibraryPath();
 
@@ -270,7 +371,15 @@ public final class NativeLibraries {
     }
 
     public void addLibrary(String library, boolean requireStatic) {
-        (requireStatic ? staticLibraries : libraries).add(library);
+        addLibrary(library, requireStatic, null);
+    }
+
+    public void addLibrary(String library, boolean requireStatic, String[] dependencies) {
+        if (requireStatic) {
+            dependencyGraph.add(library, dependencies);
+        } else {
+            libraries.add(library);
+        }
     }
 
     public Collection<String> getLibraries() {
@@ -280,7 +389,9 @@ public final class NativeLibraries {
     public Collection<Path> getStaticLibraries() {
         Map<Path, Path> allStaticLibs = getAllStaticLibs();
         List<Path> staticLibs = new ArrayList<>();
-        for (String staticLibraryName : staticLibraries) {
+        List<String> sortedList = dependencyGraph.sort();
+
+        for (String staticLibraryName : sortedList) {
             Path libraryPath = getStaticLibraryPath(allStaticLibs, staticLibraryName);
             if (libraryPath == null) {
                 continue;
@@ -444,7 +555,7 @@ public final class NativeLibraries {
             return false;
         }
         for (CLibrary lib : annotated) {
-            addLibrary(lib.value(), lib.requireStatic());
+            addLibrary(lib.value(), lib.requireStatic(), lib.dependsOn());
         }
         annotated.clear();
         return true;
