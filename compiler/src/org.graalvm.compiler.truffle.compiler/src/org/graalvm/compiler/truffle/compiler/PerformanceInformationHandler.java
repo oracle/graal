@@ -98,7 +98,7 @@ public final class PerformanceInformationHandler implements Closeable {
     }
 
     public static void logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind warningKind, String callTargetName, List<? extends Node> locations, String details,
-                                             Map<String, Object> properties) {
+                    Map<String, Object> properties) {
         PerformanceInformationHandler handler = instance.get();
         handler.addWarning(warningKind);
         logPerformanceWarningImpl(callTargetName, "perf warn", details, properties);

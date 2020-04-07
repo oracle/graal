@@ -63,10 +63,10 @@ class ParsingInlineInvokePlugin extends PEInlineInvokePlugin {
     public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
         if (invocationPlugins.lookupInvocation(original) != null || replacements.hasSubstitution(original, builder.bci())) {
             /*
-             * During partial evaluation, the invocation plugin or the substitution might
-             * trigger, so we want the call to remain (we have better type information and more
-             * constant values during partial evaluation). But there is no guarantee for that,
-             * so we also need to preserve exception handler information for the call.
+             * During partial evaluation, the invocation plugin or the substitution might trigger,
+             * so we want the call to remain (we have better type information and more constant
+             * values during partial evaluation). But there is no guarantee for that, so we also
+             * need to preserve exception handler information for the call.
              */
             return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
         } else if (loopExplosionPlugin.loopExplosionKind(original) != LoopExplosionPlugin.LoopExplosionKind.NONE) {

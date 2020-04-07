@@ -204,7 +204,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             }
             final PartialEvaluator partialEvaluator = getTruffleCompiler(compilable).getPartialEvaluator();
             final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable), inliningDecision,
-                    compilationId, speculationLog, null);
+                            compilationId, speculationLog, null);
             return partialEvaluator.evaluate(request);
         } catch (Throwable e) {
             throw debug.handle(e);

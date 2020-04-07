@@ -99,7 +99,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         };
         final PartialEvaluator.Request request = partialEvaluator.new Request(callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
                         callNodeProvider,
-                compilationIdentifier, getSpeculationLog(), null);
+                        compilationIdentifier, getSpeculationLog(), null);
         final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, request);
         agnosticInliningPhase.apply(request.graph, getTruffleCompiler(callTarget).getPartialEvaluator().getProviders());
         return request.graph;
