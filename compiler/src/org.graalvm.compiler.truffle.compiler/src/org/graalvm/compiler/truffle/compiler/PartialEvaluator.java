@@ -327,7 +327,7 @@ public abstract class PartialEvaluator {
         }
     }
 
-    private void handleInliningAcrossTruffleBoundary(Request request, TruffleCompilerRuntime rt) {
+    private static void handleInliningAcrossTruffleBoundary(Request request, TruffleCompilerRuntime rt) {
         if (!getPolyglotOptionValue(request.options, InlineAcrossTruffleBoundary)) {
             // Do not inline across Truffle boundaries.
             for (MethodCallTargetNode mct : request.graph.getNodes(MethodCallTargetNode.TYPE)) {
@@ -339,7 +339,7 @@ public abstract class PartialEvaluator {
         }
     }
 
-    private void setIdentityForValueTypes(Request request, TruffleCompilerRuntime rt) {
+    private static void setIdentityForValueTypes(Request request, TruffleCompilerRuntime rt) {
         for (VirtualObjectNode virtualObjectNode : request.graph.getNodes(VirtualObjectNode.TYPE)) {
             if (virtualObjectNode instanceof VirtualInstanceNode) {
                 VirtualInstanceNode virtualInstanceNode = (VirtualInstanceNode) virtualObjectNode;
@@ -351,7 +351,7 @@ public abstract class PartialEvaluator {
         }
     }
 
-    private void materializeFrames(StructuredGraph graph) {
+    private static void materializeFrames(StructuredGraph graph) {
         for (AllowMaterializeNode materializeNode : graph.getNodes(AllowMaterializeNode.TYPE).snapshot()) {
             materializeNode.replaceAtUsages(materializeNode.getFrame());
             graph.removeFixed(materializeNode);
@@ -424,7 +424,7 @@ public abstract class PartialEvaluator {
         }
     }
 
-    private static class TruffleSourceLanguagePositionProvider implements SourceLanguagePositionProvider {
+    private static final class TruffleSourceLanguagePositionProvider implements SourceLanguagePositionProvider {
 
         private TruffleInliningPlan inliningPlan;
 
