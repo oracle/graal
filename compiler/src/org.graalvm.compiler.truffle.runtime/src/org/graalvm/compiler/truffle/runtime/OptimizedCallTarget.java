@@ -82,21 +82,21 @@ import jdk.vm.ci.meta.SpeculationLog;
  * the root node} depending on the type of call.
  *
  * <pre>
- *                    OptimizedCallProfiled#call
- *                                |
- *                                |
- *  PUBLIC   call -> callIndirect | callOSR  callDirectOrInlined  callInlined
- *                           |  +-+    |              |                 |
- *                           |  |  +---+              |                 |
- *                           V  V  V                  |                 |
- *  PROTECTED               doInvoke <------ no - inlined? - yes -------+
- *                             |                                        |
- *                             | <= Jump to installed code              |
- *                             V                                        |
- *  PROTECTED              callBoundary                                 |
- *                             |                                        |
- *                             | <= Tail jump to installed code in Int. |
- *                             V                                        V
+ *                    OptimizedCallProfiled#call                   OptimizedCallInlined#call
+ *                                |                                            |
+ *                                |                                            |
+ *  PUBLIC   call -> callIndirect | callOSR  callDirectOrInlined  callInlined  |
+ *                           |  +-+    |              |                 |      |
+ *                           |  |  +---+              |                 |      |
+ *                           V  V  V                  |                 |      |
+ *  PROTECTED               doInvoke <------ no - inlined? - yes -------+      |
+ *                             |                                        |      |
+ *                             | <= Jump to installed code              |      |
+ *                             V                                        |      |
+ *  PROTECTED              callBoundary                                 |      |
+ *                             |                                        |      |
+ *                             | <= Tail jump to installed code in Int. |      |
+ *                             V                                        V      V
  *  PROTECTED           profiledPERoot                              inlinedPERoot
  *                             |                                        |
  *  PRIVATE                    +----------> executeRootNode <-----------+
@@ -1341,7 +1341,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         @Override
         public Object call(Node callNode, CallTarget target, Object... arguments) {
             try {
-                return ((OptimizedCallTarget) target).callInlined(callNode, arguments);
+                return ((OptimizedCallTarget) target).inlinedPERoot(arguments);
             } catch (Throwable t) {
                 OptimizedCallTarget.runtime().getTvmci().onThrowable(callNode, ((OptimizedCallTarget) target), t, null);
                 throw OptimizedCallTarget.rethrow(t);
