@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
@@ -127,6 +128,10 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
                 CompilerDirectives.transferToInterpreter();
                 return LLVMNativePointer.createNull();
             }
+        }
+
+        public static LLVMRealloc create() {
+            return LLVMReallocNodeGen.create(null, null);
         }
     }
 
