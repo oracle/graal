@@ -32,7 +32,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig;
@@ -61,22 +60,16 @@ class AArch64UContextRegisterDumper implements UContextRegisterDumper {
     public void dumpRegisters(Log log, ucontext_t uContext) {
         mcontext_t sigcontext = uContext.uc_mcontext();
         GregsPointer regs = sigcontext.regs();
-        long spValue = sigcontext.sp();
-        long pcValue = sigcontext.pc();
-
-        log.newline().string("General Purpose Register Set Values: ").newline();
-
-        log.indent(true);
-        log.string("R0 ").zhex(regs.read(0)).newline();
-        log.string("R1 ").zhex(regs.read(1)).newline();
-        log.string("R2 ").zhex(regs.read(2)).newline();
-        log.string("R3 ").zhex(regs.read(3)).newline();
-        log.string("R4 ").zhex(regs.read(4)).newline();
-        log.string("R5 ").zhex(regs.read(5)).newline();
-        log.string("R6 ").zhex(regs.read(6)).newline();
-        log.string("R7 ").zhex(regs.read(7)).newline();
-        log.string("R8 ").zhex(regs.read(8)).newline();
-        log.string("R9 ").zhex(regs.read(9)).newline();
+        log.string("R0  ").zhex(regs.read(0)).newline();
+        log.string("R1  ").zhex(regs.read(1)).newline();
+        log.string("R2  ").zhex(regs.read(2)).newline();
+        log.string("R3  ").zhex(regs.read(3)).newline();
+        log.string("R4  ").zhex(regs.read(4)).newline();
+        log.string("R5  ").zhex(regs.read(5)).newline();
+        log.string("R6  ").zhex(regs.read(6)).newline();
+        log.string("R7  ").zhex(regs.read(7)).newline();
+        log.string("R8  ").zhex(regs.read(8)).newline();
+        log.string("R9  ").zhex(regs.read(9)).newline();
         log.string("R10 ").zhex(regs.read(10)).newline();
         log.string("R11 ").zhex(regs.read(11)).newline();
         log.string("R12 ").zhex(regs.read(12)).newline();
@@ -99,11 +92,8 @@ class AArch64UContextRegisterDumper implements UContextRegisterDumper {
         log.string("R29 ").zhex(regs.read(29)).newline();
         log.string("R30 ").zhex(regs.read(30)).newline();
         log.string("R31 ").zhex(regs.read(31)).newline();
-        log.string("SP ").zhex(spValue).newline();
-        log.string("PC ").zhex(pcValue).newline();
-        log.indent(false);
-
-        SubstrateUtil.printDiagnostics(log, WordFactory.pointer(spValue), WordFactory.pointer(pcValue));
+        log.string("SP  ").zhex(sigcontext.sp()).newline();
+        log.string("PC  ").zhex(sigcontext.pc()).newline();
     }
 
     @Override
@@ -118,5 +108,17 @@ class AArch64UContextRegisterDumper implements UContextRegisterDumper {
     public PointerBase getThreadPointer(ucontext_t uContext) {
         GregsPointer regs = uContext.uc_mcontext().regs();
         return WordFactory.pointer(regs.read(28));
+    }
+
+    @Override
+    public PointerBase getSP(ucontext_t uContext) {
+        mcontext_t sigcontext = uContext.uc_mcontext();
+        return WordFactory.pointer(sigcontext.sp());
+    }
+
+    @Override
+    public PointerBase getIP(ucontext_t uContext) {
+        mcontext_t sigcontext = uContext.uc_mcontext();
+        return WordFactory.pointer(sigcontext.pc());
     }
 }

@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
@@ -42,6 +43,7 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -129,10 +131,25 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         log.autoflush(true);
         log.string("[ [ SubstrateSegfaultHandler caught signal ").signed(signalNumber).string(" ] ]").newline();
 
-        RegisterDumper.singleton().dumpRegisters(log, uContext);
+        dumpRegisters(log, uContext);
+
+        PointerBase sp = RegisterDumper.singleton().getSP(uContext);
+        PointerBase ip = RegisterDumper.singleton().getIP(uContext);
+        SubstrateUtil.printDiagnostics(log, (Pointer) sp, (CodePointer) ip);
+
         log.string("Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
-        log.newline().string("Bye bye ...").newline().newline();
+        log.newline();
+        log.string("Bye bye ...").newline();
+        log.newline();
+
         ImageSingletons.lookup(LogHandler.class).fatalError();
+    }
+
+    private static void dumpRegisters(Log log, ucontext_t uContext) {
+        log.string("General Purpose Register Set values:").newline();
+        log.indent(true);
+        RegisterDumper.singleton().dumpRegisters(log, uContext);
+        log.indent(false);
     }
 
     /** The address of the signal handler for signals handled by Java code, above. */
