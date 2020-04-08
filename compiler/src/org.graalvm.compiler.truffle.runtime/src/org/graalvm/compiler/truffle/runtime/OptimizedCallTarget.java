@@ -1336,7 +1336,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     static class OptimizedCallInlined extends CallInlined {
+
         static final String CALL_METHOD_NAME = "call";
+
         @Override
         public Object call(Node callNode, CallTarget target, Object... arguments) {
             try {
