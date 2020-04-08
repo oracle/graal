@@ -37,7 +37,7 @@ final class DefaultPolicy implements InliningPolicy {
     private static final int MAX_DEPTH = 15;
     private static final Comparator<CallNode> CALL_NODE_COMPARATOR = (o1, o2) -> Double.compare(o2.getRootRelativeFrequency(), o1.getRootRelativeFrequency());
     private final OptionValues options;
-    private int expandedCount = 0;
+    private int expandedCount;
 
     DefaultPolicy(OptionValues options) {
         this.options = options;
@@ -83,6 +83,7 @@ final class DefaultPolicy implements InliningPolicy {
     private void expand(CallTree tree) {
         final int expansionBudget = getPolyglotOptionValue(options, PolyglotCompilerOptions.InliningExpansionBudget);
         final int maximumRecursiveInliningValue = getPolyglotOptionValue(options, PolyglotCompilerOptions.InliningRecursionDepth);
+        expandedCount = tree.getRoot().getIR().getNodeCount();
         final PriorityQueue<CallNode> expandQueue = getQueue(tree, CallNode.State.Cutoff);
         CallNode candidate;
         while ((candidate = expandQueue.poll()) != null) {
