@@ -27,11 +27,18 @@ package com.oracle.svm.core;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticFeature
@@ -62,4 +69,30 @@ public abstract class SubstrateSegfaultHandler {
 
     /** Installs the platform dependent segfault handler. */
     protected abstract void install();
+
+    /** Called from the platform dependent segfault handler to print diagnostics. */
+    @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.", calleeMustBe = false)
+    protected static void dump(RegisterDumper.Context context) {
+        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+        dumpInterruptibly(context);
+    }
+
+    private static void dumpInterruptibly(RegisterDumper.Context context) {
+        Log log = Log.log();
+        log.autoflush(true);
+
+        log.newline();
+        log.string("[ [ SubstrateSegfaultHandler caught a segfault. ] ]").newline();
+
+        PointerBase sp = RegisterDumper.singleton().getSP(context);
+        PointerBase ip = RegisterDumper.singleton().getIP(context);
+        SubstrateUtil.printDiagnostics(log, (Pointer) sp, (CodePointer) ip, context);
+
+        log.string("Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
+        log.newline();
+        log.string("Bye bye ...").newline();
+        log.newline();
+
+        ImageSingletons.lookup(LogHandler.class).fatalError();
+    }
 }

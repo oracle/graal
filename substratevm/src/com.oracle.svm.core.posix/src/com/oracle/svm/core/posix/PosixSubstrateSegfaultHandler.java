@@ -27,11 +27,9 @@ package com.oracle.svm.core.posix;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
@@ -43,7 +41,6 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -58,7 +55,6 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets.IsolateCreationWatcher;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.AdvancedSignalDispatcher;
@@ -80,14 +76,11 @@ class PosixSubstrateSegfaultHandlerFeature implements Feature {
 }
 
 class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
-
-    private static volatile boolean dispatchInProgress = false;
-
     @CEntryPoint
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints")
-    private static void dispatch(int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
+    private static void dispatch(@SuppressWarnings("unused") int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
         if (!SubstrateOptions.useLLVMBackend()) {
             if (SubstrateOptions.SpawnIsolates.getValue()) {
                 PointerBase heapBase = RegisterDumper.singleton().getHeapBase(uContext);
@@ -115,41 +108,7 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
             }
             CEntryPointActions.enterIsolateFromCrashHandler(isolate);
         }
-        dump(signalNumber, uContext);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible method", calleeMustBe = false)
-    private static void dump(int signalNumber, ucontext_t uContext) {
-        if (dispatchInProgress) {
-            Log.log().newline().string("[ [ SubstrateSegfaultHandler already handling signal ").signed(signalNumber).string(" ] ]").newline();
-            return;
-        }
-        dispatchInProgress = true;
-
-        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        Log log = Log.log();
-        log.autoflush(true);
-        log.string("[ [ SubstrateSegfaultHandler caught signal ").signed(signalNumber).string(" ] ]").newline();
-
-        dumpRegisters(log, uContext);
-
-        PointerBase sp = RegisterDumper.singleton().getSP(uContext);
-        PointerBase ip = RegisterDumper.singleton().getIP(uContext);
-        SubstrateUtil.printDiagnostics(log, (Pointer) sp, (CodePointer) ip);
-
-        log.string("Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
-        log.newline();
-        log.string("Bye bye ...").newline();
-        log.newline();
-
-        ImageSingletons.lookup(LogHandler.class).fatalError();
-    }
-
-    private static void dumpRegisters(Log log, ucontext_t uContext) {
-        log.string("General Purpose Register Set values:").newline();
-        log.indent(true);
-        RegisterDumper.singleton().dumpRegisters(log, uContext);
-        log.indent(false);
+        dump(uContext);
     }
 
     /** The address of the signal handler for signals handled by Java code, above. */
