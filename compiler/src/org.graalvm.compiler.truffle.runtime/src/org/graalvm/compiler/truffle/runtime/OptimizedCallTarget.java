@@ -119,7 +119,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
     private static final int MAX_PROFILED_ARGUMENTS = 256;
     private static final String ARGUMENT_TYPES_ASSUMPTION_NAME = "Profiled Argument Types";
+    private static final OptimizedAssumption INVALID_ARGUMENT_TYPES_ASSUMPTION = createInvalidAssumption(ARGUMENT_TYPES_ASSUMPTION_NAME);
     private static final String RETURN_TYPE_ASSUMPTION_NAME = "Profiled Return Type";
+    private static final OptimizedAssumption INVALID_RETURN_TYPE_ASSUMPTION = createInvalidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
@@ -964,7 +966,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             profiledArgumentTypes = result;
             profiledArgumentTypesAssumption = createValidAssumption(ARGUMENT_TYPES_ASSUMPTION_NAME);
         } else {
-            profiledArgumentTypesAssumption = createInvalidAssumption(ARGUMENT_TYPES_ASSUMPTION_NAME);
+            profiledArgumentTypesAssumption = INVALID_ARGUMENT_TYPES_ASSUMPTION;
         }
     }
 
@@ -1011,7 +1013,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
              * creating an invalid assumption but leaving the type field null.
              */
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            profiledArgumentTypesAssumption = createInvalidAssumption(ARGUMENT_TYPES_ASSUMPTION_NAME);
+            profiledArgumentTypesAssumption = INVALID_ARGUMENT_TYPES_ASSUMPTION;
         }
 
         if (profiledArgumentTypesAssumption.isValid()) {
@@ -1071,7 +1073,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
              * creating an invalid assumption but leaving the type field null.
              */
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            profiledReturnTypeAssumption = createInvalidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
+            profiledReturnTypeAssumption = INVALID_RETURN_TYPE_ASSUMPTION;
         }
 
         if (profiledReturnTypeAssumption.isValid()) {
