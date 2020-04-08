@@ -1026,15 +1026,27 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private void profileReturnValue(Object result) {
         Assumption returnTypeAssumption = profiledReturnTypeAssumption;
-        if (CompilerDirectives.inInterpreter() && returnTypeAssumption == null) {
+        if (returnTypeAssumption == null) {
             // we only profile return values in the interpreter as we don't want to deoptimize
             // for immediate compiles.
-            if (engine.returnTypeSpeculation) {
-                profiledReturnType = classOf(result);
-                profiledReturnTypeAssumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
+            if (CompilerDirectives.inInterpreter() && engine.returnTypeSpeculation) {
+                boolean wasNull;
+                synchronized (this) {
+                    wasNull = profiledReturnTypeAssumption == null;
+                    if (wasNull) {
+                        profiledReturnType = classOf(result);
+                        profiledReturnTypeAssumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
+                    }
+                }
+
+                if (!wasNull) {
+                    // Another thread initialized the assumption, we need to check the profile
+                    profileReturnValue(result);
+                }
             }
-        } else if (profiledReturnType != null) {
-            if (result == null || profiledReturnType != result.getClass()) {
+        } else {
+            Class<?> returnType = profiledReturnType;
+            if (returnType != null && returnTypeAssumption.isValid() && (result == null || returnType != result.getClass())) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 returnTypeAssumption.invalidate();
                 profiledReturnType = null;
