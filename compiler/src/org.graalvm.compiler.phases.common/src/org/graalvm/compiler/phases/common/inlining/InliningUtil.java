@@ -127,10 +127,6 @@ public class InliningUtil extends ValueMergeUtil {
         if (HotSpotPrintInlining.getValue(invoke.asNode().getOptions())) {
             Util.printInlining(method, invoke.bci(), inliningDepth, success, msg, args);
         }
-        DebugContext debug = invoke.asNode().graph().getDebug();
-        if (debug.hasCompilationListener()) {
-            debug.notifyInlining(invoke.getContextMethod(), method, success, String.format(msg, args), invoke.bci());
-        }
     }
 
     /**
@@ -432,7 +428,7 @@ public class InliningUtil extends ValueMergeUtil {
         EconomicMap<Node, Node> duplicates;
         try (InliningLog.UpdateScope scope = graph.getInliningLog().openDefaultUpdateScope()) {
             duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
-            if (scope != null) {
+            if (scope != null || graph.getDebug().hasCompilationListener()) {
                 graph.getInliningLog().addDecision(invoke, true, phase, duplicates, inlineGraph.getInliningLog(), reason);
             }
         }

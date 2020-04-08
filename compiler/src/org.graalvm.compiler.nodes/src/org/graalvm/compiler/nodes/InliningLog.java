@@ -24,18 +24,20 @@
  */
 package org.graalvm.compiler.nodes;
 
-import jdk.vm.ci.meta.MetaUtil;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.BiConsumer;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.BiConsumer;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * This class contains all inlining decisions performed on a graph during the compilation.
@@ -144,12 +146,14 @@ public class InliningLog {
     private final Callsite root;
     private final EconomicMap<Invokable, Callsite> leaves;
     private final boolean enabled;
+    private final DebugContext debug;
 
-    public InliningLog(ResolvedJavaMethod rootMethod, boolean enabled) {
+    public InliningLog(ResolvedJavaMethod rootMethod, boolean enabled, DebugContext debug) {
         this.root = new Callsite(null, null);
         this.root.target = rootMethod;
         this.leaves = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         this.enabled = enabled;
+        this.debug = debug;
     }
 
     /**
@@ -160,6 +164,10 @@ public class InliningLog {
      * and the {@link InliningLog} of the inlined graph must be provided.
      */
     public void addDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, String reason, Object... args) {
+        if (debug.hasCompilationListener()) {
+            String message = String.format(reason, args);
+            debug.notifyInlining(invoke.getContextMethod(), invoke.getTargetMethod(), positive, message, invoke.bci());
+        }
         if (!enabled) {
             return;
         }
