@@ -109,9 +109,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
-    // TODO GR-22184 constant names don't match constant values
-    static final String CALL_BOUNDARY_METHOD_NAME = "executeRootNode";
-    static final String CALL_INLINED_METHOD_NAME = "call";
+    static final String EXECUTE_ROOT_NODE_METHOD_NAME = "executeRootNode";
     private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, SpeculationLog> SPECULATION_LOG_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
                     SpeculationLog.class, "speculationLog");
     private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
@@ -1338,6 +1336,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     static class OptimizedCallInlined extends CallInlined {
+        static final String CALL_METHOD_NAME = "call";
         @Override
         public Object call(Node callNode, CallTarget target, Object... arguments) {
             try {

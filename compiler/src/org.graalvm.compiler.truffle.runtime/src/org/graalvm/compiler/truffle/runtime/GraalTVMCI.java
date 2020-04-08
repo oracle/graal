@@ -65,8 +65,9 @@ final class GraalTVMCI extends TVMCI {
 
     @Override
     protected boolean isGuestCallStackFrame(StackTraceElement e) {
-        return (e.getMethodName().equals(OptimizedCallTarget.CALL_BOUNDARY_METHOD_NAME) && e.getClassName().equals(OptimizedCallTarget.class.getName())) ||
-                        (e.getMethodName().equals(OptimizedCallTarget.CALL_INLINED_METHOD_NAME) && e.getClassName().equals(OptimizedCallTarget.OptimizedCallInlined.class.getName()));
+        return (e.getMethodName().equals(OptimizedCallTarget.EXECUTE_ROOT_NODE_METHOD_NAME) && e.getClassName().equals(OptimizedCallTarget.class.getName())) ||
+                        (e.getMethodName().equals(OptimizedCallTarget.OptimizedCallInlined.CALL_METHOD_NAME) &&
+                                        e.getClassName().equals(OptimizedCallTarget.OptimizedCallInlined.class.getName()));
     }
 
     /**
