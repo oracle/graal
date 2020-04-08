@@ -1,5 +1,5 @@
 > cat > ${TMP_DIR}/test.R
-< cat('Ahoj')
+< cat('Ahoj', file=stderr())
 > Rscript --agentscript=agent-r.R --experimental-options ${TMP_DIR}/test.R
 Warning.*agentscript.*deprecated.*insight.*
 R: Initializing GraalVM Insight script
