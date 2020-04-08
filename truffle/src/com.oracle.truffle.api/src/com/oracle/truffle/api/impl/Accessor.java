@@ -359,9 +359,11 @@ public abstract class Accessor {
 
         public abstract Map<String, Level> getLogLevels(Object loggerCacheSPI);
 
+        public abstract Object getLoggerOwner(Object loggerCacheSPI);
+
         public abstract TruffleLogger getLogger(Object polyglotInstrument, String name);
 
-        public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
+        public abstract LogRecord createLogRecord(Object loggerCacheSPI, Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
         public abstract Object getCurrentOuterContext();
 

@@ -851,8 +851,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown) {
-            return PolyglotLoggers.createLogRecord(level, loggerName, message, className, methodName, parameters, thrown);
+        public LogRecord createLogRecord(Object loggerCacheSPI, Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown) {
+            return ((PolyglotLoggers.LoggerCache)loggerCacheSPI).createLogRecord(level, loggerName, message, className, methodName, parameters, thrown);
         }
 
         @Override
@@ -863,6 +863,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public Map<String, Level> getLogLevels(final Object loggerCacheSPI) {
             return ((PolyglotLoggers.LoggerCache)loggerCacheSPI).getLogLevels();
+        }
+
+        @Override
+        public  Object getLoggerOwner(Object loggerCacheSPI) {
+            return ((PolyglotLoggers.LoggerCache)loggerCacheSPI).getEngine();
         }
 
         @Override
