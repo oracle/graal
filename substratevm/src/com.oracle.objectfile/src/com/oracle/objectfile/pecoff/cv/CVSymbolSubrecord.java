@@ -42,10 +42,10 @@ abstract class CVSymbolSubrecord {
 
     private int subrecordStartPosition;
     private final short cmd;
-    CVSections cvSections;
+    CVDebugInfo cvDebugInfo;
 
-    CVSymbolSubrecord(CVSections cvSections, short cmd) {
-        this.cvSections = cvSections;
+    CVSymbolSubrecord(CVDebugInfo cvDebugInfo, short cmd) {
+        this.cvDebugInfo = cvDebugInfo;
         this.cmd = cmd;
     }
 
@@ -77,19 +77,19 @@ abstract class CVSymbolSubrecord {
 
         String objName;  /* TODO: how to find the full path to object file we will produce */
 
-        CVObjectNameRecord(CVSections cvSections, String objName) {
-            super(cvSections, CVDebugConstants.S_OBJNAME);
+        CVObjectNameRecord(CVDebugInfo cvDebugInfo, String objName) {
+            super(cvDebugInfo, CVDebugConstants.S_OBJNAME);
             this.objName = objName;
         }
 
-        CVObjectNameRecord(CVSections cvSections) {
-            this(cvSections, findObjectName(cvSections));
+        CVObjectNameRecord(CVDebugInfo cvDebugInfo) {
+            this(cvDebugInfo, findObjectName(cvDebugInfo));
         }
 
-        private static String findObjectName(CVSections cvSections) {
+        private static String findObjectName(CVDebugInfo cvDebugInfo) {
             /* Get file from first class object */
             String fn = null;
-            for (ClassEntry classEntry : cvSections.getPrimaryClasses()) {
+            for (ClassEntry classEntry : cvDebugInfo.getPrimaryClasses()) {
                 if (classEntry.getFileName() != null) {
                     fn = classEntry.getFileEntry().getFileName();
                     if (fn.endsWith(".java")) {
@@ -140,8 +140,8 @@ abstract class CVSymbolSubrecord {
         private short beQFE;
         private String compiler;
 
-        CVCompile3Record(CVSections cvSections) {
-            super(cvSections, CVDebugConstants.S_COMPILE3);
+        CVCompile3Record(CVDebugInfo cvDebugInfo) {
+            super(cvDebugInfo, CVDebugConstants.S_COMPILE3);
             language = 0;
             cf1 = HAS_DEBUG_FLAG;
             cf2 = (byte) 0;
@@ -198,8 +198,8 @@ abstract class CVSymbolSubrecord {
          *  pdb = C:\tmp\graal-8\vc100.pdb
          */
 
-        CVEnvBlockRecord(CVSections cvSections) {
-            super(cvSections, CVDebugConstants.S_ENVBLOCK);
+        CVEnvBlockRecord(CVDebugInfo cvDebugInfo) {
+            super(cvDebugInfo, CVDebugConstants.S_ENVBLOCK);
 
             /* current directory */
             map.put("cwd", System.getProperty("user.dir"));
@@ -211,7 +211,7 @@ abstract class CVSymbolSubrecord {
             //map.put("cmd", "-Zi -MT -wishfulthinking");
 
             /* find first source file - which, for Graal would be a class file on the command line */
-            String fn = findFirstFile(cvSections);
+            String fn = findFirstFile(cvDebugInfo);
             if (fn != null) {
                 map.put("src", fn);
             }
@@ -220,9 +220,9 @@ abstract class CVSymbolSubrecord {
             //map.put("pdb", System.getProperty("user.dir") + File.separator + "vc100.pdb");
         }
 
-        private static String findFirstFile(CVSections cvSections) {
+        private static String findFirstFile(CVDebugInfo cvDebugInfo) {
             String fn = null;
-            for (ClassEntry classEntry : cvSections.getPrimaryClasses()) {
+            for (ClassEntry classEntry : cvDebugInfo.getPrimaryClasses()) {
                 if (classEntry.getFileName() != null) {
                     fn = classEntry.getFileEntry().getFileName();
                     break;
@@ -274,8 +274,8 @@ abstract class CVSymbolSubrecord {
         byte flags;
         String name;
 
-        CVSymbolGProc32Record(CVSections cvSections, short cmd, String name, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex, int offset, short segment, byte flags) {
-            super(cvSections, cmd);
+        CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, short cmd, String name, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex, int offset, short segment, byte flags) {
+            super(cvDebugInfo, cmd);
             this.name = name;
             this.pparent = pparent;
             this.pend = pend;
@@ -289,8 +289,8 @@ abstract class CVSymbolSubrecord {
             this.flags = flags;
         }
 
-        CVSymbolGProc32Record(CVSections cvSections, String name, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex, int offset, short segment, byte flags) {
-            this(cvSections, CVDebugConstants.S_GPROC32, name, pparent, pend, pnext, proclen, debugStart, debugEnd, typeIndex, offset, segment, flags);
+        CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, String name, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex, int offset, short segment, byte flags) {
+            this(cvDebugInfo, CVDebugConstants.S_GPROC32, name, pparent, pend, pnext, proclen, debugStart, debugEnd, typeIndex, offset, segment, flags);
         }
 
         @Override
@@ -308,16 +308,16 @@ abstract class CVSymbolSubrecord {
             pos = CVUtil.putInt(debugEnd, buffer, pos);
             pos = CVUtil.putInt(typeIndex, buffer, pos);
             if (buffer == null) {
-                cvSections.getCVSymbolSection().getOwner().createDefinedSymbol(name, getTextSection(), offset, proclen, true, true);
+                cvDebugInfo.getCVSymbolSection().getOwner().createDefinedSymbol(name, getTextSection(), offset, proclen, true, true);
             }
             if (buffer != null) {
                 //CVUtil.debug("CVSymbolGProc32Record() adding SECREL reloc at pos=0x%x for func=%s addr=0x%x\n", pos, name, offset);
-                cvSections.getCVSymbolSection().markRelocationSite(pos, 4, ObjectFile.RelocationKind.SECREL, name, false, 1L);
+                cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, 4, ObjectFile.RelocationKind.SECREL, name, false, 1L);
             }
             pos = CVUtil.putInt(0, buffer, pos);
             if (buffer != null) {
                 //CVUtil.debug("CVSymbolGProc32Record() adding SECTION reloc at pos=0x%x for func=%s addr=0x%x\n", pos, name, offset);
-                cvSections.getCVSymbolSection().markRelocationSite(pos, 2, ObjectFile.RelocationKind.SECTION, name, false, 1L);
+                cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, 2, ObjectFile.RelocationKind.SECTION, name, false, 1L);
             }
             pos = CVUtil.putShort((short) 0, buffer, pos);
             pos = CVUtil.putByte(flags, buffer, pos);
@@ -327,7 +327,7 @@ abstract class CVSymbolSubrecord {
 
         private ObjectFile.Element getTextSection() {
             if (textSection == null) {
-                textSection = cvSections.getCVSymbolSection().getOwner().elementForName(SectionName.TEXT.getFormatDependentName(ObjectFile.Format.PECOFF));
+                textSection = cvDebugInfo.getCVSymbolSection().getOwner().elementForName(SectionName.TEXT.getFormatDependentName(ObjectFile.Format.PECOFF));
             }
             return textSection;
         }
@@ -340,13 +340,13 @@ abstract class CVSymbolSubrecord {
 /*
     public static final class CVSymbolGProc32IDRecord extends CVSymbolGProc32Record {
 
-        CVSymbolGProc32IDRecord(CVSections cvSections, String name, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex, int offset, short segment, byte flags) {
-            super(cvSections, CVDebugConstants.S_GPROC32_ID, name, pparent, pend, pnext, proclen, debugStart, debugEnd, typeIndex, offset, segment, flags);
+        CVSymbolGProc32IDRecord(CVDebugInfo cvDebugInfo, String name, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex, int offset, short segment, byte flags) {
+            super(cvDebugInfo, CVDebugConstants.S_GPROC32_ID, name, pparent, pend, pnext, proclen, debugStart, debugEnd, typeIndex, offset, segment, flags);
         }
 
         /* this is almost certainly bad; only for debugging *
-        CVSymbolGProc32IDRecord(CVSections cvSections, String name, int offset, int proclen) {
-            super(cvSections, CVDebugConstants.S_GPROC32_ID, name, 0, 0, 0, proclen, 0, 0, 0, offset, (short)0, (byte)0);
+        CVSymbolGProc32IDRecord(CVDebugInfo cvDebugInfo, String name, int offset, int proclen) {
+            super(cvDebugInfo, CVDebugConstants.S_GPROC32_ID, name, 0, 0, 0, proclen, 0, 0, 0, offset, (short)0, (byte)0);
         }
 
         @Override
@@ -365,8 +365,8 @@ abstract class CVSymbolSubrecord {
         short ehSection;
         int flags;
 
-        CVSymbolFrameProcRecord(CVSections cvSections, int framelen, int padLen, int padOffset, int saveRegsCount, int ehOffset, short ehSection, int flags) {
-            super(cvSections, CVDebugConstants.S_FRAMEPROC);
+        CVSymbolFrameProcRecord(CVDebugInfo cvDebugInfo, int framelen, int padLen, int padOffset, int saveRegsCount, int ehOffset, short ehSection, int flags) {
+            super(cvDebugInfo, CVDebugConstants.S_FRAMEPROC);
             this.framelen = framelen;
             this.padLen = padLen;
             this.padOffset = padOffset;
@@ -376,8 +376,8 @@ abstract class CVSymbolSubrecord {
             this.flags = flags;
         }
 
-        CVSymbolFrameProcRecord(CVSections cvSections, int framelen, int flags) {
-            this(cvSections, framelen, 0, 0, 0, 0, (short) 0, flags);
+        CVSymbolFrameProcRecord(CVDebugInfo cvDebugInfo, int framelen, int flags) {
+            this(cvDebugInfo, framelen, 0, 0, 0, 0, (short) 0, flags);
         }
 
         @Override
@@ -405,12 +405,12 @@ abstract class CVSymbolSubrecord {
 
     public static class CVSymbolEndRecord extends CVSymbolSubrecord {
 
-        CVSymbolEndRecord(CVSections cvSections, short cmd) {
-            super(cvSections, cmd);
+        CVSymbolEndRecord(CVDebugInfo cvDebugInfo, short cmd) {
+            super(cvDebugInfo, cmd);
         }
 
-        CVSymbolEndRecord(CVSections cvSections) {
-            this(cvSections, CVDebugConstants.S_END);
+        CVSymbolEndRecord(CVDebugInfo cvDebugInfo) {
+            this(cvDebugInfo, CVDebugConstants.S_END);
         }
 
         @Override
@@ -437,8 +437,8 @@ abstract class CVSymbolSubrecord {
         int offset;
         String name;
 
-        public CVSymbolRegRel32Record(CVSections cvSections, String name, int typeIndex, int offset, short reg) {
-            super(cvSections, CVDebugConstants.S_REGREL32);
+        public CVSymbolRegRel32Record(CVDebugInfo cvDebugInfo, String name, int typeIndex, int offset, short reg) {
+            super(cvDebugInfo, CVDebugConstants.S_REGREL32);
             this.name = name;
             this.typeIndex = typeIndex;
             this.offset = offset;
@@ -465,8 +465,8 @@ abstract class CVSymbolSubrecord {
     }
 
     public static class CVSymbolProcIdEndRecord extends CVSymbolEndRecord {
-        CVSymbolProcIdEndRecord(CVSections cvSections) {
-            super(cvSections, CVDebugConstants.S_PROC_ID_END);
+        CVSymbolProcIdEndRecord(CVDebugInfo cvDebugInfo) {
+            super(cvDebugInfo, CVDebugConstants.S_PROC_ID_END);
         }
     }
 
@@ -476,8 +476,8 @@ abstract class CVSymbolSubrecord {
         short leaf;
         String name;
 
-        public CVSymbolConstantRecord(CVSections cvSections, String name, int typeIndex, short leaf) {
-            super(cvSections, CVDebugConstants.S_CONSTANT);
+        public CVSymbolConstantRecord(CVDebugInfo cvDebugInfo, String name, int typeIndex, short leaf) {
+            super(cvDebugInfo, CVDebugConstants.S_CONSTANT);
             this.name = name;
             this.typeIndex = typeIndex;
             this.leaf = leaf;
@@ -509,8 +509,8 @@ abstract class CVSymbolSubrecord {
         short segment;
         String name;
 
-        CVSymbolDataRecord(CVSections cvSections, short recordType, String name, int typeIndex, int offset, short segment) {
-            super(cvSections, recordType);
+        CVSymbolDataRecord(CVDebugInfo cvDebugInfo, short recordType, String name, int typeIndex, int offset, short segment) {
+            super(cvDebugInfo, recordType);
             this.name = name;
             this.typeIndex = typeIndex;
             this.offset = offset;
@@ -534,8 +534,8 @@ abstract class CVSymbolSubrecord {
 
     public static final class CVSymbolLData32Record extends CVSymbolDataRecord {
 
-        public CVSymbolLData32Record(CVSections cvSections, String name, int typeIndex, int offset, short segment) {
-            super(cvSections, CVDebugConstants.S_LDATA32, name, typeIndex, offset, segment);
+        public CVSymbolLData32Record(CVDebugInfo cvDebugInfo, String name, int typeIndex, int offset, short segment) {
+            super(cvDebugInfo, CVDebugConstants.S_LDATA32, name, typeIndex, offset, segment);
         }
 
         @Override
@@ -546,8 +546,8 @@ abstract class CVSymbolSubrecord {
 
     public static final class CVSymbolLData32STRecord extends CVSymbolDataRecord {
 
-        public CVSymbolLData32STRecord(CVSections cvSections, String name, int typeIndex, int offset, short segment) {
-            super(cvSections, CVDebugConstants.S_LDATA32_ST, name, typeIndex, offset, segment);
+        public CVSymbolLData32STRecord(CVDebugInfo cvDebugInfo, String name, int typeIndex, int offset, short segment) {
+            super(cvDebugInfo, CVDebugConstants.S_LDATA32_ST, name, typeIndex, offset, segment);
         }
 
         @Override
@@ -558,8 +558,8 @@ abstract class CVSymbolSubrecord {
 
     public static final class CVSymbolGData32Record extends CVSymbolDataRecord {
 
-        public CVSymbolGData32Record(CVSections cvSections, String name, int typeIndex, int offset, short segment) {
-            super(cvSections, CVDebugConstants.S_GDATA32, name, typeIndex, offset, segment);
+        public CVSymbolGData32Record(CVDebugInfo cvDebugInfo, String name, int typeIndex, int offset, short segment) {
+            super(cvDebugInfo, CVDebugConstants.S_GDATA32, name, typeIndex, offset, segment);
         }
 
         @Override
@@ -570,8 +570,8 @@ abstract class CVSymbolSubrecord {
 
     public static final class CVSymbolSSearchRecord extends CVSymbolDataRecord {
 
-        public CVSymbolSSearchRecord(CVSections cvSections, int offset, short segment) {
-            super(cvSections, CVDebugConstants.S_SSEARCH, null, 0, offset, segment);
+        public CVSymbolSSearchRecord(CVDebugInfo cvDebugInfo, int offset, short segment) {
+            super(cvDebugInfo, CVDebugConstants.S_SSEARCH, null, 0, offset, segment);
         }
 
         @Override
@@ -592,8 +592,8 @@ abstract class CVSymbolSubrecord {
         int typeIndex;
         String name;
 
-        public CVSymbolUDTRecord(CVSections cvSections, String name, int typeIndex) {
-            super(cvSections, CVDebugConstants.S_UDT);
+        public CVSymbolUDTRecord(CVDebugInfo cvDebugInfo, String name, int typeIndex) {
+            super(cvDebugInfo, CVDebugConstants.S_UDT);
             this.name = name;
             this.typeIndex = typeIndex;
         }

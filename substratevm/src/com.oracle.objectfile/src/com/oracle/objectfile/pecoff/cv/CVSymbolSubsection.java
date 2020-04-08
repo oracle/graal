@@ -34,10 +34,12 @@ import java.util.ArrayList;
  */
 class CVSymbolSubsection extends CVSymbolRecord {
 
-    private ArrayList<CVSymbolSubrecord> subcmds = new ArrayList<>(20);
+    private static final int SUBCMD_INITIAL_CAPACITY = 100;
 
-    CVSymbolSubsection(CVSections cvSections) {
-        super(cvSections, CVDebugConstants.DEBUG_S_SYMBOLS);
+    private ArrayList<CVSymbolSubrecord> subcmds = new ArrayList<>(SUBCMD_INITIAL_CAPACITY);
+
+    CVSymbolSubsection(CVDebugInfo cvDebugInfo) {
+        super(cvDebugInfo, CVDebugConstants.DEBUG_S_SYMBOLS);
     }
 
     void addRecord(CVSymbolSubrecord subcmd) {

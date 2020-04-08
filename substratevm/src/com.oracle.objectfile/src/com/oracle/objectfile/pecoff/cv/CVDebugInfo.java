@@ -32,17 +32,17 @@ import com.oracle.objectfile.pecoff.PECoffMachine;
 import java.nio.ByteOrder;
 
 /**
- * CVSections is a container class for all the CodeView sections to be emitted in the object file.
- * Currently, that will be .debug$S (CVSymbolSectionImpl) and .debug$T (CVTypeSectionImpl)
- * Common data (useful to more than one CodeView section) goes here, mostly that gathered by calls to installDebugInfo->addRange() and installDebugInfo->addSubRange()
+ * CVDebugInfo is a container class for all the CodeView sections to be emitted in the object file.
+ * Currently, that is .debug$S (CVSymbolSectionImpl) and .debug$T (CVTypeSectionImpl)
+ * Common data (useful to more than one CodeView section) goes here
  */
-public final class CVSections extends DebugInfoBase {
+public final class CVDebugInfo extends DebugInfoBase {
 
     @SuppressWarnings("unused") private PECoffMachine machine;
     private CVSymbolSectionImpl cvSymbolSection;
     private CVTypeSectionImpl cvTypeSection;
 
-    public CVSections(PECoffMachine targetMachine, ByteOrder byteOrder) {
+    public CVDebugInfo(PECoffMachine targetMachine, ByteOrder byteOrder) {
         super(byteOrder);
         machine = targetMachine;
         cvSymbolSection = new CVSymbolSectionImpl(this);

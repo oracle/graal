@@ -201,7 +201,6 @@ abstract class CVRootPackages {
      * @return true if this is Graal intrinsic code
      */
     static boolean isGraalIntrinsic(String cn) {
-        //CVUtil.debug("XXXXX isGraalIntrinsic " + cn + " " + intrinsicClassNameSet.contains(cn));
         return intrinsicClassNameSet.contains(cn);
     }
 

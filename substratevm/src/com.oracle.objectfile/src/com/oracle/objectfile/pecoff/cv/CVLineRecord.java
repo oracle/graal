@@ -129,14 +129,14 @@ final class CVLineRecord extends CVSymbolRecord {
         }
     }
 
-    CVLineRecord(CVSections cvSections, String symbolName, PrimaryEntry entry) {
-        super(cvSections, CVDebugConstants.DEBUG_S_LINES);
+    CVLineRecord(CVDebugInfo cvDebugInfo, String symbolName, PrimaryEntry entry) {
+        super(cvDebugInfo, CVDebugConstants.DEBUG_S_LINES);
         this.primaryEntry = entry;
         this.symbolName = symbolName;
     }
 
     void addNewFile(FileEntry file) {
-        CVFileRecord fr = cvSections.getCVSymbolSection().getFileRecord();
+        CVFileRecord fr = cvDebugInfo.getCVSymbolSection().getFileRecord();
         int fileId = fr.addFile(file);
         fileBlocks.add(new FileBlock(file, fileId));
     }
@@ -165,11 +165,11 @@ final class CVLineRecord extends CVSymbolRecord {
         assert !HAS_COLUMNS;
 
         if (buffer != null) {
-            cvSections.getCVSymbolSection().markRelocationSite(pos, 4, ObjectFile.RelocationKind.SECREL, symbolName, false, 1L);
+            cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, 4, ObjectFile.RelocationKind.SECREL, symbolName, false, 1L);
         }
         pos = CVUtil.putInt(0, buffer, pos);
         if (buffer != null) {
-            cvSections.getCVSymbolSection().markRelocationSite(pos, 2, ObjectFile.RelocationKind.SECTION, symbolName, false, 1L);
+            cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, 2, ObjectFile.RelocationKind.SECTION, symbolName, false, 1L);
         }
         pos = CVUtil.putShort((short) 0, buffer, pos);
         final short flags = HAS_COLUMNS ? CB_HAS_COLUMNS_FLAG : CB_HAS_NO_COLUMNS_FLAG;

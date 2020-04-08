@@ -32,19 +32,19 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
+import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.Map;
 import java.util.Set;
 
 abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
 
-    int debugLevel = 1;
+    boolean debug = false;
     long debugTextBase = 0;
     long debugAddress = 0;
     int debugBase = 0;
 
     CVSectionImpl() {
-        checkDebug(0);
     }
 
     @Override
@@ -54,11 +54,23 @@ abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
         getOwner().createDefinedSymbol(getSectionName(), getElement(), 0, 0, false, false);
     }
 
-    void checkDebug(int pos) {
-        /* if the env var relevant to this element type is set then switch on debugging */
-        String envVarName =  "DEBUG_" + getSectionName().substring(1).toUpperCase();
-        if (System.getenv(envVarName) != null) {
-            debugLevel = 1;
+    private String debugSectionLogName() {
+        /*
+         * Use prefix cv4 plus the section name (which already includes a dot separator) for the
+         * context key. For example messages for type section will be keyed using "cv4.debug$T".
+         * Other info formats use their own format-specific prefix.
+         */
+        assert getSectionName().startsWith(".debug$");
+        return "cv4" + getSectionName();
+    }
+
+    protected void enableLog(DebugContext context, int pos) {
+        /*
+         * Unlike in the Dwarf debug code, debug output is enabled in both the sizing and writing phases.
+         * At this time, debugBase and debugAddress aren't used but are there for the future.
+         */
+        if (context.areScopesEnabled()) {
+            debug = true;
             debugBase = pos;
             debugAddress = debugTextBase;
         }
@@ -69,25 +81,26 @@ abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
         return 1;
     }
 
-    public void debug(String format, Object ... args) {
-        if (debugLevel > 1) {
-            CVUtil.debug(format + "\n", args);
+    protected void log(DebugContext context, String format, Object... args) {
+        if (debug) {
+            context.logv(DebugContext.INFO_LEVEL, format, args);
         }
     }
 
-    public void info(String format, Object ... args) {
-        if (debugLevel > 0) {
-            CVUtil.debug(format + "\n", args);
+    protected void verboseLog(DebugContext context, String format, Object... args) {
+        if (debug) {
+            context.logv(DebugContext.VERBOSE_LEVEL, format, args);
         }
     }
 
     @Override
     public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
+
         /* ensure content byte[] has been created before calling super method */
-        createContent();
+        getOwner().debugContext(debugSectionLogName(), this::createContent);
 
         /* ensure content byte[] has been written before calling super method */
-        writeContent();
+        getOwner().debugContext(debugSectionLogName(), this::writeContent);
 
         return super.getOrDecideContent(alreadyDecided, contentHint);
     }
@@ -111,7 +124,7 @@ abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     //public abstract LayoutDecision.Kind[] targetSectionKinds();
-    public abstract void createContent();
-    public abstract void writeContent();
+    public abstract void createContent(DebugContext debugContext);
+    public abstract void writeContent(DebugContext debugContext);
     public abstract String getSectionName();
 }

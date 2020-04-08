@@ -30,8 +30,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 abstract class CVUtil {
 
-    private static final boolean DEBUG_ON = false;
-
     /* base level put methods that assume a non-null buffer */
     static int putByte(byte b, byte[] buffer, int initialPos) {
         if (buffer == null) {
@@ -85,8 +83,8 @@ abstract class CVUtil {
             return initialPos + inbuff.length;
         }
         int pos = initialPos;
-        for (int l = 0; l < inbuff.length; l++) {
-            buffer[pos++] = inbuff[l];
+        for (byte b : inbuff) {
+            buffer[pos++] = b;
         }
         return pos;
     }
@@ -101,11 +99,11 @@ abstract class CVUtil {
             return initialPos + buff.length + 1;
         }
         int pos = initialPos;
-        for (int l = 0; l < buff.length; l++) {
-            if (buff[l] == 0) {
+        for (byte b : buff) {
+            if (b == 0) {
                 throw new RuntimeException("oops : string has internal NULL character! " + s);
             }
-            buffer[pos++] = buff[l];
+            buffer[pos++] = b;
         }
         buffer[pos++] = '\0';
         return pos;
@@ -117,7 +115,6 @@ abstract class CVUtil {
         i += (buffer[pos++] & 0xff) << 8;
         i += (buffer[pos++] & 0xff) << 16;
         i += (buffer[pos] & 0xff) << 24;
-        debug("getint returns %d\n", i);
         return i;
     }
 
@@ -125,19 +122,19 @@ abstract class CVUtil {
         int pos = initialPos;
         short i = (short) (buffer[pos++] & 0xff);
         i = (short) (i + ((buffer[pos] & 0xff) << 8));
-        debug("getshort returns %d\n", i);
         return i;
     }
 
+    /*
     static void dump(String msg, byte[] buffer, int initialPos, int len) {
         if (buffer == null) {
             return;
         }
-        debug("%s0x%06x", msg, initialPos);
+        System.out.format("%s0x%06x", msg, initialPos);
         for (int i = 0; i < len; i++) {
-            debug(" %02x", buffer[initialPos + i]);
+            System.out.format(" %02x", buffer[initialPos + i]);
         }
-        debug("\n");
+        System.out.format("\n");
     }
 
     static void dump(byte[] buffer, int len) {
@@ -145,9 +142,9 @@ abstract class CVUtil {
             return;
         }
         for (int i = 0; i < len; i++) {
-            debug("%02x", buffer[i]);
+            System.out.format("%02x", buffer[i]);
         }
-    }
+    }*/
 
     /**
      * align on 4 byte boundary.
@@ -160,11 +157,5 @@ abstract class CVUtil {
             pos++;
         }
         return pos;
-    }
-
-    public static void debug(String format, Object ... args) {
-        if (DEBUG_ON) {
-            System.out.format(format, args);
-        }
     }
 }

@@ -26,6 +26,8 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
+import org.graalvm.compiler.debug.DebugContext;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -41,14 +43,14 @@ public final class CVSymbolSectionImpl extends CVSectionImpl {
     private static final int CV_VECTOR_DEFAULT_SIZE = 200;
     private static final int CV_STRINGTABLE_DEFAULT_SIZE = 200;
 
-    private CVSections cvSections;
+    private CVDebugInfo cvDebugInfo;
     private CVFileRecord fileRecord;
 
     private ArrayList<CVSymbolRecord> cvRecords = new ArrayList<>(CV_VECTOR_DEFAULT_SIZE);
     private CVStringTable stringTable = new CVStringTable(CV_STRINGTABLE_DEFAULT_SIZE);
 
-    CVSymbolSectionImpl(CVSections cvSections) {
-        this.cvSections = cvSections;
+    CVSymbolSectionImpl(CVDebugInfo cvDebugInfo) {
+        this.cvDebugInfo = cvDebugInfo;
     }
 
     @Override
@@ -60,71 +62,73 @@ public final class CVSymbolSectionImpl extends CVSectionImpl {
      * the CodeView symbol section ("debug$S") is actually a list of records containing sub-records
      */
     @Override
-    public void createContent() {
-        info("CVSymbolSectionImpl.createContent() adding records");
-        addRecords();
-        info("CVSymbolSectionImpl.createContent() start");
+    public void createContent(DebugContext debugContext) {
         int pos = 0;
+        enableLog(debugContext, pos);
+        log(debugContext, "CVSymbolSectionImpl.createContent() adding records");
+        addRecords(debugContext);
+        log(debugContext, "CVSymbolSectionImpl.createContent() start");
         /* add header size */
         pos += Integer.BYTES;
         /* add sum of all record sizes */
         for (CVSymbolRecord record : cvRecords) {
-            info("CVSymbolSectionImpl.createContent() computeFullSize %s", record);
+            log(debugContext, "CVSymbolSectionImpl.createContent() computeFullSize %s", record);
             pos = CVUtil.align4(pos);
             pos = record.computeFullSize(pos);
         }
         /* create a buffer that holds it all */
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
-        info("CVSymbolSectionImpl.createContent() end");
+        log(debugContext, "CVSymbolSectionImpl.createContent() end");
     }
 
     @Override
-    public void writeContent() {
-        info("CVSymbolSectionImpl.writeContent() start");
-        byte[] buffer = getContent();
+    public void writeContent(DebugContext debugContext) {
         int pos = 0;
+        enableLog(debugContext, pos);
+        log(debugContext, "CVSymbolSectionImpl.writeContent() start");
+        byte[] buffer = getContent();
         /* write section header */
         pos = CVUtil.putInt(CV_SIGNATURE_C13, buffer, pos);
         /* write all records */
         for (CVSymbolRecord record : cvRecords) {
-            info("CVSymbolSectionImpl.createContent() computeFullContentt %s", record);
+            log(debugContext, "CVSymbolSectionImpl.createContent() computeFullContentt %s", record);
             pos = CVUtil.align4(pos);
             pos = record.computeFullContents(buffer, pos);
         }
-        info("CVSymbolSectionImpl.writeContent() end");
+        log(debugContext, "CVSymbolSectionImpl.writeContent() end");
     }
 
-    private void addRecords() {
+    private void addRecords(DebugContext debugContext) {
         addPrologueRecords();
-        addFunctionRecords();
+        addFunctionRecords(debugContext);
         addTypeRecords();
         addFileRecords();
         addStringTableRecord();
     }
 
     private void addPrologueRecords() {
-        CVSymbolRecord prologue = new CVSymbolSubsection(cvSections) {
+        CVSymbolRecord prologue = new CVSymbolSubsection(cvDebugInfo) {
             @Override
             void addSubrecords() {
-                CVSymbolSubrecord.CVObjectNameRecord objectNameRecord = new CVSymbolSubrecord.CVObjectNameRecord(cvSections);
+                CVSymbolSubrecord.CVObjectNameRecord objectNameRecord = new CVSymbolSubrecord.CVObjectNameRecord(cvDebugInfo);
                 if (objectNameRecord.isValid()) {
                     addRecord(objectNameRecord);
                 }
-                addRecord(new CVSymbolSubrecord.CVCompile3Record(cvSections));
-                addRecord(new CVSymbolSubrecord.CVEnvBlockRecord(cvSections));
+                addRecord(new CVSymbolSubrecord.CVCompile3Record(cvDebugInfo));
+                addRecord(new CVSymbolSubrecord.CVEnvBlockRecord(cvDebugInfo));
             }
         };
         addRecord(prologue);
     }
 
-    private void addFunctionRecords() {
-        new CVSymbolRecordBuilder(cvSections).build();
+    private void addFunctionRecords(DebugContext debugContext) {
+        new CVSymbolRecordBuilder(cvDebugInfo).build(debugContext);
     }
 
     private void addTypeRecords() {
         /* not yet implemented.  S_UDT, etc */
-        //CVSymbolRecord externs = new CVSymbolSubsection.CVExternalSymbolRecord(cvSections);
+        //CVSymbolRecord externs = new CVSymbolSubsection.CVExternalSymbolRecord(cvDebugInfo);
         //addRecord(externs);
     }
 
@@ -134,13 +138,13 @@ public final class CVSymbolSectionImpl extends CVSectionImpl {
 
     CVFileRecord getFileRecord() {
         if (fileRecord == null) {
-            this.fileRecord = new CVFileRecord(cvSections, stringTable);
+            this.fileRecord = new CVFileRecord(cvDebugInfo, stringTable);
         }
         return fileRecord;
     }
 
     private void addStringTableRecord() {
-        CVSymbolRecord stringTableRecord = new CVStringTableRecord(cvSections, stringTable);
+        CVSymbolRecord stringTableRecord = new CVStringTableRecord(cvDebugInfo, stringTable);
         addRecord(stringTableRecord);
     }
 

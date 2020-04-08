@@ -38,12 +38,16 @@ public class CVLineRecordBuilder {
 
     private static final boolean HAS_COLUMNS = false;
 
-    private CVSections cvSections;
+    private CVDebugInfo cvDebugInfo;
     private CVLineRecord lineRecord;
     private PrimaryEntry primaryEntry;
 
-    CVLineRecordBuilder(CVSections cvSections) {
-        this.cvSections = cvSections;
+    CVLineRecordBuilder(CVDebugInfo cvDebugInfo) {
+        this.cvDebugInfo = cvDebugInfo;
+    }
+
+    public static void debug(String format, Object ... args) {
+        //System.out.format(format, args);
     }
 
     /*
@@ -72,18 +76,18 @@ public class CVLineRecordBuilder {
         Range previousRange = null;
         /* option to not even bother with debug code for Graal */
         if (skipGraalInternals && CVRootPackages.isGraalClass(primaryRange.getClassName())) {
-            CVUtil.debug("  skipping Graal internal class %s\n", primaryRange);
+            debug("skipping Graal internal class %s\n", primaryRange);
             return null;
         }
-        CVUtil.debug("  DEBUG_S_LINES linerecord for 0x%05x file: %s:%d\n", primaryRange.getLo(), primaryRange.getFileName(), primaryRange.getLine());
-        this.lineRecord = new CVLineRecord(cvSections, methodName, primaryEntry);
-        CVUtil.debug("     CVLineRecord.computeContents: processing primary range %s\n", primaryRange);
+        debug("DEBUG_S_LINES linerecord for 0x%05x file: %s:%d\n", primaryRange.getLo(), primaryRange.getFileName(), primaryRange.getLine());
+        this.lineRecord = new CVLineRecord(cvDebugInfo, methodName, primaryEntry);
+        debug("CVLineRecord.computeContents: processing primary range %s\n", primaryRange);
         previousRange = processRange(primaryRange, previousRange);
      //   lowAddr = Math.min(lowAddr, primaryRange.getLo());
       //  highAddr = Math.max(highAddr, primaryRange.getHi());
 
         for (Range subRange : primaryEntry.getSubranges()) {
-            CVUtil.debug("     CVLineRecord.computeContents: processing range %s\n", subRange);
+            debug("CVLineRecord.computeContents: processing range %s\n", subRange);
             FileEntry subFileEntry = primaryEntry.getSubrangeFileEntry(subRange);
             if (subFileEntry == null) {
                 continue;
@@ -114,7 +118,7 @@ public class CVLineRecordBuilder {
         /* should we merge this range with the previous entry? */
         /* i.e. same line in same file, same class and function */
         if (shouldMerge(range, previousRange)) {
-            CVUtil.debug("     processRange: merging with previous\n");
+            debug("processRange: merging with previous\n");
             return previousRange;
             //range = new Range(previousRange, range.getLo(), range.getHi());
         } /*else if (range.getLine() == -1) {
@@ -125,13 +129,13 @@ public class CVLineRecordBuilder {
         /* is this a new file? if so we emit a new file record */
         boolean wantNewFile = previousRange == null || !previousRange.getFileAsPath().equals(range.getFileAsPath());
         if (wantNewFile) {
-            FileEntry file = cvSections.findFile(range.getFileAsPath());
+            FileEntry file = cvDebugInfo.findFile(range.getFileAsPath());
             if (file != null && file.getFileName() != null) {
                 previousRange = null;
-                CVUtil.debug("     processRange: addNewFile: %s\n", file);
+                debug("processRange: addNewFile: %s\n", file);
                 lineRecord.addNewFile(file);
             } else {
-                CVUtil.debug("     processRange: range has no file: %s\n", range);
+                debug("processRange: range has no file: %s\n", range);
                 return previousRange;
             }
         }
@@ -140,7 +144,7 @@ public class CVLineRecordBuilder {
             previousRange = range;
             int lineLoAddr = range.getLo() - primaryEntry.getPrimary().getLo();
             int line = range.getLine() < 1 ? 1 : range.getLine();
-            CVUtil.debug("     processRange:   addNewLine: 0x%05x %s\n", lineLoAddr, line);
+            debug("processRange:   addNewLine: 0x%05x %s\n", lineLoAddr, line);
             lineRecord.addNewLine(lineLoAddr, line);
         }
         return previousRange;
@@ -178,9 +182,9 @@ public class CVLineRecordBuilder {
         return true;
         /*if (debug) {
             if (previousRange == null) {
-                CVUtil.debug("wantNewRange() prevnull:true");
+                debug("wantNewRange() prevnull:true");
             } else {
-                CVUtil.debug("wantNewRange() prevnull:false" + " linesdiffer:" + (previousRange.getLine() != range.getLine())
+                debug("wantNewRange() prevnull:false" + " linesdiffer:" + (previousRange.getLine() != range.getLine())
                         + " fndiffer:" + (previousRange.getFilePath() != range.getFilePath()) + " contig:" + (previousRange.getHi() < range.getLo()) + " delta:" + (range.getHi() - previousRange.getLo()));
             }
         }*

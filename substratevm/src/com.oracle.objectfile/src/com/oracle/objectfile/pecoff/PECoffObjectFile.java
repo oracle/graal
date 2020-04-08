@@ -44,7 +44,7 @@ import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_FILE_HEADER;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_SECTION_HEADER;
-import com.oracle.objectfile.pecoff.cv.CVSections;
+import com.oracle.objectfile.pecoff.cv.CVDebugInfo;
 import com.oracle.objectfile.pecoff.cv.CVSymbolSectionImpl;
 import com.oracle.objectfile.pecoff.cv.CVTypeSectionImpl;
 
@@ -701,11 +701,11 @@ public class PECoffObjectFile extends ObjectFile {
 
     @Override
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
-        CVSections cvSections = new CVSections(getMachine(), getByteOrder());
+        CVDebugInfo cvDebugInfo = new CVDebugInfo(getMachine(), getByteOrder());
 
         // we need an implementation for each section
-        CVSymbolSectionImpl cvSymbolSectionImpl = cvSections.getCVSymbolSection();
-        CVTypeSectionImpl cvTypeSectionImpl = cvSections.getCVTypeSection();
+        CVSymbolSectionImpl cvSymbolSectionImpl = cvDebugInfo.getCVSymbolSection();
+        CVTypeSectionImpl cvTypeSectionImpl = cvDebugInfo.getCVTypeSection();
 
         // now we can create the section elements with empty content
         newDebugSection(cvSymbolSectionImpl.getSectionName(), cvSymbolSectionImpl);
@@ -724,6 +724,6 @@ public class PECoffObjectFile extends ObjectFile {
         cvTypeSectionImpl.getOrCreateRelocationElement(false);
 
         // ok now we can populate the implementations
-        cvSections.installDebugInfo(debugInfoProvider);
+        cvDebugInfo.installDebugInfo(debugInfoProvider);
     }
 }

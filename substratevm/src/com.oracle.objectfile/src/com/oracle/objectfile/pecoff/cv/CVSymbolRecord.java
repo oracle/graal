@@ -33,12 +33,12 @@ import java.io.PrintStream;
  */
 abstract class CVSymbolRecord {
 
-    protected CVSections cvSections;
+    protected CVDebugInfo cvDebugInfo;
     protected int recordStartPosition;
     protected final int type;
 
-    CVSymbolRecord(CVSections cvSections, int type) {
-        this.cvSections = cvSections;
+    CVSymbolRecord(CVDebugInfo cvDebugInfo, int type) {
+        this.cvDebugInfo = cvDebugInfo;
         this.type = type;
     }
 

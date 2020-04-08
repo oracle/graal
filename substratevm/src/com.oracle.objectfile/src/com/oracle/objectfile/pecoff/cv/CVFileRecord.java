@@ -54,8 +54,8 @@ final class CVFileRecord extends CVSymbolRecord {
     private int currentOffset = 0;
     private Map<FileEntry, Integer> fileEntryToOffsetMap = new LinkedHashMap<>(FILE_TABLE_INITIAL_SIZE);
 
-    CVFileRecord(CVSections cvSections, CVSymbolSectionImpl.CVStringTable strings) {
-        super(cvSections, CVDebugConstants.DEBUG_S_FILECHKSMS);
+    CVFileRecord(CVDebugInfo cvDebugInfo, CVSymbolSectionImpl.CVStringTable strings) {
+        super(cvDebugInfo, CVDebugConstants.DEBUG_S_FILECHKSMS);
         this.strings = strings;
     }
 
@@ -75,7 +75,7 @@ final class CVFileRecord extends CVSymbolRecord {
         return fn;
     }
 
-    public int addFile(FileEntry entry) {
+    int addFile(FileEntry entry) {
         if (fileEntryToOffsetMap.containsKey(entry)) {
             return fileEntryToOffsetMap.get(entry);
         } else {
@@ -92,7 +92,7 @@ final class CVFileRecord extends CVSymbolRecord {
         /* add all fileEntries; duplicates are ignored */
         /* probably don't need to do this because if it isn't already here it's probably referenced by the debug info */
         /* consider moving this to CVSymbolSectionImpl */
-        for (FileEntry entry : cvSections.getFiles()) {
+        for (FileEntry entry : cvDebugInfo.getFiles()) {
             addFile(entry);
         }
         return initialPos + (fileEntryToOffsetMap.size() * FILE_RECORD_LENGTH);
@@ -101,7 +101,6 @@ final class CVFileRecord extends CVSymbolRecord {
     @Override
     public int computeContents(byte[] buffer, int initialPos) {
         int pos = initialPos;
-        CVUtil.debug("file computeContents(%d) nf=%d\n", pos, fileEntryToOffsetMap.size());
         for (FileEntry entry : fileEntryToOffsetMap.keySet()) {
             pos = put(entry, buffer, pos);
         }

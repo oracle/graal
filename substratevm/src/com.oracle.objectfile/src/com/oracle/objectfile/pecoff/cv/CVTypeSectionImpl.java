@@ -31,6 +31,7 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
+import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,8 +45,8 @@ import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_TYPE_SECTION_NAME;
 
 public final class CVTypeSectionImpl extends CVSectionImpl {
 
-    private static final int CV_VECTOR_DEFAULT_SIZE = 200;
-    private ArrayList<CVTypeRecord> cvRecords = new ArrayList<>(CV_VECTOR_DEFAULT_SIZE);
+    private static final int CV_RECORD_INITIAL_CAPACITY = 200;
+    private ArrayList<CVTypeRecord> cvRecords = new ArrayList<>(CV_RECORD_INITIAL_CAPACITY);
     private CVTypeRecordBuilder builder = new CVTypeRecordBuilder(this);
 
     CVTypeSectionImpl() {
@@ -57,29 +58,29 @@ public final class CVTypeSectionImpl extends CVSectionImpl {
     }
 
     @Override
-    public void createContent() {
-        info("CVTypeSectionImpl.createContent() start");
-        addRecords();
+    public void createContent(DebugContext debugContext) {
         int pos = 0;
+        log(debugContext, "CVTypeSectionImpl.createContent() start");
+        addRecords();
         pos += computeHeaderSize();
         for (CVTypeRecord record : cvRecords) {
             pos = record.computeFullSize(pos);
         }
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
-        info("CVTypeSectionImpl.createContent() end");
+        log(debugContext, "CVTypeSectionImpl.createContent() end");
     }
 
     @Override
-    public void writeContent() {
-        info("CVTypeSectionImpl.writeContent() start");
-        byte[] buffer = getContent();
+    public void writeContent(DebugContext debugContext) {
         int pos = 0;
+        log(debugContext, "CVTypeSectionImpl.writeContent() start");
+        byte[] buffer = getContent();
         pos = CVUtil.putInt(CV_SIGNATURE_C13, buffer, pos);
         for (CVTypeRecord record : cvRecords) {
             pos = record.computeFullContents(buffer, pos);
         }
-        info("CVTypeSectionImpl.writeContent() end");
+        log(debugContext, "CVTypeSectionImpl.writeContent() end");
     }
 
     public List<CVTypeRecord> getRecords() {
@@ -93,13 +94,12 @@ public final class CVTypeSectionImpl extends CVSectionImpl {
     <T extends CVTypeRecord> T addRecord(T newRecord) {
         //CVUtil.debug("adding type record: %s hash=%d\n", newRecord, newRecord.hashCode());
         T actual = builder.buildFrom(newRecord);
-        CVUtil.debug("added type record: %s hash=%d\n", actual, actual.hashCode());
         return actual;
     }
 
     private void addClassRecords() {
         /* we may have done this already when emiting globals in debug$S section */
-        //for (DebugInfoBase.ClassEntry classEntry : cvSections.getPrimaryClasses()) {
+        //for (DebugInfoBase.ClassEntry classEntry : cvDebugInfo.getPrimaryClasses()) {
             // TODO - emit all members, all types, etc
         //}
     }

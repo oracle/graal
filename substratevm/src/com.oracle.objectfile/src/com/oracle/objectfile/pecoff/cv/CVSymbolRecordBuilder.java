@@ -29,6 +29,7 @@ package com.oracle.objectfile.pecoff.cv;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
+import org.graalvm.compiler.debug.DebugContext;
 
 import static com.oracle.objectfile.pecoff.cv.CVConstants.functionNamesHashArgs;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.replaceMainFunctionName;
@@ -38,23 +39,25 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_VOID;
 
 final class CVSymbolRecordBuilder {
 
-    private final CVSections cvSections;
+    private final CVDebugInfo cvDebugInfo;
     private final CVSymbolSubsection symbolRecord;
+    private DebugContext debugContext = null;
 
-    CVSymbolRecordBuilder(CVSections cvSections) {
-        this.symbolRecord = new CVSymbolSubsection(cvSections);
-        this.cvSections = cvSections;
+    CVSymbolRecordBuilder(CVDebugInfo cvDebugInfo) {
+        this.symbolRecord = new CVSymbolSubsection(cvDebugInfo);
+        this.cvDebugInfo = cvDebugInfo;
     }
 
     /**
      * build DEBUG_S_SYMBOLS record from all classEntries.
      * (could probably build one per class or one per function)
      */
-    void build() {
-        for (ClassEntry classEntry : cvSections.getPrimaryClasses()) {
+    void build(DebugContext debugContext) {
+        this.debugContext = debugContext;
+        for (ClassEntry classEntry : cvDebugInfo.getPrimaryClasses()) {
             build(classEntry);
         }
-        cvSections.getCVSymbolSection().addRecord(symbolRecord);
+        cvDebugInfo.getCVSymbolSection().addRecord(symbolRecord);
     }
 
     /**
@@ -91,15 +94,15 @@ final class CVSymbolRecordBuilder {
      */
     private void build(PrimaryEntry primaryEntry, String methodName) {
         final Range primaryRange = primaryEntry.getPrimary();
-        CVUtil.debug("addfunc(" + methodName + ") numtypes = %d\n", cvSections.getCVTypeSection().getRecords().size());
+        //debug("addfunc(" + methodName + ") numtypes = %d\n", cvDebugInfo.getCVTypeSection().getRecords().size());
         int functionTypeIndex = addTypeRecords(primaryEntry);
         byte funcFlags = 0;
-        CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvSections, methodName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0, 0, functionTypeIndex, primaryRange.getLo(), (short) 0, funcFlags);
+        CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvDebugInfo, methodName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0, 0, functionTypeIndex, primaryRange.getLo(), (short) 0, funcFlags);
         addToSymbolRecord(proc32);
         int frameFlags = 0; /* LLVM uses 0x14000; */
-        addToSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvSections, primaryRange.getHi() - primaryRange.getLo(), frameFlags));
+        addToSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, primaryRange.getHi() - primaryRange.getLo(), frameFlags));
         /* TODO: add local variables, and their types */
-        addToSymbolRecord(new CVSymbolSubrecord.CVSymbolEndRecord(cvSections));
+        addToSymbolRecord(new CVSymbolSubrecord.CVSymbolEndRecord(cvDebugInfo));
         addLineNumberRecords(primaryEntry, methodName);
     }
 
@@ -131,23 +134,23 @@ final class CVSymbolRecordBuilder {
         } else {
             methodName = range.getFullMethodName();
         }
-        CVUtil.debug("replacing %s with %s\n", range.getFullMethodName(), methodName);
+        //debug("replacing %s with %s\n", range.getFullMethodName(), methodName);
         return methodName;
     }
 
     private void addLineNumberRecords(PrimaryEntry primaryEntry, String methodName) {
-        CVLineRecord record = new CVLineRecordBuilder(cvSections).build(primaryEntry, methodName);
+        CVLineRecord record = new CVLineRecordBuilder(cvDebugInfo).build(primaryEntry, methodName);
         /*
          * if the builder decides this entry is uninteresting, we don't build a record.
          * for example, Graal intrinsics may be uninteresting.
          */
         if (record != null) {
-            cvSections.getCVSymbolSection().addRecord(record);
+            cvDebugInfo.getCVSymbolSection().addRecord(record);
         }
     }
 
     private void addToSymbolRecord(CVSymbolSubrecord record) {
-        CVUtil.debug("adding symbol subrecord: %s\n", record);
+        //debug("adding symbol subrecord: %s\n", record);
         symbolRecord.addRecord(record);
     }
 
@@ -165,6 +168,7 @@ final class CVSymbolRecordBuilder {
     }
 
     private <T extends CVTypeRecord> T addTypeRecord(T record) {
-        return cvSections.getCVTypeSection().addRecord(record);
+        cvDebugInfo.getCVSymbolSection().verboseLog(debugContext, "added type record: %s hash=%d\n", record, record.hashCode());
+        return cvDebugInfo.getCVTypeSection().addRecord(record);
     }
 }
