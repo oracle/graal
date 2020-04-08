@@ -39,7 +39,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import com.oracle.truffle.tools.agentscript.test.AgentScriptAPI.SourceInfo;
+import com.oracle.truffle.tools.agentscript.test.InsightAPI.SourceInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import static org.junit.Assert.assertNotNull;
@@ -51,10 +51,10 @@ import org.junit.Assert;
 final class AgentObjectFactory extends ProxyLanguage {
     static TruffleObject insightObject;
 
-    static AgentScriptAPI.OnConfig createConfig(
+    static InsightAPI.OnConfig createConfig(
                     boolean expressions, boolean statements, boolean roots,
                     Predicate<String> rootNameFilter, Predicate<SourceInfo> sourceFilter) {
-        AgentScriptAPI.OnConfig config = new AgentScriptAPI.OnConfig();
+        InsightAPI.OnConfig config = new InsightAPI.OnConfig();
         config.expressions = expressions;
         config.statements = statements;
         config.roots = roots;
@@ -86,7 +86,7 @@ final class AgentObjectFactory extends ProxyLanguage {
 
         Value value;
 
-        try (AutoCloseable handle = Embedding.enableAgentScript(AgentObjectFactory.createAgentSource(), context)) {
+        try (AutoCloseable handle = Embedding.enableInsight(AgentObjectFactory.createAgentSource(), context)) {
             value = context.eval(ProxyLanguage.ID, "");
             assertNotNull("Agent object has been initialized", insightObject);
         }

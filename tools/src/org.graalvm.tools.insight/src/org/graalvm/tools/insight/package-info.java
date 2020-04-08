@@ -22,26 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.agentscript.test;
 
-import java.util.function.Function;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Source;
+/*
+ @ApiInfo(
+ group="Tools"
+ )
+ */
 
-final class Embedding {
-    private Embedding() {
-    }
-
-    @SuppressWarnings("unchecked")
-    static AutoCloseable enableInsight(Source agentSrc, Context context) {
-        // BEGIN: Embedding#apply
-        final Engine engine = context.getEngine();
-        Instrument instrument = engine.getInstruments().get("insight");
-        Function<Source, AutoCloseable> access = instrument.lookup(Function.class);
-        AutoCloseable handle = access.apply(agentSrc);
-        // END: Embedding#apply
-        return handle;
-    }
-}
+/**
+ * Write instruments in dynamic languages with <b>GraalVM</b>
+ * {@link org.graalvm.tools.insight.Insight}.
+ */
+package org.graalvm.tools.insight;

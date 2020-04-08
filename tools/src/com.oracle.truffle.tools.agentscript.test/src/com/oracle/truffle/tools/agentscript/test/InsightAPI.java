@@ -25,21 +25,19 @@
 package com.oracle.truffle.tools.agentscript.test;
 
 // @formatter:off
-import com.oracle.truffle.tools.agentscript.AgentScript;
 import java.util.Map;
 import java.util.function.Predicate;
 
 
-// BEGIN: AgentScriptAPI
-/** Instance of this class is accessible via {@code agent} variable
- * in the {@link AgentScript}
- * {@link AgentScript#registerAgentScript registered scripts}.
+// BEGIN: InsightAPI
+/** Instance of this class is accessible via {@code insight} variable
+ * in the Insight scripts registered to the instrument.
  */
-public interface AgentScriptAPI {
-    /** ID of the instrument. Version {@code 0.4} has been released as
-     * part of GraalVM 20.0.0 release.
+public interface InsightAPI {
+    /** ID of the instrument. Version {@code 0.5} has been released as
+     * part of GraalVM 20.1 release.
      *
-     * @return same value of {@link AgentScript#ID} - e.g. {@code "agentscript"}
+     * @return same value of {@link Insight#ID} - e.g. {@code "insight"}
      * @since 0.3
      */
     String id();
@@ -47,7 +45,7 @@ public interface AgentScriptAPI {
     /** Version of the API. Version {@code 0.1} has been released as
      * part of GraalVM 19.3.0 release.
      *
-     * @return same value of {@link AgentScript#VERSION}
+     * @return same value of {@link Insight#VERSION}
      * @since 0.1
      */
     String version();
@@ -205,4 +203,4 @@ public interface AgentScriptAPI {
      */
     void off(String event, Handler handler);
 }
-// END: AgentScriptAPI
+// END: InsightAPI

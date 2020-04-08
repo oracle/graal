@@ -52,6 +52,7 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.graalvm.tools.insight.Insight;
 
 @SuppressWarnings({"unused", "static-method"})
 @ExportLibrary(InteropLibrary.class)
@@ -88,9 +89,9 @@ final class AgentObject implements TruffleObject {
         warnMsg();
         switch (name) {
             case "id":
-                return InsightInstrument.ID;
+                return Insight.ID;
             case "version":
-                return InsightInstrument.VERSION;
+                return Insight.VERSION;
         }
         throw UnknownIdentifierException.create(name);
     }

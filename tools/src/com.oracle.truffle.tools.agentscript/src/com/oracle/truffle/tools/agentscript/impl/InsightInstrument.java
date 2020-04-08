@@ -41,7 +41,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tools.agentscript.AgentScript;
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -53,18 +52,17 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
+import org.graalvm.tools.insight.Insight;
 
 // @formatter:off
 @TruffleInstrument.Registration(
-    id = InsightInstrument.ID,
+    id = Insight.ID,
     name = InsightInstrument.NAME,
-    version = InsightInstrument.VERSION,
+    version = Insight.VERSION,
     services = { Function.class }
 )
 // @formatter:on
 public class InsightInstrument extends TruffleInstrument {
-    static final String ID = "insight";
-    static final String VERSION = AgentScript.VERSION;
     static final String NAME = "Insight";
 
     @Option(stability = OptionStability.EXPERIMENTAL, name = "", help = "Use provided file as an insight script", category = OptionCategory.USER) //

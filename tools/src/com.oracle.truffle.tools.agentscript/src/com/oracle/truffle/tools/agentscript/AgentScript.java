@@ -25,45 +25,28 @@
 package com.oracle.truffle.tools.agentscript;
 
 import com.oracle.truffle.api.source.Source;
-import java.util.function.Function;
-import org.graalvm.polyglot.Engine;
+import org.graalvm.tools.insight.Insight;
 
 /**
- * Programatic access to the scripting agent. Obtain an instance of this interface via its
- * {@link #ID}:
- * <p>
- * {@codesnippet Embedding#createAgentObject}
- * 
- * and then {@link Function#apply(java.lang.Object) evaluate} {@link org.graalvm.polyglot.Source}
- * scripts written in any language accessing the {@code agent} variable exposed to them. Use
- * {@link #VERSION current version API} when dealing with the {@code agent} variable.
+ * @deprecated Use {@link Insight}.
  */
+@Deprecated
 public interface AgentScript {
     /**
-     * The ID of the agent script instrument is {@code "agentscript"}. Use it to obtain access to an
-     * {@link AgentScript} instances inside of your {@link Engine}:
-     * <p>
-     * {@codesnippet Embedding#createAgentObject}
+     * @deprecated Use {@link Insight}.
      */
-    String ID = "agentscript";
+    @Deprecated String ID = "agentscript";
 
     /**
-     * Version of the agent script instrument. The current version understands following Java-like
-     * polyglot <em>API</em> made available to the
-     * {@link #registerAgentScript(com.oracle.truffle.api.source.Source) registered agent scripts}
-     * via {@code agent} reference:
-     * <p>
-     * {@codesnippet AgentScriptAPI}
+     * @deprecated Same as {@link Insight#VERSION}.
+     * @Deprecated
      */
-    String VERSION = "0.5";
+    @Deprecated String VERSION = Insight.VERSION;
 
     /**
-     * Loads an agent script file into the system. The script file may be written in any GraalVM
-     * supported language and shall access {@code agent} variable which provides following
-     * {@link #VERSION polyglot-ready API}.
-     * 
-     * @param file the file with the code for the agent
+     * @deprecated See {@link Insight} for usage details.
      */
+    @Deprecated
     default void registerAgentScript(Source file) {
         throw new UnsupportedOperationException();
     }

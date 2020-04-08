@@ -27,7 +27,6 @@ package com.oracle.truffle.tools.agentscript.impl;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tools.agentscript.AgentScript;
 import java.io.IOException;
 import java.util.function.Function;
 import org.graalvm.options.OptionCategory;
@@ -36,14 +35,15 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 
 // @formatter:off
+@SuppressWarnings("deprecation")
 @TruffleInstrument.Registration(
-    id = AgentScript.ID,
+    id = com.oracle.truffle.tools.agentscript.AgentScript.ID,
     name = "Agent Script",
-    version = AgentScript.VERSION,
-    services = { Function.class, AgentScript.class }
+    version = com.oracle.truffle.tools.agentscript.AgentScript.VERSION,
+    services = { Function.class, com.oracle.truffle.tools.agentscript.AgentScript.class }
 )
 // @formatter:on
-public final class AgentScriptInstrument extends InsightInstrument implements AgentScript {
+public final class AgentScriptInstrument extends InsightInstrument implements com.oracle.truffle.tools.agentscript.AgentScript {
     @Option(stability = OptionStability.EXPERIMENTAL, name = "", help = "Deprecated. Use --insight!", category = OptionCategory.USER) //
     static final OptionKey<String> DEPRECATED = new OptionKey<>("");
 
@@ -65,7 +65,7 @@ public final class AgentScriptInstrument extends InsightInstrument implements Ag
         } catch (IOException ex) {
             // ignore
         }
-        AgentScript as = maybeProxy(AgentScript.class, this);
+        com.oracle.truffle.tools.agentscript.AgentScript as = maybeProxy(com.oracle.truffle.tools.agentscript.AgentScript.class, this);
         env.registerService(as);
     }
 
