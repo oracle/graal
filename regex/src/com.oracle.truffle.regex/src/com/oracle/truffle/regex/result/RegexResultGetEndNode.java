@@ -96,7 +96,7 @@ abstract class RegexResultGetEndNode extends Node {
     @Specialization
     static int doLazyCaptureGroups(LazyCaptureGroupsResult receiver, int groupNumber,
                     @Cached LazyCaptureGroupGetResultNode getResultNode) {
-        return fromSingleArray(getResultNode.execute(receiver), groupNumber) - 1;
+        return fromSingleArray(getResultNode.execute(receiver), groupNumber);
     }
 
     private static int fromSingleArray(int[] array, int groupNumber) {

@@ -71,12 +71,12 @@ public final class LazyCaptureGroupsResult extends LazyResult implements JsonCon
 
     @Override
     public int getStart(int groupNumber) {
-        return result[groupNumber * 2] - 1;
+        return result[groupNumber * 2];
     }
 
     @Override
     public int getEnd(int groupNumber) {
-        return result[groupNumber * 2 + 1] - 1;
+        return result[groupNumber * 2 + 1];
     }
 
     public void setResult(int[] result) {
@@ -153,9 +153,9 @@ public final class LazyCaptureGroupsResult extends LazyResult implements JsonCon
         if (result == null) {
             debugForceEvaluation();
         }
-        StringBuilder sb = new StringBuilder("[").append(result[0] - 1);
+        StringBuilder sb = new StringBuilder("[").append(result[0]);
         for (int i = 1; i < result.length; i++) {
-            sb.append(", ").append(result[i] - 1);
+            sb.append(", ").append(result[i]);
         }
         return sb.append("]").toString();
     }

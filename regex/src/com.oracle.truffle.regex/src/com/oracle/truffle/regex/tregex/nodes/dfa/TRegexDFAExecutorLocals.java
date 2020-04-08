@@ -52,6 +52,7 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
     private int successorIndex;
     private int result;
     private short lastTransition;
+    private int lastIndex;
     private final DFACaptureGroupTrackingData cgData;
 
     public TRegexDFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, DFACaptureGroupTrackingData cgData) {
@@ -83,6 +84,7 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
     }
 
     public void setLastTransition(short lastTransition) {
+        lastIndex = getIndex();
         this.lastTransition = lastTransition;
     }
 
@@ -92,6 +94,14 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
 
     public void setSuccessorIndex(int successorIndex) {
         this.successorIndex = successorIndex;
+    }
+
+    public int getLastIndex() {
+        return lastIndex;
+    }
+
+    public void setLastIndex(int lastIndex) {
+        this.lastIndex = lastIndex;
     }
 
     public int getResultInt() {

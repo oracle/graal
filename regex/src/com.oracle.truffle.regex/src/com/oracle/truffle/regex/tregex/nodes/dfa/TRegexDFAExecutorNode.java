@@ -169,6 +169,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         if (isGenericCG()) {
             initResultOrder(locals);
             locals.setLastTransition((short) -1);
+            Arrays.fill(locals.getCGData().results, -1);
         } else if (isSimpleCG()) {
             CompilerDirectives.ensureVirtualized(locals.getCGData());
             Arrays.fill(locals.getCGData().results, -1);

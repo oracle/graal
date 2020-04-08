@@ -247,7 +247,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
     @ExplodeLoop
     private void applyFinalStateTransitionIndexClears(DFACaptureGroupTrackingData d) {
         for (int i = 0; i < indexClears[0].getNumberOfIndices(); i++) {
-            d.currentResult[indexClears[0].getIndex(i)] = 0;
+            d.currentResult[indexClears[0].getIndex(i)] = -1;
         }
     }
 
@@ -286,7 +286,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         for (IndexOperation indexClear : indexClears) {
             final int targetArray = indexClear.getTargetArray();
             for (int i = 0; i < indexClear.getNumberOfIndices(); i++) {
-                results[currentResultOrder[targetArray] + indexClear.getIndex(i)] = 0;
+                results[currentResultOrder[targetArray] + indexClear.getIndex(i)] = -1;
             }
         }
     }
