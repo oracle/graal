@@ -59,8 +59,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.SLLanguage;
@@ -98,7 +96,6 @@ import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 public final class SLContext {
 
     private static final Source BUILTIN_SOURCE = Source.newBuilder(SLLanguage.ID, "", "SL builtin").build();
-    static final Layout LAYOUT = Layout.createLayout();
 
     private final Env env;
     private final BufferedReader input;
@@ -121,7 +118,7 @@ public final class SLContext {
         for (NodeFactory<? extends SLBuiltinNode> builtin : externalBuiltins) {
             installBuiltin(builtin);
         }
-        this.emptyShape = LAYOUT.createShape(SLObjectType.SINGLETON);
+        this.emptyShape = Shape.newBuilder().layout(SLObject.class).build();
     }
 
     /**
@@ -235,20 +232,11 @@ public final class SLContext {
      * Allocate an empty object. All new objects initially have no properties. Properties are added
      * when they are first stored, i.e., the store triggers a shape change of the object.
      */
-    public DynamicObject createObject(AllocationReporter reporter) {
-        DynamicObject object = null;
+    public SLObject createObject(AllocationReporter reporter) {
         reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-        object = emptyShape.newInstance();
+        SLObject object = new SLObject(emptyShape);
         reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
         return object;
-    }
-
-    public static boolean isSLObject(Object value) {
-        /*
-         * LAYOUT.getType() returns a concrete implementation class, i.e., a class that is more
-         * precise than the base class DynamicObject. This makes the type check faster.
-         */
-        return LAYOUT.getType().isInstance(value) && LAYOUT.getType().cast(value).getShape().getObjectType() == SLObjectType.SINGLETON;
     }
 
     /*

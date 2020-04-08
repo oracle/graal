@@ -62,6 +62,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltin;
@@ -154,9 +155,9 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * {@link DebuggerTags#AlwaysHalt} tag to halt the execution when run under the debugger.
  * <li>Function calls: {@link SLInvokeNode invocations} are efficiently implemented with
  * {@link SLDispatchNode polymorphic inline caches}.
- * <li>Object access: {@link SLReadPropertyNode} uses {@link SLReadPropertyCacheNode} as the
- * polymorphic inline cache for property reads. {@link SLWritePropertyNode} uses
- * {@link SLWritePropertyCacheNode} as the polymorphic inline cache for property writes.
+ * <li>Object access: {@link SLReadPropertyNode} and {@link SLWritePropertyNode} use a cached
+ * {@link DynamicObjectLibrary} as the polymorphic inline cache for property reads and writes,
+ * respectively.
  * </ul>
  *
  * <p>
