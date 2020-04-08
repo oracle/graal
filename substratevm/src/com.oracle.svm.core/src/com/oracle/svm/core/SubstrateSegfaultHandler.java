@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.util.VMError;
 
 @AutomaticFeature
 class SubstrateSegfaultHandlerFeature implements Feature {
@@ -40,6 +41,7 @@ class SubstrateSegfaultHandlerFeature implements Feature {
         if (!ImageSingletons.contains(SubstrateSegfaultHandler.class)) {
             return; /* No segfault handler. */
         }
+        VMError.guarantee(ImageSingletons.contains(RegisterDumper.class));
         RuntimeSupport.getRuntimeSupport().addStartupHook(SubstrateSegfaultHandler::startupHook);
     }
 }

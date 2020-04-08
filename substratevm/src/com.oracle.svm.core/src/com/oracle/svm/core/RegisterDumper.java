@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
+package com.oracle.svm.core;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
+import com.oracle.svm.core.util.VMError;
 
-public interface UContextRegisterDumper extends RegisterDumper {
-    void dumpRegisters(Log log, ucontext_t uContext);
-
-    PointerBase getHeapBase(ucontext_t uContext);
-
-    PointerBase getThreadPointer(ucontext_t uContext);
-
-    @Override
-    default void dumpRegisters(Log log, Context context) {
-        dumpRegisters(log, (ucontext_t) context);
-    }
-
-    @Override
+public interface RegisterDumper {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    default PointerBase getHeapBase(Context context) {
-        return getHeapBase((ucontext_t) context);
+    static RegisterDumper singleton() {
+        if (!ImageSingletons.contains(RegisterDumper.class)) {
+            throw VMError.shouldNotReachHere();
+        }
+        return ImageSingletons.lookup(RegisterDumper.class);
     }
 
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    default PointerBase getThreadPointer(Context context) {
-        return getThreadPointer((ucontext_t) context);
+    interface Context extends PointerBase {
     }
+
+    void dumpRegisters(Log log, Context context);
+
+    PointerBase getHeapBase(Context context);
+
+    PointerBase getThreadPointer(Context context);
 }

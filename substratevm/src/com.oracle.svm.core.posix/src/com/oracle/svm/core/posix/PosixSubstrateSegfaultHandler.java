@@ -39,6 +39,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -87,11 +88,11 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     private static void dispatch(int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
         if (!SubstrateOptions.useLLVMBackend()) {
             if (SubstrateOptions.SpawnIsolates.getValue()) {
-                PointerBase heapBase = ImageSingletons.lookup(UContextRegisterDumper.class).getHeapBase(uContext);
+                PointerBase heapBase = RegisterDumper.singleton().getHeapBase(uContext);
                 WriteHeapBaseNode.writeCurrentVMHeapBase(heapBase);
             }
             if (SubstrateOptions.MultiThreaded.getValue()) {
-                IsolateThread threadPointer = (IsolateThread) ImageSingletons.lookup(UContextRegisterDumper.class).getThreadPointer(uContext);
+                IsolateThread threadPointer = (IsolateThread) RegisterDumper.singleton().getThreadPointer(uContext);
                 WriteCurrentVMThreadNode.writeCurrentVMThread(threadPointer);
             }
             Isolate isolate = VMThreads.IsolateTL.get();
@@ -128,7 +129,7 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         log.autoflush(true);
         log.string("[ [ SubstrateSegfaultHandler caught signal ").signed(signalNumber).string(" ] ]").newline();
 
-        ImageSingletons.lookup(UContextRegisterDumper.class).dumpRegisters(log, uContext);
+        RegisterDumper.singleton().dumpRegisters(log, uContext);
         log.string("Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
         log.newline().string("Bye bye ...").newline().newline();
         ImageSingletons.lookup(LogHandler.class).fatalError();

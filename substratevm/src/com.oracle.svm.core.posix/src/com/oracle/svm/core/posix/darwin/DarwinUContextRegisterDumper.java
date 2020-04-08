@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -52,7 +53,7 @@ class DarwinUContextRegisterDumperFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         VMError.guarantee(AMD64.r14.equals(SubstrateAMD64RegisterConfig.HEAP_BASE_REGISTER_CANDIDATE));
         VMError.guarantee(AMD64.r15.equals(SubstrateAMD64RegisterConfig.THREAD_REGISTER_CANDIDATE));
-        ImageSingletons.add(UContextRegisterDumper.class, new DarwinUContextRegisterDumper());
+        ImageSingletons.add(RegisterDumper.class, new DarwinUContextRegisterDumper());
     }
 }
 
