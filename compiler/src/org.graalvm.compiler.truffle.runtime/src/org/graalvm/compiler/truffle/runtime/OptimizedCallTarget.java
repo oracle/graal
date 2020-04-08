@@ -1043,9 +1043,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private Object injectReturnValueProfile(Object result) {
-        Class<?> klass = profiledReturnType;
-        if (klass != null && CompilerDirectives.inCompiledCode() && profiledReturnTypeAssumption.isValid()) {
-            return OptimizedCallTarget.unsafeCast(result, klass, true, true, true);
+        Assumption returnTypeAssumption = profiledReturnTypeAssumption;
+        Class<?> returnType = profiledReturnType;
+        if (CompilerDirectives.inCompiledCode() && returnType != null && returnTypeAssumption != null && returnTypeAssumption.isValid()) {
+            return OptimizedCallTarget.unsafeCast(result, returnType, true, true, true);
         }
         return result;
     }
