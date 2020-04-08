@@ -279,15 +279,33 @@ public interface TruffleCompilerRuntime {
     Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumption);
 
     /**
-     * {@linkplain #formatEvent(String, int, String, int, String, int, Map, int) Formats} a Truffle
-     * event and writes it to the {@linkplain #log(String) log output}.
+     * {@linkplain #formatEvent(int, String, int, String, int, Map, int) Formats} a Truffle event
+     * and writes it to the {@linkplain #log(CompilableTruffleAST, String) log output}.
+     *
+     * @param compilable the currently compiled AST used as a subject
+     * @param depth nesting depth of the event
+     * @param event a short description of the event being traced
+     * @param properties name/value pairs describing properties relevant to the event
+     * @since 20.1.0
      */
     default void logEvent(CompilableTruffleAST compilable, int depth, String event, Map<String, Object> properties) {
         logEvent(compilable, depth, event, compilable.toString(), properties, null);
     }
 
+    /**
+     * {@linkplain #formatEvent(int, String, int, String, int, Map, int) Formats} a Truffle event
+     * and writes it to the {@linkplain #log(CompilableTruffleAST, String) log output}.
+     *
+     * @param compilable the currently compiled AST
+     * @param depth nesting depth of the event
+     * @param event a short description of the event being traced
+     * @param subject a description of the event's subject
+     * @param properties name/value pairs describing properties relevant to the event
+     * @param message optional additional message appended to the formatted event
+     * @since 20.1.0
+     */
     default void logEvent(CompilableTruffleAST compilable, int depth, String event, String subject, Map<String, Object> properties, String message) {
-        String formattedMessage = formatEvent(null, depth, event, 16, subject, 60, properties, 20);
+        String formattedMessage = formatEvent(depth, event, 16, subject, 60, properties, 20);
         if (message != null) {
             formattedMessage = String.format("%s%n%s", formattedMessage, message);
         }
@@ -296,10 +314,11 @@ public interface TruffleCompilerRuntime {
 
     /**
      * Writes {@code message} followed by a new line to the Truffle logger.
+     *
      * @param compilable the currently compiled AST
      * @param message message to log
      */
-    abstract void log(CompilableTruffleAST compilable, String message);
+    void log(CompilableTruffleAST compilable, String message);
 
     /**
      * Formats a message describing a Truffle event as a single line of text. A representative event
@@ -317,7 +336,7 @@ public interface TruffleCompilerRuntime {
      * @param properties name/value pairs describing properties relevant to the event
      * @param propertyWidth the minimum width of the column for each property
      */
-    default String formatEvent(String caption, int depth, String event, int eventWidth, String subject, int subjectWidth, Map<String, Object> properties, int propertyWidth) {
+    default String formatEvent(int depth, String event, int eventWidth, String subject, int subjectWidth, Map<String, Object> properties, int propertyWidth) {
         if (depth < 0) {
             throw new IllegalArgumentException("depth is negative: " + depth);
         }

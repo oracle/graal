@@ -1089,7 +1089,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public void log(CompilableTruffleAST compilable, String message) {
-        ((OptimizedCallTarget)compilable).engine.getLogger().log(Level.INFO, message);
+        ((OptimizedCallTarget) compilable).engine.getLogger().log(Level.INFO, message);
     }
 
     // https://bugs.openjdk.java.net/browse/JDK-8209535

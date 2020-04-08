@@ -39,7 +39,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.logging.Level;
 
 /**
  * Traces all polymorphic and generic nodes after each successful Truffle compilation.
@@ -61,12 +60,13 @@ public final class TraceASTCompilationListener extends AbstractGraalTruffleRunti
             try (PrintWriter out = new PrintWriter(logMessage)) {
                 printCompactTree(out, target, inliningDecision);
             }
-            runtime.logEvent(target, 0, "opt AST", target.getDebugProperties(inliningDecision));
+            runtime.logEvent(target, 0, "opt AST", target.toString(), target.getDebugProperties(inliningDecision), logMessage.toString());
         }
     }
 
-    private void printCompactTree(PrintWriter out, OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    private static void printCompactTree(PrintWriter out, OptimizedCallTarget target, TruffleInlining inliningDecision) {
         target.accept(new CallTreeNodeVisitor() {
+            private boolean newLine = false;
 
             @Override
             public boolean visit(List<TruffleInlining> decisionStack, Node node) {
@@ -79,12 +79,16 @@ public final class TraceASTCompilationListener extends AbstractGraalTruffleRunti
                     indent.append("  ");
                 }
                 Node parent = node.getParent();
-
+                if (newLine) {
+                    out.println();
+                } else {
+                    newLine = true;
+                }
                 if (parent == null) {
-                    out.printf("%s%s%n", indent, node.getClass().getSimpleName());
+                    out.printf("%s%s", indent, node.getClass().getSimpleName());
                 } else {
                     String fieldName = getFieldName(parent, node);
-                    out.printf("%s%s = %s%n", indent, fieldName, node.getClass().getSimpleName());
+                    out.printf("%s%s = %s", indent, fieldName, node.getClass().getSimpleName());
                 }
                 return true;
             }

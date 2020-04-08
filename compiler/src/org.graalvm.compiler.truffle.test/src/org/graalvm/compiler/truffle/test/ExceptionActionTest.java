@@ -41,7 +41,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.logging.FileHandler;
-import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 import org.graalvm.compiler.core.GraalCompilerOptions;

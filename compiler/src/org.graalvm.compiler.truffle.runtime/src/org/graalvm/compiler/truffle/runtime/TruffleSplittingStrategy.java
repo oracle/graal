@@ -40,6 +40,8 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.logging.Level;
 
 final class TruffleSplittingStrategy {
@@ -246,40 +248,45 @@ final class TruffleSplittingStrategy {
 
     private static final class SplitStatisticsReporter implements GraalTruffleRuntimeListener {
 
-        private static final String D_FORMAT = "[truffle] %-40s: %10d";
-        private static final String D_LONG_FORMAT = "[truffle] %-120s: %10d";
-        private static final String P_FORMAT = "[truffle] %-40s: %9.2f%%";
-        private static final String DELIMITER_FORMAT = "%n[truffle] --- %s";
+        private static final String D_FORMAT = "%n%-40s: %10d";
+        private static final String D_LONG_FORMAT = "%n%-120s: %10d";
+        private static final String P_FORMAT = "%n%-40s: %9.2f%%";
+        private static final String DELIMITER_FORMAT = "%n--- %s";
 
         SplitStatisticsReporter() {
         }
 
+        @Override
         public void onEngineClosed(EngineData engineData) {
             if (engineData.traceSplittingSummary) {
-                //TODO: Make single log entry.
                 SplitStatisticsData stat = engineData.splittingStatistics;
+                StringWriter messageBuilder = new StringWriter();
+                try (PrintWriter out = new PrintWriter(messageBuilder)) {
+                    out.print("Splitting Statistics");
+                    out.printf(D_FORMAT, "Split count", engineData.splitCount);
+                    out.printf(D_FORMAT, "Split limit", engineData.splitLimit);
+                    out.printf(D_FORMAT, "Splits", stat.splitCount);
+                    out.printf(D_FORMAT, "Forced splits", stat.forcedSplitCount);
+                    out.printf(D_FORMAT, "Nodes created through splitting", stat.splitNodeCount);
+                    out.printf(D_FORMAT, "Nodes created without splitting", stat.totalCreatedNodeCount);
+                    out.printf(P_FORMAT, "Increase in nodes", (stat.splitNodeCount * 100.0) / (stat.totalCreatedNodeCount));
+                    out.printf(D_FORMAT, "Split nodes wasted", stat.wastedNodeCount);
+                    out.printf(P_FORMAT, "Percent of split nodes wasted", (stat.wastedNodeCount * 100.0) / (stat.splitNodeCount));
+                    out.printf(D_FORMAT, "Targets wasted due to splitting", stat.wastedTargetCount);
+                    out.printf(D_FORMAT, "Total nodes executed", stat.totalExecutedNodeCount);
+
+                    out.printf(DELIMITER_FORMAT, "SPLIT TARGETS");
+                    for (Map.Entry<OptimizedCallTarget, Integer> entry : sortByIntegerValue(stat.splitTargets).entrySet()) {
+                        out.printf(D_FORMAT, entry.getKey(), entry.getValue());
+                    }
+
+                    out.printf(DELIMITER_FORMAT, "NODES");
+                    for (Map.Entry<Class<? extends Node>, Integer> entry : sortByIntegerValue(stat.polymorphicNodes).entrySet()) {
+                        out.printf(D_LONG_FORMAT, entry.getKey(), entry.getValue());
+                    }
+                }
                 final TruffleLogger log = engineData.getLogger();
-                log.log(Level.INFO, String.format(D_FORMAT, "Split count", engineData.splitCount));
-                log.log(Level.INFO, String.format(D_FORMAT, "Split limit", engineData.splitLimit));
-                log.log(Level.INFO, String.format(D_FORMAT, "Splits", stat.splitCount));
-                log.log(Level.INFO, String.format(D_FORMAT, "Forced splits", stat.forcedSplitCount));
-                log.log(Level.INFO, String.format(D_FORMAT, "Nodes created through splitting", stat.splitNodeCount));
-                log.log(Level.INFO, String.format(D_FORMAT, "Nodes created without splitting", stat.totalCreatedNodeCount));
-                log.log(Level.INFO, String.format(P_FORMAT, "Increase in nodes", (stat.splitNodeCount * 100.0) / (stat.totalCreatedNodeCount)));
-                log.log(Level.INFO, String.format(D_FORMAT, "Split nodes wasted", stat.wastedNodeCount));
-                log.log(Level.INFO, String.format(P_FORMAT, "Percent of split nodes wasted", (stat.wastedNodeCount * 100.0) / (stat.splitNodeCount)));
-                log.log(Level.INFO, String.format(D_FORMAT, "Targets wasted due to splitting", stat.wastedTargetCount));
-                log.log(Level.INFO, String.format(D_FORMAT, "Total nodes executed", stat.totalExecutedNodeCount));
-
-                log.log(Level.INFO, String.format(DELIMITER_FORMAT, "SPLIT TARGETS"));
-                for (Map.Entry<OptimizedCallTarget, Integer> entry : sortByIntegerValue(stat.splitTargets).entrySet()) {
-                    log.log(Level.INFO, String.format(D_FORMAT, entry.getKey(), entry.getValue()));
-                }
-
-                log.log(Level.INFO, String.format(DELIMITER_FORMAT, "NODES"));
-                for (Map.Entry<Class<? extends Node>, Integer> entry : sortByIntegerValue(stat.polymorphicNodes).entrySet()) {
-                    log.log(Level.INFO, String.format(D_LONG_FORMAT, entry.getKey(), entry.getValue()));
-                }
+                log.log(Level.INFO, messageBuilder.toString());
             }
         }
 

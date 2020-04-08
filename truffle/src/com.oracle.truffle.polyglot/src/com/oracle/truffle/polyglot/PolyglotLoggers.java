@@ -57,20 +57,16 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.function.Supplier;
-
 
 final class PolyglotLoggers {
 
-    private PolyglotLoggers(){
+    private PolyglotLoggers() {
     }
 
     static Set<String> getInternalIds() {
@@ -149,12 +145,15 @@ final class PolyglotLoggers {
         return new PolyglotStreamHandler(out, closeStream, flushOnPublish);
     }
 
-
     interface LoggerCache {
+
         Handler getLogHandler();
-        Map<String,Level> getLogLevels();
+
+        Map<String, Level> getLogLevels();
+
         PolyglotEngineImpl getEngine();
-        LogRecord createLogRecord(final Level level, String loggerName, final String message, final String className, final String methodName, final Object[] parameters, final Throwable thrown);
+
+        LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
     }
 
     private static final class LoggerCacheImpl implements LoggerCache {
@@ -173,7 +172,7 @@ final class PolyglotLoggers {
         private final Handler handler;
         private final boolean useCurrentContext;
         private final Reference<PolyglotEngineImpl> engineRef;
-        private final Map<String,Level> defaultValue;
+        private final Map<String, Level> defaultValue;
         private final Set<Level> implicitLevels;
 
         LoggerCacheImpl(Handler handler, PolyglotEngineImpl engine, boolean useCurrentContext, Level... implicitLevels) {
@@ -191,7 +190,7 @@ final class PolyglotLoggers {
             }
         }
 
-        private LoggerCacheImpl(Handler handler, boolean useCurrentContext, Map<String,Level> defaultValue) {
+        private LoggerCacheImpl(Handler handler, boolean useCurrentContext, Map<String, Level> defaultValue) {
             Objects.requireNonNull(handler, "Handler must be non null.");
             this.handler = handler;
             this.useCurrentContext = useCurrentContext;
@@ -437,10 +436,8 @@ final class PolyglotLoggers {
                     }
                     stackTrace = str.toString();
                 }
-                boolean implicit = record.getClass() == ImmutableLogRecord.class && ((ImmutableLogRecord)record).isImplicit();
-                return implicit ?
-                        String.format(FORMAT_NO_LEVEL, loggerName, message, stackTrace) :
-                        String.format(FORMAT_FULL, loggerName, record.getLevel().getName(), message, stackTrace);
+                boolean implicit = record.getClass() == ImmutableLogRecord.class && ((ImmutableLogRecord) record).isImplicit();
+                return implicit ? String.format(FORMAT_NO_LEVEL, loggerName, message, stackTrace) : String.format(FORMAT_FULL, loggerName, record.getLevel().getName(), message, stackTrace);
             }
 
             private static String formatLoggerName(final String loggerName) {
@@ -493,7 +490,7 @@ final class PolyglotLoggers {
                     loggersCache = loggers;
                     if (loggersCache == null) {
                         LoggerCache spi;
-                        Map<String,Level> levels;
+                        Map<String, Level> levels;
                         if (engine != null) {
                             spi = new LoggerCacheImpl(engine.logHandler, engine, false, Level.INFO);
                             levels = engine.logLevels;

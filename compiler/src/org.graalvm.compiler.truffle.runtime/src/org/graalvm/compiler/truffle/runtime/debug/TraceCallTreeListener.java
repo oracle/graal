@@ -42,8 +42,6 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining.CallTreeNodeVisitor;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 
 import com.oracle.truffle.api.nodes.Node;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 
 /**
  * Traces the inlined Truffle call tree after each successful Truffle compilation.
@@ -61,15 +59,12 @@ public final class TraceCallTreeListener extends AbstractGraalTruffleRuntimeList
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
         if (target.getOptionValue(PolyglotCompilerOptions.TraceCompilationCallTree)) {
-            StringWriter logMessage = new StringWriter();
-            try (PrintWriter out = new PrintWriter(logMessage)) {
-                logTruffleCallTree(out, target, inliningDecision);
-            }
-            runtime.logEvent(target, 0, "opt call tree", target.toString(), target.getDebugProperties(inliningDecision), logMessage.toString());
+            runtime.logEvent(target, 0, "opt call tree", target.getDebugProperties(inliningDecision));
+            logTruffleCallTree(target, inliningDecision);
         }
     }
 
-    private void logTruffleCallTree(PrintWriter out, OptimizedCallTarget compilable, TruffleInlining inliningDecision) {
+    private void logTruffleCallTree(OptimizedCallTarget compilable, TruffleInlining inliningDecision) {
         CallTreeNodeVisitor visitor = new CallTreeNodeVisitor() {
 
             @Override
@@ -85,10 +80,10 @@ public final class TraceCallTreeListener extends AbstractGraalTruffleRuntimeList
                     Map<String, Object> properties = new LinkedHashMap<>();
                     GraalTruffleRuntimeListener.addASTSizeProperty(callNode.getCurrentCallTarget(), inliningDecision, properties);
                     properties.putAll(callNode.getCurrentCallTarget().getDebugProperties(inliningDecision));
-                    out.println(runtime.formatEvent(null, depth, "opt call tree", 16, callNode.getCurrentCallTarget().toString() + dispatched, 60, properties, 20));
+                    runtime.logEvent(compilable, depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties, null);
                 } else if (node instanceof OptimizedIndirectCallNode) {
                     int depth = decisionStack == null ? 0 : decisionStack.size() - 1;
-                    out.println(runtime.formatEvent(null, depth, "opt call tree", 16, "<indirect>", 60, null, 20));
+                    runtime.logEvent(compilable, depth, "opt call tree", "<indirect>", null, null);
                 }
                 return true;
             }

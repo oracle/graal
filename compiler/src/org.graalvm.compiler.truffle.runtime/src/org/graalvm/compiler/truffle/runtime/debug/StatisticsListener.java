@@ -250,7 +250,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         long endTime = System.nanoTime();
         StringWriter logMessage = new StringWriter();
         try (PrintWriter out = new PrintWriter(logMessage)) {
-            out.println("Truffle runtime statistics for engine " + runtimeData.id);
+            out.print("Truffle runtime statistics for engine " + runtimeData.id);
             printStatistic(out, "Compilations", compilations);
             printStatistic(out, "  Success", success);
             printStatistic(out, "  Failed", failures);
@@ -313,23 +313,23 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     private static void printStatistic(PrintWriter out, String label) {
-        out.printf("  %-50s:%n", label);
+        out.printf("%n  %-50s:", label);
     }
 
     private static void printStatistic(PrintWriter out, String label, int value) {
-        out.printf("  %-50s: %d%n", label, value);
+        out.printf("%n  %-50s: %d", label, value);
     }
 
     private static void printStatistic(PrintWriter out, String label, double value) {
-        out.printf("  %-50s: %f%n", label, value);
+        out.printf("%n  %-50s: %f", label, value);
     }
 
     private static void printStatistic(PrintWriter out, String label, IntSummaryStatistics value) {
-        out.printf("  %-50s: count=%4d, sum=%8d, min=%8d, average=%12.2f, max=%8d%n", label, value.getCount(), value.getSum(), value.getMin(), value.getAverage(), value.getMax());
+        out.printf("%n  %-50s: count=%4d, sum=%8d, min=%8d, average=%12.2f, max=%8d", label, value.getCount(), value.getSum(), value.getMin(), value.getAverage(), value.getMax());
     }
 
     private static void printStatisticTime(PrintWriter out, String label, LongSummaryStatistics value) {
-        out.printf("  %-50s: count=%4d, sum=%8d, min=%8d, average=%12.2f, max=%8d (milliseconds)%n", label, value.getCount(), value.getSum() / 1000000, value.getMin() / 1000000,
+        out.printf("%n  %-50s: count=%4d, sum=%8d, min=%8d, average=%12.2f, max=%8d (milliseconds)", label, value.getCount(), value.getSum() / 1000000, value.getMin() / 1000000,
                         value.getAverage() / 1e6, value.getMax() / 1000000);
     }
 
