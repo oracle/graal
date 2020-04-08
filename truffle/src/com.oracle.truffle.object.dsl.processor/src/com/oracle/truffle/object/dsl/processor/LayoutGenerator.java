@@ -42,7 +42,10 @@ package com.oracle.truffle.object.dsl.processor;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.VariableElement;
@@ -784,7 +787,7 @@ public class LayoutGenerator {
             }
 
             if (property.hasSetter() || property.hasUnsafeSetter()) {
-                addUncheckedCastWarning(stream, property);
+                addSuppressWarningsForSetter(stream, property);
                 if (property.isShapeProperty()) {
                     stream.println("    @TruffleBoundary");
                 }
@@ -925,10 +928,30 @@ public class LayoutGenerator {
         }
     }
 
+    private static boolean needsUncheckedCast(PropertyModel property) {
+        return property.getType().toString().indexOf('<') != -1 || (property.isVolatile() && !property.getType().getKind().isPrimitive());
+    }
+
     private static void addUncheckedCastWarning(final PrintStream stream, PropertyModel property) {
-        if (property.getType().toString().indexOf('<') != -1 ||
-                        (property.isVolatile() && !property.getType().getKind().isPrimitive())) {
-            stream.println("    @SuppressWarnings(\"unchecked\")");
+        if (needsUncheckedCast(property)) {
+            addSuppressWarnings(stream, Collections.singleton("unchecked"));
+        }
+    }
+
+    private static void addSuppressWarningsForSetter(final PrintStream stream, PropertyModel property) {
+        Collection<String> warnings = new ArrayList<>(2);
+        if (needsUncheckedCast(property)) {
+            warnings.add("unchecked");
+        }
+        if (property.hasUnsafeSetter()) {
+            warnings.add("deprecation");
+        }
+        addSuppressWarnings(stream, warnings);
+    }
+
+    private static void addSuppressWarnings(final PrintStream stream, Collection<String> warnings) {
+        if (!warnings.isEmpty()) {
+            stream.printf("    @SuppressWarnings({%s})\n", warnings.stream().map(s -> '\"' + s + '\"').collect(Collectors.joining(", ")));
         }
     }
 
