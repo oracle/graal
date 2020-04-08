@@ -29,11 +29,12 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 
-class ParsingInlineInvokePlugin extends PEInlineInvokePlugin {
+class ParsingInlineInvokePlugin implements InlineInvokePlugin {
 
     private PartialEvaluator partialEvaluator;
     private final ReplacementsImpl replacements;
@@ -73,7 +74,7 @@ class ParsingInlineInvokePlugin extends PEInlineInvokePlugin {
             return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
         }
 
-        InlineInfo inlineInfo = asInlineInfo(original);
+        InlineInfo inlineInfo = PartialEvaluator.asInlineInfo(original);
         if (!inlineInfo.allowsInlining()) {
             return inlineInfo;
         }

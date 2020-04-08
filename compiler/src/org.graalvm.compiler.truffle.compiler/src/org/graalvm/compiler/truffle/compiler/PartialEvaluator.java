@@ -205,6 +205,23 @@ public abstract class PartialEvaluator {
         throw new NoSuchMethodError(declaringClass.toJavaName() + "." + name + descriptor);
     }
 
+    static InlineInvokePlugin.InlineInfo asInlineInfo(ResolvedJavaMethod method) {
+        final TruffleCompilerRuntime.InlineKind inlineKind = TruffleCompilerRuntime.getRuntime().getInlineKind(method, true);
+        switch (inlineKind) {
+            case DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION:
+                return InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
+            case DO_NOT_INLINE_NO_EXCEPTION:
+                return InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
+            case DO_NOT_INLINE_WITH_EXCEPTION:
+            case DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION:
+                return InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+            case INLINE:
+                return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(method);
+            default:
+                throw new IllegalArgumentException(String.valueOf(inlineKind));
+        }
+    }
+
     private static void removeInlineTokenNodes(StructuredGraph graph) {
         for (InlineDecisionNode node : graph.getNodes(InlineDecisionNode.TYPE)) {
             node.notInlined();
