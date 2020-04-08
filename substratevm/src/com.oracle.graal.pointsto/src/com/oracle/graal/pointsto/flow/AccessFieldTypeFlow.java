@@ -30,19 +30,21 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 /** The base class for a field store or load operation type flow. */
-public abstract class AccessFieldTypeFlow<T extends AccessFieldNode> extends TypeFlow<T> {
+public abstract class AccessFieldTypeFlow extends TypeFlow<BytecodePosition> {
 
     /** The field that this flow stores into or loads from. */
     protected final AnalysisField field;
 
-    protected AccessFieldTypeFlow(T node) {
+    protected AccessFieldTypeFlow(AccessFieldNode node) {
         /* The declared type of a field access node is the field declared type. */
-        super(node, ((AnalysisField) node.field()).getType());
+        super(node.getNodeSourcePosition(), ((AnalysisField) node.field()).getType());
         this.field = (AnalysisField) node.field();
     }
 
-    protected AccessFieldTypeFlow(AccessFieldTypeFlow<T> original, MethodFlowsGraph methodFlows) {
+    protected AccessFieldTypeFlow(AccessFieldTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows);
         this.field = original.field;
     }

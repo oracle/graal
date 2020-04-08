@@ -29,7 +29,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -96,6 +95,8 @@ public abstract class TypeFlow<T> {
         this.state = typeState;
         this.usedAsAParameter = false;
         this.usedAsAReceiver = false;
+
+        assert !(source instanceof Node) : "must not reference Graal node from TypeFlow: " + source;
     }
 
     public TypeFlow() {
@@ -419,8 +420,7 @@ public abstract class TypeFlow<T> {
     }
 
     private String formatFlow(boolean withState) {
-        String method = source instanceof Node ? ((StructuredGraph) ((Node) source).graph()).method().format("%h.%n@") : "";
-        return getClass().getName() + '<' + (method + source) + (withState ? ": " + getState() : "") + '>';
+        return getClass().getName() + '<' + source + (withState ? ": " + getState() : "") + '>';
     }
 
     @Override

@@ -33,7 +33,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 /**
  * Implements a field store operation type flow.
  */
-public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow<StoreFieldNode> {
+public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
 
     protected StoreFieldTypeFlow(StoreFieldNode node) {
         super(node);

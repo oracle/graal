@@ -188,7 +188,6 @@ import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.MonitorSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.TypeSnippets;
-import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValuePhase;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Heap;
@@ -576,7 +575,6 @@ public class NativeImageGenerator {
 
                 bigbang.getUnsupportedFeatures().report(bigbang);
 
-                recordMethodsWithStackValues();
                 recordRestrictHeapAccessCallees(aUniverse.getMethods());
 
                 /*
@@ -991,7 +989,7 @@ public class NativeImageGenerator {
             }
 
             for (StructuredGraph graph : aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options)) {
-                new SVMMethodTypeFlowBuilder(bigbang, graph).registerUsedElements();
+                new SVMMethodTypeFlowBuilder(bigbang, graph).registerUsedElements(null);
             }
         }
     }
@@ -1054,18 +1052,6 @@ public class NativeImageGenerator {
                 entryPoints.put(m, CEntryPointData.create(m));
             }
         }
-    }
-
-    /**
-     * Track methods that have a stack values. This is later used for deoptimization testing during
-     * compilation.
-     */
-    private void recordMethodsWithStackValues() {
-        bigbang.getUniverse().getMethods().parallelStream().forEach(analysisMethod -> {
-            if (analysisMethod.getTypeFlow() != null && analysisMethod.getTypeFlow().getGraph() != null && analysisMethod.getTypeFlow().getGraph().getNodes(StackValueNode.TYPE).isNotEmpty()) {
-                hUniverse.recordMethodWithStackValues(analysisMethod);
-            }
-        });
     }
 
     /**

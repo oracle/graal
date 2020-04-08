@@ -38,12 +38,12 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.graph.Node;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 public class MethodFlowsGraph {
 
@@ -513,7 +513,7 @@ public class MethodFlowsGraph {
         doAddFlow(key, invokeTypeFlow, invokeFlows);
     }
 
-    private static <T extends TypeFlow<? extends Node>> void doAddFlow(Object key, T flow, Map<Object, T> map) {
+    private static <T extends TypeFlow<BytecodePosition>> void doAddFlow(Object key, T flow, Map<Object, T> map) {
         if (map.containsKey(key)) {
             assert key instanceof Integer;
             /*

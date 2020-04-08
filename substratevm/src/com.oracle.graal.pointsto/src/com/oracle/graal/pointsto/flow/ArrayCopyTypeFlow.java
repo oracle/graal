@@ -25,13 +25,15 @@
 package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.replacements.nodes.ArrayCopy;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
-import org.graalvm.compiler.replacements.nodes.ArrayCopy;
+import jdk.vm.ci.code.BytecodePosition;
 
 /**
  * Models the flow transfer of an {@link ArrayCopy} node which intrinsifies calls to
@@ -39,13 +41,13 @@ import org.graalvm.compiler.replacements.nodes.ArrayCopy;
  * destination. When either the source or the destination elements change the element flows from
  * source are passed to destination.
  */
-public class ArrayCopyTypeFlow extends TypeFlow<ValueNode> {
+public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
 
     TypeFlow<?> srcArrayFlow;
     TypeFlow<?> dstArrayFlow;
 
     public ArrayCopyTypeFlow(ValueNode source, AnalysisType declaredType, TypeFlow<?> srcArrayFlow, TypeFlow<?> dstArrayFlow) {
-        super(source, declaredType);
+        super(source.getNodeSourcePosition(), declaredType);
         this.srcArrayFlow = srcArrayFlow;
         this.dstArrayFlow = dstArrayFlow;
     }
@@ -57,7 +59,7 @@ public class ArrayCopyTypeFlow extends TypeFlow<ValueNode> {
     }
 
     @Override
-    public TypeFlow<ValueNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         return new ArrayCopyTypeFlow(bb, this, methodFlows);
     }
 

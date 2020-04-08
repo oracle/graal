@@ -31,7 +31,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
@@ -54,6 +53,7 @@ import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedFieldTypeStore;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class DefaultAnalysisPolicy extends AnalysisPolicy {
@@ -163,7 +163,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         }
 
         @Override
-        public TypeFlow<MethodCallTargetNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
             return new DefaultVirtualInvokeTypeFlow(bb, methodFlows, this);
         }
 
@@ -245,7 +245,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         }
 
         @Override
-        public TypeFlow<MethodCallTargetNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
             return new DefaultSpecialInvokeTypeFlow(bb, methodFlows, this);
         }
 

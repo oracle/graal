@@ -35,13 +35,15 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 /**
  * Implements a clone operation. This flow observes the state changes of the input flow, clones its
  * objects, then it updates its state. When the state is updated it also copies the corresponding
  * elements, i.e., array elements if the type is array or field values if the type is non-array,
  * into the clones.
  */
-public class CloneTypeFlow extends TypeFlow<ValueNode> {
+public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
 
     private BytecodeLocation cloneSite;
     private TypeFlow<?> input;
@@ -50,7 +52,7 @@ public class CloneTypeFlow extends TypeFlow<ValueNode> {
     protected final AnalysisContext allocationContext;
 
     public CloneTypeFlow(ValueNode node, AnalysisType inputType, BytecodeLocation cloneLabel, TypeFlow<?> input) {
-        super(node, inputType);
+        super(node.getNodeSourcePosition(), inputType);
         this.cloneSite = cloneLabel;
         this.allocationContext = null;
         this.input = input;
@@ -64,7 +66,7 @@ public class CloneTypeFlow extends TypeFlow<ValueNode> {
     }
 
     @Override
-    public TypeFlow<ValueNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         AnalysisContext enclosingContext = methodFlows.context();
         AnalysisContext allocContext = bb.contextPolicy().allocationContext(enclosingContext, PointstoOptions.MaxHeapContextDepth.getValue(bb.getOptions()));
 
@@ -95,7 +97,7 @@ public class CloneTypeFlow extends TypeFlow<ValueNode> {
         } else {
             resultState = inputState.typesStream()
                             .filter(t -> !currentState.containsType(t))
-                            .map(type -> TypeState.forClone(bb, source, cloneSite, type, allocationContext))
+                            .map(type -> TypeState.forClone(bb, cloneSite, type, allocationContext))
                             .reduce(TypeState.forEmpty(), (s1, s2) -> TypeState.forUnion(bb, s1, s2));
 
             assert !resultState.canBeNull();

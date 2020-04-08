@@ -31,7 +31,6 @@ import java.util.Collections;
 
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -42,7 +41,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
-public abstract class InvokeTypeFlow extends TypeFlow<MethodCallTargetNode> {
+import jdk.vm.ci.code.BytecodePosition;
+
+public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
 
     protected final BytecodeLocation location;
 
@@ -56,19 +57,28 @@ public abstract class InvokeTypeFlow extends TypeFlow<MethodCallTargetNode> {
      */
     protected ActualReturnTypeFlow actualReturn;
 
-    protected final Invoke invoke;
-
     protected final InvokeTypeFlow originalInvoke;
 
     protected final AnalysisType receiverType;
     protected final AnalysisMethod targetMethod;
 
+    /**
+     * The {@link #source} is used for all sorts of call stack printing (for error messages and
+     * diagnostics), so we must have a non-null {@BytecodePosition}.
+     */
+    private static BytecodePosition findBytecodePosition(Invoke invoke) {
+        BytecodePosition result = invoke.asFixedNode().getNodeSourcePosition();
+        if (result == null) {
+            result = new BytecodePosition(null, invoke.asFixedNode().graph().method(), invoke.bci());
+        }
+        return result;
+    }
+
     protected InvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invoke != null ? (MethodCallTargetNode) invoke.callTarget() : null, null);
+        super(findBytecodePosition(invoke), null);
         this.originalInvoke = null;
         this.location = location;
-        this.invoke = invoke;
         this.receiverType = receiverType;
         this.targetMethod = targetMethod;
         this.actualParameters = actualParameters;
@@ -82,7 +92,6 @@ public abstract class InvokeTypeFlow extends TypeFlow<MethodCallTargetNode> {
 
         this.originalInvoke = original;
         this.location = original.location;
-        this.invoke = original.invoke;
         this.receiverType = original.receiverType;
         this.targetMethod = original.targetMethod;
 
@@ -96,9 +105,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<MethodCallTargetNode> {
         }
     }
 
-    public BytecodeLocation getLocation() {
-        return location;
-    }
+    public abstract boolean isDirectInvoke();
 
     public AnalysisType getReceiverType() {
         return receiverType;
@@ -110,10 +117,6 @@ public abstract class InvokeTypeFlow extends TypeFlow<MethodCallTargetNode> {
 
     public int actualParametersCount() {
         return actualParameters.length;
-    }
-
-    public Invoke invoke() {
-        return invoke;
     }
 
     public TypeFlow<?>[] getActualParameters() {
@@ -300,6 +303,11 @@ abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
     }
 
     @Override
+    public final boolean isDirectInvoke() {
+        return true;
+    }
+
+    @Override
     public Collection<AnalysisMethod> getCallees() {
         if (callee != null && callee.getMethod().isImplementationInvoked()) {
             return Collections.singletonList(callee.getMethod());
@@ -325,7 +333,7 @@ final class StaticInvokeTypeFlow extends DirectInvokeTypeFlow {
     }
 
     @Override
-    public TypeFlow<MethodCallTargetNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         return new StaticInvokeTypeFlow(bb, methodFlows, this);
     }
 
