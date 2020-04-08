@@ -56,14 +56,13 @@ import com.oracle.truffle.api.object.Layout.ImplicitCast;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 @RunWith(Parameterized.class)
 public class ImplicitCastTest {
     private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
-    static final Layout longLayout = new DefaultLayoutFactory().createLayout(Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToLong));
-    static final Layout doubleLayout = new DefaultLayoutFactory().createLayout(Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToDouble));
+    static final Layout longLayout = Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToLong).build();
+    static final Layout doubleLayout = Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToDouble).build();
 
     @Parameters
     public static Collection<Object[]> data() {
@@ -166,7 +165,7 @@ public class ImplicitCastTest {
 
     @Test
     public void testLocationDecoratorEquals() {
-        Layout defaultLayout = new DefaultLayoutFactory().createLayout(Layout.newLayout());
+        Layout defaultLayout = Layout.newLayout().build();
         Shape defaultRootShape = defaultLayout.createShape(new ObjectType());
         Shape implicitCastRootShape = layout.createShape(new ObjectType());
 

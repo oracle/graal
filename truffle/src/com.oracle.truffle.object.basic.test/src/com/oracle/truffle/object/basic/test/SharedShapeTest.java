@@ -46,18 +46,15 @@ import org.junit.Test;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.Layout.Builder;
 import com.oracle.truffle.api.object.Layout.ImplicitCast;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 public class SharedShapeTest {
     private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
-    final Builder builder = Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToLong);
-    final Layout layout = new DefaultLayoutFactory().createLayout(builder);
+    final Layout layout = Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToLong).build();
     final Shape rootShape = layout.createShape(new ObjectType());
     final Shape sharedShape = rootShape.makeSharedShape();
 
@@ -96,10 +93,9 @@ public class SharedShapeTest {
         LIBRARY.put(object, "b", 3);
         Location locationB = object.getShape().getProperty("b").getLocation();
 
-        DOTestAsserts.assertShape("{" +
-                        "\"b\":int@1,\n" +
-                        "\"a\":Object@0" +
-                        "\n}", object.getShape());
+        DOTestAsserts.assertShape(new String[]{
+                        "\"b\":int@1",
+                        "\"a\":Object@0"}, object.getShape());
         DOTestAsserts.assertShapeFields(object, 2, 1);
 
         // The old location can still be read
@@ -118,7 +114,7 @@ public class SharedShapeTest {
 
         DOTestAsserts.assertSameLocation(locationA1, locationA2);
         Assert.assertEquals(long.class, getLocationType(locationA2));
-        DOTestAsserts.assertShape("{\"a\":long@0\n}", object.getShape());
+        DOTestAsserts.assertShape(new String[]{"\"a\":long@0"}, object.getShape());
         DOTestAsserts.assertShapeFields(object, 1, 0);
 
         // Share object
@@ -133,11 +129,10 @@ public class SharedShapeTest {
 
         DOTestAsserts.assertNotSameLocation(locationB1, locationB2);
         Assert.assertEquals(Object.class, getLocationType(locationB2));
-        DOTestAsserts.assertShape("{" +
-                        "\"c\":int@2,\n" +
-                        "\"b\":Object@0,\n" +
-                        "\"a\":long@0\n" +
-                        "}", object.getShape());
+        DOTestAsserts.assertShape(new String[]{
+                        "\"c\":int@2",
+                        "\"b\":Object@0",
+                        "\"a\":long@0"}, object.getShape());
         DOTestAsserts.assertShapeFields(object, 3, 1);
 
         Assert.assertEquals(2L, locationA2.get(object));

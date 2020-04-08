@@ -52,12 +52,11 @@ import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.Shape.Allocator;
-import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 public class LocationTest {
     private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
-    final Layout layout = new DefaultLayoutFactory().createLayout(Layout.newLayout());
+    final Layout layout = Layout.newLayout().build();
     final Shape rootShape = layout.createShape(new ObjectType());
 
     @SuppressWarnings("deprecation")
