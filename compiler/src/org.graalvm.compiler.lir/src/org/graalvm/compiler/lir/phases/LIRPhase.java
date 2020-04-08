@@ -24,13 +24,11 @@
  */
 package org.graalvm.compiler.lir.phases;
 
-import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.core.common.jfr.JFRContext;
-import org.graalvm.compiler.core.common.jfr.JFRProvider.CompilerPhaseEvent;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.LIR;
@@ -115,12 +113,11 @@ public abstract class LIRPhase<C> {
     @SuppressWarnings("try")
     public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, C context, boolean dumpLIR) {
         DebugContext debug = lirGenRes.getLIR().getDebug();
-        JFRContext jfr = lirGenRes.getLIR().getJFR();
-        Consumer<CompilerPhaseEvent> eventWriter = event -> event.write(getName().toString(), jfr.compileId());
-        try (DebugContext.Scope s = debug.scope(getName(), this)) {
-            try (JFRContext.Scope compilerPhaseScope = jfr.openCompilerPhaseScope(eventWriter);
+        CharSequence name = getName();
+        try (DebugContext.Scope s = debug.scope(name, this)) {
+            try (CompilerPhaseScope cps = debug.enterCompilerPhase(name);
                             DebugCloseable a = timer.start(debug);
-                            DebugCloseable c = memUseTracker.start(debug);) {
+                            DebugCloseable c = memUseTracker.start(debug)) {
                 run(target, lirGenRes, context);
                 if (dumpLIR && debug.areScopesEnabled()) {
                     dumpAfter(lirGenRes);

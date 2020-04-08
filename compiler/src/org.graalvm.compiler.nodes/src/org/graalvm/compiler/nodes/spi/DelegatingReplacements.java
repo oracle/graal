@@ -27,7 +27,6 @@ package org.graalvm.compiler.nodes.spi;
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.Cancellable;
@@ -109,8 +108,8 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, JFRContext jfr, Cancellable cancellable) {
-        return delegate.getIntrinsicGraph(method, compilationId, debug, jfr, cancellable);
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, Cancellable cancellable) {
+        return delegate.getIntrinsicGraph(method, compilationId, debug, cancellable);
     }
 
     @Override

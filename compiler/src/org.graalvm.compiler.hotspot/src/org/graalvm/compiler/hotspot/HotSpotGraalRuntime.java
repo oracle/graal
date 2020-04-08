@@ -46,8 +46,9 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.CompilationListenerProfiler;
+import org.graalvm.compiler.core.common.CompilerProfiler;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.jfr.JFRProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.Assertions;
@@ -146,7 +147,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final DiagnosticsOutputDirectory outputDirectory;
     private final Map<ExceptionAction, Integer> compilationProblemsPerAction;
 
-    private final JFRProvider jfrProvider;
+    private final CompilerProfiler compilerProfiler;
 
     /**
      * @param nameQualifier a qualifier to be added to this runtime's {@linkplain #getName() name}
@@ -237,7 +238,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         runtimeStartTime = System.nanoTime();
         bootstrapJVMCI = config.getFlag("BootstrapJVMCI", Boolean.class);
 
-        this.jfrProvider = GraalServices.loadSingle(JFRProvider.class, false);
+        this.compilerProfiler = GraalServices.loadSingle(CompilerProfiler.class, false);
     }
 
     /**
@@ -324,11 +325,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     }
 
     @Override
-    public JFRProvider getJfrProvider() {
-        return jfrProvider;
-    }
-
-    @Override
     public GraalHotSpotVMConfig getVMConfig() {
         return config;
     }
@@ -353,8 +349,18 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
                 }
             }
         }
+
         Description description = new Description(compilable, compilationId.toString(CompilationIdentifier.Verbosity.ID));
-        return new Builder(compilationOptions, factories).globalMetrics(metricValues).description(description).logStream(logStream).build();
+        Builder builder = new Builder(compilationOptions, factories).//
+                        globalMetrics(metricValues).//
+                        description(description).//
+                        logStream(logStream);
+        if (compilerProfiler != null) {
+            int compileId = ((HotSpotCompilationIdentifier) compilationId).getRequest().getId();
+            builder.compilationListener(new CompilationListenerProfiler(compilerProfiler, compileId));
+        }
+        return builder.build();
+
     }
 
     @Override

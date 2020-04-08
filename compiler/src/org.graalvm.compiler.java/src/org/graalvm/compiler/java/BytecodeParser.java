@@ -289,7 +289,6 @@ import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -2549,9 +2548,8 @@ public class BytecodeParser implements GraphBuilderContext {
                 Util.printInlining(inlinedMethod, bci(), getDepth(), success, "%s intrinsic for %s", msg, targetMethod.format("%h.%n(%p)"));
             }
         }
-        JFRContext jfr = graph.getJFR();
-        if (jfr.isEnabled()) {
-            jfr.notifyInlining(getMethod(), inlinedMethod, success,
+        if (debug.hasCompilationListener()) {
+            debug.notifyInlining(getMethod(), inlinedMethod, success,
                             targetMethod.equals(inlinedMethod) ? msg : msg + " intrinsic for " + targetMethod.format("%h.%n(%p)"),
                             bci());
         }

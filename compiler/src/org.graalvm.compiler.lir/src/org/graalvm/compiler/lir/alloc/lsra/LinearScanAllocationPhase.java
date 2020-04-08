@@ -25,13 +25,9 @@
 package org.graalvm.compiler.lir.alloc.lsra;
 
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
-import org.graalvm.compiler.core.common.jfr.JFRProvider.CompilerPhaseEvent;
+import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import static org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
-
-import java.util.function.Consumer;
-
+import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
 import org.graalvm.compiler.lir.phases.LIRPhase;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -54,14 +50,12 @@ abstract class LinearScanAllocationPhase {
     @SuppressWarnings("try")
     public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context, boolean dumpLIR) {
         DebugContext debug = lirGenRes.getLIR().getDebug();
-        JFRContext jfr = lirGenRes.getLIR().getJFR();
-        Consumer<CompilerPhaseEvent> eventWriter = event -> event.write(getName().toString(), jfr.compileId());
-        try (DebugContext.Scope s = debug.scope(getName(), this);
-                        JFRContext.Scope compilerPhaseScope = jfr.openCompilerPhaseScope(eventWriter);) {
+        CharSequence name = getName();
+        try (DebugContext.Scope s = debug.scope(name, this); CompilerPhaseScope cps = debug.enterCompilerPhase(name);) {
             run(target, lirGenRes, context);
             if (dumpLIR) {
                 if (debug.isDumpEnabled(DebugContext.VERBOSE_LEVEL)) {
-                    debug.dump(DebugContext.VERBOSE_LEVEL, lirGenRes.getLIR(), "After %s", getName());
+                    debug.dump(DebugContext.VERBOSE_LEVEL, lirGenRes.getLIR(), "After %s", name);
                 }
             }
         } catch (Throwable e) {

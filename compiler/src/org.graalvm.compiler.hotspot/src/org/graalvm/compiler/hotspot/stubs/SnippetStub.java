@@ -26,7 +26,6 @@ package org.graalvm.compiler.hotspot.stubs;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -110,7 +109,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
     }
 
     protected StructuredGraph buildInitialGraph(DebugContext debug, CompilationIdentifier compilationId, Object[] args) {
-        return providers.getReplacements().getSnippet(method, null, args, false, null, options).copyWithIdentifier(compilationId, debug, JFRContext.DISABLED_JFR);
+        return providers.getReplacements().getSnippet(method, null, args, false, null, options).copyWithIdentifier(compilationId, debug);
     }
 
     protected Object[] makeConstArgs(SnippetParameterInfo info) {

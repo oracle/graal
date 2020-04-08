@@ -32,7 +32,6 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.LabelHoldingOp;
@@ -70,8 +69,6 @@ public final class LIR extends LIRGenerator.VariableProvider {
 
     private final DebugContext debug;
 
-    private final JFRContext jfr;
-
     /**
      * Creates a new LIR instance for the specified compilation.
      */
@@ -79,15 +76,13 @@ public final class LIR extends LIRGenerator.VariableProvider {
                     AbstractBlockBase<?>[] linearScanOrder,
                     AbstractBlockBase<?>[] codeEmittingOrder,
                     OptionValues options,
-                    DebugContext debug,
-                    JFRContext jfr) {
+                    DebugContext debug) {
         this.cfg = cfg;
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
         this.lirInstructions = new BlockMap<>(cfg);
         this.options = options;
         this.debug = debug;
-        this.jfr = jfr != null ? jfr : JFRContext.DISABLED_JFR;
     }
 
     public AbstractControlFlowGraph<?> getControlFlowGraph() {
@@ -100,10 +95,6 @@ public final class LIR extends LIRGenerator.VariableProvider {
 
     public DebugContext getDebug() {
         return debug;
-    }
-
-    public JFRContext getJFR() {
-        return jfr;
     }
 
     /**

@@ -26,7 +26,6 @@ package org.graalvm.compiler.core.gen;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.code.CompilationResult;
@@ -40,9 +39,8 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
-import org.graalvm.compiler.core.common.jfr.JFRProvider.CompilerPhaseEvent;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.alloc.OutOfRegistersException;
@@ -145,7 +143,7 @@ public class LIRCompilerBackend {
 
             AbstractBlockBase<?>[] codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
             AbstractBlockBase<?>[] linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
-            LIR lir = new LIR(schedule.getCFG(), linearScanOrder, codeEmittingOrder, graph.getOptions(), graph.getDebug(), graph.getJFR());
+            LIR lir = new LIR(schedule.getCFG(), linearScanOrder, codeEmittingOrder, graph.getOptions(), graph.getDebug());
 
             LIRGenerationProvider lirBackend = (LIRGenerationProvider) backend;
             RegisterAllocationConfig registerAllocationConfig = backend.newRegisterAllocationConfig(registerConfig, allocationRestrictedTo);
@@ -203,10 +201,7 @@ public class LIRCompilerBackend {
                     ResolvedJavaMethod installedCodeOwner,
                     CompilationResultBuilderFactory factory) {
         DebugContext debug = lirGenRes.getLIR().getDebug();
-        JFRContext jfr = lirGenRes.getLIR().getJFR();
-        Consumer<CompilerPhaseEvent> eventWriter = event -> event.write("Emit code", jfr.compileId());
-        try (DebugCloseable a = EmitCode.start(debug);
-                        JFRContext.Scope compilerPhaseScope = jfr.openCompilerPhaseScope(eventWriter);) {
+        try (DebugCloseable a = EmitCode.start(debug); CompilerPhaseScope cps = debug.enterCompilerPhase("Emit code");) {
             LIRGenerationProvider lirBackend = (LIRGenerationProvider) backend;
 
             FrameMap frameMap = lirGenRes.getFrameMap();

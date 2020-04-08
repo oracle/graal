@@ -25,15 +25,13 @@
 package org.graalvm.compiler.phases;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
-import org.graalvm.compiler.core.common.jfr.JFRProvider.CompilerPhaseEvent;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
 import org.graalvm.compiler.debug.MethodFilter;
@@ -185,15 +183,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return false;
     }
 
-    private JFRContext.Scope openCompilerPhaseScope(StructuredGraph graph) {
-        JFRContext jfr = graph.getJFR();
-        if (this.getClass() != PhaseSuite.class) {
-            Consumer<CompilerPhaseEvent> writer = event -> event.write(getName().toString(), jfr.compileId());
-            return jfr.openCompilerPhaseScope(writer);
-        }
-        return null;
-    }
-
     @SuppressWarnings("try")
     protected final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         graph.checkCancellation();
@@ -203,7 +192,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
 
         DebugContext debug = graph.getDebug();
-        try (JFRContext.Scope compilerPhaseScope = openCompilerPhaseScope(graph);
+        try (CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
                         DebugCloseable a = timer.start(debug);
                         DebugContext.Scope s = debug.scope(getClass(), this);
                         DebugCloseable c = memUseTracker.start(debug);) {

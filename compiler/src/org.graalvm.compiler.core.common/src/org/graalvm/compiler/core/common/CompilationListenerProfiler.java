@@ -22,36 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.debug;
+package org.graalvm.compiler.core.common;
 
+import org.graalvm.compiler.debug.CompilationListener;
 import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Implemented by clients interested in when the compiler starts/ends a {@linkplain #enterPhase
- * phase} or {@linkplain #notifyInlining considers inlining} a method.
+ * Connects a {@link CompilationListener} to a {@link CompilerProfiler}.
  */
-public interface CompilationListener {
+public class CompilationListenerProfiler implements CompilationListener {
+    private final int compileId;
+    private final CompilerProfiler profiler;
 
     /**
-     * Notifies this listener that the compiler is starting a compiler phase.
-     *
-     * @param name the name of the phase
-     * @return an object whose {@link CompilerPhaseScope#close()} method will be called when the
-     *         phase completes
+     * Creates a compilation listener that passes events for a specific compilation identified by
+     * {@code compileId} onto {@code profiler}.
      */
-    CompilerPhaseScope enterPhase(CharSequence name, int nesting);
+    public CompilationListenerProfiler(CompilerProfiler profiler, int compileId) {
+        this.profiler = profiler;
+        this.compileId = compileId;
+    }
 
-    /**
-     * Notifies this listener when the compiler considers inlining {@code callee} into
-     * {@code caller}.
-     *
-     * @param caller caller method
-     * @param callee callee method considered for inlining into {@code caller}
-     * @param succeeded true if {@code callee} was inlined into {@code caller}
-     * @param message extra information about inlining decision
-     * @param bci byte code index of call site
-     */
-    void notifyInlining(ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, CharSequence message, int bci);
+    @Override
+    public void notifyInlining(ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, CharSequence message, int bci) {
+        profiler.notifyCompilerInlingEvent(compileId, caller, callee, succeeded, message.toString(), bci);
+    }
+
+    @Override
+    public CompilerPhaseScope enterPhase(CharSequence name, int nesting) {
+        long start = profiler.getTicks();
+        return new CompilerPhaseScope() {
+
+            @Override
+            public void close() {
+                profiler.notifyCompilerPhaseEvent(compileId, start, name.toString(), nesting);
+            }
+        };
+    }
 }

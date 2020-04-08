@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.core;
 
-import java.util.function.Consumer;
-
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
@@ -33,10 +31,9 @@ import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.TimerKey;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
-import org.graalvm.compiler.core.common.jfr.JFRProvider.CompilerPhaseEvent;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -209,12 +206,10 @@ public class GraalCompiler {
     public static void emitFrontEnd(Providers providers, TargetProvider target, StructuredGraph graph, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts,
                     ProfilingInfo profilingInfo, Suites suites) {
         DebugContext debug = graph.getDebug();
-        JFRContext jfr = graph.getJFR();
         try (DebugContext.Scope s = debug.scope("FrontEnd"); DebugCloseable a = FrontEnd.start(debug)) {
             HighTierContext highTierContext = new HighTierContext(providers, graphBuilderSuite, optimisticOpts);
             if (graph.start().next() == null) {
-                Consumer<CompilerPhaseEvent> eventWriter = event -> event.write("Parsing", jfr.compileId());
-                try (JFRContext.Scope compilerPhaseScope = jfr.openCompilerPhaseScope(eventWriter);) {
+                try (CompilerPhaseScope cps = debug.enterCompilerPhase("Parsing")) {
                     graphBuilderSuite.apply(graph, highTierContext);
                     new DeadCodeEliminationPhase(DeadCodeEliminationPhase.Optionality.Optional).apply(graph);
                     debug.dump(DebugContext.BASIC_LEVEL, graph, "After parsing");

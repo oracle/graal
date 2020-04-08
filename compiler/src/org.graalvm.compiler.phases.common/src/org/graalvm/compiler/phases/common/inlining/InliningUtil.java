@@ -49,7 +49,6 @@ import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -128,9 +127,9 @@ public class InliningUtil extends ValueMergeUtil {
         if (HotSpotPrintInlining.getValue(invoke.asNode().getOptions())) {
             Util.printInlining(method, invoke.bci(), inliningDepth, success, msg, args);
         }
-        JFRContext jfr = invoke.asNode().graph().getJFR();
-        if (jfr.isEnabled()) {
-            jfr.notifyInlining(invoke.getContextMethod(), method, success, String.format(msg, args), invoke.bci());
+        DebugContext debug = invoke.asNode().graph().getDebug();
+        if (debug.hasCompilationListener()) {
+            debug.notifyInlining(invoke.getContextMethod(), method, success, String.format(msg, args), invoke.bci());
         }
     }
 

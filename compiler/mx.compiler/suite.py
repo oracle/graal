@@ -1494,7 +1494,7 @@ suite = {
         "sdk:GRAAL_SDK",
       ],
       "uses" : [
-        "org.graalvm.compiler.core.common.jfr.JFRProvider",
+        "org.graalvm.compiler.core.common.CompilerProfiler",
       ],
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",

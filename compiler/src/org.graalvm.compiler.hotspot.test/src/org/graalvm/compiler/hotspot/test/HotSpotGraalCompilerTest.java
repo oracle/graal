@@ -26,7 +26,6 @@ package org.graalvm.compiler.hotspot.test;
 
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -74,7 +73,7 @@ public abstract class HotSpotGraalCompilerTest extends GraalCompilerTest {
         HotSpotProviders providers = rt.getHostBackend().getProviders();
         CompilationIdentifier compilationId = runtime().getHostBackend().getCompilationIdentifier(method);
         OptionValues options = getInitialOptions();
-        StructuredGraph graph = providers.getReplacements().getIntrinsicGraph(method, compilationId, getDebugContext(options), JFRContext.DISABLED_JFR, null);
+        StructuredGraph graph = providers.getReplacements().getIntrinsicGraph(method, compilationId, getDebugContext(options), null);
         if (graph != null) {
             return getCode(method, graph, true, true, graph.getOptions());
         }

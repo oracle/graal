@@ -31,7 +31,6 @@ import java.util.EnumMap;
 import java.util.Map;
 
 import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.GraalCompiler;
@@ -85,7 +84,7 @@ public class SubstrateGraalUtils {
             }
 
             @Override
-            protected CompilationResult performCompilation(DebugContext debug, JFRContext jfr) {
+            protected CompilationResult performCompilation(DebugContext debug) {
                 StructuredGraph graph = GraalSupport.decodeGraph(debug, null, compilationId, method);
                 return compileGraph(runtimeConfig, suites, lirSuites, method, graph);
             }
@@ -105,7 +104,7 @@ public class SubstrateGraalUtils {
             protected void exitHostVM(int status) {
                 System.exit(status);
             }
-        }.run(initialDebug, JFRContext.DISABLED_JFR);
+        }.run(initialDebug);
     }
 
     private static boolean architectureInitialized;

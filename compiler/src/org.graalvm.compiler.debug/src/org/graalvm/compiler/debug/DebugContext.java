@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -70,6 +71,7 @@ import org.graalvm.graphio.GraphOutput;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * A facility for logging and dumping as well as a container for values associated with
@@ -392,12 +394,86 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Gets compilation listener associated with this debug context.
+     * Determines if {@link #enterCompilerPhase} and {@link #notifyInlining} do anything.
      *
-     * @return {@code null} if no listener is available
+     * @return {@code true} if there is a listener for compiler phase and inlining events attached
+     *         to this object, {@code false} otherwise
      */
-    public CompilationListener getCompilationListener() {
-        return compilationListener;
+    public boolean hasCompilationListener() {
+        return compilationListener != null;
+    }
+
+    private int compilerPhaseNesting = 0;
+
+    /**
+     * Scope for a compiler phase event.
+     */
+    public interface CompilerPhaseScope extends AutoCloseable {
+        /**
+         * Notifies the listener that the phase has ended.
+         */
+        @Override
+        void close();
+    }
+
+    /**
+     * Notifies this object that the compiler is entering a phase.
+     *
+     * It is recommended to use this method in a try-with-resource statement.
+     *
+     * @param phaseName name of the phase being entered
+     * @return {@code null} if {@link #hasCompilationListener()} returns {@code false} otherwise an
+     *         object whose {@link CompilerPhaseScope#close()} method must be called when the phase
+     *         ends
+     */
+    public CompilerPhaseScope enterCompilerPhase(CharSequence phaseName) {
+        if (compilationListener != null) {
+            return enterCompilerPhase(() -> phaseName);
+        }
+        return null;
+    }
+
+    /**
+     * Notifies this object that the compiler is entering a phase.
+     *
+     * It is recommended to use this method in a try-with-resource statement.
+     *
+     * @param phaseName name of the phase being entered
+     * @return {@code null} if {@link #hasCompilationListener()} returns {@code false} otherwise an
+     *         object whose {@link CompilerPhaseScope#close()} method must be called when the phase
+     *         ends
+     */
+    public CompilerPhaseScope enterCompilerPhase(Supplier<CharSequence> phaseName) {
+        CompilationListener l = compilationListener;
+        if (l != null) {
+            CompilerPhaseScope scope = l.enterPhase(phaseName.get(), compilerPhaseNesting++);
+            return new CompilerPhaseScope() {
+
+                @Override
+                public void close() {
+                    --compilerPhaseNesting;
+                    scope.close();
+                }
+            };
+        }
+        return null;
+    }
+
+    /**
+     * Notifies this object when the compiler considers inlining {@code callee} into {@code caller}.
+     * A call to this method should be guarded with {@link #hasCompilationListener()} if
+     * {@code message} is not a string literal or pre-computed value
+     *
+     * @param caller caller method
+     * @param callee callee method considered for inlining into {@code caller}
+     * @param succeeded true if {@code callee} was inlined into {@code caller}
+     * @param message extra information about inlining decision
+     * @param bci byte code index of call site
+     */
+    public void notifyInlining(ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, CharSequence message, int bci) {
+        if (compilationListener != null) {
+            compilationListener.notifyInlining(caller, callee, succeeded, message, bci);
+        }
     }
 
     /**

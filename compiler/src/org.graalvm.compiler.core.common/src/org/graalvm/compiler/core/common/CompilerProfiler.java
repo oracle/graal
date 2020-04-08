@@ -22,36 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.debug;
-
-import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
+package org.graalvm.compiler.core.common;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Implemented by clients interested in when the compiler starts/ends a {@linkplain #enterPhase
- * phase} or {@linkplain #notifyInlining considers inlining} a method.
+ * A profiling service that consumes compilation related events. The Java Flight Recorder (JFR) is
+ * an example of such a service that can be exposed via this interface.
  */
-public interface CompilationListener {
+public interface CompilerProfiler {
 
     /**
-     * Notifies this listener that the compiler is starting a compiler phase.
+     * Get current value of the profiler's time counter.
      *
-     * @param name the name of the phase
-     * @return an object whose {@link CompilerPhaseScope#close()} method will be called when the
-     *         phase completes
+     * @return the number of profile-defined time units that have elapsed
      */
-    CompilerPhaseScope enterPhase(CharSequence name, int nesting);
+    long getTicks();
 
     /**
-     * Notifies this listener when the compiler considers inlining {@code callee} into
-     * {@code caller}.
+     * Notifies JFR when a compiler phase ends.
      *
+     * @param compileId current computation unit id
+     * @param startTime when the phase started
+     * @param name name of the phase
+     * @param nestingLevel how many ancestor phases there are of the phase
+     */
+    void notifyCompilerPhaseEvent(int compileId, long startTime, String name, int nestingLevel);
+
+    /**
+     * Notifies JFR when the compiler considers inlining {@code callee} into {@code caller}.
+     *
+     * @param compileId current computation unit id
      * @param caller caller method
      * @param callee callee method considered for inlining into {@code caller}
      * @param succeeded true if {@code callee} was inlined into {@code caller}
      * @param message extra information about inlining decision
      * @param bci byte code index of call site
      */
-    void notifyInlining(ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, CharSequence message, int bci);
+    void notifyCompilerInlingEvent(int compileId, ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, String message, int bci);
 }

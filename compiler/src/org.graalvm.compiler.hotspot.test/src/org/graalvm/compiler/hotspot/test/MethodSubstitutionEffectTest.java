@@ -33,7 +33,6 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.test.Graal;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -392,14 +391,14 @@ public class MethodSubstitutionEffectTest extends GraalCompilerTest {
         intrinisicsErrors.add(getResolvedJavaMethod(Substitutee.class, "multiSplitEffectNoMergeInvalid"));
 
         for (ResolvedJavaMethod method : intrinisicsWithoutErrors) {
-            StructuredGraph graph = getProviders().getReplacements().getIntrinsicGraph(method, INVALID_COMPILATION_ID, getDebugContext(method), JFRContext.DISABLED_JFR, null);
+            StructuredGraph graph = getProviders().getReplacements().getIntrinsicGraph(method, INVALID_COMPILATION_ID, getDebugContext(method), null);
             getCode(method, graph);
         }
         for (ResolvedJavaMethod method : intrinisicsErrors) {
             try (AutoCloseable c = new TTY.Filter();
                             DebugContext debug = getDebugContext(method);
                             DebugCloseable s = debug.disableIntercept()) {
-                StructuredGraph graph = getProviders().getReplacements().getIntrinsicGraph(method, INVALID_COMPILATION_ID, debug, JFRContext.DISABLED_JFR, null);
+                StructuredGraph graph = getProviders().getReplacements().getIntrinsicGraph(method, INVALID_COMPILATION_ID, debug, null);
                 getCode(method, graph);
                 Assert.fail("Compilation should not reach this point, must throw an exception before");
             } catch (Throwable t) {

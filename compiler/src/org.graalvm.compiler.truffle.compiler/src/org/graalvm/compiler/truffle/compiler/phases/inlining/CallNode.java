@@ -233,7 +233,7 @@ public final class CallNode extends Node {
 
     private StructuredGraph copyGraphAndUpdateInvokes(GraphManager.Entry entry) {
         final StructuredGraph graph = entry.graph;
-        return graph.copy(new Consumer<UnmodifiableEconomicMap<Node, Node>>() {
+        return (StructuredGraph) graph.copy(new Consumer<UnmodifiableEconomicMap<Node, Node>>() {
             @Override
             public void accept(UnmodifiableEconomicMap<Node, Node> duplicates) {
                 for (CallNode child : children) {
@@ -248,7 +248,7 @@ public final class CallNode extends Node {
                     }
                 }
             }
-        }, graph.getDebug(), graph.getJFR());
+        }, graph.getDebug());
     }
 
     public void inline() {

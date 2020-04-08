@@ -22,36 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.debug;
+package org.graalvm.compiler.hotspot;
 
-import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
+import org.graalvm.compiler.core.common.CompilerProfiler;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
+import jdk.vm.ci.hotspot.JFR;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Implemented by clients interested in when the compiler starts/ends a {@linkplain #enterPhase
- * phase} or {@linkplain #notifyInlining considers inlining} a method.
+ * A HotSpot JFR implementation of {@link CompilerProfiler}.
  */
-public interface CompilationListener {
+@ServiceProvider(CompilerProfiler.class)
+public final class JFRCompilerProfiler implements CompilerProfiler {
 
-    /**
-     * Notifies this listener that the compiler is starting a compiler phase.
-     *
-     * @param name the name of the phase
-     * @return an object whose {@link CompilerPhaseScope#close()} method will be called when the
-     *         phase completes
-     */
-    CompilerPhaseScope enterPhase(CharSequence name, int nesting);
+    @Override
+    public long getTicks() {
+        return JFR.Ticks.now();
+    }
 
-    /**
-     * Notifies this listener when the compiler considers inlining {@code callee} into
-     * {@code caller}.
-     *
-     * @param caller caller method
-     * @param callee callee method considered for inlining into {@code caller}
-     * @param succeeded true if {@code callee} was inlined into {@code caller}
-     * @param message extra information about inlining decision
-     * @param bci byte code index of call site
-     */
-    void notifyInlining(ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, CharSequence message, int bci);
+    @Override
+    public void notifyCompilerPhaseEvent(int compileId, long startTime, String name, int nestingLevel) {
+        JFR.CompilerPhaseEvent.write(startTime, name, compileId, nestingLevel);
+    }
+
+    @Override
+    public void notifyCompilerInlingEvent(int compileId, ResolvedJavaMethod caller, ResolvedJavaMethod callee,
+                    boolean succeeded, String message, int bci) {
+        JFR.CompilerInliningEvent.write(compileId, caller, callee, succeeded, message, bci);
+    }
+
 }

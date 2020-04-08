@@ -25,7 +25,6 @@
 package org.graalvm.compiler.replacements.test;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.core.common.jfr.JFRContext;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.Builder;
@@ -48,7 +47,7 @@ public class WordTest extends SnippetsTest {
         // create a copy to assign a valid compilation id
         DebugContext debug = getDebugContext();
         StructuredGraph originalGraph = installer.makeGraph(debug, bytecodeProvider, builder.getMethod(), null, null, false, null);
-        return originalGraph.copyWithIdentifier(builder.getCompilationId(), debug, JFRContext.DISABLED_JFR);
+        return originalGraph.copyWithIdentifier(builder.getCompilationId(), debug);
     }
 
     @Test
