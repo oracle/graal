@@ -220,7 +220,7 @@ final class InstrumentationHandler {
         // fast path no bindings attached
         if (!sourceSectionBindings.isEmpty()) {
             BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-            visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ALLNODES);
+            visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ALL);
             visitRoot(root, root, visitorBuilder.buildVisitor(), false, true);
         }
 
@@ -354,7 +354,7 @@ final class InstrumentationHandler {
         // fast path no bindings attached
         if (!executionBindings.isEmpty()) {
             BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-            visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ALLNODES);
+            visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ALL);
             visitRoot(root, root, visitorBuilder.buildVisitor(), false, true);
         }
     }
@@ -449,9 +449,9 @@ final class InstrumentationHandler {
 
         if (!executedRoots.isEmpty()) {
             BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-            visitorBuilder.addInsertWrapperOperationForBinding(VisitOperation.Scope.ORIGINALTREE, binding);
-            visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.NEWMATERIALIZEDSUBTREES);
-            visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.NEWMATERIALIZEDSUBTREES);
+            visitorBuilder.addInsertWrapperOperationForBinding(VisitOperation.Scope.ONLY_ORIGINAL, binding);
+            visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
+            visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
             visitRoots(executedRoots, visitorBuilder.buildVisitor());
         }
 
@@ -471,9 +471,9 @@ final class InstrumentationHandler {
         if (notifyLoaded) {
             if (!loadedRoots.isEmpty()) {
                 BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-                visitorBuilder.addNotifyLoadedOperationForBinding(VisitOperation.Scope.ORIGINALTREE, binding);
-                visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.NEWMATERIALIZEDSUBTREES);
-                visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.NEWMATERIALIZEDSUBTREES);
+                visitorBuilder.addNotifyLoadedOperationForBinding(VisitOperation.Scope.ONLY_ORIGINAL, binding);
+                visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
+                visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
                 visitRoots(loadedRoots, visitorBuilder.buildVisitor());
             }
         }
@@ -492,9 +492,9 @@ final class InstrumentationHandler {
 
         if (!loadedRoots.isEmpty()) {
             BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-            visitorBuilder.addNotifyLoadedOperationForBinding(VisitOperation.Scope.ALLNODES, binding);
-            visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.NEWMATERIALIZEDSUBTREES);
-            visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.NEWMATERIALIZEDSUBTREES);
+            visitorBuilder.addNotifyLoadedOperationForBinding(VisitOperation.Scope.ALL, binding);
+            visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
+            visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
             visitRoots(loadedRoots, visitorBuilder.buildVisitor());
         }
 
@@ -873,8 +873,8 @@ final class InstrumentationHandler {
 
         if (!sourceSectionBindings.isEmpty() || !executionBindings.isEmpty()) {
             BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-            visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ALLNODES);
-            visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ALLNODES);
+            visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ALL);
+            visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ALL);
             visitRoot(rootNode, parentInstrumentable, visitorBuilder.buildVisitor(), true, false);
         }
     }
@@ -1147,6 +1147,7 @@ final class InstrumentationHandler {
         out.printf(message, args);
     }
 
+    @SuppressWarnings("unchecked")
     private void visitRoot(RootNode root, final Node node, final AbstractNodeVisitor visitor, boolean forceRootBitComputation, boolean firstExecution) {
         if (TRACE) {
             trace("BEGIN: Visit root %s for %s%n", root.toString(), visitor);
@@ -1156,6 +1157,7 @@ final class InstrumentationHandler {
         visitor.firstExecution = firstExecution;
         visitor.root = root;
         visitor.providedTags = getProvidedTags(root);
+        visitor.materializeTags = (Set<Class<? extends Tag>>) (visitor.materializeLimitedTags == null ? visitor.providedTags : visitor.materializeLimitedTags);
         visitor.rootSourceSection = root.getSourceSection();
         visitor.rootBits = RootNodeBits.get(visitor.root);
 
@@ -1266,15 +1268,33 @@ final class InstrumentationHandler {
     }
 
     private abstract static class VisitOperation {
+        /**
+         * Scope of the operation in the AST. {@link Scope#ALL} means all nodes, i.e. both the
+         * original nodes that existed when the visitor using the operation was initiated from the
+         * root, and the new nodes in all the materialized subtrees that were created when nodes
+         * were materialized. {@link Scope#ONLY_ORIGINAL} means only the original nodes and
+         * {@link Scope#ONLY_MATERIALIZED} means only the new nodes in materialized subtrees. See
+         * {@link BindingsVisitorBuilder} for an example.
+         */
         enum Scope {
-            ALLNODES,
-            ORIGINALTREE,
-            NEWMATERIALIZEDSUBTREES
+            ALL,
+            ONLY_ORIGINAL,
+            ONLY_MATERIALIZED
         }
 
         private final Scope scope;
         private final Collection<EventBinding.Source<?>> bindings;
+        /*
+         * True if this operation contains only one binding. The reason for storing this in a
+         * separate field is that the bindings collection is either a singleton list or an async
+         * collectionswhich does not support size(). Which one of those it is is know only at
+         * construction time.
+         */
         private final boolean singleBindingOperation;
+        /*
+         * If true, the operation is performed for each bindings, which, for instance, is not
+         * necessary for the InsertWrapperOperation as wrapper needs to be inserted only once.
+         */
         private final boolean performForEachBinding;
 
         VisitOperation(Scope scope, EventBinding.Source<?> binding) {
@@ -1290,18 +1310,6 @@ final class InstrumentationHandler {
             this.bindings = bindings;
             this.singleBindingOperation = singleBindingOperation;
             this.performForEachBinding = performForEachBinding;
-        }
-
-        public boolean isSingleBindingOperation() {
-            return singleBindingOperation;
-        }
-
-        public boolean isPerformForEachBinding() {
-            return performForEachBinding;
-        }
-
-        public Scope getScope() {
-            return scope;
         }
 
         protected abstract void perform(EventBinding.Source<?> binding, Node node, SourceSection section);
@@ -1352,6 +1360,39 @@ final class InstrumentationHandler {
         }
     }
 
+    /**
+     * Build BindingsVisitor with specified operations.
+     * <p>
+     * Usage example:
+     * <p>
+     * Build visitor with NotifyLoadedOperation operation for all source section bindings, scope is
+     * all nodes, used when an AST is first loaded:
+     * 
+     * <pre>
+     * BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
+     * visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ALL);
+     * visitorBuilder.buildVisitor();
+     * </pre>
+     * <p>
+     * Build visitor with two InsertWrapperOperation operations and one NotifyLoadedOperation
+     * operation. The visitor is used when a new execution binding is added. The first
+     * InsertWrapperOperation operation is only for the new execution binding and its scope is only
+     * original nodes. The second InsertWrapperOperation operation is for all execution bindings
+     * (including the new one) and its scope is new materialized subtrees only. The
+     * NotifyLoadedOperation operation is for all source section bindings and its scope is new
+     * materialized subtrees only. The new materialized subtrees are not instrumented at all, that
+     * is why we have to apply all bindings there. For the original nodes, applying just the new
+     * execution binding is sufficient, because the other bindings were applied when they were
+     * added.
+     *
+     * <pre>
+     * BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
+     * visitorBuilder.addInsertWrapperOperationForBinding(VisitOperation.Scope.ONLY_ORIGINAL, binding);
+     * visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
+     * visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
+     * visitorBuilder.buildVisitor();
+     * </pre>
+     */
     private class BindingsVisitorBuilder {
         List<VisitOperation> operations = new ArrayList<>();
         boolean shouldMaterializeSyntaxNodes;
@@ -1381,12 +1422,12 @@ final class InstrumentationHandler {
         }
 
         BindingsVisitorBuilder addDisposeWrapperOperationForBinding(EventBinding.Source<?> binding) {
-            operations.add(new DisposeWrapperOperation(VisitOperation.Scope.ALLNODES, binding));
+            operations.add(new DisposeWrapperOperation(VisitOperation.Scope.ALL, binding));
             return this;
         }
 
         BindingsVisitorBuilder addDisposeWrapperOperationForBindings(Collection<EventBinding.Source<?>> bindings) {
-            operations.add(new DisposeWrapperOperation(VisitOperation.Scope.ALLNODES, bindings));
+            operations.add(new DisposeWrapperOperation(VisitOperation.Scope.ALL, bindings));
             return this;
         }
 
@@ -1411,11 +1452,10 @@ final class InstrumentationHandler {
         /* flag set on when visiting a retired subtree that was replaced by materialization */
         boolean visitingRetiredNodes;
         /* flag set on when visiting a new subtree that was created by materialization */
-        boolean visitingNewMaterializedSubtree;
+        boolean visitingMaterialized;
 
         private final boolean shouldMaterializeSyntaxNodes;
         Set<Class<? extends Tag>> materializeTags;
-        private boolean materializeLimitedTagsInitialized;
 
         AbstractNodeVisitor(boolean shouldMaterializeSyntaxNodes) {
             this.shouldMaterializeSyntaxNodes = shouldMaterializeSyntaxNodes;
@@ -1455,7 +1495,6 @@ final class InstrumentationHandler {
         private SourceSection savedParentSourceSection;
 
         public final boolean visit(Node originalNode) {
-            initMaterializeTags();
             Node node = originalNode;
             SourceSection sourceSection = node.getSourceSection();
             boolean instrumentable = InstrumentationHandler.isInstrumentableNode(node);
@@ -1463,10 +1502,10 @@ final class InstrumentationHandler {
             SourceSection previousParentSourceSection = null;
             if (instrumentable) {
                 computeRootBits(sourceSection);
-                boolean hasRetiredNodes = visitRetiredNodes(node);
+                boolean hasRetiredNodes = visitPreviouslyRetiredNodes(node);
                 if (!visitingRetiredNodes) {
                     node = materialize(node, sourceSection, originalNode);
-                    if (saveAndVisitRetiredNode(node, sourceSection, originalNode)) {
+                    if (saveAndVisitNewlyRetiredNode(node, sourceSection, originalNode)) {
                         hasRetiredNodes = true;
                     }
                     if (!hasRetiredNodes) {
@@ -1480,14 +1519,21 @@ final class InstrumentationHandler {
                 this.savedParent = node;
                 this.savedParentSourceSection = sourceSection;
             }
-            boolean wasVisitingNewNodes = visitingNewMaterializedSubtree;
+            /*
+             * Although it is required that the materialized subtree is completely new and fully
+             * materialized, it is not strictly enforced, so it is possible that there will be
+             * further materializations in the materialized subtree, and so we must store the
+             * previous state of visitingMaterialized and restore it when we return from the
+             * recursive call.
+             */
+            boolean wasVisitingMaterialized = visitingMaterialized;
             if (node != originalNode) {
-                visitingNewMaterializedSubtree = true;
+                visitingMaterialized = true;
             }
             try {
                 NodeUtil.forEachChild(node, this);
             } finally {
-                visitingNewMaterializedSubtree = wasVisitingNewNodes;
+                visitingMaterialized = wasVisitingMaterialized;
                 if (instrumentable) {
                     this.savedParent = previousParent;
                     this.savedParentSourceSection = previousParentSourceSection;
@@ -1496,24 +1542,14 @@ final class InstrumentationHandler {
             return true;
         }
 
-        @SuppressWarnings("unchecked")
-        private void initMaterializeTags() {
-            if (!materializeLimitedTagsInitialized) {
-                if (shouldMaterializeSyntaxNodes) {
-                    materializeTags = (Set<Class<? extends Tag>>) (materializeLimitedTags == null ? providedTags : materializeLimitedTags);
-                }
-                materializeLimitedTagsInitialized = true;
-            }
-        }
-
         private Node materialize(Node node, SourceSection sourceSection, Node originalNode) {
             Node materializedNode = materializeSyntaxNodes(node, sourceSection);
-            assert !visitingNewMaterializedSubtree || materializedNode == originalNode : "New tree should be fully materialized!";
+            assert !visitingMaterialized || materializedNode == originalNode : "New tree should be fully materialized!";
             assert materializedNode == materializeSyntaxNodes(materializedNode, sourceSection) : "Node must not be materialized multiple times for the same set of tags!";
             return materializedNode;
         }
 
-        private boolean saveAndVisitRetiredNode(Node node, SourceSection sourceSection, Node originalNode) {
+        private boolean saveAndVisitNewlyRetiredNode(Node node, SourceSection sourceSection, Node originalNode) {
             if (!firstExecution && node != originalNode) {
                 assert materializeTags != null : "Materialize tags must not be null when materialization happened.";
                 /*
@@ -1537,12 +1573,7 @@ final class InstrumentationHandler {
                  * node as well. This is especially problematic for long or infinite loops in
                  * combination with cancel events.
                  */
-                visitingRetiredNodes = true;
-                try {
-                    NodeUtil.forEachChild(originalNode, this);
-                } finally {
-                    visitingRetiredNodes = false;
-                }
+                visitRetiredNodes(originalNode);
                 return true;
             }
             return false;
@@ -1564,30 +1595,39 @@ final class InstrumentationHandler {
          * We need to traverse all the retired subtrees that are no longer reachable in the AST due
          * to previous materializations.
          */
-        private boolean visitRetiredNodes(Node node) {
+        private boolean visitPreviouslyRetiredNodes(Node node) {
             if (!firstExecution) {
                 WrapperNode wrapperNode = getWrapperNode(node);
                 ProbeNode.RetiredNodeReference retiredNodeReference = (wrapperNode != null ? wrapperNode.getProbeNode().getRetiredNodeReference() : null);
                 if (retiredNodeReference != null) {
-                    boolean wasVisitingRetiredNodes = visitingRetiredNodes;
-                    visitingRetiredNodes = true;
                     boolean hasRetiredNodes = false;
-                    try {
-                        while (retiredNodeReference != null) {
-                            Node nodeRefNode = retiredNodeReference.getNode();
-                            if (nodeRefNode != null) {
-                                hasRetiredNodes = true;
-                                NodeUtil.forEachChild(nodeRefNode, this);
-                            }
-                            retiredNodeReference = retiredNodeReference.getNext();
+                    while (retiredNodeReference != null) {
+                        Node nodeRefNode = retiredNodeReference.getNode();
+                        if (nodeRefNode != null) {
+                            hasRetiredNodes = true;
+                            visitRetiredNodes(nodeRefNode);
                         }
-                    } finally {
-                        visitingRetiredNodes = wasVisitingRetiredNodes;
+                        retiredNodeReference = retiredNodeReference.next;
                     }
                     return hasRetiredNodes;
                 }
             }
             return false;
+        }
+
+        /**
+         * Visit retired subtree. The retired subtree might have references to previously retired
+         * subtrees, so we must store the previous state of visitingRetiredNodes and restore it when
+         * we return form the recursive call.
+         */
+        private void visitRetiredNodes(Node retiredSubtreeRoot) {
+            boolean wasVisitingRetiredNodes = visitingRetiredNodes;
+            visitingRetiredNodes = true;
+            try {
+                NodeUtil.forEachChild(retiredSubtreeRoot, this);
+            } finally {
+                visitingRetiredNodes = wasVisitingRetiredNodes;
+            }
         }
 
         private Node materializeSyntaxNodes(Node instrumentableNode, SourceSection sourceSection) {
@@ -1642,9 +1682,9 @@ final class InstrumentationHandler {
             int singleBindingOperations = 0;
             int multiBindingOriginalTreeOperations = 0;
             for (VisitOperation operation : operations) {
-                if (operation.isSingleBindingOperation()) {
+                if (operation.singleBindingOperation) {
                     singleBindingOperations++;
-                } else if (operation.getScope() == VisitOperation.Scope.ALLNODES || operation.getScope() == VisitOperation.Scope.ORIGINALTREE) {
+                } else if (operation.scope == VisitOperation.Scope.ALL || operation.scope == VisitOperation.Scope.ONLY_ORIGINAL) {
                     multiBindingOriginalTreeOperations++;
                 }
             }
@@ -1686,7 +1726,7 @@ final class InstrumentationHandler {
                  * because no new materialized subtrees would be created and so there would be no
                  * nodes the other operations could operate on.
                  */
-                if (!singleBindingOptimization || operation.isSingleBindingOperation()) {
+                if (!singleBindingOptimization || operation.singleBindingOperation) {
                     for (EventBinding.Source<?> binding : operation.bindings) {
                         if (binding.isInstrumentedRoot(providedTags, localRoot, localRootSourceSection, localRootBits)) {
                             return true;
@@ -1699,7 +1739,7 @@ final class InstrumentationHandler {
 
         boolean shouldPerformForBinding(VisitOperation operation, EventBinding.Source<?> binding, Node parentInstrumentable, SourceSection parentSourceSection, Node instrumentableNode,
                         SourceSection sourceSection) {
-            if (singleBindingOptimization && operation.isSingleBindingOperation()) {
+            if (singleBindingOptimization && operation.singleBindingOperation) {
                 return binding.isInstrumentedLeaf(providedTags, instrumentableNode, sourceSection) ||
                                 binding.isChildInstrumentedLeaf(providedTags, root, parentInstrumentable, parentSourceSection, instrumentableNode, sourceSection);
             } else {
@@ -1711,16 +1751,16 @@ final class InstrumentationHandler {
         @Override
         protected void visitInstrumentable(Node parentInstrumentable, SourceSection parentSourceSection, Node instrumentableNode, SourceSection sourceSection) {
             for (VisitOperation operation : operations) {
-                if (operation.getScope() == VisitOperation.Scope.ALLNODES ||
-                                (!visitingNewMaterializedSubtree && operation.getScope() == VisitOperation.Scope.ORIGINALTREE) ||
-                                (visitingNewMaterializedSubtree && operation.getScope() == VisitOperation.Scope.NEWMATERIALIZEDSUBTREES)) {
+                if (operation.scope == VisitOperation.Scope.ALL ||
+                                (!visitingMaterialized && operation.scope == VisitOperation.Scope.ONLY_ORIGINAL) ||
+                                (visitingMaterialized && operation.scope == VisitOperation.Scope.ONLY_MATERIALIZED)) {
                     for (EventBinding.Source<?> binding : operation.bindings) {
                         if (shouldPerformForBinding(operation, binding, parentInstrumentable, parentSourceSection, instrumentableNode, sourceSection)) {
                             if (TRACE) {
                                 traceFilterCheck("hit", instrumentableNode, sourceSection);
                             }
                             operation.perform(binding, instrumentableNode, sourceSection);
-                            if (!operation.isPerformForEachBinding()) {
+                            if (!operation.performForEachBinding) {
                                 break;
                             }
                         } else {

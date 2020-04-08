@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
-import static org.junit.Assert.assertEquals;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -50,7 +48,6 @@ import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -79,8 +76,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -205,141 +200,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     "VARIABLE", "ARGUMENT", "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "MATERIALIZE_CHILD_STMT_AND_EXPR",
                     "MATERIALIZE_CHILD_STMT_AND_EXPR_NC", "MATERIALIZE_CHILD_STMT_AND_EXPR_SEPARATELY", "MATERIALIZE_CHILD_STATEMENT", "BLOCK_NO_SOURCE_SECTION",
                     "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE"};
-
-    public static class RecordingExecutionEventListener implements ExecutionEventListener {
-        private volatile boolean error;
-        private volatile String waiting = "";
-        private boolean stepping;
-        private final boolean recordEnteredNodes;
-        private final StringBuilder sb = new StringBuilder();
-        private final Object sync = new Object();
-        private List<Node> enteredNodes = new ArrayList<>();
-
-        public RecordingExecutionEventListener() {
-            this(false, false);
-        }
-
-        public RecordingExecutionEventListener(boolean stepping) {
-            this(stepping, false);
-        }
-
-        public RecordingExecutionEventListener(boolean stepping, boolean recordEnteredNodes) {
-            this.stepping = stepping;
-            this.recordEnteredNodes = recordEnteredNodes;
-        }
-
-        public void disableSteppingWhileWaiting() {
-            if (stepping) {
-                synchronized (sync) {
-                    while (waiting.isEmpty()) {
-                        try {
-                            sync.wait(1000);
-                        } catch (InterruptedException ie) {
-                        }
-                    }
-                    stepping = false;
-                }
-            } else {
-                throw new IllegalStateException("Cannot disable stepping if it is not enabled!");
-            }
-        }
-
-        private String getStepId(String prefix, EventContext c) {
-            if (recordEnteredNodes && "+".equals(prefix)) {
-                enteredNodes.add(c.getInstrumentedNode());
-            }
-            return prefix + ((BaseNode) c.getInstrumentedNode()).getShortId();
-        }
-
-        public List<Node> getEnteredNodes() {
-            return Collections.unmodifiableList(enteredNodes);
-        }
-
-        public void clearEnteredNodes() {
-            enteredNodes.clear();
-        }
-
-        public void go(String... stepIds) {
-            for (String stepId : stepIds) {
-                synchronized (sync) {
-                    while (waiting.isEmpty()) {
-                        try {
-                            sync.wait(1000);
-                        } catch (InterruptedException ie) {
-                        }
-                    }
-                    try {
-                        assertEquals("Unexpected step encountered!", stepId, waiting);
-                    } catch (AssertionError ae) {
-                        error = true;
-                        throw ae;
-                    } finally {
-                        waiting = "";
-                        sync.notifyAll();
-                    }
-                }
-            }
-        }
-
-        public void waitUntilStopped() {
-            synchronized (sync) {
-                while (waiting.isEmpty()) {
-                    try {
-                        sync.wait(1000);
-                    } catch (InterruptedException ie) {
-                    }
-                }
-            }
-        }
-
-        public void start() {
-            waitBeforeStep("$START");
-        }
-
-        public void end() {
-            waitBeforeStep("$END");
-        }
-
-        private void waitBeforeStep(String stepId) {
-            if (stepping && !error) {
-                synchronized (sync) {
-                    waiting = stepId;
-                    while (!waiting.isEmpty()) {
-                        sync.notifyAll();
-                        try {
-                            sync.wait(1000);
-                        } catch (InterruptedException ie) {
-                        }
-                    }
-                }
-            }
-        }
-
-        @Override
-        public void onEnter(EventContext context, VirtualFrame frame) {
-            String stepId = getStepId("+", context);
-            waitBeforeStep(stepId);
-            sb.append(stepId);
-        }
-
-        @Override
-        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-            String stepId = getStepId("-", context);
-            waitBeforeStep(stepId);
-            sb.append(stepId);
-        }
-
-        @Override
-        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-            String stepId = getStepId("*", context);
-            waitBeforeStep(stepId);
-            sb.append(stepId);
-        }
-
-        public String getRecording() {
-            return sb.toString();
-        }
-    }
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
