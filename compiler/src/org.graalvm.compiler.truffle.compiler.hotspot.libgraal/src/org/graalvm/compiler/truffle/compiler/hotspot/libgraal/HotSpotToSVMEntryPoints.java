@@ -55,7 +55,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.InstallTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.IsBasicDumpEnabled;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.IsDumpChannelOpen;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.Log;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.NewCompiler;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenDebugContext;
@@ -340,18 +339,6 @@ final class HotSpotToSVMEntryPoints {
             return WordFactory.nullPointer();
         }
         return scope.getObjectResult();
-    }
-
-    @HotSpotToSVM(Log)
-    @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_log")
-    public static void log(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JString hsMessage) {
-        try (HotSpotToSVMScope<HotSpotToSVM.Id> s = new HotSpotToSVMScope<>(Log, env)) {
-            String message = createString(env, hsMessage);
-            TTY.println(message);
-        } catch (Throwable t) {
-            JNIExceptionWrapper.throwInHotSpot(env, t);
-        }
     }
 
     @HotSpotToSVM(GetInitialOptions)

@@ -52,7 +52,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.InstallTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.IsBasicDumpEnabled;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.IsDumpChannelOpen;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.Log;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.NewCompiler;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenDebugContext;
@@ -120,9 +119,6 @@ final class HotSpotToSVMCalls {
 
     @HotSpotToSVM(GetGraphDumpDirectory)
     static native String getGraphDumpDirectory(long isolateThreadId);
-
-    @HotSpotToSVM(Log)
-    static native void log(long isolateThreadId, String message);
 
     @HotSpotToSVM(GetNodeCount)
     static native int getNodeCount(long isolateThreadId, long handle);

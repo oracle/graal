@@ -40,7 +40,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsTruffleBoundary;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsValueType;
-//import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.Log;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.Log;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnCodeInstallation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.RegisterOptimizedAssumptionDependency;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callAsCompilableTruffleAST;
@@ -56,7 +56,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCo
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsTruffleBoundary;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsValueType;
-//import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callLog;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callLog;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callOnCodeInstallation;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callRegisterOptimizedAssumptionDependency;
 import static org.graalvm.libgraal.jni.JNIUtil.GetArrayLength;
@@ -73,7 +73,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.logging.Level;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
@@ -306,13 +305,13 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         return (ResolvedJavaType) jt;
     }
 
-//    @SVMToHotSpot(Log)
-//    @Override
-//    public void log(String message) {
-//        JNIEnv env = env();
-//        JString jniMessage = JNIUtil.createHSString(env, message);
-//        callLog(env, getHandle(), jniMessage);
-//    }
+    @SVMToHotSpot(Log)
+    @Override
+    public void log(CompilableTruffleAST compilable, String message) {
+        JNIEnv env = env();
+        JString jniMessage = JNIUtil.createHSString(env, message);
+        callLog(env, getHandle(), ((HSCompilableTruffleAST)compilable).getHandle(), jniMessage);
+    }
 
     @Override
     public Map<String, Object> getOptions() {
@@ -356,10 +355,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     @Override
     public TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable) {
         throw new UnsupportedOperationException("Should never be called in the compiler.");
-    }
-
-    @Override
-    public void log(CompilableTruffleAST compilable, String message) {
     }
 
     private static class HSConsumer extends HSObject implements Consumer<OptimizedAssumptionDependency> {
