@@ -1036,7 +1036,7 @@ class CMakeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
             mx.abort("Exactly on 'sourceDir' is required")
         srcDir = mx_subst.path_substitutions.substitute(srcDir)
         cmake_config = args.pop('cmakeConfig', {})
-        self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in cmake_config.items()]
+        self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
 
         super(CMakeProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
         self.dir = self.getOutput()
