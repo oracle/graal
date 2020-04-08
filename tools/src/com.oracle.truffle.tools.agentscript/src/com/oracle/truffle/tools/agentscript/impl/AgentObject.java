@@ -59,7 +59,7 @@ final class AgentObject implements TruffleObject {
     private final TruffleInstrument.Env env;
     private final IgnoreSources excludeSources;
     private final Data data;
-    private byte[] msg;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private byte[] msg;
 
     AgentObject(String msg, TruffleInstrument.Env env, IgnoreSources excludeSources, Data data) {
         this.msg = msg == null ? null : msg.getBytes();
@@ -167,6 +167,7 @@ final class AgentObject implements TruffleObject {
         byte[] arr = msg;
         if (arr != null) {
             try {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 env.err().write(arr);
                 msg = null;
             } catch (IOException ex) {
