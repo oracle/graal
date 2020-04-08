@@ -884,7 +884,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private boolean isValidArgumentProfile(Object[] args) {
-        return profiledArgumentTypesAssumption != null && profiledArgumentTypesAssumption.isValid() && checkProfiledArgumentTypes(args, profiledArgumentTypes);
+        assert callProfiled;
+        return profiledArgumentTypesAssumption.isValid() && checkProfiledArgumentTypes(args, profiledArgumentTypes);
     }
 
     private static boolean checkProfiledArgumentTypes(Object[] args, Class<?>[] types) {
@@ -910,6 +911,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     // This should be private but can't be. GR-19397
     public final void stopProfilingArguments() {
+        assert !callProfiled;
         Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
         if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
             // Argument profiling is not possible for targets of indirect calls.
@@ -923,6 +925,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // This should be private but can't be. GR-19397
     @ExplodeLoop
     public final void profileArguments(Object[] args) {
+        assert !callProfiled;
         Assumption typesAssumption = profiledArgumentTypesAssumption;
         if (typesAssumption == null) {
             if (CompilerDirectives.inInterpreter()) {
@@ -952,6 +955,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private void initializeProfiledArgumentTypes(Object[] args) {
         CompilerAsserts.neverPartOfCompilation();
+        assert !callProfiled;
         if (args.length <= MAX_PROFILED_ARGUMENTS && engine.argumentTypeSpeculation) {
             Class<?>[] result = new Class<?>[args.length];
             for (int i = 0; i < args.length; i++) {
@@ -966,6 +970,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private void updateProfiledArgumentTypes(Object[] args, Class<?>[] types) {
         CompilerAsserts.neverPartOfCompilation();
+        assert !callProfiled;
         profiledArgumentTypesAssumption.invalidate();
         for (int j = 0; j < types.length; j++) {
             types[j] = joinTypes(types[j], classOf(args[j]));
