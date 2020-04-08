@@ -153,9 +153,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * generation.
      */
     @CompilationFinal(dimensions = 1) private Class<?>[] profiledArgumentTypes;
-    @CompilationFinal private OptimizedAssumption profiledArgumentTypesAssumption;
+    @CompilationFinal private volatile OptimizedAssumption profiledArgumentTypesAssumption;
     @CompilationFinal private Class<?> profiledReturnType;
-    @CompilationFinal private OptimizedAssumption profiledReturnTypeAssumption;
+    @CompilationFinal private volatile OptimizedAssumption profiledReturnTypeAssumption;
     @CompilationFinal private Class<? extends Throwable> profiledExceptionType;
 
     /**
