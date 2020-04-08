@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -39,7 +39,7 @@
 ;; SOFTWARE.
 ;;
 (module
-  (import "memory" "memory" (memory (;0;) 4))
+  (memory (;0;) 4)
   (global (;0;) i32 (i32.const 1096))
   (export "heap" (memory 0))
   (export "heap_base" (global 0))

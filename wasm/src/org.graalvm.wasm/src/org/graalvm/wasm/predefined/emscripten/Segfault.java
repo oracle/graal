@@ -38,20 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.memory;
+package org.graalvm.wasm.predefined.emscripten;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmOptions;
-import org.graalvm.wasm.predefined.BuiltinModule;
 
-public class MemoryModule extends BuiltinModule {
+import static org.graalvm.wasm.WasmTracing.trace;
+
+public class Segfault extends AbortNode {
+    public Segfault(WasmLanguage language, WasmModule module) {
+        super(language, module);
+    }
+
     @Override
-    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
-        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        WasmModule module = new WasmModule(name, null, storeConstantsPolicy);
-        defineMemory(context, module, "memory", 32, 4096);
-        return module;
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+        trace("Segfault");
+        return super.execute(frame);
+    }
+
+    @Override
+    public String builtinNodeName() {
+        return "Segfault";
     }
 }

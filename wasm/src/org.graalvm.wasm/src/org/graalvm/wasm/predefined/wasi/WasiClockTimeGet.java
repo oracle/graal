@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,77 +38,68 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.predefined.wasi;
 
-import java.util.function.Consumer;
-
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.exception.WasmTrap;
+import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+import java.nio.charset.StandardCharsets;
+import java.time.temporal.ChronoUnit;
+import java.time.Instant;
 
-public class WasiFdWrite extends WasmBuiltinRootNode {
+public class WasiClockTimeGet extends WasmBuiltinRootNode {
+    // https://github.com/WebAssembly/WASI/blob/master/phases/snapshot/docs.md#-clockid-enumu32
+    public enum ClockId {
+        Realtime,
+        Monotonic,
+        ProcessCpuTime,
+        ThreadCpuTime
+    }
 
-    public WasiFdWrite(WasmLanguage language, WasmModule module) {
+    static ClockId[] clockIdValues = ClockId.values();
+
+    public WasiClockTimeGet(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        Object[] args = frame.getArguments();
-        assert args.length == 4;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
+        final WasmMemory memory = module.symbolTable().memory();
+        final int id = (int) frame.getArguments()[0];
+        // Ignored for now
+        // final long precision = (long) frame.getArguments()[1];
+        final int resultAddress = (int) frame.getArguments()[2];
 
-        int stream = (int) args[0];
-        int iov = (int) args[1];
-        int iovcnt = (int) args[2];
-        int pnum = (int) args[3];
-
-        return fdWrite(stream, iov, iovcnt, pnum);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private Object fdWrite(int stream, int iov, int iovcnt, int pnum) {
-        Consumer<Character> charPrinter;
-        switch (stream) {
-            case 1:
-                charPrinter = System.out::print;
+        final ClockId clockId = clockIdValues[id];
+        switch (clockId) {
+            case Realtime:
+                long result = ChronoUnit.NANOS.between(Instant.EPOCH, Instant.now());
+                memory.store_i64(this, resultAddress, result);
                 break;
-            case 2:
-                charPrinter = System.err::print;
-                break;
-            default:
-                throw new WasmTrap(this, "WasiFdWrite: invalid file stream");
-        }
-
-        trace("WasiFdWrite EXECUTE");
-
-        WasmMemory memory = module.symbolTable().memory();
-        int num = 0;
-        for (int i = 0; i < iovcnt; i++) {
-            int ptr = memory.load_i32(this, iov + (i * 8 + 0));
-            int len = memory.load_i32(this, iov + (i * 8 + 4));
-            for (int j = 0; j < len; j++) {
-                final char c = (char) memory.load_i32_8u(this, ptr + j);
-                charPrinter.accept(c);
-            }
-            num += len;
-            memory.store_i32(this, pnum, num);
+            case Monotonic:
+            case ProcessCpuTime:
+            case ThreadCpuTime:
+                throw new WasmExecutionException(this, "Unimplemented ClockID: " + clockId.name());
         }
 
         return 0;
     }
 
+    @TruffleBoundary
+    private void checkEncodable(String argument) {
+        if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
+            throw new WasmExecutionException(this, "Argument '" + argument + "' contains non-ASCII characters.");
+        }
+    }
+
     @Override
     public String builtinNodeName() {
-        return "___wasi_fd_write";
+        return "__wasi_args_get";
     }
 }
