@@ -24,11 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
-import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.nodes.ReflectionGetCallerClassNode;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -39,8 +36,8 @@ public final class HotSpotReflectionGetCallerClassNode extends ReflectionGetCall
 
     public static final NodeClass<HotSpotReflectionGetCallerClassNode> TYPE = NodeClass.create(HotSpotReflectionGetCallerClassNode.class);
 
-    public HotSpotReflectionGetCallerClassNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode... arguments) {
-        super(TYPE, invokeKind, targetMethod, bci, returnStamp, arguments);
+    public HotSpotReflectionGetCallerClassNode(MacroParams p) {
+        super(TYPE, p);
     }
 
     @Override

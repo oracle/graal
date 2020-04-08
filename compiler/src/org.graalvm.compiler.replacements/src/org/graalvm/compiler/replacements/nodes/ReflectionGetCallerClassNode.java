@@ -24,18 +24,15 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeNode;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
@@ -49,9 +46,8 @@ public abstract class ReflectionGetCallerClassNode extends MacroStateSplitNode i
 
     public static final NodeClass<ReflectionGetCallerClassNode> TYPE = NodeClass.create(ReflectionGetCallerClassNode.class);
 
-    protected ReflectionGetCallerClassNode(NodeClass<? extends ReflectionGetCallerClassNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp,
-                    ValueNode... arguments) {
-        super(c, invokeKind, targetMethod, bci, returnStamp, arguments);
+    protected ReflectionGetCallerClassNode(NodeClass<? extends ReflectionGetCallerClassNode> c, MacroParams p) {
+        super(c, p);
     }
 
     @Override

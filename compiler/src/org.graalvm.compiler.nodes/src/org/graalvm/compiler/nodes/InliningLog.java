@@ -401,10 +401,12 @@ public class InliningLog {
     }
 
     public static final class PlaceholderInvokable implements Invokable {
-        private int bci;
-        private ResolvedJavaMethod method;
+        private final int bci;
+        private final ResolvedJavaMethod callerMethod;
+        private final ResolvedJavaMethod method;
 
-        public PlaceholderInvokable(ResolvedJavaMethod method, int bci) {
+        public PlaceholderInvokable(ResolvedJavaMethod callerMethod, ResolvedJavaMethod method, int bci) {
+            this.callerMethod = callerMethod;
             this.method = method;
             this.bci = bci;
         }
@@ -433,10 +435,15 @@ public class InliningLog {
         public FixedNode asFixedNode() {
             throw new UnsupportedOperationException("Parsed invokable is a placeholder, not a concrete node.");
         }
+
+        @Override
+        public ResolvedJavaMethod getContextMethod() {
+            return callerMethod;
+        }
     }
 
-    public RootScope openRootScope(ResolvedJavaMethod target, int bci) {
-        return openRootScope(new PlaceholderInvokable(target, bci));
+    public RootScope openRootScope(ResolvedJavaMethod callerMethod, ResolvedJavaMethod target, int bci) {
+        return openRootScope(new PlaceholderInvokable(callerMethod, target, bci));
     }
 
     public RootScope openRootScope(Invokable invoke) {
