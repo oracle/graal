@@ -338,6 +338,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                 CompilerDirectives.isPartialEvaluationConstant(transition);
                 if (transitionMatches(locals, compactString, transition, index, atEnd, c)) {
                     updateState(locals, transition, index);
+                    locals.restoreIndex();
                     return transition.getTarget(isForward()).getId();
                 }
             }
@@ -419,6 +420,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                         } else {
                             updateState(locals, transition, index);
                             if (i == lastMatch) {
+                                locals.restoreIndex();
                                 return target.getId();
                             } else {
                                 locals.setPc(target.getId());
@@ -448,7 +450,12 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     private boolean checkSubMatcherInline(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString, PureNFATransition transition, PureNFAState target) {
         if (lookAroundExecutorIsLiteral(target)) {
             TRegexLiteralLookAroundExecutorNode literal = (TRegexLiteralLookAroundExecutorNode) getLookAroundExecutor(target);
-            return (boolean) literal.execute(locals, compactString);
+            int saveIndex = locals.getIndex();
+            int saveNextIndex = locals.getNextIndex();
+            boolean result = (boolean) literal.execute(locals, compactString);
+            locals.setIndex(saveIndex);
+            locals.setNextIndex(saveNextIndex);
+            return result;
         } else {
             return !subMatchFailed(target, runSubMatcher(locals.createSubNFALocals(transition), compactString, target));
         }
@@ -576,16 +583,16 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                     break;
             }
         }
-        locals.setIndex(getNewIndex(locals, transition.getTarget(isForward()), index));
+        locals.saveIndex(getNewIndex(locals, transition.getTarget(isForward()), index));
     }
 
     private int getNewIndex(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState target, int index) {
         CompilerDirectives.isPartialEvaluationConstant(target.getKind());
         switch (target.getKind()) {
             case PureNFAState.KIND_INITIAL_OR_FINAL_STATE:
-                return inputIncIndex(index);
+                return index;
             case PureNFAState.KIND_CHARACTER_CLASS:
-                return inputIncIndex(index);
+                return locals.getNextIndex();
             case PureNFAState.KIND_LOOK_AROUND:
                 return index;
             case PureNFAState.KIND_BACK_REFERENCE:

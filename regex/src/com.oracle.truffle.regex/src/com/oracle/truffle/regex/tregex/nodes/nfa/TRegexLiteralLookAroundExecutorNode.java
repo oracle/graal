@@ -91,15 +91,12 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNod
     @Override
     public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
-        int initialIndex = locals.getIndex();
         for (int i = 0; i < matchers.length; i++) {
             if (!inputHasNext(locals) || !matchers[i].execute(inputRead(locals), compactString)) {
-                locals.setIndex(initialIndex);
                 return negated;
             }
             inputAdvance(locals);
         }
-        locals.setIndex(initialIndex);
         return !negated;
     }
 }

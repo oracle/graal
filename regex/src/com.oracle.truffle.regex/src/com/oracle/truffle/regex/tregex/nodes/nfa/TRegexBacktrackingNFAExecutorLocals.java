@@ -234,17 +234,16 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     public int pop() {
         assert sp > stackBase;
         sp -= stackFrameSize;
+        restoreIndex();
         return stack()[offsetIP()];
     }
 
-    @Override
-    public int getIndex() {
-        return stack()[sp];
+    public void saveIndex(int index) {
+        stack()[sp] = index;
     }
 
-    @Override
-    public void setIndex(int i) {
-        stack()[sp] = i;
+    public void restoreIndex() {
+        setIndex(stack()[sp]);
     }
 
     public int setPc(int pc) {

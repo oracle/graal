@@ -92,10 +92,6 @@ public abstract class TRegexExecutorNode extends Node {
         return isForward() ? locals.getIndex() < getMaxIndex(locals) : locals.getIndex() > getMinIndex(locals);
     }
 
-    public int nextIndex() {
-        return 0;
-    }
-
     public int inputRead(TRegexExecutorLocals locals) {
         return inputRead(locals, locals.getIndex());
     }
