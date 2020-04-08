@@ -70,6 +70,17 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
     }
 
     @Override
+    public boolean hasSideEffect() {
+        /*
+         * Writes to newly allocated objects don't have a visible side-effect to the interpreter
+         */
+        if (getLocationIdentity().equals(LocationIdentity.INIT_LOCATION)) {
+            return false;
+        }
+        return super.hasSideEffect();
+    }
+
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         if (tool.canonicalizeReads() && hasExactlyOneUsage() && next() instanceof WriteNode) {
             WriteNode write = (WriteNode) next();
@@ -85,4 +96,5 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
     public LocationIdentity getKilledLocationIdentity() {
         return getLocationIdentity();
     }
+
 }

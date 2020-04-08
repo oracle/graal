@@ -74,8 +74,8 @@ import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jdk.CleanerSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -144,7 +144,6 @@ public class GCImpl implements GC {
         this.collectionEpoch = WordFactory.zero();
         this.collectionWatcherList = AllocationFreeList.factory();
         this.noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
-        this.discoveredReferencesListHead = null;
         this.completeCollection = false;
         this.sizeBefore = WordFactory.zero();
 
@@ -315,9 +314,6 @@ public class GCImpl implements GC {
         }
 
         postcondition();
-
-        /* Distribute any discovered references to their queues. */
-        ReferenceObjectProcessing.Scatterer.distributeReferences();
 
         trace.string("]").newline();
     }
@@ -526,9 +522,6 @@ public class GCImpl implements GC {
         try (GreyToBlackObjRefVisitor.Counters gtborv = greyToBlackObjRefVisitor.openCounters()) {
             final Log trace = Log.noopLog().string("[GCImpl.scavenge:").string("  fromDirtyRoots: ").bool(fromDirtyRoots).newline();
 
-            /* Empty the list of DiscoveredReferences before walking the heap. */
-            ReferenceObjectProcessing.clearDiscoveredList();
-
             try (Timer rst = rootScanTimer.open()) {
                 trace.string("  Cheney scan: ");
                 if (fromDirtyRoots) {
@@ -539,9 +532,9 @@ public class GCImpl implements GC {
             }
 
             trace.string("  Discovered references: ");
-            /* Process the list of DiscoveredReferences after walking the heap. */
             try (Timer drt = referenceObjectsTimer.open()) {
-                ReferenceObjectProcessing.processDiscoveredReferences();
+                Reference<?> newlyPendingList = ReferenceObjectProcessing.processDiscoveredReferences();
+                HeapImpl.getHeapImpl().addToReferencePendingList(newlyPendingList);
             }
 
             trace.string("  Release spaces: ");
@@ -949,6 +942,7 @@ public class GCImpl implements GC {
      * of. For example, watchers could keep track of the collections they have run in and reported
      * on, and only put out one report per collection.
      */
+    @SuppressWarnings("try")
     void possibleCollectionEpilogue(UnsignedWord requestingEpoch) {
         if (requestingEpoch.aboveOrEqual(getCollectionEpoch())) {
             /* No GC happened, so do not run any epilogue. */
@@ -974,7 +968,15 @@ public class GCImpl implements GC {
             return;
         }
 
-        CleanerSupport.drainReferenceQueues();
+        Timer refsTimer = new Timer("Enqueuing pending references and invoking internal cleaners");
+        try (Timer timer = refsTimer.open()) {
+            ReferenceHandler.maybeProcessCurrentlyPending();
+        }
+        if (SubstrateOptions.VerboseGC.getValue() && HeapOptions.PrintGCTimes.getValue()) {
+            logOneTimer(Log.log(), "[GC epilogue reference processing: ", refsTimer);
+            Log.log().string("]");
+        }
+
         visitWatchersReport();
     }
 
@@ -1081,16 +1083,6 @@ public class GCImpl implements GC {
 
     private void setPolicy(final CollectionPolicy newPolicy) {
         policy = newPolicy;
-    }
-
-    private Reference<?> discoveredReferencesListHead = null;
-
-    Reference<?> getDiscoveredReferencesListHead() {
-        return discoveredReferencesListHead;
-    }
-
-    void setDiscoveredReferencesListHead(Reference<?> newList) {
-        discoveredReferencesListHead = newList;
     }
 
     GreyToBlackObjectVisitor getGreyToBlackObjectVisitor() {

@@ -26,6 +26,7 @@ package org.graalvm.compiler.phases.common.inlining;
 
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 
 import java.util.ArrayDeque;
@@ -466,7 +467,7 @@ public class InliningUtil extends ValueMergeUtil {
             // A partial intrinsic exit must be replaced with a call to
             // the intrinsified method.
             Invoke dup = (Invoke) duplicates.get(exit.asNode());
-            dup.replaceBci(invoke.bci());
+            dup.setBci(invoke.bci());
         }
         if (unwindNode != null) {
             unwindNode = (UnwindNode) duplicates.get(unwindNode);
@@ -518,8 +519,6 @@ public class InliningUtil extends ValueMergeUtil {
                     StructuredGraph inlineGraph) {
         FixedNode invokeNode = invoke.asNode();
         FrameState stateAfter = invoke.stateAfter();
-        assert stateAfter == null || stateAfter.isAlive();
-
         invokeNode.replaceAtPredecessor(firstNode);
 
         if (invoke instanceof InvokeWithExceptionNode) {
@@ -820,18 +819,28 @@ public class InliningUtil extends ValueMergeUtil {
             }
         }
 
-        // pop return kind from invoke's stateAfter and replace with this frameState's return
-        // value (top of stack)
-        assert !frameState.rethrowException() : frameState;
-        if (frameState.stackSize() > 0 && (alwaysDuplicateStateAfter || stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
-            // A non-void return value.
-            stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, invokeReturnKind, frameState.stackAt(0));
+        /*
+         * Inlining util can be used to inline a replacee graph that has a different return kind
+         * than the oginal call, i.e., a non void return for a void method, in this case we simply
+         * use the state after discarding the return value
+         */
+        boolean voidReturnMissmatch = frameState.stackSize() > 0 && stateAfterReturn.stackSize() == 0;
+
+        if (voidReturnMissmatch) {
+            stateAfterReturn = stateAfterReturn.duplicateWithVirtualState();
         } else {
-            // A void return value.
-            stateAfterReturn = stateAtReturn.duplicate();
+            // pop return kind from invoke's stateAfter and replace with this frameState's return
+            // value (top of stack)
+            assert !frameState.rethrowException() : frameState;
+            if (frameState.stackSize() > 0 && (alwaysDuplicateStateAfter || stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
+                // A non-void return value.
+                stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, invokeReturnKind, frameState.stackAt(0));
+            } else {
+                // A void return value.
+                stateAfterReturn = stateAtReturn.duplicate();
+            }
         }
         assert stateAfterReturn.bci != BytecodeFrame.UNKNOWN_BCI;
-
         // Return value does no longer need to be limited by the monitor exit.
         for (MonitorExitNode n : frameState.usages().filter(MonitorExitNode.class)) {
             n.clearEscapedValue();
@@ -856,7 +865,7 @@ public class InliningUtil extends ValueMergeUtil {
                 // partial intrinsic, these calls are given frame states
                 // that exclude the outer frame state denoting a position
                 // in the intrinsic code.
-                assert inlinedMethod.getAnnotation(
+                assert IS_IN_NATIVE_IMAGE || inlinedMethod.getAnnotation(
                                 MethodSubstitution.class) != null : "expected an intrinsic when inlinee frame state matches method of call target but does not match the method of the inlinee graph: " +
                                                 frameState;
             } else if (method.getName().equals(inlinedMethod.getName())) {

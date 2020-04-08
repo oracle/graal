@@ -41,6 +41,7 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
@@ -201,8 +202,10 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();
             }
-            return getTruffleCompiler(compilable).getPartialEvaluator().createGraph(compilable.getOptionValues(), debug, compilable, inliningDecision, allowAssumptions, compilationId, speculationLog,
-                            null);
+            final PartialEvaluator partialEvaluator = getTruffleCompiler(compilable).getPartialEvaluator();
+            final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable), inliningDecision,
+                            allowAssumptions, compilationId, speculationLog, null);
+            return partialEvaluator.evaluate(request);
         } catch (Throwable e) {
             throw debug.handle(e);
         }

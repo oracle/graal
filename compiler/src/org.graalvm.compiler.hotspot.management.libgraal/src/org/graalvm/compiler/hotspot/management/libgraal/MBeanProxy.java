@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
+import java.lang.reflect.Method;
 import static org.graalvm.libgraal.jni.JNIUtil.createString;
 import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
 
@@ -49,6 +50,17 @@ import org.graalvm.word.WordFactory;
 
 class MBeanProxy<T extends DynamicMBean> {
 
+    private static final Method getCurrentJavaThreadMethod;
+    static {
+        Method m;
+        try {
+            m = HotSpotJVMCIRuntime.class.getMethod("getCurrentJavaThread");
+        } catch (NoSuchMethodException e) {
+            m = null;
+        }
+        getCurrentJavaThreadMethod = m;
+    }
+
     // Classes defined in HotSpot heap by JNI, the values are filled by LibGraalFeature.
     private static final String HS_BEAN_CLASS_NAME = null;
     private static final byte[] HS_BEAN_CLASS = null;
@@ -58,6 +70,8 @@ class MBeanProxy<T extends DynamicMBean> {
     private static final byte[] HS_SVM_CALLS_CLASS = null;
     private static final String HS_PUSHBACK_ITER_CLASS_NAME = null;
     private static final byte[] HS_PUSHBACK_ITER_CLASS = null;
+    private static final String HS_ISOLATE_THREAD_SCOPE_CLASS_NAME = null;
+    private static final byte[] HS_ISOLATE_THREAD_SCOPE_CLASS = null;
     private static final String SVM_HS_ENTRYPOINTS_CLASS_NAME = null;
     private static final byte[] SVM_HS_ENTRYPOINTS_CLASS = null;
 
@@ -157,13 +171,16 @@ class MBeanProxy<T extends DynamicMBean> {
         return objName;
     }
 
-    static void initializeJNI(GraalHotSpotVMConfig config) {
+    static boolean initializeJNI(GraalHotSpotVMConfig config) {
+        if (getCurrentJavaThreadMethod == null) {
+            return false;
+        }
         if (jniEnvOffset == 0) {
             synchronized (MBeanProxy.class) {
                 if (jniEnvOffset == 0) {
                     if (config.jniEnvironmentOffset == Integer.MIN_VALUE) {
                         // Old unsupported JVMCI version.
-                        return;
+                        return false;
                     }
                     memPoolBean = new LibGraalMemoryPoolMBean();
                     jniEnvOffset = config.jniEnvironmentOffset;
@@ -177,6 +194,7 @@ class MBeanProxy<T extends DynamicMBean> {
                 }
             }
         }
+        return true;
     }
 
     static JNI.JClass getHotSpotEntryPoints() {
@@ -190,8 +208,15 @@ class MBeanProxy<T extends DynamicMBean> {
         if (jniEnvOffset == 0) {
             throw new IllegalStateException("JniEnvOffset is not yet initialized.");
         }
-        long currentJavaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
-        return WordFactory.pointer(currentJavaThreadAddr + jniEnvOffset);
+        if (getCurrentJavaThreadMethod == null) {
+            throw new IllegalStateException("CurrentJavaThread not supported by JVMCI.");
+        }
+        try {
+            long currentJavaThreadAddr = (Long) getCurrentJavaThreadMethod.invoke(HotSpotJVMCIRuntime.runtime());
+            return WordFactory.pointer(currentJavaThreadAddr + jniEnvOffset);
+        } catch (ReflectiveOperationException reflectiveException) {
+            throw new RuntimeException("Failed to invoke HotSpotJVMCIRuntime::getCurrentJavaThread", reflectiveException);
+        }
     }
 
     /**
@@ -235,11 +260,15 @@ class MBeanProxy<T extends DynamicMBean> {
                     checkDefineClassException(env, HS_BEAN_FACTORY_CLASS_NAME);
                 }
 
-                if (defineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull()) {
+                if (defineClassInHotSpot(env, classLoader, HS_ISOLATE_THREAD_SCOPE_CLASS_NAME, HS_ISOLATE_THREAD_SCOPE_CLASS).isNull()) {
                     checkDefineClassException(env, HS_PUSHBACK_ITER_CLASS_NAME);
                 }
 
-                if (defineClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, HS_SVM_CALLS_CLASS).isNull()) {
+                if (defineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull()) {
+                    checkDefineClassException(env, HS_PUSHBACK_ITER_CLASS_NAME);
+                }
+                JNI.JClass hsToSvmCalls = defineClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, HS_SVM_CALLS_CLASS);
+                if (hsToSvmCalls.isNull()) {
                     checkDefineClassException(env, HS_SVM_CALLS_CLASS_NAME);
                 }
 
@@ -247,6 +276,8 @@ class MBeanProxy<T extends DynamicMBean> {
                 if (svmHsEntryPoints.isNull()) {
                     checkDefineClassException(env, SVM_HS_ENTRYPOINTS_CLASS_NAME);
                 }
+                registerNatives(env, classLoader, hsToSvmCalls);
+                checkException(env, "Failed to register natives");
             }
             svmToHotSpotEntryPoints = JNIUtil.NewGlobalRef(env, svmHsEntryPoints, "Class<" + SVM_HS_ENTRYPOINTS_CLASS_NAME + ">");
         }
@@ -289,7 +320,7 @@ class MBeanProxy<T extends DynamicMBean> {
      * {@code allowedExceptions} it throws an {@link InternalError}.
      */
     @SafeVarargs
-    private static void checkException(JNI.JNIEnv env, String message, Class<? extends Throwable>... allowedExceptions) {
+    static void checkException(JNI.JNIEnv env, String message, Class<? extends Throwable>... allowedExceptions) {
         if (JNIUtil.ExceptionCheck(env)) {
             try {
                 JNI.JThrowable exception = JNIUtil.ExceptionOccurred(env);
@@ -346,6 +377,24 @@ class MBeanProxy<T extends DynamicMBean> {
                             clazz.length);
         } finally {
             UnmanagedMemory.free(classData);
+        }
+    }
+
+    @SuppressWarnings("try")
+    private static void registerNatives(JNI.JNIEnv env, JNI.JObject classLoader, JNI.JClass target) {
+        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.RegisterNatives, env)) {
+            JNI.JClass runtimeClass = findClassInHotSpot(env, classLoader, SVMToHotSpotCalls.CLASS_RUNTIME);
+            if (runtimeClass.isNull()) {
+                throw new InternalError("Cannot load " + SVMToHotSpotCalls.CLASS_RUNTIME);
+            }
+            JNI.JClass libgraalClass = findClassInHotSpot(env, classLoader, SVMToHotSpotCalls.CLASS_LIBGRAAL);
+            if (libgraalClass.isNull()) {
+                throw new InternalError("Cannot load " + SVMToHotSpotCalls.CLASS_LIBGRAAL);
+            }
+            JNI.JObject runtime = SVMToHotSpotCalls.getRuntime(env, runtimeClass);
+            if (runtime.isNonNull()) {
+                SVMToHotSpotCalls.registerNatives(env, libgraalClass, runtime, target);
+            }
         }
     }
 

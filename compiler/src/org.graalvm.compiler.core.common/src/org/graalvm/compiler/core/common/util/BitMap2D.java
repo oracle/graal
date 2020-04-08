@@ -44,6 +44,11 @@ public final class BitMap2D {
     }
 
     public BitMap2D(int sizeInSlots, int bitsPerSlot) {
+        long nBits = (long) sizeInSlots * bitsPerSlot;
+        if (nBits > Integer.MAX_VALUE) {
+            // Avoids issues where (sizeInSlots * bitsPerSlot) wraps around to a positive integer
+            throw new OutOfMemoryError("Cannot allocate a BitSet for " + nBits + " bits");
+        }
         map = new BitSet(sizeInSlots * bitsPerSlot);
         this.bitsPerSlot = bitsPerSlot;
     }

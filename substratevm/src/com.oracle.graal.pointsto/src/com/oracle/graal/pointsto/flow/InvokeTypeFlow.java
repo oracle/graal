@@ -32,8 +32,6 @@ import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -44,6 +42,7 @@ import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
@@ -65,12 +64,17 @@ public abstract class InvokeTypeFlow extends TypeFlow<MethodCallTargetNode> {
 
     protected final InvokeTypeFlow originalInvoke;
 
-    protected InvokeTypeFlow(Invoke invoke, MethodCallTargetNode target, TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(target, null);
+    protected final AnalysisType receiverType;
+    protected final AnalysisMethod targetMethod;
 
+    protected InvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+        super(invoke != null ? (MethodCallTargetNode) invoke.callTarget() : null, null);
         this.originalInvoke = null;
         this.location = location;
         this.invoke = invoke;
+        this.receiverType = receiverType;
+        this.targetMethod = targetMethod;
         this.actualParameters = actualParameters;
         this.actualReturn = actualReturn;
 
@@ -83,6 +87,8 @@ public abstract class InvokeTypeFlow extends TypeFlow<MethodCallTargetNode> {
         this.originalInvoke = original;
         this.location = original.location;
         this.invoke = original.invoke;
+        this.receiverType = original.receiverType;
+        this.targetMethod = original.targetMethod;
 
         actualReturn = original.getActualReturn() != null ? (ActualReturnTypeFlow) methodFlows.lookupCloneOf(bb, original.getActualReturn()) : null;
 
@@ -98,12 +104,12 @@ public abstract class InvokeTypeFlow extends TypeFlow<MethodCallTargetNode> {
         return location;
     }
 
-    public DebugContext getDebug() {
-        return invoke.asNode().getDebug();
+    public AnalysisType getReceiverType() {
+        return receiverType;
     }
 
     public AnalysisMethod getTargetMethod() {
-        return (AnalysisMethod) getSource().targetMethod();
+        return targetMethod;
     }
 
     public int actualParametersCount() {
@@ -256,7 +262,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<MethodCallTargetNode> {
          * the analysis, but asking the host VM. That means it is final or private or static, but
          * not abstract, or the declaring class is final.
          */
-        boolean triviallyStaticallyBound = invoke.callTarget().targetMethod().canBeStaticallyBound();
+        boolean triviallyStaticallyBound = targetMethod.canBeStaticallyBound();
         if (triviallyStaticallyBound) {
             /*
              * The check bellow is "size <= 1" and not "size == 1" because a method can be reported
@@ -286,8 +292,9 @@ abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
      */
     protected AnalysisContext callerContext;
 
-    protected DirectInvokeTypeFlow(Invoke invoke, MethodCallTargetNode target, TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invoke, target, actualParameters, actualReturn, location);
+    protected DirectInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+        super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
         callerContext = null;
     }
 
@@ -311,10 +318,10 @@ final class StaticInvokeTypeFlow extends DirectInvokeTypeFlow {
 
     private AnalysisContext calleeContext;
 
-    protected StaticInvokeTypeFlow(Invoke invoke, MethodCallTargetNode target, TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invoke, target, actualParameters, actualReturn, location);
+    protected StaticInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+        super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
         calleeContext = null;
-        assert target.invokeKind() == InvokeKind.Static;
     }
 
     protected StaticInvokeTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, StaticInvokeTypeFlow original) {
@@ -333,12 +340,16 @@ final class StaticInvokeTypeFlow extends DirectInvokeTypeFlow {
         /* The static invokes should be updated only once and the callee should be null. */
         guarantee(callee == null, "static invoke updated multiple times!");
 
+        // Unlinked methods can not be parsed
+        if (!targetMethod.getWrapped().getDeclaringClass().isLinked()) {
+            return;
+        }
+
         /*
          * Initialize the callee lazily so that if the invoke flow is not reached in this context,
          * i.e. for this clone, there is no callee linked/
          */
-        MethodCallTargetNode target = (MethodCallTargetNode) invoke.callTarget();
-        callee = ((AnalysisMethod) target.targetMethod()).getTypeFlow();
+        callee = targetMethod.getTypeFlow();
         // set the callee in the original invoke too
         ((DirectInvokeTypeFlow) originalInvoke).callee = callee;
 
@@ -361,7 +372,7 @@ final class StaticInvokeTypeFlow extends DirectInvokeTypeFlow {
 
     @Override
     public String toString() {
-        return "StaticInvoke<" + getSource().targetMethod().format("%h.%n") + ">" + ":" + getState();
+        return "StaticInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
     }
 
 }
@@ -373,10 +384,9 @@ final class SpecialInvokeTypeFlow extends DirectInvokeTypeFlow {
      */
     protected ConcurrentMap<MethodFlowsGraph, Object> calleesFlows;
 
-    protected SpecialInvokeTypeFlow(Invoke invoke, MethodCallTargetNode target, TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn,
-                    BytecodeLocation location) {
-        super(invoke, target, actualParameters, actualReturn, location);
-        assert target.invokeKind() == InvokeKind.Special;
+    protected SpecialInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+        super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
     protected SpecialInvokeTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, DirectInvokeTypeFlow original) {
@@ -409,8 +419,7 @@ final class SpecialInvokeTypeFlow extends DirectInvokeTypeFlow {
          * i.e. for this clone, there is no callee linked.
          */
         if (callee == null) {
-            MethodCallTargetNode target = (MethodCallTargetNode) invoke.callTarget();
-            callee = ((AnalysisMethod) target.targetMethod()).getTypeFlow();
+            callee = targetMethod.getTypeFlow();
             // set the callee in the original invoke too
             ((DirectInvokeTypeFlow) originalInvoke).callee = callee;
         }
@@ -435,7 +444,7 @@ final class SpecialInvokeTypeFlow extends DirectInvokeTypeFlow {
 
     @Override
     public String toString() {
-        return "SpecialInvoke<" + getSource().targetMethod().format("%h.%n") + ">" + ":" + getState();
+        return "SpecialInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
     }
 
 }

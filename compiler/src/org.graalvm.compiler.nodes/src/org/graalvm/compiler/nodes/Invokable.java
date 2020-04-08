@@ -32,10 +32,8 @@ import org.graalvm.compiler.graph.Node;
 /**
  * A marker interface for nodes that represent calls to other methods.
  */
-public interface Invokable {
+public interface Invokable extends DeoptBciSupplier {
     ResolvedJavaMethod getTargetMethod();
-
-    int bci();
 
     default boolean isAlive() {
         return asFixedNode().isAlive();

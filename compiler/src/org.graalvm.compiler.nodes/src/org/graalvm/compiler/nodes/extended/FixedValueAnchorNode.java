@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -41,7 +42,7 @@ import org.graalvm.compiler.nodes.spi.ValueProxy;
 public class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable, ValueProxy, GuardingNode {
     public static final NodeClass<FixedValueAnchorNode> TYPE = NodeClass.create(FixedValueAnchorNode.class);
 
-    @Input ValueNode object;
+    @OptionalInput ValueNode object;
     private Stamp predefinedStamp;
 
     public ValueNode object() {
@@ -49,7 +50,7 @@ public class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowera
     }
 
     protected FixedValueAnchorNode(NodeClass<? extends FixedValueAnchorNode> c, ValueNode object) {
-        super(c, object.stamp(NodeView.DEFAULT));
+        super(c, object == null ? StampFactory.forVoid() : object.stamp(NodeView.DEFAULT));
         this.object = object;
     }
 
@@ -65,7 +66,7 @@ public class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowera
 
     @Override
     public boolean inferStamp() {
-        if (predefinedStamp == null) {
+        if (predefinedStamp == null && object != null) {
             return updateStamp(stamp.join(object.stamp(NodeView.DEFAULT)));
         } else {
             return false;

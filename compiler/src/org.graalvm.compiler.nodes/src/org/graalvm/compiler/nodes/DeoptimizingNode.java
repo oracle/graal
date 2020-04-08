@@ -55,6 +55,10 @@ public interface DeoptimizingNode extends NodeWithState {
         void setStateBefore(FrameState state);
 
         FrameState stateBefore();
+
+        default boolean canUseAsStateDuring() {
+            return false;
+        }
     }
 
     /**

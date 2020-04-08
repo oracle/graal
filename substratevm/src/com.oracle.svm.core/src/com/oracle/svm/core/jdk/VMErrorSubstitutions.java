@@ -112,8 +112,9 @@ public class VMErrorSubstitutions {
             }
             if (ex != null) {
                 log.string(": ").exception(ex);
+            } else {
+                log.newline();
             }
-            log.newline();
 
             SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
 

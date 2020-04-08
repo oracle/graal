@@ -25,10 +25,6 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.File;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TreatPerformanceWarningsAsErrors;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningKind.BAILOUT;
 
 import java.util.Map;
 
@@ -46,22 +42,12 @@ import com.oracle.truffle.api.Option;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 
-public final class TruffleDebugOptions {
+final class TruffleDebugOptions {
 
     @NativeImageReinitialize private static volatile OptionValuesImpl optionValues;
 
     private TruffleDebugOptions() {
         throw new IllegalStateException("No instance allowed.");
-    }
-
-    static boolean bailoutsAsErrors(OptionValues options) {
-        return TruffleRuntimeOptions.getPolyglotOptionValue(options, TreatPerformanceWarningsAsErrors).contains(BAILOUT) ||
-                        TruffleRuntimeOptions.getPolyglotOptionValue(options, PerformanceWarningsAreFatal).contains(BAILOUT) ||
-                        getValue(CompilationBailoutAsFailure);
-    }
-
-    static boolean verboseBailouts(OptionValues options) {
-        return TruffleRuntimeOptions.getPolyglotOptionValue(options, TracePerformanceWarnings).contains(BAILOUT) || bailoutsAsErrors(options);
     }
 
     static <T> T getValue(final OptionKey<T> key) {
@@ -115,7 +101,4 @@ public final class TruffleDebugOptions {
     // Initialized by the options of the same name in org.graalvm.compiler.debug.DebugOptions
     @Option(help = "", category = OptionCategory.INTERNAL) //
     static final OptionKey<PrintGraphTarget> PrintGraph = new OptionKey<>(File, PrintGraphTarget.getOptionType());
-    // Initialized by the options of the same name in org.graalvm.compiler.core.GraalCompilerOptions
-    @Option(help = "", category = OptionCategory.USER) //
-    static final OptionKey<Boolean> CompilationBailoutAsFailure = new OptionKey<>(false);
 }

@@ -110,11 +110,11 @@ bin_props_xml = [
 # The names of binary Emoji properties defined in Unicode TR51.
 bin_props_emoji = [
     'Emoji',
-    'Emoji_Component',
-    'Emoji_Modifier_Base',
-    'Emoji_Modifier',
-    'Emoji_Presentation',
-    'Extended_Pictographic'
+    'EComp',  # Emoji_Component
+    'EBase',  # Emoji_Modifier_Base
+    'EMod',   # Emoji_Modifier
+    'EPres',  # Emoji_Presentation
+    'ExtPict' # Extended_Pictographic
 ]
 
 tracked_props = bin_props_xml + bin_props_emoji + ['gc', 'sc', 'scx']
@@ -151,6 +151,47 @@ def add_txt_entry_to_property(code_points_str, prop_name):
 def complement_property(prop):
     return sorted(set(range(0, 0x110000)) - set(prop))
 
+def unicode_file_lines_without_comments(file_name):
+    lines = []
+    with open(file_name) as unicode_file:
+        for line in unicode_file:
+            line = re.sub('#.*$', '', line).strip()
+            if not line == '':
+                lines.append(line)
+    return lines
+
+
+# Parse aliases
+
+prop_aliases = {}
+
+for line in unicode_file_lines_without_comments('PropertyAliases.txt'):
+    aliases = [x.strip() for x in line.split(';')]
+    short_name = aliases[0]
+    all_names = aliases[0:]
+    if short_name in tracked_props:
+        for name in all_names:
+            prop_aliases[name] = short_name
+
+# We also add the names of the properties from TR18 into the alias table.
+for name in ['Any', 'ASCII', 'Assigned']:
+    prop_aliases[name] = name
+
+gc_aliases = {}
+sc_aliases = {}
+
+for line in unicode_file_lines_without_comments('PropertyValueAliases.txt'):
+    fields = [x.strip() for x in line.split(';')]
+    prop_name = fields[0]
+    short_value_name = fields[1]
+    all_value_names = fields[1:]
+    if prop_name == 'gc':
+        for value_name in all_value_names:
+            gc_aliases[value_name] = short_value_name
+    elif prop_name == 'sc':
+        for value_name in all_value_names:
+            sc_aliases[value_name] = short_value_name
+
 
 # Parse XML
 
@@ -173,19 +214,11 @@ for char_elem in root.find('unicode:repertoire', ns):
 
 # Parse Emoji data
 
-def unicode_file_lines_without_comments(file_name):
-    lines = []
-    with open(file_name) as unicode_file:
-        for line in unicode_file:
-            line = re.sub('#.*$', '', line).strip()
-            if not line == '':
-                lines.append(line)
-    return lines
-
 
 for line in unicode_file_lines_without_comments('emoji-data.txt'):
-    [code_points_str, prop_name] = [x.strip() for x in line.split(';')]
-    add_txt_entry_to_property(code_points_str, prop_name)
+    [code_points_str, long_prop_name] = [x.strip() for x in line.split(';')]
+    short_prop_name = prop_aliases[long_prop_name]
+    add_txt_entry_to_property(code_points_str, short_prop_name)
 
 
 # Add special properties from Unicode TR18
@@ -196,44 +229,6 @@ for line in unicode_file_lines_without_comments('emoji-data.txt'):
 prop_contents['Any'] = range(0, 0x110000)
 prop_contents['ASCII'] = range(0, 0x80)
 prop_contents['Assigned'] = complement_property(prop_contents['gc=Cn'])
-
-
-# Parse aliases
-
-prop_aliases = {}
-
-for line in unicode_file_lines_without_comments('PropertyAliases.txt'):
-    aliases = [x.strip() for x in line.split(';')]
-    short_name = aliases[0]
-    all_names = aliases[0:]
-    if short_name in tracked_props:
-        for name in all_names:
-            prop_aliases[name] = short_name
-
-# The Emoji character properties from TR51 are not included in the Unicode
-# character database's PropertyAliases.txt file and so add their names to the
-# alias table manually.
-for name in bin_props_emoji:
-    prop_aliases[name] = name
-
-# We also add the names of the properties from TR18 into the alias table.
-for name in ['Any', 'ASCII', 'Assigned']:
-    prop_aliases[name] = name
-
-gc_aliases = {}
-sc_aliases = {}
-
-for line in unicode_file_lines_without_comments('PropertyValueAliases.txt'):
-    fields = [x.strip() for x in line.split(';')]
-    prop_name = fields[0]
-    short_value_name = fields[1]
-    all_value_names = fields[1:]
-    if prop_name == 'gc':
-        for value_name in all_value_names:
-            gc_aliases[value_name] = short_value_name
-    elif prop_name == 'sc':
-        for value_name in all_value_names:
-            sc_aliases[value_name] = short_value_name
 
 
 # Generate Java source code

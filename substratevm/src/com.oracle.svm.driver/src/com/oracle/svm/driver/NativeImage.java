@@ -149,6 +149,7 @@ public class NativeImage {
         }
     }
 
+    final DefaultOptionHandler defaultOptionHandler;
     final APIOptionHandler apiOptionHandler;
 
     public static final String oH = "-H:";
@@ -182,6 +183,7 @@ public class NativeImage {
     final String oHJNIConfigurationFiles = oH(ConfigurationFiles.Options.JNIConfigurationFiles);
 
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
+    final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
 
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
@@ -401,7 +403,7 @@ public class NativeImage {
         /**
          * ResourcesJar packs resources files needed for some jdk services such as xml
          * serialization.
-         * 
+         *
          * @return the path to the resources.jar file
          */
         default Optional<Path> getResourcesJar() {
@@ -597,6 +599,13 @@ public class NativeImage {
         buildArgs.add(oHPath + imagePath.toString());
         buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorClasspath) + classpathString);
         buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorMainClass) + mainClass);
+
+        /*
+         * The fallback image on purpose captures the Java home directory used for image generation,
+         * see field FallbackExecutor.buildTimeJavaHome
+         */
+        buildArgs.add(oH + "-" + SubstrateOptions.DetectUserDirectoriesInImageHeap.getName());
+
         buildArgs.add(FallbackExecutor.class.getName());
         buildArgs.add(imageName);
 
@@ -658,7 +667,8 @@ public class NativeImage {
         optionRegistry = new MacroOption.Registry();
 
         /* Default handler needs to be fist */
-        registerOptionHandler(new DefaultOptionHandler(this));
+        defaultOptionHandler = new DefaultOptionHandler(this);
+        registerOptionHandler(defaultOptionHandler);
         apiOptionHandler = new APIOptionHandler(this);
         registerOptionHandler(apiOptionHandler);
         registerOptionHandler(new MacroOptionHandler(this));
@@ -1459,6 +1469,10 @@ public class NativeImage {
         return verbose;
     }
 
+    boolean useDebugAttach() {
+        return defaultOptionHandler.useDebugAttach;
+    }
+
     protected void setDryRun(boolean val) {
         dryRun = val;
     }
@@ -1701,6 +1715,7 @@ public class NativeImage {
         public static void main(String[] args) {
             if (!IS_AOT) {
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
+                ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler.management", true);
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.xml", false);
             }

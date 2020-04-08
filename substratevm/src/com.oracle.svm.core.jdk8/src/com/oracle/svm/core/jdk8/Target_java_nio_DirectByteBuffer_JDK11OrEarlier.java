@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.core.jdk8;
 
+import java.io.FileDescriptor;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.heap.Target_jdk_internal_ref_Cleaner;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.Target_jdk_internal_ref_Cleaner;
-
-import java.io.FileDescriptor;
 
 /**
  * We disallow direct byte buffers ({@link java.nio.MappedByteBuffer} instances) in the image heap,

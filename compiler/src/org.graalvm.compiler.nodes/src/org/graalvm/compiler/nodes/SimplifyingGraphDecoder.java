@@ -150,7 +150,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
                 if (mergeNode.forwardEndCount() == 1) {
                     graph.reduceTrivialMerge(mergeNode);
                 }
-            } else if (node instanceof BeginNode || node instanceof KillingBeginNode) {
+            } else if (node instanceof BeginNode || node instanceof KillingBeginNode || node instanceof MultiKillingBeginNode) {
                 if (!(node.predecessor() instanceof ControlSplitNode) && node.hasNoUsages()) {
                     GraphUtil.unlinkFixedNode((AbstractBeginNode) node);
                     node.safeDelete();

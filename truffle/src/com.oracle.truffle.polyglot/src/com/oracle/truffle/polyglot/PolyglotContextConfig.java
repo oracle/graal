@@ -208,7 +208,7 @@ final class PolyglotContextConfig {
                             result = Collections.unmodifiableMap(result);
                         }
                     } else {
-                        throw new IllegalStateException(String.format("Unsupported EnvironmentAccess: %s", environmentAccess));
+                        throw PolyglotEngineException.unsupported(String.format("Unsupported EnvironmentAccess: %s", environmentAccess));
                     }
                     configuredEnvironement = result;
                 }
@@ -224,8 +224,9 @@ final class PolyglotContextConfig {
                 // Test that "engine options" are not present among the options designated for
                 // this context
                 if (engine.getAllOptions().get(optionKey) != null) {
-                    throw new IllegalArgumentException("Option " + optionKey + " is an engine option. Engine level options can only be configured for contexts without a shared engine set." +
-                                    " To resolve this, configure the option when creating the Engine or create a context without a shared engine.");
+                    throw PolyglotEngineException.illegalArgument(
+                                    "Option " + optionKey + " is an engine option. Engine level options can only be configured for contexts without a shared engine set." +
+                                                    " To resolve this, configure the option when creating the Engine or create a context without a shared engine.");
                 }
             }
             throw OptionValuesImpl.failNotFound(engine.getAllOptions(), optionKey);

@@ -174,6 +174,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "TRUFFLE_TCK_TESTS",
         "TRUFFLE_API",
         "TRUFFLE_SL",
         "mx:JUNIT",
@@ -194,8 +195,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.truffle.api.instrumentation.test",
         "TRUFFLE_API",
-        "TRUFFLE_INSTRUMENT_TEST",
         "mx:JMH_1_21",
       ],
       "requiresConcealed" : {
@@ -1025,25 +1026,6 @@ suite = {
       "maven" : False
     },
 
-    "TRUFFLE_INSTRUMENT_TEST" : {
-      "subDir" : "src",
-      "javaCompliance" : "8+",
-      "dependencies" : [
-        "com.oracle.truffle.api.instrumentation.test",
-      ],
-      "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
-      "distDependencies" : [
-        "TRUFFLE_API",
-        "TRUFFLE_SL",
-        "TRUFFLE_TCK",
-        "sdk:POLYGLOT_TCK",
-        "TRUFFLE_DSL_PROCESSOR",
-      ],
-      "description" : "Instrumentation tests including InstrumentationTestLanguage.",
-      "allowsJavadocWarnings": True,
-      "maven" : False,
-    },
-
      "TRUFFLE_TEST" : {
        "subDir" : "src",
        "javaCompliance" : "8+",
@@ -1061,9 +1043,11 @@ suite = {
        "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
        "distDependencies" : [
          "TRUFFLE_API",
+         "TRUFFLE_SL",
+         "TRUFFLE_TCK_COMMON",
+         "TRUFFLE_TCK_TESTS",
          "TRUFFLE_NFI",
          "TRUFFLE_DSL_PROCESSOR",
-         "TRUFFLE_INSTRUMENT_TEST",
          "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
       ],

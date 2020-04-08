@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -65,7 +65,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
                 return interop.asBoolean(foreign);
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Argument to polyglot_as_boolean can not be convented to boolean.");
+                throw new LLVMPolyglotException(this, "Argument to polyglot_as_boolean can not be converted to boolean.");
             }
         }
     }
@@ -84,7 +84,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
                 return interop.asByte(foreign);
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Argument to polyglot_as_i8 can not be convented to i8.");
+                throw new LLVMPolyglotException(this, "Argument to polyglot_as_i8 can not be converted to i8.");
             }
         }
     }
@@ -103,7 +103,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
                 return interop.asShort(foreign);
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Argument to polyglot_as_i16 can not be convented to i16.");
+                throw new LLVMPolyglotException(this, "Argument to polyglot_as_i16 can not be converted to i16.");
             }
         }
     }
@@ -122,7 +122,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
                 return interop.asInt(foreign);
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Argument to polyglot_as_i32 can not be convented to i32.");
+                throw new LLVMPolyglotException(this, "Argument to polyglot_as_i32 can not be converted to i32.");
             }
         }
     }
@@ -141,7 +141,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
                 return interop.asLong(foreign);
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Argument to polyglot_as_i64 can not be convented to i64.");
+                throw new LLVMPolyglotException(this, "Argument to polyglot_as_i64 can not be converted to i64.");
             }
         }
     }
@@ -160,7 +160,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
                 return interop.asFloat(foreign);
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Argument to polyglot_as_float can not be convented to float.");
+                throw new LLVMPolyglotException(this, "Argument to polyglot_as_float can not be converted to float.");
             }
         }
     }
@@ -179,7 +179,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
                 return interop.asDouble(foreign);
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Argument to polyglot_as_double can not be convented to double.");
+                throw new LLVMPolyglotException(this, "Argument to polyglot_as_double can not be converted to double.");
             }
         }
     }

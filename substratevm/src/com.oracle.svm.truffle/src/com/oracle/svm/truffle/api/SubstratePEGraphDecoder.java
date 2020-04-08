@@ -51,10 +51,10 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = EconomicMap.create();
 
     public SubstratePEGraphDecoder(Architecture architecture, StructuredGraph graph, CoreProviders providers, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
-                    InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins, ResolvedJavaMethod callInlinedMethod,
-                    ResolvedJavaMethod callInlinedAgnosticMethod, SourceLanguagePositionProvider sourceLanguagePosition) {
+                    InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining,
+                    ResolvedJavaMethod peRootForAgnosticInlining, SourceLanguagePositionProvider sourceLanguagePosition) {
         super(architecture, graph, providers, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins,
-                        callInlinedMethod, callInlinedAgnosticMethod, sourceLanguagePosition);
+                        peRootForInlining, peRootForAgnosticInlining, sourceLanguagePosition);
     }
 
     @Override

@@ -63,6 +63,13 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
         this.message = message + arg1 + arg2;
     }
 
+    public AssertionNode(boolean compileTimeAssertion, ValueNode condition, String message, long arg1, long arg2) {
+        super(TYPE, StampFactory.forVoid());
+        this.condition = condition;
+        this.compileTimeAssertion = compileTimeAssertion;
+        this.message = message + arg1 + arg2;
+    }
+
     public ValueNode condition() {
         return condition;
     }
@@ -114,6 +121,10 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
     @NodeIntrinsic
     public static native void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean condition, @ConstantNodeParameter String message, @ConstantNodeParameter Object arg1,
                     @ConstantNodeParameter Object arg2);
+
+    @NodeIntrinsic
+    public static native void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean condition, @ConstantNodeParameter String message, @ConstantNodeParameter long arg1,
+                    @ConstantNodeParameter long arg2);
 
     public static void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean condition, @ConstantNodeParameter String message) {
         assertion(compileTimeAssertion, condition, message, "", "");

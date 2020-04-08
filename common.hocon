@@ -1,5 +1,5 @@
 # overlay version
-overlay = ca0a6bfd6f58538d7c2171a5b49a19e10d90bc42
+overlay = 342aa921cb7cc26612d0be82f6141a6d6ff8e41d
 
 # oraclejdk* are released OracleJDK binaries
 # oraclejdk* are JDKs based on OracleJDK binaries

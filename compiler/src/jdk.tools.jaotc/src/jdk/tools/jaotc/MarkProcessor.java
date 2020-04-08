@@ -113,6 +113,7 @@ final class MarkProcessor {
             case VERIFIED_ENTRY:
             case UNVERIFIED_ENTRY:
             case OSR_ENTRY:
+            case FRAME_COMPLETE:
             case INVOKEINTERFACE:
             case INVOKEVIRTUAL:
             case INVOKESTATIC:

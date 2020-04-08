@@ -87,6 +87,10 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             if (!isPermanentFailure(bailout, permanentBailout)) {
                 onCompilationDequeued(target, null, "Non permanent bailout: " + reason);
+            } else {
+                Map<String, Object> properties = defaultProperties(target);
+                properties.put("Reason", reason);
+                runtime.logEvent(0, "opt failed", target.toString(), properties);
             }
             currentCompilation.set(null);
         }

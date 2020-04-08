@@ -71,22 +71,23 @@ public class WasmLauncher extends AbstractLanguageLauncher {
                 unrecognizedArguments.add(argument);
             } else {
                 file = new File(argument);
-                if (!file.exists()) {
-                    throw abort(String.format("WebAssembly binary '%s' does not exist.", file));
-                }
                 if (argIterator.hasNext()) {
                     throw abort("No options are allowed after the binary name.");
                 }
             }
-        }
-        if (file == null) {
-            throw abort("Must specify the binary name.");
         }
         return unrecognizedArguments;
     }
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
+        if (file == null) {
+            throw abort("Must specify the binary name.");
+        }
+        if (!file.exists()) {
+            throw abort(String.format("WebAssembly binary '%s' does not exist.", file));
+        }
+
         System.exit(execute(contextBuilder));
     }
 

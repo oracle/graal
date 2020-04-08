@@ -33,18 +33,21 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.VirtualBoxingNode;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -53,30 +56,25 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * This node represents the boxing of a primitive value. This corresponds to a call to the valueOf
  * methods in Integer, Long, etc.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8)
-public class BoxNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode> {
+@NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Memory, InputType.Value})
+public abstract class BoxNode extends AbstractBoxingNode implements VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode> {
 
     public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);
-    @Input private ValueNode value;
-    protected final JavaKind boxingKind;
 
-    public BoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
+    private BoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
         this(TYPE, value, resultType, boxingKind);
     }
 
-    public BoxNode(NodeClass<? extends BoxNode> c, ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
-        super(c, StampFactory.objectNonNull(TypeReference.createExactTrusted(resultType)));
+    private BoxNode(NodeClass<? extends BoxNode> c, ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
+        super(c, value, boxingKind, StampFactory.objectNonNull(TypeReference.createExactTrusted(resultType)), new FieldLocationIdentity(getValueField(resultType)));
         this.value = value;
-        this.boxingKind = boxingKind;
     }
 
-    public JavaKind getBoxingKind() {
-        return boxingKind;
-    }
-
-    @Override
-    public ValueNode getValue() {
-        return value;
+    public static BoxNode create(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
+        if (boxingKind == JavaKind.Boolean) {
+            return new PureBoxNode(value, resultType, boxingKind);
+        }
+        return new AllocatingBoxNode(value, resultType, boxingKind);
     }
 
     @Override
@@ -107,5 +105,35 @@ public class BoxNode extends FixedWithNextNode implements VirtualizableAllocatio
 
         tool.createVirtualObject(newVirtual, new ValueNode[]{alias}, Collections.<MonitorIdNode> emptyList(), false);
         tool.replaceWithVirtual(newVirtual);
+    }
+
+    @NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Memory, InputType.Value})
+    private static class PureBoxNode extends BoxNode {
+        public static final NodeClass<PureBoxNode> TYPE = NodeClass.create(PureBoxNode.class);
+
+        protected PureBoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
+            super(TYPE, value, resultType, boxingKind);
+        }
+
+    }
+
+    @NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Memory, InputType.Value})
+    private static class AllocatingBoxNode extends BoxNode implements SingleMemoryKill {
+        public static final NodeClass<AllocatingBoxNode> TYPE = NodeClass.create(AllocatingBoxNode.class);
+
+        protected AllocatingBoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
+            super(TYPE, value, resultType, boxingKind);
+        }
+
+        @Override
+        public LocationIdentity getLocationIdentity() {
+            return LocationIdentity.INIT_LOCATION;
+        }
+
+        @Override
+        public LocationIdentity getKilledLocationIdentity() {
+            return getLocationIdentity();
+        }
+
     }
 }

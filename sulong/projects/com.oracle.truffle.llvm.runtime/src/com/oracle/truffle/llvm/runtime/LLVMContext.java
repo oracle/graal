@@ -64,9 +64,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
+import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.UnresolvedFunction;
-import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -106,8 +106,9 @@ public final class LLVMContext {
     private final Object externalLibrariesLock = new Object();
     private final List<String> internalLibraryNames;
 
-    // map that contains all non-native globals, needed for pointer->global lookups
-    private final ConcurrentHashMap<LLVMPointer, LLVMGlobal> globalsReverseMap = new ConcurrentHashMap<>();
+    // A map for pointer-> non-native symbol lookups.
+    // The list contains all the symbols declared from the same symbol defined.
+    private final ConcurrentHashMap<LLVMPointer, List<LLVMSymbol>> symbolsReverseMap = new ConcurrentHashMap<>();
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
     private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
     private final ArrayList<LLVMPointer> globalsReadOnlyStore = new ArrayList<>();
@@ -127,6 +128,8 @@ public final class LLVMContext {
 
     @CompilationFinal private Env env;
     private final LLVMScope globalScope;
+    private final ArrayList<LLVMLocalScope> localScopes;
+
     private final DynamicLinkChain dynamicLinkChain;
     private final List<RootCallTarget> destructorFunctions;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
@@ -196,6 +199,7 @@ public final class LLVMContext {
         assert !internalLibraryNames.isEmpty() : "No internal libraries?";
 
         this.globalScope = new LLVMScope();
+        this.localScopes = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
 
         this.mainArguments = getMainArguments(env);
@@ -299,6 +303,10 @@ public final class LLVMContext {
             AssumedValue<LLVMPointer>[] symbols = symbolStorage[functionDetail.getBitcodeID(false)];
             symbols[functionDetail.getSymbolIndex(false)] = new AssumedValue<>(LLVMManagedPointer.create(functionDescriptor));
             globalScope.register(functionDetail);
+            LLVMLocalScope localScope = new LLVMLocalScope();
+            localScope.register(functionDetail);
+            localScope.addID(LLVMSymbol.MISCFUNCTION_ID);
+            this.addLocalScope(localScope);
         }
     }
 
@@ -487,7 +495,7 @@ public final class LLVMContext {
         }
 
         // free the space which might have been when putting pointer-type globals into native memory
-        for (LLVMPointer pointer : globalsReverseMap.keySet()) {
+        for (LLVMPointer pointer : symbolsReverseMap.keySet()) {
             if (LLVMManagedPointer.isInstance(pointer)) {
                 Object object = LLVMManagedPointer.cast(pointer).getObject();
                 if (object instanceof LLVMGlobalContainer) {
@@ -721,6 +729,10 @@ public final class LLVMContext {
         return globalScope;
     }
 
+    public void addLocalScope(LLVMLocalScope scope) {
+        localScopes.add(scope);
+    }
+
     public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {
         return symbolStorage[id];
     }
@@ -875,9 +887,24 @@ public final class LLVMContext {
         return sourceContext;
     }
 
+    /**
+     * Retrieve the global symbol associated with the pointer.
+     */
     @TruffleBoundary
     public LLVMGlobal findGlobal(LLVMPointer pointer) {
-        return globalsReverseMap.get(pointer);
+        List<LLVMSymbol> symbols = symbolsReverseMap.get(pointer);
+        if (symbols == null) {
+            return null;
+        }
+        return symbols.get(0).asGlobalVariable();
+    }
+
+    /**
+     * Retrieve the symbol associated with the pointer.
+     */
+    @TruffleBoundary
+    public List<LLVMSymbol> findSymbols(LLVMPointer pointer) {
+        return symbolsReverseMap.get(pointer);
     }
 
     @TruffleBoundary
@@ -896,9 +923,28 @@ public final class LLVMContext {
         }
     }
 
+    /**
+     * Register the list of symbols associated with the pointer.
+     */
     @TruffleBoundary
-    public void registerGlobalReverseMap(LLVMGlobal global, LLVMPointer target) {
-        globalsReverseMap.put(target, global);
+    public void registerSymbolReverseMap(List<LLVMSymbol> symbols, LLVMPointer pointer) {
+        symbolsReverseMap.put(pointer, symbols);
+    }
+
+    /**
+     * Register a symbol to list of symbols associated with the pointer.
+     */
+    @TruffleBoundary
+    public void registerSymbol(LLVMSymbol symbol, LLVMPointer pointer) {
+        symbolsReverseMap.get(pointer).add(symbol);
+    }
+
+    /**
+     * Remove an entry in the map, and return the list of symbols associated with the pointer.
+     */
+    @TruffleBoundary
+    public List<LLVMSymbol> removeSymbolReverseMap(LLVMPointer pointer) {
+        return symbolsReverseMap.remove(pointer);
     }
 
     public void setCleanupNecessary(boolean value) {

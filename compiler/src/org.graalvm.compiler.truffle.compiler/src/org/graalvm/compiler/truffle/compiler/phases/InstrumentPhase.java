@@ -86,10 +86,10 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
     }
 
     private static final String[] OMITTED_STACK_PATTERNS = new String[]{
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "callProxy"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "callRoot"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "callInlined"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "callDirect"),
+                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "executeRootNode"),
+                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "profiledPERoot"),
+                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "inlinedPERoot"),
+                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "callDirectOrInlined"),
                     asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode", "call"),
     };
     private final Instrumentation instrumentation;

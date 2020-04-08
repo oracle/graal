@@ -211,7 +211,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
         }
         // make sure the direct call target is compiled too not just inlined
         for (int i = 0; i < compilationThreshold; i++) {
-            toInterpreterOnString.callDirect(null, directArguments);
+            toInterpreterOnString.callDirectOrInlined(null, directArguments);
         }
         assertCompiled(directCall);
         assertNotDeoptimized(directCall);

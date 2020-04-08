@@ -483,6 +483,7 @@ CLSS public abstract interface !annotation org.graalvm.nativeimage.c.function.CL
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE, METHOD])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean requireStatic()
+meth public abstract !hasdefault java.lang.String[] dependsOn()
 meth public abstract java.lang.String value()
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.function.CMacroInfo

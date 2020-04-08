@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes;
 
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.nodeinfo.InputType.Extension;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.InputType.State;
@@ -113,12 +114,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public void replaceBci(int newBci) {
-        assert BytecodeFrame.isPlaceholderBci(bci) && !BytecodeFrame.isPlaceholderBci(newBci) : "can only replace placeholder with better bci";
-        bci = newBci;
-    }
-
-    @Override
     protected void afterClone(Node other) {
         updateInliningLogAfterClone(other);
     }
@@ -161,9 +156,11 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     @Override
     public boolean isAllowedUsageType(InputType type) {
         if (!super.isAllowedUsageType(type)) {
-            if (getStackKind() != JavaKind.Void) {
-                if (callTarget instanceof MethodCallTargetNode && ((MethodCallTargetNode) callTarget).targetMethod().getAnnotation(NodeIntrinsic.class) != null) {
-                    return true;
+            if (!IS_IN_NATIVE_IMAGE) {
+                if (getStackKind() != JavaKind.Void) {
+                    if (callTarget instanceof MethodCallTargetNode && ((MethodCallTargetNode) callTarget).targetMethod().getAnnotation(NodeIntrinsic.class) != null) {
+                        return true;
+                    }
                 }
             }
             return false;
@@ -209,6 +206,12 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     @Override
     public int bci() {
         return bci;
+    }
+
+    @Override
+    public void setBci(int newBci) {
+        assert BytecodeFrame.isPlaceholderBci(bci) && !BytecodeFrame.isPlaceholderBci(newBci) : "can only replace placeholder with better bci";
+        bci = newBci;
     }
 
     @Override

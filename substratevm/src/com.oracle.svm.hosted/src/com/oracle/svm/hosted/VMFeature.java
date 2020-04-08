@@ -79,7 +79,9 @@ public class VMFeature implements Feature {
         addCGlobalDataString("Target.Libraries", String.join("|", nativeLibraries.getLibraries()));
         addCGlobalDataString("Target.StaticLibraries", nativeLibraries.getStaticLibraries().stream()
                         .map(Path::getFileName).map(Path::toString).collect(Collectors.joining("|")));
-        addCGlobalDataString("Target.CCompiler", ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.toString());
+        if (ImageSingletons.contains(CCompilerInvoker.class)) {
+            addCGlobalDataString("Target.CCompiler", ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.toString());
+        }
 
         if (SubstrateOptions.DumpTargetInfo.getValue()) {
             System.out.println("# Static libraries:");

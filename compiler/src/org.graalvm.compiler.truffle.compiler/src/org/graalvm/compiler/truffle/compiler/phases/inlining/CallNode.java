@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 import org.graalvm.options.OptionValues;
@@ -90,11 +91,10 @@ public final class CallNode extends Node {
     /**
      * Returns a fully expanded and partially evaluated CallNode to be used as a root of a callTree.
      */
-    static CallNode makeRoot(OptionValues options, CallTree callTree, CompilableTruffleAST truffleAST, StructuredGraph ir) {
+    static CallNode makeRoot(CallTree callTree, PartialEvaluator.Request request) {
         Objects.requireNonNull(callTree);
-        Objects.requireNonNull(truffleAST);
-        Objects.requireNonNull(ir);
-        final CallNode root = new CallNode(options, null, truffleAST, ir, 1, 0);
+        Objects.requireNonNull(request);
+        final CallNode root = new CallNode(request.options, null, request.compilable, request.graph, 1, 0);
         callTree.add(root);
         root.data = callTree.getPolicy().newCallNodeData(root);
         assert root.state == State.Cutoff : "Cannot expand a non-cutoff node. State is " + root.state;
@@ -177,7 +177,7 @@ public final class CallNode extends Node {
 
     private void partiallyEvaluateRoot() {
         assert getParent() == null;
-        final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = getCallTree().getGraphManager().peRoot(options, truffleAST);
+        final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = getCallTree().getGraphManager().peRoot();
         state = State.Inlined;
         for (CallNode child : children) {
             final Invoke invoke = truffleCallNodeToInvoke.get(child.getTruffleCaller());
@@ -226,7 +226,7 @@ public final class CallNode extends Node {
     private GraphManager.Entry partiallyEvaluate() {
         assert state == State.Expanded;
         assert ir == null;
-        GraphManager.Entry entry = getCallTree().getGraphManager().get(options, truffleAST);
+        GraphManager.Entry entry = getCallTree().getGraphManager().get(truffleAST);
         ir = copyGraphAndUpdateInvokes(entry);
         return entry;
     }

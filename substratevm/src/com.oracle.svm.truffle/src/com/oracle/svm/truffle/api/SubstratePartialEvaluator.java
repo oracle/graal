@@ -36,16 +36,12 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleConstantFieldProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.options.OptionValues;
 
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 
@@ -60,13 +56,13 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     }
 
     @Override
-    protected PEGraphDecoder createGraphDecoder(OptionValues options, StructuredGraph graph, final HighTierContext tierContext, LoopExplosionPlugin loopExplosionPlugin,
+    protected PEGraphDecoder createGraphDecoder(Request request, LoopExplosionPlugin loopExplosionPlugin,
                     InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins, SourceLanguagePositionProvider sourceLanguagePositionProvider,
                     EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         TruffleConstantFieldProvider compilationLocalConstantProvider = new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess());
-        return new SubstratePEGraphDecoder(architecture, graph, providers.copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins, inlineInvokePlugins, parameterPlugin,
-                        nodePlugins, callInlinedMethod, callInlinedAgnosticMethod, sourceLanguagePositionProvider);
+        return new SubstratePEGraphDecoder(architecture, request.graph, providers.copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
+                        parameterPlugin, nodePlugins, callInlined, inlinedPERoot, sourceLanguagePositionProvider);
     }
 
     @Override
@@ -80,13 +76,10 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     }
 
     @Override
-    protected void doGraphPE(OptionValues options, CompilableTruffleAST callTarget, StructuredGraph graph, HighTierContext tierContext, TruffleInliningPlan inliningDecision,
-                    InlineInvokePlugin inlineInvokePlugin,
-                    EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
-        super.doGraphPE(options, callTarget, graph, tierContext, inliningDecision, inlineInvokePlugin, graphCache);
-
-        new DeadStoreRemovalPhase().apply(graph);
-        new TruffleBoundaryPhase().apply(graph);
+    public void doGraphPE(Request request, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
+        super.doGraphPE(request, inlineInvokePlugin, graphCache);
+        new DeadStoreRemovalPhase().apply(request.graph);
+        new TruffleBoundaryPhase().apply(request.graph);
     }
 
     @Override

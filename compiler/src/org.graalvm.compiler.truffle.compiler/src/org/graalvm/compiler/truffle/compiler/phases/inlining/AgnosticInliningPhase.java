@@ -34,11 +34,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.options.OptionValues;
 
 public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
 
@@ -55,15 +52,11 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
     }
 
     private final PartialEvaluator partialEvaluator;
-    private final TruffleMetaAccessProvider truffleMetaAccessProvider;
-    private final CompilableTruffleAST compilableTruffleAST;
-    private final OptionValues options;
+    private final PartialEvaluator.Request request;
 
-    public AgnosticInliningPhase(OptionValues options, PartialEvaluator partialEvaluator, TruffleMetaAccessProvider truffleMetaAccessProvider, CompilableTruffleAST compilableTruffleAST) {
-        this.options = options;
+    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, PartialEvaluator.Request request) {
         this.partialEvaluator = partialEvaluator;
-        this.truffleMetaAccessProvider = truffleMetaAccessProvider;
-        this.compilableTruffleAST = compilableTruffleAST;
+        this.request = request;
     }
 
     private static InliningPolicyProvider chosenProvider(List<? extends InliningPolicyProvider> providers, String name) {
@@ -76,21 +69,20 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
     }
 
     private InliningPolicyProvider getInliningPolicyProvider() {
-        final String policy = getPolyglotOptionValue(options, PolyglotCompilerOptions.InliningPolicy);
+        final String policy = getPolyglotOptionValue(request.options, PolyglotCompilerOptions.InliningPolicy);
         return policy.equals("") ? POLICY_PROVIDERS.get(0) : chosenProvider(POLICY_PROVIDERS, policy);
     }
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders coreProviders) {
-        if (!getPolyglotOptionValue(options, PolyglotCompilerOptions.Inlining)) {
-            return;
-        }
-        final InliningPolicy policy = getInliningPolicyProvider().get(options, coreProviders);
-        final CallTree tree = new CallTree(options, partialEvaluator, truffleMetaAccessProvider, compilableTruffleAST, graph, policy);
+        final InliningPolicy policy = getInliningPolicyProvider().get(request.options, coreProviders);
+        final CallTree tree = new CallTree(partialEvaluator, request, policy);
         tree.dumpBasic("Before Inline", "");
-        policy.run(tree);
-        tree.dumpBasic("After Inline", "");
+        if (getPolyglotOptionValue(request.options, PolyglotCompilerOptions.Inlining)) {
+            policy.run(tree);
+            tree.dumpBasic("After Inline", "");
+            tree.dequeueInlined();
+        }
         tree.trace();
-        tree.dequeueInlined();
     }
 }

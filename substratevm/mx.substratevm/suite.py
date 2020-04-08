@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.247.11",
+    "mxversion": "5.259.0",
     "name": "substratevm",
     "version" : "20.1.0",
     "release" : False,
@@ -220,22 +220,7 @@ suite = {
                 "src",
             ],
             "dependencies": [
-                "com.oracle.svm.core.graal",
-            ],
-            "checkstyle": "com.oracle.svm.core",
-            "javaCompliance": "8+",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "workingSets": "SVM",
-        },
-
-        "com.oracle.svm.core.graal": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
                 "com.oracle.svm.core",
-                "compiler:GRAAL",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
@@ -249,7 +234,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core.graal",
+                "com.oracle.svm.core",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
@@ -262,7 +247,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core.graal",
+                "com.oracle.svm.core",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
@@ -337,7 +322,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.objectfile",
-                "com.oracle.svm.core.graal",
+                "com.oracle.svm.core",
                 "com.oracle.graal.pointsto",
                 "mx:ASM_7.1",
             ],
@@ -619,7 +604,9 @@ suite = {
         "com.oracle.objectfile" : {
             "subDir": "src",
             "sourceDirs" : ["src"],
-            "dependencies" : [],
+            "dependencies" : [
+                "compiler:GRAAL"
+            ],
             "checkstyle" : "com.oracle.svm.hosted",
             "javaCompliance" : "8+",
             "annotationProcessors" : ["compiler:GRAAL_PROCESSOR"],
@@ -878,7 +865,6 @@ suite = {
             "subDir": "src",
             "dependencies": [
                 "com.oracle.svm.core",
-                "com.oracle.svm.core.graal",
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.genscavenge",
@@ -936,7 +922,9 @@ suite = {
             "dependencies": [
                 "com.oracle.objectfile"
             ],
-        },
+            "distDependencies": [
+                "compiler:GRAAL",
+            ],        },
 
         "GRAAL_HOTSPOT_LIBRARY": {
             "subDir": "src",

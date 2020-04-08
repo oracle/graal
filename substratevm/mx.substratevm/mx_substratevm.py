@@ -359,6 +359,7 @@ class Tags(set):
 
 GraalTags = Tags([
     'helloworld',
+    'helloworld_debug',
     'test',
     'maven',
     'js',
@@ -466,6 +467,19 @@ def svm_gate_body(args, tasks):
                 helloworld(['--output-path', svmbuild_dir()] + javac_command)
                 helloworld(['--output-path', svmbuild_dir(), '--shared'])  # Build and run helloworld as shared library
                 cinterfacetutorial([])
+                clinittest([])
+
+        with Task('image demos debuginfo', tasks, tags=[GraalTags.helloworld_debug]) as t:
+            if t:
+                if svm_java8():
+                    javac_image(['--output-path', svmbuild_dir(), '-H:GenerateDebugInfo=1'])
+                    javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir())), '-H:GenerateDebugInfo=1']
+                else:
+                    # Building javac image currently only supported for Java 8
+                    javac_command = ['-H:GenerateDebugInfo=1']
+                helloworld(['--output-path', svmbuild_dir()] + javac_command)
+                helloworld(['--output-path', svmbuild_dir(), '--shared', '-H:GenerateDebugInfo=1'])  # Build and run helloworld as shared library
+                cinterfacetutorial(['-H:GenerateDebugInfo=1'])
                 clinittest([])
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
@@ -1139,10 +1153,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 jar_distributions = [
     'substratevm:GRAAL_HOTSPOT_LIBRARY',
     'compiler:GRAAL_LIBGRAAL_JNI',
-    'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL']
-
-if mx_sdk_vm.base_jdk_version() == 8:
-    jar_distributions.append('compiler:GRAAL_MANAGEMENT_LIBGRAAL')
+    'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL',
+    'compiler:GRAAL_MANAGEMENT_LIBGRAAL']
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1434,6 +1446,7 @@ def maven_plugin_install(args):
             '--all-distribution-types',
             '--validate=full',
             '--all-suites',
+            '--skip=GRAALVM_*_JAVA*',  # do not deploy GraalVM distributions
         ]
         if parsed.licenses:
             deploy_args += ["--licenses", parsed.licenses]

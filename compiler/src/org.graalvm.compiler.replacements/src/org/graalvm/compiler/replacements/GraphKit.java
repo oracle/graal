@@ -374,9 +374,6 @@ public class GraphKit implements GraphBuilderTool {
             GraphBuilderPhase.Instance instance = createGraphBuilderInstance(providers, config, OptimisticOptimizations.NONE, initialReplacementContext);
             instance.apply(calleeGraph);
         }
-
-        // Remove all frame states from inlinee
-        calleeGraph.clearAllStateAfter();
         new DeadCodeEliminationPhase(Optionality.Required).apply(calleeGraph);
 
         InliningUtil.inline(invoke, calleeGraph, false, method, reason, phase);

@@ -107,6 +107,19 @@ final class PolyglotProxy implements TruffleObject {
         this.proxy = proxy;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof PolyglotProxy)) {
+            return false;
+        }
+        return proxy == ((PolyglotProxy) obj).proxy;
+    }
+
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(proxy);
+    }
+
     @ExportMessage
     boolean isInstantiable() {
         return proxy instanceof ProxyInstantiable;
@@ -414,7 +427,7 @@ final class PolyglotProxy implements TruffleObject {
 
     @TruffleBoundary
     RuntimeException illegalProxy(String message, Object... parameters) {
-        throw PolyglotImpl.wrapHostException(languageContext, new IllegalStateException(
+        throw PolyglotImpl.hostToGuestException(languageContext, new IllegalStateException(
                         String.format(message, parameters)));
     }
 
@@ -794,7 +807,7 @@ final class PolyglotProxy implements TruffleObject {
         try {
             return this.proxy.toString();
         } catch (Throwable t) {
-            throw PolyglotImpl.wrapHostException(languageContext, t);
+            throw PolyglotImpl.hostToGuestException(languageContext, t);
         }
     }
 

@@ -66,6 +66,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -431,7 +432,7 @@ abstract class ToHostNode extends Node {
             }
         } else if (targetType.isArray()) {
             if (interop.hasArrayElements(value)) {
-                obj = truffleObjectToArray(value, targetType, genericType, languageContext);
+                obj = truffleObjectToArray(interop, value, targetType, genericType, languageContext);
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
             }
@@ -551,7 +552,7 @@ abstract class ToHostNode extends Node {
         } catch (ThreadDeath e) {
             throw e;
         } catch (Throwable e) {
-            return PolyglotImpl.wrapGuestException(languageContext, e);
+            return PolyglotImpl.guestToHostException(languageContext, e);
         }
     }
 
@@ -580,9 +581,9 @@ abstract class ToHostNode extends Node {
     }
 
     @TruffleBoundary
-    private static ClassCastException newInvalidKeyTypeException(Type targetType) {
+    private static RuntimeException newInvalidKeyTypeException(Type targetType) {
         String message = "Unsupported Map key type: " + targetType;
-        return new PolyglotClassCastException(message);
+        return PolyglotEngineException.classCast(message);
     }
 
     private static TypeAndClass<?> getGenericParameterType(Type genericType, int index) {
@@ -613,12 +614,31 @@ abstract class ToHostNode extends Node {
         return genericComponentType;
     }
 
-    private static Object truffleObjectToArray(Object foreignObject, Class<?> arrayType, Type genericArrayType, PolyglotLanguageContext languageContext) {
+    private static Object truffleObjectToArray(InteropLibrary interop, Object receiver, Class<?> arrayType, Type genericArrayType, PolyglotLanguageContext languageContext) {
         Class<?> componentType = arrayType.getComponentType();
-        List<?> list = PolyglotList.create(languageContext, foreignObject, false, componentType, getGenericArrayComponentType(genericArrayType));
-        Object array = Array.newInstance(componentType, list.size());
-        for (int i = 0; i < list.size(); i++) {
-            Array.set(array, i, list.get(i));
+        long size;
+        try {
+            size = interop.getArraySize(receiver);
+        } catch (UnsupportedMessageException e1) {
+            assert false : "unexpected language behavior";
+            size = 0;
+        }
+        size = Math.min(size, Integer.MAX_VALUE);
+        Object array = Array.newInstance(componentType, (int) size);
+        Type genericComponentType = getGenericArrayComponentType(genericArrayType);
+        for (int i = 0; i < size; i++) {
+            Object guestValue;
+            try {
+                guestValue = interop.readArrayElement(receiver, i);
+            } catch (InvalidArrayIndexException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw HostInteropErrors.invalidArrayIndex(languageContext, receiver, componentType, i);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw HostInteropErrors.arrayReadUnsupported(languageContext, receiver, componentType);
+            }
+            Object hostValue = ToHostNodeGen.getUncached().execute(guestValue, componentType, genericComponentType, languageContext, true);
+            Array.set(array, i, hostValue);
         }
         return array;
     }

@@ -80,6 +80,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
         this.arrayLength = arrayLength;
         this.fromIndex = fromIndex;
         this.searchValues = new NodeInputList<>(this, searchValues);
+
     }
 
     public boolean isFindTwoConsecutive() {
