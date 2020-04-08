@@ -308,7 +308,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callIndirect(Node location, Object... args) {
         try {
-            profileIndirectCall();
+            stopProfilingArguments();
             return doInvoke(args);
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
@@ -336,7 +336,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                      */
                     result = callBoundary(InlineDecision.inject(args, isInlined));
                 } else {
-                    profileDirectCall(args);
+                    profileArguments(args);
                     result = doInvoke(args);
                     if (CompilerDirectives.inCompiledCode()) {
                         result = injectReturnValueProfile(result);
@@ -429,7 +429,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             firstTierCall();
         }
         if (CompilerDirectives.inCompiledCode()) {
-            args = injectArgumentProfile(originalArguments);
+            args = injectArgumentsProfile(originalArguments);
         }
         Object result = executeRootNode(createFrame(getRootNode().getFrameDescriptor(), args));
         profileReturnValue(result);
@@ -909,7 +909,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // endregion
 
     // This should be private but can't be. GR-19397
-    public final void profileIndirectCall() {
+    public final void stopProfilingArguments() {
         Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
         if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
             // Argument profiling is not possible for targets of indirect calls.
@@ -921,7 +921,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     // This should be private but can't be. GR-19397
     @ExplodeLoop
-    public final void profileDirectCall(Object[] args) {
+    public final void profileArguments(Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
         if (typesAssumption == null) {
             if (CompilerDirectives.inInterpreter()) {
@@ -973,7 +973,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // This should be private but can't be. GR-19397
-    public final Object[] injectArgumentProfile(Object[] originalArguments) {
+    public final Object[] injectArgumentsProfile(Object[] originalArguments) {
         Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
         Object[] args = originalArguments;
         if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
