@@ -272,7 +272,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
 
             @Override
             public boolean hasTag(Class<? extends Tag> tag) {
-                return true;
+                return StandardTags.RootTag.class == tag;
             }
 
             @SuppressWarnings("unused")
