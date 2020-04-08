@@ -17,10 +17,10 @@ provided by the `jaeger-client` module in your instrument `agent.js` via the `tr
 (once it becomes available - discussed later in this document):
 
 ```js
-let initializeAgent = function(tracer) {
+let initialize = function(tracer) {
     var counter = 0;
 
-    agent.on('enter', function(ctx, frame) {
+    insight.on('enter', function(ctx, frame) {
         const args = frame.args;
         if ('request' !== frame.type || args.length !== 2 || typeof args[0] !== 'object' || typeof args[1] !== 'object') {
             return;
@@ -40,7 +40,7 @@ let initializeAgent = function(tracer) {
         sourceFilter: src => src.name === 'events.js'
     });
 
-    agent.on('return', function(ctx, frame) {
+    insight.on('return', function(ctx, frame) {
         var res = frame['this'];
         if (res.span) {
             res.span.finish();
@@ -77,7 +77,7 @@ the instrument when the `jaeger` object is provided to it:
 
 ```js
 let initializeJaeger = function (ctx, frame) {
-    agent.off('enter', initializeJaeger);
+    insight.off('enter', initializeJaeger);
 
     let jaeger = frame.jaeger;
 
@@ -113,10 +113,10 @@ let initializeJaeger = function (ctx, frame) {
     };
 
     var tracer = initTracer(config, options);
-    initializeAgent(tracer);
+    initialize(tracer);
 };
 
-agent.on('return', initializeJaeger, {
+insight.on('return', initializeJaeger, {
   roots: true,
   rootNameFilter: name => name === 'jaegerAvailable'
 });

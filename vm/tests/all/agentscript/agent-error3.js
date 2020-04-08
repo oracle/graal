@@ -1,4 +1,4 @@
-agent.on('enterOrLeave', function() {
+insight.on('enterOrLeave', function() {
 }, {
     roots: true
 });

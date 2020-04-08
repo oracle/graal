@@ -16,12 +16,12 @@ for more details:
 
 ```java
 final Engine engine = context.getEngine();
-Instrument instrument = engine.getInstruments().get("agentscript");
+Instrument instrument = engine.getInstruments().get("insight");
 Function<Source, AutoCloseable> access = instrument.lookup(Function.class);
 AutoCloseable handle = access.apply(agentSrc);
 ```
 
-Obtain `Engine` for your `Context` and ask for `agentscript` instrument. Then create
+Obtain `Engine` for your `Context` and ask for `insight` instrument. Then create
 `Source` with your [Insight](Insight-Manual.md) script and apply it while obtaining
 its *instrumentation handle*. Use `handle.close()` to disable all the script's
 instrumentations when when no longer needed.
@@ -45,7 +45,7 @@ line option `--insight` and don't benefit from the dynamic nature of
 *admin server*. Define `adminserver.js`:
 
 ```js
-function initializeAgent(agent, require) {
+function initialize(insight, require) {
     const http = require("http");
     const srv = http.createServer((req, res) => {
         let method = req.method;
@@ -55,9 +55,9 @@ function initializeAgent(agent, require) {
                 data += chunk.toString();
             });
             req.on('end', () => {
-                const fn = new Function('agent', data);
+                const fn = new Function('insight', data);
                 try {
-                    fn(agent);
+                    fn(insight);
                     res.write('GraalVM Insight hook activated\n');
                 } finally {
                     res.end();
@@ -71,12 +71,12 @@ function initializeAgent(agent, require) {
 
 let waitForRequire = function (event) {
   if (typeof process === 'object' && process.mainModule && process.mainModule.require) {
-    agent.off('source', waitForRequire);
-    initializeAgent(agent, process.mainModule.require.bind(process.mainModule));
+    insight.off('source', waitForRequire);
+    initialize(insight, process.mainModule.require.bind(process.mainModule));
   }
 };
 
-agent.on('source', waitForRequire, { roots: true });
+insight.on('source', waitForRequire, { roots: true });
 ```
 
 which opens an HTTP server at port `9999` and listens for incoming scripts to
@@ -92,7 +92,7 @@ For example following script is going to observe who calls `process.exit`:
 
 ```bash
 $ curl --data \
-  'agent.on("enter", (ctx, frame) => { console.log(new Error("call to exit").stack); }, \
+  'insight.on("enter", (ctx, frame) => { console.log(new Error("call to exit").stack); }, \
   { roots: true, rootNameFilter: n => n === "exit" });' \
   -X POST http://localhost:9999/
 ```

@@ -32,15 +32,15 @@ good you are?
 .*at <js> areYouBad.log.js:26:.*
 .*at <js> :program.<eval_script>:1:0-10.
 >[1] js --jvm --experimental-options --insight=agent-error2.js log.js
-agentscript: Unknown attribute misnamedAttribute
+insight: Unknown attribute misnamedAttribute
 >[1] js --jvm --experimental-options --insight=agent-error3.js log.js
-agentscript: Unknown event type 'enterOrLeave'.*
+insight: Unknown event type 'enterOrLeave'.*
 >[7] js --jvm --experimental-options --insight=agent-error.js log.js
-Error while initializing {id: "agentscript", version: "0.4"}
+Error while initializing {id: "insight", version: "0.5"}
 .*at <js> :anonymous.*agent-error.js.*
 .*at <js> .*Unknown.*
 >[7] js --experimental-options --insight=agent-error.js log.js
-Error while initializing {id: "agentscript", version: "0.4"}
+Error while initializing {id: "insight", version: "0.5"}
 .*at <js> :anonymous.*agent-error.js.*
 .*at <js> .*Unknown.*
 >[7] js --jvm --experimental-options --insight=agent-error4.js -f log.js

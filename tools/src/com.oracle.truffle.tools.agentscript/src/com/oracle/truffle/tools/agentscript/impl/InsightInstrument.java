@@ -89,7 +89,7 @@ public class InsightInstrument extends TruffleInstrument {
                 try {
                     TruffleFile file = env.getTruffleFile(path);
                     if (file == null || !file.exists()) {
-                        throw AgentException.notFound(file);
+                        throw InsightException.notFound(file);
                     }
                     String mimeType = file.getMimeType();
                     String lang = null;
@@ -100,11 +100,11 @@ public class InsightInstrument extends TruffleInstrument {
                         }
                     }
                     if (lang == null) {
-                        throw AgentException.notRecognized(file);
+                        throw InsightException.notRecognized(file);
                     }
                     return Source.newBuilder(lang, file).uri(file.toUri()).name(file.getName()).build();
                 } catch (IOException ex) {
-                    throw AgentException.raise(ex);
+                    throw InsightException.raise(ex);
                 }
             });
         }
@@ -117,13 +117,16 @@ public class InsightInstrument extends TruffleInstrument {
     final AutoCloseable registerAgentScript(final Supplier<Source> src) {
         final Instrumenter instrumenter = env.getInstrumenter();
         class InitializeAgent implements ContextsListener, AutoCloseable {
+            private AgentObject insight;
             private AgentObject agent;
             private EventBinding<?> agentBinding;
 
             @CompilerDirectives.TruffleBoundary
             synchronized boolean initializeAgentObject() {
                 if (agent == null) {
-                    agent = new AgentObject(env, ignoreSources);
+                    AgentObject.Data sharedData = new AgentObject.Data();
+                    insight = new AgentObject(null, env, ignoreSources, sharedData);
+                    agent = new AgentObject("Warning: 'agent' is deprecated. Use 'insight'.\n", env, ignoreSources, sharedData);
                     return true;
                 }
                 return false;
@@ -136,11 +139,11 @@ public class InsightInstrument extends TruffleInstrument {
                     ignoreSources.ignoreSource(script);
                     CallTarget target;
                     try {
-                        target = env.parse(script, "agent");
+                        target = env.parse(script, "insight", "agent");
                     } catch (IOException ex) {
-                        throw AgentException.raise(ex);
+                        throw InsightException.raise(ex);
                     }
-                    target.call(agent);
+                    target.call(insight, agent);
                 }
             }
 

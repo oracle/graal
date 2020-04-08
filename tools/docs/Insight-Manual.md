@@ -18,7 +18,7 @@ of the execution. Let's get started with an obligatory Hello World example.
 Create a simple `source-tracing.js` script with following content:
 
 ```js
-agent.on('source', function(ev) {
+insight.on('source', function(ev) {
     print(`Loading ${ev.characters.length} characters from ${ev.name}`);
 });
 ```
@@ -39,8 +39,8 @@ Loading 29 characters from [eval]
 The result: 42
 ```
 
-What has just happened? The *T-Tracing* `source-tracing.js` script has used
-the provided `agent` object to attach a *source* listener to the runtime.
+What has just happened? GraalVM Insight `source-tracing.js` script has used
+the provided `insight` object to attach a *source* listener to the runtime.
 As such, whenever the *node.js* framework loaded a script,
 the listener got notified of it and could take an action - in this case
 printing the length and name of processed script.
@@ -70,7 +70,7 @@ function dumpHistogram() {
     print("===================");
 }
 
-agent.on('enter', function(ev) {
+insight.on('enter', function(ev) {
     var cnt = map.get(ev.name);
     if (cnt) {
         cnt = cnt + 1;
@@ -82,13 +82,13 @@ agent.on('enter', function(ev) {
     roots: true
 });
 
-agent.on('close', dumpHistogram);
+insight.on('close', dumpHistogram);
 ```
 
 The `map` is a global variable visible for the whole **Insight** script that 
-allows the code to share data between the `agent.on('enter')` function and the `dumpHistogram`
+allows the code to share data between the `insight.on('enter')` function and the `dumpHistogram`
 function. The latter is executed when the `node` process execution is over (registered via
-`agent.on('close', dumpHistogram)`. Invoke as:
+`insight.on('close', dumpHistogram)`. Invoke as:
 
 ```bash
 $ graalvm/bin/node --experimental-options --js.print --insight=function-histogram-tracing.js -e "print('The result: ' + 6 * 7)"
@@ -128,7 +128,7 @@ GraalVM. Let's define `function-tracing.js` script as:
 var count = 0;
 var next = 8;
 
-agent.on('enter', function(ev) {
+insight.on('enter', function(ev) {
     if (count++ % next === 0) {
         print(`Just called ${ev.name} as ${count} function invocation`);
         next *= 2;
@@ -169,7 +169,7 @@ in a program written in the Ruby language.
 Here is an example - create `source-trace.js` file:
 
 ```js
-agent.on('source', function(ev) {
+insight.on('source', function(ev) {
    if (ev.uri.indexOf('gems') === -1) {
      let n = ev.uri.substring(ev.uri.lastIndexOf('/') + 1);
      print('JavaScript instrument observed load of ' + n);
@@ -212,13 +212,13 @@ function dumpCount() {
     print(`${count} functions have been executed`);
 }
 
-agent.on('enter', function(ev) {
+insight.on('enter', function(ev) {
     count++;
 }, {
     roots: true
 });
 
-agent.on('close', dumpCount);
+insight.on('close', dumpCount);
 ```
 
 Let's use the script on fifty iterations of [sieve.js](../../vm/benchmarks/agentscript/sieve.js)
@@ -260,7 +260,7 @@ Ruby and create `source-tracing.rb` (make sure GraalVM Ruby is installed via
 ```ruby
 puts "Ruby: Initializing GraalVM Insight script"
 
-agent.on('source', ->(ev) {
+insight.on('source', ->(ev) {
     name = ev[:name]
     puts "Ruby: observed loading of #{name}" 
 })
@@ -300,7 +300,7 @@ aspect based programing to our friendly statistical community. Just create
 ```R
 cat("R: Initializing GraalVM Insight script\n")
 
-agent@on('source', function(env) {
+insight@on('source', function(env) {
     cat("R: observed loading of ", env$name, "\n")
 })
 
@@ -329,7 +329,7 @@ arguments during execution. One can for example write instrument that shows
 value of argument `n` in a function `fib`:
 
 ```js
-agent.on('enter', function(ctx, frame) {
+insight.on('enter', function(ctx, frame) {
    print('fib for ' + frame.n);
 }, {
    roots: true,
@@ -373,11 +373,11 @@ programming!
 The **Insight** functionality is offered as a technology preview and 
 requires one to use `--experimental-options` to enable the `--insight`
 instrument. Never the less, the compatibility of the **Insight** API 
-exposed via the `agent` object
+exposed via the `insight` object
 is treated seriously.
 
 The [documentation](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html)
-of the `agent` object properties and functions is available as part of its
+of the `insight` object properties and functions is available as part of its
 [javadoc](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html#VERSION).
 
 Future versions will add new features, but whatever has
@@ -385,7 +385,7 @@ once been exposed, remains functional. If your script depends on some fancy new
 feature, it may check version of the exposed API:
 
 ```js
-print(`Agent version is ${agent.version}`);
+print(`GraalVM Insight version is ${insight.version}`);
 ```
 
 and act accordingly to the obtained version. New elements in the
@@ -401,27 +401,27 @@ plain simple **Insight** scripts - one wants to use full power of `node`
 ecosystem including its modules. Here is a sample `agent-require.js` script that does it:
 
 ```js
-let initializeAgent = function (require) {
+let initialize = function (require) {
     let http = require("http");
     print(`${typeof http.createServer} http.createServer is available to the agent`);
 }
 
 let waitForRequire = function (event) {
   if (typeof process === 'object' && process.mainModule && process.mainModule.require) {
-    agent.off('source', waitForRequire);
-    initializeAgent(process.mainModule.require.bind(process.mainModule));
+    insight.off('source', waitForRequire);
+    initialize(process.mainModule.require.bind(process.mainModule));
   }
 };
 
-agent.on('source', waitForRequire, { roots: true });
+insight.on('source', waitForRequire, { roots: true });
 ```
 
-The script solves an important problem: **Insight** agents are
+The script solves an important problem: **Insight** scripts are
 initialized as soon as possible and at that moment the `require` function isn't
-yet ready. As such the agent first attaches a listener on loaded scripts and when 
+yet ready. As such the script first attaches a listener on loaded scripts and when 
 the main user script is being loaded, it obtains its `process.mainModule.require` 
-function. Then it removes the probes using `agent.off` and invokes the actual 
-`initializeAgent` function to perform the real initialization while having 
+function. Then it removes the probes using `insight.off` and invokes the actual 
+`initialize` function to perform the real initialization while having 
 access to all the node modules. The script can be used as
 
 ```js
@@ -452,7 +452,7 @@ You can register an instrument `term.js` and terminate the execution in the midd
 of the `seq.js` program execution based on observing the logged message:
 
 ```js
-agent.on('enter', (ev, frame) => { 
+insight.on('enter', (ev, frame) => { 
     if (frame.msg === 'are') {
         throw 'great you are!';
     }
@@ -515,7 +515,7 @@ Anyway let's focus on breaking the endless loop. You can do it with a JavaScript
 ```js
 var counter = 0;
 
-agent.on('enter', function(ctx, frame) {
+insight.on('enter', function(ctx, frame) {
     if (++counter === 1000) {
         throw `GraalVM Insight: ${ctx.name} method called ${counter} times. enough!`;
     }
@@ -578,7 +578,7 @@ number slot - e.g. the call to `new Filter` constructor:
 var sum = 0;
 var max = 0;
 
-agent.on('enter', (ctx, frame) => {
+insight.on('enter', (ctx, frame) => {
     sum += frame.number;
     if (frame.number > max) {
         max = frame.number;
@@ -588,7 +588,7 @@ agent.on('enter', (ctx, frame) => {
   rootNameFilter: (name) => name === 'Filter'
 });
 
-agent.on('return', (ctx, frame) => {
+insight.on('return', (ctx, frame) => {
     log(`Hundred thousand prime numbers from 2 to ${max} has sum ${sum}`);
     sum = 0;
     max = 0;
@@ -614,7 +614,7 @@ for the slowdown is the ability of GraalVM to inline the Insight frame access
 to the local variable `frame.number`. Let's demonstrate it. Right now there are three
 accesses - let's replace them with a single one:
 ```js
-agent.on('enter', (ctx, frame) => {
+insight.on('enter', (ctx, frame) => {
     let n = frame.number;
     sum += n;
     if (n > max) {

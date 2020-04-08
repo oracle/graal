@@ -2,7 +2,7 @@
 
 var counter = 0;
 
-agent.on('enter', function(ctx, frame) {
+insight.on('enter', function(ctx, frame) {
     if (++counter === 1000) {
         throw `GraalVM Insight: ${ctx.name} method called ${counter} times. enough!`;
     }

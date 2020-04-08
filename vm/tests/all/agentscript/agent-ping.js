@@ -8,7 +8,7 @@ setTimeout(ping, 5000);
 
 // define GraalVM Insight script via curl anytime later:
 function connect() {
-    const script = 'agent.on("enter", (ctx, frame) => {' +
+    const script = 'insight.on("enter", (ctx, frame) => {' +
             '  console.log("observing ping at " + frame.counter);' +
             '  if (frame.counter >= 5) process.exit(5);' +
             '}';

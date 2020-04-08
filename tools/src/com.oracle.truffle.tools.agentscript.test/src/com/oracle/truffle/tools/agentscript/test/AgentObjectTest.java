@@ -79,13 +79,13 @@ public class AgentObjectTest {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
             assertNotNull("agent created", agent);
-            assertNotNull("we have agent's truffle object", AgentObjectFactory.agentObject);
+            assertNotNull("we have agent's truffle object", AgentObjectFactory.insightObject);
 
             InteropLibrary iop = InteropLibrary.getFactory().getUncached();
 
-            assertTrue("Yes, it has members", iop.hasMembers(AgentObjectFactory.agentObject));
+            assertTrue("Yes, it has members", iop.hasMembers(AgentObjectFactory.insightObject));
 
-            Object members = iop.getMembers(AgentObjectFactory.agentObject);
+            Object members = iop.getMembers(AgentObjectFactory.insightObject);
             long membersCount = iop.getArraySize(members);
             assertEquals(2, membersCount);
 
@@ -106,7 +106,7 @@ public class AgentObjectTest {
             agentAPI.on("enterOrLeave", listener);
             fail("Should have failed with PolyglotException");
         } catch (PolyglotException t) {
-            assertTrue(t.getMessage(), t.getMessage().startsWith("agentscript: Unknown event type"));
+            assertTrue(t.getMessage(), t.getMessage().startsWith("insight: Unknown event type"));
         }
     }
 
