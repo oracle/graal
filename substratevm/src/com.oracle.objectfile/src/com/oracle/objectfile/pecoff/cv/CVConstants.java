@@ -72,7 +72,7 @@ public abstract class CVConstants {
 
     static final boolean skipGraalInternals = false;         /* if true, don't emit debug code for Graal classes */
     static final boolean skipJDKInternals = false;           /* (unimplemented) if true, don't emit debug code for JDK classes */
-    static final boolean skipGraalIntrinsics = true;         /* Graal inlined code treated as generated code */
+    static final boolean skipGraalIntrinsics = false;         /* Graal inlined code treated as generated code */
     static final boolean mergeAdjacentLineRecords = true;    /* if a line record is the same line in the same file as the previous record, merge them */
     static final boolean emitUnadornedMain = true;           /* if true, first main() does not have args in the debug name */
     static final String replaceMainFunctionName = null;      /* first main() becomes this name (with no class name or arg list at all) (set null to disable) */
