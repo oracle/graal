@@ -47,6 +47,7 @@ public interface AgentScript {
      * @deprecated See {@link Insight} for usage details.
      */
     @Deprecated
+    @SuppressWarnings("unused")
     default void registerAgentScript(Source file) {
         throw new UnsupportedOperationException();
     }

@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.agentscript.test;
 // @formatter:off
 import java.util.Map;
 import java.util.function.Predicate;
+import org.graalvm.tools.insight.Insight;
 
 
 // BEGIN: InsightAPI

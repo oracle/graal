@@ -24,6 +24,9 @@
  */
 package org.graalvm.tools.insight;
 
+import java.util.function.Function;
+import org.graalvm.polyglot.Engine;
+
 /**
  * Programatic access to the Insight instrument. Obtain an instrument instance via its {@link #ID}:
  * <p>
@@ -37,7 +40,7 @@ package org.graalvm.tools.insight;
  * 
  * @since 20.1
  */
-public class Insight {
+public final class Insight {
     private Insight() {
     }
 
