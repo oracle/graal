@@ -52,6 +52,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLServerSocketFactory;
 
+import com.oracle.truffle.tools.chromeinspector.instrument.Token;
 import org.nanohttpd.protocols.http.ClientHandler;
 import org.nanohttpd.protocols.http.IHTTPSession;
 import org.nanohttpd.protocols.http.NanoHTTPD;
@@ -74,34 +75,41 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.instrument.KeyStoreOptions;
 import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection;
+import sun.net.util.IPAddressUtil;
 
 /**
  * Server of the
  * <a href="https://chromium.googlesource.com/v8/v8/+/master/src/inspector/js_protocol.json">Chrome
  * inspector protocol</a>.
  */
-public final class WebSocketServer extends NanoWSD implements InspectorWSConnection {
+public final class InspectorServer extends NanoWSD implements InspectorWSConnection {
 
-    private static final Map<InetSocketAddress, WebSocketServer> SERVERS = new HashMap<>();
+    private static final Map<InetSocketAddress, InspectorServer> SERVERS = new HashMap<>();
 
     private final int port;
-    private final Map<String, ServerPathSession> sessions = new ConcurrentHashMap<>();
+    private final Map<Token, ServerPathSession> sessions = new ConcurrentHashMap<>();
 
-    private WebSocketServer(InetSocketAddress isa) {
+    private InspectorServer(InetSocketAddress isa) {
         super(isa.getHostName(), isa.getPort());
         this.port = isa.getPort();
+        // Note that the DNS rebind attack protection does not apply to WebSockets, because they are
+        // handled with a higher-priority HTTP interceptor. We probably could add the protection in
+        // openWebSocket method, but it is not needed, because WebSockets are already protected by
+        // secret URLs. Also, protecting WebSockets from DNS rebind attacks is not much useful,
+        // since they are not protected by same-origin policy.
+        addHTTPInterceptor(new DNSRebindProtectionHandler());
         addHTTPInterceptor(new JSONHandler());
     }
 
-    public static WebSocketServer get(InetSocketAddress isa, String path, InspectorExecutionContext context, boolean debugBrk,
+    public static InspectorServer get(InetSocketAddress isa, Token token, String pathContainingToken, InspectorExecutionContext context, boolean debugBrk,
                     boolean secure, KeyStoreOptions keyStoreOptions, ConnectionWatcher connectionWatcher,
                     InspectServerSession initialSession) throws IOException {
-        WebSocketServer wss;
+        InspectorServer wss;
         boolean startServer = false;
         synchronized (SERVERS) {
             wss = SERVERS.get(isa);
             if (wss == null) {
-                wss = new WebSocketServer(isa);
+                wss = new InspectorServer(isa);
                 context.logMessage("", "New WebSocketServer at " + isa);
                 if (secure) {
                     if (TruffleOptions.AOT) {
@@ -113,11 +121,11 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
                 startServer = true;
                 SERVERS.put(isa, wss);
             }
-            if (wss.sessions.containsKey(path)) {
+            if (wss.sessions.containsKey(token)) {
                 // We have a session with this path already
                 throw new IOException("Inspector session with the same path exists already on " + isa.getHostString() + ":" + isa.getPort());
             }
-            wss.sessions.put(path, new ServerPathSession(context, initialSession, debugBrk, connectionWatcher));
+            wss.sessions.put(token, new ServerPathSession(context, initialSession, debugBrk, connectionWatcher, pathContainingToken));
         }
         if (startServer) {
             wss.start(Integer.MAX_VALUE);
@@ -154,6 +162,69 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
         }
     }
 
+    /**
+     * DNS rebind attack uses victim's web browser as a proxy in order to access servers in local
+     * network or even on localhost. The web browser works with a DNS name the attacker can control
+     * (say evil.example.com), which suddenly starts being resolved to a local IP (even to
+     * 127.0.0.1). This technique allows the attacker to partially circumvent the same-origin
+     * policy. That is, the attacker will be able to connect to the server, but the browser will
+     * consider it as evil.example.com. As a result, the browser sends the attacker's domain name
+     * (e.g., evil.example.com) in the Host header. Also, the attacker does not get access to
+     * cookies or other locally-stored data for the website, as the browser considers it as a
+     * different domain.
+     *
+     * So, the attacker circumvents just the network restriction, and even this is limited: The
+     * protocol has to be based on HTTP (or HTTPS with likely invalid certificate) and the Host
+     * header will point to an attacker-controlled domain. Note that browsers prevent webpages to
+     * override values of this header: https://fetch.spec.whatwg.org/#forbidden-header-name
+     *
+     * In order to prevent the attack, we check the Host header:
+     * <ul>
+     * <li>If there is a valid IP address (IPv4 or IPv6), it can't be a DNS rebind attack, as no DNS
+     * name was used.</li>
+     * <li>If there is a whitelisted domain name (one that attacker can't control), it is OK. We
+     * assume that the attacker can control DNS records for everything but localhost. This matches
+     * both standard practice and RFC 6761.</li>
+     * <li>For everything else (including missing host header), we deny the request.</li>
+     * </ul>
+     */
+    private class DNSRebindProtectionHandler implements IHandler<IHTTPSession, Response> {
+
+        @Override
+        public Response handle(IHTTPSession ihttpSession) {
+            return handleDnsRebind(ihttpSession);
+        }
+
+    }
+
+    private static Response handleDnsRebind(IHTTPSession ihttpSession) {
+        if (!isHostOk(ihttpSession.getHeaders().get("host"))) {
+            return Response.newFixedLengthResponse(
+                            Status.BAD_REQUEST,
+                            "text/plain; charset=UTF-8",
+                            "Bad host. Please use IP address. This request cannot be served because it looks like DNS rebind attack.");
+        } else {
+            return null;
+        }
+    }
+
+    private static boolean isHostOk(String host) {
+        if (host == null) {
+            return false;
+        } else {
+            final String bareHost = host.replaceFirst(":([0-9]+)$", "");
+            return (bareHost.equals("localhost") || isValidIp(bareHost));
+        }
+    }
+
+    private static boolean isValidIp(String host) {
+        return IPAddressUtil.isIPv4LiteralAddress(host) || isValidIpv6(host);
+    }
+
+    private static boolean isValidIpv6(String host) {
+        return host.startsWith("[") && host.endsWith("]") && IPAddressUtil.isIPv6LiteralAddress(host.substring(1, host.length() - 1));
+    }
+
     private class JSONHandler implements IHandler<IHTTPSession, Response> {
 
         @Override
@@ -169,7 +240,8 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
                 }
                 if ("/json".equals(uri)) {
                     JSONArray json = new JSONArray();
-                    for (String path : sessions.keySet()) {
+                    for (ServerPathSession serverPathSession : sessions.values()) {
+                        final String path = serverPathSession.pathContainingToken;
                         JSONObject info = new JSONObject();
                         info.put("description", "GraalVM");
                         info.put("faviconUrl", "https://assets-cdn.github.com/images/icons/emoji/unicode/1f680.png");
@@ -199,9 +271,10 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
 
     @Override
     protected WebSocket openWebSocket(IHTTPSession handshake) {
-        String descriptor = handshake.getUri();
+        final String uri = handshake.getUri();
+        final Token token = Token.createHashedTokenFromString(uri);
         ServerPathSession session;
-        session = sessions.get(descriptor);
+        session = sessions.get(token);
         if (session != null) {
             InspectServerSession iss = session.getServerSession();
             if (iss == null) {
@@ -211,7 +284,7 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
             }
             InspectWebSocket iws = new InspectWebSocket(handshake, iss, session.getConnectionWatcher());
             session.activeWS = iws;
-            iss.context.logMessage("CLIENT ws connection opened, descriptor = ", descriptor);
+            iss.context.logMessage("CLIENT ws connection opened, token = ", token);
             return iws;
         } else {
             return new ClosedWebSocket(handshake);
@@ -280,8 +353,8 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
      * path already, this is called after the {@link ConnectionWatcher#waitForClose()} is done.
      */
     @Override
-    public void close(String wspath) throws IOException {
-        ServerPathSession sps = sessions.remove(wspath);
+    public void close(Token token) throws IOException {
+        ServerPathSession sps = sessions.remove(token);
         if (sps != null) {
             InspectWebSocket iws = sps.activeWS;
             if (iws != null) {
@@ -294,8 +367,8 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
     }
 
     @Override
-    public void consoleAPICall(String wsspath, String type, Object text) {
-        ServerPathSession sps = sessions.get(wsspath);
+    public void consoleAPICall(Token token, String type, Object text) {
+        ServerPathSession sps = sessions.get(token);
         if (sps != null) {
             InspectWebSocket iws = sps.activeWS;
             if (iws != null) {
@@ -308,7 +381,7 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
     public void stop() {
         super.stop();
         synchronized (SERVERS) {
-            Iterator<Map.Entry<InetSocketAddress, WebSocketServer>> entries = SERVERS.entrySet().iterator();
+            Iterator<Map.Entry<InetSocketAddress, InspectorServer>> entries = SERVERS.entrySet().iterator();
             while (entries.hasNext()) {
                 if (entries.next().getValue() == this) {
                     entries.remove();
@@ -324,13 +397,15 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
         private final AtomicReference<InspectServerSession> serverSession;
         private final AtomicBoolean debugBrk;
         private final ConnectionWatcher connectionWatcher;
+        private final String pathContainingToken;
         volatile InspectWebSocket activeWS;
 
-        ServerPathSession(InspectorExecutionContext context, InspectServerSession serverSession, boolean debugBrk, ConnectionWatcher connectionWatcher) {
+        ServerPathSession(InspectorExecutionContext context, InspectServerSession serverSession, boolean debugBrk, ConnectionWatcher connectionWatcher, String pathContainingToken) {
             this.context = context;
             this.serverSession = new AtomicReference<>(serverSession);
             this.debugBrk = new AtomicBoolean(debugBrk);
             this.connectionWatcher = connectionWatcher;
+            this.pathContainingToken = pathContainingToken;
         }
 
         InspectorExecutionContext getContext() {
@@ -352,14 +427,14 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
 
     private class InspectWebSocket extends WebSocket {
 
-        private final String descriptor;
+        private final Token token;
         private final InspectServerSession iss;
         private final ConnectionWatcher connectionWatcher;
 
         InspectWebSocket(IHTTPSession handshake, InspectServerSession iss,
                         ConnectionWatcher connectionWatcher) {
             super(handshake);
-            this.descriptor = handshake.getUri();
+            this.token = Token.createHashedTokenFromString(handshake.getUri());
             this.iss = iss;
             this.connectionWatcher = connectionWatcher;
         }
@@ -399,7 +474,7 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
         public void onClose(CloseCode code, String reason, boolean initiatedByRemote) {
             iss.context.logMessage("CLIENT web socket connection closed.", "");
             connectionWatcher.notifyClosing();
-            ServerPathSession sps = sessions.get(descriptor);
+            ServerPathSession sps = sessions.get(token);
             if (sps != null) {
                 sps.activeWS = null;
             }
