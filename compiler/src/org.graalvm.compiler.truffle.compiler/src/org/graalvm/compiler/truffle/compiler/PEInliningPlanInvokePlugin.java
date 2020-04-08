@@ -46,9 +46,9 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Maxim
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumInlineNodeCount;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceInlining;
 
-class PEInliningPlanInvokePlugin implements InlineInvokePlugin {
+final class PEInliningPlanInvokePlugin implements InlineInvokePlugin {
 
-    private PartialEvaluator partialEvaluator;
+    private final PartialEvaluator partialEvaluator;
     private final Deque<TruffleInliningPlan> inlining;
     private final int nodeLimit;
     private final StructuredGraph graph;

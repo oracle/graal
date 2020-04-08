@@ -24,8 +24,9 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.Invoke;
@@ -35,16 +36,16 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 
-import java.util.ArrayList;
-import java.util.List;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
+public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
     private final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke;
     private final List<Invoke> indirectInvokes = new ArrayList<>();
     private final TruffleMetaAccessProvider truffleMetaAccessProvider;
+    private final PartialEvaluator partialEvaluator;
     private JavaConstant lastDirectCallNode;
     private boolean indirectCall;
-    private PartialEvaluator partialEvaluator;
 
     public PEAgnosticInlineInvokePlugin(TruffleMetaAccessProvider truffleMetaAccessProvider, PartialEvaluator partialEvaluator) {
         this.truffleMetaAccessProvider = truffleMetaAccessProvider;

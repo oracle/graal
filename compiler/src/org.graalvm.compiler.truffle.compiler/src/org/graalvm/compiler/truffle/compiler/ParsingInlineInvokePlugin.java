@@ -34,9 +34,9 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 
-class ParsingInlineInvokePlugin implements InlineInvokePlugin {
+final class ParsingInlineInvokePlugin implements InlineInvokePlugin {
 
-    private PartialEvaluator partialEvaluator;
+    private final PartialEvaluator partialEvaluator;
     private final ReplacementsImpl replacements;
     private final InvocationPlugins invocationPlugins;
     private final LoopExplosionPlugin loopExplosionPlugin;
