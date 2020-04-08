@@ -114,6 +114,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     SpeculationLog.class, "speculationLog");
     private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
                     Assumption.class, "nodeRewritingAssumption");
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, OptimizedAssumption> PROFILED_ARGUMENT_TYPES_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
+                    OptimizedCallTarget.class, OptimizedAssumption.class, "profiledArgumentTypesAssumption");
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, OptimizedAssumption> PROFILED_RETURN_TYPE_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
+                    OptimizedCallTarget.class, OptimizedAssumption.class, "profiledReturnTypeAssumption");
     private static final WeakReference<OptimizedDirectCallNode> NO_CALL = new WeakReference<>(null);
     private static final WeakReference<OptimizedDirectCallNode> MULTIPLE_CALLS = null;
     private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
@@ -1013,11 +1017,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
              * creating an invalid assumption but leaving the type field null.
              */
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            profiledArgumentTypesAssumption = INVALID_ARGUMENT_TYPES_ASSUMPTION;
+            PROFILED_ARGUMENT_TYPES_ASSUMPTION_UPDATER.compareAndSet(this, null, INVALID_ARGUMENT_TYPES_ASSUMPTION);
+            assert profiledArgumentTypesAssumption != null;
         }
 
-        if (profiledArgumentTypesAssumption.isValid()) {
-            return profiledArgumentTypes;
+        OptimizedAssumption argumentTypesAssumption = profiledArgumentTypesAssumption;
+        Class<?>[] argumentTypes = profiledArgumentTypes;
+        if (argumentTypes != null && argumentTypesAssumption.isValid()) {
+            return argumentTypes;
         } else {
             return null;
         }
@@ -1073,11 +1080,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
              * creating an invalid assumption but leaving the type field null.
              */
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            profiledReturnTypeAssumption = INVALID_RETURN_TYPE_ASSUMPTION;
+            PROFILED_RETURN_TYPE_ASSUMPTION_UPDATER.compareAndSet(this, null, INVALID_RETURN_TYPE_ASSUMPTION);
+            assert profiledReturnTypeAssumption != null;
         }
 
-        if (profiledReturnTypeAssumption.isValid()) {
-            return profiledReturnType;
+        Assumption returnTypeAssumption = profiledReturnTypeAssumption;
+        Class<?> returnType = profiledReturnType;
+        if (returnType != null & returnTypeAssumption.isValid()) {
+            return returnType;
         } else {
             return null;
         }
