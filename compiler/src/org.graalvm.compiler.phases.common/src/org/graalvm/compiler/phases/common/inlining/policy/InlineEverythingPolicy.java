@@ -46,6 +46,7 @@ public class InlineEverythingPolicy implements InliningPolicy {
 
     @Override
     public Decision isWorthInlining(Replacements replacements, MethodInvocation invocation, InlineInfo calleeInfo, int inliningDepth, boolean fullyProcessed) {
-        return Decision.YES.withReason(GraalOptions.TraceInlining.getValue(calleeInfo.graph().getOptions()), "inline everything");
+        boolean isTracing = GraalOptions.TraceInlining.getValue(calleeInfo.graph().getOptions()) || calleeInfo.graph().getDebug().hasCompilationListener();
+        return Decision.YES.withReason(isTracing, "inline everything");
     }
 }

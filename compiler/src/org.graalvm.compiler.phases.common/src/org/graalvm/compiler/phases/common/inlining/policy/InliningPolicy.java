@@ -50,6 +50,17 @@ public interface InliningPolicy {
             return reason;
         }
 
+        /**
+         * This constructor avoids the need to box arguments when the message is a simple string.
+         */
+        public Decision withReason(boolean isTracing, String newReason) {
+            if (isTracing) {
+                return new Decision(shouldInline, newReason);
+            } else {
+                return this;
+            }
+        }
+
         public Decision withReason(boolean isTracing, String newReason, Object... args) {
             if (isTracing) {
                 return new Decision(shouldInline, String.format(newReason, args));
