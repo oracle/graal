@@ -82,7 +82,7 @@ public class ApplicationSourceCache extends SourceCache {
                 sourcePath = sourcePath.getParent().resolve(fileNameString);
                 if (sourcePath.toFile().exists()) {
                     try {
-                        FileSystem fileSystem = FileSystems.newFileSystem(sourcePath, null);
+                        FileSystem fileSystem = FileSystems.newFileSystem(sourcePath, (ClassLoader) null);
                         for (Path root : fileSystem.getRootDirectories()) {
                             srcRoots.add(root);
                         }
