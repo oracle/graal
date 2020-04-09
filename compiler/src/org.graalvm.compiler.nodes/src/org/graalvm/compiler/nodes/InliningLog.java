@@ -24,18 +24,20 @@
  */
 package org.graalvm.compiler.nodes;
 
-import jdk.vm.ci.meta.MetaUtil;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.BiConsumer;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.BiConsumer;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * This class contains all inlining decisions performed on a graph during the compilation.
@@ -144,12 +146,14 @@ public class InliningLog {
     private final Callsite root;
     private final EconomicMap<Invokable, Callsite> leaves;
     private final boolean enabled;
+    private final DebugContext debug;
 
-    public InliningLog(ResolvedJavaMethod rootMethod, boolean enabled) {
+    public InliningLog(ResolvedJavaMethod rootMethod, boolean enabled, DebugContext debug) {
         this.root = new Callsite(null, null);
         this.root.target = rootMethod;
         this.leaves = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         this.enabled = enabled;
+        this.debug = debug;
     }
 
     /**
@@ -160,6 +164,10 @@ public class InliningLog {
      * and the {@link InliningLog} of the inlined graph must be provided.
      */
     public void addDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, String reason, Object... args) {
+        if (debug.hasCompilationListener()) {
+            String message = String.format(reason, args);
+            debug.notifyInlining(invoke.getContextMethod(), invoke.getTargetMethod(), positive, message, invoke.bci());
+        }
         if (!enabled) {
             return;
         }
@@ -401,10 +409,12 @@ public class InliningLog {
     }
 
     public static final class PlaceholderInvokable implements Invokable {
-        private int bci;
-        private ResolvedJavaMethod method;
+        private final int bci;
+        private final ResolvedJavaMethod callerMethod;
+        private final ResolvedJavaMethod method;
 
-        public PlaceholderInvokable(ResolvedJavaMethod method, int bci) {
+        public PlaceholderInvokable(ResolvedJavaMethod callerMethod, ResolvedJavaMethod method, int bci) {
+            this.callerMethod = callerMethod;
             this.method = method;
             this.bci = bci;
         }
@@ -433,10 +443,15 @@ public class InliningLog {
         public FixedNode asFixedNode() {
             throw new UnsupportedOperationException("Parsed invokable is a placeholder, not a concrete node.");
         }
+
+        @Override
+        public ResolvedJavaMethod getContextMethod() {
+            return callerMethod;
+        }
     }
 
-    public RootScope openRootScope(ResolvedJavaMethod target, int bci) {
-        return openRootScope(new PlaceholderInvokable(target, bci));
+    public RootScope openRootScope(ResolvedJavaMethod callerMethod, ResolvedJavaMethod target, int bci) {
+        return openRootScope(new PlaceholderInvokable(callerMethod, target, bci));
     }
 
     public RootScope openRootScope(Invokable invoke) {

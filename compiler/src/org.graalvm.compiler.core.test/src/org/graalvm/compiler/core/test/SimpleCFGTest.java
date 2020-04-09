@@ -25,6 +25,7 @@
 package org.graalvm.compiler.core.test;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -51,7 +52,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
     @Test
     public void testImplies() {
         OptionValues options = getInitialOptions();
-        DebugContext debug = DebugContext.create(options, new GraalDebugHandlersFactory(getSnippetReflection()));
+        DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(getSnippetReflection())).build();
         StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.YES).build();
 
         EndNode trueEnd = graph.add(new EndNode());

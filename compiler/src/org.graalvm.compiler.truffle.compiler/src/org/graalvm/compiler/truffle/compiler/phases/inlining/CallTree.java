@@ -70,8 +70,8 @@ public final class CallTree extends Graph {
         return graphManager;
     }
 
-    public void trace() {
-        final Boolean details = getPolyglotOptionValue(request.options, PolyglotCompilerOptions.TraceInliningDetails);
+    void trace() {
+        Boolean details = getPolyglotOptionValue(request.options, PolyglotCompilerOptions.TraceInliningDetails);
         if (getPolyglotOptionValue(request.options, PolyglotCompilerOptions.TraceInlining) || details) {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
             runtime.logEvent(0, "inline start", root.getName(), root.getStringProperties());
@@ -91,7 +91,7 @@ public final class CallTree extends Graph {
         }
     }
 
-    public void dequeueInlined() {
+    void dequeueInlined() {
         dequeueInlined(root);
     }
 
@@ -111,8 +111,8 @@ public final class CallTree extends Graph {
         return "Call Tree";
     }
 
-    public void dumpBasic(String format, Object arg) {
-        getDebug().dump(DebugContext.BASIC_LEVEL, this, format, arg);
+    void dumpBasic(String format) {
+        getDebug().dump(DebugContext.BASIC_LEVEL, this, format, "");
     }
 
     public void dumpInfo(String format, Object arg) {

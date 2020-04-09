@@ -81,7 +81,7 @@ import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 import org.graalvm.compiler.truffle.compiler.nodes.IsCompilationConstantNode;
@@ -707,7 +707,7 @@ public class TruffleGraphBuilderPlugins {
 
     @SuppressWarnings("try")
     static void logPerformanceWarningLocationNotConstant(ValueNode location, ResolvedJavaMethod targetMethod, UnsafeAccessNode access) {
-        if (PartialEvaluator.PerformanceInformationHandler.isWarningEnabled(PerformanceWarningKind.VIRTUAL_STORE)) {
+        if (PerformanceInformationHandler.isWarningEnabled(PerformanceWarningKind.VIRTUAL_STORE)) {
             StructuredGraph graph = location.graph();
             DebugContext debug = access.getDebug();
             try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
@@ -716,7 +716,7 @@ public class TruffleGraphBuilderPlugins {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("location", location);
                 properties.put("method", targetMethod.format("%h.%n"));
-                PartialEvaluator.PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, callTargetName,
+                PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, callTargetName,
                                 Collections.singletonList(access),
                                 "location argument not PE-constant", properties);
                 debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Location argument is not a partial evaluation constant: %s", location);

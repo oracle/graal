@@ -35,13 +35,13 @@ final class Embedding {
     }
 
     @SuppressWarnings("unchecked")
-    static AutoCloseable enableAgentScript(Source agentSrc, Context context) {
-        // BEGIN: Embedding#createAgentObject
+    static AutoCloseable enableInsight(Source agentSrc, Context context) {
+        // BEGIN: Embedding#apply
         final Engine engine = context.getEngine();
-        Instrument instrument = engine.getInstruments().get("agentscript");
+        Instrument instrument = engine.getInstruments().get("insight");
         Function<Source, AutoCloseable> access = instrument.lookup(Function.class);
         AutoCloseable handle = access.apply(agentSrc);
-        // END: Embedding#createAgentObject
+        // END: Embedding#apply
         return handle;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -121,6 +121,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
+import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
 import org.graalvm.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
@@ -731,8 +732,7 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode source, ValueNode sourceOffset, ValueNode sourceCount,
                         ValueNode target, ValueNode targetOffset, ValueNode targetCount, ValueNode origFromIndex) {
             if (target.isConstant()) {
-                b.addPush(JavaKind.Int, new StringIndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), source, sourceOffset, sourceCount,
-                                target, targetOffset, targetCount, origFromIndex));
+                b.addPush(JavaKind.Int, new StringIndexOfNode(MacroParams.of(b, targetMethod, source, sourceOffset, sourceCount, target, targetOffset, targetCount, origFromIndex)));
                 return true;
             }
             return false;
@@ -749,8 +749,7 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver,
                         ValueNode source, ValueNode sourceCount, ValueNode target, ValueNode targetCount, ValueNode origFromIndex) {
             if (target.isConstant()) {
-                b.addPush(JavaKind.Int, new StringLatin1IndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()),
-                                source, sourceCount, target, targetCount, origFromIndex));
+                b.addPush(JavaKind.Int, new StringLatin1IndexOfNode(MacroParams.of(b, targetMethod, source, sourceCount, target, targetCount, origFromIndex)));
                 return true;
             }
             return false;
@@ -767,8 +766,7 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver,
                         ValueNode source, ValueNode sourceCount, ValueNode target, ValueNode targetCount, ValueNode origFromIndex) {
             if (target.isConstant()) {
-                b.addPush(JavaKind.Int, new StringUTF16IndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()),
-                                source, sourceCount, target, targetCount, origFromIndex));
+                b.addPush(JavaKind.Int, new StringUTF16IndexOfNode(MacroParams.of(b, targetMethod, source, sourceCount, target, targetCount, origFromIndex)));
                 return true;
             }
             return false;
@@ -830,7 +828,7 @@ public class StandardGraphBuilderPlugins {
                  * the current definition is the normal empty method with a single return bytecode.
                  * The finalizer registration will instead be performed by the BytecodeParser.
                  */
-                if (targetMethod.getCodeSize() == 1) {
+                if (targetMethod.canBeInlined() && targetMethod.getCodeSize() == 1) {
                     ValueNode object = receiver.get();
                     if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getAssumptions())) {
                         RegisterFinalizerNode regFin = new RegisterFinalizerNode(object);
@@ -1401,7 +1399,7 @@ public class StandardGraphBuilderPlugins {
         r.register2("traceThrowable", Throwable.class, String.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode throwable, ValueNode message) {
-                b.add(new VirtualizableInvokeMacroNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), throwable, message));
+                b.add(new VirtualizableInvokeMacroNode(MacroParams.of(b, targetMethod, throwable, message)));
                 return true;
             }
 
@@ -1467,7 +1465,7 @@ public class StandardGraphBuilderPlugins {
                     return true;
                 }
                 b.addPush(JavaKind.Boolean,
-                                new ProfileBooleanNode(snippetReflection, b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), result, counters));
+                                new ProfileBooleanNode(snippetReflection, MacroParams.of(b, targetMethod, result, counters)));
                 return true;
             }
         });

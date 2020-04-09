@@ -25,7 +25,6 @@
 package org.graalvm.compiler.test;
 
 import static org.graalvm.compiler.debug.DebugContext.NO_DESCRIPTION;
-import static org.graalvm.compiler.debug.DebugContext.getDefaultLogStream;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -46,6 +45,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GlobalMetrics;
@@ -456,7 +456,7 @@ public class GraalTest {
         } else {
             descr = new DebugContext.Description(method, id == null ? method.getName() : id);
         }
-        DebugContext debug = DebugContext.create(options, descr, globalMetrics, getDefaultLogStream(), getDebugHandlersFactories());
+        DebugContext debug = new Builder(options, getDebugHandlersFactories()).globalMetrics(globalMetrics).description(descr).build();
         cached.add(debug);
         return debug;
     }

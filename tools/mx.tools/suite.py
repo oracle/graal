@@ -67,11 +67,25 @@ suite = {
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
         },
-        "com.oracle.truffle.tools.agentscript" : {
+        "org.graalvm.tools.insight" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
+            ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+            ],
+            "javaCompliance" : "8+",
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "workingSets" : "Tools",
+        },
+        "com.oracle.truffle.tools.agentscript" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "org.graalvm.tools.insight",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -285,7 +299,10 @@ suite = {
             "subDir": "src",
             # This distribution defines a module.
             "moduleName" : "com.oracle.truffle.tools.agentscript",
-            "dependencies": ["com.oracle.truffle.tools.agentscript"],
+            "dependencies": [
+                "org.graalvm.tools.insight",
+                "com.oracle.truffle.tools.agentscript"
+            ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
             ],

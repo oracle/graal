@@ -24,11 +24,8 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.nodes.ReflectionGetCallerClassNode;
 
 import com.oracle.svm.core.jdk.StackTraceUtils;
@@ -43,8 +40,8 @@ public final class SubstrateReflectionGetCallerClassNode extends ReflectionGetCa
 
     private final MetaAccessProvider metaAccess;
 
-    public SubstrateReflectionGetCallerClassNode(MetaAccessProvider metaAccess, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode... arguments) {
-        super(TYPE, invokeKind, targetMethod, bci, returnStamp, arguments);
+    public SubstrateReflectionGetCallerClassNode(MetaAccessProvider metaAccess, MacroParams p) {
+        super(TYPE, p);
         this.metaAccess = metaAccess;
     }
 

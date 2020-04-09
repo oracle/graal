@@ -28,12 +28,10 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
@@ -45,16 +43,14 @@ import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public class ProfileBooleanNode extends MacroStateSplitNode implements Simplifiable {
     public static final NodeClass<ProfileBooleanNode> TYPE = NodeClass.create(ProfileBooleanNode.class);
     private final SnippetReflectionProvider snippetReflection;
 
-    public ProfileBooleanNode(SnippetReflectionProvider snippetReflection, CallTargetNode.InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp,
-                    ValueNode... arguments) {
-        super(TYPE, invokeKind, targetMethod, bci, returnStamp, arguments);
+    public ProfileBooleanNode(SnippetReflectionProvider snippetReflection, MacroParams p) {
+        super(TYPE, p);
         this.snippetReflection = snippetReflection;
     }
 

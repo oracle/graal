@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.MethodHandleNode;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -77,7 +78,7 @@ public class MethodHandlePlugin implements NodePlugin {
             };
             InvokeNode invoke = MethodHandleNode.tryResolveTargetInvoke(adder, methodHandleAccess, intrinsicMethod, method, b.bci(), invokeReturnStamp, args);
             if (invoke == null) {
-                MethodHandleNode methodHandleNode = new MethodHandleNode(intrinsicMethod, invokeKind, method, b.bci(), invokeReturnStamp, args);
+                MethodHandleNode methodHandleNode = new MethodHandleNode(intrinsicMethod, MacroParams.of(invokeKind, b.getMethod(), method, b.bci(), invokeReturnStamp, args));
                 if (invokeReturnStamp.getTrustedStamp().getStackKind() == JavaKind.Void) {
                     b.add(methodHandleNode);
                 } else {

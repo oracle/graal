@@ -1,4 +1,4 @@
-agent.on('enter', function checkLogging(ev, frame) {
+insight.on('enter', function checkLogging(ev, frame) {
     if (frame.msg === 'are') {
         throw "great you are!";
     }
@@ -6,7 +6,7 @@ agent.on('enter', function checkLogging(ev, frame) {
     roots: true,
     rootNameFilter: (n) => n === 'log'
 });
-agent.on('return', function checkLogging(ev, frame) {
+insight.on('return', function checkLogging(ev, frame) {
     if (frame.msg === 'do') {
         throw "you feel?";
     }

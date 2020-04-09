@@ -30,7 +30,6 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -45,7 +44,6 @@ import com.oracle.svm.core.meta.SharedType;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
@@ -54,8 +52,8 @@ public final class SubstrateObjectCloneNode extends BasicObjectCloneNode impleme
 
     @OptionalInput(InputType.State) protected FrameState stateBefore;
 
-    public SubstrateObjectCloneNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode receiver) {
-        super(TYPE, invokeKind, targetMethod, bci, returnStamp, receiver);
+    public SubstrateObjectCloneNode(MacroParams p) {
+        super(TYPE, p);
     }
 
     @Override

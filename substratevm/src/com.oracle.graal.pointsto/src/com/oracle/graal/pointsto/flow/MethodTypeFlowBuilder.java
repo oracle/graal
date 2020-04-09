@@ -28,7 +28,6 @@ import static jdk.vm.ci.common.JVMCIError.guarantee;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.lang.reflect.Modifier;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -44,6 +43,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
@@ -178,7 +178,7 @@ public class MethodTypeFlowBuilder {
         SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getRequiredCapability(SnippetReflectionProvider.class);
         // Use the real SnippetReflectionProvider for dumping
         Description description = new Description(method, toString());
-        DebugContext debug = DebugContext.create(options, description, Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection)));
+        DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(snippetReflection)).description(description).build();
         try (Indent indent = debug.logAndIndent("parse graph %s", method)) {
 
             boolean needParsing = false;

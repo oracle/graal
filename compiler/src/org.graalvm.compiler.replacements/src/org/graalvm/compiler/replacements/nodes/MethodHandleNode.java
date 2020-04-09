@@ -81,8 +81,8 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
 
     protected final IntrinsicMethod intrinsicMethod;
 
-    public MethodHandleNode(IntrinsicMethod intrinsicMethod, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode... arguments) {
-        super(TYPE, invokeKind, targetMethod, bci, returnStamp, arguments);
+    public MethodHandleNode(IntrinsicMethod intrinsicMethod, MacroParams p) {
+        super(TYPE, p);
         this.intrinsicMethod = intrinsicMethod;
     }
 

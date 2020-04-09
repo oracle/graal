@@ -17,11 +17,11 @@ public class Embedding {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try (Context ctx = Context.newBuilder().out(out).err(out).build()) {
             Engine eng = ctx.getEngine();
-            Instrument instrument = eng.getInstruments().get("agentscript");
-            assert instrument != null : "AgentScript instrument found";
+            Instrument instrument = eng.getInstruments().get("insight");
+            assert instrument != null : "Insight instrument found";
             OptionDescriptors ops = instrument.getOptions();
             assert ops != null : "Options found";
-            OptionDescriptor script = ops.get("agentscript");
+            OptionDescriptor script = ops.get("insight");
             assert script != null : "agent script: " + script;
 
             Value fib = ctx.eval("js", "(function fib(n) {\n" +

@@ -417,7 +417,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.isSubstitution = isSubstitution;
         assert checkIsSubstitutionInvariants(method, isSubstitution);
         this.cancellable = cancellable;
-        this.inliningLog = new InliningLog(rootMethod, GraalOptions.TraceInlining.getValue(options));
+        this.inliningLog = new InliningLog(rootMethod, GraalOptions.TraceInlining.getValue(options), debug);
         this.callerContext = context;
     }
 

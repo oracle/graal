@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.BytecodeParser;
@@ -344,7 +344,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 /* This code should be non-intrusive so we just ignore. */
                 return;
             }
-            DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
+            DebugContext debug = new Builder(options).build();
             try (DebugContext.Scope s = debug.scope("Field offset computation", clinit)) {
                 StructuredGraph clinitGraph = getStaticInitializerGraph(clinit, options, debug);
 

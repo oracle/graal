@@ -65,7 +65,7 @@ final class VariablesObject implements TruffleObject {
         try {
             frameLibrary.collectNames(AccessorFrameLibrary.DEFAULT.create(where, frame, env), names);
         } catch (InteropException ex) {
-            throw AgentException.raise(ex);
+            throw InsightException.raise(ex);
         }
         return ArrayObject.wrap(names);
     }
