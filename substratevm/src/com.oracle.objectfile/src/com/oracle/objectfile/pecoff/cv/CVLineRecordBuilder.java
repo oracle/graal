@@ -46,7 +46,7 @@ public class CVLineRecordBuilder {
         this.cvDebugInfo = cvDebugInfo;
     }
 
-    public static void debug(String format, Object ... args) {
+    public static void debug(@SuppressWarnings("unused") String format, @SuppressWarnings("unused") Object ... args) {
         //System.out.format(format, args);
     }
 
@@ -65,6 +65,7 @@ public class CVLineRecordBuilder {
      * @param entry function to build line number table for
      * @return CVLineRecord containing any entries generated, or null if no entries generated
      */
+    @SuppressWarnings("unused")
     CVLineRecord build(PrimaryEntry entry, String methodName) {
    //     long lowAddr = Long.MAX_VALUE;
    //     long highAddr = 0;
@@ -74,6 +75,7 @@ public class CVLineRecordBuilder {
 
         Range primaryRange = primaryEntry.getPrimary();
         Range previousRange = null;
+
         /* option to not even bother with debug code for Graal */
         if (skipGraalInternals && CVRootPackages.isGraalClass(primaryRange.getClassName())) {
             debug("skipping Graal internal class %s\n", primaryRange);
@@ -143,7 +145,7 @@ public class CVLineRecordBuilder {
         if (wantNewRange(range, previousRange)) {
             previousRange = range;
             int lineLoAddr = range.getLo() - primaryEntry.getPrimary().getLo();
-            int line = range.getLine() < 1 ? 1 : range.getLine();
+            int line = Math.max(range.getLine(), 1);
             debug("processRange:   addNewLine: 0x%05x %s\n", lineLoAddr, line);
             lineRecord.addNewLine(lineLoAddr, line);
         }
@@ -156,6 +158,7 @@ public class CVLineRecordBuilder {
      * @param range the second range (higher address)
      * @return true if the two ranges can be combined
      */
+    @SuppressWarnings("unused")
     private boolean shouldMerge(Range range, Range previousRange) {
         if (!mergeAdjacentLineRecords) {
             return false;
@@ -166,7 +169,7 @@ public class CVLineRecordBuilder {
         /* if we're in a different class that the primary Class, this is inlined code */
         final boolean isInlinedCode = !range.getClassName().equals(primaryEntry.getClassEntry().getClassName());
         // if (isInlinedCode && skipInlinedCode) { return true; }
-        if (isInlinedCode && skipGraalIntrinsics && CVRootPackages.isGraalIntrinsic(range.getClassName())) {
+        if (isInlinedCode && skipGraalIntrinsics &&  CVRootPackages.isGraalIntrinsic(range.getClassName())) {
             return true;
         }
         return previousRange.getFileAsPath().equals(range.getFileAsPath()) && (range.getLine() == -1 || previousRange.getLine() == range.getLine());
@@ -178,7 +181,7 @@ public class CVLineRecordBuilder {
      * @param range current range
      * @return true if the current range is on a different line or file from the previous one
      */
-    private static boolean wantNewRange(Range range, Range previousRange) {
+    private static boolean wantNewRange(@SuppressWarnings("unused") Range range, @SuppressWarnings("unused") Range previousRange) {
         return true;
         /*if (debug) {
             if (previousRange == null) {

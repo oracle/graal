@@ -52,8 +52,8 @@ final class CVSymbolRecordBuilder {
      * build DEBUG_S_SYMBOLS record from all classEntries.
      * (could probably build one per class or one per function)
      */
-    void build(DebugContext debugContext) {
-        this.debugContext = debugContext;
+    void build(DebugContext theDebugContext) {
+        this.debugContext = theDebugContext;
         for (ClassEntry classEntry : cvDebugInfo.getPrimaryClasses()) {
             build(classEntry);
         }
