@@ -27,6 +27,8 @@ package com.oracle.svm.core;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Isolate;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -35,9 +37,13 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
+import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
@@ -69,6 +75,27 @@ public abstract class SubstrateSegfaultHandler {
 
     /** Installs the platform dependent segfault handler. */
     protected abstract void install();
+
+    /** Called from the platform dependent segfault handler to enter the isolate. */
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    protected static boolean tryEnterIsolate(RegisterDumper.Context context) {
+        if (SubstrateOptions.SpawnIsolates.getValue()) {
+            PointerBase heapBase = RegisterDumper.singleton().getHeapBase(context);
+            WriteHeapBaseNode.writeCurrentVMHeapBase(heapBase);
+        }
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            PointerBase threadPointer = RegisterDumper.singleton().getThreadPointer(context);
+            WriteCurrentVMThreadNode.writeCurrentVMThread((IsolateThread) threadPointer);
+        }
+
+        /*
+         * The following probing is subject to implicit recursion as it may trigger a new segfault.
+         * However, this is fine, as it will eventually result in native stack overflow.
+         */
+        Isolate isolate = VMThreads.IsolateTL.get();
+        return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR &&
+                        (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
+    }
 
     /** Called from the platform dependent segfault handler to print diagnostics. */
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.", calleeMustBe = false)
