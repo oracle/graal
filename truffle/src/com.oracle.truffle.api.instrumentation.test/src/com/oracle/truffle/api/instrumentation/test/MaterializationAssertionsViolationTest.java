@@ -153,20 +153,20 @@ public class MaterializationAssertionsViolationTest {
         context.eval(source);
     }
 
-    private ExecutionEventListener createListener() {
+    private static ExecutionEventListener createListener() {
         return new ExecutionEventListener() {
             @Override
-            public void onEnter(EventContext context, VirtualFrame frame) {
+            public void onEnter(EventContext c, VirtualFrame frame) {
 
             }
 
             @Override
-            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+            public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
 
             }
 
             @Override
-            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
 
             }
         };
