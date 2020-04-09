@@ -68,7 +68,7 @@ public class JDKSourceCache extends SourceCache {
         }
         if (srcZipPath.toFile().exists()) {
             try {
-                FileSystem srcFileSystem = FileSystems.newFileSystem(srcZipPath, null);
+                FileSystem srcFileSystem = FileSystems.newFileSystem(srcZipPath, (ClassLoader) null);
                 for (Path root : srcFileSystem.getRootDirectories()) {
                     srcRoots.add(root);
                 }
