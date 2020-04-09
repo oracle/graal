@@ -248,6 +248,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining
 import static org.graalvm.compiler.core.common.GraalOptions.PrintProfilingInformation;
 import static org.graalvm.compiler.core.common.GraalOptions.StressExplicitExceptionCode;
 import static org.graalvm.compiler.core.common.GraalOptions.StressInvokeWithExceptionNode;
+import static org.graalvm.compiler.core.common.GraalOptions.TraceInlining;
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 import static org.graalvm.compiler.debug.GraalError.guarantee;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
@@ -2287,7 +2288,12 @@ public class BytecodeParser implements GraphBuilderContext {
                     try (DebugCloseable context = openNodeContext(targetMethod, 1)) {
                         genGetField(resolvedField, receiver);
                         notifyBeforeInline(targetMethod);
-                        printInlining(targetMethod, targetMethod, true, "inline accessor method (bytecode parsing)");
+                        String reason = "inline accessor method (bytecode parsing)";
+                        printInlining(targetMethod, targetMethod, true, reason);
+                        if (TraceInlining.getValue(options) || debug.hasCompilationListener()) {
+                            PlaceholderInvokable invoke = new PlaceholderInvokable(method, targetMethod, bci());
+                            graph.getInliningLog().addDecision(invoke, true, "GraphBuilderPhase", null, null, reason);
+                        }
                         notifyAfterInline(targetMethod);
                     }
                     return true;
