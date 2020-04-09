@@ -103,6 +103,7 @@ class NativeImageVM(GraalVm):
             self.extra_run_args = []
             self.extra_agent_run_args = []
             self.extra_profile_run_args = []
+            self.extra_agent_profile_run_args = []
             self.benchmark_name = None
             self.benchmark_output_dir = None
             self.needs_config = True
@@ -129,6 +130,7 @@ class NativeImageVM(GraalVm):
                     found |= add_to_list(trimmed_arg, 'extra-run-arg', self.extra_run_args)
                     found |= add_to_list(trimmed_arg, 'extra-agent-run-arg', self.extra_agent_run_args)
                     found |= add_to_list(trimmed_arg, 'extra-profile-run-arg', self.extra_profile_run_args)
+                    found |= add_to_list(trimmed_arg, 'extra-agent-profile-run-arg', self.extra_agent_profile_run_args)
                     if trimmed_arg.startswith('needs-config='):
                         self.needs_config = trimmed_arg[len('needs-config='):] == 'true'
                         found = True
@@ -246,8 +248,10 @@ class NativeImageVM(GraalVm):
                 if self.hotspot_pgo:
                     hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]
 
-                if config.extra_agent_run_args:
-                    hotspot_run_args += config.extra_profile_run_args if self.hotspot_pgo and not self.is_gate else config.extra_agent_run_args
+                if self.hotspot_pgo and not self.is_gate and config.extra_agent_profile_run_args:
+                    hotspot_run_args += config.extra_agent_profile_run_args
+                elif config.extra_agent_run_args:
+                    hotspot_run_args += config.extra_agent_run_args
                 else:
                     hotspot_run_args += image_run_args
 
