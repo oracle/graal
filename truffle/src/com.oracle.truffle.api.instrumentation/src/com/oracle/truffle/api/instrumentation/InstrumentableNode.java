@@ -260,7 +260,7 @@ public interface InstrumentableNode extends NodeInterface {
      * node.
      * <p>
      * If the node returns a new node from this method, the subtree rooted at the new node must be
-     * completely fresh, i.e., all nodes it contains must not have existed in the original AST.
+     * completely unadopted, i.e., all nodes it contains must not have existed in the original AST.
      * Also, the new subtree must be completely materialized, so that no new materializations occur
      * when the instrumentation framework instruments the new subtree during the current traversal.
      * <p>
