@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.options.OptionValues;
 
+import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -108,6 +109,10 @@ public abstract class AnalysisPolicy {
 
     /** Provides implementation for the virtual invoke type flow. */
     public abstract AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location);
+
+    /** Provides implementation for the virtual invoke type flow. */
+    public abstract AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location);
 
     @SuppressWarnings("unused")

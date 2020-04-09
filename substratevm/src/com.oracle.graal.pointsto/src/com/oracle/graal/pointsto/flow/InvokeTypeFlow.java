@@ -26,11 +26,8 @@ package com.oracle.graal.pointsto.flow;
 
 import static jdk.vm.ci.common.JVMCIError.guarantee;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -44,7 +41,6 @@ import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.graal.pointsto.util.AnalysisError;
 
 public abstract class InvokeTypeFlow extends TypeFlow<MethodCallTargetNode> {
 
@@ -285,7 +281,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<MethodCallTargetNode> {
 
 abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
 
-    protected MethodTypeFlow callee;
+    public MethodTypeFlow callee;
 
     /**
      * Context of the caller.
@@ -373,78 +369,6 @@ final class StaticInvokeTypeFlow extends DirectInvokeTypeFlow {
     @Override
     public String toString() {
         return "StaticInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
-    }
-
-}
-
-final class SpecialInvokeTypeFlow extends DirectInvokeTypeFlow {
-
-    /**
-     * Contexts of the resolved method.
-     */
-    protected ConcurrentMap<MethodFlowsGraph, Object> calleesFlows;
-
-    protected SpecialInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
-    }
-
-    protected SpecialInvokeTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, DirectInvokeTypeFlow original) {
-        super(bb, methodFlows, original);
-        calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
-    }
-
-    @Override
-    public TypeFlow<MethodCallTargetNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
-        return new SpecialInvokeTypeFlow(bb, methodFlows, this);
-    }
-
-    @Override
-    public boolean addState(BigBang bb, TypeState add, boolean postFlow) {
-        throw AnalysisError.shouldNotReachHere("The SpecialInvokeTypeFlow should not be updated directly.");
-    }
-
-    @Override
-    public void update(BigBang bb) {
-        throw AnalysisError.shouldNotReachHere("The SpecialInvokeTypeFlow should not be updated directly.");
-    }
-
-    @Override
-    public void onObservedUpdate(BigBang bb) {
-        assert this.isClone();
-        /* The receiver state has changed. Process the invoke. */
-
-        /*
-         * Initialize the callee lazily so that if the invoke flow is not reached in this context,
-         * i.e. for this clone, there is no callee linked.
-         */
-        if (callee == null) {
-            callee = targetMethod.getTypeFlow();
-            // set the callee in the original invoke too
-            ((DirectInvokeTypeFlow) originalInvoke).callee = callee;
-        }
-
-        TypeState invokeState = getReceiver().getState();
-        for (AnalysisObject receiverObject : invokeState.objects()) {
-            AnalysisContext calleeContext = bb.contextPolicy().calleeContext(bb, receiverObject, callerContext, callee);
-            MethodFlowsGraph calleeFlows = callee.addContext(bb, calleeContext, this);
-
-            if (calleesFlows.putIfAbsent(calleeFlows, Boolean.TRUE) == null) {
-                linkCallee(bb, false, calleeFlows);
-            }
-
-            updateReceiver(bb, calleeFlows, receiverObject);
-        }
-    }
-
-    @Override
-    public Collection<MethodFlowsGraph> getCalleesFlows(BigBang bb) {
-        return new ArrayList<>(calleesFlows.keySet());
-    }
-
-    @Override
-    public String toString() {
-        return "SpecialInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
     }
 
 }
