@@ -41,6 +41,7 @@ import java.util.Deque;
 import java.util.HashMap;
 
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalNodeCount;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumInlineNodeCount;
@@ -54,11 +55,13 @@ final class PEInliningPlanInvokePlugin implements InlineInvokePlugin {
     private final StructuredGraph graph;
     private final int inliningNodeLimit;
     private final OptionValues options;
+    private final CompilableTruffleAST compilable;
     private boolean graphTooBigReported;
 
-    PEInliningPlanInvokePlugin(PartialEvaluator partialEvaluator, OptionValues options, TruffleInliningPlan inlining, StructuredGraph graph) {
+    PEInliningPlanInvokePlugin(PartialEvaluator partialEvaluator, OptionValues options, CompilableTruffleAST compilable, TruffleInliningPlan inlining, StructuredGraph graph) {
         this.partialEvaluator = partialEvaluator;
         this.options = options;
+        this.compilable = compilable;
         this.inlining = new ArrayDeque<>();
         this.inlining.push(inlining);
         this.graph = graph;
@@ -101,11 +104,13 @@ final class PEInliningPlanInvokePlugin implements InlineInvokePlugin {
     static TruffleInliningPlan.Decision getDecision(TruffleInliningPlan inlining, JavaConstant callNode) {
         TruffleInliningPlan.Decision decision = inlining.findDecision(callNode);
         if (decision == null) {
-            JavaConstant target = TruffleCompilerRuntime.getRuntime().getCallTargetForCallNode(callNode);
-            PerformanceInformationHandler.reportDecisionIsNull(target, callNode);
+            TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
+            JavaConstant target = rt.getCallTargetForCallNode(callNode);
+            PerformanceInformationHandler.reportDecisionIsNull(rt.asCompilableTruffleAST(target), callNode);
         } else if (!decision.isTargetStable()) {
-            JavaConstant target = TruffleCompilerRuntime.getRuntime().getCallTargetForCallNode(callNode);
-            PerformanceInformationHandler.reportCallTargetChanged(target, callNode, decision);
+            TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
+            JavaConstant target = rt.getCallTargetForCallNode(callNode);
+            PerformanceInformationHandler.reportCallTargetChanged(rt.asCompilableTruffleAST(target), callNode, decision);
             return null;
         }
         return decision;
@@ -117,7 +122,7 @@ final class PEInliningPlanInvokePlugin implements InlineInvokePlugin {
             final HashMap<String, Object> properties = new HashMap<>();
             properties.put("graph node count", graph.getNodeCount());
             properties.put("graph node limit", inliningNodeLimit);
-            TruffleCompilerRuntime.getRuntime().logEvent(0, "Truffle inlining caused graal node count to be too big during partial evaluation.", "", properties);
+            TruffleCompilerRuntime.getRuntime().logEvent(compilable, 0, "Truffle inlining caused graal node count to be too big during partial evaluation.", properties);
         }
     }
 

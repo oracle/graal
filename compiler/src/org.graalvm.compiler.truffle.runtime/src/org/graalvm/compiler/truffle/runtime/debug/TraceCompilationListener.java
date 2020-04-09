@@ -87,7 +87,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             } else {
                 Map<String, Object> properties = defaultProperties(target);
                 properties.put("Reason", reason);
-                runtime.logEvent(0, "opt failed", target.toString(), properties);
+                runtime.logEvent(target, 0, "opt failed", properties);
             }
             currentCompilation.set(null);
         }

@@ -567,7 +567,7 @@ public abstract class PartialEvaluator {
                 AgnosticInliningPhase agnosticInlining = new AgnosticInliningPhase(this, request);
                 agnosticInlining.apply(request.graph, providers);
             } else {
-                final PEInliningPlanInvokePlugin plugin = new PEInliningPlanInvokePlugin(this, request.options, request.inliningPlan, request.graph);
+                final PEInliningPlanInvokePlugin plugin = new PEInliningPlanInvokePlugin(this, request.options, request.compilable, request.inliningPlan, request.graph);
                 doGraphPE(request, plugin, EconomicMap.create());
             }
             removeInlineTokenNodes(request.graph);
