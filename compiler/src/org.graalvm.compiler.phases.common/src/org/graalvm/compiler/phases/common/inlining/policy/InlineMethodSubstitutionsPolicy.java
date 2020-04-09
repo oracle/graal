@@ -40,7 +40,7 @@ public final class InlineMethodSubstitutionsPolicy extends InlineEverythingPolic
 
     @Override
     public Decision isWorthInlining(Replacements replacements, MethodInvocation invocation, InlineInfo calleeInfo, int inliningDepth, boolean fullyProcessed) {
-        final boolean isTracing = GraalOptions.TraceInlining.getValue(calleeInfo.graph().getOptions());
+        final boolean isTracing = GraalOptions.TraceInlining.getValue(calleeInfo.graph().getOptions()) || calleeInfo.graph().getDebug().hasCompilationListener();
         CallTargetNode callTarget = invocation.callee().invoke().callTarget();
         if (callTarget instanceof MethodCallTargetNode) {
             ResolvedJavaMethod calleeMethod = callTarget.targetMethod();

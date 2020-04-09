@@ -35,6 +35,13 @@ import org.graalvm.compiler.graph.Node;
 public interface Invokable extends DeoptBciSupplier {
     ResolvedJavaMethod getTargetMethod();
 
+    /**
+     * Returns the {@linkplain ResolvedJavaMethod method} from which the call is executed.
+     *
+     * @return the method from which the call is executed.
+     */
+    ResolvedJavaMethod getContextMethod();
+
     default boolean isAlive() {
         return asFixedNode().isAlive();
     }

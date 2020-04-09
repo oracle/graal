@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.replacements;
+package org.graalvm.compiler.hotspot;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.replacements.nodes.ReflectionGetCallerClassNode;
+import org.graalvm.compiler.core.common.CompilerProfiler;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.JFR;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@NodeInfo
-public final class HotSpotReflectionGetCallerClassNode extends ReflectionGetCallerClassNode {
+/**
+ * A HotSpot JFR implementation of {@link CompilerProfiler}.
+ */
+@ServiceProvider(CompilerProfiler.class)
+public final class JFRCompilerProfiler implements CompilerProfiler {
 
-    public static final NodeClass<HotSpotReflectionGetCallerClassNode> TYPE = NodeClass.create(HotSpotReflectionGetCallerClassNode.class);
-
-    public HotSpotReflectionGetCallerClassNode(MacroParams p) {
-        super(TYPE, p);
+    @Override
+    public long getTicks() {
+        return JFR.Ticks.now();
     }
 
     @Override
-    protected boolean isCallerSensitive(ResolvedJavaMethod method) {
-        return ((HotSpotResolvedJavaMethod) method).isCallerSensitive();
+    public void notifyCompilerPhaseEvent(int compileId, long startTime, String name, int nestingLevel) {
+        JFR.CompilerPhaseEvent.write(startTime, name, compileId, nestingLevel);
     }
 
     @Override
-    protected boolean ignoredBySecurityStackWalk(ResolvedJavaMethod method) {
-        return ((HotSpotResolvedJavaMethod) method).ignoredBySecurityStackWalk();
+    public void notifyCompilerInlingEvent(int compileId, ResolvedJavaMethod caller, ResolvedJavaMethod callee,
+                    boolean succeeded, String message, int bci) {
+        JFR.CompilerInliningEvent.write(compileId, caller, callee, succeeded, message, bci);
     }
+
 }

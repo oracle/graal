@@ -248,6 +248,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining
 import static org.graalvm.compiler.core.common.GraalOptions.PrintProfilingInformation;
 import static org.graalvm.compiler.core.common.GraalOptions.StressExplicitExceptionCode;
 import static org.graalvm.compiler.core.common.GraalOptions.StressInvokeWithExceptionNode;
+import static org.graalvm.compiler.core.common.GraalOptions.TraceInlining;
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 import static org.graalvm.compiler.debug.GraalError.guarantee;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
@@ -333,6 +334,8 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.InliningLog;
+import org.graalvm.compiler.nodes.InliningLog.PlaceholderInvokable;
+import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -2285,7 +2288,12 @@ public class BytecodeParser implements GraphBuilderContext {
                     try (DebugCloseable context = openNodeContext(targetMethod, 1)) {
                         genGetField(resolvedField, receiver);
                         notifyBeforeInline(targetMethod);
-                        printInlining(targetMethod, targetMethod, true, "inline accessor method (bytecode parsing)");
+                        String reason = "inline accessor method (bytecode parsing)";
+                        printInlining(targetMethod, targetMethod, true, reason);
+                        if (TraceInlining.getValue(options) || debug.hasCompilationListener()) {
+                            PlaceholderInvokable invoke = new PlaceholderInvokable(method, targetMethod, bci());
+                            graph.getInliningLog().addDecision(invoke, true, "GraphBuilderPhase", null, null, reason);
+                        }
                         notifyAfterInline(targetMethod);
                     }
                     return true;
@@ -2434,7 +2442,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private boolean inline(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, BytecodeProvider intrinsicBytecodeProvider, ValueNode[] args) {
-        try (InliningLog.RootScope scope = graph.getInliningLog().openRootScope(targetMethod, bci())) {
+        try (InliningLog.RootScope scope = graph.getInliningLog().openRootScope(method, targetMethod, bci())) {
             IntrinsicContext intrinsic = this.intrinsicContext;
 
             if (intrinsic == null && !graphBuilderConfig.insertFullInfopoints() &&
@@ -2444,6 +2452,9 @@ public class BytecodeParser implements GraphBuilderContext {
                 return true;
             }
 
+            Invokable logInliningInvokable = scope != null ? scope.getInvoke() : debug.hasCompilationListener() ? new PlaceholderInvokable(method, targetMethod, bci()) : null;
+            boolean logInliningDecision = logInliningInvokable != null;
+
             if (intrinsic != null && intrinsic.isCallToOriginal(targetMethod)) {
                 if (intrinsic.isCompilationRoot()) {
                     // A root compiled intrinsic needs to deoptimize
@@ -2452,15 +2463,15 @@ public class BytecodeParser implements GraphBuilderContext {
                     // from the start node of the intrinsic
                     append(new DeoptimizeNode(InvalidateRecompile, RuntimeConstraint));
                     printInlining(targetMethod, inlinedMethod, true, "compilation root (bytecode parsing)");
-                    if (scope != null) {
-                        graph.getInliningLog().addDecision(scope.getInvoke(), true, "GraphBuilderPhase", null, null, "compilation root");
+                    if (logInliningDecision) {
+                        graph.getInliningLog().addDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, "compilation root");
                     }
                     return true;
                 } else {
                     if (intrinsic.getOriginalMethod().isNative()) {
                         printInlining(targetMethod, inlinedMethod, false, "native method (bytecode parsing)");
-                        if (scope != null) {
-                            graph.getInliningLog().addDecision(scope.getInvoke(), false, "GraphBuilderPhase", null, null, "native method");
+                        if (logInliningDecision) {
+                            graph.getInliningLog().addDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, "native method");
                         }
                         return false;
                     }
@@ -2470,16 +2481,16 @@ public class BytecodeParser implements GraphBuilderContext {
                         // intrinsic method (see FrameStateBuilder.create(int bci)).
                         notifyBeforeInline(inlinedMethod);
                         printInlining(targetMethod, inlinedMethod, true, "partial intrinsic exit (bytecode parsing)");
-                        if (scope != null) {
-                            graph.getInliningLog().addDecision(scope.getInvoke(), true, "GraphBuilderPhase", null, null, "partial intrinsic exit");
+                        if (logInliningDecision) {
+                            graph.getInliningLog().addDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, "partial intrinsic exit");
                         }
                         parseAndInlineCallee(intrinsic.getOriginalMethod(), args, null);
                         notifyAfterInline(inlinedMethod);
                         return true;
                     } else {
                         printInlining(targetMethod, inlinedMethod, false, "partial intrinsic exit (bytecode parsing)");
-                        if (scope != null) {
-                            graph.getInliningLog().addDecision(scope.getInvoke(), false, "GraphBuilderPhase", null, null, "partial intrinsic exit");
+                        if (logInliningDecision) {
+                            graph.getInliningLog().addDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, "partial intrinsic exit");
                         }
                         return false;
                     }
@@ -2493,15 +2504,15 @@ public class BytecodeParser implements GraphBuilderContext {
                 if (inlinedMethod.hasBytecodes()) {
                     notifyBeforeInline(inlinedMethod);
                     printInlining(targetMethod, inlinedMethod, true, "inline method (bytecode parsing)");
-                    if (scope != null) {
-                        graph.getInliningLog().addDecision(scope.getInvoke(), true, "GraphBuilderPhase", null, null, "inline method");
+                    if (logInliningDecision) {
+                        graph.getInliningLog().addDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, "inline method");
                     }
                     parseAndInlineCallee(inlinedMethod, args, intrinsic);
                     notifyAfterInline(inlinedMethod);
                 } else {
                     printInlining(targetMethod, inlinedMethod, false, "no bytecodes (abstract or native) (bytecode parsing)");
-                    if (scope != null) {
-                        graph.getInliningLog().addDecision(scope.getInvoke(), false, "GraphBuilderPhase", null, null, "no bytecodes (abstract or native)");
+                    if (logInliningDecision) {
+                        graph.getInliningLog().addDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, "no bytecodes (abstract or native)");
                     }
                     return false;
                 }

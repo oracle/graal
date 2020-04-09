@@ -37,8 +37,8 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Scope;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
 import org.graalvm.compiler.lir.FullInfopointOp;
@@ -282,7 +282,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     @Test(expected = Error.class)
     public void testUnknownJavaValue() {
-        DebugContext debug = DebugContext.create(getInitialOptions(), DebugHandlersFactory.LOADER);
+        DebugContext debug = new Builder(getInitialOptions()).build();
         try (Scope s = debug.disable()) {
             /*
              * Expected: either AssertionError or GraalError, depending on whether the unit test run

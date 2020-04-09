@@ -63,6 +63,13 @@ suite = {
       "jdkStandardizedSince" : "9",
       "module" : "jdk.internal.vm.ci"
     },
+    "JFR" : {
+      "path" : "lib/jfr.jar",
+      "sourcePath" : "lib/jfr.jar",
+      "jdkStandardizedSince" : "9",
+      "optional" : True,
+      "module" : "jdk.jfr"
+    },
   },
 
   "libraries" : {
@@ -597,6 +604,31 @@ suite = {
       "multiReleaseJarVersion" : "13",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "13+",
+      "workingSets" : "Graal,HotSpot",
+    },
+
+    "org.graalvm.compiler.hotspot.jdk15" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies": [
+        "org.graalvm.compiler.hotspot",
+        "JVMCI_HOTSPOT",
+        "JFR",
+      ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.hotspot",
+        ],
+      },
+      "annotationProcessors" : [
+        "GRAAL_PROCESSOR",
+      ],
+      "overlayTarget" : "org.graalvm.compiler.hotspot",
+      "multiReleaseJarVersion" : "15",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "15+",
+      "checkPackagePrefix" : "false",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -1460,6 +1492,9 @@ suite = {
         "org.graalvm.util",
         "org.graalvm.compiler.debug",
         "sdk:GRAAL_SDK",
+      ],
+      "uses" : [
+        "org.graalvm.compiler.core.common.CompilerProfiler",
       ],
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",

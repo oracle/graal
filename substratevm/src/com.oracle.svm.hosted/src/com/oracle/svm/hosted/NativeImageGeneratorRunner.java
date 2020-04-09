@@ -44,6 +44,7 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -253,7 +254,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
              * to pass the OptionValues explicitly when accessing options.
              */
             parsedHostedOptions = new OptionValues(optionParser.getHostedValues());
-            DebugContext debug = DebugContext.create(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection()));
+            DebugContext debug = new Builder(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
 
             String imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
             if (imageName.length() == 0) {
