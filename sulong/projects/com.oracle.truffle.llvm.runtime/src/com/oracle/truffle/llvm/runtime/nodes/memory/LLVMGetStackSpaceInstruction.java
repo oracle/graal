@@ -148,6 +148,8 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
             super(size, alignment, symbolType);
         }
 
+        public abstract LLVMNativePointer executeWithTarget(VirtualFrame frame, long sizeInBytes);
+
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame, int nr,
                         @CachedLanguage LLVMLanguage language) {
