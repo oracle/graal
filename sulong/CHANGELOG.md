@@ -15,7 +15,7 @@ Changes:
   ```
   This can be solved by either compiling it into a proper executable, or by
   specifying the dependency on the command line (e.g., `lli --lib libc++.so.1 ...`
-  on Linux or `llri--lib libc++.1.dylib` on macOS).
+  on Linux or `lli --lib libc++.1.dylib` on macOS).
 
 * Module initialization order is now only based on the dependencies recorded in the
   ELF/Mach-O file instead of looking at imported symbols. Consequently, the order
