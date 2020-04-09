@@ -247,7 +247,11 @@ public class GCImpl implements GC {
         collectImpl(cause.getName());
 
         /* Check if out of memory. */
-        boolean outOfMemory = checkIfOutOfMemory();
+        UnsignedWord maxBytes = HeapPolicy.getMaximumHeapSize();
+        UnsignedWord usedBytes = getChunkUsedBytesAfterCollection();
+        boolean outOfMemory = usedBytes.aboveThan(maxBytes);
+        /* Notify Reference object processing. */
+        ReferenceObjectProcessing.afterCollection(usedBytes, maxBytes);
         /* Run any collection watchers after the collection. */
         visitWatchersAfter();
         /* Reset for the next collection. */
@@ -477,12 +481,10 @@ public class GCImpl implements GC {
         }
     }
 
-    private boolean checkIfOutOfMemory() {
-        final UnsignedWord allowed = HeapPolicy.getMaximumHeapSize();
+    private UnsignedWord getChunkUsedBytesAfterCollection() {
         /* The old generation and the survivor spaces have objects */
         UnsignedWord survivorUsedBytes = HeapImpl.getHeapImpl().getYoungGeneration().getSurvivorChunkUsedBytes();
-        UnsignedWord inUse = getAccounting().getOldGenerationAfterChunkBytes().add(survivorUsedBytes);
-        return allowed.belowThan(inUse);
+        return getAccounting().getOldGenerationAfterChunkBytes().add(survivorUsedBytes);
     }
 
     @Fold

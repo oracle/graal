@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -72,4 +73,8 @@ public class HeapOptions {
 
     @Option(help = "Verify dirty cards after each collection.") //
     public static final HostedOptionKey<Boolean> VerifyDirtyCardsAfterCollection = new HostedOptionKey<>(false);
+
+    @Option(help = "Soft references: this number of milliseconds multiplied by the free heap memory in MByte is the time span " +
+                    "for which a soft reference will keep its referent alive after its last access.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new HostedOptionKey<>(1000);
 }

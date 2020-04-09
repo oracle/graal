@@ -24,49 +24,84 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
+import java.lang.ref.SoftReference;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 /** Discovers and handles {@link Reference} objects during garbage collection. */
 public class ReferenceObjectProcessing {
 
+    /** Linked list of discovered references. */
     private static Reference<?> discoveredReferencesList;
 
+    /**
+     * For a {@link SoftReference}, the longest duration after its last access to keep its referent
+     * alive. Determined at the end of a collection to be applied during the next collection.
+     */
+    private static UnsignedWord maxSoftRefAccessIntervalMs = UnsignedUtils.MAX_VALUE;
+
     @AlwaysInline("GC performance")
-    public static void discoverIfReference(Object object) {
+    public static void discoverIfReference(Object object, ObjectReferenceVisitor refVisitor) {
         assert object != null;
         DynamicHub hub = KnownIntrinsics.readHub(object);
         if (probability(SLOW_PATH_PROBABILITY, hub.isReferenceInstanceClass())) {
-            handleDiscoverableReference(object);
+            /*
+             * References are immutable and in the image heap, they can only point to another image
+             * heap object that cannot be moved or reclaimed, so no need to look closer.
+             */
+            if (!Heap.getHeap().isInImageHeap(object)) {
+                handleDiscoverableReference(object, refVisitor);
+            }
         }
     }
 
-    private static void handleDiscoverableReference(Object obj) {
+    private static void handleDiscoverableReference(Object obj, ObjectReferenceVisitor refVisitor) {
         Reference<?> dr = KnownIntrinsics.convertUnknownValue(obj, Reference.class);
         Log trace = Log.noopLog().string("[ReferenceObjectProcessing.handleDiscoverableReference:");
         trace.string("  dr: ").object(dr);
-        if (ReferenceInternals.needsDiscovery(dr)) {
+        if (probability(FREQUENT_PROBABILITY, ReferenceInternals.needsDiscovery(dr))) {
             if (trace.isEnabled()) {
                 trace.string("  referent: ").hex(ReferenceInternals.getReferentPointer(dr));
             }
-            addToDiscoveredList(dr);
+            discover(dr, refVisitor);
         } else {
             trace.string("  does not need to be discovered (uninitialized, already on a list, or null referent)]").newline();
         }
         trace.string("]").newline();
+    }
+
+    private static void discover(Reference<?> dr, ObjectReferenceVisitor refVisitor) {
+        if (probability(NOT_FREQUENT_PROBABILITY, dr instanceof SoftReference)) {
+            // Soft refs are presumed rare compared to weak refs (maps) and phantom refs (cleaners)
+            long clock = ReferenceInternals.getSoftReferenceClock();
+            long timestamp = ReferenceInternals.getSoftReferenceTimestamp((SoftReference<?>) dr);
+            UnsignedWord elapsed = WordFactory.unsigned(clock - timestamp);
+            if (elapsed.belowThan(maxSoftRefAccessIntervalMs)) {
+                refVisitor.visitObjectReference(ReferenceInternals.getReferentFieldAddress(dr), true);
+                return; // done: referent object will survive and referent field has been updated
+            }
+        }
+
+        addToDiscoveredList(dr);
     }
 
     private static void addToDiscoveredList(Reference<?> dr) {
@@ -106,8 +141,15 @@ public class ReferenceObjectProcessing {
             }
         }
         trace.string("]").newline();
-        assert discoveredReferencesList == null;
         return pendingHead;
+    }
+
+    static void afterCollection(UnsignedWord usedBytes, UnsignedWord maxBytes) {
+        assert discoveredReferencesList == null;
+
+        UnsignedWord unusedMbytes = maxBytes.subtract(usedBytes).unsignedDivide(1024 * 1024 /* MB */);
+        maxSoftRefAccessIntervalMs = unusedMbytes.multiply(HeapOptions.SoftRefLRUPolicyMSPerMB.getValue());
+        ReferenceInternals.updateSoftReferenceClock();
     }
 
     /**
@@ -198,5 +240,4 @@ public class ReferenceObjectProcessing {
         assert !refOldTo : "referent should be in the heap.";
         return true;
     }
-
 }
