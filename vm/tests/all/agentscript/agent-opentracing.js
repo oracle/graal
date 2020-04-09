@@ -3,7 +3,7 @@
 let initializeTracer = function (tracer) {
     var counter = 0;
 
-    agent.on('enter', function(ctx, frame) {
+    insight.on('enter', function(ctx, frame) {
         const args = frame.args;
         if ('request' !== frame.type || args.length !== 2 || typeof args[0] !== 'object' || typeof args[1] !== 'object') {
             return;
@@ -23,7 +23,7 @@ let initializeTracer = function (tracer) {
         sourceFilter: src => src.name === 'events.js'
     });
 
-    agent.on('return', function(ctx, frame) {
+    insight.on('return', function(ctx, frame) {
         var res = frame['this'];
         if (res.span) {
             res.span.finish();
@@ -49,7 +49,7 @@ let initializeAgent = function (require) {
 
 // See schema https://github.com/jaegertracing/jaeger-client-node/blob/master/src/configuration.js#L37
     var config = {
-        serviceName: 't-trace-demo',
+        serviceName: 'insight-demo',
         reporter: {
             // Provide the traces endpoint; this forces the client to connect directly to the Collector and send
             // spans over HTTP
@@ -65,7 +65,7 @@ let initializeAgent = function (require) {
     };
     var options = {
         tags: {
-            't-trace-demo.version': '1.1.2',
+            'insight-demo.version': '1.1.2',
         },
 //  metrics: metrics,
         logger: console,
@@ -81,10 +81,10 @@ let initializeAgent = function (require) {
 
 let waitForRequire = function (event) {
   if (typeof process === 'object' && process.mainModule && process.mainModule.require) {
-    agent.off('source', waitForRequire);
+    insight.off('source', waitForRequire);
     initializeAgent(process.mainModule.require.bind(process.mainModule));
   }
 };
 
-agent.on('source', waitForRequire, { roots: true });
+insight.on('source', waitForRequire, { roots: true });
 

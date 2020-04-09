@@ -1,3 +1,3 @@
-agent.on('source', function(ev) {
+insight.on('source', function(ev) {
     throw `Error loading of source ${ev.name}`;
 });

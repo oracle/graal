@@ -38,20 +38,20 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import java.util.Locale;
 
-final class AgentException extends RuntimeException implements TruffleException {
+final class InsightException extends RuntimeException implements TruffleException {
     static final long serialVersionUID = 1L;
     private final int exitCode;
     private final Node node;
 
     @TruffleBoundary
-    private AgentException(String msg, Throwable cause, int exitCode) {
-        super("agentscript: " + msg, cause);
+    private InsightException(String msg, Throwable cause, int exitCode) {
+        super("insight: " + msg, cause);
         this.exitCode = exitCode;
         this.node = null;
     }
 
     @TruffleBoundary
-    private AgentException(Throwable cause, Node node) {
+    private InsightException(Throwable cause, Node node) {
         super(cause.getMessage());
         this.exitCode = -1;
         this.node = node;
@@ -79,27 +79,27 @@ final class AgentException extends RuntimeException implements TruffleException 
     }
 
     @TruffleBoundary
-    static AgentException raise(Exception ex) throws AgentException {
-        throw new AgentException(ex.getMessage(), ex, -1);
+    static InsightException raise(Exception ex) throws InsightException {
+        throw new InsightException(ex.getMessage(), ex, -1);
     }
 
     @TruffleBoundary
-    static AgentException notFound(TruffleFile file) {
-        throw new AgentException(file.getName() + ": No such file or directory", null, 1);
+    static InsightException notFound(TruffleFile file) {
+        throw new InsightException(file.getName() + ": No such file or directory", null, 1);
     }
 
     @TruffleBoundary
-    static AgentException notRecognized(TruffleFile file) {
-        throw new AgentException(file.getName() + ": No language to process the file. Try --polyglot", null, 1);
+    static InsightException notRecognized(TruffleFile file) {
+        throw new InsightException(file.getName() + ": No language to process the file. Try --polyglot", null, 1);
     }
 
     @TruffleBoundary
-    static AgentException unknownAttribute(String type) {
-        throw new AgentException("Unknown attribute " + type, null, 1);
+    static InsightException unknownAttribute(String type) {
+        throw new InsightException("Unknown attribute " + type, null, 1);
     }
 
     @TruffleBoundary
-    static AgentException unknownType(Throwable originalError, String str, AgentType[] values) {
+    static InsightException unknownType(Throwable originalError, String str, AgentType[] values) {
         StringBuilder sb = new StringBuilder();
         sb.append("Unknown event type '").append(str).append("'. Known types are:");
         String sep = " ";
@@ -107,7 +107,7 @@ final class AgentException extends RuntimeException implements TruffleException 
             sb.append(sep).append("'").append(t.toString().toLowerCase(Locale.ENGLISH)).append("'");
             sep = ", ";
         }
-        throw new AgentException(sb.toString(), originalError, 1);
+        throw new InsightException(sb.toString(), originalError, 1);
     }
 
     @TruffleBoundary
@@ -124,7 +124,7 @@ final class AgentException extends RuntimeException implements TruffleException 
                 if (ex instanceof TruffleException && ex instanceof RuntimeException) {
                     throw obj.rethrow((RuntimeException) ex);
                 }
-                AgentException wrapper = new AgentException(ex, context.getInstrumentedNode());
+                InsightException wrapper = new InsightException(ex, context.getInstrumentedNode());
                 throw obj.rethrow(wrapper);
             }
 
