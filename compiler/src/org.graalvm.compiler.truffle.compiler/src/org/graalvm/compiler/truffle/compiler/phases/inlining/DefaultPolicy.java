@@ -24,19 +24,20 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
+
 import java.util.Comparator;
 import java.util.PriorityQueue;
+
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
-
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
 
 final class DefaultPolicy implements InliningPolicy {
 
     private static final int MAX_DEPTH = 15;
     private static final Comparator<CallNode> CALL_NODE_COMPARATOR = (o1, o2) -> Double.compare(o2.getRootRelativeFrequency(), o1.getRootRelativeFrequency());
     private final OptionValues options;
-    private int expandedCount = 0;
+    private int expandedCount;
 
     DefaultPolicy(OptionValues options) {
         this.options = options;
@@ -52,10 +53,9 @@ final class DefaultPolicy implements InliningPolicy {
         return queue;
     }
 
-    private static void doInline(CallNode candidate, PriorityQueue<CallNode> inlineQueue) {
-        candidate.inline();
+    private static void updateQueue(CallNode candidate, PriorityQueue<CallNode> inlineQueue, CallNode.State expanded) {
         for (CallNode child : candidate.getChildren()) {
-            if (child.getState() == CallNode.State.Expanded) {
+            if (child.getState() == expanded) {
                 inlineQueue.add(child);
             }
         }
@@ -72,30 +72,28 @@ final class DefaultPolicy implements InliningPolicy {
         final PriorityQueue<CallNode> inlineQueue = getQueue(tree, CallNode.State.Expanded);
         CallNode candidate;
         while ((candidate = inlineQueue.poll()) != null) {
-            if (candidate.isForced()) {
-                doInline(candidate, inlineQueue);
-                continue;
-            }
             if (tree.getRoot().getIR().getNodeCount() + candidate.getIR().getNodeCount() > inliningBudget) {
                 break;
             }
-            doInline(candidate, inlineQueue);
+            candidate.inline();
+            updateQueue(candidate, inlineQueue, CallNode.State.Expanded);
         }
     }
 
     private void expand(CallTree tree) {
         final int expansionBudget = getPolyglotOptionValue(options, PolyglotCompilerOptions.InliningExpansionBudget);
+        final int maximumRecursiveInliningValue = getPolyglotOptionValue(options, PolyglotCompilerOptions.InliningRecursionDepth);
+        expandedCount = tree.getRoot().getIR().getNodeCount();
         final PriorityQueue<CallNode> expandQueue = getQueue(tree, CallNode.State.Cutoff);
         CallNode candidate;
         while ((candidate = expandQueue.poll()) != null) {
+            if (expandedCount > expansionBudget) {
+                break;
+            }
             if (candidate.isForced()) {
                 doExpand(candidate, expandQueue);
                 continue;
             }
-            if (expandedCount > expansionBudget) {
-                break;
-            }
-            final Integer maximumRecursiveInliningValue = getPolyglotOptionValue(options, PolyglotCompilerOptions.InliningRecursionDepth);
             if (candidate.getRecursionDepth() > maximumRecursiveInliningValue || candidate.getDepth() > MAX_DEPTH) {
                 continue;
             }
@@ -106,10 +104,6 @@ final class DefaultPolicy implements InliningPolicy {
     private void doExpand(CallNode candidate, PriorityQueue<CallNode> expandQueue) {
         candidate.expand();
         expandedCount += candidate.getIR().getNodeCount();
-        for (CallNode child : candidate.getChildren()) {
-            if (child.getState() == CallNode.State.Cutoff) {
-                expandQueue.add(child);
-            }
-        }
+        updateQueue(candidate, expandQueue, CallNode.State.Cutoff);
     }
 }

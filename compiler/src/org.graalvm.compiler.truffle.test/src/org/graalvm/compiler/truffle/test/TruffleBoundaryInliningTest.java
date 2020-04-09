@@ -79,10 +79,10 @@ public class TruffleBoundaryInliningTest extends PartialEvaluationTest {
     private void runTest() {
         RootNode n1 = createRootNodeAllowInline();
         RootCallTarget c1 = runtime.createCallTarget(n1);
-        StructuredGraph allowInline = partialEval((OptimizedCallTarget) c1, new Object[]{}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
+        StructuredGraph allowInline = partialEval((OptimizedCallTarget) c1, new Object[]{}, CompilationIdentifier.INVALID_COMPILATION_ID);
         RootNode n2 = createRootNodeNoInline();
         RootCallTarget c2 = runtime.createCallTarget(n2);
-        StructuredGraph noInline = partialEval((OptimizedCallTarget) c2, new Object[]{}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
+        StructuredGraph noInline = partialEval((OptimizedCallTarget) c2, new Object[]{}, CompilationIdentifier.INVALID_COMPILATION_ID);
         checkHasTestMethod(allowInline);
         checkHasTestMethod(noInline);
     }

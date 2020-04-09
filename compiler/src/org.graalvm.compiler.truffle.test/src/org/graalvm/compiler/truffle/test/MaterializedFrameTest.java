@@ -83,7 +83,7 @@ public class MaterializedFrameTest extends PartialEvaluationTest {
     public void getFrameSlotKind() {
         RootNode rootNode = createRootNode();
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        StructuredGraph graph = partialEval((OptimizedCallTarget) callTarget, new Object[]{}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
+        StructuredGraph graph = partialEval((OptimizedCallTarget) callTarget, new Object[]{}, CompilationIdentifier.INVALID_COMPILATION_ID);
 
         NodeIterable<MethodCallTargetNode> calls = graph.getNodes().filter(MethodCallTargetNode.class);
         assertTrue("Unexpected call(s): " + calls.snapshot(), calls.isEmpty());

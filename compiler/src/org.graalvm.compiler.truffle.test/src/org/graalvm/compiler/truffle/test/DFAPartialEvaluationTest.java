@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -317,7 +316,7 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
     private void assertPartialEvalEqualsAndRunsCorrect(RootNode program, String input) {
         assertMatches(program, input);
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(program);
-        partialEval(compilable, new Object[]{input}, StructuredGraph.AllowAssumptions.YES, INVALID_COMPILATION_ID);
+        partialEval(compilable, new Object[]{input}, INVALID_COMPILATION_ID);
         // fail on Exceptions only for now
     }
 
