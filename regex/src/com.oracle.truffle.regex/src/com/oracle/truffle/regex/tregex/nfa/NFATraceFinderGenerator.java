@@ -322,7 +322,7 @@ public final class NFATraceFinderGenerator {
     }
 
     private int getEncodedSize(NFAState s) {
-        Encoding encoding = originalNFA.getAst().getOptions().getEncoding();
+        Encoding encoding = originalNFA.getAst().getEncoding();
         assert encoding.isFixedCodePointWidth(s.getCharSet());
         return encoding.getEncodedSize(s.getCharSet().getMin());
     }

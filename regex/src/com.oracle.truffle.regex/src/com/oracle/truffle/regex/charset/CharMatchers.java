@@ -58,6 +58,8 @@ import com.oracle.truffle.regex.tregex.matchers.RangeTreeMatcher;
 import com.oracle.truffle.regex.tregex.matchers.SingleCharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.SingleRangeMatcher;
 import com.oracle.truffle.regex.tregex.matchers.TwoCharMatcher;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
@@ -70,12 +72,14 @@ public class CharMatchers {
      * either none or all of the code points above {@code 0xffff}. Code points above {@code 0xffff}
      * are cut off.
      */
-    public static CharMatcher createMatcher16Bit(CodePointSet cps, CompilationBuffer compilationBuffer) {
-        return createMatcherIntl(CodePointSetBMPView.create(cps), compilationBuffer);
-    }
-
-    public static CharMatcher createMatcher(CodePointSet cps, CompilationBuffer compilationBuffer) {
-        return createMatcherIntl(cps, compilationBuffer);
+    public static CharMatcher createMatcher(CodePointSet cps, Encoding encoding, CompilationBuffer compilationBuffer) {
+        if (encoding == Encodings.UTF_16) {
+            return createMatcherIntl(cps, compilationBuffer);
+        } else if (encoding == Encodings.UTF_16_RAW) {
+            return createMatcherIntl(CodePointSetBMPView.create(cps), compilationBuffer);
+        } else {
+            throw new UnsupportedOperationException();
+        }
     }
 
     private static CharMatcher createMatcherIntl(ImmutableSortedListOfIntRanges cps, CompilationBuffer compilationBuffer) {

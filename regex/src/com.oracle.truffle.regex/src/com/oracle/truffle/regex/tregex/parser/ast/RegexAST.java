@@ -55,6 +55,7 @@ import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
@@ -64,6 +65,7 @@ import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTDebugDumpVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -78,6 +80,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final RegexSource source;
     private final RegexFlags flags;
     private final RegexOptions options;
+    private final Encoding encoding;
     private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexParserTreeMaxSize, "parse tree explosion");
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final Counter quantifierCount = new Counter();
@@ -105,10 +108,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     private final EconomicMap<RegexASTNode, List<SourceSection>> sourceSections;
 
-    public RegexAST(RegexSource source, RegexFlags flags, RegexOptions options) {
+    public RegexAST(RegexSource source, RegexFlags flags, RegexOptions options, Encoding encoding) {
         this.source = source;
         this.flags = flags;
         this.options = options;
+        this.encoding = encoding;
         sourceSections = options.isDumpAutomata() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
     }
 
@@ -122,6 +126,10 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     public RegexOptions getOptions() {
         return options;
+    }
+
+    public Encoding getEncoding() {
+        return encoding;
     }
 
     public Group getRoot() {
@@ -324,10 +332,13 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             if (!characterClass.getCharSet().matches2CharsWith1BitDifference()) {
                 properties.unsetCharClassesCanBeMatchedWithMask();
             }
-            if (!options.getEncoding().isFixedCodePointWidth(characterClass.getCharSet())) {
+            if (!encoding.isFixedCodePointWidth(characterClass.getCharSet())) {
                 properties.setFixedCodePointWidth(false);
             }
             properties.setCharClasses();
+        }
+        if (Constants.SURROGATES.intersects(characterClass.getCharSet())) {
+            properties.setLoneSurrogates();
         }
     }
 
@@ -603,13 +614,13 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         assert properties.hasInnerLiteral();
         int literalEnd = properties.getInnerLiteralEnd();
         int literalStart = properties.getInnerLiteralStart();
-        AbstractStringBuffer literal = options.getEncoding().createStringBuffer(literalEnd - literalStart);
-        AbstractStringBuffer mask = options.getEncoding().createStringBuffer(literalEnd - literalStart);
+        AbstractStringBuffer literal = encoding.createStringBuffer(literalEnd - literalStart);
+        AbstractStringBuffer mask = encoding.createStringBuffer(literalEnd - literalStart);
         boolean hasMask = false;
         for (int i = literalStart; i < literalEnd; i++) {
             CharacterClass cc = root.getFirstAlternative().getTerms().get(i).asCharacterClass();
             assert cc.getCharSet().matchesSingleChar() || cc.getCharSet().matches2CharsWith1BitDifference();
-            assert options.getEncoding().isFixedCodePointWidth(cc.getCharSet());
+            assert encoding.isFixedCodePointWidth(cc.getCharSet());
             cc.extractSingleChar(literal, mask);
             hasMask |= cc.getCharSet().matches2CharsWith1BitDifference();
         }

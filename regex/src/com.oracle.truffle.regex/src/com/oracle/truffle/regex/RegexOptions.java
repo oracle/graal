@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.parser.RegexFeatureSet;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
-import com.oracle.truffle.regex.tregex.string.Encodings;
 
 import java.util.Arrays;
 
@@ -77,7 +76,6 @@ public final class RegexOptions {
     private final int options;
     private final RegexFlavor flavor;
     private final RegexFeatureSet featureSet;
-    private final Encodings.Encoding encoding = Encodings.UTF_16;
 
     private RegexOptions(int options, RegexFlavor flavor, RegexFeatureSet featureSet) {
         assert flavor == null || featureSet == RegexFeatureSet.DEFAULT;
@@ -92,7 +90,7 @@ public final class RegexOptions {
 
     @CompilerDirectives.TruffleBoundary
     public static RegexOptions parse(String optionsString) throws RegexSyntaxException {
-        int options = UTF_16_EXPLODE_ASTRAL_SYMBOLS;
+        int options = 0;
         RegexFlavor flavor = null;
         RegexFeatureSet featureSet = RegexFeatureSet.DEFAULT;
         for (String propValue : optionsString.split(",")) {
@@ -214,18 +212,9 @@ public final class RegexOptions {
     /**
      * Explode astral symbols ({@code 0x10000 - 0x10FFFF}) into sub-automata where every state
      * matches one {@code char} as opposed to one code point.
-     *
-     * TODO: enabled by default - disable.
      */
     public boolean isUTF16ExplodeAstralSymbols() {
         return isBitSet(UTF_16_EXPLODE_ASTRAL_SYMBOLS);
-    }
-
-    /**
-     * TODO: remove this.
-     */
-    public RegexOptions withoutUTF16ExplodeAstralSymbols() {
-        return new RegexOptions(options & ~UTF_16_EXPLODE_ASTRAL_SYMBOLS, flavor, featureSet);
     }
 
     public RegexFlavor getFlavor() {
@@ -239,10 +228,6 @@ public final class RegexOptions {
      */
     public RegexFeatureSet getFeatureSet() {
         return featureSet;
-    }
-
-    public Encodings.Encoding getEncoding() {
-        return encoding;
     }
 
     @Override

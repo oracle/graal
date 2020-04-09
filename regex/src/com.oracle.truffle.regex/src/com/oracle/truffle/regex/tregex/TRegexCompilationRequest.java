@@ -179,7 +179,7 @@ public final class TRegexCompilationRequest {
         for (int i = 0; i < pureNFA.getLookArounds().size(); i++) {
             PureNFA lookAround = pureNFA.getLookArounds().get(i);
             if (pureNFA.getASTSubtree(lookAround).asLookAroundAssertion().isLiteral()) {
-                lookAroundExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA.getASTSubtree(lookAround).asLookAroundAssertion(), compilationBuffer);
+                lookAroundExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA.getASTSubtree(lookAround).asLookAroundAssertion(), ast.getEncoding(), compilationBuffer);
             } else {
                 lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, lookAround, lookAroundExecutors, compilationBuffer);
             }

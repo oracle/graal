@@ -69,8 +69,8 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         result = new PreCalculatedResultFactory(ast.getNumberOfCaptureGroups());
         this.extractLiteral = extractLiteral;
         if (extractLiteral) {
-            literal = ast.getOptions().getEncoding().createStringBuffer(ast.getRoot().getMinPath());
-            mask = ast.getProperties().hasCharClasses() ? ast.getOptions().getEncoding().createStringBuffer(ast.getRoot().getMinPath()) : null;
+            literal = ast.getEncoding().createStringBuffer(ast.getRoot().getMinPath());
+            mask = ast.getProperties().hasCharClasses() ? ast.getEncoding().createStringBuffer(ast.getRoot().getMinPath()) : null;
         } else {
             literal = null;
             mask = null;
@@ -178,7 +178,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
                     characterClass.extractSingleChar(literal, mask);
                 }
             }
-            index += ast.getOptions().getEncoding().getEncodedSize(cp);
+            index += ast.getEncoding().getEncodedSize(cp);
         }
     }
 }

@@ -49,6 +49,8 @@ public final class Encodings {
     public static final Encoding UTF_16 = new Encoding.UTF16();
     public static final Encoding UTF_32 = new Encoding.UTF32();
 
+    public static final Encoding UTF_16_RAW = new Encoding.UTF16Raw();
+
     public abstract static class Encoding {
 
         public abstract String getName();
@@ -59,7 +61,10 @@ public final class Encodings {
 
         public abstract AbstractStringBuffer createStringBuffer(int capacity);
 
-        private static final class UTF32 extends Encoding {
+        public static final class UTF32 extends Encoding {
+
+            private UTF32() {
+            }
 
             @Override
             public String getName() {
@@ -82,7 +87,10 @@ public final class Encodings {
             }
         }
 
-        private static final class UTF16 extends Encoding {
+        public static final class UTF16 extends Encoding {
+
+            private UTF16() {
+            }
 
             @Override
             public String getName() {
@@ -117,13 +125,57 @@ public final class Encodings {
                 return !(min < 0x10000 && max > 0x10000);
             }
 
+            public static boolean isHighSurrogate(int c, boolean forward) {
+                return forward ? isHighSurrogate(c) : isLowSurrogate(c);
+            }
+
+            public static boolean isLowSurrogate(int c, boolean forward) {
+                return forward ? isLowSurrogate(c) : isHighSurrogate(c);
+            }
+
+            public static boolean isHighSurrogate(int c) {
+                assert c <= 0xffff;
+                return (c >> 10) == 0x36;
+            }
+
+            public static boolean isLowSurrogate(int c) {
+                assert c <= 0xffff;
+                return (c >> 10) == 0x37;
+            }
+
             @Override
             public StringBufferUTF16 createStringBuffer(int capacity) {
                 return new StringBufferUTF16(capacity);
             }
         }
 
-        private static final class UTF8 extends Encoding {
+        public static final class UTF16Raw extends Encoding {
+
+            private UTF16Raw() {
+            }
+
+            @Override
+            public String getName() {
+                return "UTF-16-RAW";
+            }
+
+            @Override
+            public int getEncodedSize(int codepoint) {
+                return codepoint < 0x10000 ? 1 : 2;
+            }
+
+            @Override
+            public boolean isFixedCodePointWidth(CodePointSet set) {
+                return true;
+            }
+
+            @Override
+            public StringBufferUTF16 createStringBuffer(int capacity) {
+                return new StringBufferUTF16(capacity);
+            }
+        }
+
+        public static final class UTF8 extends Encoding {
 
             @Override
             public String getName() {

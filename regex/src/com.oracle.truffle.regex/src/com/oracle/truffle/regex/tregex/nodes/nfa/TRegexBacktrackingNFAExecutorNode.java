@@ -111,7 +111,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         }
         if (loopbackInitialState && innerLiteral == null) {
             CodePointSet initialCharSet = nfaMap.getMergedInitialStateCharSet(compilationBuffer);
-            loopbackInitialStateMatcher = initialCharSet == null ? null : CharMatchers.createMatcher16Bit(initialCharSet, compilationBuffer);
+            loopbackInitialStateMatcher = initialCharSet == null ? null : CharMatchers.createMatcher(initialCharSet, nfaMap.getAst().getEncoding(), compilationBuffer);
         }
         nfa.materializeGroupBoundaries();
         matchers = new CharMatcher[nfa.getNumberOfStates()];
@@ -119,7 +119,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         for (int i = 0; i < matchers.length; i++) {
             PureNFAState s = nfa.getState(i);
             if (s.isCharacterClass()) {
-                matchers[i] = insert(CharMatchers.createMatcher16Bit(s.getCharSet(), compilationBuffer));
+                matchers[i] = insert(CharMatchers.createMatcher(s.getCharSet(), nfaMap.getAst().getEncoding(), compilationBuffer));
             }
             maxTransitions = Math.max(maxTransitions, s.getSuccessors(forward).length);
             s.initIsDeterministic(forward, compilationBuffer);
@@ -480,7 +480,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             return false;
         }
         int nGuards = transition.getQuantifierGuards().length;
-        for (int i = isForward() ? 0 : nGuards - 1; isForward() ? i < nGuards : i >= 0; i = inputIncIndex(i)) {
+        for (int i = isForward() ? 0 : nGuards - 1; isForward() ? i < nGuards : i >= 0; i = inputIncRaw(i)) {
             QuantifierGuard guard = transition.getQuantifierGuards()[i];
             CompilerDirectives.isPartialEvaluationConstant(guard);
             Quantifier q = guard.getQuantifier();
@@ -661,27 +661,27 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             if (!inputBoundsCheck(i, 0, inputLength)) {
                 return -1;
             }
-            int codePointBR = inputRead(locals, iBR);
-            if (unicode && inputIsHighSurrogate((char) codePointBR) && inputBoundsCheck(inputIncIndex(iBR), backrefStart, backrefEnd)) {
-                int lowSurrogate = inputRead(locals, inputIncIndex(iBR));
-                if (inputIsLowSurrogate((char) lowSurrogate)) {
-                    codePointBR = inputToCodePoint((char) codePointBR, (char) lowSurrogate);
-                    iBR = inputIncIndex(iBR);
+            int codePointBR = inputReadRaw(locals, iBR);
+            if (unicode && inputUTF16IsHighSurrogate(codePointBR) && inputBoundsCheck(inputIncRaw(iBR), backrefStart, backrefEnd)) {
+                int lowSurrogate = inputReadRaw(locals, inputIncRaw(iBR));
+                if (inputUTF16IsLowSurrogate(lowSurrogate)) {
+                    codePointBR = inputUTF16ToCodePoint(codePointBR, lowSurrogate);
+                    iBR = inputIncRaw(iBR);
                 }
             }
-            int codePointI = inputRead(locals, i);
-            if (unicode && inputIsHighSurrogate((char) codePointI) && inputBoundsCheck(inputIncIndex(i), 0, inputLength)) {
-                int lowSurrogate = inputRead(locals, inputIncIndex(i));
-                if (inputIsLowSurrogate((char) lowSurrogate)) {
-                    codePointI = inputToCodePoint((char) codePointI, (char) lowSurrogate);
-                    i = inputIncIndex(i);
+            int codePointI = inputReadRaw(locals, i);
+            if (unicode && inputUTF16IsHighSurrogate(codePointI) && inputBoundsCheck(inputIncRaw(i), 0, inputLength)) {
+                int lowSurrogate = inputReadRaw(locals, inputIncRaw(i));
+                if (inputUTF16IsLowSurrogate(lowSurrogate)) {
+                    codePointI = inputUTF16ToCodePoint(codePointI, lowSurrogate);
+                    i = inputIncRaw(i);
                 }
             }
             if (!(isIgnoreCase() ? equalsIgnoreCase(codePointBR, codePointI) : codePointBR == codePointI)) {
                 return -1;
             }
-            iBR = inputIncIndex(iBR);
-            i = inputIncIndex(i);
+            iBR = inputIncRaw(iBR);
+            i = inputIncRaw(i);
         }
         return i;
     }
@@ -694,24 +694,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         return indexOfNode.execute(locals.getInput(), locals.getIndex(), locals.getMaxIndex(), innerLiteral.getLiteral(), innerLiteral.getMask());
     }
 
-    private int inputIncIndex(int i) {
-        return forward ? i + 1 : i - 1;
-    }
-
     private boolean inputBoundsCheck(int i, int min, int max) {
         return forward ? i < max : i > min;
-    }
-
-    protected boolean inputIsLowSurrogate(char c) {
-        return forward ? Character.isLowSurrogate(c) : Character.isHighSurrogate(c);
-    }
-
-    protected boolean inputIsHighSurrogate(char c) {
-        return forward ? Character.isHighSurrogate(c) : Character.isLowSurrogate(c);
-    }
-
-    protected int inputToCodePoint(char highSurrogate, char lowSurrogate) {
-        return forward ? Character.toCodePoint(highSurrogate, lowSurrogate) : Character.toCodePoint(lowSurrogate, highSurrogate);
     }
 
     private boolean equalsIgnoreCase(int a, int b) {

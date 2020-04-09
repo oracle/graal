@@ -83,7 +83,7 @@ public final class StringUTF16 implements AbstractString {
         @Override
         public int nextInt() {
             char c = str.charAt(i++);
-            if (Character.isHighSurrogate(c) && hasNext() && Character.isLowSurrogate(str.charAt(i))) {
+            if (Encodings.Encoding.UTF16.isHighSurrogate(c) && hasNext() && Encodings.Encoding.UTF16.isLowSurrogate(str.charAt(i))) {
                 return Character.toCodePoint(c, str.charAt(i++));
             }
             return c;

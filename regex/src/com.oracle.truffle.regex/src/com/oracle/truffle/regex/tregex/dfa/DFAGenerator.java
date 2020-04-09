@@ -803,7 +803,7 @@ public final class DFAGenerator implements JsonConvertible {
                     matchers[i] = AnyMatcher.create();
                 } else {
                     nRanges += matcherBuilder.size();
-                    matchers[i] = CharMatchers.createMatcher16Bit(matcherBuilder, compilationBuffer);
+                    matchers[i] = CharMatchers.createMatcher(matcherBuilder, nfa.getAst().getEncoding(), compilationBuffer);
                 }
                 estimatedTransitionsCost += matchers[i].estimatedCost();
 
@@ -849,6 +849,12 @@ public final class DFAGenerator implements JsonConvertible {
                     // TODO: specialized for UTF-16. Generalize for other encodings!
                     if (coversCharSpace && !loopMB.matchesEverything() && loopMB.inverseValueCount() <= 4 && loopMB.inverseGetMax() <= 0xffff) {
                         indexOfChars = loopMB.inverseToCharArray();
+                        for (char c : indexOfChars) {
+                            if (Constants.SURROGATES.contains(c)) {
+                                indexOfChars = null;
+                                break;
+                            }
+                        }
                     }
                 }
                 assert successors[i] >= 0 && successors[i] < ret.length;
