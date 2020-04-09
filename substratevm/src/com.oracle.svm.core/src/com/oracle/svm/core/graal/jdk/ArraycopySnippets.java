@@ -202,7 +202,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
         }
     }
 
-    private static void objectStoreCheckCopyForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
+    public static void objectStoreCheckCopyForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
         /*
          * This performs also an array bounds check in every loop iteration. However, since we do a
          * store check in every loop iteration, we are slow anyways.

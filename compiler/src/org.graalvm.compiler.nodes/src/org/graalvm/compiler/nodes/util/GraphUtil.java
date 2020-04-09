@@ -1049,7 +1049,7 @@ public class GraphUtil {
      *            component type and length
      */
     public static void virtualizeArrayCopy(VirtualizerTool tool, ValueNode source, ValueNode sourceLength, ValueNode newLength, ValueNode from, ResolvedJavaType newComponentType, JavaKind elementKind,
-                    StructuredGraph graph, BiFunction<ResolvedJavaType, Integer, VirtualArrayNode> virtualArrayProvider) {
+                    StructuredGraph graph, BiFunction<ResolvedJavaType, Integer, VirtualArrayNode> virtualArrayProvider, boolean killExceptionEdge) {
 
         ValueNode sourceAlias = tool.getAlias(source);
         ValueNode replacedSourceLength = tool.getAlias(sourceLength);
@@ -1121,7 +1121,11 @@ public class GraphUtil {
         /* Perform the replacement. */
         VirtualArrayNode newVirtualArray = virtualArrayProvider.apply(newComponentType, newLengthInt);
         tool.createVirtualObject(newVirtualArray, newEntryState, Collections.<MonitorIdNode> emptyList(), false);
-        tool.replaceWithVirtual(newVirtualArray);
+        if (killExceptionEdge) {
+            tool.replaceWithVirtualAndKillExceptionEdge(newVirtualArray);
+        } else {
+            tool.replaceWithVirtual(newVirtualArray);
+        }
     }
 
     /**
