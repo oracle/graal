@@ -48,7 +48,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -129,26 +128,10 @@ final class Target_java_lang_Object {
     }
 }
 
-@TargetClass(className = "jdk.internal.loader.ClassLoaderHelper", onlyWith = JDK15OrLater.class)
+@TargetClass(classNameProvider = Package_jdk_internal_loader_helper.class, className = "ClassLoaderHelper")
 final class Target_jdk_internal_loader_ClassLoaderHelper {
     @Alias
     static native File mapAlternativeName(File lib);
-}
-
-@TargetClass(className = "java.lang.ClassLoaderHelper", onlyWith = JDK14OrEarlier.class)
-final class Target_java_lang_ClassLoaderHelper {
-    @Alias
-    static native File mapAlternativeName(File lib);
-}
-
-final class Util_java_lang_ClassLoaderHelper {
-    static File mapAlternativeName(File lib) {
-        if (JavaVersionUtil.JAVA_SPEC >= 15) {
-            return Target_jdk_internal_loader_ClassLoaderHelper.mapAlternativeName(lib);
-        } else {
-            return Target_java_lang_ClassLoaderHelper.mapAlternativeName(lib);
-        }
-    }
 }
 
 @TargetClass(java.lang.Enum.class)

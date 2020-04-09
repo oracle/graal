@@ -97,34 +97,6 @@ public final class NativeLibrarySupport {
         return knownLibraries.stream().anyMatch(l -> l.isBuiltin() && l.getCanonicalIdentifier().equals(name));
     }
 
-    public void loadLibrary(String name) {
-        // Test if this is a built-in library
-        if (loadLibrary0(new File(name), true)) {
-            return;
-        }
-        String libname = System.mapLibraryName(name);
-        if (paths == null) {
-            String[] tokens = SubstrateUtil.split(System.getProperty("java.library.path", ""), File.pathSeparator);
-            for (int i = 0; i < tokens.length; i++) {
-                if (tokens[i].isEmpty()) {
-                    tokens[i] = ".";
-                }
-            }
-            paths = tokens;
-        }
-        for (String path : paths) {
-            File libpath = new File(path, libname);
-            if (loadLibrary0(libpath, false)) {
-                return;
-            }
-            File altpath = Util_java_lang_ClassLoaderHelper.mapAlternativeName(libpath);
-            if (altpath != null && loadLibrary0(libpath, false)) {
-                return;
-            }
-        }
-        throw new UnsatisfiedLinkError("no " + name + " in java.library.path");
-    }
-
     public void loadLibrary(String name, boolean isAbsolute) {
         if (isAbsolute) {
             if (loadLibrary0(new File(name), false)) {
@@ -151,7 +123,7 @@ public final class NativeLibrarySupport {
             if (loadLibrary0(libpath, false)) {
                 return;
             }
-            File altpath = Util_java_lang_ClassLoaderHelper.mapAlternativeName(libpath);
+            File altpath = Target_jdk_internal_loader_ClassLoaderHelper.mapAlternativeName(libpath);
             if (altpath != null && loadLibrary0(libpath, false)) {
                 return;
             }
