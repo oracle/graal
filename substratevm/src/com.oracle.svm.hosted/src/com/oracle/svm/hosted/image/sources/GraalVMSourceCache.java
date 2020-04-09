@@ -83,7 +83,7 @@ public class GraalVMSourceCache extends SourceCache {
                 Path srcPath = sourcePath.getParent().resolve(fileNameString);
                 if (srcPath.toFile().exists()) {
                     try {
-                        FileSystem fileSystem = FileSystems.newFileSystem(srcPath, null);
+                        FileSystem fileSystem = FileSystems.newFileSystem(srcPath, (ClassLoader) null);
                         for (Path root : fileSystem.getRootDirectories()) {
                             if (filterSrcRoot(root)) {
                                 srcRoots.add(root);

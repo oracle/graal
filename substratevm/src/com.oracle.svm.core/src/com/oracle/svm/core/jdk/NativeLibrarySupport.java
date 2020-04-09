@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,7 +123,7 @@ public final class NativeLibrarySupport {
             if (loadLibrary0(libpath, false)) {
                 return;
             }
-            File altpath = Target_java_lang_ClassLoaderHelper.mapAlternativeName(libpath);
+            File altpath = Target_jdk_internal_loader_ClassLoaderHelper.mapAlternativeName(libpath);
             if (altpath != null && loadLibrary0(libpath, false)) {
                 return;
             }
