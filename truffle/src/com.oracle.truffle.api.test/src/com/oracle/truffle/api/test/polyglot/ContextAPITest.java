@@ -846,6 +846,129 @@ public class ContextAPITest {
         }
     }
 
+    @Test
+    public void testExplicitContextClassLoaderNestedContexts() {
+        ClassLoader orig = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader hostClassLoaderCtx1 = new URLClassLoader(new URL[0]);
+            ClassLoader hostClassLoaderCtx2 = new URLClassLoader(new URL[0]);
+            try (Context context1 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx1).allowHostAccess(HostAccess.ALL).build()) {
+                try (Context context2 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx2).allowHostAccess(HostAccess.ALL).build()) {
+                    testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                    testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                    context1.enter();
+                    testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                    testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                    try {
+                        context2.enter();
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                        try {
+                            testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                            testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                        } finally {
+                            context2.leave();
+                        }
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                    } finally {
+                        context1.leave();
+                    }
+                    testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                    testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                }
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(orig);
+        }
+    }
+
+    @Test
+    public void testExplicitContextClassLoaderNestedContexts2() {
+        ClassLoader orig = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader hostClassLoaderCtx1 = new URLClassLoader(new URL[0]);
+            ClassLoader hostClassLoaderCtx2 = new URLClassLoader(new URL[0]);
+            ClassLoader hostClassLoaderCtx3 = new URLClassLoader(new URL[0]);
+            try (Context context1 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx1).allowHostAccess(HostAccess.ALL).build()) {
+                try (Context context2 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx2).allowHostAccess(HostAccess.ALL).build()) {
+                    try (Context context3 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx3).allowHostAccess(HostAccess.ALL).build()) {
+                        context1.enter();
+                        try {
+                            context2.enter();
+                            try {
+                                context3.enter();
+                                try {
+                                    testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                                    testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                                    testContextClassLoaderImpl(context3, hostClassLoaderCtx3);
+                                } finally {
+                                    context3.leave();
+                                }
+                                testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                                testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                                testContextClassLoaderImpl(context3, hostClassLoaderCtx3);
+                            } finally {
+                                context2.leave();
+                            }
+                            testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                            testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                            testContextClassLoaderImpl(context3, hostClassLoaderCtx3);
+                        } finally {
+                            context1.leave();
+                        }
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                        testContextClassLoaderImpl(context3, hostClassLoaderCtx3);
+                    }
+                }
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(orig);
+        }
+    }
+
+    @Test
+    public void testExplicitContextClassLoaderNestedContexts3() {
+        ClassLoader orig = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader hostClassLoaderCtx1 = new URLClassLoader(new URL[0]);
+            ClassLoader hostClassLoaderCtx2 = new URLClassLoader(new URL[0]);
+            ClassLoader customClassLoader = new URLClassLoader(new URL[0]);
+            try (Context context1 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx1).allowHostAccess(HostAccess.ALL).build()) {
+                try (Context context2 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx2).allowHostAccess(HostAccess.ALL).build()) {
+                    context1.enter();
+                    try {
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                        ClassLoader prev = Thread.currentThread().getContextClassLoader();
+                        Thread.currentThread().setContextClassLoader(customClassLoader);
+                        try {
+                            context2.enter();
+                            try {
+                                testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                                testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                            } finally {
+                                context2.leave();
+                            }
+                            assertEquals(customClassLoader, Thread.currentThread().getContextClassLoader());
+                        } finally {
+                            Thread.currentThread().setContextClassLoader(prev);
+                        }
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                    } finally {
+                        context1.leave();
+                    }
+                    testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                    testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                }
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(orig);
+        }
+    }
+
     private static void testContextClassLoaderImpl(Context context, ClassLoader expectedContextClassLoader) {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
