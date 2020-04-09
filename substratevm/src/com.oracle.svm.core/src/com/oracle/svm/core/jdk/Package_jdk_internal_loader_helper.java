@@ -22,24 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk15;
+package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Substitute;
+import java.util.function.Function;
+
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK15OrLater;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
 
-import jdk.internal.loader.NativeLibrary;
+@Platforms(Platform.HOSTED_ONLY.class)
+public class Package_jdk_internal_loader_helper implements Function<TargetClass, String> {
 
-@TargetClass(value = ClassLoader.class, onlyWith = JDK15OrLater.class)
-@SuppressWarnings("static-method")
-final class Target_java_lang_ClassLoader_JDK15OrLater {
-
-    @Substitute
-    @SuppressWarnings("unused")
-    static NativeLibrary loadLibrary(Class<?> fromClass, String name) {
-        NativeLibrarySupport.singleton().loadLibrary(name, false);
-        // We don't use the JDK's NativeLibraries or NativeLibrary implementations
-        return (NativeLibrary) null;
+    @Override
+    public String apply(TargetClass annotation) {
+        if (JavaVersionUtil.JAVA_SPEC <= 14) {
+            return "java.lang." + annotation.className();
+        } else {
+            return "jdk.internal.loader." + annotation.className();
+        }
     }
 }
+
