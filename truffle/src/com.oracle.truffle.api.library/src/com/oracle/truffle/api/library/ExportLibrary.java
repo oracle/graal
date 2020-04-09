@@ -296,20 +296,13 @@ public @interface ExportLibrary {
      *
      * <pre>
      * &#64;ExportLibrary(value = ArrayLibrary.class, delegateTo = "delegate")
-     * &#64;ExportLibrary(ReflectionLibrary.class)
+     * &#64;ExportLibrary(ReflectionLibrary.class, delegateTo = "delegate")
      * final class ArrayFullWrapper {
      *
      *     final Object delegate;
      *
      *     ArrayFullWrapper(Object delegate) {
      *         this.delegate = delegate;
-     *     }
-     *
-     *     &#64;ExportMessage
-     *     final Object send(Message message, Object[] args,
-     *                     &#64;CachedLibrary("this.delegate") ReflectionLibrary lib)
-     *                     throws Exception {
-     *         return lib.send(delegate, message, args);
      *     }
      *
      *     &#64;ExportMessage

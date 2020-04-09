@@ -74,6 +74,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.utilities.TriState;
 
 /**
  * Represents the library that specifies the interoperability message protocol between Truffle
@@ -126,6 +127,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * <li>{@link #hasLanguage(Object) language}
  * <li>{@link #hasMetaObject(Object) associated metaobject}
  * <li>{@link #hasSourceLocation(Object) source location}
+ * <li>{@link #hasIdentity(Object) identity}
  * <ul>
  * <p>
  * <h3>Naive and aware dates and times</h3>
@@ -1525,6 +1527,190 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
+     * Returns {@link TriState#TRUE TRUE} if the receiver is or {@link TriState#FALSE FALSE} if the
+     * receiver is not identical to the <code>other</code> value. Returns {@link TriState#UNDEFINED
+     * UNDEFINED} if the operation is not specified.
+     * <p>
+     * <b>Sample interpretations:</b>
+     * <ul>
+     * <li>A Java object might be of the same instance as another Java object. Typically compared
+     * using the <code>==</code> operator.
+     * </ul>
+     * <p>
+     * Any implementation, with the exception of an implementation that returns
+     * {@link TriState#UNDEFINED UNDEFINED} unconditionally, must guarantee the following
+     * properties:
+     * <ul>
+     * <li>It is <i>reflexive</i>: for any value {@code x}, {@code lib.isSameOrUndefined(x, x)}
+     * always returns {@link TriState#TRUE TRUE}. This is necessary to ensure that the
+     * {@link #hasIdentity(Object)} contract has reliable results.
+     * <li>It is <i>symmetric</i>: for any values {@code x} and {@code y},
+     * {@code lib.isSameOrUndefined(x, y)} returns {@link TriState#TRUE TRUE} if and only if
+     * {@code lib.isSameOrUndefined(y, x)} returns {@link TriState#TRUE TRUE}.
+     * <li>It is <i>transitive</i>: for any values {@code x}, {@code y}, and {@code z}, if
+     * {@code lib.isSameOrUndefined(x, y)} returns {@link TriState#TRUE TRUE} and
+     * {@code lib.isSameOrUndefined(y, z)} returns {@link TriState#TRUE TRUE}, then
+     * {@code lib.isSame(x, z)} returns {@link TriState#TRUE TRUE}.
+     * <li>It is <i>consistent</i>: for any values {@code x} and {@code y}, multiple invocations of
+     * {@code lib.isSameOrUndefined(x, y)} consistently returns the same value.
+     * </ul>
+     * <p>
+     * Sample export that shows if the identity of the object specified by a delgate value:
+     *
+     * <pre>
+     * &#64;ExportMessage
+     * static final class IsSameOrUndefined {
+     *     &#64;Specialization
+     *     static TriState doMyObject(MyObject receiver, MyObject other,
+     *                     InteropLibrary otherLibrary) {
+     *         return receiver.identity == other.identity ? TriState.TRUE : TriState.FALSE;
+     *     }
+     *
+     *     &#64;Fallback
+     *     static TriState doOther(MyObject receiver, Object other,
+     *                     InteropLibrary otherLibrary) {
+     *         return TriState.UNDEFINED;
+     *     }
+     * }
+     * </pre>
+     *
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #identityHashCode(Object)} must be implemented.
+     *
+     * @param other the other value to compare to
+     *
+     * @since 20.1
+     */
+    @Abstract(ifExported = {"isSame", "identityHashCode"})
+    protected TriState isSameOrUndefined(Object receiver, Object other) {
+        return TriState.UNDEFINED;
+    }
+
+    /**
+     * Returns <code>true</code> if two values represent the same value, else <code>false</code>.
+     * Returns <code>false</code> if the receiver or operand value are not identical or does not
+     * support {@link #hasIdentity(Object) identity}. By default, an interop value does not support
+     * sameness comparions, and will return <code>false</code> for any invocation of this method.
+     * Use {@link #hasIdentity(Object)} to find out whether a receiver supports identity
+     * comparisons.
+     * <p>
+     * Note that the guest language sameness semantics never map directly to this interop message as
+     * it is not specified for many operations. Instead sameness should be specified in the language
+     * operation and only fallback to this message if there was no better way to compare.
+     * <p>
+     * This method has the following properties:
+     * <ul>
+     * <li>It is <b>not</b> <i>reflexive</i>: for any value {@code x}, {@code lib.isSame(x, x)} may
+     * return {@code false} if the object does not support identity, else <code>true</code>. This
+     * method is reflexive if {@code x} supports identity. The code {@code lib.isSame(x, x)} may be
+     * used to find out whether a value supports identity. Use {@link #hasIdentity(Object)} for that
+     * purpose.
+     * <li>It is <i>symmetric</i>: for any values {@code x} and {@code y}, {@code lib.isSame(x, y)}
+     * returns {@code true} if and only if {@code lib.isSame(y, x)} returns {@code true}.
+     * <li>It is <i>transitive</i>: for any values {@code x}, {@code y}, and {@code z}, if
+     * {@code lib.isSame(x, y)} returns {@code true} and {@code lib.isSame(y, z)} returns
+     * {@code true}, then {@code lib.isSame(x, z)} returns {@code true}.
+     * <li>It is <i>consistent</i>: for any values {@code x} and {@code y}, multiple invocations of
+     * {@code lib.isSame(x, y)} consistently returns {@code true} or consistently return
+     * {@code false}.
+     * </ul>
+     * <p>
+     * This method performs double dispatch by forwarding calls to
+     * {@link #isSameOrUndefined(Object, Object)} with receiver and other value first and then with
+     * reversed parameters if the result was {@link TriState#UNDEFINED undefined}. This allows the
+     * receiver and the other value to negotiate sameness semantics. This method is supposed to be
+     * exported only if the receiver represents a wrapper that forwards messages. In such a case the
+     * isSame message should be forwarded to the delegate value. Otherwise, the
+     * {@link #isSameOrUndefined(Object, Object)} should be exported instead.
+     * <p>
+     * This method must not cause any observable side-effects.
+     * <p>
+     * Cached usage example:
+     *
+     * <pre>
+     * abstract class IsSameUsage extends Node {
+     *
+     *     abstract boolean execute(Object left, Object right);
+     *
+     *     &#64;Specialization(limit = "3")
+     *     public boolean isSame(Object left, Object right,
+     *                     &#64;CachedLibrary("left") InteropLibrary leftInterop,
+     *                     &#64;CachedLibrary("right") InteropLibrary rightInterop) {
+     *         return leftInterop.isSame(left, right, rightInterop);
+     *     }
+     * }
+     * </pre>
+     * <p>
+     * Uncached usage example:
+     *
+     * <pre>
+     * &#64;TruffleBoundary
+     * public static boolean isSame(Object left, Object right) {
+     *     return InteropLibrary.getUncached(left).isSame(left, right,
+     *                     InteropLibrary.getUncached(right));
+     * }
+     * </pre>
+     *
+     * For a full example please refer to the SLEqualNode of the SimpleLanguage example
+     * implementation.
+     *
+     * @since 20.1
+     */
+    public boolean isSame(Object receiver, Object other, InteropLibrary otherInterop) {
+        TriState result = this.isSameOrUndefined(receiver, other);
+        if (result == TriState.UNDEFINED) {
+            result = otherInterop.isSameOrUndefined(other, receiver);
+        }
+        return result == TriState.TRUE;
+    }
+
+    /**
+     * Returns <code>true</code> if and only if the receiver specifies identity, else
+     * <code>false</code>. This method is a short-cut for
+     * <code>this.isSame(receiver, receiver, this) != TriState.UNDEFINED</code>. This message cannot
+     * be exported. To add identity support to the receiver export
+     * {@link #isSameOrUndefined(Object, Object)} instead.
+     *
+     * @see #isSameOrUndefined(Object, Object)
+     * @since 20.1
+     */
+    public final boolean hasIdentity(Object receiver) {
+        return this.isSame(receiver, receiver, this);
+    }
+
+    /**
+     * Returns an identity hash code for the receiver if it has {@link #hasIdentity(Object)
+     * identity}. If the receiver has no identity then an {@link UnsupportedMessageException} is
+     * thrown. The identity hash code may be used by languages to store foreign values with identity
+     * in an identity hash map.
+     * <p>
+     * <ul>
+     * <li>Whenever it is invoked on the same object more than once during an execution of a guest
+     * context, the identityHashCode method must consistently return the same integer. This integer
+     * need not remain consistent from one execution context of a guest application to another
+     * execution context of the same application.
+     * <li>If two objects are the same according to the
+     * {@link #isSame(Object, Object, InteropLibrary)} message, then calling the identityHashCode
+     * method on each of the two objects must produce the same integer result.
+     * <li>As much as is reasonably practical, the identityHashCode message does return distinct
+     * integers for objects that are not the same.
+     * </ul>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #identityHashCode(Object)} must be implemented.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasIdentity(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isSameOrUndefined(Object, Object)
+     * @see #isSame(Object, Object, InteropLibrary)
+     * @since 20.1
+     */
+    @Abstract(ifExported = "isSameOrUndefined")
+    public int identityHashCode(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
      * Returns the library factory for the interop library. Short-cut for
      * {@link LibraryFactory#resolve(Class) ResolvedLibrary.resolve(InteropLibrary.class)}.
      *
@@ -1533,6 +1719,28 @@ public abstract class InteropLibrary extends Library {
      */
     public static LibraryFactory<InteropLibrary> getFactory() {
         return FACTORY;
+    }
+
+    /**
+     * Returns the uncached automatically dispatched version of the interop library. This is a
+     * short-cut for calling <code>InteropLibrary.getFactory().getUncached()</code>.
+     *
+     * @see LibraryFactory#getUncached()
+     * @since 20.1
+     */
+    public static InteropLibrary getUncached() {
+        return UNCACHED;
+    }
+
+    /**
+     * Returns the uncached manually dispatched version of the interop library. This is a short-cut
+     * for calling <code>InteropLibrary.getFactory().getUncached(v)</code>.
+     *
+     * @see LibraryFactory#getUncached(Object)
+     * @since 20.1
+     */
+    public static InteropLibrary getUncached(Object v) {
+        return FACTORY.getUncached(v);
     }
 
     /**
@@ -1560,6 +1768,7 @@ public abstract class InteropLibrary extends Library {
     }
 
     static final LibraryFactory<InteropLibrary> FACTORY = LibraryFactory.resolve(InteropLibrary.class);
+    static final InteropLibrary UNCACHED = FACTORY.getUncached();
 
     static class Asserts extends InteropLibrary {
 
@@ -2788,6 +2997,81 @@ public abstract class InteropLibrary extends Library {
                 assert !wasMetaObject : violationInvariant(receiver);
                 throw e;
             }
+        }
+
+        @Override
+        protected TriState isSameOrUndefined(Object receiver, Object other) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, other);
+            TriState result = delegate.isSameOrUndefined(receiver, other);
+            assert verifyIsSameOrUndefined(delegate, result, receiver, other);
+            return result;
+        }
+
+        static boolean verifyIsSameOrUndefined(InteropLibrary library, TriState result, Object receiver, Object other) {
+            if (result != TriState.UNDEFINED) {
+                int hashCode = 0;
+                try {
+                    hashCode = library.identityHashCode(receiver);
+                } catch (Exception t) {
+                    throw new AssertionError(t);
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public int identityHashCode(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            int result;
+            try {
+                result = delegate.identityHashCode(receiver);
+                assert delegate.hasIdentity(receiver) : violationInvariant(receiver);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasIdentity(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+            return result;
+        }
+
+        @Override
+        public boolean isSame(Object receiver, Object other, InteropLibrary otherInterop) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, other);
+            assert otherInterop != null;
+            boolean result = delegate.isSame(receiver, other, otherInterop);
+            assert verifyIsSame(result, receiver, other, otherInterop);
+            return result;
+        }
+
+        boolean verifyIsSame(boolean result, Object receiver, Object other, InteropLibrary otherInterop) {
+            try {
+                InteropLibrary otherDelegate = otherInterop;
+                if (otherInterop instanceof Asserts) {
+                    // avoid recursions
+                    otherDelegate = ((Asserts) otherInterop).delegate;
+                }
+                // verify symmetric property
+                assert result == otherDelegate.isSame(other, receiver, delegate) : violationInvariant(receiver);
+                if (result) {
+                    // if true identity hash code must be equal
+                    assert delegate.identityHashCode(receiver) == otherDelegate.identityHashCode(other) : violationInvariant(receiver);
+                }
+
+                // verify reflexivity
+                TriState state = delegate.isSameOrUndefined(receiver, other);
+                if (state != TriState.UNDEFINED) {
+                    assert delegate.isSame(receiver, receiver, delegate) : violationInvariant(receiver);
+                }
+
+                // also check isSameOrUndefined results as they would be skipped with the isSame
+                // default implementation.
+                verifyIsSameOrUndefined(delegate, state, receiver, other);
+                verifyIsSameOrUndefined(otherDelegate, otherDelegate.isSameOrUndefined(other, receiver), other, receiver);
+            } catch (UnsupportedMessageException e) {
+                throw new AssertionError(e);
+            }
+            return true;
         }
 
     }

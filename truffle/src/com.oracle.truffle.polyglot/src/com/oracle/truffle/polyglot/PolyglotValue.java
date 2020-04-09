@@ -865,30 +865,15 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public boolean equalsImpl(Object receiver, Object obj) {
-        try {
-            Object prev = hostEnter(languageContext);
-            try {
-                return Objects.equals(receiver, obj);
-            } finally {
-                hostLeave(languageContext, prev);
-            }
-        } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(languageContext, t);
+        if (receiver == obj) {
+            return true;
         }
+        return HostWrapper.equals(languageContext, receiver, obj);
     }
 
     @Override
     public int hashCodeImpl(Object receiver) {
-        try {
-            Object prev = hostEnter(languageContext);
-            try {
-                return receiver.hashCode();
-            } finally {
-                hostLeave(languageContext, prev);
-            }
-        } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(languageContext, t);
-        }
+        return HostWrapper.hashCode(languageContext, receiver);
     }
 
     @Override

@@ -67,6 +67,8 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -78,6 +80,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 
 @SuppressWarnings("deprecation")
 @ExportLibrary(InteropLibrary.class)
@@ -821,6 +824,25 @@ final class PolyglotProxy implements TruffleObject {
     Object getMetaObject() {
         Class<?> javaObject = this.proxy.getClass();
         return HostObject.forClass(javaObject, languageContext);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static final class IsSameOrUndefined {
+        @Specialization
+        static TriState doHostObject(PolyglotProxy receiver, PolyglotProxy other) {
+            return receiver.proxy == other.proxy ? TriState.TRUE : TriState.FALSE;
+        }
+
+        @Fallback
+        static TriState doOther(PolyglotProxy receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    static int identityHashCode(PolyglotProxy receiver) {
+        return System.identityHashCode(receiver.proxy);
     }
 
     public static boolean isProxyGuestObject(TruffleObject value) {

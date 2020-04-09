@@ -93,7 +93,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNoDuration(v);
         assertNoSourceLocation(v);
         assertNoLanguage(v);
-
+        assertNoIdentity(v);
     }
 
     @Test
@@ -231,7 +231,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNoDuration(v);
         assertNoSourceLocation(v);
         assertNoLanguage(v);
-
+        assertNoIdentity(v);
     }
 
     private void assertNumber(Object v, boolean supportsByte, boolean supportsShort,
@@ -299,6 +299,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNoDuration(v);
         assertNoSourceLocation(v);
         assertNoLanguage(v);
+        assertNoIdentity(v);
     }
 
     @Test
@@ -455,6 +456,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNoDuration(v);
         assertNoSourceLocation(v);
         assertNoLanguage(v);
+        assertNoIdentity(v);
     }
 
 }

@@ -973,6 +973,33 @@ public class HostAccessTest {
         }
     }
 
+    public static class TestIdentity {
+        public void foo() {
+        }
+    }
+
+    public interface TestIdentityMapping {
+        void foo();
+    }
+
+    @Test
+    public void testIdentity() {
+        setupEnv(HostAccess.EXPLICIT);
+
+        Context c1 = this.context;
+        Context c2 = Context.create();
+
+        TestIdentity v0 = new TestIdentity();
+        TestIdentity v1 = new TestIdentity();
+
+        assertFalse(c1.asValue(v0).equals(c1.asValue(v1)));
+        assertFalse(c1.asValue(v0).equals(c2.asValue(v1)));
+        assertTrue(c1.asValue(v0).equals(c1.asValue(v0)));
+        assertTrue(c1.asValue(v1).equals(c2.asValue(v1)));
+
+        c2.close();
+    }
+
     public static class MyClassLoader extends URLClassLoader {
         public MyClassLoader(URL[] urls) {
             super(urls);

@@ -447,6 +447,20 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
     }
 
     @Override
+    public int hashCode() {
+        return HostWrapper.hashCode(languageContext, functionObj);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof FunctionProxyHandler) {
+            return HostWrapper.equals(languageContext, functionObj, ((FunctionProxyHandler) o).functionObj);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
         Object[] resolvedArguments = arguments == null ? HostInteropReflect.EMPTY : arguments;
@@ -479,7 +493,7 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
                 case "equals":
                     return HostWrapper.equalsProxy(host, arguments[0]);
                 case "hashCode":
-                    return HostWrapper.hashCode(host);
+                    return HostWrapper.hashCode(host.getLanguageContext(), host.getGuestObject());
                 case "toString":
                     return HostWrapper.toString(host);
                 default:

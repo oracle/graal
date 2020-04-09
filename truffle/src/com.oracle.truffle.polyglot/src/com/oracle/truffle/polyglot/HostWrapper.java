@@ -41,9 +41,9 @@
 package com.oracle.truffle.polyglot;
 
 import java.lang.reflect.Proxy;
-import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 
 interface HostWrapper {
 
@@ -85,34 +85,82 @@ interface HostWrapper {
         return (HostWrapper) Proxy.getInvocationHandler(v);
     }
 
-    static boolean equals(HostWrapper wrapper, Object other) {
-        if (other == null) {
-            return false;
-        } else if (wrapper == other) {
-            return true;
-        } else if (wrapper.getClass() == other.getClass()) {
-            PolyglotContextImpl thisContext = wrapper.getContext();
-            Object thisGuestObject = wrapper.getGuestObject();
-            PolyglotContextImpl otherContext = ((HostWrapper) other).getContext();
-            Object otherGuestObject = ((HostWrapper) other).getGuestObject();
-            return thisContext == otherContext && Objects.equals(thisGuestObject, otherGuestObject);
-        } else {
-            return false;
-        }
-    }
-
+    @TruffleBoundary
     static boolean equalsProxy(HostWrapper wrapper, Object other) {
         if (other == null) {
             return false;
         } else if (Proxy.isProxyClass(other.getClass())) {
-            return equals(wrapper, Proxy.getInvocationHandler(other));
+            return equals(wrapper.getLanguageContext(), wrapper.getGuestObject(), getHostProxy(other).getGuestObject());
         } else {
             return false;
         }
     }
 
-    static int hashCode(HostWrapper thisObj) {
-        return thisObj.getGuestObject().hashCode();
+    @TruffleBoundary
+    static boolean equals(PolyglotLanguageContext languageContext, Object receiver, Object obj) {
+        if (obj == null) {
+            return false;
+        } else if (receiver == obj) {
+            return true;
+        }
+        if (languageContext != null && (languageContext.context.closed || languageContext.context.invalid)) {
+            return false;
+        }
+        Object prev = null;
+        try {
+            prev = PolyglotValue.hostEnter(languageContext);
+        } catch (Throwable t) {
+            // enter might fail if context was closed asynchonously.
+            // Can no longer call interop.
+            return false;
+        }
+        try {
+            InteropLibrary receiverLib = InteropLibrary.getUncached(receiver);
+            InteropLibrary objLib = InteropLibrary.getUncached(receiver);
+            return receiverLib.isSame(receiver, obj, objLib);
+        } catch (Throwable t) {
+            // propagate errors in languages they should be reported.
+            throw PolyglotImpl.guestToHostException(languageContext, t);
+        } finally {
+            try {
+                PolyglotValue.hostLeave(languageContext, prev);
+            } catch (Throwable t) {
+                // ignore errors leaving we cannot propagate them.
+            }
+        }
+
+    }
+
+    @TruffleBoundary
+    static int hashCode(PolyglotLanguageContext languageContext, Object receiver) {
+        if (languageContext != null && (languageContext.context.closed || languageContext.context.invalid)) {
+            return System.identityHashCode(receiver);
+        }
+        Object prev = null;
+        try {
+            prev = PolyglotValue.hostEnter(languageContext);
+        } catch (Throwable t) {
+            // enter might fail if context was closed.
+            // Can no longer call interop.
+            return System.identityHashCode(receiver);
+        }
+        try {
+            InteropLibrary receiverLib = InteropLibrary.getUncached(receiver);
+            if (receiverLib.hasIdentity(receiver)) {
+                return receiverLib.identityHashCode(receiver);
+            } else {
+                return System.identityHashCode(receiver);
+            }
+        } catch (Throwable t) {
+            // propagate errors in languages they should be reported.
+            throw PolyglotImpl.guestToHostException(languageContext, t);
+        } finally {
+            try {
+                PolyglotValue.hostLeave(languageContext, prev);
+            } catch (Throwable t) {
+                // ignore errors leaving we cannot propagate them.
+            }
+        }
     }
 
     static String toString(HostWrapper thisObj) {

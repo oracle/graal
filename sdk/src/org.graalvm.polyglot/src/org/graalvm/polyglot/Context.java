@@ -1487,5 +1487,6 @@ public final class Context implements AutoCloseable {
         private boolean orAllAccess(Boolean optionalBoolean) {
             return optionalBoolean != null ? optionalBoolean : allowAllAccess;
         }
+
     }
 }

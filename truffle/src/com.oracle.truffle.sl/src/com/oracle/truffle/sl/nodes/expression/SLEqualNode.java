@@ -40,12 +40,13 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLFunction;
@@ -53,10 +54,8 @@ import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * The {@code ==} operator of SL is defined on all types. Therefore, we need a
- * {@link #equal(Object, Object) implementation} that can handle all possible types. But since
- * {@code ==} can only return {@code true} when the type of the left and right operand are the same,
- * the specializations already cover all possible cases that can return {@code true} and the generic
- * case is trivial.
+ * {@link #equal(Object, Object) implementation} that can handle all possible types including
+ * interop types.
  * <p>
  * Note that we do not need the analogous {@code !=} operator, because we can just
  * {@link SLLogicalNotNode negate} the {@code ==} operator.
@@ -65,28 +64,34 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public abstract class SLEqualNode extends SLBinaryNode {
 
     @Specialization
-    protected boolean equal(long left, long right) {
+    protected boolean doLong(long left, long right) {
         return left == right;
     }
 
     @Specialization
     @TruffleBoundary
-    protected boolean equal(SLBigNumber left, SLBigNumber right) {
+    protected boolean doBigNumber(SLBigNumber left, SLBigNumber right) {
         return left.equals(right);
     }
 
     @Specialization
-    protected boolean equal(boolean left, boolean right) {
+    protected boolean doBoolean(boolean left, boolean right) {
         return left == right;
     }
 
     @Specialization
-    protected boolean equal(String left, String right) {
+    protected boolean doString(String left, String right) {
         return left.equals(right);
     }
 
     @Specialization
-    protected boolean equal(SLFunction left, SLFunction right) {
+    protected boolean doNull(SLNull left, SLNull right) {
+        /* There is only the singleton instance of SLNull, so we do not need equals(). */
+        return left == right;
+    }
+
+    @Specialization
+    protected boolean doFunction(SLFunction left, Object right) {
         /*
          * Our function registry maintains one canonical SLFunction object per function name, so we
          * do not need equals().
@@ -94,45 +99,57 @@ public abstract class SLEqualNode extends SLBinaryNode {
         return left == right;
     }
 
-    @Specialization
-    protected boolean equal(SLNull left, SLNull right) {
-        /* There is only the singleton instance of SLNull, so we do not need equals(). */
-        return left == right;
-    }
-
-    /**
-     * Specialization for foreign {@link TruffleObject}s.
+    /*
+     * This is a generic specialization of equality operation. Since it is generic this
+     * specialization covers the entire semantics. One can see this by having no method guards set
+     * and the types for the left and right value are Object. The previous specializations are only
+     * here for interpreter performance and footprint reasons. They could be removed and this
+     * operation be semantically equivalent.
+     *
+     * We cache four combinations of interop values until we fallback to the uncached version of
+     * this specialization. This limit is set arbitrary and for a real language should be set to the
+     * minimal possible value, for a set of given benchmarks.
+     *
+     * This specialization is generic and handles all the cases, but in this case we decided to not
+     * replace the previous specializations, as they are still more efficient in the interpeter.
      */
-    @Specialization
-    protected boolean equal(TruffleObject left, TruffleObject right) {
-        return left == right;
+    @Specialization(limit = "4")
+    public boolean doGeneric(Object left, Object right,
+                    @CachedLibrary("left") InteropLibrary leftInterop,
+                    @CachedLibrary("right") InteropLibrary rightInterop) {
+        /*
+         * This method looks very inefficient. In practice most of these branches fold as the
+         * interop type checks typically return a constant when cached using.
+         *
+         * Exercise: Try looking at what happens to this method during partial evaluation in IGV.
+         * Tip: comment out all the previous @Specialization annotations to make it easier to
+         * activate this specialization.
+         */
+        try {
+            if (leftInterop.isBoolean(left) && rightInterop.isBoolean(right)) {
+                return doBoolean(leftInterop.asBoolean(left), rightInterop.asBoolean(right));
+            } else if (leftInterop.isString(left) && rightInterop.isString(right)) {
+                return doString(leftInterop.asString(left), (rightInterop.asString(right)));
+            } else if (leftInterop.isNull(left) && rightInterop.isNull(right)) {
+                return true;
+            } else if (leftInterop.fitsInLong(left) && rightInterop.fitsInLong(right)) {
+                return doLong(leftInterop.asLong(left), (rightInterop.asLong(right)));
+            } else if (left instanceof SLBigNumber && right instanceof SLBigNumber) {
+                return doBigNumber((SLBigNumber) left, (SLBigNumber) right);
+            } else if (leftInterop.hasIdentity(left) && rightInterop.hasIdentity(right)) {
+                return leftInterop.isSame(left, right, rightInterop);
+            } else {
+                /*
+                 * We return false in good dynamic language manner. Stricter languages might throw
+                 * an error here.
+                 */
+                return false;
+            }
+        } catch (UnsupportedMessageException e) {
+            // this case must not happen as we always check interop types before converting
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new AssertionError();
+        }
     }
 
-    /**
-     * We covered all the cases that can return true in the type specializations above. If we
-     * compare two values with different types, the result is known to be false.
-     * <p>
-     * Note that the guard is essential for correctness: without the guard, the specialization would
-     * also match when the left and right value have the same type. The following scenario would
-     * return a wrong value: First, the node is executed with the left value 42 (type long) and the
-     * right value "abc" (String). This specialization matches, and since it is the first execution
-     * it is also the only specialization. Then, the node is executed with the left value "42" (type
-     * long) and the right value "42" (type long). Since this specialization is already present, and
-     * (without the guard) also matches (long values can be boxed to Object), it is executed. The
-     * wrong return value is "false".
-     */
-    @Specialization(guards = "differentClasses(left, right)")
-    protected boolean equal(Object left, Object right) {
-        assert !left.equals(right);
-        return false;
-    }
-
-    static boolean differentClasses(Object left, Object right) {
-        return left.getClass() != right.getClass();
-    }
-
-    @Fallback
-    protected Object typeError(Object left, Object right) {
-        throw SLException.typeError(this, left, right);
-    }
 }

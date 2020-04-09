@@ -500,11 +500,18 @@ public class ValueAssert {
                             assertClassMembers(value, hostObject.getClass(), false);
                         }
                     }
+                    assertEquals(Value.asValue(hostObject), value);
+                    assertEquals(Value.asValue(hostObject).hashCode(), value.hashCode());
+
                     break;
                 case PROXY_OBJECT:
                     assertTrue(msg, value.isProxyObject());
                     Object proxyObject = value.asProxyObject();
                     assertTrue(proxyObject instanceof Proxy);
+
+                    assertEquals(Value.asValue(proxyObject), value);
+                    assertEquals(Value.asValue(proxyObject).hashCode(), value.hashCode());
+
                     break;
                 case MEMBERS:
                     assertTrue(msg, value.hasMembers());
