@@ -33,6 +33,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -46,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -187,7 +189,8 @@ public interface NodeFactory {
 
     LLVMExpressionNode createStackRestore(LLVMExpressionNode stackPointer);
 
-    LLVMControlFlowNode createLoop(LLVMExpressionNode body, int[] successorIDs);
+    LLVMControlFlowNode createLoop(RepeatingNode body, int[] successorIDs);
 
-    LLVMExpressionNode createLoopDispatchNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> list, int headerId, int[] indexMapping, int[] successors, FrameSlot successorSlot);
+    RepeatingNode createLoopDispatchNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> list, LLVMBasicBlockNode[] originalBodyNodes, int headerId, int[] indexMapping,
+                    int[] successors, FrameSlot successorSlot);
 }

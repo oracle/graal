@@ -51,6 +51,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInterface;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisResult;
@@ -204,13 +205,13 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             blockNodes.get(j).setNullableFrameSlots(nullableBeforeBlock, nullableAfterBlock);
         }
 
+        FrameSlot loopSuccessorSlot = null;
         LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
         cfg.build();
 
-        FrameSlot loopSuccessorSlot = null;
         if (cfg.isReducible() && cfg.getCFGLoops().size() > 0) {
             loopSuccessorSlot = frame.addFrameSlot(LOOP_SUCCESSOR_FRAME_ID, FrameSlotKind.Int);
-            blockNodes = resolveLoops(blockNodes, cfg, frame, loopSuccessorSlot);
+            blockNodes = resolveLoops(blockNodes, cfg, frame, loopSuccessorSlot, options);
         }
 
         LLVMSourceLocation location = method.getLexicalScope();
@@ -282,8 +283,9 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         p.flush();
     }
 
-    private List<LLVMStatementNode> resolveLoops(List<LLVMStatementNode> nodes, LLVMControlFlowGraph cfg, FrameDescriptor frame, FrameSlot loopSuccessorSlot) {
-        List<LLVMStatementNode> resolvedNodes = new ArrayList<>(nodes);
+    private List<LLVMBasicBlockNode> resolveLoops(List<LLVMBasicBlockNode> nodes, LLVMControlFlowGraph cfg, FrameDescriptor frame, FrameSlot loopSuccessorSlot, OptionValues options) {
+        List<LLVMBasicBlockNode> resolvedNodes = new ArrayList<>(nodes);
+        LLVMBasicBlockNode[] originalBodyNodes = nodes.toArray(new LLVMBasicBlockNode[0]);
         for (CFGLoop loop : cfg.getCFGLoops()) {
             int headerId = loop.getHeader().id;
             int[] indexMapping = new int[resolvedNodes.size()];
@@ -299,11 +301,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                 indexMapping[block.id] = i++;
             }
             int[] loopSuccessors = loop.getSuccessorIDs();
-            LLVMExpressionNode loopBody = runtime.getNodeFactory().createLoopDispatchNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID),
-                            Collections.unmodifiableList(bodyNodes), headerId, indexMapping, loopSuccessors, loopSuccessorSlot);
+            RepeatingNode loopBody = runtime.getNodeFactory().createLoopDispatchNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), Collections.unmodifiableList(bodyNodes),
+                            originalBodyNodes, headerId, indexMapping, loopSuccessors, loopSuccessorSlot);
             LLVMControlFlowNode loopNode = runtime.getNodeFactory().createLoop(loopBody, loopSuccessors);
             // replace header block with loop node
-            resolvedNodes.set(headerId, runtime.getNodeFactory().createBasicBlockNode(new LLVMStatementNode[0], loopNode, headerId, ("loopAt" + headerId)));
+            resolvedNodes.set(headerId, LLVMBasicBlockNode.createBasicBlockNode(options, new LLVMStatementNode[0], loopNode, headerId, "loopAt" + headerId));
             // remove inner loops to reduce number of nodes
             for (CFGLoop innerLoop : loop.getInnerLoops()) {
                 resolvedNodes.set(innerLoop.getHeader().id, null);

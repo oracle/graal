@@ -27,46 +27,45 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.control;
+package com.oracle.truffle.llvm.runtime.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMLoopNodeFactory.LLVMLoopNodeImplNodeGen;
 
+@GenerateWrapper
 public abstract class LLVMLoopNode extends LLVMControlFlowNode {
-    public static LLVMLoopNode create(LLVMExpressionNode bodyNode, int[] successorIDs) {
-        return new LLVMLoopNodeImpl(bodyNode, successorIDs, null);
-    }
 
-    public LLVMLoopNode(LLVMSourceLocation source) {
-        super(source);
-    }
-
-    protected LLVMLoopNode(LLVMLoopNode delegate) {
-        super(delegate.getSourceLocation());
+    public static LLVMLoopNode create(RepeatingNode bodyNode, int[] successorIDs) {
+        return LLVMLoopNodeImplNodeGen.create(bodyNode, successorIDs);
     }
 
     public abstract void executeLoop(VirtualFrame frame);
 
     public abstract int[] getSuccessors();
 
-    private static final class LLVMLoopNodeImpl extends LLVMLoopNode {
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new LLVMLoopNodeWrapper(this, probe);
+    }
+
+    abstract static class LLVMLoopNodeImpl extends LLVMLoopNode {
+
         @Child private LoopNode loop;
+
         @CompilationFinal(dimensions = 1) private final int[] successors;
 
-        private LLVMLoopNodeImpl(LLVMExpressionNode bodyNode, int[] successorIDs, LLVMSourceLocation sourceSection) {
-            super(sourceSection);
-            loop = Truffle.getRuntime().createLoopNode(new LLVMRepeatingNode(bodyNode));
-            successors = successorIDs;
+        LLVMLoopNodeImpl(RepeatingNode bodyNode, int[] successors) {
+            this.loop = Truffle.getRuntime().createLoopNode(bodyNode);
+            this.successors = successors;
         }
 
         @Override
@@ -74,27 +73,9 @@ public abstract class LLVMLoopNode extends LLVMControlFlowNode {
             return successors;
         }
 
-        private static final class LLVMRepeatingNode extends Node implements RepeatingNode {
-            @Child private LLVMExpressionNode bodyNode;
-
-            LLVMRepeatingNode(LLVMExpressionNode bodyNode) {
-                this.bodyNode = bodyNode;
-            }
-
-            @Override
-            public boolean executeRepeating(VirtualFrame frame) {
-                try {
-                    return bodyNode.executeI1(frame);
-                } catch (UnexpectedResultException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-
-        @Override
-        public void executeLoop(VirtualFrame frame) {
-            loop.executeLoop(frame);
+        @Specialization
+        public void loop(VirtualFrame frame) {
+            loop.execute(frame);
         }
 
         @Override
@@ -107,4 +88,16 @@ public abstract class LLVMLoopNode extends LLVMControlFlowNode {
             return null;
         }
     }
+
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract boolean isStatement();
+
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract void setStatement(boolean statementTag);
 }
