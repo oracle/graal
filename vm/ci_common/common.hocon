@@ -72,37 +72,20 @@ js_windows: ${common_vm_windows} ${js_windows_common} {
 # SULONG
 sulong_linux: {
   packages: {
-    llvm: "==6.0.1"
-    ruby: "==2.6.3" # for mdl
-  }
-  downloads: {
-    LIBGMP: {name: libgmp, version: 6.1.0, platformspecific: true}
-  }
-  environment: {
-    "CPPFLAGS": "-I$LIBGMP/include"
-    "LD_LIBRARY_PATH": "$LIBGMP/lib:$LD_LIBRARY_PATH"
+    "cmake": "==3.6.1",
   }
 }
 
-sulong_darwin: {
-  packages: {
-    llvm: "==4.0.1"
-  }
-}
+sulong_darwin: {}
 
 # TRUFFLERUBY
-truffleruby_linux: {
+truffleruby_linux: ${sulong_linux} {
   packages: {
-    llvm: "==6.0.1"
     ruby: "==2.6.3"
   }
 }
 
-truffleruby_darwin: {
-  packages: {
-    llvm: "==4.0.1"
-  }
-}
+truffleruby_darwin: ${sulong_darwin} {}
 
 # FASTR
 # Note: On Linux, FastR depends on the gnur module and on gfortran of a specific version (4.8.5)
@@ -159,7 +142,7 @@ fastr_no_recommended: {
 }
 
 # GRAALPYTHON
-graalpython_linux: {
+graalpython_linux: ${sulong_linux} {
   packages: {
     python: "==3.4.1",
     libffi: ">=3.2.1",
@@ -167,7 +150,7 @@ graalpython_linux: {
   }
 }
 
-graalpython_darwin: {}
+graalpython_darwin: ${sulong_darwin} {}
 
 vm_linux: ${common_vm_linux} {
   capabilities: [linux, amd64, manycores, ram16gb, fast]

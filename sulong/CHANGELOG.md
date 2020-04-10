@@ -2,8 +2,11 @@
 
 Changes:
 
+* `libc++` and `libc++abi` are now shipped as bitcode libraries. For building
+  those `cmake` is required to be installed.
+
 * C++ support (libsulong++) is no longer loaded by default. Instead, it is
-  enabled if `libc++abi` is loaded. Executables (ELF, Mach-O) compiled with
+  enabled if `libc++` is loaded. Executables (ELF, Mach-O) compiled with
   the toolchain usually have a dependency on this library and will continue
   to work.  Plain bitcode files, which do not allow to specify dependencies,
   may fail with an error similar to the following:
@@ -11,8 +14,8 @@ Changes:
   Global variable _ZNSt3__15ctypeIcE2idE is declared but not defined.
   ```
   This can be solved by either compiling it into a proper executable, or by
-  specifying the depdendency on the command line (e.g., `lli --lib libc++.so.1 ...`
-  on Linux or `lib --lib libc++.1.dylib` on macOS).
+  specifying the dependency on the command line (e.g., `lli --lib libc++.so.1 ...`
+  on Linux or `lli --lib libc++.1.dylib` on macOS).
 
 * Module initialization order is now only based on the dependencies recorded in the
   ELF/Mach-O file instead of looking at imported symbols. Consequently, the order
