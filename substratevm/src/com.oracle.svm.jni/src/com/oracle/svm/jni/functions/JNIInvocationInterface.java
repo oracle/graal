@@ -44,7 +44,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -57,6 +56,7 @@ import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveTearDownIsolateEpilogue;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Utf8;
@@ -297,7 +297,7 @@ final class JNIInvocationInterface {
         static void releaseCurrentThreadOwnedMonitors() {
             JNIThreadOwnedMonitors.forEach((obj, depth) -> {
                 for (int i = 0; i < depth; i++) {
-                    MonitorSupport.monitorExit(obj);
+                    MonitorSupport.singleton().monitorExit(obj);
                 }
                 assert !Thread.holdsLock(obj);
             });

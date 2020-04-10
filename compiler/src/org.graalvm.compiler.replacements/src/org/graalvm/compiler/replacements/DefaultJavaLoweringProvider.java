@@ -124,7 +124,6 @@ import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
-import org.graalvm.compiler.nodes.java.RawMonitorEnterNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
@@ -243,8 +242,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerLoadHubOrNullNode((LoadHubOrNullNode) n, tool);
             } else if (n instanceof LoadArrayComponentHubNode) {
                 lowerLoadArrayComponentHubNode((LoadArrayComponentHubNode) n);
-            } else if (n instanceof MonitorEnterNode) {
-                lowerMonitorEnterNode((MonitorEnterNode) n, tool, graph);
             } else if (n instanceof UnsafeCompareAndSwapNode) {
                 lowerCompareAndSwapNode((UnsafeCompareAndSwapNode) n);
             } else if (n instanceof UnsafeCompareAndExchangeNode) {
@@ -668,15 +665,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = loadHub.graph();
         ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), loadHub);
         graph.replaceFixed(loadHub, hub);
-    }
-
-    protected void lowerMonitorEnterNode(MonitorEnterNode monitorEnter, LoweringTool tool, StructuredGraph graph) {
-        ValueNode object = createNullCheckedValue(monitorEnter.object(), monitorEnter, tool);
-        ValueNode hub = graph.addOrUnique(LoadHubNode.create(object, tool.getStampProvider(), tool.getMetaAccess(), tool.getConstantReflection()));
-        RawMonitorEnterNode rawMonitorEnter = graph.add(new RawMonitorEnterNode(object, hub, monitorEnter.getMonitorId(), monitorEnter.isBiasable()));
-        rawMonitorEnter.setStateBefore(monitorEnter.stateBefore());
-        rawMonitorEnter.setStateAfter(monitorEnter.stateAfter());
-        graph.replaceFixedWithFixed(monitorEnter, rawMonitorEnter);
     }
 
     protected void lowerCompareAndSwapNode(UnsafeCompareAndSwapNode cas) {
