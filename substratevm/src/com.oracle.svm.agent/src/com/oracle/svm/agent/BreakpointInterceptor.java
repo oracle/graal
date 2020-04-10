@@ -180,15 +180,11 @@ final class BreakpointInterceptor {
         boolean allowed = (accessVerifier == null || accessVerifier.verifyForName(jni, callerClass, className));
         Object result = false;
         if (allowed) {
-            boolean initializeValid = true;
             boolean classLoaderValid = true;
-            CIntPointer initializePtr = StackValue.get(CIntPointer.class);
             WordPointer classLoaderPtr = StackValue.get(WordPointer.class);
             if (bp.method == handles().javaLangClassForName3) {
-                initializeValid = (jvmtiFunctions().GetLocalInt().invoke(jvmtiEnv(), nullHandle(), 0, 1, initializePtr) == JvmtiError.JVMTI_ERROR_NONE);
                 classLoaderValid = (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), nullHandle(), 0, 2, classLoaderPtr) == JvmtiError.JVMTI_ERROR_NONE);
             } else {
-                initializePtr.write(1);
                 classLoaderPtr.write(nullHandle());
                 if (callerClass.notEqual(nullHandle())) {
                     /*
@@ -200,7 +196,9 @@ final class BreakpointInterceptor {
                 }
             }
             result = TraceWriter.UNKNOWN_VALUE;
-            if (initializeValid && classLoaderValid) {
+            if (classLoaderValid) {
+                CIntPointer initializePtr = StackValue.get(CIntPointer.class);
+                initializePtr.write(0);
                 result = nullHandle().notEqual(Support.callStaticObjectMethodLIL(jni, bp.clazz, handles().javaLangClassForName3, name, initializePtr.read(), classLoaderPtr.read()));
                 if (clearException(jni)) {
                     result = false;
