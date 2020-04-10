@@ -301,7 +301,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
                     continue outer;
                 }
             } else {    // some control flow nodes should be never part of a loop
-                CompilerAsserts.neverPartOfCompilation();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new UnsupportedOperationException("unexpected controlFlowNode type: " + controlFlowNode);
             }
         }
