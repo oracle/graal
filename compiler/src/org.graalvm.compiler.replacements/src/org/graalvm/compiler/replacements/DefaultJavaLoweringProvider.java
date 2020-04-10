@@ -1020,7 +1020,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lastDepth = monitorId.getLockDepth();
                 MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], monitorId));
                 graph.addAfterFixed(insertionPoint, enter);
-                enter.setStateAfter(stateBefore);
+                enter.setStateAfter(stateBefore.duplicate());
                 insertionPoint = enter;
                 if (enters == null) {
                     enters = new ArrayList<>();
