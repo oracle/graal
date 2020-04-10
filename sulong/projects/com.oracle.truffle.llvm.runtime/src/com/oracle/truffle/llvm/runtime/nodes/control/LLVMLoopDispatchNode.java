@@ -79,9 +79,15 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
         throw new IllegalStateException();
     }
 
+    /**
+     * The code in this function is mirrored from {@link LLVMDispatchBasicBlockNode}, any changes
+     * need to be done in both places. The block id of the successor block (where to continue after
+     * the loop) is stored in a frame slot.
+     */
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     @Override
     public Object executeRepeatingWithValue(VirtualFrame frame) {
+
         CompilerAsserts.compilationConstant(bodyNodes.length);
         int basicBlockIndex = headerId;
         // do-while loop fails at PE

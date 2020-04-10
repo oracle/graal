@@ -65,6 +65,10 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
         this.loopSuccessorSlot = loopSuccessorSlot;
     }
 
+    /**
+     * The code in this function is mirrored in {@link LLVMLoopDispatchNode}, any changes need to be
+     * done in both places.
+     */
     @Specialization
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     public Object doDispatch(VirtualFrame frame) {

@@ -41,6 +41,10 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMLoopNodeFactory.LLVMLoopNodeImplNodeGen;
 
+/**
+ * Implements a loop node, the block id of the successor block (where to continue after the loop) is
+ * stored in a frame slot.
+ */
 @GenerateWrapper
 public abstract class LLVMLoopNode extends LLVMControlFlowNode {
 

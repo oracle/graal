@@ -285,6 +285,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
     private List<LLVMBasicBlockNode> resolveLoops(List<LLVMBasicBlockNode> nodes, LLVMControlFlowGraph cfg, FrameDescriptor frame, FrameSlot loopSuccessorSlot, OptionValues options) {
         List<LLVMBasicBlockNode> resolvedNodes = new ArrayList<>(nodes);
+        // The original array is needed to access the frame nuller information for outgoing control
+        // flow egdes
         LLVMBasicBlockNode[] originalBodyNodes = nodes.toArray(new LLVMBasicBlockNode[0]);
         for (CFGLoop loop : cfg.getCFGLoops()) {
             int headerId = loop.getHeader().id;
