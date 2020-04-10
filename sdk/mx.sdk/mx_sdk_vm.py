@@ -453,6 +453,18 @@ def jdk_has_new_jlink_options(jdk):
         setattr(jdk, '.supports_new_jlink_options', '--add-options=' in output.data)
     return getattr(jdk, '.supports_new_jlink_options')
 
+def jdk_supports_enablejvmciproduct(jdk):
+    """
+    Determines if the jdk supports flag -XX:+EnableJVMCIProduct which isn't the case
+    for some OpenJDK 11u distros.
+    """
+    if not hasattr(jdk, '.supports_enablejvmciproduct'):
+        out = mx.LinesOutputCapture()
+        sink = lambda x: x
+        mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=sink)
+        setattr(jdk, '.supports_enablejvmciproduct', any('EnableJVMCIProduct' in line for line in out.lines))
+    return getattr(jdk, '.supports_enablejvmciproduct')
+
 def jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable=invalid-name
     """
     Determines if the `jdk` suppresses a warning about ThreadPriorityPolicy when it
@@ -655,13 +667,18 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
                 mx.logv('[Creating JDK without -XX:ThreadPriorityPolicy=1]')
                 thread_priority_policy_option = ''
 
-            if any((m.name == 'jdk.internal.vm.compiler' for m in modules)):
-                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
+            if jdk_supports_enablejvmciproduct(jdk):
+                if any((m.name == 'jdk.internal.vm.compiler' for m in modules)):
+                    jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
+                else:
+                    # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
+                    # This avoids unexpected issues with using the out-of-date Graal compiler in
+                    # the JDK itself.
+                    jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UseJVMCICompiler -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
             else:
-                # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
-                # This avoids unexpected issues with using the out-of-date Graal compiler in
-                # the JDK itself.
-                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UseJVMCICompiler -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
+                mx.logv('[Creating JDK without -XX:+EnableJVMCIProduct]')
+                if thread_priority_policy_option:
+                    jlink.append('--add-options=' + thread_priority_policy_option.strip())
             if vendor_info is not None:
                 for name, value in vendor_info.items():
                     jlink.append('--' + name + '=' + value)
