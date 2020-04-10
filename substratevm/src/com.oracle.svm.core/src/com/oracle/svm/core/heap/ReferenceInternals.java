@@ -81,16 +81,6 @@ public final class ReferenceInternals {
         return Word.objectToUntrackedPointer(instance).add(WordFactory.unsigned(Target_java_lang_ref_Reference.referentFieldOffset));
     }
 
-    public static <T> boolean needsDiscovery(Reference<T> instance) {
-        /*
-         * If the Reference has been allocated but not yet initialized (null referent), its
-         * soon-to-be referent will still be strongly reachable because it is on the call stack to
-         * the constructor. If the Reference is initialized but has a null referent, it has already
-         * been enqueued (either manually or by the GC) and does not need to be discovered.
-         */
-        return getReferentPointer(instance).isNonNull() && getNextDiscovered(instance) == null;
-    }
-
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered}. */
     public static <T> Reference<?> getNextDiscovered(Reference<T> instance) {
         return KnownIntrinsics.convertUnknownValue(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)), Reference.class);

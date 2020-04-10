@@ -535,7 +535,7 @@ public class GCImpl implements GC {
 
             trace.string("  Discovered references: ");
             try (Timer drt = referenceObjectsTimer.open()) {
-                Reference<?> newlyPendingList = ReferenceObjectProcessing.processDiscoveredReferences();
+                Reference<?> newlyPendingList = ReferenceObjectProcessing.processRememberedReferences();
                 HeapImpl.getHeapImpl().addToReferencePendingList(newlyPendingList);
             }
 

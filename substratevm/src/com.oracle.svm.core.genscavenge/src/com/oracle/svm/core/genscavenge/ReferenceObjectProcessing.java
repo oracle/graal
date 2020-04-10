@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -50,8 +48,8 @@ import com.oracle.svm.core.util.UnsignedUtils;
 /** Discovers and handles {@link Reference} objects during garbage collection. */
 public class ReferenceObjectProcessing {
 
-    /** Linked list of discovered references. */
-    private static Reference<?> discoveredReferencesList;
+    /** Head of the linked list of discovered references that need to be revisited. */
+    private static Reference<?> rememberedRefsList;
 
     /**
      * For a {@link SoftReference}, the longest duration after its last access to keep its referent
@@ -64,89 +62,81 @@ public class ReferenceObjectProcessing {
         assert object != null;
         DynamicHub hub = KnownIntrinsics.readHub(object);
         if (probability(SLOW_PATH_PROBABILITY, hub.isReferenceInstanceClass())) {
-            /*
-             * References are immutable and in the image heap, they can only point to another image
-             * heap object that cannot be moved or reclaimed, so no need to look closer.
-             */
-            if (!Heap.getHeap().isInImageHeap(object)) {
-                handleDiscoverableReference(object, refVisitor);
-            }
+            discover(object, refVisitor);
         }
     }
 
-    private static void handleDiscoverableReference(Object obj, ObjectReferenceVisitor refVisitor) {
+    private static void discover(Object obj, ObjectReferenceVisitor refVisitor) {
         Reference<?> dr = KnownIntrinsics.convertUnknownValue(obj, Reference.class);
-        Log trace = Log.noopLog().string("[ReferenceObjectProcessing.handleDiscoverableReference:");
-        trace.string("  dr: ").object(dr);
-        if (probability(FREQUENT_PROBABILITY, ReferenceInternals.needsDiscovery(dr))) {
-            if (trace.isEnabled()) {
-                trace.string("  referent: ").hex(ReferenceInternals.getReferentPointer(dr));
-            }
-            discover(dr, refVisitor);
-        } else {
-            trace.string("  does not need to be discovered (uninitialized, already on a list, or null referent)]").newline();
+        Log trace = Log.noopLog().string("[ReferenceObjectProcessing.discover: ").object(dr);
+        if (ReferenceInternals.getNextDiscovered(dr) != null) {
+            trace.string(" already discovered]").newline();
+            return;
         }
-        trace.string("]").newline();
-    }
-
-    private static void discover(Reference<?> dr, ObjectReferenceVisitor refVisitor) {
-        if (probability(NOT_FREQUENT_PROBABILITY, dr instanceof SoftReference)) {
-            // Soft refs are presumed rare compared to weak refs (maps) and phantom refs (cleaners)
+        Pointer referentAddr = ReferenceInternals.getReferentPointer(dr);
+        trace.string(" referent: ").hex(referentAddr);
+        if (referentAddr.isNull()) {
+            /*
+             * If the Reference has been allocated but not yet initialized (null referent), its
+             * soon-to-be referent will still be strongly reachable from the call stack. If the
+             * Reference is initialized but has a null referent, it has already been enqueued
+             * (either manually or by the GC) and does not need to be discovered.
+             */
+            trace.string(" is inactive]").newline();
+            return;
+        }
+        if (Heap.getHeap().isInImageHeap(referentAddr)) {
+            // Referents in the image heap cannot be moved or reclaimed, no need to look closer
+            trace.string(" is in image heap]").newline();
+            return;
+        }
+        if (maybeUpdateForwardedReference(dr, referentAddr)) {
+            trace.string(" has already been promoted and field has been updated]").newline();
+            return;
+        }
+        if (willSurviveThisCollection(referentAddr.toObject())) {
+            // Referent is in a to-space, so it won't be reclaimed at this time (incremental GC?)
+            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, referentAddr.toObject());
+            trace.string(" referent is in a to-space]").newline();
+            return;
+        }
+        if (dr instanceof SoftReference) {
             long clock = ReferenceInternals.getSoftReferenceClock();
             long timestamp = ReferenceInternals.getSoftReferenceTimestamp((SoftReference<?>) dr);
             UnsignedWord elapsed = WordFactory.unsigned(clock - timestamp);
             if (elapsed.belowThan(maxSoftRefAccessIntervalMs)) {
                 refVisitor.visitObjectReference(ReferenceInternals.getReferentFieldAddress(dr), true);
-                return; // done: referent object will survive and referent field has been updated
+                return; // referent will survive and referent field has been updated
             }
         }
-
-        addToDiscoveredList(dr);
-    }
-
-    private static void addToDiscoveredList(Reference<?> dr) {
-        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.addToDiscoveredList:").string("  this: ").object(dr)
-                        .string("  referent: ").hex(ReferenceInternals.getReferentPointer(dr));
-        trace.newline().string("  [adding to list:").string("  oldList: ").object(discoveredReferencesList);
-        ReferenceInternals.setNextDiscovered(dr, discoveredReferencesList);
-        discoveredReferencesList = dr;
-        trace.string("  new list: ").object(discoveredReferencesList).string("]");
-        trace.string("]").newline();
+        trace.string(" remembered to revisit later]").newline();
+        ReferenceInternals.setNextDiscovered(dr, rememberedRefsList);
+        rememberedRefsList = dr;
     }
 
     /**
-     * Updates discovered references according to the liveness of the referent, dirtying cards, and
+     * Updates remembered references according to the liveness of the referent, dirtying cards, and
      * clears the discovered status of non-pending references.
      *
      * @return a list of those references which are pending to be added to a {@link ReferenceQueue}.
      */
-    static Reference<?> processDiscoveredReferences() {
-        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.processDiscoveredReferences: ").string("  discoveredList: ").object(discoveredReferencesList).newline();
+    static Reference<?> processRememberedReferences() {
         Reference<?> pendingHead = null;
-        for (Reference<?> current = popDiscoveredReference(); current != null; current = popDiscoveredReference()) {
-            trace.string("  [current: ").object(current).string("  referent before: ").hex(ReferenceInternals.getReferentPointer(current)).string("]").newline();
-            /*
-             * The referent *has not* been processed as a grey reference, so I have to be careful
-             * about looking through the referent field.
-             */
-            if (!processReferent(current)) {
-                trace.string("  unpromoted current: ").object(current).newline();
+        for (Reference<?> current = popRememberedRef(); current != null; current = popRememberedRef()) {
+            if (!processRememberedRef(current)) {
                 if (ReferenceInternals.hasQueue(current)) {
                     ReferenceInternals.setNextDiscovered(current, pendingHead);
                     pendingHead = current;
                 }
                 HeapImpl.getHeapImpl().dirtyCardIfNecessary(current, pendingHead);
-            } else {
-                trace.string("  promoted current: ").object(current).newline();
             }
         }
-        trace.string("]").newline();
+        assert rememberedRefsList == null;
         return pendingHead;
     }
 
     static void afterCollection(UnsignedWord usedBytes, UnsignedWord maxBytes) {
-        assert discoveredReferencesList == null;
-
+        assert rememberedRefsList == null;
         UnsignedWord unusedMbytes = maxBytes.subtract(usedBytes).unsignedDivide(1024 * 1024 /* MB */);
         maxSoftRefAccessIntervalMs = unusedMbytes.multiply(HeapOptions.SoftRefLRUPolicyMSPerMB.getValue());
         ReferenceInternals.updateSoftReferenceClock();
@@ -155,26 +145,23 @@ public class ReferenceObjectProcessing {
     /**
      * Determine if the referent is live, updating the reference field, and dirtying cards.
      *
-     * Returns true if the referent will survive the collection, false otherwise.
+     * @return true if the referent will survive the collection, false otherwise.
      */
-    private static boolean processReferent(Reference<?> dr) {
-        final Pointer refPointer = ReferenceInternals.getReferentPointer(dr);
+    private static boolean processRememberedRef(Reference<?> dr) {
+        /*
+         * The referent *has not* been processed as a grey reference, so I have to be careful about
+         * looking through the referent field.
+         */
+        Pointer refPointer = ReferenceInternals.getReferentPointer(dr);
         if (refPointer.isNull()) {
-            return false;
-        }
-        if (HeapImpl.getHeapImpl().isInImageHeap(refPointer)) {
             return true;
         }
-        final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(refPointer);
-        if (ObjectHeaderImpl.isForwardedHeader(header)) {
-            Pointer forwardedPointer = Word.objectToUntrackedPointer(ObjectHeaderImpl.getForwardedObject(refPointer));
-            ReferenceInternals.setReferentPointer(dr, forwardedPointer);
-            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, forwardedPointer.toObject());
+        assert !HeapImpl.getHeapImpl().isInImageHeap(refPointer) : "Image heap referent: should not have been discovered";
+        if (maybeUpdateForwardedReference(dr, refPointer)) {
             return true;
         }
-        final Object refObject = refPointer.toObject();
-        if (hasSurvivedThisCollection(refObject)) {
-            /* The referent has survived, it does not need to be updated. */
+        Object refObject = refPointer.toObject();
+        if (willSurviveThisCollection(refObject)) {
             HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, refObject);
             return true;
         }
@@ -189,17 +176,27 @@ public class ReferenceObjectProcessing {
         return false;
     }
 
-    private static boolean hasSurvivedThisCollection(Object obj) {
-        assert !HeapImpl.getHeapImpl().isInImageHeap(obj);
+    private static boolean maybeUpdateForwardedReference(Reference<?> dr, Pointer referentAddr) {
+        UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(referentAddr);
+        if (ObjectHeaderImpl.isForwardedHeader(header)) {
+            Pointer forwardedPointer = Word.objectToUntrackedPointer(ObjectHeaderImpl.getForwardedObject(referentAddr));
+            ReferenceInternals.setReferentPointer(dr, forwardedPointer);
+            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, forwardedPointer.toObject());
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean willSurviveThisCollection(Object obj) {
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         Space space = chunk.getSpace();
         return !space.isFrom();
     }
 
-    private static Reference<?> popDiscoveredReference() {
-        final Reference<?> result = discoveredReferencesList;
+    private static Reference<?> popRememberedRef() {
+        final Reference<?> result = rememberedRefsList;
         if (result != null) {
-            discoveredReferencesList = ReferenceInternals.getNextDiscovered(result);
+            rememberedRefsList = ReferenceInternals.getNextDiscovered(result);
             ReferenceInternals.setNextDiscovered(result, null);
         }
         return result;
