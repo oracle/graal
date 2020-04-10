@@ -30,7 +30,9 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
-public class FormalParamTypeFlow extends TypeFlow<ParameterNode> {
+import jdk.vm.ci.code.BytecodePosition;
+
+public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
 
     /** The holding method. */
     protected final AnalysisMethod method;
@@ -38,7 +40,7 @@ public class FormalParamTypeFlow extends TypeFlow<ParameterNode> {
     protected final int position;
 
     public FormalParamTypeFlow(ParameterNode source, AnalysisType declaredType, AnalysisMethod method, int position) {
-        super(source, declaredType);
+        super(source.getNodeSourcePosition(), declaredType);
         this.position = position;
         this.method = method;
     }
@@ -50,7 +52,7 @@ public class FormalParamTypeFlow extends TypeFlow<ParameterNode> {
     }
 
     @Override
-    public TypeFlow<ParameterNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         return new FormalParamTypeFlow(this, methodFlows);
     }
 

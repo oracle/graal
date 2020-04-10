@@ -37,11 +37,13 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 /**
  * The abstract class for offset load flows (i.e. indexed loads, unsafe loads at offset, java read
  * loads).
  */
-public abstract class OffsetLoadTypeFlow extends TypeFlow<ValueNode> {
+public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
     /*
      * The type of the receiver object of the offset load operation. Can be approximated by Object
@@ -54,7 +56,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<ValueNode> {
 
     @SuppressWarnings("unused")
     public OffsetLoadTypeFlow(ValueNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, MethodTypeFlow methodFlow) {
-        super(node, componentType);
+        super(node.getNodeSourcePosition(), componentType);
         this.objectType = objectType;
         this.objectFlow = objectFlow;
     }

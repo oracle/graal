@@ -243,7 +243,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     public List<AnalysisMethod> getJavaInvocations() {
         List<AnalysisMethod> result = new ArrayList<>();
         for (InvokeTypeFlow invoke : implementationInvokedBy.keySet()) {
-            result.add((AnalysisMethod) invoke.getSource().graph().method());
+            result.add((AnalysisMethod) invoke.getSource().getMethod());
         }
         return result;
     }

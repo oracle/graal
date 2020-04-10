@@ -30,10 +30,12 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 /**
  * Implements a field load operation type flow.
  */
-public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow<LoadFieldNode> {
+public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
     protected LoadFieldTypeFlow(LoadFieldNode node) {
         super(node);
@@ -64,7 +66,7 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow<LoadFieldNod
         }
 
         @Override
-        public TypeFlow<LoadFieldNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
             return new LoadStaticFieldTypeFlow(methodFlows, this);
         }
 

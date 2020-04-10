@@ -31,18 +31,20 @@ import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 /**
  * Reflects all types flow into an instanceof node, i.e., the state of this flow contains all types
  * that flow into it, with no filtering. There is a separate {@link FilterTypeFlow} that implements
  * the filtering operation and propagates the reduced state to uses. An InstanceOfTypeFlow is a sink
  * flow, i.e., it doesn't have any uses.
  */
-public class InstanceOfTypeFlow extends TypeFlow<ValueNode> {
+public class InstanceOfTypeFlow extends TypeFlow<BytecodePosition> {
 
     private final BytecodeLocation location;
 
     public InstanceOfTypeFlow(ValueNode node, BytecodeLocation instanceOfLocation, AnalysisType declaredType) {
-        super(node, declaredType);
+        super(node.getNodeSourcePosition(), declaredType);
         this.location = instanceOfLocation;
     }
 
@@ -62,7 +64,7 @@ public class InstanceOfTypeFlow extends TypeFlow<ValueNode> {
     }
 
     @Override
-    public TypeFlow<ValueNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         return new InstanceOfTypeFlow(this, methodFlows);
     }
 

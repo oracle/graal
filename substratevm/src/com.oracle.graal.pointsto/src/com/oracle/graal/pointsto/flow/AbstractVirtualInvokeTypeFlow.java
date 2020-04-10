@@ -55,6 +55,11 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
     }
 
     @Override
+    public final boolean isDirectInvoke() {
+        return false;
+    }
+
+    @Override
     public boolean addState(BigBang bb, TypeState add, boolean postFlow) {
         throw AnalysisError.shouldNotReachHere("The VirtualInvokeTypeFlow should not be updated directly.");
     }

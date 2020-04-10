@@ -30,6 +30,8 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 /**
  * A proxy class to be used for {@link AllInstantiatedTypeFlow}s. The cloning mechanism needs a
  * mechanism to clone only those uses of these global flows that belong to the current cloned
@@ -39,18 +41,22 @@ import com.oracle.graal.pointsto.util.AnalysisError;
  * A proxy type flow doesn't participate in any type flow updates. When a method is cloned it links
  * the clones of the uses/observers of the proxy flow directly to the input flow.
  */
-public class ProxyTypeFlow extends TypeFlow<Node> {
+public class ProxyTypeFlow extends TypeFlow<BytecodePosition> {
 
     protected TypeFlow<?> input;
 
     public ProxyTypeFlow(Node source, TypeFlow<?> input) {
+        this(source.getNodeSourcePosition(), input);
+    }
+
+    public ProxyTypeFlow(BytecodePosition source, TypeFlow<?> input) {
         super(source, null);
         assert input instanceof AllInstantiatedTypeFlow || input instanceof UnknownTypeFlow;
         this.input = input;
     }
 
     @Override
-    public TypeFlow<Node> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         return this;
     }
 

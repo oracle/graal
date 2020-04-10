@@ -35,10 +35,9 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -48,6 +47,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -119,22 +119,20 @@ public abstract class ObjectScanner {
             methods = methodsList;
         }
         for (AnalysisMethod method : methods) {
-            if (method.getTypeFlow().getGraph() != null) {
-                if (exec != null) {
-                    workInProgressCount.incrementAndGet();
-                    exec.execute(new CompletionExecutor.DebugContextRunnable() {
-                        @Override
-                        public void run(DebugContext debug) {
-                            try {
-                                scanMethod(method);
-                            } finally {
-                                workInProgressCount.decrementAndGet();
-                            }
+            if (exec != null) {
+                workInProgressCount.incrementAndGet();
+                exec.execute(new CompletionExecutor.DebugContextRunnable() {
+                    @Override
+                    public void run(DebugContext debug) {
+                        try {
+                            scanMethod(method);
+                        } finally {
+                            workInProgressCount.decrementAndGet();
                         }
-                    });
-                } else {
-                    scanMethod(method);
-                }
+                    }
+                });
+            } else {
+                scanMethod(method);
             }
         }
 
@@ -392,13 +390,11 @@ public abstract class ObjectScanner {
 
     private void scanMethod(AnalysisMethod method) {
         try {
-            for (Node n : method.getTypeFlow().getGraph().getNodes()) {
-                if (n instanceof ConstantNode) {
-                    ConstantNode cn = (ConstantNode) n;
-                    JavaConstant c = (JavaConstant) cn.getValue();
-                    if (c.getJavaKind() == JavaKind.Object) {
-                        scanConstant(c, new MethodScan(method, cn.getNodeSourcePosition()));
-                    }
+            EconomicMap<JavaConstant, BytecodePosition> objectConstants = method.getTypeFlow().getObjectConstants();
+            if (objectConstants != null) {
+                MapCursor<JavaConstant, BytecodePosition> cursor = objectConstants.getEntries();
+                while (cursor.advance()) {
+                    scanConstant(cursor.getKey(), new MethodScan(method, cursor.getValue()));
                 }
             }
         } catch (UnsupportedFeatureException ex) {
@@ -560,9 +556,9 @@ public abstract class ObjectScanner {
 
     protected static class MethodScan implements ScanReason {
         final AnalysisMethod method;
-        final NodeSourcePosition sourcePosition;
+        final BytecodePosition sourcePosition;
 
-        MethodScan(AnalysisMethod method, NodeSourcePosition nodeSourcePosition) {
+        MethodScan(AnalysisMethod method, BytecodePosition nodeSourcePosition) {
             this.method = method;
             this.sourcePosition = nodeSourcePosition;
         }

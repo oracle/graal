@@ -124,14 +124,13 @@ public class FallbackFeature implements Feature {
         }
 
         String locationString(InvokeTypeFlow invoke) {
-            AnalysisMethod caller = getCallerMethod(invoke);
-            String callerLocation = caller.asStackTraceElement(invoke.getLocation().getBci()).toString();
+            String callerLocation = getCallerMethod(invoke).asStackTraceElement(invoke.getSource().getBCI()).toString();
             return trackedReflectionMethod.format("%H.%n") + " invoked at " + callerLocation;
         }
     }
 
     private static AnalysisMethod getCallerMethod(InvokeTypeFlow invoke) {
-        return (AnalysisMethod) invoke.getSource().graph().method();
+        return (AnalysisMethod) invoke.getSource().getMethod();
     }
 
     private void addCheck(Method reflectionMethod, InvokeChecker checker) {
@@ -189,7 +188,7 @@ public class FallbackFeature implements Feature {
     }
 
     private void collectProxyInvokes(ReflectionInvocationCheck check, InvokeTypeFlow invoke) {
-        if (!containsAutoProxyInvoke(getCallerMethod(invoke), invoke.getLocation().getBci())) {
+        if (!containsAutoProxyInvoke(getCallerMethod(invoke), invoke.getSource().getBCI())) {
             proxyCalls.add("Dynamic proxy method " + check.locationString(invoke));
         }
     }

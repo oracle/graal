@@ -31,10 +31,12 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 /**
  * The points-to analysis model of an {@code InstanceOfNode}, which represents an instanceof test.
  */
-public class FilterTypeFlow extends TypeFlow<ValueNode> {
+public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     /**
      * If the filter is exact we only compare with the {@link #declaredType}, not including its
@@ -52,7 +54,7 @@ public class FilterTypeFlow extends TypeFlow<ValueNode> {
     }
 
     public FilterTypeFlow(ValueNode node, AnalysisType filterType, boolean isExact, boolean isAssignable, boolean includeNull) {
-        super(node, filterType);
+        super(node.getNodeSourcePosition(), filterType);
         this.isExact = isExact;
         this.isAssignable = isAssignable;
         this.includeNull = includeNull;
@@ -66,7 +68,7 @@ public class FilterTypeFlow extends TypeFlow<ValueNode> {
     }
 
     @Override
-    public TypeFlow<ValueNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         return new FilterTypeFlow(methodFlows, this);
     }
 
@@ -74,8 +76,7 @@ public class FilterTypeFlow extends TypeFlow<ValueNode> {
     public TypeState filter(BigBang bb, TypeState update) {
         if (update.isUnknown()) {
             // Filtering UnknownTypeState would otherwise return EmptyTypeState.
-            AnalysisMethod method = (AnalysisMethod) source.graph().method();
-            bb.reportIllegalUnknownUse(method, source, "Illegal: Filter of UnknownTypeState objects.");
+            bb.reportIllegalUnknownUse((AnalysisMethod) source.getMethod(), source, "Illegal: Filter of UnknownTypeState objects.");
             return TypeState.forEmpty();
         }
 

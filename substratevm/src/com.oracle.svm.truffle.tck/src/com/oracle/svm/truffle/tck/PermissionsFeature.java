@@ -26,19 +26,6 @@ package com.oracle.svm.truffle.tck;
 
 import static com.oracle.graal.pointsto.reports.ReportUtils.report;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -61,8 +48,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.Invoke;
@@ -75,6 +61,24 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A Truffle TCK {@code Feature} detecting privileged calls done by Truffle language. The
@@ -162,6 +166,9 @@ public class PermissionsFeature implements Feature {
             UserError.abort("Path to report file must be given by -H:TruffleTCKPermissionsReportFile option.");
         }
         reportFilePath = Paths.get(reportFile);
+
+        FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
+        accessImpl.getHostVM().keepAnalysisGraphs();
     }
 
     @Override
@@ -552,10 +559,13 @@ public class PermissionsFeature implements Feature {
      */
     private static final class SafeInterruptRecognizer implements CallGraphFilter {
 
+        private final SVMHost hostVM;
         private final ResolvedJavaMethod threadInterrupt;
         private final ResolvedJavaMethod threadCurrentThread;
 
         SafeInterruptRecognizer(BigBang bigBang) {
+            this.hostVM = (SVMHost) bigBang.getHostVM();
+
             Set<AnalysisMethod> methods = findMethods(bigBang, Thread.class, (m) -> m.getName().equals("interrupt"));
             if (methods.size() != 1) {
                 throw new IllegalStateException("Failed to lookup Thread.interrupt().");
@@ -572,7 +582,7 @@ public class PermissionsFeature implements Feature {
         public boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace) {
             Boolean res = null;
             if (threadInterrupt.equals(method)) {
-                StructuredGraph graph = caller.getTypeFlow().getGraph();
+                StructuredGraph graph = hostVM.getAnalysisGraph(caller);
                 for (Invoke invoke : graph.getInvokes()) {
                     if (threadInterrupt.equals(invoke.callTarget().targetMethod())) {
                         ValueNode node = invoke.getReceiver();
@@ -596,9 +606,11 @@ public class PermissionsFeature implements Feature {
      */
     private final class SafePrivilegedRecognizer implements CallGraphFilter {
 
+        private final SVMHost hostVM;
         private final Set<AnalysisMethod> dopriviledged;
 
         SafePrivilegedRecognizer(BigBang bigbang) {
+            this.hostVM = (SVMHost) bigbang.getHostVM();
             this.dopriviledged = findMethods(bigbang, java.security.AccessController.class, (m) -> m.getName().equals("doPrivileged") || m.getName().equals("doPrivilegedWithCombiner"));
         }
 
@@ -611,7 +623,7 @@ public class PermissionsFeature implements Feature {
             if (safeClass) {
                 return true;
             }
-            StructuredGraph graph = caller.getTypeFlow().getGraph();
+            StructuredGraph graph = hostVM.getAnalysisGraph(caller);
             for (Invoke invoke : graph.getInvokes()) {
                 if (method.equals(invoke.callTarget().targetMethod())) {
                     NodeInputList<ValueNode> args = invoke.callTarget().arguments();

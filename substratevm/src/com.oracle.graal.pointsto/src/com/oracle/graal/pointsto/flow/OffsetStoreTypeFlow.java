@@ -40,6 +40,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 /**
  * The abstract class for offset store flows (i.e. indexed stores, unsafe stores at offset, java
  * writes).
@@ -50,7 +52,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
  * state, i.e., the one of the stored value, to the corresponding array elements flows (in case of
  * indexed stores) or field flows (in case of unsafe stores).
  */
-public abstract class OffsetStoreTypeFlow extends TypeFlow<ValueNode> {
+public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
     /*
      * The type of the receiver object of the offset store operation. Can be approximated by Object
@@ -64,7 +66,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<ValueNode> {
     protected TypeFlow<?> objectFlow;
 
     public OffsetStoreTypeFlow(ValueNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-        super(node, componentType);
+        super(node.getNodeSourcePosition(), componentType);
         this.objectType = objectType;
         this.valueFlow = valueFlow;
         this.objectFlow = objectFlow;
@@ -88,7 +90,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<ValueNode> {
     }
 
     @Override
-    public abstract TypeFlow<ValueNode> copy(BigBang bb, MethodFlowsGraph methodFlows);
+    public abstract TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows);
 
     @Override
     public abstract boolean addState(BigBang bb, TypeState add);

@@ -31,7 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -59,6 +58,7 @@ import com.oracle.graal.pointsto.typestore.SplitFieldTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedFieldTypeStore;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
@@ -206,7 +206,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         }
 
         @Override
-        public TypeFlow<MethodCallTargetNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
             return new BytecodeSensitiveVirtualInvokeTypeFlow(bb, methodFlows, this);
         }
 
@@ -287,7 +287,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         }
 
         @Override
-        public TypeFlow<MethodCallTargetNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
             return new BytecodeSensitiveSpecialInvokeTypeFlow(bb, methodFlows, this);
         }
 

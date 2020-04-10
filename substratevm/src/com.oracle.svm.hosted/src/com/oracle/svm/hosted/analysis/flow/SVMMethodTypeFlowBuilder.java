@@ -25,6 +25,7 @@
 
 package com.oracle.svm.hosted.analysis.flow;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -43,6 +44,8 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
@@ -60,8 +63,8 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
     }
 
     @Override
-    public void registerUsedElements() {
-        super.registerUsedElements();
+    public void registerUsedElements(EconomicMap<JavaConstant, BytecodePosition> objectConstants) {
+        super.registerUsedElements(objectConstants);
 
         for (Node n : graph.getNodes()) {
             if (n instanceof ConstantNode) {
