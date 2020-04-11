@@ -1387,6 +1387,10 @@ public class MethodTypeFlowBuilder {
                          * actual return builder is materialized.
                          */
                         ActualReturnTypeFlow actualReturn = null;
+                        /*
+                         * Get the receiver type from the invoke, it may be more precise than the
+                         * method declaring class.
+                         */
                         AnalysisType receiverType = invoke.getInvokeKind().hasReceiver() ? (AnalysisType) invoke.getReceiverType() : null;
                         InvokeTypeFlow invokeFlow = null;
                         switch (target.invokeKind()) {

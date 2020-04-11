@@ -117,6 +117,11 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
 
         for (AnalysisType type : inputState.types()) {
             if (type.isArray()) {
+                if (bb.analysisPolicy().aliasArrayTypeFlows()) {
+                    /* All arrays are aliased, no need to model the array clone operation. */
+                    continue;
+                }
+
                 /* The object array clones must also get the elements flows of the originals. */
                 for (AnalysisObject originalObject : inputState.objects(type)) {
                     if (originalObject.isPrimitiveArray() || originalObject.isEmptyObjectArrayConstant(bb)) {
@@ -153,6 +158,18 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
 
         /* Element flows of array clones (if any) have been updated, update the uses. */
         super.update(bb);
+    }
+
+    @Override
+    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+        assert this.isClone();
+        /* When the input flow saturates start observing the flow of the declared type. */
+        replaceObservedWith(bb, declaredType);
+    }
+
+    @Override
+    public void setObserved(TypeFlow<?> newInputFlow) {
+        this.input = newInputFlow;
     }
 
     public BytecodeLocation getCloneSite() {

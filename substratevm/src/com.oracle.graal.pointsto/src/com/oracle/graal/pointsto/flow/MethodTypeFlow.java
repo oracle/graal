@@ -244,8 +244,18 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return result;
     }
 
+    /** Check if the type flow is saturated, i.e., any of its clones is saturated. */
+    public boolean isSaturated(BigBang bb, TypeFlow<?> originalTypeFlow) {
+        boolean saturated = false;
+        for (MethodFlowsGraph methodFlows : clonedMethodFlows.values()) {
+            TypeFlow<?> clonedTypeFlow = methodFlows.lookupCloneOf(bb, originalTypeFlow);
+            saturated |= clonedTypeFlow.isSaturated();
+        }
+        return saturated;
+    }
+
     // get original parameter
-    protected FormalParamTypeFlow getParameterFlow(int idx) {
+    public FormalParamTypeFlow getParameterFlow(int idx) {
         return originalMethodFlows.getParameter(idx);
     }
 

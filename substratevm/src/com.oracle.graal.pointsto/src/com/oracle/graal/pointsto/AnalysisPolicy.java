@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.options.OptionValues;
 
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
@@ -49,8 +50,34 @@ public abstract class AnalysisPolicy {
 
     protected final OptionValues options;
 
+    protected final boolean aliasArrayTypeFlows;
+    protected final boolean relaxTypeFlowConstraints;
+    protected final boolean removeSaturatedTypeFlows;
+    protected final int typeFlowSaturationCutoff;
+
     public AnalysisPolicy(OptionValues options) {
         this.options = options;
+
+        aliasArrayTypeFlows = PointstoOptions.AliasArrayTypeFlows.getValue(options);
+        relaxTypeFlowConstraints = PointstoOptions.RelaxTypeFlowStateConstraints.getValue(options);
+        removeSaturatedTypeFlows = PointstoOptions.RemoveSaturatedTypeFlows.getValue(options);
+        typeFlowSaturationCutoff = PointstoOptions.TypeFlowSaturationCutoff.getValue(options);
+    }
+
+    public boolean aliasArrayTypeFlows() {
+        return aliasArrayTypeFlows;
+    }
+
+    public boolean relaxTypeFlowConstraints() {
+        return relaxTypeFlowConstraints;
+    }
+
+    public boolean removeSaturatedTypeFlows() {
+        return removeSaturatedTypeFlows;
+    }
+
+    public int typeFlowSaturationCutoff() {
+        return typeFlowSaturationCutoff;
     }
 
     /** Provide an analysis context policy. */

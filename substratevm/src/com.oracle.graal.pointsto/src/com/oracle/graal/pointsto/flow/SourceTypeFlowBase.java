@@ -29,6 +29,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
@@ -120,6 +121,21 @@ public abstract class SourceTypeFlowBase extends TypeFlow<BytecodePosition> {
             /* Update the state and propagate it to uses. */
             addState(bb, sourceState);
         }
+    }
+
+    @Override
+    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+        AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
+    }
+
+    @Override
+    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+        AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
+    }
+
+    @Override
+    protected void onSaturated(BigBang bb) {
+        AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
     }
 
     @Override

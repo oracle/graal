@@ -34,6 +34,10 @@ import jdk.vm.ci.code.BytecodePosition;
 public class ActualReturnTypeFlow extends TypeFlow<BytecodePosition> {
     private InvokeTypeFlow invokeFlow;
 
+    public ActualReturnTypeFlow(AnalysisType declaredType) {
+        super(null, declaredType);
+    }
+
     public ActualReturnTypeFlow(ValueNode source, AnalysisType declaredType) {
         super(source.getNodeSourcePosition(), declaredType);
     }
@@ -51,9 +55,7 @@ public class ActualReturnTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("ActualReturn<").append(getState()).append(">");
-        return str.toString();
+        return "ActualReturn<" + getState() + '>';
     }
 
     public void setInvokeFlow(InvokeTypeFlow invokeFlow) {
