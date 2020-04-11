@@ -38,11 +38,9 @@ insight: Unknown event type 'enterOrLeave'.*
 >[7] js --jvm --experimental-options --insight=agent-error.js log.js
 Error while initializing {id: "insight", version: "0.5"}
 .*at <js> :anonymous.*agent-error.js.*
-.*at <js> .*Unknown.*
 >[7] js --experimental-options --insight=agent-error.js log.js
 Error while initializing {id: "insight", version: "0.5"}
 .*at <js> :anonymous.*agent-error.js.*
-.*at <js> .*Unknown.*
 >[7] js --jvm --experimental-options --insight=agent-error4.js -f log.js
 Error loading of source log.js.*
 .*at <js>.*agent-error4.js:.*
