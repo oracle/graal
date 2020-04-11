@@ -29,6 +29,7 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -45,7 +46,7 @@ public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
         this.method = method;
     }
 
-    public FormalParamTypeFlow(FormalParamTypeFlow original, MethodFlowsGraph methodFlows) {
+    protected FormalParamTypeFlow(FormalParamTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows);
         this.position = original.position;
         this.method = original.method;
@@ -59,6 +60,15 @@ public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
     @Override
     public AnalysisMethod method() {
         return method;
+    }
+
+    @Override
+    public TypeState filter(BigBang bb, TypeState newState) {
+        /*
+         * If the type flow constraints are relaxed filter the incoming value using the parameter's
+         * declared type.
+         */
+        return declaredTypeFilter(bb, newState);
     }
 
     public int position() {

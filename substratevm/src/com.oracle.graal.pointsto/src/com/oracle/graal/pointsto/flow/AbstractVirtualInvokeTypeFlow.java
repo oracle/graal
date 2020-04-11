@@ -28,6 +28,7 @@ import static com.oracle.graal.pointsto.util.ConcurrentLightHashSet.addElement;
 import static com.oracle.graal.pointsto.util.ConcurrentLightHashSet.getElements;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.compiler.nodes.Invoke;
@@ -39,11 +40,24 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
-public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
-    private static final AtomicReferenceFieldUpdater<AbstractVirtualInvokeTypeFlow, Object> CALLEES_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AbstractVirtualInvokeTypeFlow.class, Object.class,
-                    "callees");
+import jdk.vm.ci.code.BytecodePosition;
 
-    @SuppressWarnings("unused") private volatile Object callees;
+public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
+    private static final AtomicReferenceFieldUpdater<AbstractVirtualInvokeTypeFlow, Object> CALLEES_UPDATER = AtomicReferenceFieldUpdater
+                    .newUpdater(AbstractVirtualInvokeTypeFlow.class, Object.class, "callees");
+
+    private static final AtomicReferenceFieldUpdater<AbstractVirtualInvokeTypeFlow, Object> INVOKE_LOCATIONS_UPDATER = AtomicReferenceFieldUpdater
+                    .newUpdater(AbstractVirtualInvokeTypeFlow.class, Object.class, "invokeLocations");
+
+    @SuppressWarnings("unused") protected volatile Object callees;
+
+    private boolean isContextInsensitive;
+
+    /**
+     * The context insensitive invoke needs to keep track of all the locations it is swapped in. For
+     * all the other invokes this is null, their location is the source node location.
+     */
+    @SuppressWarnings("unused") protected volatile Object invokeLocations;
 
     protected AbstractVirtualInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
@@ -52,6 +66,30 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
 
     protected AbstractVirtualInvokeTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, AbstractVirtualInvokeTypeFlow original) {
         super(bb, methodFlows, original);
+    }
+
+    public void markAsContextInsensitive() {
+        isContextInsensitive = true;
+    }
+
+    public boolean isContextInsensitive() {
+        return isContextInsensitive;
+    }
+
+    public boolean addInvokeLocation(BytecodePosition invokeLocation) {
+        if (invokeLocation != null) {
+            return addElement(this, INVOKE_LOCATIONS_UPDATER, invokeLocation);
+        }
+        return false;
+    }
+
+    /** The context insensitive virual invoke returns all the locations where it is swapped in. */
+    public Collection<BytecodePosition> getInvokeLocations() {
+        if (isContextInsensitive) {
+            return getElements(this, INVOKE_LOCATIONS_UPDATER);
+        } else {
+            return Collections.singleton(getSource());
+        }
     }
 
     @Override
@@ -72,6 +110,13 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
     @Override
     public abstract void onObservedUpdate(BigBang bb);
 
+    @Override
+    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+        assert this.isClone();
+        /* When the receiver flow saturates start observing the flow of the receiver type. */
+        replaceObservedWith(bb, receiverType);
+    }
+
     protected boolean addCallee(AnalysisMethod callee) {
         boolean add = addElement(this, CALLEES_UPDATER, callee);
         if (this.isClone()) {
@@ -82,7 +127,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
     }
 
     @Override
-    public final Collection<AnalysisMethod> getCallees() {
+    public Collection<AnalysisMethod> getCallees() {
         return getElements(this, CALLEES_UPDATER);
     }
 

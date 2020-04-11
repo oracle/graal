@@ -1443,7 +1443,7 @@ public class NativeImageGenerator {
          */
         for (AnalysisMethod method : aUniverse.getMethods()) {
             if (method.isEntryPoint()) {
-                List<AnalysisMethod> invocations = method.getJavaInvocations();
+                Set<AnalysisMethod> invocations = method.getCallers();
                 if (invocations.size() > 0) {
                     String name = method.format("%H.%n(%p)");
                     StringBuilder msg = new StringBuilder("Native entry point is also called from within Java. Invocations: ");

@@ -551,10 +551,15 @@ public class MethodFlowsGraph {
          * TODO cache the result
          */
         List<MethodFlowsGraph> callers = new ArrayList<>();
-        for (AnalysisMethod caller : method.getJavaInvocations()) {
+        for (AnalysisMethod caller : method.getCallers()) {
             for (MethodFlowsGraph callerFlowGraph : caller.getTypeFlow().getFlows()) {
                 for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokeFlows()) {
-                    for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getCalleesFlows(bb)) {
+                    InvokeTypeFlow invoke = callerInvoke;
+                    if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(callerInvoke)) {
+                        /* The invoke has been replaced by the context insensitive one. */
+                        invoke = callerInvoke.getTargetMethod().getContextInsensitiveInvoke();
+                    }
+                    for (MethodFlowsGraph calleeFlowGraph : invoke.getCalleesFlows(bb)) {
                         // 'this' method graph was found among the callees of an invoke flow in one
                         // of the clones of the caller methods, hence we regiter that clone as a
                         // caller for 'this' method clone

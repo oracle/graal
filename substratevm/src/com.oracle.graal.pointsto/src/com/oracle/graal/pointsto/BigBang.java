@@ -353,6 +353,14 @@ public abstract class BigBang {
     }
 
     public TypeState getAllSynchronizedTypeState() {
+        /*
+         * If all-synchrnonized type flow, i.e., the type flow that keeps track of the types of all
+         * monitor objects, is saturated then we need to assume that any type can be used for
+         * monitors.
+         */
+        if (allSynchronizedTypeFlow.isSaturated()) {
+            return getAllInstantiatedTypeFlow().getState();
+        }
         return allSynchronizedTypeFlow.getState();
     }
 

@@ -69,7 +69,10 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
     @Override
     public void onObservedUpdate(BigBang bb) {
         assert this.isClone();
-
+        if (bb.analysisPolicy().aliasArrayTypeFlows()) {
+            /* All arrays are aliased, no need to model the array copy operation. */
+            return;
+        }
         /*
          * Both the source and the destination register this flow as an observer and notify it when
          * either of them is updated. When either the source or the destination elements change the

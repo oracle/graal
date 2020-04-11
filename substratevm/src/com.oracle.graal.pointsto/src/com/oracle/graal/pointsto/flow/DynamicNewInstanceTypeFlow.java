@@ -115,6 +115,24 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
     }
 
     @Override
+    public void setObserved(TypeFlow<?> declaredTypeFlow) {
+        this.newTypeFlow = declaredTypeFlow;
+    }
+
+    @Override
+    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+        assert this.isClone();
+        /* When the new-type flow saturates start observing the flow of the declared type. */
+        replaceObservedWith(bb, declaredType);
+    }
+
+    @Override
+    public boolean canSaturate() {
+        /* The dynamic new instance tracks all of its input types. */
+        return false;
+    }
+
+    @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
         str.append("DynamicNewInstanceFlow<").append(getState()).append(">");

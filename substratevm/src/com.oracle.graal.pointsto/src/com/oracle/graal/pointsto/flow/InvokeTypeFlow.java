@@ -42,6 +42,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaKind;
 
 public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
 
@@ -67,6 +68,10 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
      * diagnostics), so we must have a non-null {@BytecodePosition}.
      */
     private static BytecodePosition findBytecodePosition(Invoke invoke) {
+        if (invoke == null) {
+            /* The context insensitive invoke flow doesn't have an invoke node. */
+            return null;
+        }
         BytecodePosition result = invoke.asFixedNode().getNodeSourcePosition();
         if (result == null) {
             result = new BytecodePosition(null, invoke.asFixedNode().graph().method(), invoke.bci());
@@ -127,6 +132,11 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
         return actualParameters[0];
     }
 
+    @Override
+    public void setObserved(TypeFlow<?> newReceiver) {
+        actualParameters[0] = newReceiver;
+    }
+
     public TypeFlow<?> getActualParameter(int index) {
         return actualParameters[index];
     }
@@ -148,6 +158,17 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
         /* Only a clone should be updated */
         assert this.isClone();
         return super.addState(bb, add);
+    }
+
+    /**
+     * When the type flow constraints are relaxed the receiver object state can contain types that
+     * are not part of the receiver's type hierarchy. We filter those out.
+     */
+    protected TypeState filterReceiverState(BigBang bb, TypeState invokeState) {
+        if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
+            return TypeState.forIntersection(bb, invokeState, receiverType.getTypeFlow(bb, true).getState());
+        }
+        return invokeState;
     }
 
     protected void updateReceiver(BigBang bb, MethodFlowsGraph calleeFlows, AnalysisObject receiverObject) {
@@ -230,9 +251,16 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
             }
         }
 
-        assert this.isClone() && originalInvoke != null;
-        calleeFlows.getMethod().registerAsImplementationInvoked(originalInvoke);
+        assert isClone() || isContextInsensitiveVirtualInvoke(this);
+        if (isContextInsensitiveVirtualInvoke(this)) {
+            calleeFlows.getMethod().registerAsImplementationInvoked(this);
+        } else {
+            calleeFlows.getMethod().registerAsImplementationInvoked(originalInvoke);
+        }
+    }
 
+    public static boolean isContextInsensitiveVirtualInvoke(InvokeTypeFlow invoke) {
+        return invoke instanceof AbstractVirtualInvokeTypeFlow && ((AbstractVirtualInvokeTypeFlow) invoke).isContextInsensitive();
     }
 
     /**
@@ -279,6 +307,54 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
      * from this invoke are returned.
      */
     public abstract Collection<MethodFlowsGraph> getCalleesFlows(BigBang bb);
+
+    /**
+     * Create an unique, per method, context insensitive invoke. The context insensitive invoke uses
+     * the receiver type of the method, i.e., its declaring class. Therefore this invoke will link
+     * with all possible callees.
+     */
+    public static AbstractVirtualInvokeTypeFlow createContextInsensitiveInvoke(BigBang bb, AnalysisMethod method) {
+        /*
+         * The context insensitive invoke has actual parameters and return flows that will be linked
+         * to the original actual parameters and return flows at each call site where it will be
+         * swapped in.
+         */
+        TypeFlow<?>[] actualParameters = new TypeFlow<?>[method.getSignature().getParameterCount(true)];
+
+        AnalysisType receiverType = method.getDeclaringClass();
+        /*
+         * The receiver flow of the context insensitive invoke is the type flow of its declaring
+         * class.
+         */
+        AllInstantiatedTypeFlow receiverFlow = receiverType.getTypeFlow(bb, false);
+
+        actualParameters[0] = receiverFlow;
+        for (int i = 1; i < actualParameters.length; i++) {
+            actualParameters[i] = new ActualParameterTypeFlow((AnalysisType) method.getSignature().getParameterType(i - 1, null));
+        }
+        ActualReturnTypeFlow actualReturn = null;
+        AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(null);
+        if (returnType.getStorageKind() == JavaKind.Object) {
+            actualReturn = new ActualReturnTypeFlow(returnType);
+        }
+
+        AbstractVirtualInvokeTypeFlow invoke = bb.analysisPolicy().createVirtualInvokeTypeFlow(null, receiverType, method,
+                        actualParameters, actualReturn, BytecodeLocation.UNKNOWN_BYTECODE_LOCATION);
+        invoke.markAsContextInsensitive();
+
+        return invoke;
+    }
+
+    /**
+     * Register the context insensitive invoke flow as an observer of its receiver type, i.e., the
+     * declaring class of its target method. This also triggers an update of the context insensitive
+     * invoke, linking all callees.
+     */
+    public static void initContextInsensitiveInvoke(BigBang bb, AnalysisMethod method, InvokeTypeFlow invoke) {
+        AnalysisType receiverType = method.getDeclaringClass();
+        AllInstantiatedTypeFlow receiverFlow = receiverType.getTypeFlow(bb, false);
+        receiverFlow.addObserver(bb, invoke);
+    }
 
 }
 

@@ -56,6 +56,13 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     @Override
+    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+        setSaturated();
+        /* Swap out this flow with its declared type flow. */
+        swapOut(bb, declaredType.getTypeFlow(bb, true));
+    }
+
+    @Override
     public String toString() {
         return "FieldFilterTypeFlow<" + source + ">";
     }

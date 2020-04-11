@@ -59,4 +59,15 @@ public abstract class AccessFieldTypeFlow extends TypeFlow<BytecodePosition> {
         assert this.isClone();
         return super.addState(bb, add);
     }
+
+    /**
+     * When the type flow constraints are relaxed the object state can contain types that are not
+     * part of the field's declaring class hierarchy. We filter those out.
+     */
+    protected TypeState filterObjectState(BigBang bb, TypeState objectState) {
+        if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
+            return TypeState.forIntersection(bb, objectState, field.getDeclaringClass().getTypeFlow(bb, true).getState());
+        }
+        return objectState;
+    }
 }

@@ -75,7 +75,19 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
+    public void setObserved(TypeFlow<?> newObjectFlow) {
+        this.objectFlow = newObjectFlow;
+    }
+
+    @Override
     public abstract void onObservedUpdate(BigBang bb);
+
+    @Override
+    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+        assert this.isClone();
+        /* When receiver object flow saturates start observing the flow of the the object type. */
+        replaceObservedWith(bb, objectType);
+    }
 
     @Override
     public TypeFlow<?> receiver() {
@@ -119,6 +131,10 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             }
 
             for (AnalysisObject object : arrayState.objects()) {
+                if (bb.analysisPolicy().relaxTypeFlowConstraints() && !object.type().isArray()) {
+                    /* Ignore non-array types when type flow constraints are relaxed. */
+                    continue;
+                }
                 if (object.isPrimitiveArray() || object.isEmptyObjectArrayConstant(bb)) {
                     /* Nothing to read from a primitive array or an empty array constant. */
                     continue;

@@ -153,13 +153,25 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     public ArrayElementsTypeStore createArrayElementsTypeStore(AnalysisObject object, AnalysisUniverse universe) {
         assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(options);
         if (object.type().isArray()) {
-            if (object.isContextInsensitiveObject()) {
-                return new SplitArrayElementsTypeStore(object);
-            } else {
-                return new UnifiedArrayElementsTypeStore(object);
+            if (aliasArrayTypeFlows) {
+                /* Alias all array type flows using the elements type flow model of Object type. */
+                if (object.type().getElementalType().isJavaLangObject() && object.isContextInsensitiveObject()) {
+                    // return getArrayElementsTypeStore(object);
+                    return new UnifiedArrayElementsTypeStore(object);
+                }
+                return universe.objectType().getArrayClass().getContextInsensitiveAnalysisObject().getArrayElementsTypeStore();
             }
+            return getArrayElementsTypeStore(object);
         } else {
             return null;
+        }
+    }
+
+    private static ArrayElementsTypeStore getArrayElementsTypeStore(AnalysisObject object) {
+        if (object.isContextInsensitiveObject()) {
+            return new SplitArrayElementsTypeStore(object);
+        } else {
+            return new UnifiedArrayElementsTypeStore(object);
         }
     }
 
@@ -223,6 +235,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
                 bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Invoke on UnknownTypeState objects. Invoke: " + this);
                 return;
             }
+            receiverState = filterReceiverState(bb, receiverState);
 
             /* Use the tandem types - objects iterator. */
             TypesObjectsIterator toi = receiverState.getTypesObjectsIterator();
@@ -298,7 +311,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
             initCallee();
 
-            TypeState invokeState = getReceiver().getState();
+            TypeState invokeState = filterReceiverState(bb, getReceiver().getState());
             for (AnalysisObject receiverObject : invokeState.objects()) {
                 AnalysisContext calleeContext = bb.contextPolicy().calleeContext(bb, receiverObject, callerContext, callee);
                 MethodFlowsGraph calleeFlows = callee.addContext(bb, calleeContext, this);
