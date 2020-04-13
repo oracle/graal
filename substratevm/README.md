@@ -2,7 +2,7 @@
 
 Substrate VM is a framework that allows ahead-of-time (AOT) compilation of Java
 applications under closed-world assumption into executable images or shared
-objects (ELF-64 or 64-bit Mach-O). Substrate VM is an internal project name for
+objects (ELF-64, 64-bit Mach-O, PE32+). Substrate VM is an internal project name for
 a Native Image technology of GraalVM.
 
 ## Quick start
@@ -39,8 +39,9 @@ To build truffle-based images please refer to the documentation in the [VM suite
 Using Substrate VM requires the `mx` tool to be installed first, so that it is on your path.
 Visit the [MX Homepage](https://github.com/graalvm/mx) for more details.
 
-Substrate VM requires a JDK 8 with JVMCI.
-It is available from [GitHub](https://github.com/graalvm/openjdk8-jvmci-builder/releases).
+Substrate VM requires a JDK that supports a compatible version of the JVM Compiler Interface (JVMCI). JVMCI is a privileged low-level interface to the JVM, that can read metadata from the VM such as method bytecode and install machine code into the VM . Obtain JVMCI-enabled:
+* JDK 8 from [GitHub](https://github.com/graalvm/openjdk8-jvmci-builder/releases)
+* JDK 11 from [GitHub](https://github.com/graalvm/labs-openjdk-11/releases)
 
 In the main directory, invoke `mx help` to see the list of commands.
 Most of the commands are inherited from the GraalVM and Truffle code bases.
@@ -58,7 +59,7 @@ After running `mx build` you can use `mx native-image` to build native images.
 You can specify the main entry point, i.e., the application you want to create the image for.
 For more information run `mx native-image --help`.
 
-Native image generation is performed by a Java program that runs on JDK 8 with JVMCI.
+Native image generation is performed by a Java program that runs on a JVMCI-enabled JDK.
 You can debug it with a regular Java debugger.
 Use `mx native-image --debug-attach` to start native image generation so that it waits for a Java debugger to attach first (by default, at port 8000).
 In Eclipse, use the debugging configuration "substratevm-localhost-8000" to attach to it.
