@@ -93,10 +93,6 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
         return new LoadIndexedNode(assumptions, originalAlias, index, null, elementKind);
     }
 
-    default void replaceWithVirtual(VirtualizerTool tool, VirtualObjectNode newVirtual) {
-        tool.replaceWithVirtual(newVirtual);
-    }
-
     @Override
     default void virtualize(VirtualizerTool tool) {
         ValueNode originalAlias = tool.getAlias(getObject());
@@ -109,7 +105,7 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
                 }
                 VirtualObjectNode newVirtual = originalVirtual.duplicate();
                 tool.createVirtualObject(newVirtual, newEntryState, Collections.<MonitorIdNode> emptyList(), false);
-                replaceWithVirtual(tool, newVirtual);
+                tool.replaceWithVirtual(newVirtual);
             }
         } else {
             ResolvedJavaType type = getConcreteType(originalAlias.stamp(NodeView.DEFAULT));
@@ -127,7 +123,7 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
                     tool.addNode(load);
                 }
                 tool.createVirtualObject(newVirtual, state, Collections.<MonitorIdNode> emptyList(), false);
-                replaceWithVirtual(tool, newVirtual);
+                tool.replaceWithVirtual(newVirtual);
             } else {
                 ValueNode length = findLength(FindLengthMode.SEARCH_ONLY, tool.getConstantReflection());
                 if (length == null) {
@@ -150,7 +146,7 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
                     }
                     VirtualObjectNode virtualObject = new VirtualArrayNode(componentType, constantLength);
                     tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList(), false);
-                    replaceWithVirtual(tool, virtualObject);
+                    tool.replaceWithVirtual(virtualObject);
                 }
             }
         }

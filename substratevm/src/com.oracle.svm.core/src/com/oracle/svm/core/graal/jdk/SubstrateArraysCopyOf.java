@@ -31,7 +31,6 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
@@ -81,8 +80,7 @@ public interface SubstrateArraysCopyOf extends Lowerable, VirtualizableAllocatio
         /* from index is always 0 for Arrays.copyOf. */
         ValueNode from = ConstantNode.forInt(0);
         ResolvedJavaType newComponentType = tool.getConstantReflection().asJavaType(getNewArrayType().asConstant()).getComponentType();
-        boolean killExceptionEdge = this instanceof WithExceptionNode;
         GraphUtil.virtualizeArrayCopy(tool, getOriginal(), getOriginalLength(), getNewLength(), from, newComponentType, JavaKind.Object, asNode().graph(),
-                        (componentType, length) -> new SubstrateVirtualArrayNode(componentType, length), killExceptionEdge);
+                        (componentType, length) -> new SubstrateVirtualArrayNode(componentType, length));
     }
 }
