@@ -25,39 +25,76 @@
 package com.oracle.svm.core.hub;
 
 import java.lang.annotation.Annotation;
+import java.util.Arrays;
 import java.util.Objects;
 
 public final class AnnotationsEncoding {
 
+    final Annotation[] allAnnotations;
+    final Annotation[] declaredAnnotations;
     private static final Annotation[] EMPTY_ANNOTATION_ARRAY = new Annotation[0];
+    private static final AnnotationsEncoding EMPTY_ANNOTATIONS_ENCODING = new AnnotationsEncoding(null, null);
 
-    public static Annotation[] decodeAnnotations(Object annotationsEncoding) {
+    public AnnotationsEncoding(Annotation[] allAnnotations, Annotation[] declaredAnnotations) {
+        this.allAnnotations = allAnnotations;
+        this.declaredAnnotations = declaredAnnotations;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+
+        AnnotationsEncoding that = (AnnotationsEncoding) other;
+        return Arrays.equals(allAnnotations, that.allAnnotations) &&
+                        Arrays.equals(declaredAnnotations, that.declaredAnnotations);
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(allAnnotations) + Arrays.hashCode(declaredAnnotations);
+    }
+
+    public static AnnotationsEncoding decodeAnnotations(Object annotationsEncoding) {
         if (annotationsEncoding == null) {
-            return EMPTY_ANNOTATION_ARRAY;
+            return EMPTY_ANNOTATIONS_ENCODING;
         } else if (annotationsEncoding instanceof ArrayStoreException) {
             /* JDK-7183985 was hit at image build time when the annotations were encoded. */
             throw (ArrayStoreException) annotationsEncoding;
-        } else if (annotationsEncoding instanceof Annotation[]) {
-            return ((Annotation[]) annotationsEncoding).clone();
+        } else if (annotationsEncoding instanceof AnnotationsEncoding) {
+            return (AnnotationsEncoding) annotationsEncoding;
         } else {
-            return new Annotation[]{(Annotation) annotationsEncoding};
+            throw new ArrayStoreException("annotations encoding should be of type: " + AnnotationsEncoding.class.getName());
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T extends Annotation> T decodeAnnotation(Object annotationsEncoding, Class<T> annotationClass) {
-        Objects.requireNonNull(annotationClass);
+    public Annotation[] getAnnotations() {
+        return allAnnotations == null ? EMPTY_ANNOTATION_ARRAY : allAnnotations;
+    }
 
-        if (annotationsEncoding instanceof ArrayStoreException) {
-            throw (ArrayStoreException) annotationsEncoding;
-        } else if (annotationsEncoding instanceof Annotation[]) {
-            for (Annotation annotation : (Annotation[]) annotationsEncoding) {
-                if (annotationClass.isInstance(annotation)) {
-                    return (T) annotation;
-                }
+    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        return filterByType(getAnnotations(), annotationClass);
+    }
+
+    public Annotation[] getDeclaredAnnotations() {
+        return allAnnotations == null ? EMPTY_ANNOTATION_ARRAY : declaredAnnotations;
+    }
+
+    public <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
+        return filterByType(getDeclaredAnnotations(), annotationClass);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Annotation> T filterByType(Annotation[] all, Class<T> annotationClass) {
+        Objects.requireNonNull(annotationClass);
+        for (Annotation annotation : all) {
+            if (annotationClass.isInstance(annotation)) {
+                return (T) annotation;
             }
-        } else if (annotationClass.isInstance(annotationsEncoding)) {
-            return (T) annotationsEncoding;
         }
         return null;
     }
