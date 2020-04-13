@@ -106,8 +106,8 @@ import org.graalvm.compiler.phases.graph.MergeableState;
 import org.graalvm.compiler.phases.graph.PostOrderNodeIterator;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.nodes.ArrayCopy;
-import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.word.WordCastNode;
 import org.graalvm.util.GuardedAnnotationAccess;
@@ -1439,19 +1439,19 @@ public class MethodTypeFlowBuilder {
                     state.add(target, invokeBuilder);
                 }
 
-            } else if (n instanceof BasicObjectCloneNode) {
-                BasicObjectCloneNode node = (BasicObjectCloneNode) n;
+            } else if (n instanceof ObjectClone) {
+                ObjectClone node = (ObjectClone) n;
                 BytecodeLocation cloneLabel = bb.analysisPolicy().createAllocationSite(bb, node.bci(), methodFlow.getMethod());
                 TypeFlowBuilder<?> inputBuilder = state.lookup(node.getObject());
                 AnalysisType inputType = (AnalysisType) StampTool.typeOrNull(node.getObject());
 
                 TypeFlowBuilder<?> cloneBuilder = TypeFlowBuilder.create(bb, node, CloneTypeFlow.class, () -> {
-                    CloneTypeFlow cloneFlow = new CloneTypeFlow(node, inputType, cloneLabel, inputBuilder.get());
+                    CloneTypeFlow cloneFlow = new CloneTypeFlow(node.asNode(), inputType, cloneLabel, inputBuilder.get());
                     methodFlow.addClone(cloneFlow);
                     return cloneFlow;
                 });
                 cloneBuilder.addObserverDependency(inputBuilder);
-                state.add(node, cloneBuilder);
+                state.add(node.asNode(), cloneBuilder);
             } else if (n instanceof MonitorEnterNode) {
                 MonitorEnterNode node = (MonitorEnterNode) n;
                 BytecodeLocation monitorLocation = BytecodeLocation.create(uniqueKey(node), methodFlow.getMethod());

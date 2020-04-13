@@ -61,7 +61,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
     }
 
     @Override
-    protected Stamp computeStamp(ValueNode object) {
+    public Stamp computeStamp(ValueNode object) {
         if (getConcreteType(object.stamp(NodeView.DEFAULT)) != null) {
             return AbstractPointerStamp.pointerNonNull(object.stamp(NodeView.DEFAULT));
         }
