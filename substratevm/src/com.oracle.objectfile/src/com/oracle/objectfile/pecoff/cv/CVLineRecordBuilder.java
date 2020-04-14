@@ -198,14 +198,6 @@ public class CVLineRecordBuilder {
      */
     @SuppressWarnings("unused")
     private static boolean unused_wantNewRange(@SuppressWarnings("unused") Range range, @SuppressWarnings("unused") Range previousRange) {
-        if (debug) {
-            if (previousRange == null) {
-                debug("wantNewRange() prevnull:true");
-            } else {
-                debug("wantNewRange() prevnull:false" + " linesdiffer:" + (previousRange.getLine() != range.getLine())
-                        + " fndiffer:" + (previousRange.getFilePath() != range.getFilePath()) + " contig:" + (previousRange.getHi() < range.getLo()) + " delta:" + (range.getHi() - previousRange.getLo()));
-            }
-        }
         if (previousRange == null)
             return true;
         if (previousRange.getLine() != range.getLine())
