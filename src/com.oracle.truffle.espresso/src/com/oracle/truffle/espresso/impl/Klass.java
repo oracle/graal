@@ -333,6 +333,16 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return context;
     }
 
+    @Override
+    public final boolean equals(Object that) {
+        return this == that;
+    }
+
+    @Override
+    public final int hashCode() {
+        return getType().hashCode();
+    }
+
     /**
      * Final override for performance reasons.
      *
@@ -1010,9 +1020,4 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     // endregion jdwp-specific
-
-    @Override
-    public boolean equals(Object that) {
-        return this == that;
-    }
 }
