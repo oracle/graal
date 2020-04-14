@@ -205,7 +205,7 @@ public class CVLineRecordBuilder {
                 debug("wantNewRange() prevnull:false" + " linesdiffer:" + (previousRange.getLine() != range.getLine())
                         + " fndiffer:" + (previousRange.getFilePath() != range.getFilePath()) + " contig:" + (previousRange.getHi() < range.getLo()) + " delta:" + (range.getHi() - previousRange.getLo()));
             }
-        }*
+        }
         if (previousRange == null)
             return true;
         if (previousRange.getLine() != range.getLine())
