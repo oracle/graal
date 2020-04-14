@@ -196,7 +196,7 @@ public class CVLineRecordBuilder {
      * @param range current range
      * @return true if the current range is on a different line or file from the previous one
      */
-    @SupressWarnings("unused")
+    @SuppressWarnings("unused")
     private static boolean unused_wantNewRange(@SuppressWarnings("unused") Range range, @SuppressWarnings("unused") Range previousRange) {
         if (debug) {
             if (previousRange == null) {

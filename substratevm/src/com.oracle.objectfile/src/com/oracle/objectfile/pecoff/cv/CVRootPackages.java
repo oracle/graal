@@ -209,7 +209,7 @@ abstract class CVRootPackages {
         return pn.startsWith("java.") || pn.startsWith("javax.") || pn.startsWith("sun.");
     }
 
-    @SupressWarnings("unused")
+    @SuppressWarnings("unused")
     private static boolean isJavaFile(String pn) {
         /* TODO : make more accurate */
         return pn.startsWith("java/") || pn.startsWith("javax/") || pn.startsWith("sun/");
