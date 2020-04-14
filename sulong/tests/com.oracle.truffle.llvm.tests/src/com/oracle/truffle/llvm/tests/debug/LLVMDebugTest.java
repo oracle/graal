@@ -67,12 +67,16 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
         configs.put("testControlFlow.c", new String[]{BC_O0, BC_MEM2REG});
         if (!Platform.isAArch64()) {
             configs.put("testPrimitives.c", new String[]{BC_O0, BC_MEM2REG});
-            configs.put("testStructures.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+            String clangCC = System.getenv("CLANG_CC");
+            if (clangCC == null || !clangCC.contains("-4.0")) {
+                // LLVM4 provides no debug info in some cases (esp. with O1)
+                configs.put("testStructures.c", new String[]{BC_O1});
+                configs.put("testClasses.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+            }
             configs.put("testReenterArgsAndVals.c", new String[]{BC_O0, BC_MEM2REG});
             configs.put("testFunctionPointer.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
             configs.put("testLongDouble.cpp", new String[]{BC_O0, BC_MEM2REG});
             configs.put("testBitFields.cpp", new String[]{BC_O0, BC_MEM2REG});
-            configs.put("testClasses.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
             configs.put("testScopes.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
             configs.put("testObjectPointer.cpp", new String[]{BC_O0, BC_MEM2REG});
             configs.put("testBooleans.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
