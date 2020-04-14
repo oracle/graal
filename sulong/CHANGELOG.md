@@ -26,6 +26,9 @@ Changes:
 * Cover more cases when calling functions that receive structs by value across interop
   boundaries.
 
+* Bitcode execution now supports on-stack-replacement of loops, i.e., compiling
+  long-running loops before the surrounding function is compiled.
+
 # Version 20.0.0
 
 Changes:
