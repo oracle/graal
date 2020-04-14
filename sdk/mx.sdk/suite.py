@@ -120,6 +120,7 @@ suite = {
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_LIBCXX_SRC" : {
+      "packedResource" : True,
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/libcxx-src-llvmorg-9.0.0-5-g80b1d876fd-bgb66b241662.tar.gz"],
       "sha1" : "5bfe4fd7df77e119834fbfd2567194d093ad338e",
       "license" : "Apache-2.0-LLVM",

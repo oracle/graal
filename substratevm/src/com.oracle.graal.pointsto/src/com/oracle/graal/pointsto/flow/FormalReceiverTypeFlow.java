@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ParameterNode;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -50,7 +51,11 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
 
     @Override
     public TypeState filter(BigBang bb, TypeState newState) {
-        return newState.forNonNull(bb);
+        /*
+         * If the type flow constraints are relaxed filter the incoming value using the receiver's
+         * declared type.
+         */
+        return declaredTypeFilter(bb, newState).forNonNull(bb);
     }
 
     @Override
@@ -68,6 +73,15 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
          * InitialReceiverTypeFlow.update.
          */
         return false;
+    }
+
+    @Override
+    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+        /*
+         * The saturation of the actual receiver doesn't result in the saturation of the formal
+         * receiver; some callees, depending how low in the type hierarchies they are, may only see
+         * a number of types smaller than the saturation cut-off limit.
+         */
     }
 
     public boolean addReceiverState(BigBang bb, TypeState add) {

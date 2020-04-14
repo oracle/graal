@@ -14,10 +14,14 @@ sulong-gateCommon: ${sulong-common} {
 sulong-gateStyle: ${sulong-gateCommon} ${linux-amd64} ${eclipse} {
     packages: {
         ruby: "==2.1.0" # for mdl
+        "cmake": "==3.6.1",
     }
 }
 
 sulong-gateTest-linux: ${sulong-gateCommon} ${linux-amd64} {
+    packages: {
+        "cmake": "==3.6.1",
+    }
     downloads: {
         LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
     }

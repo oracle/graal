@@ -2813,8 +2813,9 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected void genMonitorEnter(ValueNode x, int bci) {
         MonitorIdNode monitorId = graph.add(new MonitorIdNode(frameState.lockDepth(true)));
-        MonitorEnterNode monitorEnter = append(createMonitorEnterNode(x, monitorId));
-        frameState.pushLock(x, monitorId);
+        ValueNode object = maybeEmitExplicitNullCheck(x);
+        MonitorEnterNode monitorEnter = append(createMonitorEnterNode(object, monitorId));
+        frameState.pushLock(object, monitorId);
         monitorEnter.setStateAfter(createFrameState(bci, monitorEnter));
     }
 

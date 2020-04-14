@@ -7,14 +7,6 @@ builds += [
     timelimit: "15:00"
     name: gate-vm-native-substratevm-truffle
   }
-  ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${gate_vm_linux} {
-    run: [
-      [export, "SVM_SUITE="${svm_suite}]
-      [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,ruby"]
-    ]
-    timelimit: "35:00"
-    name: gate-vm-native-truffleruby
-  }
   ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]

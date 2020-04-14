@@ -79,7 +79,27 @@ public final class LLVMSuite extends BaseSuiteHarness {
                             "test-suite-3.2.src/SingleSource/Regression/C++/2008-01-29-ParamAliasesReturn.cpp",
                             "test-suite-3.2.src/SingleSource/Regression/C/globalrefs.c",
                             "test-suite-3.2.src/SingleSource/UnitTests/2006-01-23-UnionInit.c"));
-
+            // Bitcode libc++ causes a segfault during a destructor (atexit) call.
+            // See https://github.com/oracle/graal/issues/2276
+            // Blacklist all c++ tests for now
+            filenameBlacklist.addAll(Arrays.asList(
+                            "test-suite-3.2.src/SingleSource/Regression/C++/pointer_member.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2003-05-14-array-init.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2011-03-28-Bitfield.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/global_type.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2003-05-14-expr_stmt.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2003-08-20-EnumSizeProblem.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2003-06-13-Crasher.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2008-01-29-ParamAliasesReturn.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2003-06-08-BaseType.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2003-06-08-VirtualFunctions.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/conditional-gnu-ext-cxx.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/SignlessTypes/cast2.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/Integer/enum.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/Integer/cppfield.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/2006-12-04-DynAllocAndRestore.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/Integer/template2.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/initp1.cpp"));
         }
 
         return filenameBlacklist;

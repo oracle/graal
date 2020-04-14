@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -220,6 +220,7 @@ final class Target_java_lang_ClassLoader {
 
     @Substitute
     @SuppressWarnings("unused")
+    @TargetElement(onlyWith = JDK14OrEarlier.class) //
     static void loadLibrary(Class<?> fromClass, String name, boolean isAbsolute) {
         NativeLibrarySupport.singleton().loadLibrary(name, isAbsolute);
     }
@@ -371,13 +372,14 @@ final class Target_java_lang_ClassLoader {
     private native Class<?> findBootstrapClass(String name);
 
     @Delete
+    @TargetElement(onlyWith = JDK14OrEarlier.class)
     private static native String findBuiltinLib(String name);
 
     @Delete
     private static native Target_java_lang_AssertionStatusDirectives retrieveDirectives();
 }
 
-@TargetClass(value = ClassLoader.class, innerClass = "NativeLibrary")
+@TargetClass(value = ClassLoader.class, innerClass = "NativeLibrary", onlyWith = JDK14OrEarlier.class)
 final class Target_java_lang_ClassLoader_NativeLibrary {
 
     /*

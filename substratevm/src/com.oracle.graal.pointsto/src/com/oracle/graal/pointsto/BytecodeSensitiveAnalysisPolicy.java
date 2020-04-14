@@ -31,10 +31,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
@@ -58,6 +58,7 @@ import com.oracle.graal.pointsto.typestore.SplitFieldTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedFieldTypeStore;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
@@ -152,13 +153,25 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     public ArrayElementsTypeStore createArrayElementsTypeStore(AnalysisObject object, AnalysisUniverse universe) {
         assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(options);
         if (object.type().isArray()) {
-            if (object.isContextInsensitiveObject()) {
-                return new SplitArrayElementsTypeStore(object);
-            } else {
-                return new UnifiedArrayElementsTypeStore(object);
+            if (aliasArrayTypeFlows) {
+                /* Alias all array type flows using the elements type flow model of Object type. */
+                if (object.type().getElementalType().isJavaLangObject() && object.isContextInsensitiveObject()) {
+                    // return getArrayElementsTypeStore(object);
+                    return new UnifiedArrayElementsTypeStore(object);
+                }
+                return universe.objectType().getArrayClass().getContextInsensitiveAnalysisObject().getArrayElementsTypeStore();
             }
+            return getArrayElementsTypeStore(object);
         } else {
             return null;
+        }
+    }
+
+    private static ArrayElementsTypeStore getArrayElementsTypeStore(AnalysisObject object) {
+        if (object.isContextInsensitiveObject()) {
+            return new SplitArrayElementsTypeStore(object);
+        } else {
+            return new UnifiedArrayElementsTypeStore(object);
         }
     }
 
@@ -166,6 +179,12 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
         return new BytecodeSensitiveVirtualInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+    }
+
+    @Override
+    public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+        return new BytecodeSensitiveSpecialInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
     /**
@@ -199,7 +218,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         }
 
         @Override
-        public TypeFlow<MethodCallTargetNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
             return new BytecodeSensitiveVirtualInvokeTypeFlow(bb, methodFlows, this);
         }
 
@@ -216,6 +235,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
                 bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Invoke on UnknownTypeState objects. Invoke: " + this);
                 return;
             }
+            receiverState = filterReceiverState(bb, receiverState);
 
             /* Use the tandem types - objects iterator. */
             TypesObjectsIterator toi = receiverState.getTypesObjectsIterator();
@@ -253,6 +273,54 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
                     updateReceiver(bb, calleeFlows, actualReceiverObject);
                 }
 
+            }
+        }
+
+        @Override
+        public Collection<MethodFlowsGraph> getCalleesFlows(BigBang bb) {
+            return new ArrayList<>(calleesFlows.keySet());
+        }
+    }
+
+    private static final class BytecodeSensitiveSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
+
+        /**
+         * Contexts of the resolved method.
+         */
+        private ConcurrentMap<MethodFlowsGraph, Object> calleesFlows;
+
+        BytecodeSensitiveSpecialInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+                        TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+            super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+        }
+
+        private BytecodeSensitiveSpecialInvokeTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, BytecodeSensitiveSpecialInvokeTypeFlow original) {
+            super(bb, methodFlows, original);
+            calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
+        }
+
+        @Override
+        public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+            return new BytecodeSensitiveSpecialInvokeTypeFlow(bb, methodFlows, this);
+        }
+
+        @Override
+        public void onObservedUpdate(BigBang bb) {
+            assert this.isClone();
+            /* The receiver state has changed. Process the invoke. */
+
+            initCallee();
+
+            TypeState invokeState = filterReceiverState(bb, getReceiver().getState());
+            for (AnalysisObject receiverObject : invokeState.objects()) {
+                AnalysisContext calleeContext = bb.contextPolicy().calleeContext(bb, receiverObject, callerContext, callee);
+                MethodFlowsGraph calleeFlows = callee.addContext(bb, calleeContext, this);
+
+                if (calleesFlows.putIfAbsent(calleeFlows, Boolean.TRUE) == null) {
+                    linkCallee(bb, false, calleeFlows);
+                }
+
+                updateReceiver(bb, calleeFlows, receiverObject);
             }
         }
 

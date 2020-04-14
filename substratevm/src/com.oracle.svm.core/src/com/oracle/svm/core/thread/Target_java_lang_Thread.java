@@ -28,9 +28,6 @@ import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -46,6 +43,7 @@ import com.oracle.svm.core.jdk.JDK14OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
+import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -365,7 +363,7 @@ final class Target_java_lang_Thread {
     @Substitute
     private static boolean holdsLock(Object obj) {
         Objects.requireNonNull(obj);
-        return ImageSingletons.lookup(MonitorSupport.class).holdsLock(obj);
+        return MonitorSupport.singleton().holdsLock(obj);
     }
 
     @Substitute
