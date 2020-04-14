@@ -601,18 +601,18 @@ public class Inflation extends BigBang {
         }
     }
 
-    private static Annotation[] filterUsedAnnotation(Set<Annotation> used, Annotation[] rest) {
+    private static Set<Annotation> filterUsedAnnotation(Set<Annotation> used, Annotation[] rest) {
         if (rest == null) {
             return null;
         }
 
-        List<Annotation> restUsed = new ArrayList<>();
+        Set<Annotation> restUsed = new HashSet<>();
         for (Annotation a : rest) {
             if (used.contains(a)) {
                 restUsed.add(a);
             }
         }
-        return restUsed.toArray(new Annotation[0]);
+        return restUsed;
     }
 
     public static Object encodeAnnotations(AnalysisMetaAccess metaAccess, Annotation[] allAnnotations, Annotation[] declaredAnnotations, Object oldEncoding) {
@@ -636,11 +636,8 @@ public class Inflation extends BigBang {
                                     return false;
                                 }
                             }).collect(Collectors.toSet());
-            Annotation[] allUsed = filterUsedAnnotation(usedAnnotations, allAnnotations);
-            Annotation[] usedDeclared = filterUsedAnnotation(usedAnnotations, declaredAnnotations);
-            newEncoding = usedAnnotations.size() == 0
-                            ? null
-                            : new AnnotationsEncoding(allUsed, usedDeclared);
+            Set<Annotation> usedDeclared = filterUsedAnnotation(usedAnnotations, declaredAnnotations);
+            newEncoding = AnnotationsEncoding.encodeAnnotations(usedAnnotations, usedDeclared);
         }
 
         /*
@@ -648,7 +645,7 @@ public class Inflation extends BigBang {
          * for tests that do runtime compilation, the field appears as being continuously updated
          * during BigBang.checkObjectGraph.
          */
-        if (oldEncoding != null && oldEncoding.equals(newEncoding)) {
+        if (AnnotationsEncoding.equals(oldEncoding, newEncoding)) {
             return oldEncoding;
         } else {
             return newEncoding;

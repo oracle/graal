@@ -865,7 +865,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding).getAnnotation(annotationClass);
+        // Checkstyle: stop
+        return AnnotationsEncoding.getAnnotation(annotationsEncoding, annotationClass);
+        // Checkstyle: resume
     }
 
     @Substitute
@@ -877,7 +879,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @Override
     public Annotation[] getAnnotations() {
-        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding).getAnnotations();
+        // Checkstyle: stop
+        return AnnotationsEncoding.getAnnotations(annotationsEncoding);
+        // Checkstyle: resume
     }
 
     @Substitute
@@ -908,7 +912,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding).getDeclaredAnnotations();
+        // Checkstyle: stop
+        return AnnotationsEncoding.getDeclaredAnnotations(annotationsEncoding);
+        // Checkstyle: resume
     }
 
     /**
@@ -926,7 +932,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @Override
     public <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
-        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding).getDeclaredAnnotation(annotationClass);
+        // Checkstyle: stop
+        return AnnotationsEncoding.getDeclaredAnnotation(annotationsEncoding, annotationClass);
+        // Checkstyle: resume
     }
 
     /**
