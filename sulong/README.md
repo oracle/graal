@@ -119,6 +119,8 @@ installing the `build-essential` and the `cmake` package should be sufficient.
 While on MacOS most dependencies are provided by Xcode,
 `cmake` is not included and needs to be installed manually.
 A version for MacOS can be downloaded from the [cmake homepage](https://cmake.org/download/).
+Make sure to put `cmake` on the PATH as well, this is not done automatically by
+the installer.
 
 On recent MacOS versions, you may run into a build error like this:
 
