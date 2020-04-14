@@ -104,6 +104,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
+import java.io.OutputStream;
 import java.io.StringWriter;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -1088,9 +1089,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public void log(CompilableTruffleAST compilable, String message) {
+    public final void log(CompilableTruffleAST compilable, String message) {
         ((OptimizedCallTarget) compilable).engine.getLogger().log(Level.INFO, message);
     }
+
+    protected abstract OutputStream getLogStream();
 
     // https://bugs.openjdk.java.net/browse/JDK-8209535
 

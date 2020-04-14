@@ -72,12 +72,14 @@ import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.truffle.TruffleFeature;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.io.OutputStream;
 
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.debug.TTY;
 
 class SubstateTruffleOptions {
 
@@ -402,5 +404,10 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public JavaConstant getCallTargetForCallNode(JavaConstant callNodeConstant) {
         return TruffleFeature.getSupport().getCallTargetForCallNode(callNodeConstant);
+    }
+
+    @Override
+    protected OutputStream getLogStream() {
+        return TTY.out;
     }
 }

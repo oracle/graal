@@ -173,6 +173,11 @@ final class EngineAccessor extends Accessor {
     }
 
     @Override
+    protected OutputStream getConfiguredLogStream() {
+        return super.getConfiguredLogStream();
+    }
+
+    @Override
     protected CastUnsafe getCastUnsafe() {
         return super.getCastUnsafe();
     }

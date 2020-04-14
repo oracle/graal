@@ -59,6 +59,8 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.PendingTransferToInterpreterOffset;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.ReleaseHandle;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.Shutdown;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.TtyWriteByte;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.TtyWriteBytes;
 
 import java.nio.ByteBuffer;
 
@@ -185,4 +187,10 @@ final class HotSpotToSVMCalls {
 
     @HotSpotToSVM(DumpChannelClose)
     static native void dumpChannelClose(long isolateThreadId, long channelHandle);
+
+    @HotSpotToSVM(TtyWriteByte)
+    static native void ttyWriteByte(long isolateThreadId, int b);
+
+    @HotSpotToSVM(TtyWriteBytes)
+    static native void ttyWriteBytes(long isolateThreadId, byte[] b, int offset, int len);
 }

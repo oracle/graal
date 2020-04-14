@@ -135,6 +135,10 @@ public abstract class Accessor {
         getTVMCI().onEngineClosed(runtimeData);
     }
 
+    protected OutputStream getConfiguredLogStream() {
+        return getTVMCI().getConfiguredLogStream();
+    }
+
     public abstract static class NodeSupport {
 
         public abstract boolean isInstrumentable(RootNode rootNode);

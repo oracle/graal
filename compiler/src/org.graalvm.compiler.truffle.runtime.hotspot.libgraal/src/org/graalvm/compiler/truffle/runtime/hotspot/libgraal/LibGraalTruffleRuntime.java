@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
+import java.io.OutputStream;
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
@@ -81,6 +82,35 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
             byte[] serializedOptions = HotSpotToSVMCalls.getInitialOptions(getIsolateThread(), handle);
             return OptionsEncoder.decode(serializedOptions);
+        }
+    }
+
+    @Override
+    protected OutputStream getLogStream() {
+        return TTYStream.INSTANCE;
+    }
+
+    private static final class TTYStream extends OutputStream {
+
+        static final OutputStream INSTANCE = new TTYStream();
+
+        private TTYStream() {
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public void write(int b) {
+            try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+                HotSpotToSVMCalls.ttyWriteByte(getIsolateThread(), b);
+            }
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public void write(byte[] b, int off, int len) {
+            try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+                HotSpotToSVMCalls.ttyWriteBytes(getIsolateThread(), b, off, len);
+            }
         }
     }
 }

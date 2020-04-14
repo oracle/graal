@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.impl;
 
 import java.io.Closeable;
+import java.io.OutputStream;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
@@ -348,6 +349,13 @@ public abstract class TVMCI {
 
     protected void applyPolyglotEngine(RootNode from, RootNode to) {
         TVMCIAccessor.nodesAccess().applyPolyglotEngine(from, to);
+    }
+
+    /**
+     * Returns the logging stream if it was explicitly configured by the {@code DumpFile} option.
+     */
+    protected OutputStream getConfiguredLogStream() {
+        return null;
     }
 
 }

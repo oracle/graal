@@ -132,6 +132,15 @@ final class PolyglotLoggers {
     }
 
     /**
+     * Creates a default {@link Handler} for an engine when a {@link Handler} was not specified.
+     *
+     * @param out the {@link OutputStream} to print log messages into
+     */
+    static Handler createDefaultHandler(final OutputStream out) {
+        return new PolyglotStreamHandler(out, false, true, true);
+    }
+
+    /**
      * Creates a {@link Handler} printing log messages into given {@link OutputStream}.
      *
      * @param out the {@link OutputStream} to print log messages into
@@ -142,7 +151,15 @@ final class PolyglotLoggers {
      * @return the {@link Handler}
      */
     static Handler createStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish) {
-        return new PolyglotStreamHandler(out, closeStream, flushOnPublish);
+        return new PolyglotStreamHandler(out, closeStream, flushOnPublish, false);
+    }
+
+    static boolean isDefaultHandler(Handler handler) {
+        if (handler == null || handler.getClass() != PolyglotStreamHandler.class) {
+            return false;
+        }
+        PolyglotStreamHandler phandler = ((PolyglotStreamHandler) handler);
+        return phandler.isDefault;
     }
 
     interface LoggerCache {
@@ -165,7 +182,7 @@ final class PolyglotLoggers {
                 @Override
                 public void write(int b) throws IOException {
                 }
-            }, false, false);
+            }, false, false, false);
             DISABLED = new LoggerCacheImpl(handler, false, Collections.emptyMap());
         }
 
@@ -387,13 +404,15 @@ final class PolyglotLoggers {
         private final OutputStream sink;
         private final boolean closeStream;
         private final boolean flushOnPublish;
+        private final boolean isDefault;
 
-        PolyglotStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish) {
+        PolyglotStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish, final boolean defaultHandler) {
             super(out, FormatterImpl.INSTANCE);
             setLevel(Level.ALL);
             this.sink = out;
             this.closeStream = closeStream;
             this.flushOnPublish = flushOnPublish;
+            this.isDefault = defaultHandler;
         }
 
         @Override
@@ -492,7 +511,8 @@ final class PolyglotLoggers {
                         LoggerCache spi;
                         Map<String, Level> levels;
                         if (engine != null) {
-                            spi = new LoggerCacheImpl(engine.logHandler, engine, false, Level.INFO);
+                            Handler useHandler = resolveHandler(engine.logHandler);
+                            spi = new LoggerCacheImpl(useHandler, engine, false, Level.INFO);
                             levels = engine.logLevels;
                         } else {
                             spi = LoggerCacheImpl.DISABLED;
@@ -504,6 +524,16 @@ final class PolyglotLoggers {
                 }
             }
             return EngineAccessor.LANGUAGE.getLogger(PolyglotEngineImpl.OPTION_GROUP_ENGINE, null, loggersCache);
+        }
+
+        private static Handler resolveHandler(Handler handler) {
+            if (isDefaultHandler(handler)) {
+                OutputStream logOut = EngineAccessor.ACCESSOR.getConfiguredLogStream();
+                if (logOut != null) {
+                    return createStreamHandler(logOut, false, true);
+                }
+            }
+            return handler;
         }
     }
 }
