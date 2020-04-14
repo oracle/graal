@@ -1660,18 +1660,9 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMStatementNode createPhi(LLVMExpressionNode[] from, FrameSlot[] to, Type[] types) {
-        if (to.length > 0) {
-            if (to.length == 1) {
-                return createFrameWrite(types[0], from[0], to[0]);
-            }
-            LLVMWriteNode[] writes = new LLVMWriteNode[to.length];
-            for (int i = 0; i < writes.length; i++) {
-                writes[i] = createFrameWrite(types[i], null, to[i]);
-            }
-            return LLVMWritePhisNodeGen.create(from, writes);
-        }
-        return null;
+    public LLVMStatementNode createPhi(LLVMExpressionNode[] cycleFrom, LLVMWriteNode[] cycleWrites, LLVMWriteNode[] ordinaryWrites) {
+        assert ordinaryWrites.length > 0 && cycleFrom.length == cycleWrites.length;
+        return LLVMWritePhisNodeGen.create(cycleFrom, cycleWrites, ordinaryWrites);
     }
 
     @Override

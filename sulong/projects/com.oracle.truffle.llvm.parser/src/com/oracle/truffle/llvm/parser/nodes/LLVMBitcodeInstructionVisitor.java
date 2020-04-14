@@ -30,8 +30,11 @@
 package com.oracle.truffle.llvm.parser.nodes;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Objects;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -88,8 +91,8 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstr
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -105,6 +108,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -540,32 +544,19 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         int regularIndex = call.normalSuccessor().getBlockIndex();
         int unwindIndex = call.unwindSuccessor().getBlockIndex();
 
-        List<FrameSlot> normalTo = new ArrayList<>();
-        List<FrameSlot> unwindTo = new ArrayList<>();
-        List<Type> normalType = new ArrayList<>();
-        List<Type> unwindType = new ArrayList<>();
-        List<LLVMExpressionNode> normalValue = new ArrayList<>();
-        List<LLVMExpressionNode> unwindValue = new ArrayList<>();
+        ArrayList<Phi> normalTo = new ArrayList<>();
+        ArrayList<Phi> unwindTo = new ArrayList<>();
         if (blockPhis != null) {
             for (LLVMPhiManager.Phi phi : blockPhis) {
-                FrameSlot slot = LLVMSymbolReadResolver.findOrAddFrameSlot(frame, phi.getPhiValue());
-                LLVMExpressionNode value = symbols.resolve(phi.getValue());
                 if (call.normalSuccessor() == phi.getBlock()) {
-                    normalTo.add(slot);
-                    normalType.add(phi.getValue().getType());
-                    normalValue.add(value);
+                    normalTo.add(phi);
                 } else {
-                    unwindTo.add(slot);
-                    unwindType.add(phi.getValue().getType());
-                    unwindValue.add(value);
-
+                    unwindTo.add(phi);
                 }
             }
         }
-        LLVMStatementNode normalPhi = nodeFactory.createPhi(normalValue.toArray(LLVMExpressionNode.NO_EXPRESSIONS), normalTo.toArray(NO_SLOTS),
-                        normalType.toArray(Type.EMPTY_ARRAY));
-        LLVMStatementNode unwindPhi = nodeFactory.createPhi(unwindValue.toArray(LLVMExpressionNode.NO_EXPRESSIONS), unwindTo.toArray(NO_SLOTS),
-                        unwindType.toArray(Type.EMPTY_ARRAY));
+        LLVMStatementNode normalPhi = createPhiWriteNodes(normalTo);
+        LLVMStatementNode unwindPhi = createPhiWriteNodes(unwindTo);
 
         // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
         LLVMExpressionNode function = symbols.resolve(target);
@@ -600,32 +591,19 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         int regularIndex = call.normalSuccessor().getBlockIndex();
         int unwindIndex = call.unwindSuccessor().getBlockIndex();
 
-        List<FrameSlot> normalTo = new ArrayList<>();
-        List<FrameSlot> unwindTo = new ArrayList<>();
-        List<Type> normalType = new ArrayList<>();
-        List<Type> unwindType = new ArrayList<>();
-        List<LLVMExpressionNode> normalValue = new ArrayList<>();
-        List<LLVMExpressionNode> unwindValue = new ArrayList<>();
+        ArrayList<Phi> normalTo = new ArrayList<>();
+        ArrayList<Phi> unwindTo = new ArrayList<>();
         if (blockPhis != null) {
             for (LLVMPhiManager.Phi phi : blockPhis) {
-                FrameSlot slot = LLVMSymbolReadResolver.findOrAddFrameSlot(frame, phi.getPhiValue());
-                LLVMExpressionNode value = symbols.resolve(phi.getValue());
                 if (call.normalSuccessor() == phi.getBlock()) {
-                    normalTo.add(slot);
-                    normalType.add(phi.getValue().getType());
-                    normalValue.add(value);
+                    normalTo.add(phi);
                 } else {
-                    unwindTo.add(slot);
-                    unwindType.add(phi.getValue().getType());
-                    unwindValue.add(value);
-
+                    unwindTo.add(phi);
                 }
             }
         }
-        LLVMStatementNode normalPhi = nodeFactory.createPhi(normalValue.toArray(LLVMExpressionNode.NO_EXPRESSIONS), normalTo.toArray(NO_SLOTS),
-                        normalType.toArray(Type.EMPTY_ARRAY));
-        LLVMStatementNode unwindPhi = nodeFactory.createPhi(unwindValue.toArray(LLVMExpressionNode.NO_EXPRESSIONS), unwindTo.toArray(NO_SLOTS),
-                        unwindType.toArray(Type.EMPTY_ARRAY));
+        LLVMStatementNode normalPhi = createPhiWriteNodes(normalTo);
+        LLVMStatementNode unwindPhi = createPhiWriteNodes(unwindTo);
 
         // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
         LLVMExpressionNode function = resolveOptimized(target, call.getArguments());
@@ -926,34 +904,89 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private LLVMStatementNode[] getPhiWriteNodes(TerminatingInstruction terminatingInstruction) {
         if (blockPhis != null) {
             ArrayList<LLVMPhiManager.Phi>[] phisPerSuccessor = LLVMPhiManager.getPhisForSuccessors(terminatingInstruction, blockPhis);
-            return convertToPhiWriteNodes(phisPerSuccessor);
+            return createPhiWriteNodes(phisPerSuccessor);
         }
         return new LLVMStatementNode[terminatingInstruction.getSuccessorCount()];
     }
 
-    private LLVMStatementNode createAggregatePhi(LLVMExpressionNode[] from, FrameSlot[] to, Type[] types) {
-        return nodeFactory.createPhi(from, to, types);
-    }
-
-    private LLVMStatementNode[] convertToPhiWriteNodes(ArrayList<LLVMPhiManager.Phi>[] phisPerSuccessor) {
+    private LLVMStatementNode[] createPhiWriteNodes(ArrayList<Phi>[] phisPerSuccessor) {
         if (phisPerSuccessor.length == 0) {
             return LLVMStatementNode.NO_STATEMENTS;
         }
 
         LLVMStatementNode[] result = new LLVMStatementNode[phisPerSuccessor.length];
         for (int i = 0; i < result.length; i++) {
-            LLVMExpressionNode[] from = new LLVMExpressionNode[phisPerSuccessor[i].size()];
-            FrameSlot[] to = new FrameSlot[phisPerSuccessor[i].size()];
-            Type[] types = new Type[phisPerSuccessor[i].size()];
-            for (int j = 0; j < phisPerSuccessor[i].size(); j++) {
-                Phi phi = phisPerSuccessor[i].get(j);
-                to[j] = LLVMSymbolReadResolver.findOrAddFrameSlot(frame, phi.getPhiValue());
-                from[j] = symbols.resolve(phi.getValue());
-                types[j] = phi.getValue().getType();
-            }
-            result[i] = createAggregatePhi(from, to, types);
+            result[i] = createPhiWriteNodes(phisPerSuccessor[i]);
         }
         return result;
+    }
+
+    /**
+     * This function creates a sequence of phi move operations that reads zero or more values from
+     * frame slots into temporary storage, transfers one or more values from the source frame slots
+     * to their target frame slots, and finally writes the values from temporary storage into their
+     * target frame slots.
+     *
+     * The algorithm collects as many moves without conflicts (i.e., where the target can be written
+     * without destroying the source of another move) as possible. If there are no more
+     * non-conflicting moves, all remaining moves are part of cycles and it breaks the first cycle
+     * by adding a move to/from temporary storage for the first remaining move.
+     *
+     * The result is a sequence of operations that updates all phis with the minimal amount of
+     * temporary storage.
+     */
+    private LLVMStatementNode createPhiWriteNodes(ArrayList<Phi> phis) {
+        if (phis.size() == 0) {
+            return null;
+        }
+        if (phis.size() == 1) {
+            Phi phi = phis.get(0);
+            return nodeFactory.createFrameWrite(phi.getValue().getType(), symbols.resolve(phi.getValue()), LLVMSymbolReadResolver.findOrAddFrameSlot(frame, phi.getPhiValue()));
+        }
+
+        HashMap<PhiInstruction, Phi> pendingPhis = new HashMap<>();
+        for (Phi phi : phis) {
+            pendingPhis.put(phi.getPhiValue(), phi);
+        }
+        ArrayList<Phi> ordinary = new ArrayList<>();
+        ArrayList<Phi> cycles = new ArrayList<>();
+
+        while (!pendingPhis.isEmpty()) {
+            boolean progress = false;
+            Iterator<Entry<PhiInstruction, Phi>> iter = pendingPhis.entrySet().iterator();
+            while (iter.hasNext()) {
+                Phi phi = iter.next().getValue();
+                if (!pendingPhis.containsKey(phi.getValue())) {
+                    iter.remove();
+                    ordinary.add(phi);
+                    progress = true;
+                }
+            }
+            if (!progress) {
+                // we're stuck in a cycle, need to copy one value into temporary storage
+                iter = pendingPhis.entrySet().iterator();
+                Phi phi = iter.next().getValue();
+                iter.remove();
+                cycles.add(phi);
+            }
+        }
+        LLVMExpressionNode[] cycleFrom = new LLVMExpressionNode[cycles.size()];
+        LLVMWriteNode[] cycleWrites = new LLVMWriteNode[cycles.size()];
+        LLVMWriteNode[] ordinaryWrites = new LLVMWriteNode[ordinary.size()];
+
+        for (int i = 0; i < cycles.size(); i++) {
+            Phi phi = cycles.get(i);
+            cycleFrom[i] = symbols.resolve(phi.getValue());
+            cycleWrites[i] = nodeFactory.createFrameWrite(phi.getValue().getType(), null, LLVMSymbolReadResolver.findOrAddFrameSlot(frame, phi.getPhiValue()));
+        }
+        for (int i = 0; i < ordinary.size(); i++) {
+            // the order of the moves is reversed, since the least conflicting ones are added to the
+            // list first
+            Phi phi = ordinary.get(ordinary.size() - 1 - i);
+            ordinaryWrites[i] = nodeFactory.createFrameWrite(phi.getValue().getType(), symbols.resolve(phi.getValue()), LLVMSymbolReadResolver.findOrAddFrameSlot(frame, phi.getPhiValue()));
+        }
+
+        return nodeFactory.createPhi(cycleFrom, cycleWrites, ordinaryWrites);
     }
 
     @Override
