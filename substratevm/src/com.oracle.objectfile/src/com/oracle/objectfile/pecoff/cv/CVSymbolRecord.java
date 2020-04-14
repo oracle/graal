@@ -58,6 +58,7 @@ abstract class CVSymbolRecord {
     }
 
     protected abstract int computeSize(int pos);
+
     protected abstract int computeContents(byte[] buffer, int pos);
 
     @Override

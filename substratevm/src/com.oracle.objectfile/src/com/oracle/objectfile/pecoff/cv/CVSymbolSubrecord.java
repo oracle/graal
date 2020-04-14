@@ -71,11 +71,12 @@ abstract class CVSymbolSubrecord {
     }
 
     protected abstract int computeSize(int pos);
+
     protected abstract int computeContents(byte[] buffer, int pos);
 
     public static final class CVObjectNameRecord extends CVSymbolSubrecord {
 
-        String objName;  /* TODO: how to find the full path to object file we will produce */
+        String objName; /* TODO: how to find the full path to object file we will produce */
 
         CVObjectNameRecord(CVDebugInfo cvDebugInfo, String objName) {
             super(cvDebugInfo, CVDebugConstants.S_OBJNAME);
@@ -108,14 +109,14 @@ abstract class CVSymbolSubrecord {
         @Override
         protected int computeSize(int initialPos) {
             int pos = initialPos + Integer.BYTES; /* signature = 0; */
-            pos += objName.getBytes(UTF_8).length + 1;  /* inline null terminated */
+            pos += objName.getBytes(UTF_8).length + 1; /* inline null terminated */
             return pos;
         }
 
         @Override
         protected int computeContents(byte[] buffer, int initialPos) {
-            int pos = CVUtil.putInt(0, buffer, initialPos);  /* signature = 0 */
-            pos = CVUtil.putUTF8StringBytes(objName, buffer, pos);  /* inline null terminated */
+            int pos = CVUtil.putInt(0, buffer, initialPos); /* signature = 0 */
+            pos = CVUtil.putUTF8StringBytes(objName, buffer, pos); /* inline null terminated */
             return pos;
         }
     }
@@ -123,7 +124,7 @@ abstract class CVSymbolSubrecord {
     public static final class CVCompile3Record extends CVSymbolSubrecord {
 
         private static final byte HAS_DEBUG_FLAG = 0;
-        //private static final byte HAS_NO_DEBUG_FLAG = (byte)0x80;
+        // private static final byte HAS_NO_DEBUG_FLAG = (byte)0x80;
 
         private byte language;
         private byte cf1;
@@ -190,12 +191,12 @@ abstract class CVSymbolSubrecord {
         private Map<String, String> map = new HashMap<>(ENVMAP_INITIAL_CAPACITY);
 
         /*
-         * Example:
-         *  cwd = C:\tmp\graal-8
-         *  cl = C:\tmp\graal-8\ojdkbuild\tools\toolchain\vs2010e\VC\Bin\x86_amd64\cl.exe
-         *  cmd = -Zi -MT -IC:\tmp\graal-8\tools\toolchain\vs2010e\VC\INCLUDE -IC:\tmp\graal-8\tools\toolchain\sdk71\INCLUDE -IC:\tmp\graal-8\tools\toolchain\sdk71\INCLUDE\gl -TC -X
-         *  src = helloworld.c
-         *  pdb = C:\tmp\graal-8\vc100.pdb
+         * Example: cwd = C:\tmp\graal-8 cl =
+         * C:\tmp\graal-8\ojdkbuild\tools\toolchain\vs2010e\VC\Bin\x86_amd64\cl.exe cmd = -Zi -MT
+         * -IC:\tmp\graal-8\tools\toolchain\vs2010e\VC\INCLUDE
+         * -IC:\tmp\graal-8\tools\toolchain\sdk71\INCLUDE
+         * -IC:\tmp\graal-8\tools\toolchain\sdk71\INCLUDE\gl -TC -X src = helloworld.c pdb =
+         * C:\tmp\graal-8\vc100.pdb
          */
 
         CVEnvBlockRecord(CVDebugInfo cvDebugInfo) {
@@ -205,19 +206,21 @@ abstract class CVSymbolSubrecord {
             map.put("cwd", System.getProperty("user.dir"));
 
             /* compiler executable */
-            //map.put("cl", "cl.exe");
+            // map.put("cl", "cl.exe");
 
             /* argument list */
-            //map.put("cmd", "-Zi -MT -wishfulthinking");
+            // map.put("cmd", "-Zi -MT -wishfulthinking");
 
-            /* find first source file - which, for Graal would be a class file on the command line */
+            /*
+             * find first source file - which, for Graal would be a class file on the command line
+             */
             String fn = findFirstFile(cvDebugInfo);
             if (fn != null) {
                 map.put("src", fn);
             }
 
             /* Graal doesn't yet create PDB files; all type info is stored in object file */
-            //map.put("pdb", System.getProperty("user.dir") + File.separator + "vc100.pdb");
+            // map.put("pdb", System.getProperty("user.dir") + File.separator + "vc100.pdb");
         }
 
         private static String findFirstFile(CVDebugInfo cvDebugInfo) {
@@ -254,9 +257,9 @@ abstract class CVSymbolSubrecord {
     }
 
     /*
-     * creating a proc32 record has side effects.
-     * - a global symbol is added to the COFF symbol section
-     * - two relocation entries are added to the section relocation table, they refer to the global symbol
+     * creating a proc32 record has side effects. - a global symbol is added to the COFF symbol
+     * section - two relocation entries are added to the section relocation table, they refer to the
+     * global symbol
      */
     public static class CVSymbolGProc32Record extends CVSymbolSubrecord {
 
@@ -274,7 +277,8 @@ abstract class CVSymbolSubrecord {
         byte flags;
         String name;
 
-        CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, short cmd, String name, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex, int offset, short segment, byte flags) {
+        CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, short cmd, String name, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex, int offset, short segment,
+                        byte flags) {
             super(cvDebugInfo, cmd);
             this.name = name;
             this.pparent = pparent;
@@ -311,12 +315,14 @@ abstract class CVSymbolSubrecord {
                 cvDebugInfo.getCVSymbolSection().getOwner().createDefinedSymbol(name, getTextSection(), offset, proclen, true, true);
             }
             if (buffer != null) {
-                //CVUtil.debug("CVSymbolGProc32Record() adding SECREL reloc at pos=0x%x for func=%s addr=0x%x\n", pos, name, offset);
+                // CVUtil.debug("CVSymbolGProc32Record() adding SECREL reloc at pos=0x%x for func=%s
+                // addr=0x%x\n", pos, name, offset);
                 cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, 4, ObjectFile.RelocationKind.SECREL, name, false, 1L);
             }
             pos = CVUtil.putInt(0, buffer, pos);
             if (buffer != null) {
-                //CVUtil.debug("CVSymbolGProc32Record() adding SECTION reloc at pos=0x%x for func=%s addr=0x%x\n", pos, name, offset);
+                // CVUtil.debug("CVSymbolGProc32Record() adding SECTION reloc at pos=0x%x for
+                // func=%s addr=0x%x\n", pos, name, offset);
                 cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, 2, ObjectFile.RelocationKind.SECTION, name, false, 1L);
             }
             pos = CVUtil.putShort((short) 0, buffer, pos);
@@ -334,17 +340,19 @@ abstract class CVSymbolSubrecord {
 
         @Override
         public String toString() {
-            return String.format("S_GPROC32(name=%s parent=%d startaddr=0x%x end=0x%x len=0x%x offset=0x%x type=0x%x flags=0x%x)", name, pparent, debugStart, debugEnd, proclen, offset, typeIndex, flags);
+            return String.format("S_GPROC32(name=%s parent=%d startaddr=0x%x end=0x%x len=0x%x offset=0x%x type=0x%x flags=0x%x)", name, pparent, debugStart, debugEnd, proclen, offset, typeIndex,
+                            flags);
         }
     }
-/*
+
+    /*-
     public static final class CVSymbolGProc32IDRecord extends CVSymbolGProc32Record {
 
         CVSymbolGProc32IDRecord(CVDebugInfo cvDebugInfo, String name, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex, int offset, short segment, byte flags) {
             super(cvDebugInfo, CVDebugConstants.S_GPROC32_ID, name, pparent, pend, pnext, proclen, debugStart, debugEnd, typeIndex, offset, segment, flags);
         }
 
-        /* this is almost certainly bad; only for debugging *
+        /* this is almost certainly bad (not enough information); use only for debugging *
         CVSymbolGProc32IDRecord(CVDebugInfo cvDebugInfo, String name, int offset, int proclen) {
             super(cvDebugInfo, CVDebugConstants.S_GPROC32_ID, name, 0, 0, 0, proclen, 0, 0, 0, offset, (short)0, (byte)0);
         }
@@ -354,7 +362,8 @@ abstract class CVSymbolSubrecord {
             return String.format("S_GPROC32_ID(name=%s parent=%d startaddr=0x%x end=0x%x len=0x%x offset=0x%x type=0x%x flags=0x%x)", name, pparent, debugStart, debugEnd, proclen, offset, typeIndex, flags);
         }
     }
-*/
+    */
+
     public static final class CVSymbolFrameProcRecord extends CVSymbolSubrecord {
 
         int framelen;
@@ -429,7 +438,8 @@ abstract class CVSymbolSubrecord {
             return "S_END";
         }
     }
-/*
+
+    /*-
     public static final class CVSymbolRegRel32Record extends CVSymbolSubrecord {
 
         int typeIndex;

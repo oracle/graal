@@ -33,8 +33,8 @@ import java.nio.ByteOrder;
 
 /**
  * CVDebugInfo is a container class for all the CodeView sections to be emitted in the object file.
- * Currently, that is .debug$S (CVSymbolSectionImpl) and .debug$T (CVTypeSectionImpl)
- * Common data (useful to more than one CodeView section) goes here
+ * Currently, that is .debug$S (CVSymbolSectionImpl) and .debug$T (CVTypeSectionImpl) Common data
+ * (useful to more than one CodeView section) goes here
  */
 public final class CVDebugInfo extends DebugInfoBase {
 
@@ -46,7 +46,7 @@ public final class CVDebugInfo extends DebugInfoBase {
         super(byteOrder);
         machine = targetMachine;
         cvSymbolSection = new CVSymbolSectionImpl(this);
-        cvTypeSection   = new CVTypeSectionImpl();
+        cvTypeSection = new CVTypeSectionImpl();
     }
 
     public CVSymbolSectionImpl getCVSymbolSection() {

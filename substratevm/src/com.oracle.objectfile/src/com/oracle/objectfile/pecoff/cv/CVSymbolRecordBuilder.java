@@ -49,8 +49,8 @@ final class CVSymbolRecordBuilder {
     }
 
     /**
-     * build DEBUG_S_SYMBOLS record from all classEntries.
-     * (could probably build one per class or one per function)
+     * build DEBUG_S_SYMBOLS record from all classEntries. (could probably build one per class or
+     * one per function)
      */
     void build(DebugContext theDebugContext) {
         this.debugContext = theDebugContext;
@@ -61,8 +61,7 @@ final class CVSymbolRecordBuilder {
     }
 
     /**
-     * build all debug info for a classEntry.
-     * (does not yet handle member variables)
+     * build all debug info for a classEntry. (does not yet handle member variables)
      *
      * @param classEntry current class
      */
@@ -82,22 +81,20 @@ final class CVSymbolRecordBuilder {
     }
 
     /**
-     * emit records for each function:
-     *   PROC32
-     *   S_FRAMEPROC
-     *   S_END
-     *   (later: type records as required)
-     *   line number records.
+     * emit records for each function: PROC32 S_FRAMEPROC S_END and line number records.
+     * (later: type records as required)
      *
      * @param primaryEntry primary entry for this function
      * @param methodName method name alias as it will be seen by the user
      */
     private void build(PrimaryEntry primaryEntry, String methodName) {
         final Range primaryRange = primaryEntry.getPrimary();
-        //debug("addfunc(" + methodName + ") numtypes = %d\n", cvDebugInfo.getCVTypeSection().getRecords().size());
+        // debug("addfunc(" + methodName + ") numtypes = %d\n",
+        // cvDebugInfo.getCVTypeSection().getRecords().size());
         int functionTypeIndex = addTypeRecords(primaryEntry);
         byte funcFlags = 0;
-        CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvDebugInfo, methodName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0, 0, functionTypeIndex, primaryRange.getLo(), (short) 0, funcFlags);
+        CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvDebugInfo, methodName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0, 0,
+                        functionTypeIndex, primaryRange.getLo(), (short) 0, funcFlags);
         addToSymbolRecord(proc32);
         int frameFlags = 0; /* LLVM uses 0x14000; */
         addToSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, primaryRange.getHi() - primaryRange.getLo(), frameFlags));
@@ -109,12 +106,12 @@ final class CVSymbolRecordBuilder {
     private boolean noMainFound = true;
 
     /**
-     * renames a method name ot something user friendly in the debugger.
-     * (does not affect external symbols used by linker)
+     * renames a method name ot something user friendly in the debugger. (does not affect external
+     * symbols used by linker)
      *
-     * first main function becomes class.main (unless replaceMainFunctionName is non-null)
-     * if functionNamesHashArgs is true (which it must be for the linker to work properly)
-     * all other functions become class.function.999 (where 999 is a hash of the arglist)
+     * first main function becomes class.main (unless replaceMainFunctionName is non-null) if
+     * functionNamesHashArgs is true (which it must be for the linker to work properly) all other
+     * functions become class.function.999 (where 999 is a hash of the arglist)
      *
      * @param range Range contained in the method of interest
      * @return user debugger friendly method name
@@ -134,15 +131,15 @@ final class CVSymbolRecordBuilder {
         } else {
             methodName = range.getFullMethodName();
         }
-        //debug("replacing %s with %s\n", range.getFullMethodName(), methodName);
+        // debug("replacing %s with %s\n", range.getFullMethodName(), methodName);
         return methodName;
     }
 
     private void addLineNumberRecords(PrimaryEntry primaryEntry, String methodName) {
         CVLineRecord record = new CVLineRecordBuilder(cvDebugInfo).build(primaryEntry, methodName);
         /*
-         * if the builder decides this entry is uninteresting, we don't build a record.
-         * for example, Graal intrinsics may be uninteresting.
+         * if the builder decides this entry is uninteresting, we don't build a record. for example,
+         * Graal intrinsics may be uninteresting.
          */
         if (record != null) {
             cvDebugInfo.getCVSymbolSection().addRecord(record);
@@ -150,13 +147,13 @@ final class CVSymbolRecordBuilder {
     }
 
     private void addToSymbolRecord(CVSymbolSubrecord record) {
-        //debug("adding symbol subrecord: %s\n", record);
+        // debug("adding symbol subrecord: %s\n", record);
         symbolRecord.addRecord(record);
     }
 
     /**
-     * add type records for function.
-     * (later add arglist, and return type and local types)
+     * add type records for function. (later add arglist, and return type and local types)
+     *
      * @param entry primaryEntry containing entities whoses type records must be added
      *
      * @return type index of function type

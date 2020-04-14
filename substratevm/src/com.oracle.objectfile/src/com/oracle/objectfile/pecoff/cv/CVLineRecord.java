@@ -51,9 +51,10 @@ final class CVLineRecord extends CVSymbolRecord {
     private ArrayList<FileBlock> fileBlocks = new ArrayList<>(DEFAULT_LINE_BLOCK_COUNT);
 
     /*
-     * FileBlock is a section of contiguous code in a compilation unit, associated with a single source file.
-     * if a function includes inlined code, that code needs its own FileBlock, surrounded by FileBlocks describing the enclosing source file
-     * A FileBlock consists of a list of LineEntries
+     * FileBlock is a section of contiguous code in a compilation unit, associated with a single
+     * source file. if a function includes inlined code, that code needs its own FileBlock,
+     * surrounded by FileBlocks describing the enclosing source file A FileBlock consists of a list
+     * of LineEntries
      */
     private static class FileBlock {
 
@@ -97,8 +98,8 @@ final class CVLineRecord extends CVSymbolRecord {
     }
 
     /*
-     * LineEntry associates some object code (at 'addr', relative to the start of this DEBUG_S_LINES record)
-     * with a source line in the current FileBlock file
+     * LineEntry associates some object code (at 'addr', relative to the start of this DEBUG_S_LINES
+     * record) with a source line in the current FileBlock file
      */
     static class LineEntry {
 
@@ -168,15 +169,21 @@ final class CVLineRecord extends CVSymbolRecord {
             cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, 4, ObjectFile.RelocationKind.SECREL, symbolName, false, 1L);
         }
         pos = CVUtil.putInt(0, buffer, pos);
+
         if (buffer != null) {
             cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, 2, ObjectFile.RelocationKind.SECTION, symbolName, false, 1L);
         }
         pos = CVUtil.putShort((short) 0, buffer, pos);
+
         final short flags = HAS_COLUMNS ? CB_HAS_COLUMNS_FLAG : CB_HAS_NO_COLUMNS_FLAG;
-        pos = CVUtil.putShort(flags, buffer, pos);      /* flags */
-        final int cbConPos = pos;                       /* save position of length int32 */
-        pos = CVUtil.putInt(0, buffer, pos);         /* highAddr = length of this chunk in object file (fill in correctly later) */
+        pos = CVUtil.putShort(flags, buffer, pos); /* flags */
+
+        /*
+         * highAddr = length of this chunk in object file (fill in correctly later)
+         */
+        final int cbConPos = pos; /* save position of length int32 */
         int highAddr = 0;
+        pos = CVUtil.putInt(highAddr, buffer, pos);
         for (FileBlock fileBlock : fileBlocks) {
             highAddr = Math.max(highAddr, fileBlock.getHighAddr());
             pos = fileBlock.computeContents(buffer, pos);

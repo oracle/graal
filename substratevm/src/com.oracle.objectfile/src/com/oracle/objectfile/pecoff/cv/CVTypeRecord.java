@@ -83,7 +83,7 @@ abstract class CVTypeRecord {
     }
 
     int computeFullContents(byte[] buffer, int initialPos) {
-        int lenPos = initialPos;   /* save position of length short */
+        int lenPos = initialPos; /* save position of length short */
         int pos = initialPos + Short.BYTES; /* save room for length short */
         pos = CVUtil.putShort(type, buffer, pos);
         pos = computeContents(buffer, pos);
@@ -95,6 +95,7 @@ abstract class CVTypeRecord {
     }
 
     protected abstract int computeSize(int initialPos);
+
     protected abstract int computeContents(byte[] buffer, int initialPos);
 
     @Override
@@ -110,7 +111,7 @@ abstract class CVTypeRecord {
         int pos = originalpos;
         int align = pos & 3;
         if (align == 1) {
-            byte[] p3 = {LF_PAD3, LF_PAD2, LF_PAD1 };
+            byte[] p3 = {LF_PAD3, LF_PAD2, LF_PAD1};
             pos = CVUtil.putBytes(p3, buffer, pos);
         } else if (align == 2) {
             pos = CVUtil.putByte(LF_PAD2, buffer, pos);
@@ -156,6 +157,7 @@ abstract class CVTypeRecord {
         private short computeFlags() {
             return (short) ((addConst ? 0x01 : 0x00) | (addVolatile ? 0x02 : 0x00) | (addUnaligned ? 0x04 : 0));
         }
+
         @Override
         public int computeSize(int initialPos) {
             return initialPos + Integer.BYTES + Short.BYTES;
@@ -201,7 +203,8 @@ abstract class CVTypeRecord {
         int modifiers = 0;
         int size = 4;
         int flags = 0;
-/*
+
+        /*-
         int kind      =  attributes & 0x00001f;
         int mode      = (attributes & 0x0000e0) >> 5;
         int modifiers = (attributes & 0x001f00) >> 8;
@@ -209,7 +212,8 @@ abstract class CVTypeRecord {
         int flags     = (attributes & 0x380000) >> 19;
         out.printf("LF_POINTER len=%d leaf=0x%04x refType=0x%06x attrib=0x%06x\n", len, leaf, referentType, attributes);
         out.printf("           kind=%d mode=%d modifiers=%d size=%d flags=%d\n", kind, mode, modifiers, size, flags);
-*/
+        */
+
         CVTypePointerRecord(int originalLeaf) {
             super(LF_POINTER);
             this.originalLeaf = originalLeaf;
@@ -363,8 +367,8 @@ abstract class CVTypeRecord {
 
     static final class CVMemberRecord extends CVTypeRecord {
 
-        short  propertyAttributes;      /* property attribute field (prop_t) */
-        int        fieldIndex;          /* type index of member type */
+        short propertyAttributes; /* property attribute field (prop_t) */
+        int fieldIndex; /* type index of member type */
         /* TODO data */
 
         CVMemberRecord(short attrs, int fieldIndex) {
@@ -402,8 +406,8 @@ abstract class CVTypeRecord {
 
     static class CVBaseClassRecord extends CVTypeRecord {
 
-        short  propertyAttributes;      /* property attribute field (prop_t) */
-        int        fieldIndex;          /* type index of member type */
+        short propertyAttributes; /* property attribute field (prop_t) */
+        int fieldIndex; /* type index of member type */
         /* TODO data */
 
         CVBaseClassRecord(short ltype, short attrs, int fieldIndex) {
@@ -462,11 +466,11 @@ abstract class CVTypeRecord {
 
     static class CVClassRecord extends CVTypeRecord {
 
-        short  count;                   /* count of number of elements in class */
-        short  propertyAttributes;      /* property attribute field (prop_t) */
-        int        fieldIndex;          /* type index of LF_FIELDLIST descriptor list */
-        int        derivedFromIndex;    /* type index of derived from list if not zero */
-        int        vshapeIndex;         /* type index of vshape table for this class */
+        short count; /* count of number of elements in class */
+        short propertyAttributes; /* property attribute field (prop_t) */
+        int fieldIndex; /* type index of LF_FIELDLIST descriptor list */
+        int derivedFromIndex; /* type index of derived from list if not zero */
+        int vshapeIndex; /* type index of vshape table for this class */
         /* TODO data */
 
         CVClassRecord(short recType, short count, short attrs, int fieldIndex, int derivedFromIndex, int vshapeIndex) {
@@ -484,7 +488,8 @@ abstract class CVTypeRecord {
 
         @Override
         public int computeSize(int initialPos) {
-            return initialPos + Short.BYTES + Short.BYTES + Integer.BYTES + Integer.BYTES + Integer.BYTES; // + TODO
+            return initialPos + Short.BYTES + Short.BYTES + Integer.BYTES + Integer.BYTES + Integer.BYTES; // +
+                                                                                                           // TODO
         }
 
         @Override
@@ -499,7 +504,8 @@ abstract class CVTypeRecord {
         }
 
         protected String toString(String lfTypeStr) {
-            return String.format("%s(0x%04x count=%d attr=0x%04x fld=0x%x super=0x%x vshape=0x%x)", lfTypeStr, getSequenceNumber(), count, propertyAttributes, fieldIndex, derivedFromIndex, vshapeIndex);
+            return String.format("%s(0x%04x count=%d attr=0x%04x fld=0x%x super=0x%x vshape=0x%x)", lfTypeStr, getSequenceNumber(), count, propertyAttributes, fieldIndex, derivedFromIndex,
+                            vshapeIndex);
         }
 
         @Override
@@ -650,12 +656,13 @@ abstract class CVTypeRecord {
             this.age = age;
             this.fileName = fileName;
 
-            /*  for some very odd reason GUID is stored like this:
+            /*-
+              for some very odd reason GUID is stored like this:
                 int guid1 = in.getInt();
                 int guid2 = in.getShort();
                 int guid3 = in.getShort();
                 byte[] guid5[10]
-                */
+            */
             swap(this.guid, 0, 3);
             swap(this.guid, 1, 2);
             swap(this.guid, 4, 5);

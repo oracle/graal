@@ -40,9 +40,13 @@ class CVTypeRecordBuilder {
     }
 
     /*
-     * convenience method - return either the caller-created instance or a matching existing instance.
+     * convenience method - return either the caller-created instance or a matching existing
+     * instance.
      */
-    /* we know every entry in typeMap is a T, because it is ONLY this function which inserts entries (of type T) */
+    /*
+     * we know every entry in typeMap is a T, because it is ONLY this function which inserts entries
+     * (of type T)
+     */
     @SuppressWarnings("unchecked")
     <T extends CVTypeRecord> T buildFrom(T newRecord) {
         final T record;

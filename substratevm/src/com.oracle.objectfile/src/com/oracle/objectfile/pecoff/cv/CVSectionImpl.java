@@ -66,8 +66,9 @@ abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
 
     protected void enableLog(DebugContext context, int pos) {
         /*
-         * Unlike in the Dwarf debug code, debug output is enabled in both the sizing and writing phases.
-         * At this time, debugBase and debugAddress aren't used but are there for the future.
+         * Unlike in the Dwarf debug code, debug output is enabled in both the sizing and writing
+         * phases. At this time, debugBase and debugAddress aren't used but are there for the
+         * future.
          */
         if (context.areScopesEnabled()) {
             debug = true;
@@ -109,22 +110,25 @@ abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
     public Set<BuildDependency> getDependencies(Map<ObjectFile.Element, LayoutDecisionMap> decisions) {
         Set<BuildDependency> deps = super.getDependencies(decisions);
         String targetName = getSectionName();
-        @SuppressWarnings("unused") PECoffObjectFile.PECoffSection targetSection = (PECoffObjectFile.PECoffSection) getElement().getOwner().elementForName(targetName);
-        LayoutDecision ourContent =  decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
-        LayoutDecision ourSize =  decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
-        //LayoutDecision.Kind[] targetKinds = targetSectionKinds();
+        @SuppressWarnings("unused")
+        PECoffObjectFile.PECoffSection targetSection = (PECoffObjectFile.PECoffSection) getElement().getOwner().elementForName(targetName);
+        LayoutDecision ourContent = decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
+        LayoutDecision ourSize = decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
+        // LayoutDecision.Kind[] targetKinds = targetSectionKinds();
         /* make our content depend on the size and content of the target */
-        //for (LayoutDecision.Kind targetKind : targetKinds) {
-        //    LayoutDecision targetDecision =  decisions.get(targetSection).getDecision(targetKind);
-        //    deps.add(BuildDependency.createOrGet(ourContent, targetDecision));
-        //}
+        // for (LayoutDecision.Kind targetKind : targetKinds) {
+        // LayoutDecision targetDecision = decisions.get(targetSection).getDecision(targetKind);
+        // deps.add(BuildDependency.createOrGet(ourContent, targetDecision));
+        // }
         /* make our size depend on our content */
         deps.add(BuildDependency.createOrGet(ourSize, ourContent));
         return deps;
     }
 
-    //public abstract LayoutDecision.Kind[] targetSectionKinds();
+    // public abstract LayoutDecision.Kind[] targetSectionKinds();
     public abstract void createContent(DebugContext debugContext);
+
     public abstract void writeContent(DebugContext debugContext);
+
     public abstract String getSectionName();
 }

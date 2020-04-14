@@ -28,32 +28,33 @@ package com.oracle.objectfile.pecoff.cv;
 
 public abstract class CVDebugConstants {
 
-    //static final int DEBUG_S_IGNORE      = 0x00;
-    static final int DEBUG_S_SYMBOLS     = 0xf1;
-    static final int DEBUG_S_LINES       = 0xf2;
+    // static final int DEBUG_S_IGNORE = 0x00;
+    static final int DEBUG_S_SYMBOLS = 0xf1;
+    static final int DEBUG_S_LINES = 0xf2;
     static final int DEBUG_S_STRINGTABLE = 0xf3;
-    static final int DEBUG_S_FILECHKSMS  = 0xf4;
+    static final int DEBUG_S_FILECHKSMS = 0xf4;
 
     /* subcommands in DEBUG_S_SYMBOLS section */
-    //static final short S_COMPILE   = 0x0001;
-    static final short S_SSEARCH   = 0x0005;
-    static final short S_END       = 0x0006;
-    static final short S_OBJNAME   = 0x1101;
+    // static final short S_COMPILE = 0x0001;
+    static final short S_SSEARCH = 0x0005;
+    static final short S_END = 0x0006;
+    static final short S_OBJNAME = 0x1101;
     static final short S_LDATA32_ST = 0x1007;
     static final short S_FRAMEPROC = 0x1012;
-    static final short S_CONSTANT  = 0x1107;
-    static final short S_UDT       = 0x1108;
-    static final short S_LDATA32   = 0x110c;
-    static final short S_GDATA32   = 0x110d;
-    static final short S_GPROC32   = 0x1110;
-    static final short S_REGREL32  = 0x1111;
-    static final short S_COMPILE3  = 0x113c;
-    static final short S_ENVBLOCK  = 0x113d;
-    static final short S_GPROC32_ID  = 0x1147;
+    static final short S_CONSTANT = 0x1107;
+    static final short S_UDT = 0x1108;
+    static final short S_LDATA32 = 0x110c;
+    static final short S_GDATA32 = 0x110d;
+    static final short S_GPROC32 = 0x1110;
+    static final short S_REGREL32 = 0x1111;
+    static final short S_COMPILE3 = 0x113c;
+    static final short S_ENVBLOCK = 0x113d;
+    static final short S_GPROC32_ID = 0x1147;
     static final short S_PROC_ID_END = 0x114f;
-    //static final short S_BUILDINFO   = 0x114c;
+    // static final short S_BUILDINFO = 0x114c;
 
-    /* enums are more typesafe but the IDE no longer knows which enum constant is unused
+    /* enums are more typesafe but the IDE no longer knows which enum constant is unused */
+    @SuppressWarnings("unused")
     enum CV_RECORD {
         CV_SIGNATURE_C13(4),
         S_COMPILE(0x0001),
@@ -82,6 +83,7 @@ public abstract class CVDebugConstants {
         }
     }
 
+    @SuppressWarnings("unused")
     enum DEBUG_S {
         DEBUG_S_IGNORE(0x00),
         DEBUG_S_SYMBOLS(0xf1),
@@ -98,5 +100,5 @@ public abstract class CVDebugConstants {
         public short command() {
             return cmd;
         }
-    } */
+    }
 }

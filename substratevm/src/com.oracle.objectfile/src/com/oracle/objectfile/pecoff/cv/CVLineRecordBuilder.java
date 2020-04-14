@@ -46,29 +46,32 @@ public class CVLineRecordBuilder {
         this.cvDebugInfo = cvDebugInfo;
     }
 
-    public static void debug(@SuppressWarnings("unused") String format, @SuppressWarnings("unused") Object ... args) {
-        //System.out.format(format, args);
+    public static void debug(@SuppressWarnings("unused") String format, @SuppressWarnings("unused") Object... args) {
+        // System.out.format(format, args);
     }
 
     /*
      * In CV4, the line table consists of a series of file headers followed by line number entries
-     * to handle this, first we decide if we want to merge this with the previous range (only if same file and start of this range is end of previous range)
-     * if we are emitting a new range to the same file, write the range, save it as the previous range and go on
-     * If this is a different file, then update the length of the previous file header, write the new file header and write the new range
-     * At the very end, make sure we update the last file header.
+     * to handle this, first we decide if we want to merge this with the previous range (only if
+     * same file and start of this range is end of previous range) if we are emitting a new range to
+     * the same file, write the range, save it as the previous range and go on If this is a
+     * different file, then update the length of the previous file header, write the new file header
+     * and write the new range At the very end, make sure we update the last file header.
      *
-     * In addition, optionally ignore Ranges that point into Graal innards, just adding them to the current enclosing range
+     * In addition, optionally ignore Ranges that point into Graal innards, just adding them to the
+     * current enclosing range
      */
 
     /**
      * Build line number records for a function.
+     *
      * @param entry function to build line number table for
      * @return CVLineRecord containing any entries generated, or null if no entries generated
      */
     @SuppressWarnings("unused")
     CVLineRecord build(PrimaryEntry entry, String methodName) {
-   //     long lowAddr = Long.MAX_VALUE;
-   //     long highAddr = 0;
+        // long lowAddr = Long.MAX_VALUE;
+        // long highAddr = 0;
         this.primaryEntry = entry;
 
         assert (!HAS_COLUMNS); /* can't handle columns yet */
@@ -85,8 +88,8 @@ public class CVLineRecordBuilder {
         this.lineRecord = new CVLineRecord(cvDebugInfo, methodName, primaryEntry);
         debug("CVLineRecord.computeContents: processing primary range %s\n", primaryRange);
         previousRange = processRange(primaryRange, previousRange);
-     //   lowAddr = Math.min(lowAddr, primaryRange.getLo());
-      //  highAddr = Math.max(highAddr, primaryRange.getHi());
+        // lowAddr = Math.min(lowAddr, primaryRange.getLo());
+        // highAddr = Math.max(highAddr, primaryRange.getHi());
 
         for (Range subRange : primaryEntry.getSubranges()) {
             debug("CVLineRecord.computeContents: processing range %s\n", subRange);
@@ -95,19 +98,17 @@ public class CVLineRecordBuilder {
                 continue;
             }
             previousRange = processRange(subRange, previousRange);
-      //      lowAddr = Math.min(lowAddr, subRange.getLo());
-      //      highAddr = Math.max(highAddr, subRange.getHi());
+            // lowAddr = Math.min(lowAddr, subRange.getLo());
+            // highAddr = Math.max(highAddr, subRange.getHi());
         }
         return lineRecord;
     }
 
     /**
-     * Merge input Range structures into line number table.
-     * The Range structures are assumed to be ordered by ascending address
-     * merge with previous line entry if:
-     *  - if a Range has a negative linenumber
-     *  - if a range is part of Graal or the JDK, and skipGraalOption is true
-     *  - if a range has the same line number, source file and function
+     * Merge input Range structures into line number table. The Range structures are assumed to be
+     * ordered by ascending address merge with previous line entry if: - if a Range has a negative
+     * linenumber - if a range is part of Graal or the JDK, and skipGraalOption is true - if a range
+     * has the same line number, source file and function
      *
      * @param range to be merged or added to line number record
      * @param oldPreviousRange the previously processed Range
@@ -122,11 +123,11 @@ public class CVLineRecordBuilder {
         if (shouldMerge(range, previousRange)) {
             debug("processRange: merging with previous\n");
             return previousRange;
-            //range = new Range(previousRange, range.getLo(), range.getHi());
-        } /*else if (range.getLine() == -1) {
-            CVUtil.debug("     processRange: ignoring: bad line number\n");
-            return previousRange;
-        }*/
+            // range = new Range(previousRange, range.getLo(), range.getHi());
+        } /*
+           * else if (range.getLine() == -1) { CVUtil.debug(
+           * "     processRange: ignoring: bad line number\n"); return previousRange; }
+           */
 
         /* is this a new file? if so we emit a new file record */
         boolean wantNewFile = previousRange == null || !previousRange.getFileAsPath().equals(range.getFileAsPath());
@@ -154,6 +155,7 @@ public class CVLineRecordBuilder {
 
     /**
      * Test to see if two ranges are adjacent, and can be combined into one.
+     *
      * @param previousRange the first range (lower address)
      * @param range the second range (higher address)
      * @return true if the two ranges can be combined
@@ -169,7 +171,7 @@ public class CVLineRecordBuilder {
         /* if we're in a different class that the primary Class, this is inlined code */
         final boolean isInlinedCode = !range.getClassName().equals(primaryEntry.getClassEntry().getClassName());
         // if (isInlinedCode && skipInlinedCode) { return true; }
-        if (isInlinedCode && skipGraalIntrinsics &&  CVRootPackages.isGraalIntrinsic(range.getClassName())) {
+        if (isInlinedCode && skipGraalIntrinsics && CVRootPackages.isGraalIntrinsic(range.getClassName())) {
             return true;
         }
         return previousRange.getFileAsPath().equals(range.getFileAsPath()) && (range.getLine() == -1 || previousRange.getLine() == range.getLine());
@@ -177,13 +179,26 @@ public class CVLineRecordBuilder {
 
     /**
      * Test to see if a new line record should be emitted.
+     *
      * @param previousRange previous range
      * @param range current range
      * @return true if the current range is on a different line or file from the previous one
      */
     private static boolean wantNewRange(@SuppressWarnings("unused") Range range, @SuppressWarnings("unused") Range previousRange) {
+        /* return true for now; this will be a further optimization (see unused_wantNewRange) */
         return true;
-        /*if (debug) {
+    }
+
+    /**
+     * Test to see if a new line record should be emitted.
+     *
+     * @param previousRange previous range
+     * @param range current range
+     * @return true if the current range is on a different line or file from the previous one
+     */
+    @SupressWarnings("unused")
+    private static boolean unused_wantNewRange(@SuppressWarnings("unused") Range range, @SuppressWarnings("unused") Range previousRange) {
+        if (debug) {
             if (previousRange == null) {
                 debug("wantNewRange() prevnull:true");
             } else {
@@ -197,11 +212,9 @@ public class CVLineRecordBuilder {
             return true;
         if (previousRange.getFilePath() != range.getFilePath())
             return true;
-        /* it might actually be fine to merge if there's a gap between ranges *
-        if (previousRange.getHi() < range.getLo())
-            return true;
-        //long delta = range.getHi() - previousRange.getLo();
-        //return delta >= 127;
-        return false; */
+        /* it might actually be fine to merge if there's a gap between ranges */
+        // if (previousRange.getHi() < range.getLo())
+        //     return true;
+        return false;
     }
 }

@@ -60,8 +60,8 @@ final class CVFileRecord extends CVSymbolRecord {
     }
 
     /*
-     * Convert a simple path into an absolute path by determining if it's
-     * part of Graal, the JDK, or use code.
+     * Convert a simple path into an absolute path by determining if it's part of Graal, the JDK, or
+     * use code.
      *
      * Currently, don't even try; use the SourceCache system
      */
@@ -90,7 +90,10 @@ final class CVFileRecord extends CVSymbolRecord {
     @Override
     public int computeSize(int initialPos) {
         /* add all fileEntries; duplicates are ignored */
-        /* probably don't need to do this because if it isn't already here it's probably referenced by the debug info */
+        /*
+         * probably don't need to do this because if it isn't already here it's probably referenced
+         * by the debug info
+         */
         /* consider moving this to CVSymbolSectionImpl */
         for (FileEntry entry : cvDebugInfo.getFiles()) {
             addFile(entry);

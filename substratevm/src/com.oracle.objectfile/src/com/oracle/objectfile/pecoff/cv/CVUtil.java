@@ -125,7 +125,7 @@ abstract class CVUtil {
         return i;
     }
 
-    /*
+    /*-
     static void dump(String msg, byte[] buffer, int initialPos, int len) {
         if (buffer == null) {
             return;
@@ -144,10 +144,12 @@ abstract class CVUtil {
         for (int i = 0; i < len; i++) {
             System.out.format("%02x", buffer[i]);
         }
-    }*/
+    }
+    */
 
     /**
      * align on 4 byte boundary.
+     *
      * @param initialPos initial unaligned position
      * @return pos aligned on 4 byte boundary
      */

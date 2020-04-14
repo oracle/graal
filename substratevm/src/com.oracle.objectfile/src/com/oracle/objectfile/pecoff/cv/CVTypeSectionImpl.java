@@ -92,20 +92,22 @@ public final class CVTypeSectionImpl extends CVSectionImpl {
     }
 
     <T extends CVTypeRecord> T addRecord(T newRecord) {
-        //CVUtil.debug("adding type record: %s hash=%d\n", newRecord, newRecord.hashCode());
+        // CVUtil.debug("adding type record: %s hash=%d\n", newRecord, newRecord.hashCode());
         T actual = builder.buildFrom(newRecord);
         return actual;
     }
 
     private void addClassRecords() {
         /* we may have done this already when emiting globals in debug$S section */
-        //for (DebugInfoBase.ClassEntry classEntry : cvDebugInfo.getPrimaryClasses()) {
-            // TODO - emit all members, all types, etc
-        //}
+        // for (DebugInfoBase.ClassEntry classEntry : cvDebugInfo.getPrimaryClasses()) {
+        // TODO - emit all members, all types, etc
+        // }
     }
 
     private void addRecords() {
-        //final CVTypeRecord r0 = addRecord(new CVTypeRecord.CVTypeServer2Record("0123456789abcdef".getBytes(UTF_8), 1, "c:\\tmp\\graal-8\\vc100.pdb"));
+        // final CVTypeRecord r0 = addRecord(new
+        // CVTypeRecord.CVTypeServer2Record("0123456789abcdef".getBytes(UTF_8), 1,
+        // "c:\\tmp\\graal-8\\vc100.pdb"));
         addClassRecords();
     }
 
@@ -117,8 +119,8 @@ public final class CVTypeSectionImpl extends CVSectionImpl {
     public Set<BuildDependency> getDependencies(Map<ObjectFile.Element, LayoutDecisionMap> decisions) {
         Set<BuildDependency> deps = super.getDependencies(decisions);
         PECoffObjectFile.PECoffSection targetSection = (PECoffObjectFile.PECoffSection) getElement().getOwner().elementForName(CV_SYMBOL_SECTION_NAME);
-        LayoutDecision ourContent =  decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
-        LayoutDecision ourSize =  decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
+        LayoutDecision ourContent = decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
+        LayoutDecision ourSize = decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
         /* make our content depend on the codeview symbol section */
         deps.add(BuildDependency.createOrGet(ourContent, decisions.get(targetSection).getDecision(LayoutDecision.Kind.CONTENT)));
         /* make our size depend on our content */

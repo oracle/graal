@@ -46,7 +46,8 @@ class CVSymbolSubsection extends CVSymbolRecord {
         subcmds.add(subcmd);
     }
 
-    void addSubrecords() { }
+    void addSubrecords() {
+    }
 
     @Override
     protected int computeSize(int initialPos) {

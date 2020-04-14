@@ -127,9 +127,9 @@ public final class CVSymbolSectionImpl extends CVSectionImpl {
     }
 
     private void addTypeRecords() {
-        /* not yet implemented.  S_UDT, etc */
-        //CVSymbolRecord externs = new CVSymbolSubsection.CVExternalSymbolRecord(cvDebugInfo);
-        //addRecord(externs);
+        /* not yet implemented. S_UDT, etc */
+        // CVSymbolRecord externs = new CVSymbolSubsection.CVExternalSymbolRecord(cvDebugInfo);
+        // addRecord(externs);
     }
 
     private void addFileRecords() {
@@ -153,6 +153,7 @@ public final class CVSymbolSectionImpl extends CVSectionImpl {
         static final class StringTableEntry {
             public int offset;
             public String text;
+
             StringTableEntry(int offset, String text) {
                 this.offset = offset;
                 this.text = text;
@@ -173,7 +174,10 @@ public final class CVSymbolSectionImpl extends CVSectionImpl {
             StringTableEntry newEntry = new StringTableEntry(currentOffset, s);
             StringTableEntry entry = strings.putIfAbsent(s, newEntry);
             if (entry == null) {
-                int utf8Length = s.getBytes(UTF_8).length; /* TODO: getting the enecoded size should be made more efficient */
+                /*
+                 * TODO: getting the enecoded size should be made more efficient
+                 */
+                int utf8Length = s.getBytes(UTF_8).length;
                 currentOffset += utf8Length + 1;
             }
             return entry == null ? newEntry.offset : entry.offset;

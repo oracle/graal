@@ -84,14 +84,13 @@ public class Range {
     }
 
     /*
-     * Create a slightly different copy of a previously constructed range.
-     * Because the previous range was constructed by one of the other constructors,
-     * a valid assumption is that all the strings have previously been inserted int he stringTable,
-     * and we can avoid doing that again.
+     * Create a slightly different copy of a previously constructed range. Because the previous
+     * range was constructed by one of the other constructors, a valid assumption is that all the
+     * strings have previously been inserted int he stringTable, and we can avoid doing that again.
      */
     public Range(Range other, int lo, int hi) {
         this.fileName = other.fileName;
-        this.filePath =  other.filePath;
+        this.filePath = other.filePath;
         this.className = other.className;
         this.methodName = other.methodName;
         this.paramNames = other.paramNames;

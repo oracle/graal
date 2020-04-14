@@ -253,13 +253,13 @@ public abstract class ObjectFile {
          */
         DIRECT_HI,
         /**
-         * The index of the object file section containing the relocation's symbol supplies the fixup bytes.
-         * (used in CodeView debug information)
+         * The index of the object file section containing the relocation's symbol supplies the
+         * fixup bytes. (used in CodeView debug information)
          */
         SECTION,
         /**
-         * The address of the object file section containing the relocation's symbol (+addend( supplies the fixup bytes.
-         * (used in CodeView debug information)
+         * The address of the object file section containing the relocation's symbol (+addend(
+         * supplies the fixup bytes. (used in CodeView debug information)
          */
         SECREL,
         /**
@@ -1102,7 +1102,7 @@ public abstract class ObjectFile {
     /**
      * API method provided to allow a native image generator to provide details of types, code and
      * heap data inserted into a native image.
-     * 
+     *
      * @param debugInfoProvider an implementation of the provider interface that communicates
      *            details of the relevant types, code and heap data.
      */
@@ -1760,7 +1760,7 @@ public abstract class ObjectFile {
      * Allows a task to be executed with a debug context in a named subscope bound to the object
      * file and accessible to code executed during the lifetime of the task. Invoked code may obtain
      * access to the debug context using method {@link #debugContext}.
-     * 
+     *
      * @param context a context to be bound to the object file for the duration of the task
      *            execution.
      * @param scopeName a name to be used to define a subscope current while the task is being
@@ -1782,7 +1782,7 @@ public abstract class ObjectFile {
     /**
      * Allows a consumer to retrieve the debug context currently bound to this object file. This
      * method must only called underneath an invocation of method {@link #withDebugContext}.
-     * 
+     *
      * @param scopeName a name to be used to define a subscope current while the consumer is active.
      * @param action an action parameterised by the debug context.
      */
