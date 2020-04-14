@@ -60,6 +60,12 @@ suite = {
             ],
             "sha1": "280c265b789e041c02e5c97815793dfc283fb1e6",
         },
+
+        # https://github.com/smarr/are-we-fast-yet
+        "AWFY" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/awfy/awfy-770c6649.jar"],
+            "sha1" : "f1bf1febd81ce7fbd83244682ddc79e74fec0076",
+        },
     },
 
     # ------------- projects
