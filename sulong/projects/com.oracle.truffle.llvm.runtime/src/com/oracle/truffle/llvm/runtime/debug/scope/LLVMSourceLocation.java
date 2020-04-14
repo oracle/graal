@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -179,6 +179,17 @@ public abstract class LLVMSourceLocation {
         }
     }
 
+    private String getPath() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (lazySourceSection != null) {
+            return lazySourceSection.getPath();
+        } else if (sourceSection != null) {
+            return sourceSection.getSource().getPath();
+        } else {
+            return UNAVAILABLE_SECTION.getSource().getPath();
+        }
+    }
+
     public String describeLocation() {
         CompilerAsserts.neverPartOfCompilation();
         final String sourceName = describeFile();
@@ -259,7 +270,7 @@ public abstract class LLVMSourceLocation {
                 return false;
             }
 
-            if (!Objects.equals(describeFile(), that.describeFile())) {
+            if (!Objects.equals(getPath(), that.getPath())) {
                 return false;
             }
 
@@ -276,7 +287,9 @@ public abstract class LLVMSourceLocation {
     @Override
     public int hashCode() {
         int result = getKind().hashCode();
-        result = 31 * result + (getName() != null ? getName().hashCode() : 0);
+        result = 31 * result + Objects.hashCode(getPath());
+        result = 31 * result + getLine();
+        result = 31 * result + getColumn();
         return result;
     }
 
