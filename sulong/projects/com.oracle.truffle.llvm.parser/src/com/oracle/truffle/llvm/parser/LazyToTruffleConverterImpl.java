@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser;
 
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -233,6 +234,9 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         for (Class<?> c = node.getClass(); c != Object.class; c = c.getSuperclass()) {
             Field[] fields = c.getDeclaredFields();
             for (Field field : fields) {
+                if (Modifier.isStatic(field.getModifiers())) {
+                    continue;
+                }
                 if (NodeInterface.class.isAssignableFrom(field.getType())) {
                     try {
                         field.setAccessible(true);
