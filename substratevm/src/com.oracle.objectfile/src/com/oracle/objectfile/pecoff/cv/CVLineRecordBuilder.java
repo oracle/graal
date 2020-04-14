@@ -197,16 +197,20 @@ public class CVLineRecordBuilder {
      * @return true if the current range is on a different line or file from the previous one
      */
     @SuppressWarnings("unused")
-    private static boolean unused_wantNewRange(@SuppressWarnings("unused") Range range, @SuppressWarnings("unused") Range previousRange) {
-        if (previousRange == null)
+    private static boolean unusedWantNewRange(@SuppressWarnings("unused") Range range, @SuppressWarnings("unused") Range previousRange) {
+        if (previousRange == null) {
             return true;
-        if (previousRange.getLine() != range.getLine())
+        }
+        if (previousRange.getLine() != range.getLine()) {
             return true;
-        if (previousRange.getFilePath() != range.getFilePath())
+        }
+        if (previousRange.getFilePath() != range.getFilePath()) {
             return true;
+        }
         /* it might actually be fine to merge if there's a gap between ranges */
-        // if (previousRange.getHi() < range.getLo())
+        // if (previousRange.getHi() < range.getLo()) {
         // return true;
+        // }
         return false;
     }
 }
