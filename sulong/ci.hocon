@@ -11,17 +11,13 @@ sulong-gateCommon: ${sulong-common} {
     targets: [gate]
 }
 
-sulong-gateStyle: ${sulong-gateCommon} ${linux-amd64} ${eclipse} {
+sulong-gateStyle: ${sulong-gateCommon} ${linux-amd64} ${eclipse} ${sulong.deps.linux} {
     packages: {
         ruby: "==2.1.0" # for mdl
-        "cmake": "==3.6.1",
     }
 }
 
-sulong-gateTest-linux: ${sulong-gateCommon} ${linux-amd64} {
-    packages: {
-        "cmake": "==3.6.1",
-    }
+sulong-gateTest-linux: ${sulong-gateCommon} ${linux-amd64} ${sulong.deps.linux} {
     downloads: {
         LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
     }
@@ -32,6 +28,8 @@ sulong-gateTest-linux: ${sulong-gateCommon} ${linux-amd64} {
         LDFLAGS: "-L$LIBGMP/lib"
     }
 }
+
+sulong-gateTest-darwin: ${sulong-gateCommon} ${darwin-amd64} ${sulong.deps.darwin}
 
 sulong-gateTest-default-tools {
     environment: {
@@ -90,7 +88,7 @@ sulong-gateTestLLVMorg-linux: ${sulong-gateTest-linux} {
     # nothing to do
 }
 
-sulong-gateTest40-darwin: ${sulong-gateCommon} ${darwin-amd64} ${sulong-gateTest-default-tools} {
+sulong-gateTest40-darwin: ${sulong-gateTest-darwin} ${sulong-gateTest-default-tools} {
     packages: {
         llvm: "==4.0.1"
     }
@@ -102,7 +100,7 @@ sulong-gateTest40-darwin: ${sulong-gateCommon} ${darwin-amd64} ${sulong-gateTest
     }
 }
 
-sulong-gateTestLLVMorg-darwin: ${sulong-gateCommon} ${darwin-amd64} {
+sulong-gateTestLLVMorg-darwin: ${sulong-gateTest-darwin} {
     # nothing to do
     environment: {
         LD_LIBRARY_PATH: "$BUILD_DIR/main/sulong/mxbuild/darwin-amd64/SULONG_LLVM_ORG/lib:$LD_LIBRARY_PATH"
