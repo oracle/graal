@@ -243,8 +243,9 @@ weekly_vm_darwin: ${vm_darwin} {
 non-product-vm-components: "nju,nic"
 non-product-vm-components-windows: ${non-product-vm-components}",llp"
 
+non-product-native-launchers: "RMain"
 
-mx_vm_common: [mx, --strip-jars, --no-sources, --with-debuginfo, --env, "${VM_ENV}"]
+mx_vm_common: [mx, --strip-jars, --no-sources, --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers="${non-product-native-launchers}]
 mx_vm_installables: ${mx_vm_common}
 maven_deploy_sdk_base: [--suite, sdk, maven-deploy, --validate, none, --all-distribution-types, "--tags=graalvm", --with-suite-revisions-metadata]
 maven_deploy_sdk: ${maven_deploy_sdk_base} [${binaries-repository}]
