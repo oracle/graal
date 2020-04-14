@@ -129,6 +129,7 @@ public final class Target_java_lang_Thread {
         self.setIntField(meta.java_lang_Thread_threadStatus, state.value);
     }
 
+    @TruffleBoundary
     public static void checkDeprecatedState(Meta meta, StaticObject thread) {
         EspressoContext context = meta.getContext();
         assert thread == context.getCurrentThread();
@@ -267,6 +268,7 @@ public final class Target_java_lang_Thread {
         }
     }
 
+    @TruffleBoundary
     @Substitution
     public static void yield() {
         Thread.yield();
@@ -301,6 +303,7 @@ public final class Target_java_lang_Thread {
         /* nop */
     }
 
+    @TruffleBoundary
     @Substitution
     public static boolean holdsLock(@Host(Object.class) StaticObject object) {
         if (StaticObject.isNull(object)) {
@@ -414,6 +417,7 @@ public final class Target_java_lang_Thread {
         hostThread.interrupt();
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void setNativeName(@Host(Object.class) StaticObject self, @Host(String.class) StaticObject name) {
         // TODO(tg): inject meta

@@ -1015,6 +1015,7 @@ public final class Target_sun_misc_Unsafe {
         return target.getDeclaringKlass().getStatics();
     }
 
+    @TruffleBoundary
     @SuppressWarnings("deprecation")
     @Substitution(hasReceiver = true)
     public static void monitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
@@ -1025,6 +1026,7 @@ public final class Target_sun_misc_Unsafe {
         object.getLock().lock();
     }
 
+    @TruffleBoundary
     @SuppressWarnings("deprecation")
     @Substitution(hasReceiver = true)
     public static void monitorExit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
@@ -1194,6 +1196,7 @@ public final class Target_sun_misc_Unsafe {
         return f.getAndSetObject(holder, value);
     }
 
+    @TruffleBoundary
     @SuppressWarnings("deprecation")
     @Substitution(hasReceiver = true)
     public static boolean tryMonitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
