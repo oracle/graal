@@ -76,14 +76,13 @@ public abstract class CVConstants {
     static final boolean skipJDKInternals = false;
 
     /*
-     * if true, Graal inlined code treated as user generated code.
-     * (less complicated for user-level debugging)
+     * if true, Graal inlined code treated as user generated code. (less complicated for user-level
+     * debugging)
      */
     static final boolean skipGraalIntrinsics = false;
 
     /*
-     * if a line record is the same line in the same file as the previous record,
-     * merge them.
+     * if a line record is the same line in the same file as the previous record, merge them.
      */
     static final boolean mergeAdjacentLineRecords = true;
 
@@ -93,8 +92,8 @@ public abstract class CVConstants {
     static final boolean emitUnadornedMain = true;
 
     /*
-     * if true, first main() becomes this name (with no class name or arg list at all) (set null
-     * to disable).
+     * if true, first main() becomes this name (with no class name or arg list at all) (set null to
+     * disable).
      */
     static final String replaceMainFunctionName = null;
 
@@ -104,8 +103,8 @@ public abstract class CVConstants {
      * "Foo.function(String[] args)" becomes "Foo.function_617849326". If functionNamesHashArgs is
      * false, currently the linker will fail.
      *
-     * if true, arg lists become obscure integers (and link.exe will work properly)
-     * TODO: strip illegal characters from arg lists instead
+     * if true, arg lists become obscure integers (and link.exe will work properly) TODO: strip
+     * illegal characters from arg lists instead
      */
     static final boolean functionNamesHashArgs = true;
 }

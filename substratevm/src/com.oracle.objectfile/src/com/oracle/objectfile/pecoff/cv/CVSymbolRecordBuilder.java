@@ -81,8 +81,8 @@ final class CVSymbolRecordBuilder {
     }
 
     /**
-     * emit records for each function: PROC32 S_FRAMEPROC S_END and line number records.
-     * (later: type records as required)
+     * emit records for each function: PROC32 S_FRAMEPROC S_END and line number records. (later:
+     * type records as required)
      *
      * @param primaryEntry primary entry for this function
      * @param methodName method name alias as it will be seen by the user

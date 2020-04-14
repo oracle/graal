@@ -94,7 +94,7 @@ public abstract class CVDebugConstants {
         final short cmd;
 
         DEBUG_S(int cmd) {
-            this.cmd = (short)cmd;
+            this.cmd = (short) cmd;
         }
 
         public short command() {

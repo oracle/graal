@@ -206,7 +206,7 @@ public class CVLineRecordBuilder {
             return true;
         /* it might actually be fine to merge if there's a gap between ranges */
         // if (previousRange.getHi() < range.getLo())
-        //     return true;
+        // return true;
         return false;
     }
 }
