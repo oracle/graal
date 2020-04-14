@@ -199,10 +199,41 @@ public class InstallerCommandlineTest extends CommandTestBase {
         exception.expect(MainErrorException.class);
 
         try {
-            main.interpretOptions(main.createOptions(args));
+            main.processOptions(args);
         } finally {
             assertMsg("ERROR_MissingCommand", false);
         }
+    }
+
+    /**
+     * Checks that --version option prints version and terminates with 0 exit code.
+     */
+    @Test
+    public void testVersionSucceeds() {
+        args = new LinkedList<>();
+        args.add("--version");
+
+        delegateFeedback(capture);
+        int excode = main.processOptions(args);
+        assertTrue(capture.err.isEmpty());
+        assertMsg("MSG_InstallerVersion", true);
+        assertEquals("Must complete succesfully", 0, excode);
+    }
+
+    /**
+     * Checks that --show-version option prints version and performs the command.
+     */
+    @Test
+    public void testShowVersionSucceeds() {
+        args = new LinkedList<>();
+        args.add("--show-version");
+        args.add("list");
+
+        delegateFeedback(capture);
+        int excode = main.processOptions(args);
+        assertTrue(capture.err.isEmpty());
+        assertMsg("MSG_InstallerVersion", true);
+        assertEquals("Should continue execution", -1, excode);
     }
 
     /**
