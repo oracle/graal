@@ -465,7 +465,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             if (message.model.getName().equals(ACCEPTS)) {
                 builder.returnTrue();
             } else {
-                execute.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
+                GeneratorUtils.addBoundaryOrTransferToInterpreter(execute, builder);
                 builder.startStatement().type(types.Node).string(" prev_ = ").//
                                 startStaticCall(types.NodeUtil, "pushEncapsulatingNode").string("getParent()").end().end();
                 builder.startTryBlock();
@@ -491,10 +491,10 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         for (MessageObjects message : methods) {
             CodeExecutableElement execute = uncachedDispatch.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
-            execute.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
             execute.renameArguments("receiver_");
             removeAbstractModifiers(execute);
             builder = execute.createBuilder();
+            GeneratorUtils.addBoundaryOrTransferToInterpreter(execute, builder);
             if (message.model.getName().equals(ACCEPTS)) {
                 builder.returnTrue();
             } else {
@@ -827,7 +827,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             builder.end();
         }
         builder.end();
-        builder.startStatement().startStaticCall(types.CompilerDirectives, "transferToInterpreter").end().end();
+        builder.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         builder.startThrow().startNew(context.getType(AbstractMethodError.class)).string("message.toString()").end().end();
 
         if (uncheckedCast) {
