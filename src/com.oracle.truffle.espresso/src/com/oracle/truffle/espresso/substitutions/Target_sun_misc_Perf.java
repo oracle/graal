@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;

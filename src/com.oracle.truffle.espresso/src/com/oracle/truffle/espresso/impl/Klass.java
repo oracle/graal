@@ -32,11 +32,9 @@ import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySig
 import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
 
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -62,6 +60,7 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -792,7 +791,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return true;
     }
 
-    protected final int fastLookup(Klass target, Klass[] klasses) {
+    protected static int fastLookup(Klass target, Klass[] klasses) {
         assert isSorted(klasses, KLASS_ID_COMPARATOR);
         if (klasses.length <= LINEAR_SEARCH_THRESHOLD) {
             for (int i = 0; i < klasses.length; i++) {
