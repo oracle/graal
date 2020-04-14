@@ -103,6 +103,7 @@ class NativeImageVM(GraalVm):
             self.extra_run_args = []
             self.extra_agent_run_args = []
             self.extra_profile_run_args = []
+            self.extra_agent_profile_run_args = []
             self.benchmark_name = None
             self.benchmark_output_dir = None
             self.needs_config = True
@@ -129,6 +130,7 @@ class NativeImageVM(GraalVm):
                     found |= add_to_list(trimmed_arg, 'extra-run-arg', self.extra_run_args)
                     found |= add_to_list(trimmed_arg, 'extra-agent-run-arg', self.extra_agent_run_args)
                     found |= add_to_list(trimmed_arg, 'extra-profile-run-arg', self.extra_profile_run_args)
+                    found |= add_to_list(trimmed_arg, 'extra-agent-profile-run-arg', self.extra_agent_profile_run_args)
                     if trimmed_arg.startswith('needs-config='):
                         self.needs_config = trimmed_arg[len('needs-config='):] == 'true'
                         found = True
@@ -231,7 +233,6 @@ class NativeImageVM(GraalVm):
             profile_path_no_extension = os.path.join(config.profile_dir, executable_name)
             extension = '.iprof'
             profile_path = profile_path_no_extension + extension
-            image_path = os.path.join(config.output_dir, executable_name)
 
             # Agent configuration and/or HotSpot profiling
             needs_config = (config.config_dir is None) and config.needs_config
@@ -246,8 +247,10 @@ class NativeImageVM(GraalVm):
                 if self.hotspot_pgo:
                     hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]
 
-                if config.extra_agent_run_args:
-                    hotspot_run_args += config.extra_profile_run_args if self.hotspot_pgo and not self.is_gate else config.extra_agent_run_args
+                if self.hotspot_pgo and not self.is_gate and config.extra_agent_profile_run_args:
+                    hotspot_run_args += config.extra_agent_profile_run_args
+                elif config.extra_agent_run_args:
+                    hotspot_run_args += config.extra_agent_run_args
                 else:
                     hotspot_run_args += image_run_args
 
@@ -272,7 +275,7 @@ class NativeImageVM(GraalVm):
             base_image_build_args += system_properties
             base_image_build_args += classpath_arguments
             base_image_build_args += executable
-            base_image_build_args += ['-H:Name=' + executable_name, '-H:Path=' + config.output_dir]
+            base_image_build_args += ['-H:Path=' + config.output_dir]
             if needs_config:
                 base_image_build_args += ['-H:ConfigurationFileDirectories=' + config.config_dir]
             if self.is_llvm:
@@ -283,11 +286,15 @@ class NativeImageVM(GraalVm):
             i = 0
             instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
             if not self.hotspot_pgo:
-                pgo_verification_output_path = os.path.join(config.output_dir, executable_name + '-probabilities.log')
                 while i < instrumented_iterations:
+                    instrumentation_image_name = executable_name + '-instrument' + (str(i) if i > 0 else '')
+                    executable_name_args = ['-H:Name=' + instrumentation_image_name]
+                    image_path = os.path.join(config.output_dir, instrumentation_image_name)
+                    pgo_verification_output_path = os.path.join(config.output_dir, instrumentation_image_name + '-probabilities.log')
                     pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
                     instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
-                    instrument_image_build_args = base_image_build_args + instrument_args
+
+                    instrument_image_build_args = base_image_build_args + executable_name_args + instrument_args
                     mx.log('Building the instrumentation image with: ')
                     mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in instrument_image_build_args]))
                     mx.run(instrument_image_build_args, out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
@@ -316,19 +323,22 @@ class NativeImageVM(GraalVm):
                     i += 1
 
             # Build the final image
-            pgo_verification_output_path = os.path.join(config.output_dir, executable_name + '-probabilities.log')
+            final_image_name = executable_name + '-' + self.config_name()
+            executable_name_args = ['-H:Name=' + final_image_name]
+            pgo_verification_output_path = os.path.join(config.output_dir, final_image_name + '-probabilities.log')
             pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path] if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo else []
-            final_image_args = base_image_build_args + pgo_args
+            final_image_args = base_image_build_args + executable_name_args + pgo_args
             mx.log('Building the final image with: ')
             mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in final_image_args]))
             mx.run(final_image_args, out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
 
             # Execute the benchmark
+            image_path = os.path.join(config.output_dir, final_image_name)
             image_run_cmd = [image_path] + image_run_args + config.extra_run_args
             mx.log('Running the produced native executable with: ')
             mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
             mx.run(image_run_cmd, out=out, err=err, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
-            image_path = mx.join(config.output_dir, executable_name)
+            image_path = mx.join(config.output_dir, final_image_name)
             image_size = os.stat(image_path).st_size
             mx.log('Final image size is ' + str(image_size) + ' B')
 
