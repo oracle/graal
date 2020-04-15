@@ -70,13 +70,8 @@ js_windows: ${common_vm_windows} ${js_windows_common} {
 }
 
 # SULONG
-sulong_linux: {
-  packages: {
-    "cmake": "==3.6.1",
-  }
-}
-
-sulong_darwin: {}
+sulong_linux: ${sulong.deps.linux}
+sulong_darwin: ${sulong.deps.darwin}
 
 # TRUFFLERUBY
 truffleruby_linux: ${sulong_linux} {
