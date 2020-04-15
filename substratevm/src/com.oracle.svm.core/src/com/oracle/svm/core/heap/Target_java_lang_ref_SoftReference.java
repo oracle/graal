@@ -24,17 +24,11 @@
  */
 package com.oracle.svm.core.heap;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_FAST_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
-
 import java.lang.ref.SoftReference;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.TimeUtils;
 
 /**
  * A less-than-strong but more-than-weak reference, offering collection according to the time of
@@ -43,28 +37,10 @@ import com.oracle.svm.core.util.TimeUtils;
 @TargetClass(SoftReference.class)
 final class Target_java_lang_ref_SoftReference<T> {
     /** The current time, set by the garbage collector. */
-    @Alias @InjectAccessors(SoftReferenceClockAccessor.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     static long clock;
 
     /** The {@link #clock} value when {@code get()} was last called. */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     long timestamp;
-}
-
-final class SoftReferenceClockAccessor {
-    static long clock = 0;
-
-    static long get() {
-        if (probability(VERY_SLOW_PATH_PROBABILITY, clock == 0)) {
-            update(); // only once if a SoftReference is created before the very first GC
-        }
-        return clock;
-    }
-
-    static void update() {
-        long now = TimeUtils.divideNanosToMillis(System.nanoTime());
-        if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, now >= clock)) {
-            clock = now; // just to be safe: nanoTime() should be monotonous
-        }
-    }
 }
