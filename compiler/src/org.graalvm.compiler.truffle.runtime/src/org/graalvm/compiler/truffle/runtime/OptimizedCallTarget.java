@@ -114,18 +114,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     SpeculationLog.class, "speculationLog");
     private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
                     Assumption.class, "nodeRewritingAssumption");
-    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, OptimizedAssumption> PROFILED_ARGUMENT_TYPES_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
-                    OptimizedCallTarget.class, OptimizedAssumption.class, "profiledArgumentTypesAssumption");
-    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, OptimizedAssumption> PROFILED_RETURN_TYPE_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
-                    OptimizedCallTarget.class, OptimizedAssumption.class, "profiledReturnTypeAssumption");
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, ArgumentsProfile> ARGUMENTS_PROFILE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
+                    OptimizedCallTarget.class, ArgumentsProfile.class, "argumentsProfile");
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, ReturnProfile> RETURN_PROFILE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
+                    OptimizedCallTarget.class, ReturnProfile.class, "returnProfile");
     private static final WeakReference<OptimizedDirectCallNode> NO_CALL = new WeakReference<>(null);
     private static final WeakReference<OptimizedDirectCallNode> MULTIPLE_CALLS = null;
     private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
     private static final int MAX_PROFILED_ARGUMENTS = 256;
-    private static final String ARGUMENT_TYPES_ASSUMPTION_NAME = "Profiled Argument Types";
-    private static final OptimizedAssumption INVALID_ARGUMENT_TYPES_ASSUMPTION = createInvalidAssumption(ARGUMENT_TYPES_ASSUMPTION_NAME);
-    private static final String RETURN_TYPE_ASSUMPTION_NAME = "Profiled Return Type";
-    private static final OptimizedAssumption INVALID_RETURN_TYPE_ASSUMPTION = createInvalidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
@@ -147,29 +143,59 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private int callAndLoopCount;
 
     /*
-     * Updating profiling information and its Assumption objects is done with minimal
-     * synchronization and atomic operations to keep the overhead as low as possible. This means
-     * that there can be races and we might see imprecise profiles. That is OK. But we must not
-     * install and run compiled code that depends on wrong profiling information, because that leads
-     * to crashes. Therefore, the Assumption and types need to be accessed in the correct order. The
-     * assumption fields are volatile to ensure access order is the same as program order.
+     * Profiling information (types and Assumption) are kept in 2-final-fields objects to ensure to
+     * always observe consistent types and assumption. This also enables using atomic operations to
+     * update the profiles safely. It is of utmost importance to never use profiled types without
+     * checking the Assumption, as otherwise it could cast objects to a different and incorrect
+     * type, which would crash.
      *
-     * When reading, first read the Assumption, then read the type(s), then check if the Assumption
-     * is valid. This ensures the type is the corresponding one to the Assumption (OK), or the type
-     * is newer but then the Assumption must have been invalidated so the check will fail.
-     *
-     * When writing, first invalidate the old Assumption, then update the type, and finally create
-     * and assign the new Assumption. This needs additional synchronization to make sure multiple
-     * threads don't try to change the type and assumption concurrently, which could result in
-     * mixing the type of one thread and the assumption of another.
-     *
-     * These fields are reset by TruffleFeature after boot image generation.
+     * These fields are reset by TruffleFeature after boot image generation. These fields are
+     * initially null, and once they become non-null they never become null again (except through
+     * the reset of TruffleFeature).
      */
-    @CompilationFinal(dimensions = 1) private Class<?>[] profiledArgumentTypes;
-    @CompilationFinal private volatile OptimizedAssumption profiledArgumentTypesAssumption;
-    @CompilationFinal private Class<?> profiledReturnType;
-    @CompilationFinal private volatile OptimizedAssumption profiledReturnTypeAssumption;
+    @CompilationFinal private volatile ArgumentsProfile argumentsProfile;
+    @CompilationFinal private volatile ReturnProfile returnProfile;
     @CompilationFinal private Class<? extends Throwable> profiledExceptionType;
+
+    private static final class ArgumentsProfile {
+        private static final String ARGUMENT_TYPES_ASSUMPTION_NAME = "Profiled Argument Types";
+        private static final ArgumentsProfile INVALID = new ArgumentsProfile();
+
+        // Invariant to simplify conditions: types is non-null if assumption is valid
+        private final OptimizedAssumption assumption;
+        @CompilationFinal(dimensions = 1) private final Class<?>[] types;
+
+        private ArgumentsProfile() {
+            this.assumption = createInvalidAssumption(ARGUMENT_TYPES_ASSUMPTION_NAME);
+            this.types = null;
+        }
+
+        private ArgumentsProfile(Class<?>[] types, String assumptionName) {
+            assert types != null;
+            this.assumption = createValidAssumption(assumptionName);
+            this.types = types;
+        }
+    }
+
+    private static final class ReturnProfile {
+        private static final String RETURN_TYPE_ASSUMPTION_NAME = "Profiled Return Type";
+        private static final ReturnProfile INVALID = new ReturnProfile();
+
+        // Invariant to simplify conditions: type is non-null if assumption is valid
+        private final OptimizedAssumption assumption;
+        private final Class<?> type;
+
+        private ReturnProfile() {
+            this.assumption = createInvalidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
+            this.type = null;
+        }
+
+        private ReturnProfile(Class<?> type) {
+            assert type != null;
+            this.assumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
+            this.type = type;
+        }
+    }
 
     /**
      * Set if compilation failed or was ignored. Reset by TruffleFeature after boot image
@@ -886,19 +912,19 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // region Manual Arguments profiling
     final void initializeArgumentTypes(Class<?>[] argumentTypes) {
         CompilerAsserts.neverPartOfCompilation();
-        if (profiledArgumentTypesAssumption != null) {
-            this.profiledArgumentTypesAssumption.invalidate();
-            throw new AssertionError("Argument types already initialized. initializeArgumentTypes must be called before any profile is initialized.");
-        } else {
-            this.profiledArgumentTypes = argumentTypes;
-            this.profiledArgumentTypesAssumption = createValidAssumption("Custom profiled argument types");
+        ArgumentsProfile newProfile = new ArgumentsProfile(argumentTypes, "Custom profiled argument types");
+        if (ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
             this.callProfiled = true;
+        } else {
+            this.argumentsProfile.assumption.invalidate();
+            throw new AssertionError("Argument types already initialized. initializeArgumentTypes() must be called before any profile is initialized.");
         }
     }
 
     private boolean isValidArgumentProfile(Object[] args) {
         assert callProfiled;
-        return profiledArgumentTypesAssumption.isValid() && checkProfiledArgumentTypes(args, profiledArgumentTypes);
+        ArgumentsProfile argumentsProfile = this.argumentsProfile;
+        return argumentsProfile.assumption.isValid() && checkProfiledArgumentTypes(args, argumentsProfile.types);
     }
 
     private static boolean checkProfiledArgumentTypes(Object[] args, Class<?>[] types) {
@@ -925,13 +951,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // This should be private but can't be. GR-19397
     public final void stopProfilingArguments() {
         assert !callProfiled;
-        Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
-        if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
+
+        ArgumentsProfile argumentsProfile = this.argumentsProfile;
+        if (argumentsProfile != null && argumentsProfile.assumption.isValid()) {
             // Argument profiling is not possible for targets of indirect calls.
             // The assumption will invalidate the callee but we shouldn't invalidate the caller.
             CompilerDirectives.transferToInterpreter();
-            argumentTypesAssumption.invalidate();
-            profiledArgumentTypes = null;
+            ArgumentsProfile previous = ARGUMENTS_PROFILE_UPDATER.getAndSet(this, ArgumentsProfile.INVALID);
+            previous.assumption.invalidate();
         }
     }
 
@@ -939,25 +966,25 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @ExplodeLoop
     public final void profileArguments(Object[] args) {
         assert !callProfiled;
-        Assumption typesAssumption = profiledArgumentTypesAssumption;
-        if (typesAssumption == null) {
+        ArgumentsProfile argumentsProfile = this.argumentsProfile;
+        if (argumentsProfile == null) {
             if (CompilerDirectives.inInterpreter()) {
                 initializeProfiledArgumentTypes(args);
             }
         } else {
-            Class<?>[] types = profiledArgumentTypes;
+            Class<?>[] types = argumentsProfile.types;
             if (types != null) {
                 if (types.length != args.length) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    typesAssumption.invalidate();
-                    profiledArgumentTypes = null;
-                } else if (typesAssumption.isValid()) {
+                    ArgumentsProfile previous = ARGUMENTS_PROFILE_UPDATER.getAndSet(this, ArgumentsProfile.INVALID);
+                    previous.assumption.invalidate();
+                } else if (argumentsProfile.assumption.isValid()) {
                     for (int i = 0; i < types.length; i++) {
                         Class<?> type = types[i];
                         Object value = args[i];
                         if (type != null && (value == null || value.getClass() != type)) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            updateProfiledArgumentTypes(args, types);
+                            updateProfiledArgumentTypes(args, argumentsProfile);
                             break;
                         }
                     }
@@ -969,51 +996,48 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private void initializeProfiledArgumentTypes(Object[] args) {
         CompilerAsserts.neverPartOfCompilation();
         assert !callProfiled;
-        final Class<?>[] types;
-        final OptimizedAssumption assumption;
+        final ArgumentsProfile newProfile;
         if (args.length <= MAX_PROFILED_ARGUMENTS && engine.argumentTypeSpeculation) {
-            types = new Class<?>[args.length];
+            Class<?>[] types = new Class<?>[args.length];
             for (int i = 0; i < args.length; i++) {
                 types[i] = classOf(args[i]);
             }
-            assumption = createValidAssumption(ARGUMENT_TYPES_ASSUMPTION_NAME);
+            newProfile = new ArgumentsProfile(types, ArgumentsProfile.ARGUMENT_TYPES_ASSUMPTION_NAME);
         } else {
-            types = null;
-            assumption = INVALID_ARGUMENT_TYPES_ASSUMPTION;
+            newProfile = ArgumentsProfile.INVALID;
         }
 
-        boolean wasNull;
-        synchronized (this) {
-            wasNull = profiledArgumentTypesAssumption == null;
-            if (wasNull) {
-                profiledArgumentTypes = types;
-                profiledArgumentTypesAssumption = assumption;
-            }
-        }
-
-        if (!wasNull) {
-            // Another thread initialized the assumption, we need to check the profile
+        if (!ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
+            // Another thread initialized the profile, we need to check it
             profileArguments(args);
         }
     }
 
-    private void updateProfiledArgumentTypes(Object[] args, Class<?>[] types) {
+    private void updateProfiledArgumentTypes(Object[] args, ArgumentsProfile oldProfile) {
         CompilerAsserts.neverPartOfCompilation();
         assert !callProfiled;
-        profiledArgumentTypesAssumption.invalidate();
-        for (int j = 0; j < types.length; j++) {
-            types[j] = joinTypes(types[j], classOf(args[j]));
+        Class<?>[] oldTypes = oldProfile.types;
+        Class<?>[] newTypes = new Class<?>[oldProfile.types.length];
+        for (int j = 0; j < oldTypes.length; j++) {
+            newTypes[j] = joinTypes(oldTypes[j], classOf(args[j]));
         }
-        profiledArgumentTypesAssumption = createValidAssumption(ARGUMENT_TYPES_ASSUMPTION_NAME);
+
+        ArgumentsProfile newProfile = new ArgumentsProfile(newTypes, ArgumentsProfile.ARGUMENT_TYPES_ASSUMPTION_NAME);
+        if (ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, oldProfile, newProfile)) {
+            oldProfile.assumption.invalidate();
+        } else {
+            // Another thread updated the profile, we need to retry
+            profileArguments(args);
+        }
     }
 
     // This should be private but can't be. GR-19397
     public final Object[] injectArgumentsProfile(Object[] originalArguments) {
         assert CompilerDirectives.inCompiledCode();
-        Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
-        Class<?>[] types = profiledArgumentTypes;
+        ArgumentsProfile argumentsProfile = this.argumentsProfile;
         Object[] args = originalArguments;
-        if (argumentTypesAssumption != null && types != null && argumentTypesAssumption.isValid()) {
+        if (argumentsProfile != null && argumentsProfile.assumption.isValid()) {
+            Class<?>[] types = argumentsProfile.types;
             args = unsafeCast(castArrayFixedLength(args, types.length), Object[].class, true, true, true);
             args = castArgumentsImpl(args, types);
         }
@@ -1034,21 +1058,19 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     protected final Class<?>[] getProfiledArgumentTypes() {
-        if (profiledArgumentTypesAssumption == null) {
+        if (argumentsProfile == null) {
             /*
              * We always need an assumption. If this method is called before the profile was
-             * initialized, we have to be conservative and disable profiling, which is done by
-             * creating an invalid assumption but leaving the type field null.
+             * initialized, we have to be conservative and disable profiling.
              */
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            PROFILED_ARGUMENT_TYPES_ASSUMPTION_UPDATER.compareAndSet(this, null, INVALID_ARGUMENT_TYPES_ASSUMPTION);
-            assert profiledArgumentTypesAssumption != null;
+            ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, null, ArgumentsProfile.INVALID);
+            assert argumentsProfile != null;
         }
 
-        OptimizedAssumption argumentTypesAssumption = profiledArgumentTypesAssumption;
-        Class<?>[] argumentTypes = profiledArgumentTypes;
-        if (argumentTypes != null && argumentTypesAssumption.isValid()) {
-            return argumentTypes;
+        ArgumentsProfile argumentsProfile = this.argumentsProfile;
+        if (argumentsProfile.assumption.isValid()) {
+            return argumentsProfile.types;
         } else {
             return null;
         }
@@ -1058,60 +1080,49 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // region Return value profiling
 
     private void profileReturnValue(Object result) {
-        Assumption returnTypeAssumption = profiledReturnTypeAssumption;
-        if (returnTypeAssumption == null) {
-            // we only profile return values in the interpreter as we don't want to deoptimize
-            // for immediate compiles.
+        ReturnProfile returnProfile = this.returnProfile;
+        if (returnProfile == null) {
+            // we only profile return values in the interpreter as we don't want to deoptimize for
+            // immediate compiles.
             if (CompilerDirectives.inInterpreter() && engine.returnTypeSpeculation) {
-                boolean wasNull;
-                synchronized (this) {
-                    wasNull = profiledReturnTypeAssumption == null;
-                    if (wasNull) {
-                        profiledReturnType = classOf(result);
-                        profiledReturnTypeAssumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
-                    }
-                }
-
-                if (!wasNull) {
-                    // Another thread initialized the assumption, we need to check the profile
+                final Class<?> type = classOf(result);
+                ReturnProfile newProfile = type == null ? ReturnProfile.INVALID : new ReturnProfile(type);
+                if (!RETURN_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
+                    // Another thread initialized the profile, we need to check it
                     profileReturnValue(result);
                 }
             }
         } else {
-            Class<?> returnType = profiledReturnType;
-            if (returnType != null && returnTypeAssumption.isValid() && (result == null || returnType != result.getClass())) {
+            if (returnProfile.assumption.isValid() && (result == null || returnProfile.type != result.getClass())) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                returnTypeAssumption.invalidate();
-                profiledReturnType = null;
+                ReturnProfile previous = RETURN_PROFILE_UPDATER.getAndSet(this, ReturnProfile.INVALID);
+                previous.assumption.invalidate();
             }
         }
     }
 
     private Object injectReturnValueProfile(Object result) {
-        Assumption returnTypeAssumption = profiledReturnTypeAssumption;
-        Class<?> returnType = profiledReturnType;
-        if (CompilerDirectives.inCompiledCode() && returnType != null && returnTypeAssumption != null && returnTypeAssumption.isValid()) {
-            return OptimizedCallTarget.unsafeCast(result, returnType, true, true, true);
+        ReturnProfile returnProfile = this.returnProfile;
+        if (CompilerDirectives.inCompiledCode() && returnProfile != null && returnProfile.assumption.isValid()) {
+            return OptimizedCallTarget.unsafeCast(result, returnProfile.type, true, true, true);
         }
         return result;
     }
 
     protected final Class<?> getProfiledReturnType() {
-        if (profiledReturnTypeAssumption == null) {
+        if (this.returnProfile == null) {
             /*
              * We always need an assumption. If this method is called before the profile was
-             * initialized, we have to be conservative and disable profiling, which is done by
-             * creating an invalid assumption but leaving the type field null.
+             * initialized, we have to be conservative and disable profiling.
              */
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            PROFILED_RETURN_TYPE_ASSUMPTION_UPDATER.compareAndSet(this, null, INVALID_RETURN_TYPE_ASSUMPTION);
-            assert profiledReturnTypeAssumption != null;
+            RETURN_PROFILE_UPDATER.compareAndSet(this, null, ReturnProfile.INVALID);
+            assert returnProfile != null;
         }
 
-        Assumption returnTypeAssumption = profiledReturnTypeAssumption;
-        Class<?> returnType = profiledReturnType;
-        if (returnType != null & returnTypeAssumption.isValid()) {
-            return returnType;
+        ReturnProfile returnProfile = this.returnProfile;
+        if (returnProfile.assumption.isValid()) {
+            return returnProfile.type;
         } else {
             return null;
         }
@@ -1147,10 +1158,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     protected List<OptimizedAssumption> getProfiledTypesAssumptions() {
         List<OptimizedAssumption> result = new ArrayList<>();
         if (getProfiledArgumentTypes() != null) {
-            result.add(profiledArgumentTypesAssumption);
+            result.add(argumentsProfile.assumption);
         }
         if (getProfiledReturnType() != null) {
-            result.add(profiledReturnTypeAssumption);
+            result.add(returnProfile.assumption);
         }
         return result;
     }
