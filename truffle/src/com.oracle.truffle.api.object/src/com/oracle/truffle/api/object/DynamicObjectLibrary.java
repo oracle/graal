@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.api.object;
 
-import java.util.function.IntUnaryOperator;
-
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
@@ -383,25 +380,6 @@ public abstract class DynamicObjectLibrary extends Library {
     public abstract boolean setShapeFlags(DynamicObject object, int flags);
 
     /**
-     * Update the shape flags, changing the object's shape if need be. Equivalent to
-     * {@code setShapeFlags(object, updateFunction.applyAsInt(getShapeFlags(object)))}.
-     *
-     * @param updateFunction An idempotent function that returns the updated property flags based on
-     *            the previous flags. Must be partial evaluation constant.
-     * @return {@code true} if the object's shape changed, {@code false} if no change was made.
-     * @since 20.2.0
-     */
-    public boolean updateShapeFlags(DynamicObject object, IntUnaryOperator updateFunction) {
-        CompilerAsserts.partialEvaluationConstant(updateFunction);
-        int oldFlags = getShapeFlags(object);
-        int newFlags = updateFunction.applyAsInt(oldFlags);
-        if (oldFlags == newFlags) {
-            return false;
-        }
-        return setShapeFlags(object, newFlags);
-    }
-
-    /**
      * Get property descriptor.
      *
      * @return {@link Property} if the property exists, else {@code null}
@@ -417,7 +395,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @see #getProperty(DynamicObject, Object)
      * @since 20.2.0
      */
-    public int getPropertyFlagsOrDefault(DynamicObject object, Object key, int defaultValue) {
+    public final int getPropertyFlagsOrDefault(DynamicObject object, Object key, int defaultValue) {
         Property property = getProperty(object, key);
         return property != null ? property.getFlags() : defaultValue;
     }
@@ -430,31 +408,6 @@ public abstract class DynamicObjectLibrary extends Library {
      * @since 20.2.0
      */
     public abstract boolean setPropertyFlags(DynamicObject object, Object key, int propertyFlags);
-
-    /**
-     * Update property flags, changing the object's shape if need be.
-     *
-     * @param updateFunction An idempotent function that returns the updated property flags based on
-     *            the previous flags. Must be partial evaluation constant.
-     * @return {@code true} if successful, {@code false} if there was no such property or no change
-     *         was made.
-     * @see #setPropertyFlags(DynamicObject, Object, int)
-     * @see #getPropertyFlagsOrDefault(DynamicObject, Object, int)
-     * @since 20.2.0
-     */
-    public boolean updatePropertyFlags(DynamicObject object, Object key, IntUnaryOperator updateFunction) {
-        CompilerAsserts.partialEvaluationConstant(updateFunction);
-        Property property = getProperty(object, key);
-        if (property == null) {
-            return false;
-        }
-        int oldFlags = property.getFlags();
-        int newFlags = updateFunction.applyAsInt(oldFlags);
-        if (oldFlags == newFlags) {
-            return false;
-        }
-        return setPropertyFlags(object, key, newFlags);
-    }
 
     /**
      * Makes this object shared.

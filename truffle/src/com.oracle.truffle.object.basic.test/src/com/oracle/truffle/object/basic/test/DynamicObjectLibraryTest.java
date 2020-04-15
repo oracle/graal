@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.IntUnaryOperator;
 import java.util.function.Supplier;
 
 import org.junit.Test;
@@ -469,9 +470,18 @@ public class DynamicObjectLibraryTest {
         assertTrue(lib.setShapeFlags(o1, f1));
         assertEquals(f1, lib.getShapeFlags(o1));
         assertEquals(f1, o1.getShape().getFlags());
-        assertTrue(lib.updateShapeFlags(o1, f -> f | f2));
+        assertTrue(updateShapeFlags(lib, o1, f -> f | f2));
         assertEquals(f3, lib.getShapeFlags(o1));
         assertEquals(f3, o1.getShape().getFlags());
+    }
+
+    private static boolean updateShapeFlags(DynamicObjectLibrary lib, DynamicObject obj, IntUnaryOperator updateFunction) {
+        int oldFlags = lib.getShapeFlags(obj);
+        int newFlags = updateFunction.applyAsInt(oldFlags);
+        if (oldFlags == newFlags) {
+            return false;
+        }
+        return lib.setShapeFlags(obj, newFlags);
     }
 
     @Test
@@ -502,13 +512,13 @@ public class DynamicObjectLibraryTest {
         assertTrue(lib.setPropertyFlags(o1, k1, f1));
         assertEquals(f1, lib.getPropertyFlagsOrDefault(o1, k1, -1));
         assertEquals(f1, uncachedGetProperty(o1, k1).getFlags());
-        assertTrue(lib.updatePropertyFlags(o1, k1, f -> f | f2));
+        assertTrue(updatePropertyFlags(lib, o1, k1, f -> f | f2));
         assertEquals(f3, lib.getPropertyFlagsOrDefault(o1, k1, -1));
         assertEquals(f3, uncachedGetProperty(o1, k1).getFlags());
 
         Shape before = o1.getShape();
         assertTrue(lib.setPropertyFlags(o1, k1, f3));
-        assertFalse(lib.updatePropertyFlags(o1, k1, f -> f | f2));
+        assertFalse(updatePropertyFlags(lib, o1, k1, f -> f | f2));
         assertEquals(f3, lib.getPropertyFlagsOrDefault(o1, k1, -1));
         assertEquals(f3, uncachedGetProperty(o1, k1).getFlags());
         assertSame(before, o1.getShape());
@@ -517,12 +527,25 @@ public class DynamicObjectLibraryTest {
         uncachedPut(o2, k1, v2, 0);
         assertTrue(lib.setPropertyFlags(o2, k1, f1));
         assertEquals(f1, lib.getPropertyFlagsOrDefault(o2, k1, -1));
-        assertTrue(lib.updatePropertyFlags(o2, k1, f -> f | f2));
+        assertTrue(updatePropertyFlags(lib, o2, k1, f -> f | f2));
         assertEquals(f3, lib.getPropertyFlagsOrDefault(o2, k1, -1));
         assertSame(o1.getShape(), o2.getShape());
 
         DynamicObject o3 = createEmpty();
         assertFalse(lib.setPropertyFlags(o3, k1, f1));
+    }
+
+    private static boolean updatePropertyFlags(DynamicObjectLibrary lib, DynamicObject obj, String key, IntUnaryOperator updateFunction) {
+        Property property = lib.getProperty(obj, key);
+        if (property == null) {
+            return false;
+        }
+        int oldFlags = property.getFlags();
+        int newFlags = updateFunction.applyAsInt(oldFlags);
+        if (oldFlags == newFlags) {
+            return false;
+        }
+        return lib.setPropertyFlags(obj, key, newFlags);
     }
 
     @Test
