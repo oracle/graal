@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.aarch64;
 
+import static com.oracle.svm.core.RegisterDumper.dumpReg;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -60,40 +62,40 @@ class AArch64UContextRegisterDumper implements UContextRegisterDumper {
     public void dumpRegisters(Log log, ucontext_t uContext) {
         mcontext_t sigcontext = uContext.uc_mcontext();
         GregsPointer regs = sigcontext.regs();
-        log.string("R0  ").zhex(regs.read(0)).newline();
-        log.string("R1  ").zhex(regs.read(1)).newline();
-        log.string("R2  ").zhex(regs.read(2)).newline();
-        log.string("R3  ").zhex(regs.read(3)).newline();
-        log.string("R4  ").zhex(regs.read(4)).newline();
-        log.string("R5  ").zhex(regs.read(5)).newline();
-        log.string("R6  ").zhex(regs.read(6)).newline();
-        log.string("R7  ").zhex(regs.read(7)).newline();
-        log.string("R8  ").zhex(regs.read(8)).newline();
-        log.string("R9  ").zhex(regs.read(9)).newline();
-        log.string("R10 ").zhex(regs.read(10)).newline();
-        log.string("R11 ").zhex(regs.read(11)).newline();
-        log.string("R12 ").zhex(regs.read(12)).newline();
-        log.string("R13 ").zhex(regs.read(13)).newline();
-        log.string("R14 ").zhex(regs.read(14)).newline();
-        log.string("R15 ").zhex(regs.read(15)).newline();
-        log.string("R16 ").zhex(regs.read(16)).newline();
-        log.string("R17 ").zhex(regs.read(17)).newline();
-        log.string("R18 ").zhex(regs.read(18)).newline();
-        log.string("R19 ").zhex(regs.read(19)).newline();
-        log.string("R20 ").zhex(regs.read(20)).newline();
-        log.string("R21 ").zhex(regs.read(21)).newline();
-        log.string("R22 ").zhex(regs.read(22)).newline();
-        log.string("R23 ").zhex(regs.read(23)).newline();
-        log.string("R24 ").zhex(regs.read(24)).newline();
-        log.string("R25 ").zhex(regs.read(25)).newline();
-        log.string("R26 ").zhex(regs.read(26)).newline();
-        log.string("R27 ").zhex(regs.read(27)).newline();
-        log.string("R28 ").zhex(regs.read(28)).newline();
-        log.string("R29 ").zhex(regs.read(29)).newline();
-        log.string("R30 ").zhex(regs.read(30)).newline();
-        log.string("R31 ").zhex(regs.read(31)).newline();
-        log.string("SP  ").zhex(sigcontext.sp()).newline();
-        log.string("PC  ").zhex(sigcontext.pc()).newline();
+        dumpReg(log, "R0  ", regs.read(0));
+        dumpReg(log, "R1  ", regs.read(1));
+        dumpReg(log, "R2  ", regs.read(2));
+        dumpReg(log, "R3  ", regs.read(3));
+        dumpReg(log, "R4  ", regs.read(4));
+        dumpReg(log, "R5  ", regs.read(5));
+        dumpReg(log, "R6  ", regs.read(6));
+        dumpReg(log, "R7  ", regs.read(7));
+        dumpReg(log, "R8  ", regs.read(8));
+        dumpReg(log, "R9  ", regs.read(9));
+        dumpReg(log, "R10 ", regs.read(10));
+        dumpReg(log, "R11 ", regs.read(11));
+        dumpReg(log, "R12 ", regs.read(12));
+        dumpReg(log, "R13 ", regs.read(13));
+        dumpReg(log, "R14 ", regs.read(14));
+        dumpReg(log, "R15 ", regs.read(15));
+        dumpReg(log, "R16 ", regs.read(16));
+        dumpReg(log, "R17 ", regs.read(17));
+        dumpReg(log, "R18 ", regs.read(18));
+        dumpReg(log, "R19 ", regs.read(19));
+        dumpReg(log, "R20 ", regs.read(20));
+        dumpReg(log, "R21 ", regs.read(21));
+        dumpReg(log, "R22 ", regs.read(22));
+        dumpReg(log, "R23 ", regs.read(23));
+        dumpReg(log, "R24 ", regs.read(24));
+        dumpReg(log, "R25 ", regs.read(25));
+        dumpReg(log, "R26 ", regs.read(26));
+        dumpReg(log, "R27 ", regs.read(27));
+        dumpReg(log, "R28 ", regs.read(28));
+        dumpReg(log, "R29 ", regs.read(29));
+        dumpReg(log, "R30 ", regs.read(30));
+        dumpReg(log, "R31 ", regs.read(31));
+        dumpReg(log, "SP  ", sigcontext.sp());
+        dumpReg(log, "PC  ", sigcontext.pc());
     }
 
     @Override

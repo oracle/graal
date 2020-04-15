@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.windows;
 
+import static com.oracle.svm.core.RegisterDumper.dumpReg;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
@@ -56,24 +58,24 @@ public class WindowsRegisterDumper implements RegisterDumper {
     }
 
     private static void dumpRegisters(Log log, CONTEXT context) {
-        log.string("RAX ").zhex(context.Rax()).newline();
-        log.string("RBX ").zhex(context.Rbx()).newline();
-        log.string("RCX ").zhex(context.Rcx()).newline();
-        log.string("RDX ").zhex(context.Rdx()).newline();
-        log.string("RBP ").zhex(context.Rbp()).newline();
-        log.string("RSI ").zhex(context.Rsi()).newline();
-        log.string("RDI ").zhex(context.Rdi()).newline();
-        log.string("RSP ").zhex(context.Rsp()).newline();
-        log.string("R8  ").zhex(context.R8()).newline();
-        log.string("R9  ").zhex(context.R9()).newline();
-        log.string("R10 ").zhex(context.R10()).newline();
-        log.string("R11 ").zhex(context.R11()).newline();
-        log.string("R12 ").zhex(context.R12()).newline();
-        log.string("R13 ").zhex(context.R13()).newline();
-        log.string("R14 ").zhex(context.R14()).newline();
-        log.string("R15 ").zhex(context.R15()).newline();
-        log.string("EFL ").zhex(context.EFlags()).newline();
-        log.string("RIP ").zhex(context.Rip()).newline();
+        dumpReg(log, "RAX ", context.Rax());
+        dumpReg(log, "RBX ", context.Rbx());
+        dumpReg(log, "RCX ", context.Rcx());
+        dumpReg(log, "RDX ", context.Rdx());
+        dumpReg(log, "RBP ", context.Rbp());
+        dumpReg(log, "RSI ", context.Rsi());
+        dumpReg(log, "RDI ", context.Rdi());
+        dumpReg(log, "RSP ", context.Rsp());
+        dumpReg(log, "R8  ", context.R8());
+        dumpReg(log, "R9  ", context.R9());
+        dumpReg(log, "R10 ", context.R10());
+        dumpReg(log, "R11 ", context.R11());
+        dumpReg(log, "R12 ", context.R12());
+        dumpReg(log, "R13 ", context.R13());
+        dumpReg(log, "R14 ", context.R14());
+        dumpReg(log, "R15 ", context.R15());
+        dumpReg(log, "EFL ", context.EFlags());
+        dumpReg(log, "RIP ", context.Rip());
     }
 
     @Override

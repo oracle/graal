@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.amd64;
 
+import static com.oracle.svm.core.RegisterDumper.dumpReg;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -59,24 +61,24 @@ class AMD64UContextRegisterDumper implements UContextRegisterDumper {
     @Override
     public void dumpRegisters(Log log, ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_gregs();
-        log.string("RAX ").zhex(gregs.read(GregEnum.REG_RAX.getCValue())).newline();
-        log.string("RBX ").zhex(gregs.read(GregEnum.REG_RBX.getCValue())).newline();
-        log.string("RCX ").zhex(gregs.read(GregEnum.REG_RCX.getCValue())).newline();
-        log.string("RDX ").zhex(gregs.read(GregEnum.REG_RDX.getCValue())).newline();
-        log.string("RBP ").zhex(gregs.read(GregEnum.REG_RBP.getCValue())).newline();
-        log.string("RSI ").zhex(gregs.read(GregEnum.REG_RSI.getCValue())).newline();
-        log.string("RDI ").zhex(gregs.read(GregEnum.REG_RDI.getCValue())).newline();
-        log.string("RSP ").zhex(gregs.read(GregEnum.REG_RSP.getCValue())).newline();
-        log.string("R8  ").zhex(gregs.read(GregEnum.REG_R8.getCValue())).newline();
-        log.string("R9  ").zhex(gregs.read(GregEnum.REG_R9.getCValue())).newline();
-        log.string("R10 ").zhex(gregs.read(GregEnum.REG_R10.getCValue())).newline();
-        log.string("R11 ").zhex(gregs.read(GregEnum.REG_R11.getCValue())).newline();
-        log.string("R12 ").zhex(gregs.read(GregEnum.REG_R12.getCValue())).newline();
-        log.string("R13 ").zhex(gregs.read(GregEnum.REG_R13.getCValue())).newline();
-        log.string("R14 ").zhex(gregs.read(GregEnum.REG_R14.getCValue())).newline();
-        log.string("R15 ").zhex(gregs.read(GregEnum.REG_R15.getCValue())).newline();
-        log.string("EFL ").zhex(gregs.read(GregEnum.REG_EFL.getCValue())).newline();
-        log.string("RIP ").zhex(gregs.read(GregEnum.REG_RIP.getCValue())).newline();
+        dumpReg(log, "RAX ", gregs.read(GregEnum.REG_RAX.getCValue()));
+        dumpReg(log, "RBX ", gregs.read(GregEnum.REG_RBX.getCValue()));
+        dumpReg(log, "RCX ", gregs.read(GregEnum.REG_RCX.getCValue()));
+        dumpReg(log, "RDX ", gregs.read(GregEnum.REG_RDX.getCValue()));
+        dumpReg(log, "RBP ", gregs.read(GregEnum.REG_RBP.getCValue()));
+        dumpReg(log, "RSI ", gregs.read(GregEnum.REG_RSI.getCValue()));
+        dumpReg(log, "RDI ", gregs.read(GregEnum.REG_RDI.getCValue()));
+        dumpReg(log, "RSP ", gregs.read(GregEnum.REG_RSP.getCValue()));
+        dumpReg(log, "R8  ", gregs.read(GregEnum.REG_R8.getCValue()));
+        dumpReg(log, "R9  ", gregs.read(GregEnum.REG_R9.getCValue()));
+        dumpReg(log, "R10 ", gregs.read(GregEnum.REG_R10.getCValue()));
+        dumpReg(log, "R11 ", gregs.read(GregEnum.REG_R11.getCValue()));
+        dumpReg(log, "R12 ", gregs.read(GregEnum.REG_R12.getCValue()));
+        dumpReg(log, "R13 ", gregs.read(GregEnum.REG_R13.getCValue()));
+        dumpReg(log, "R14 ", gregs.read(GregEnum.REG_R14.getCValue()));
+        dumpReg(log, "R15 ", gregs.read(GregEnum.REG_R15.getCValue()));
+        dumpReg(log, "EFL ", gregs.read(GregEnum.REG_EFL.getCValue()));
+        dumpReg(log, "RIP ", gregs.read(GregEnum.REG_RIP.getCValue()));
     }
 
     @Override

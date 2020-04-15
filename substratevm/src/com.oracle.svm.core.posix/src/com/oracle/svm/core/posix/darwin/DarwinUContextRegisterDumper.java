@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import static com.oracle.svm.core.RegisterDumper.dumpReg;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -58,24 +60,24 @@ class DarwinUContextRegisterDumper implements UContextRegisterDumper {
     @Override
     public void dumpRegisters(Log log, ucontext_t uContext) {
         Signal.MContext64 sigcontext = uContext.uc_mcontext64();
-        log.string("RAX ").zhex(((Pointer) sigcontext).readLong(sigcontext.rax_offset())).newline();
-        log.string("RBX ").zhex(((Pointer) sigcontext).readLong(sigcontext.rbx_offset())).newline();
-        log.string("RCX ").zhex(((Pointer) sigcontext).readLong(sigcontext.rcx_offset())).newline();
-        log.string("RDX ").zhex(((Pointer) sigcontext).readLong(sigcontext.rdx_offset())).newline();
-        log.string("RBP ").zhex(((Pointer) sigcontext).readLong(sigcontext.rbp_offset())).newline();
-        log.string("RSI ").zhex(((Pointer) sigcontext).readLong(sigcontext.rsi_offset())).newline();
-        log.string("RDI ").zhex(((Pointer) sigcontext).readLong(sigcontext.rdi_offset())).newline();
-        log.string("RSP ").zhex(((Pointer) sigcontext).readLong(sigcontext.rsp_offset())).newline();
-        log.string("R8  ").zhex(((Pointer) sigcontext).readLong(sigcontext.r8_offset())).newline();
-        log.string("R9  ").zhex(((Pointer) sigcontext).readLong(sigcontext.r9_offset())).newline();
-        log.string("R10 ").zhex(((Pointer) sigcontext).readLong(sigcontext.r10_offset())).newline();
-        log.string("R11 ").zhex(((Pointer) sigcontext).readLong(sigcontext.r11_offset())).newline();
-        log.string("R12 ").zhex(((Pointer) sigcontext).readLong(sigcontext.r12_offset())).newline();
-        log.string("R13 ").zhex(((Pointer) sigcontext).readLong(sigcontext.r13_offset())).newline();
-        log.string("R14 ").zhex(((Pointer) sigcontext).readLong(sigcontext.r14_offset())).newline();
-        log.string("R15 ").zhex(((Pointer) sigcontext).readLong(sigcontext.r15_offset())).newline();
-        log.string("EFL ").zhex(((Pointer) sigcontext).readLong(sigcontext.efl_offset())).newline();
-        log.string("RIP ").zhex(((Pointer) sigcontext).readLong(sigcontext.rip_offset())).newline();
+        dumpReg(log, "RAX ", ((Pointer) sigcontext).readLong(sigcontext.rax_offset()));
+        dumpReg(log, "RBX ", ((Pointer) sigcontext).readLong(sigcontext.rbx_offset()));
+        dumpReg(log, "RCX ", ((Pointer) sigcontext).readLong(sigcontext.rcx_offset()));
+        dumpReg(log, "RDX ", ((Pointer) sigcontext).readLong(sigcontext.rdx_offset()));
+        dumpReg(log, "RBP ", ((Pointer) sigcontext).readLong(sigcontext.rbp_offset()));
+        dumpReg(log, "RSI ", ((Pointer) sigcontext).readLong(sigcontext.rsi_offset()));
+        dumpReg(log, "RDI ", ((Pointer) sigcontext).readLong(sigcontext.rdi_offset()));
+        dumpReg(log, "RSP ", ((Pointer) sigcontext).readLong(sigcontext.rsp_offset()));
+        dumpReg(log, "R8  ", ((Pointer) sigcontext).readLong(sigcontext.r8_offset()));
+        dumpReg(log, "R9  ", ((Pointer) sigcontext).readLong(sigcontext.r9_offset()));
+        dumpReg(log, "R10 ", ((Pointer) sigcontext).readLong(sigcontext.r10_offset()));
+        dumpReg(log, "R11 ", ((Pointer) sigcontext).readLong(sigcontext.r11_offset()));
+        dumpReg(log, "R12 ", ((Pointer) sigcontext).readLong(sigcontext.r12_offset()));
+        dumpReg(log, "R13 ", ((Pointer) sigcontext).readLong(sigcontext.r13_offset()));
+        dumpReg(log, "R14 ", ((Pointer) sigcontext).readLong(sigcontext.r14_offset()));
+        dumpReg(log, "R15 ", ((Pointer) sigcontext).readLong(sigcontext.r15_offset()));
+        dumpReg(log, "EFL ", ((Pointer) sigcontext).readLong(sigcontext.efl_offset()));
+        dumpReg(log, "RIP ", ((Pointer) sigcontext).readLong(sigcontext.rip_offset()));
     }
 
     @Override
