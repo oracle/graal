@@ -2677,6 +2677,42 @@ mx.add_argument('--image-profile', action='append', help='Add a profile to be us
 mx.add_argument('--no-licenses', action='store_true', help='Do not add license files in the archives.')
 
 
+def _parse_cmd_arg(arg_name, env_var_name=None, separator=',', default_value=None):
+    """
+    :type arg_name: str
+    :type env_var_name: str | None
+    :type separator: str
+    :type default_value: bool | str | None
+    :rtype: bool | lst[str]
+    """
+    def expand_env_placeholder(values):
+        """
+        :type values: lst[str]
+        :rtype: lst[str]
+        """
+        for i in range(len(values)):
+            if values[i] == 'env.' + env_var_name:
+                return values[:i] + mx.get_env(env_var_name, default_value).split(separator) + values[i + 1:]
+        return values
+
+    env_var_name = arg_name.upper() if env_var_name is None else env_var_name
+
+    value = getattr(mx.get_opts(), arg_name, None)
+    value_from_env = value is None
+    if value_from_env:
+        value = mx.get_env(env_var_name, default_value)
+
+    if value is None:
+        return value
+    elif isinstance(_str_to_bool(value), bool):
+        return _str_to_bool(value)
+    else:
+        value_list = value.split(separator)
+        if not value_from_env:
+            value_list = expand_env_placeholder(value_list)
+        return value_list
+
+
 def _debug_images():
     return mx.get_opts().debug_images or _env_var_to_bool('DEBUG_IMAGES')
 
