@@ -64,12 +64,4 @@ public final class VirtualObjectState extends EscapeObjectState implements Node.
         return graph().addWithoutUnique(new VirtualObjectState(object(), values));
     }
 
-    @Override
-    public void applyToNonVirtual(NodeClosure<? super ValueNode> closure) {
-        for (ValueNode value : values) {
-            if (value != null) {
-                closure.apply(this, value);
-            }
-        }
-    }
 }

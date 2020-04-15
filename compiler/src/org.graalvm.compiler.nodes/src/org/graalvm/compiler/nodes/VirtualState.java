@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 
@@ -47,6 +48,11 @@ public abstract class VirtualState extends Node {
         public abstract void apply(Node usage, T node);
     }
 
+    public abstract static class NodePositionClosure<T extends Node> {
+
+        public abstract void apply(T from, Position p);
+    }
+
     public interface VirtualClosure {
 
         void apply(VirtualState node);
@@ -54,7 +60,7 @@ public abstract class VirtualState extends Node {
 
     public abstract VirtualState duplicateWithVirtualState();
 
-    public abstract void applyToNonVirtual(NodeClosure<? super ValueNode> closure);
+    public abstract void applyToNonVirtual(NodePositionClosure<? super Node> closure);
 
     /**
      * Performs a <b>pre-order</b> iteration over all elements reachable from this state that are a

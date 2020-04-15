@@ -114,7 +114,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.VirtualState.NodeClosure;
+import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.AbstractBoxingNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
@@ -1807,11 +1807,11 @@ public class SnippetTemplate {
                         valueInReplacement = (ValueNode) sideEffectDup;
                     }
                     ValueNode replacement = valueInReplacement;
-                    duplicated.applyToNonVirtual(new NodeClosure<ValueNode>() {
+                    duplicated.applyToNonVirtual(new NodePositionClosure<Node>() {
                         @Override
-                        public void apply(Node from, ValueNode node) {
-                            if (node == replacee) {
-                                from.replaceFirstInput(replacee, replacement);
+                        public void apply(Node from, Position p) {
+                            if (p.get(from) == replacee) {
+                                p.set(from, replacement);
                             }
                         }
                     });
@@ -1848,11 +1848,11 @@ public class SnippetTemplate {
                     FrameState newState = stateAfter.duplicate();
                     if (stateAfter.values().contains(replacee)) {
                         ValueNode valueInReplacement = (ValueNode) duplicates.get(returnNode.result());
-                        newState.applyToNonVirtual(new NodeClosure<ValueNode>() {
+                        newState.applyToNonVirtual(new NodePositionClosure<Node>() {
                             @Override
-                            public void apply(Node from, ValueNode node) {
-                                if (node == replacee) {
-                                    from.replaceFirstInput(replacee, valueInReplacement);
+                            public void apply(Node from, Position p) {
+                                if (p.get(from) == replacee) {
+                                    p.set(from, valueInReplacement);
                                 }
                             }
                         });
