@@ -41,6 +41,7 @@
 package org.graalvm.wasm;
 
 import org.graalvm.wasm.collection.ByteArrayList;
+import org.graalvm.wasm.collection.CountingConditionProfileArrayList;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.collection.LongArrayList;
 
@@ -49,12 +50,13 @@ import java.util.ArrayList;
 public class ExecutionState {
     private int stackSize;
     private int maxStackSize;
-    private ByteArrayList byteConstants;
-    private IntArrayList intConstants;
-    private LongArrayList longConstants;
-    private IntArrayList stackStates;
-    private IntArrayList continuationReturnLength;
-    private ArrayList<int[]> branchTables;
+    private final ByteArrayList byteConstants;
+    private final IntArrayList intConstants;
+    private final LongArrayList longConstants;
+    private final IntArrayList stackStates;
+    private final IntArrayList continuationReturnLength;
+    private final ArrayList<int[]> branchTables;
+    private final CountingConditionProfileArrayList brIfProfiles;
     private boolean reachable;
 
     public ExecutionState() {
@@ -66,6 +68,7 @@ public class ExecutionState {
         this.stackStates = new IntArrayList();
         this.continuationReturnLength = new IntArrayList();
         this.branchTables = new ArrayList<>();
+        this.brIfProfiles = new CountingConditionProfileArrayList();
         this.reachable = true;
     }
 
@@ -188,5 +191,13 @@ public class ExecutionState {
 
     public int[][] branchTables() {
         return branchTables.toArray(new int[0][]);
+    }
+
+    public CountingConditionProfileArrayList brIfProfiles() {
+        return brIfProfiles;
+    }
+
+    public int brIfProfileOffset() {
+        return this.brIfProfiles.size();
     }
 }

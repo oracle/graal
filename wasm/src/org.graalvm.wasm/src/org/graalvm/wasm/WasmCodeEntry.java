@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import org.graalvm.wasm.collection.CountingConditionProfileArrayList;
 
 public final class WasmCodeEntry {
     private final WasmFunction function;
@@ -55,6 +56,7 @@ public final class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private int[] intConstants;
     @CompilationFinal(dimensions = 1) private long[] longConstants;
     @CompilationFinal(dimensions = 2) private int[][] branchTables;
+    @CompilationFinal private CountingConditionProfileArrayList brIfProfiles;
 
     public WasmCodeEntry(WasmFunction function, byte[] data) {
         this.function = function;
@@ -65,6 +67,7 @@ public final class WasmCodeEntry {
         this.byteConstants = null;
         this.intConstants = null;
         this.longConstants = null;
+        this.brIfProfiles = null;
     }
 
     public WasmFunction function() {
@@ -161,6 +164,14 @@ public final class WasmCodeEntry {
 
     public int functionIndex() {
         return function.index();
+    }
+
+    public boolean profileBrIf(int index, boolean condition) {
+        return brIfProfiles.profile(index, condition);
+    }
+
+    public void setBrIfProfiles(CountingConditionProfileArrayList brIfProfiles) {
+        this.brIfProfiles = brIfProfiles;
     }
 
     @Override
