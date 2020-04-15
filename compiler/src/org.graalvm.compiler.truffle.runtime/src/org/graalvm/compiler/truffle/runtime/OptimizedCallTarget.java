@@ -149,6 +149,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * checking the Assumption, as otherwise it could cast objects to a different and incorrect
      * type, which would crash.
      *
+     * The profiled types are either an exact Class, or if it does not match then the profile type
+     * goes directly to null which means unprofiled. This is necessary because checking and casting
+     * is done in separate methods (in caller and callee respectively for arguments profiles, and
+     * the reverse for return profile). Therefore, we need two reads from the profile field, which
+     * means we could get a newer ArgumentsProfile, which would be invalid for the value passed in
+     * the CallTarget, except that the newer profile can only be less precise (= more null) and so
+     * will end up not casting at all the argument indices that did not match the profile.
+     *
      * These fields are reset by TruffleFeature after boot image generation. These fields are
      * initially null, and once they become non-null they never become null again (except through
      * the reset of TruffleFeature).
@@ -1098,6 +1106,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             }
         } else {
             if (returnProfile.assumption.isValid() && (result == null || returnProfile.type != result.getClass())) {
+                // Immediately go to invalid, do not try to widen the type.
+                // See the comment above the returnProfile field.
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 ReturnProfile previous = RETURN_PROFILE_UPDATER.getAndSet(this, ReturnProfile.INVALID);
                 previous.assumption.invalidate();
@@ -1181,6 +1191,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private static Class<?> joinTypes(Class<?> class1, Class<?> class2) {
+        // Immediately give up for that argument, do not try to widen the type.
+        // See the comment above the argumentsProfile field.
         if (class1 == class2) {
             return class1;
         } else {
