@@ -73,10 +73,11 @@ public abstract class AbstractRequestHandler {
                 Source source = sourceWrapper.getSource();
                 if (SourceUtils.isLineValid(line, source)) {
                     int oneBasedLineNumber = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
-                    NearestSections nearestSections = NearestSectionsFinder.findNearestSections(source, env, oneBasedLineNumber, character, true, tag);
+                    int oneBasedColumn = SourceUtils.zeroBasedColumnToOneBasedColumn(line, oneBasedLineNumber, character, source);
+                    NearestSections nearestSections = NearestSectionsFinder.findNearestSections(source, env, oneBasedLineNumber, oneBasedColumn, true, tag);
                     if (nearestSections.getNextSourceSection() != null) {
                         SourceSection nextNodeSection = nearestSections.getNextSourceSection();
-                        if (nextNodeSection.getStartLine() == oneBasedLineNumber && nextNodeSection.getStartColumn() == character + 1) {
+                        if (nextNodeSection.getStartLine() == oneBasedLineNumber && nextNodeSection.getStartColumn() == oneBasedColumn) {
                             // nextNodeSection is directly before the caret, so we use that one
                             return nearestSections.getInstrumentableNextNode();
                         }

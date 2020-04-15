@@ -209,8 +209,6 @@ public abstract class Accessor {
 
         public abstract Object createDefaultNodeObject(Node node);
 
-        public abstract boolean isValidNodeObject(Object obj);
-
         public abstract Object createLegacyMetaObjectWrapper(Object receiver, Object result);
 
         public abstract Object unwrapLegacyMetaObjectWrapper(Object receiver);

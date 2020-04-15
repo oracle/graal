@@ -27,8 +27,10 @@ package org.graalvm.tools.lsp.server.request;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.server.types.DocumentHighlight;
@@ -58,15 +60,21 @@ public final class HighlightRequestHandler extends AbstractRequestHandler {
         InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, character);
         if (nodeAtCaret != null) {
             if (nodeAtCaret.hasTag(StandardTags.ReadVariableTag.class) || nodeAtCaret.hasTag(StandardTags.WriteVariableTag.class)) {
-                return findOtherReadOrWrites(surrogate, nodeAtCaret);
+                return findOtherReadOrWrites(surrogate, nodeAtCaret, line, character);
             }
         }
         return Collections.emptyList();
     }
 
-    List<? extends DocumentHighlight> findOtherReadOrWrites(TextDocumentSurrogate surrogate, InstrumentableNode nodeAtCaret) {
-        String variableName = InteropUtils.getNodeObjectName(nodeAtCaret, logger);
-        if (variableName != null) {
+    List<? extends DocumentHighlight> findOtherReadOrWrites(TextDocumentSurrogate surrogate, InstrumentableNode nodeAtCaret, int line, int character) {
+        InteropUtils.VariableInfo[] caretVariables = InteropUtils.getNodeObjectVariables(nodeAtCaret);
+        if (caretVariables.length > 0) {
+            Set<String> variableNames = new HashSet<>();
+            for (InteropUtils.VariableInfo varInfo : caretVariables) {
+                if (contains(varInfo.getSourceSection(), line, character)) {
+                    variableNames.add(varInfo.getName());
+                }
+            }
             LinkedList<Scope> scopesOuterToInner = getScopesOuterToInner(surrogate, nodeAtCaret);
             List<DocumentHighlight> highlights = new ArrayList<>();
             for (Scope scope : scopesOuterToInner) {
@@ -80,15 +88,17 @@ public final class HighlightRequestHandler extends AbstractRequestHandler {
                                 InstrumentableNode instrumentableNode = (InstrumentableNode) node;
                                 if (instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ||
                                                 instrumentableNode.hasTag(StandardTags.ReadVariableTag.class)) {
-                                    String name = InteropUtils.getNodeObjectName(instrumentableNode, logger);
-                                    assert name != null : instrumentableNode.getClass().getCanonicalName() + ": " + instrumentableNode.toString();
-                                    if (variableName.equals(name)) {
-                                        SourceSection sourceSection = node.getSourceSection();
-                                        if (SourceUtils.isValidSourceSection(sourceSection, env.getOptions())) {
-                                            Range range = SourceUtils.sourceSectionToRange(sourceSection);
-                                            DocumentHighlightKind kind = instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ? DocumentHighlightKind.Write : DocumentHighlightKind.Read;
-                                            DocumentHighlight highlight = DocumentHighlight.create(range, kind);
-                                            highlights.add(highlight);
+                                    InteropUtils.VariableInfo[] variables = InteropUtils.getNodeObjectVariables(instrumentableNode);
+                                    assert variables.length > 0 : instrumentableNode.getClass().getCanonicalName() + ": " + instrumentableNode.toString();
+                                    for (InteropUtils.VariableInfo varInfo : variables) {
+                                        if (variableNames.contains(varInfo.getName())) {
+                                            SourceSection sourceSection = varInfo.getSourceSection();
+                                            if (SourceUtils.isValidSourceSection(sourceSection, env.getOptions())) {
+                                                Range range = SourceUtils.sourceSectionToRange(sourceSection);
+                                                DocumentHighlightKind kind = instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ? DocumentHighlightKind.Write : DocumentHighlightKind.Read;
+                                                DocumentHighlight highlight = DocumentHighlight.create(range, kind);
+                                                highlights.add(highlight);
+                                            }
                                         }
                                     }
                                 }
@@ -101,5 +111,14 @@ public final class HighlightRequestHandler extends AbstractRequestHandler {
             return highlights;
         }
         return Collections.emptyList();
+    }
+
+    private static boolean contains(SourceSection sourceSection, int zeroBasedLineNumber, int zeroBasedColumnNumber) {
+        int line = SourceUtils.zeroBasedLineToOneBasedLine(zeroBasedLineNumber, sourceSection.getSource());
+        int column = SourceUtils.zeroBasedColumnToOneBasedColumn(zeroBasedLineNumber, line, zeroBasedColumnNumber, sourceSection.getSource());
+        int startLine = sourceSection.getStartLine();
+        int endLine = sourceSection.getEndLine();
+        return (startLine < line || startLine == line && sourceSection.getStartColumn() <= column) &&
+                        (line < endLine || line == endLine && column <= sourceSection.getEndColumn());
     }
 }
