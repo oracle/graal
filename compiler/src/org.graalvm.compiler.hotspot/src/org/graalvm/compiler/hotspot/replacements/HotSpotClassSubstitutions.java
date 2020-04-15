@@ -81,7 +81,7 @@ public class HotSpotClassSubstitutions {
         }
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, optional = true)
     public static boolean isHiddenClass(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         if (klass.isNull()) {
