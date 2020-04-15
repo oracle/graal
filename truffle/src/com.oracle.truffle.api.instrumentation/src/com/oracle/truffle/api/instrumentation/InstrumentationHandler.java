@@ -228,16 +228,19 @@ final class InstrumentationHandler {
         boolean previousVisitingRetiredNodes = visitor.visitingRetiredNodes;
         boolean previousVisitingMaterialized = visitor.visitingMaterialized;
         Set<Class<? extends Tag>> previousMaterializeTags = visitor.materializeTags;
-        visitRoot(root, root, visitor, false, firstExecution);
-        visitor.root = previousRoot;
-        visitor.providedTags = previousProvidedTags;
-        visitor.rootSourceSection = previousRootSourceSection;
-        visitor.rootBits = previousRootBits;
-        visitor.computingRootNodeBits = previousComputingRootNodeBits;
-        visitor.firstExecution = previousFirstExecution;
-        visitor.visitingRetiredNodes = previousVisitingRetiredNodes;
-        visitor.visitingMaterialized = previousVisitingMaterialized;
-        visitor.materializeTags = previousMaterializeTags;
+        try {
+            visitRoot(root, root, visitor, false, firstExecution);
+        } finally {
+            visitor.root = previousRoot;
+            visitor.providedTags = previousProvidedTags;
+            visitor.rootSourceSection = previousRootSourceSection;
+            visitor.rootBits = previousRootBits;
+            visitor.computingRootNodeBits = previousComputingRootNodeBits;
+            visitor.firstExecution = previousFirstExecution;
+            visitor.visitingRetiredNodes = previousVisitingRetiredNodes;
+            visitor.visitingMaterialized = previousVisitingMaterialized;
+            visitor.materializeTags = previousMaterializeTags;
+        }
     }
 
     private static class FindSourcesVisitor extends AbstractNodeVisitor {
