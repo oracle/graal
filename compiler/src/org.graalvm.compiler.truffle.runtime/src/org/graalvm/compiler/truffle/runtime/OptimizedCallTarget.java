@@ -147,16 +147,23 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private int callAndLoopCount;
 
     /*
-     * Updating profiling information and its Assumption objects is done without synchronization and
-     * atomic operations to keep the overhead as low as possible. This means that there can be races
-     * and we might see imprecise profiles. That is OK. But we must not install and run compiled
-     * code that depends on wrong profiling information, because that leads to crashes. Therefore,
-     * the Assumption objects need to be updated in the correct order: A new valid assumption is
-     * installed *after* installing profile information, but the assumption is invalidated *before*
-     * invalidating profile information. This ensures that the compiler sees an invalidated
-     * assumption in case a race happens. Note that OptimizedAssumption.invalidate() performs
-     * synchronization and is therefore a memory barrier. Reset by TruffleFeature after boot image
-     * generation.
+     * Updating profiling information and its Assumption objects is done with minimal
+     * synchronization and atomic operations to keep the overhead as low as possible. This means
+     * that there can be races and we might see imprecise profiles. That is OK. But we must not
+     * install and run compiled code that depends on wrong profiling information, because that leads
+     * to crashes. Therefore, the Assumption and types need to be accessed in the correct order. The
+     * assumption fields are volatile to ensure access order is the same as program order.
+     *
+     * When reading, first read the Assumption, then read the type(s), then check if the Assumption
+     * is valid. This ensures the type is the corresponding one to the Assumption (OK), or the type
+     * is newer but then the Assumption must have been invalidated so the check will fail.
+     *
+     * When writing, first invalidate the old Assumption, then update the type, and finally create
+     * and assign the new Assumption. This needs additional synchronization to make sure multiple
+     * threads don't try to change the type and assumption concurrently, which could result in
+     * mixing the type of one thread and the assumption of another.
+     *
+     * These fields are reset by TruffleFeature after boot image generation.
      */
     @CompilationFinal(dimensions = 1) private Class<?>[] profiledArgumentTypes;
     @CompilationFinal private volatile OptimizedAssumption profiledArgumentTypesAssumption;
