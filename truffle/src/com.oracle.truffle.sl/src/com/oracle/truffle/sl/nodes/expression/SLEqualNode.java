@@ -119,7 +119,7 @@ public abstract class SLEqualNode extends SLBinaryNode {
                     @CachedLibrary("right") InteropLibrary rightInterop) {
         /*
          * This method looks very inefficient. In practice most of these branches fold as the
-         * interop type checks typically return a constant when cached using.
+         * interop type checks typically return a constant when using a cached library.
          *
          * Exercise: Try looking at what happens to this method during partial evaluation in IGV.
          * Tip: comment out all the previous @Specialization annotations to make it easier to

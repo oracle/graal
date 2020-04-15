@@ -1533,8 +1533,8 @@ public abstract class InteropLibrary extends Library {
      * <p>
      * <b>Sample interpretations:</b>
      * <ul>
-     * <li>A Java object might be of the same instance as another Java object. Typically compared
-     * using the <code>==</code> operator.
+     * <li>A Java object might be of the identical instance as another Java object. Typically
+     * compared using the <code>==</code> operator.
      * </ul>
      * <p>
      * Any implementation, with the exception of an implementation that returns
@@ -1550,27 +1550,45 @@ public abstract class InteropLibrary extends Library {
      * <li>It is <i>transitive</i>: for any values {@code x}, {@code y}, and {@code z}, if
      * {@code lib.isIdenticalOrUndefined(x, y)} returns {@link TriState#TRUE TRUE} and
      * {@code lib.isIdenticalOrUndefined(y, z)} returns {@link TriState#TRUE TRUE}, then
-     * {@code lib.isIdentical(x, z)} returns {@link TriState#TRUE TRUE}.
+     * {@code lib.isIdentical(x, z, zLib)} returns {@link TriState#TRUE TRUE}.
      * <li>It is <i>consistent</i>: for any values {@code x} and {@code y}, multiple invocations of
      * {@code lib.isIdenticalOrUndefined(x, y)} consistently returns the same value.
      * </ul>
      * <p>
-     * Sample export that shows if the identity of the object specified by a delgate value:
+     * Note that the target language identical semantics typically does not map directly to interop
+     * identical implementation. Instead target language identity is specified by the language
+     * operation, may take multiple other rules into account and may only fallback to interop
+     * identical for values without dedicated interop type. For example, in many languages
+     * primitives like numbers or strings may be identical, in the target language sense, still
+     * identity can only be exposed for objects and non-primitive values. Primitive values like
+     * {@link Integer} can never be interop identical to other boxed language integers as this would
+     * violate the symmetric property.
+     * <p>
+     * Example receiver class MyObject which uses an explicit identity field to compute whether two
+     * values are identical.
      *
      * <pre>
-     * &#64;ExportMessage
-     * static final class IsSameOrUndefined {
-     *     &#64;Specialization
-     *     static TriState doMyObject(MyObject receiver, MyObject other,
-     *                     InteropLibrary otherLibrary) {
-     *         return receiver.identity == other.identity ? TriState.TRUE : TriState.FALSE;
+     * static class MyObject {
+     *
+     *     final Object identity;
+     *
+     *     MyObject(Object identity) {
+     *         this.identity = identity;
      *     }
      *
-     *     &#64;Fallback
-     *     static TriState doOther(MyObject receiver, Object other,
-     *                     InteropLibrary otherLibrary) {
-     *         return TriState.UNDEFINED;
+     *     &#64;ExportMessage
+     *     static final class IsIdenticalOrUndefined {
+     *         &#64;Specialization
+     *         static TriState doMyObject(MyObject receiver, MyObject other) {
+     *             return receiver.identity == other.identity ? TriState.TRUE : TriState.FALSE;
+     *         }
+     *
+     *         &#64;Fallback
+     *         static TriState doOther(MyObject receiver, Object other) {
+     *             return TriState.UNDEFINED;
+     *         }
      *     }
+     *     // ...
      * }
      * </pre>
      *
@@ -1598,30 +1616,31 @@ public abstract class InteropLibrary extends Library {
      * <p>
      * This method has the following properties:
      * <ul>
-     * <li>It is <b>not</b> <i>reflexive</i>: for any value {@code x}, {@code lib.isIdentical(x, x)}
-     * may return {@code false} if the object does not support identity, else <code>true</code>.
-     * This method is reflexive if {@code x} supports identity. The code
-     * {@code lib.isIdentical(x, x)} may be used to find out whether a value supports identity. Use
-     * {@link #hasIdentity(Object)} for that purpose.
+     * <li>It is <b>not</b> <i>reflexive</i>: for any value {@code x},
+     * {@code lib.isIdentical(x, x, lib)} may return {@code false} if the object does not support
+     * identity, else <code>true</code>. This method is reflexive if {@code x} supports identity. A
+     * value supports identity if {@code lib.isIdentical(x, x, lib)} returns <code>true</code>. The
+     * method {@link #hasIdentity(Object)} may be used to document this intent explicitly.
      * <li>It is <i>symmetric</i>: for any values {@code x} and {@code y},
-     * {@code lib.isIdentical(x, y)} returns {@code true} if and only if
-     * {@code lib.isIdentical(y, x)} returns {@code true}.
+     * {@code lib.isIdentical(x, y, yLib)} returns {@code true} if and only if
+     * {@code lib.isIdentical(y, x, xLib)} returns {@code true}.
      * <li>It is <i>transitive</i>: for any values {@code x}, {@code y}, and {@code z}, if
-     * {@code lib.isIdentical(x, y)} returns {@code true} and {@code lib.isIdentical(y, z)} returns
-     * {@code true}, then {@code lib.isIdentical(x, z)} returns {@code true}.
+     * {@code lib.isIdentical(x, y, yLib)} returns {@code true} and
+     * {@code lib.isIdentical(y, z, zLib)} returns {@code true}, then
+     * {@code lib.isIdentical(x, z, zLib)} returns {@code true}.
      * <li>It is <i>consistent</i>: for any values {@code x} and {@code y}, multiple invocations of
-     * {@code lib.isIdentical(x, y)} consistently returns {@code true} or consistently return
+     * {@code lib.isIdentical(x, y, yLib)} consistently returns {@code true} or consistently return
      * {@code false}.
      * </ul>
      * <p>
      * Note that the target language identical semantics typically does not map directly to interop
      * identical implementation. Instead target language identity is specified by the language
-     * operation, may take multiple other rules into account and only fallback to interop identical
-     * if there was no other way to compare. For example, in many languages primitives like numbers
-     * or strings may be identical, in the target language sense, still identity can only be exposed
-     * for objects and non-primitive values. Primitive default values like java.lang.Integer can
-     * never be interop identical to other boxed language integers as this would violate the
-     * symmetric property.
+     * operation, may take multiple other rules into account and may only fallback to interop
+     * identical for values without dedicated interop type. For example, in many languages
+     * primitives like numbers or strings may be identical, in the target language sense, still
+     * identity can only be exposed for objects and non-primitive values. Primitive values like
+     * {@link Integer} can never be interop identical to other boxed language integers as this would
+     * violate the symmetric property.
      * <p>
      * This method performs double dispatch by forwarding calls to
      * {@link #isIdenticalOrUndefined(Object, Object)} with receiver and other value first and then
@@ -1704,7 +1723,7 @@ public abstract class InteropLibrary extends Library {
      * integers for objects that are not the same.
      * </ul>
      * This method must not cause any observable side-effects. If this method is implemented then
-     * also {@link #identityHashCode(Object)} must be implemented.
+     * also {@link #isIdenticalOrUndefined(Object, Object)} must be implemented.
      *
      * @throws UnsupportedMessageException if and only if {@link #hasIdentity(Object)} returns
      *             <code>false</code> for the same receiver.

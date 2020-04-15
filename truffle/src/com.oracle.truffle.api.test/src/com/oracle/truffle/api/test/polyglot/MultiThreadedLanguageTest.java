@@ -198,7 +198,7 @@ public class MultiThreadedLanguageTest {
 
         assertMultiThreadedError(value, Value::execute);
         assertMultiThreadedError(value, Value::isBoolean);
-// assertMultiThreadedError(value, Value::isHostObject);
+        // assertMultiThreadedError(value, Value::isHostObject);
         assertMultiThreadedError(value, Value::isNativePointer);
         assertMultiThreadedError(value, Value::isNull);
         assertMultiThreadedError(value, Value::isNumber);
@@ -215,7 +215,7 @@ public class MultiThreadedLanguageTest {
         assertMultiThreadedError(value, Value::fitsInLong);
         assertMultiThreadedError(value, Value::fitsInFloat);
         assertMultiThreadedError(value, Value::fitsInDouble);
-// assertMultiThreadedError(value, Value::asHostObject);
+        // assertMultiThreadedError(value, Value::asHostObject);
         assertMultiThreadedError(value, Value::asBoolean);
         assertMultiThreadedError(value, Value::asByte);
         assertMultiThreadedError(value, Value::asShort);

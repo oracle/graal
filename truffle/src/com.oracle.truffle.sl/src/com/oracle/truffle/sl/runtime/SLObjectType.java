@@ -115,7 +115,7 @@ public final class SLObjectType extends ObjectType {
     static final class IsIdenticalOrUndefined {
         @Specialization
         static TriState doSLObject(DynamicObject receiver, DynamicObject other) {
-            return receiver == other ? TriState.TRUE : TriState.FALSE;
+            return TriState.valueOf(receiver == other);
         }
 
         @Fallback

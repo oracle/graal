@@ -116,7 +116,7 @@ interface HostWrapper {
         }
         try {
             InteropLibrary receiverLib = InteropLibrary.getUncached(receiver);
-            InteropLibrary objLib = InteropLibrary.getUncached(receiver);
+            InteropLibrary objLib = InteropLibrary.getUncached(obj);
             return receiverLib.isIdentical(receiver, obj, objLib);
         } catch (Throwable t) {
             // propagate errors in languages they should be reported.
