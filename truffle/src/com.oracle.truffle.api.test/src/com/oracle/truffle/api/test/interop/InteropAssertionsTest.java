@@ -425,7 +425,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         IdentityHashCode identityHashCode;
 
         @ExportMessage
-        TriState isSameOrUndefined(Object other) {
+        TriState isIdenticalOrUndefined(Object other) {
             if (isSameOrUndefined == null) {
                 return TriState.UNDEFINED;
             }
@@ -454,14 +454,14 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         v0.identityHashCode = (r) -> System.identityHashCode(r);
         v1.isSameOrUndefined = (r, o) -> TriState.valueOf(o == v1);
         v1.identityHashCode = (r) -> System.identityHashCode(r);
-        assertTrue(l0.isSame(v0, v0, l0));
-        assertTrue(l1.isSame(v1, v1, l1));
-        assertFalse(l0.isSame(v0, v1, l1));
+        assertTrue(l0.isIdentical(v0, v0, l0));
+        assertTrue(l1.isIdentical(v1, v1, l1));
+        assertFalse(l0.isIdentical(v0, v1, l1));
 
         // missing identity hash code
         v0.isSameOrUndefined = (r, o) -> TriState.valueOf(o == v0);
         v0.identityHashCode = null;
-        assertFails(() -> l0.isSame(v0, v1, l1), AssertionError.class);
+        assertFails(() -> l0.isIdentical(v0, v1, l1), AssertionError.class);
 
         // symmetry violated
         v0.isSameOrUndefined = (r, o) -> {
@@ -471,7 +471,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
             return TriState.UNDEFINED;
         };
         v0.identityHashCode = (r) -> System.identityHashCode(r);
-        assertFails(() -> l0.isSame(v0, v1, l1), AssertionError.class);
+        assertFails(() -> l0.isIdentical(v0, v1, l1), AssertionError.class);
 
         // reflexivity violated
         v0.isSameOrUndefined = (r, o) -> {
@@ -481,7 +481,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
             return TriState.UNDEFINED;
         };
         v0.identityHashCode = (r) -> System.identityHashCode(r);
-        assertFails(() -> l0.isSame(v0, v0, l0), AssertionError.class);
+        assertFails(() -> l0.isIdentical(v0, v0, l0), AssertionError.class);
 
         // invalid identity hash code
         v0.isSameOrUndefined = (r, o) -> TriState.valueOf(o == v0 || o == v1);
@@ -489,11 +489,11 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
 
         v1.isSameOrUndefined = (r, o) -> TriState.valueOf(o == v0 || o == v1);
         v1.identityHashCode = (r) -> 43;
-        assertFails(() -> l0.isSame(v0, v1, l1), AssertionError.class);
+        assertFails(() -> l0.isIdentical(v0, v1, l1), AssertionError.class);
 
         // fix invalid identity hash code
         v1.identityHashCode = (r) -> 42;
-        assertTrue(l0.isSame(v0, v1, l1));
+        assertTrue(l0.isIdentical(v0, v1, l1));
     }
 
 }

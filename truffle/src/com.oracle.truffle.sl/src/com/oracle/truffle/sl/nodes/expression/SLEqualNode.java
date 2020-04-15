@@ -137,7 +137,7 @@ public abstract class SLEqualNode extends SLBinaryNode {
             } else if (left instanceof SLBigNumber && right instanceof SLBigNumber) {
                 return doBigNumber((SLBigNumber) left, (SLBigNumber) right);
             } else if (leftInterop.hasIdentity(left) && rightInterop.hasIdentity(right)) {
-                return leftInterop.isSame(left, right, rightInterop);
+                return leftInterop.isIdentical(left, right, rightInterop);
             } else {
                 /*
                  * We return false in good dynamic language manner. Stricter languages might throw

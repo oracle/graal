@@ -186,7 +186,7 @@ public final class SLFunction implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("unused")
-    static final class IsSameOrUndefined {
+    static final class IsIdenticalOrUndefined {
         @Specialization
         static TriState doSLFunction(SLFunction receiver, SLFunction other) {
             /*

@@ -42,8 +42,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [TruffleLanguage.Env.initializeLanguage](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#initializeLanguage-com.oracle.truffle.api.nodes.LanguageInfo-) method to force language initialization.
 * Added new identity APIs to `InteropLibrary`:
     * `hasIdentity(Object receiver)` to find out whether an object specifies identity
-	* `isSame(Object receiver, Object other, InteropLibrary otherLib)` to compare the identity of two object
-	* `isSameOrUndefined(Object receiver, Object other, InteropLibrary otherLib)` export to specify the identity of an object.
+	* `isIdentical(Object receiver, Object other, InteropLibrary otherLib)` to compare the identity of two object
+	* `isIdenticalOrUndefined(Object receiver, Object other)` export to specify the identity of an object.
 	* `identityHashCode(Object receiver)` useful to implement maps that depend on identity.
 * Added `TriState` utility class represents three states TRUE, FALSE and UNDEFINED.
 * Added `InteropLibrary.getUncached()` and `InteropLibrary.getUncached(Object)` short-cut methods for convenience.

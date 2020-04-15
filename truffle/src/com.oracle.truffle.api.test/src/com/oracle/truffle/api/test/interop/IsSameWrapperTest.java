@@ -74,7 +74,7 @@ public class IsSameWrapperTest extends InteropLibraryBaseTest {
         }
 
         @ExportMessage
-        TriState isSameOrUndefined(Object other) {
+        TriState isIdenticalOrUndefined(Object other) {
             if (other instanceof IdentityBoolean) {
                 boolean otherBoolean = ((IdentityBoolean) other).b;
                 return TriState.valueOf(this.b == otherBoolean);
@@ -135,11 +135,11 @@ public class IsSameWrapperTest extends InteropLibraryBaseTest {
                 InteropLibrary leftWrapperLib = createLibrary(InteropLibrary.class, leftWrapper);
                 InteropLibrary rightWrapperLib = createLibrary(InteropLibrary.class, rightWrapper);
 
-                assertEquals(expectedResult, leftLib.isSame(left, right, rightLib));
-                assertEquals(expectedResult, rightLib.isSame(right, left, leftLib));
-                assertEquals(expectedResult, leftWrapperLib.isSame(leftWrapper, right, rightLib));
-                assertEquals(expectedResult, leftWrapperLib.isSame(leftWrapper, rightWrapper, rightWrapperLib));
-                assertEquals(expectedResult, leftLib.isSame(left, rightWrapper, rightWrapperLib));
+                assertEquals(expectedResult, leftLib.isIdentical(left, right, rightLib));
+                assertEquals(expectedResult, rightLib.isIdentical(right, left, leftLib));
+                assertEquals(expectedResult, leftWrapperLib.isIdentical(leftWrapper, right, rightLib));
+                assertEquals(expectedResult, leftWrapperLib.isIdentical(leftWrapper, rightWrapper, rightWrapperLib));
+                assertEquals(expectedResult, leftLib.isIdentical(left, rightWrapper, rightWrapperLib));
 
                 if (leftLib.hasIdentity(left)) {
                     assertEquals(leftLib.asBoolean(left) ? 1 : 0, leftLib.identityHashCode(left));

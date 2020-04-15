@@ -111,7 +111,7 @@ public final class SLNull implements TruffleObject {
     }
 
     @ExportMessage
-    static TriState isSameOrUndefined(@SuppressWarnings("unused") SLNull receiver, Object other) {
+    static TriState isIdenticalOrUndefined(@SuppressWarnings("unused") SLNull receiver, Object other) {
         /*
          * SLNull values are identical to any other language null.
          */

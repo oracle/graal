@@ -1143,7 +1143,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static final class IsSameOrUndefined {
+    static final class IsIdenticalOrUndefined {
         @Specialization
         static TriState doHostObject(HostObject receiver, HostObject other) {
             return receiver.obj == other.obj ? TriState.TRUE : TriState.FALSE;

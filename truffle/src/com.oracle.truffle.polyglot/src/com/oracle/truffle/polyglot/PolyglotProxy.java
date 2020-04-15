@@ -828,7 +828,7 @@ final class PolyglotProxy implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("unused")
-    static final class IsSameOrUndefined {
+    static final class IsIdenticalOrUndefined {
         @Specialization
         static TriState doHostObject(PolyglotProxy receiver, PolyglotProxy other) {
             return receiver.proxy == other.proxy ? TriState.TRUE : TriState.FALSE;
