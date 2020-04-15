@@ -2677,13 +2677,14 @@ mx.add_argument('--image-profile', action='append', help='Add a profile to be us
 mx.add_argument('--no-licenses', action='store_true', help='Do not add license files in the archives.')
 
 
-def _parse_cmd_arg(arg_name, env_var_name=None, separator=',', default_value=None):
+def _parse_cmd_arg(arg_name, env_var_name=None, separator=',', parse_bool=True, default_value=None):
     """
     :type arg_name: str
     :type env_var_name: str | None
     :type separator: str
-    :type default_value: bool | str | None
-    :rtype: bool | lst[str]
+    :type parse_bool: bool
+    :type default_value: None | bool | str
+    :rtype: None | bool | lst[str]
     """
     def expand_env_placeholder(values):
         """
@@ -2704,10 +2705,10 @@ def _parse_cmd_arg(arg_name, env_var_name=None, separator=',', default_value=Non
 
     if value is None:
         return value
-    elif isinstance(_str_to_bool(value), bool):
+    elif parse_bool and isinstance(_str_to_bool(value), bool):
         return _str_to_bool(value)
     else:
-        value_list = value.split(separator)
+        value_list = value if isinstance(value, list) else value.split(separator)
         if not value_from_env:
             value_list = expand_env_placeholder(value_list)
         return value_list
@@ -2718,25 +2719,25 @@ def _debug_images():
 
 
 def _components_include_list():
-    included = mx.get_opts().components or mx.get_env('COMPONENTS', None)
+    included = _parse_cmd_arg('components', parse_bool=False, default_value=None)
     if included is None:
         return None
-    return [mx_sdk.graalvm_component_by_name(name) for name in included.split(',')]
+    return [mx_sdk.graalvm_component_by_name(name) for name in included]
 
 
 def _excluded_components():
-    excluded = mx.get_opts().exclude_components or mx.get_env('EXCLUDE_COMPONENTS', '')
-    excluded_list = excluded.split(',')
+    excluded = _parse_cmd_arg('exclude_components', parse_bool=False, default_value='')
     if mx.get_opts().disable_polyglot or _env_var_to_bool('DISABLE_POLYGLOT'):
-        excluded_list.append('poly')
-    return excluded_list
+        excluded.append('poly')
+    return excluded
 
 
 def _extra_image_builder_args(image):
     prefix = image + ':'
     prefix_len = len(prefix)
     args = []
-    for arg in mx.get_opts().extra_image_builder_argument or mx.get_env('EXTRA_IMAGE_BUILDER_ARGUMENTS', '').split():
+    extra_args = _parse_cmd_arg('extra_image_builder_argument', env_var_name='EXTRA_IMAGE_BUILDER_ARGUMENTS', separator=None, parse_bool=False, default_value='')
+    for arg in extra_args:
         if arg.startswith(prefix):
             args.append(arg[prefix_len:])
         elif arg.startswith('-'):
@@ -2748,7 +2749,7 @@ def _image_profile(image):
     prefix = image + ':'
     prefix_len = len(prefix)
     profiles = []
-    for arg in mx.get_opts().image_profile or mx.get_env('IMAGE_PROFILES', '').split(';'):
+    for arg in _parse_cmd_arg('image_profile', env_var_name='IMAGE_PROFILES', separator=';', parse_bool=False, default_value=''):
         if arg.startswith(prefix):
             profiles += arg[prefix_len:].split(',')
     return profiles
@@ -2771,16 +2772,18 @@ def _force_bash_launchers(launcher):
     launcher = remove_exe_suffix(launcher, require_suffix=False)
     launcher_name = basename(launcher)
 
-    only = mx.get_opts().native_images or mx.get_env('NATIVE_IMAGES', None)
-    if only:
-        only = [lib for lib in only.split(',') if not lib.startswith('lib:')]
-        return launcher_name not in only
-
-    forced = _str_to_bool(mx.get_opts().force_bash_launchers or mx.get_env('FORCE_BASH_LAUNCHERS', 'false' if has_vm_suite() else 'true'))
-    if isinstance(forced, bool):
-        return forced
+    only = _parse_cmd_arg('native_images')
+    if only is not None:
+        if isinstance(only, bool):
+            return not only
+        else:
+            return launcher_name not in only
     else:
-        return launcher_name in forced.split(',')
+        forced = _parse_cmd_arg('force_bash_launchers', default_value=str(not has_vm_suite()))
+        if isinstance(forced, bool):
+            return forced
+        else:
+            return launcher_name in forced
 
 
 def _skip_libraries(library):
@@ -2791,28 +2794,30 @@ def _skip_libraries(library):
         library = library.destination
     library_name = remove_lib_prefix_suffix(basename(library), require_suffix_prefix=False)
 
-    only = mx.get_opts().native_images or mx.get_env('NATIVE_IMAGES', None)
-    if only:
-        only = [lib[4:] for lib in only.split(',') if lib.startswith('lib:')]
-        return library_name not in only
-
-    skipped = _str_to_bool(mx.get_opts().skip_libraries or mx.get_env('SKIP_LIBRARIES', 'false' if has_vm_suite() else 'true'))
-    if isinstance(skipped, bool):
-        return skipped
+    only = _parse_cmd_arg('native_images')
+    if only is not None:
+        if isinstance(only, bool):
+            return not only
+        else:
+            only = [lib[4:] for lib in only if lib.startswith('lib:')]
+            return library_name not in only
     else:
-        return library_name in skipped.split(',')
+        skipped = _parse_cmd_arg('skip_libraries', default_value=str(not has_vm_suite()))
+        if isinstance(skipped, bool):
+            return skipped
+        else:
+            return library_name in skipped
 
 
 def _disable_installable(component):
     """ :type component: str | mx_sdk.GraalVmComponent """
-    disabled = _str_to_bool(mx.get_opts().disable_installables or mx.get_env('DISABLE_INSTALLABLES', 'false' if has_vm_suite() else 'true'))
+    disabled = _parse_cmd_arg('disable_installables', default_value=str(not has_vm_suite()))
     if isinstance(disabled, bool):
         return disabled
-    if isinstance(disabled, str):
-        disabled = disabled.split(',')
-    if isinstance(component, mx_sdk.GraalVmComponent):
-        component = component.short_name
-    return component in disabled
+    else:
+        if isinstance(component, mx_sdk.GraalVmComponent):
+            component = component.short_name
+        return component in disabled
 
 
 def _has_forced_launchers(component):
