@@ -44,7 +44,7 @@ public @interface ExcludeFromReferenceMap {
     /**
      * Documents the reason why the annotation is used.
      */
-    String value();
+    String reason();
 
     /**
      * If the supplier returns true, the annotated field will be excluded from the reference map.
@@ -52,7 +52,7 @@ public @interface ExcludeFromReferenceMap {
      * The provided class must have a nullary constructor, which is used to instantiate the class.
      * Then the supplier function is called on the newly instantiated instance.
      */
-    Class<? extends BooleanSupplier> condition() default ExcludeFromReferenceMap.Always.class;
+    Class<? extends BooleanSupplier> onlyIf() default ExcludeFromReferenceMap.Always.class;
 
     /** A {@link BooleanSupplier} that always returns {@code true}. */
     @Platforms(Platform.HOSTED_ONLY.class)

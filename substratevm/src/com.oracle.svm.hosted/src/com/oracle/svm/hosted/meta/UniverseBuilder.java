@@ -1247,7 +1247,7 @@ public class UniverseBuilder {
     private static boolean excludeFromReferenceMap(HostedField field) {
         ExcludeFromReferenceMap annotation = field.getAnnotation(ExcludeFromReferenceMap.class);
         if (annotation != null) {
-            return ReflectionUtil.newInstance(annotation.condition()).getAsBoolean();
+            return ReflectionUtil.newInstance(annotation.onlyIf()).getAsBoolean();
         }
         return false;
     }
