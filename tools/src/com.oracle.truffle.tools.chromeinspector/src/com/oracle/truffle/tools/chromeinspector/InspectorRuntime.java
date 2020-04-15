@@ -882,6 +882,7 @@ public final class InspectorRuntime extends RuntimeDomain {
     private class ConsoleOutputListener implements OutputHandler.Listener {
 
         private final String type;
+        private final StringBuilder output = new StringBuilder();
 
         ConsoleOutputListener(String type) {
             this.type = type;
@@ -889,7 +890,22 @@ public final class InspectorRuntime extends RuntimeDomain {
 
         @Override
         public void outputText(String str) {
-            notifyConsoleAPICalled(type, str.endsWith("\n") ? str.substring(0, str.length() - 1) : str);
+            output.append(str);
+            do {
+                int in = output.lastIndexOf("\n");
+                int ir = output.lastIndexOf("\r");
+                if (in < 0 && ir < 0) {
+                    break;
+                }
+                int end = Math.max(in, ir);
+                int endText = end;
+                if (ir >= 0 && in == ir + 1) { // \r\n
+                    endText--;
+                }
+                String text = output.substring(0, endText);
+                notifyConsoleAPICalled(type, text);
+                output.delete(0, end + 1);
+            } while (output.length() > 0);
         }
 
     }
