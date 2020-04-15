@@ -277,6 +277,24 @@ class NativeMethodMustBeDelayed {
         Object obj = new Object();
         return System.identityHashCode(obj);
     }
+
+    static void foo() {
+        /*
+         * Even when a class is initialized at run time, the check whether assertions are included
+         * must be constant folded at image build time. Otherwise we have a performance problem.
+         */
+        assert assertionOnlyCode();
+    }
+
+    static boolean assertionOnlyCode() {
+        AssertionOnlyClassMustBeUnreachable.reference();
+        return false;
+    }
+}
+
+class AssertionOnlyClassMustBeUnreachable {
+    static void reference() {
+    }
 }
 
 class UnsafeAccess {
@@ -368,6 +386,14 @@ class TestClassInitializationMustBeSafeFeature implements Feature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         checkClasses(true, false);
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        if (access.isReachable(AssertionOnlyClassMustBeUnreachable.class)) {
+            throw new Error("Assertion check was not constant folded for a class that is initialized at run time. " +
+                            "We assume here that the image is built with assertions disabled, which is the case for the gate check.");
+        }
     }
 
     @Override
@@ -473,6 +499,7 @@ public class TestClassInitializationMustBeSafe {
         }
 
         System.out.println(NativeMethodMustBeDelayed.i);
+        NativeMethodMustBeDelayed.foo();
     }
 }
 // Checkstyle: resume

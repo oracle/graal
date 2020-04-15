@@ -35,7 +35,6 @@ import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -47,23 +46,19 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.phases.NoClassInitializationPlugin;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
-import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -105,7 +100,7 @@ class EarlyClassInitializerAnalysis {
         Plugins plugins = new Plugins(invocationPlugins);
         plugins.appendInlineInvokePlugin(new AbortOnRecursiveInliningPlugin());
         plugins.setClassInitializationPlugin(new AbortOnUnitializedClassPlugin());
-        plugins.appendNodePlugin(new InterceptFieldAccessPlugin(originalProviders.getMetaAccess()));
+        plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(originalProviders.getMetaAccess()));
 
         graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
         context = new HighTierContext(originalProviders, null, OptimisticOptimizations.NONE);
@@ -202,30 +197,6 @@ class AbortOnUnitializedClassPlugin extends NoClassInitializationPlugin {
         ResolvedJavaMethod clinitMethod = b.getGraph().method();
         if (!type.isInitialized() && !type.isArray() && !type.equals(clinitMethod.getDeclaringClass())) {
             throw new ClassInitalizerHasSideEffectsException("Reference of class that is not initialized: " + type.toJavaName(true));
-        }
-        return false;
-    }
-}
-
-/** Allow constant folding for well-known fields. */
-class InterceptFieldAccessPlugin implements NodePlugin {
-
-    /**
-     * Loads of the field {@link ClassInitializationTracking#IS_IMAGE_BUILD_TIME} are injected into
-     * class initializers to provide stack traces when a class is wrongly initialized at image build
-     * time. For the purpose of this analysis, the stack trace collection must be excluded.
-     */
-    private final ResolvedJavaField isImageBuildTimeField;
-
-    InterceptFieldAccessPlugin(MetaAccessProvider metaAccess) {
-        isImageBuildTimeField = metaAccess.lookupJavaField(ReflectionUtil.lookupField(ClassInitializationTracking.class, "IS_IMAGE_BUILD_TIME"));
-    }
-
-    @Override
-    public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
-        if (field.equals(isImageBuildTimeField)) {
-            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
-            return true;
         }
         return false;
     }
