@@ -105,7 +105,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  *                                         rootNode.execute()
  * </pre>
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "hiding"})
 public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
