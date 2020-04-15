@@ -62,7 +62,7 @@ final class TruffleDebugOptions {
     static OutputStream getConfiguredLogStream() {
         OptionValues values = getOptions();
         if (values.hasBeenSet(LogFile)) {
-            return GraalTruffleRuntime.getRuntime().getLogStream();
+            return GraalTruffleRuntime.getRuntime().getDefaultLogStream();
         } else {
             return null;
         }

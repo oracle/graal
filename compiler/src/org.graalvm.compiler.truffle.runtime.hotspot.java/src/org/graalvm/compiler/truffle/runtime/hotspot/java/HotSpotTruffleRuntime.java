@@ -96,7 +96,7 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     }
 
     @Override
-    protected OutputStream getLogStream() {
+    protected OutputStream getDefaultLogStream() {
         return TTY.out;
     }
 }

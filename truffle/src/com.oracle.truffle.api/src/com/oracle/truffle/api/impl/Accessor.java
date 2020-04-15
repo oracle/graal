@@ -357,17 +357,17 @@ public abstract class Accessor {
 
         public abstract Object asBoxedGuestValue(Object guestObject, Object polyglotLanguageContext);
 
-        public abstract Object createDefaultLoggerCacheSPI();
+        public abstract Object createDefaultLoggerCache();
 
-        public abstract Handler getLogHandler(Object loggerCacheSPI);
+        public abstract Handler getLogHandler(Object loggerCache);
 
-        public abstract Map<String, Level> getLogLevels(Object loggerCacheSPI);
+        public abstract Map<String, Level> getLogLevels(Object loggerCache);
 
-        public abstract Object getLoggerOwner(Object loggerCacheSPI);
+        public abstract Object getLoggerOwner(Object loggerCache);
 
         public abstract TruffleLogger getLogger(Object polyglotInstrument, String name);
 
-        public abstract LogRecord createLogRecord(Object loggerCacheSPI, Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
+        public abstract LogRecord createLogRecord(Object loggerCache, Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
         public abstract Object getCurrentOuterContext();
 

@@ -1093,7 +1093,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         ((OptimizedCallTarget) compilable).engine.getLogger().log(Level.INFO, message);
     }
 
-    protected abstract OutputStream getLogStream();
+    protected abstract OutputStream getDefaultLogStream();
 
     // https://bugs.openjdk.java.net/browse/JDK-8209535
 

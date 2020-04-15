@@ -155,7 +155,7 @@ final class PolyglotLoggers {
     }
 
     static boolean isDefaultHandler(Handler handler) {
-        if (handler == null || handler.getClass() != PolyglotStreamHandler.class) {
+        if (!(handler instanceof PolyglotStreamHandler)) {
             return false;
         }
         PolyglotStreamHandler phandler = ((PolyglotStreamHandler) handler);
@@ -193,8 +193,8 @@ final class PolyglotLoggers {
         private final Set<Level> implicitLevels;
 
         LoggerCacheImpl(Handler handler, PolyglotEngineImpl engine, boolean useCurrentContext, Level... implicitLevels) {
-            Objects.requireNonNull(handler, "Handler must be non null.");
-            Objects.requireNonNull(engine, "Engine must be non null.");
+            Objects.requireNonNull(handler);
+            Objects.requireNonNull(engine);
             this.handler = handler;
             this.useCurrentContext = useCurrentContext;
             this.engineRef = new WeakReference<>(engine);
@@ -208,7 +208,7 @@ final class PolyglotLoggers {
         }
 
         private LoggerCacheImpl(Handler handler, boolean useCurrentContext, Map<String, Level> defaultValue) {
-            Objects.requireNonNull(handler, "Handler must be non null.");
+            Objects.requireNonNull(handler);
             this.handler = handler;
             this.useCurrentContext = useCurrentContext;
             this.engineRef = null;

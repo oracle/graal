@@ -712,7 +712,8 @@ public class TruffleGraphBuilderPlugins {
             DebugContext debug = access.getDebug();
             try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
                 TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
-                if (truffleMethod != null) {
+                if (truffleMethod != null) {    // Never null in compilation but can be null in
+                                                // TrufflCompilerImplTest
                     Map<String, Object> properties = new LinkedHashMap<>();
                     properties.put("location", location);
                     properties.put("method", targetMethod.format("%h.%n"));

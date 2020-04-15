@@ -86,7 +86,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     }
 
     @Override
-    protected OutputStream getLogStream() {
+    protected OutputStream getDefaultLogStream() {
         return TTYStream.INSTANCE;
     }
 
