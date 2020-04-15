@@ -584,6 +584,7 @@ public class MonitorSnippets implements Snippets {
                     if (probability(FREQUENT_PROBABILITY, succ.isNonNull())) {
                         // There may be a thread spinning on this monitor. Temporarily setting
                         // the monitor owner to null, and hope that the other thread will grab it.
+                        memoryBarrier(LOAD_STORE | STORE_STORE);
                         monitor.writeWord(ownerOffset, zero());
                         memoryBarrier(STORE_STORE | STORE_LOAD);
                         succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
