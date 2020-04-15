@@ -1057,7 +1057,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return castArguments;
     }
 
-    protected final Class<?>[] getProfiledArgumentTypes() {
+    private ArgumentsProfile getInitializedArgumentsProfile() {
         if (argumentsProfile == null) {
             /*
              * We always need an assumption. If this method is called before the profile was
@@ -1068,7 +1068,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             assert argumentsProfile != null;
         }
 
-        ArgumentsProfile argumentsProfile = this.argumentsProfile;
+        return argumentsProfile;
+    }
+
+    protected final Class<?>[] getProfiledArgumentTypes() {
+        ArgumentsProfile argumentsProfile = getInitializedArgumentsProfile();
         if (argumentsProfile.assumption.isValid()) {
             return argumentsProfile.types;
         } else {
@@ -1109,8 +1113,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return result;
     }
 
-    protected final Class<?> getProfiledReturnType() {
-        if (this.returnProfile == null) {
+    private ReturnProfile getInitializedReturnProfile() {
+        if (returnProfile == null) {
             /*
              * We always need an assumption. If this method is called before the profile was
              * initialized, we have to be conservative and disable profiling.
@@ -1120,7 +1124,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             assert returnProfile != null;
         }
 
-        ReturnProfile returnProfile = this.returnProfile;
+        return returnProfile;
+    }
+
+    protected final Class<?> getProfiledReturnType() {
+        ReturnProfile returnProfile = getInitializedReturnProfile();
         if (returnProfile.assumption.isValid()) {
             return returnProfile.type;
         } else {
@@ -1157,10 +1165,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     protected List<OptimizedAssumption> getProfiledTypesAssumptions() {
         List<OptimizedAssumption> result = new ArrayList<>();
-        if (getProfiledArgumentTypes() != null) {
+        ArgumentsProfile argumentsProfile = getInitializedArgumentsProfile();
+        if (argumentsProfile.assumption.isValid()) {
             result.add(argumentsProfile.assumption);
         }
-        if (getProfiledReturnType() != null) {
+        ReturnProfile returnProfile = getInitializedReturnProfile();
+        if (returnProfile.assumption.isValid()) {
             result.add(returnProfile.assumption);
         }
         return result;
