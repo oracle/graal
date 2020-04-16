@@ -24,20 +24,26 @@
  */
 package com.oracle.svm.core.hub;
 
+import com.oracle.svm.core.util.VMError;
+
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public final class AnnotationsEncoding {
 
     final Annotation[] allAnnotations;
-    final Annotation[] declaredAnnotations;
-    private static final Annotation[] EMPTY_ANNOTATION_ARRAY = new Annotation[0];
-    private static final AnnotationsEncoding EMPTY_ANNOTATIONS_ENCODING = new AnnotationsEncoding(null, null);
+    final int startOfDeclaredAnnotations;
 
-    public AnnotationsEncoding(Annotation[] allAnnotations, Annotation[] declaredAnnotations) {
+    private static final Annotation[] EMPTY_ANNOTATION_ARRAY = new Annotation[0];
+    private static final AnnotationsEncoding EMPTY_ANNOTATIONS_ENCODING = new AnnotationsEncoding(null, 0);
+
+    private AnnotationsEncoding(Annotation[] allAnnotations, int startOfDeclaredAnnotations) {
         this.allAnnotations = allAnnotations;
-        this.declaredAnnotations = declaredAnnotations;
+        this.startOfDeclaredAnnotations = startOfDeclaredAnnotations;
     }
 
     @Override
@@ -48,28 +54,16 @@ public final class AnnotationsEncoding {
         if (other == null || getClass() != other.getClass()) {
             return false;
         }
-
         AnnotationsEncoding that = (AnnotationsEncoding) other;
-        return Arrays.equals(allAnnotations, that.allAnnotations) &&
-                        Arrays.equals(declaredAnnotations, that.declaredAnnotations);
+        return startOfDeclaredAnnotations == that.startOfDeclaredAnnotations &&
+                        Arrays.equals(allAnnotations, that.allAnnotations);
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(allAnnotations) + Arrays.hashCode(declaredAnnotations);
-    }
-
-    public static AnnotationsEncoding decodeAnnotations(Object annotationsEncoding) {
-        if (annotationsEncoding == null) {
-            return EMPTY_ANNOTATIONS_ENCODING;
-        } else if (annotationsEncoding instanceof ArrayStoreException) {
-            /* JDK-7183985 was hit at image build time when the annotations were encoded. */
-            throw (ArrayStoreException) annotationsEncoding;
-        } else if (annotationsEncoding instanceof AnnotationsEncoding) {
-            return (AnnotationsEncoding) annotationsEncoding;
-        } else {
-            throw new ArrayStoreException("annotations encoding should be of type: " + AnnotationsEncoding.class.getName());
-        }
+        int result = Objects.hash(startOfDeclaredAnnotations);
+        result = 31 * result + Arrays.hashCode(allAnnotations);
+        return result;
     }
 
     public Annotation[] getAnnotations() {
@@ -81,7 +75,19 @@ public final class AnnotationsEncoding {
     }
 
     public Annotation[] getDeclaredAnnotations() {
-        return allAnnotations == null ? EMPTY_ANNOTATION_ARRAY : declaredAnnotations;
+        if (allAnnotations == null) {
+            return EMPTY_ANNOTATION_ARRAY;
+
+        }
+
+        int size = allAnnotations.length - startOfDeclaredAnnotations;
+        if (size == 0) {
+            return EMPTY_ANNOTATION_ARRAY;
+        }
+
+        Annotation[] declAnns = new Annotation[size];
+        System.arraycopy(allAnnotations, startOfDeclaredAnnotations, declAnns, 0, size);
+        return declAnns;
     }
 
     public <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
@@ -97,5 +103,47 @@ public final class AnnotationsEncoding {
             }
         }
         return null;
+    }
+
+    public static AnnotationsEncoding decodeAnnotations(Object annotationsEncoding) {
+        if (annotationsEncoding == null) {
+            return EMPTY_ANNOTATIONS_ENCODING;
+        } else if (annotationsEncoding instanceof ArrayStoreException) {
+            /* JDK-7183985 was hit at image build time when the annotations were encoded. */
+            throw (ArrayStoreException) annotationsEncoding;
+        } else if (annotationsEncoding instanceof AnnotationsEncoding) {
+            return (AnnotationsEncoding) annotationsEncoding;
+        } else {
+            VMError.shouldNotReachHere("Unexpected encoding for annotations in class: " + annotationsEncoding.getClass().getName());
+            return null;
+        }
+    }
+
+    public static Object encodeAnnotations(Set<Annotation> allAnnotations, Set<Annotation> declaredAnnotations) {
+        if (allAnnotations == null || allAnnotations.isEmpty()) {
+            return null;
+        }
+
+        if (declaredAnnotations == null || declaredAnnotations.isEmpty()) {
+            return new AnnotationsEncoding(allAnnotations.toArray(new Annotation[0]), allAnnotations.size());
+        }
+
+        assert allAnnotations.size() >= declaredAnnotations.size();
+        List<Annotation> head = new ArrayList<>();
+        List<Annotation> tail = new ArrayList<>();
+        for (Annotation a : allAnnotations) {
+            if (!declaredAnnotations.contains(a)) {
+                head.add(a);
+            } else {
+                tail.add(a);
+            }
+        }
+
+        int position = head.size();
+        Annotation[] encoding = new Annotation[head.size() + tail.size()];
+        System.arraycopy(head.toArray(new Annotation[0]), 0, encoding, 0, head.size());
+        System.arraycopy(tail.toArray(new Annotation[0]), 0, encoding, position, tail.size());
+
+        return new AnnotationsEncoding(encoding, position);
     }
 }
