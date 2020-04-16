@@ -30,10 +30,10 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -47,11 +47,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
+@GenerateUncached
 public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemMoveNode {
-    protected static final long MAX_JAVA_LEN = 256;
-
-    @CompilationFinal private boolean inJava = true;
-
     private static void copyForward(LLVMPointer target, LLVMPointer source, long length,
                     ManagedMemMoveHelperNode helper,
                     UnitSizeNode unitSizeNode) {
@@ -103,7 +100,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         copyForward(target, source, length, helper, unitSizeNode);
     }
 
-    boolean isManaged(LLVMPointer ptr) {
+    static boolean isManaged(LLVMPointer ptr) {
         return LLVMManagedPointer.isInstance(ptr);
     }
 
@@ -120,35 +117,37 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         }
     }
 
-    @Specialization
+    protected static final long MAX_JAVA_LEN = 256;
+
+    @Specialization(guards = "length <= MAX_JAVA_LEN")
+    protected void doInJava(Object target, Object source, long length,
+                    @CachedLanguage LLVMLanguage language,
+                    @Cached LLVMToNativeNode convertTarget,
+                    @Cached LLVMToNativeNode convertSource) {
+        LLVMMemory memory = language.getLLVMMemory();
+        LLVMNativePointer t = convertTarget.executeWithTarget(target);
+        LLVMNativePointer s = convertSource.executeWithTarget(source);
+        long targetPointer = t.asNative();
+        long sourcePointer = s.asNative();
+
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, length > 0 && sourcePointer != targetPointer)) {
+            // the unsigned comparison replaces
+            // sourcePointer + length <= targetPointer || targetPointer < sourcePointer
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, Long.compareUnsigned(targetPointer - sourcePointer, length) >= 0)) {
+                copyForward(memory, targetPointer, sourcePointer, length);
+            } else {
+                copyBackward(memory, targetPointer, sourcePointer, length);
+            }
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    @Specialization(replaces = "doInJava")
     protected void doNative(Object target, Object source, long length,
                     @CachedLanguage LLVMLanguage language,
                     @Cached LLVMToNativeNode convertTarget,
                     @Cached LLVMToNativeNode convertSource) {
-        memmove(language.getLLVMMemory(), convertTarget.executeWithTarget(target), convertSource.executeWithTarget(source), length);
-    }
-
-    private void memmove(LLVMMemory memory, LLVMNativePointer target, LLVMNativePointer source, long length) {
-        long targetPointer = target.asNative();
-        long sourcePointer = source.asNative();
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, length > 0 && sourcePointer != targetPointer)) {
-            if (inJava) {
-                if (length <= MAX_JAVA_LEN) {
-                    // the unsigned comparison replaces
-                    // sourcePointer + length <= targetPointer || targetPointer < sourcePointer
-                    if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, Long.compareUnsigned(targetPointer - sourcePointer, length) >= 0)) {
-                        copyForward(memory, targetPointer, sourcePointer, length);
-                    } else {
-                        copyBackward(memory, targetPointer, sourcePointer, length);
-                    }
-                    return;
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    inJava = false;
-                }
-            }
-            nativeMemCopy(memory, target, source, length);
-        }
+        language.getLLVMMemory().copyMemory(this, convertSource.executeWithTarget(source).asNative(), convertTarget.executeWithTarget(target).asNative(), length);
     }
 
     private void copyForward(LLVMMemory memory, long target, long source, long length) {
@@ -189,10 +188,5 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
             byte value = memory.getI8(this, sourcePointer);
             memory.putI8(this, targetPointer, value);
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    private void nativeMemCopy(LLVMMemory memory, LLVMNativePointer target, LLVMNativePointer source, long length) {
-        memory.copyMemory(this, source.asNative(), target.asNative(), length);
     }
 }
