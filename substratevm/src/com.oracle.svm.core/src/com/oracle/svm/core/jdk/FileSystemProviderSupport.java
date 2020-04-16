@@ -434,20 +434,31 @@ final class Target_java_io_FileSystem {
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class}) //
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
     static boolean useCanonPrefixCache = false;
+
+    @Alias
+    native String normalize(String path);
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-@SuppressWarnings("unused")
 class UserDirAccessors {
-
-    static String getUserDir(Target_java_io_UnixFileSystem that) {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).userDir();
+    @SuppressWarnings("unused")
+    static String getUserDir(Target_java_io_FileSystem that) {
+        /*
+         * Note that on Windows, we normalize the property value (JDK-8198997) and do not use the
+         * `StaticProperty.userDir()` like the rest (JDK-8066709).
+         */
+        return Platform.includedIn(Platform.WINDOWS.class)
+                        ? that.normalize(System.getProperty("user.dir"))
+                        : ImageSingletons.lookup(SystemPropertiesSupport.class).userDir();
     }
 }
 
 @TargetClass(className = "java.io.WinNTFileSystem")
 @Platforms(Platform.WINDOWS.class)
 final class Target_java_io_WinNTFileSystem {
+
+    @Alias @InjectAccessors(UserDirAccessors.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
+    private String userDir;
 
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
     private Target_java_io_ExpiringCache cache;
