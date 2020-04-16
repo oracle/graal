@@ -25,7 +25,7 @@
 package com.oracle.svm.core.c.libc;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class GLibc implements LibCBase {
@@ -40,12 +40,12 @@ public class GLibc implements LibCBase {
     }
 
     @Override
-    public List<String> getCCompilerOptions() {
-        return new ArrayList<>();
+    public List<String> getAdditionalQueryCodeCompilerOptions() {
+        return Collections.emptyList();
     }
 
     @Override
-    public List<String> getLinkerPreOptions() {
-        return new ArrayList<>();
+    public List<String> getCCompilerOptions() {
+        return Collections.emptyList();
     }
 }
