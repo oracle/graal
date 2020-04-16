@@ -992,9 +992,13 @@ class CMakeBuildTask(mx.NativeBuildTask):
 
     def _check_guard(self, guard_file, source_dir, cmake_config):
         if not os.path.exists(guard_file):
+            mx.logv("No guard file - reconfigure")
             return False
         with open(guard_file, 'r') as fp:
-            return fp.read() == self._guard_data(source_dir, cmake_config)
+            if fp.read() != self._guard_data(source_dir, cmake_config):
+                mx.logv("Guard file changed - reconfigure")
+                return False
+            return True
 
     def _write_guard(self, guard_file, source_dir, cmake_config):
         with open(guard_file, 'w') as fp:
@@ -1014,15 +1018,18 @@ class CMakeBuildTask(mx.NativeBuildTask):
         _, cwd, env = self._build_run_args()
         source_dir = self.subject.source_dirs()[0]
         guard_file = self.guard_file()
-        if not os.path.exists(os.path.join(self.subject.dir, 'Makefile')) or not self._check_guard(guard_file, source_dir, self.subject.cmake_config()):
-            cmakefile = os.path.join(self.subject.dir, 'CMakeCache.txt')
-            if os.path.exists(cmakefile):
-                # remove cache file if it exist
-                os.remove(cmakefile)
-            cmdline = ["-G", "Unix Makefiles", source_dir] + self.subject.cmake_config()
-            self.run_cmake(cmdline, silent=silent, cwd=cwd, env=env)
-            return True
-        return False
+        if os.path.exists(os.path.join(self.subject.dir, 'Makefile')):
+            if self._check_guard(guard_file, source_dir, self.subject.cmake_config()):
+                return False
+        else:
+            mx.logv("No existing Makefile - reconfigure")
+        cmakefile = os.path.join(self.subject.dir, 'CMakeCache.txt')
+        if os.path.exists(cmakefile):
+            # remove cache file if it exist
+            os.remove(cmakefile)
+        cmdline = ["-G", "Unix Makefiles", source_dir] + self.subject.cmake_config()
+        self.run_cmake(cmdline, silent=silent, cwd=cwd, env=env)
+        return True
 
     def run_cmake(self, cmdline, silent, *args, **kwargs):
         if mx._opts.verbose:
