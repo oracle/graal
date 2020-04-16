@@ -670,13 +670,9 @@ public class ValueAssert {
         assertFails(() -> value.as(FLOAT_OBJECT_MAP), ClassCastException.class);
         assertFails(() -> value.as(DOUBLE_OBJECT_MAP), ClassCastException.class);
 
-        try {
-            assertEquals(receivedObjectsLongMap, objectMap2);
-        } catch (AssertionError e) {
-            throw e;
-        }
-        assertEquals(receivedObjectsIntMap, objectMap3);
-        assertEquals(receivedObjectsLongMap, objectMap4);
+        assertCollectionEqualValues(receivedObjectsLongMap.values(), objectMap2.values());
+        assertCollectionEqualValues(receivedObjectsIntMap.values(), objectMap3.values());
+        assertCollectionEqualValues(receivedObjectsLongMap.values(), objectMap4.values());
     }
 
     private static void assertCollectionEqualValues(Collection<? extends Object> expected, Collection<? extends Object> actual) {
