@@ -129,7 +129,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         boolean builtinCallerFilter = true;
         boolean builtinHeuristicFilter = true;
         List<String> callerFilterFiles = new ArrayList<>();
-        boolean experimentalClassLoaderSupport = false;
+        boolean experimentalClassLoaderSupport = true;
         boolean build = false;
         int configWritePeriod = -1; // in seconds
         int configWritePeriodInitialDelay = 1; // in seconds
@@ -179,6 +179,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 callerFilterFiles.add(getTokenValue(token));
             } else if (token.equals("experimental-class-loader-support")) {
                 experimentalClassLoaderSupport = true;
+            } else if (token.startsWith("experimental-class-loader-support=")) {
+                experimentalClassLoaderSupport = Boolean.parseBoolean(getTokenValue(token));
             } else if (token.startsWith("config-write-period-secs=")) {
                 configWritePeriod = parseIntegerOrNegative(getTokenValue(token));
                 if (configWritePeriod <= 0) {
