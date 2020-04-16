@@ -142,6 +142,7 @@ meth public org.graalvm.polyglot.Context$Builder err(java.io.OutputStream)
 meth public org.graalvm.polyglot.Context$Builder fileSystem(org.graalvm.polyglot.io.FileSystem)
 meth public org.graalvm.polyglot.Context$Builder hostClassFilter(java.util.function.Predicate<java.lang.String>)
  anno 0 java.lang.Deprecated()
+meth public org.graalvm.polyglot.Context$Builder hostClassLoader(java.lang.ClassLoader)
 meth public org.graalvm.polyglot.Context$Builder in(java.io.InputStream)
 meth public org.graalvm.polyglot.Context$Builder logHandler(java.io.OutputStream)
 meth public org.graalvm.polyglot.Context$Builder logHandler(java.util.logging.Handler)
@@ -153,7 +154,7 @@ meth public org.graalvm.polyglot.Context$Builder resourceLimits(org.graalvm.poly
 meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,in,messageTransport,onlyLanguages,options,out,polyglotAccess,processHandler,resourceLimits,sharedEngine,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,messageTransport,onlyLanguages,options,out,polyglotAccess,processHandler,resourceLimits,sharedEngine,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder

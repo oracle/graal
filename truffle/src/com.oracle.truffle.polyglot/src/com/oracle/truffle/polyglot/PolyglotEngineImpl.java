@@ -163,6 +163,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     final Assumption noInnerContexts = Truffle.getRuntime().createAssumption("No inner contexts.");
     final Assumption noThreadTimingNeeded = Truffle.getRuntime().createAssumption("No enter timing needed.");
     final Assumption noPriorityChangeNeeded = Truffle.getRuntime().createAssumption("No priority change needed.");
+    final Assumption customHostClassLoader = Truffle.getRuntime().createAssumption("No custom host class loader needed.");
 
     volatile OptionDescriptors allOptions;
     volatile boolean closed;
@@ -784,6 +785,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
             l.initialize(context.config.limits, context);
         }
+        if (context.config.hostClassLoader != null) {
+            context.engine.customHostClassLoader.invalidate();
+        }
     }
 
     synchronized void removeContext(PolyglotContextImpl context) {
@@ -1333,7 +1337,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
                     Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
-                    EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory) {
+                    EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader) {
         try {
             PolyglotContextImpl context;
             synchronized (this) {
@@ -1413,7 +1417,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
                             allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
                             allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
-                            environmentAccess, environment, zone, polyglotLimits);
+                            environmentAccess, environment, zone, polyglotLimits, hostClassLoader);
             context = loadPreinitializedContext(config, hostAccess);
             boolean replayEvents = false;
             if (context == null) {
