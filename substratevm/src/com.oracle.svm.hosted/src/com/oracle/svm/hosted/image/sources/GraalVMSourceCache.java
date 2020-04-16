@@ -128,7 +128,7 @@ public class GraalVMSourceCache extends SourceCache {
 
         /* if any of the graal paths exist accept this root */
         for (String prefix : GRAALVM_SRC_PACKAGE_PREFIXES) {
-            String subDir = prefix.replaceAll("\\.", separator);
+            String subDir = prefix.replace(".", separator);
             if (Files.isDirectory(root.resolve(subDir))) {
                 return true;
             }
