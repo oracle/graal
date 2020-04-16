@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.jvmti;
+package com.oracle.svm.jvmtiagentbase.jvmti;
 
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CEnum;
-import org.graalvm.nativeimage.c.constant.CEnumValue;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.word.PointerBase;
 
-@CEnum("jvmtiEvent")
+@CStruct("jvmtiEventCallbacks")
 @CContext(JvmtiDirectives.class)
-public enum JvmtiEvent {
-    JVMTI_EVENT_VM_START,
-    JVMTI_EVENT_VM_INIT,
-    JVMTI_EVENT_VM_DEATH,
-    JVMTI_EVENT_BREAKPOINT,
-    JVMTI_EVENT_THREAD_END,
-    JVMTI_EVENT_NATIVE_METHOD_BIND,
-    JVMTI_EVENT_CLASS_PREPARE;
+public interface JvmtiEventCallbacks extends PointerBase {
+    @CField
+    void setVMStart(CFunctionPointer callback);
 
-    @CEnumValue
-    public native int getCValue();
+    @CField
+    void setVMInit(CFunctionPointer callback);
+
+    @CField
+    void setVMDeath(CFunctionPointer callback);
+
+    @CField
+    void setBreakpoint(CFunctionPointer callback);
+
+    @CField
+    void setThreadEnd(CFunctionPointer callback);
+
+    @CField
+    void setNativeMethodBind(CFunctionPointer callback);
+
+    @CField
+    void setClassPrepare(CFunctionPointer callback);
+
+    @CField
+    void setClassFileLoadHook(CFunctionPointer callback);
 }

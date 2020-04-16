@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.jvmti;
+package com.oracle.svm.jni.nativeapi;
 
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.struct.CField;
-import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.word.PointerBase;
+import org.graalvm.nativeimage.c.constant.CConstant;
 
-@CStruct(value = "_jvmtiEnv", addStructKeyword = true)
-@CContext(JvmtiDirectives.class)
-public interface JvmtiEnv extends PointerBase {
-    @CField("functions")
-    JvmtiInterface getFunctions();
+@CContext(JNIHeaderDirectives.class)
+public class JNIArrayReleaseModes {
+    // Checkstyle: stop
+
+    // This mode has no associated symbolic name
+    public static final int DEFAULT_MODE = 0;
+
+    @CConstant
+    public static native int JNI_COMMIT();
+
+    @CConstant
+    public static native int JNI_ABORT();
+
+    // Checkstyle: resume
 }

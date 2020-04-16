@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.agent.restrict;
 
-import static com.oracle.svm.agent.Support.getClassNameOrNull;
+import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
 
 import org.graalvm.compiler.phases.common.LazyValue;
 

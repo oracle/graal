@@ -24,7 +24,10 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
+import java.lang.ref.SoftReference;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -72,6 +75,7 @@ import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
+import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -292,7 +296,8 @@ public final class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        final DynamicHub dynamicHub = new DynamicHub(className, computeHubType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
+        final DynamicHub dynamicHub = new DynamicHub(className, computeHubType(type), computeReferenceType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
+                        modifiers, hubClassLoader);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         }
@@ -365,7 +370,7 @@ public final class SVMHost implements HostVM {
                 return HubType.ObjectArray;
             }
         } else if (type.isInstanceClass()) {
-            if (SubstrateOptions.UseCardRememberedSetHeap.getValue()) {
+            if (SubstrateOptions.UseCardRememberedSetHeap.getValue() || SubstrateOptions.LowLatencyGCReferenceHandling.getValue()) {
                 if (Reference.class.isAssignableFrom(type.getJavaClass())) {
                     return HubType.InstanceReference;
                 }
@@ -375,6 +380,22 @@ public final class SVMHost implements HostVM {
         } else {
             return HubType.Other;
         }
+    }
+
+    private static ReferenceType computeReferenceType(AnalysisType type) {
+        if (SubstrateOptions.UseCardRememberedSetHeap.getValue() || SubstrateOptions.LowLatencyGCReferenceHandling.getValue()) {
+            Class<?> clazz = type.getJavaClass();
+            if (PhantomReference.class.isAssignableFrom(clazz)) {
+                return ReferenceType.Phantom;
+            } else if (WeakReference.class.isAssignableFrom(clazz)) {
+                return ReferenceType.Weak;
+            } else if (SoftReference.class.isAssignableFrom(clazz)) {
+                return ReferenceType.Soft;
+            } else if (Reference.class.isAssignableFrom(clazz)) {
+                return ReferenceType.Other;
+            }
+        }
+        return ReferenceType.None;
     }
 
     @Override

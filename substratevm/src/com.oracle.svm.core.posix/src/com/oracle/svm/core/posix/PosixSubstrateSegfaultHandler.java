@@ -24,12 +24,8 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
@@ -40,128 +36,70 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
-import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
-import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
-import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets.IsolateCreationWatcher;
-import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.AdvancedSignalDispatcher;
 import com.oracle.svm.core.posix.headers.Signal.sigaction;
 import com.oracle.svm.core.posix.headers.Signal.siginfo_t;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.thread.VMThreads;
 
 @AutomaticFeature
-public class SegfaultHandlerFeature implements Feature {
-
+class PosixSubstrateSegfaultHandlerFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(SubstrateSegfaultHandler.class, new PosixSubstrateSegfaultHandler());
         if (SubstrateOptions.useLLVMBackend()) {
-            ImageSingletons.add(IsolateCreationWatcher.class, new SubstrateSegfaultHandler.SingleIsolateSegfaultIsolateSetup());
+            ImageSingletons.add(IsolateCreationWatcher.class, new PosixSubstrateSegfaultHandler.SingleIsolateSegfaultIsolateSetup());
         }
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addStartupHook(SubstrateSegfaultHandler::install);
     }
 }
 
-class SubstrateSegfaultHandler {
-
-    public static class Options {
-        @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library.")//
-        static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
-    }
-
-    private static volatile boolean dispatchInProgress = false;
-
+class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     @CEntryPoint
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints")
-    private static void dispatch(int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
-        if (!SubstrateOptions.useLLVMBackend()) {
-            if (SubstrateOptions.SpawnIsolates.getValue()) {
-                PointerBase heapBase = ImageSingletons.lookup(UContextRegisterDumper.class).getHeapBase(uContext);
-                WriteHeapBaseNode.writeCurrentVMHeapBase(heapBase);
-            }
-            if (SubstrateOptions.MultiThreaded.getValue()) {
-                IsolateThread threadPointer = (IsolateThread) ImageSingletons.lookup(UContextRegisterDumper.class).getThreadPointer(uContext);
-                WriteCurrentVMThreadNode.writeCurrentVMThread(threadPointer);
-            }
-            Isolate isolate = VMThreads.IsolateTL.get();
-            if (Isolates.checkSanity(isolate) != CEntryPointErrors.NO_ERROR ||
-                            (SubstrateOptions.SpawnIsolates.getValue() && VMThreads.IsolateTL.get().notEqual(KnownIntrinsics.heapBase()))) {
-                /*
-                 * This means the segfault happened in native code, so we don't even try to dump.
-                 */
-                return;
-            }
-        } else {
+    private static void dispatch(@SuppressWarnings("unused") int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
+        if (SubstrateOptions.useLLVMBackend()) {
             Isolate isolate = ((SingleIsolateSegfaultIsolateSetup) ImageSingletons.lookup(IsolateCreationWatcher.class)).getIsolate();
             if (isolate.rawValue() == -1) {
-                /*
-                 * Multiple isolates registered, we can't know which one caused the segfault.
-                 */
+                /* Multiple isolates registered, we can't know which one caused the segfault. */
                 return;
             }
             CEntryPointActions.enterIsolateFromCrashHandler(isolate);
-        }
-        dump(signalNumber, uContext);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible method", calleeMustBe = false)
-    private static void dump(int signalNumber, ucontext_t uContext) {
-        if (dispatchInProgress) {
-            Log.log().newline().string("[ [ SubstrateSegfaultHandler already handling signal ").signed(signalNumber).string(" ] ]").newline();
+        } else if (!tryEnterIsolate(uContext)) {
+            /* This means the segfault happened in native code, so we don't even try to dump. */
             return;
         }
-        dispatchInProgress = true;
-
-        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        Log log = Log.log();
-        log.autoflush(true);
-        log.string("[ [ SubstrateSegfaultHandler caught signal ").signed(signalNumber).string(" ] ]").newline();
-
-        ImageSingletons.lookup(UContextRegisterDumper.class).dumpRegisters(log, uContext);
-        log.string("Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
-        log.newline().string("Bye bye ...").newline().newline();
-        ImageSingletons.lookup(LogHandler.class).fatalError();
+        dump(uContext);
     }
 
     /** The address of the signal handler for signals handled by Java code, above. */
-    private static final CEntryPointLiteral<AdvancedSignalDispatcher> advancedSignalDispatcher = CEntryPointLiteral.create(SubstrateSegfaultHandler.class, "dispatch", int.class, siginfo_t.class,
-                    ucontext_t.class);
+    private static final CEntryPointLiteral<AdvancedSignalDispatcher> advancedSignalDispatcher = CEntryPointLiteral.create(PosixSubstrateSegfaultHandler.class,
+                    "dispatch", int.class, siginfo_t.class, ucontext_t.class);
 
-    static void install() {
-        Boolean optionValue = Options.InstallSegfaultHandler.getValue();
-        if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
-            int structSigActionSize = SizeOf.get(sigaction.class);
-            sigaction structSigAction = StackValue.get(structSigActionSize);
-            LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
-            /* Register sa_sigaction signal handler */
-            structSigAction.sa_flags(Signal.SA_SIGINFO());
-            structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
-            Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, WordFactory.nullPointer());
-        }
+    @Override
+    protected void install() {
+        int structSigActionSize = SizeOf.get(sigaction.class);
+        sigaction structSigAction = StackValue.get(structSigActionSize);
+        LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
+        /* Register sa_sigaction signal handler */
+        structSigAction.sa_flags(Signal.SA_SIGINFO());
+        structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
+        Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, WordFactory.nullPointer());
     }
 
     static class SingleIsolateSegfaultIsolateSetup implements IsolateCreationWatcher {

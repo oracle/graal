@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.jvmti;
+package com.oracle.svm.core.hub;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.List;
+import org.graalvm.compiler.core.common.NumUtil;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.c.CContext;
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 
-import com.oracle.svm.core.OS;
+@DuplicatedInNativeCode
+public enum ReferenceType {
+    None(0),     // non-reference class
+    Other(1),    // Subclass of Reference, but not a subclass of one of the classes below
+    Soft(2),     // Subclass of SoftReference
+    Weak(3),     // Subclass of WeakReference
+    Unused(4),
+    Phantom(5);  // Subclass of PhantomReference
 
-class JvmtiDirectives implements CContext.Directives {
+    private final byte value;
 
-    private final Path jdkIncludeDir = JavaVersionUtil.JAVA_SPEC <= 8
-                    ? Paths.get(System.getProperty("java.home")).getParent().resolve("include")
-                    : Paths.get(System.getProperty("java.home")).resolve("include");
-
-    @Override
-    public List<String> getHeaderFiles() {
-        return Collections.singletonList("\"" + jdkIncludeDir.resolve("jvmti.h") + "\"");
+    ReferenceType(int value) {
+        this.value = NumUtil.safeToByte(value);
     }
 
-    @Override
-    public List<String> getOptions() {
-        return Collections.singletonList("-I" + jdkIncludeDir.resolve(OS.getCurrent() == OS.WINDOWS ? "win32" : OS.getCurrent().asPackageName()));
+    public byte getValue() {
+        return value;
     }
 }

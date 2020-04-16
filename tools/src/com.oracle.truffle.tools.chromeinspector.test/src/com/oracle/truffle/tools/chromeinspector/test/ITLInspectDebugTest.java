@@ -291,6 +291,83 @@ public class ITLInspectDebugTest {
         tester.finish();
     }
 
+    @Test
+    public void testOutput() throws Exception {
+        Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
+                        "  PRINT(OUT, \"one\ntwo\n\"),\n" +
+                        "  STATEMENT(),\n" +
+                        "  PRINT(OUT, \"three,\"),\n" +
+                        "  STATEMENT(),\n" +
+                        "  PRINT(OUT, \"four\rfive\"),\n" +
+                        "  STATEMENT(),\n" +
+                        "  PRINT(OUT, \"\r\n\"),\n" +
+                        "  PRINT(OUT, \"\r\nsix,\"),\n" +
+                        "  PRINT(OUT, \"seven\n\neight\"),\n" +
+                        "  STATEMENT(),\n" +
+                        "  PRINT(OUT, \"\r\nnine\rten\r\n\")\n" +
+                        ")\n", "code").build();
+        String sourceURI = InspectorTester.getStringURI(source.getURI());
+        tester = InspectorTester.start(true);
+        tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
+        tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
+        tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":1}\n" +
+                        "{\"result\":{},\"id\":2}\n" +
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
+        tester.eval(source);
+        long id = tester.getContextId();
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":22,\"scriptId\":\"0\",\"endColumn\":1,\"startColumn\":0,\"startLine\":0,\"length\":248," +
+                                "\"executionContextId\":" + id + ",\"url\":\"" + sourceURI + "\",\"hash\":\"e47e9ba0e3dc9092fc857bbaf75a5a33fe8aba69\"}}\n"));
+        tester.receiveMessages(
+                        "{\"method\":\"Runtime.consoleAPICalled\"", "\"value\":\"one\\ntwo\"}",
+                        "}}\n");
+        tester.receiveMessages("{\"method\":\"Debugger.paused\"", "\"url\":\"" + sourceURI + "\"}]}}\n");
+        tester.sendMessage("{\"id\":5,\"method\":\"Debugger.stepOver\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":5}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n"));
+        // no newline, no output
+        tester.receiveMessages("{\"method\":\"Debugger.paused\"", "\"url\":\"" + sourceURI + "\"}]}}\n");
+        tester.sendMessage("{\"id\":5,\"method\":\"Debugger.stepOver\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":5}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n"));
+        tester.receiveMessages(
+                        "{\"method\":\"Runtime.consoleAPICalled\"", "\"value\":\"three,four\"}",
+                        "}}\n");
+        tester.receiveMessages("{\"method\":\"Debugger.paused\"", "\"url\":\"" + sourceURI + "\"}]}}\n");
+        tester.sendMessage("{\"id\":5,\"method\":\"Debugger.stepOver\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":5}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n"));
+        tester.receiveMessages(
+                        "{\"method\":\"Runtime.consoleAPICalled\"", "\"value\":\"five\"}",
+                        "}}\n");
+        tester.receiveMessages(
+                        "{\"method\":\"Runtime.consoleAPICalled\"", "\"value\":\"\"}",
+                        "}}\n");
+        tester.receiveMessages(
+                        "{\"method\":\"Runtime.consoleAPICalled\"", "\"value\":\"six,seven\\n\"}",
+                        "}}\n");
+        tester.receiveMessages("{\"method\":\"Debugger.paused\"", "\"url\":\"" + sourceURI + "\"}]}}\n");
+        tester.sendMessage("{\"id\":5,\"method\":\"Debugger.stepOver\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":5}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n"));
+        tester.receiveMessages(
+                        "{\"method\":\"Runtime.consoleAPICalled\"", "\"value\":\"eight\\r\\nnine\\rten\"}",
+                        "}}\n");
+        tester.receiveMessages("{\"method\":\"Debugger.paused\"", "\"url\":\"" + sourceURI + "\"}]}}\n");
+        tester.sendMessage("{\"id\":5,\"method\":\"Debugger.stepOver\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":5}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n"));
+        tester.finish();
+    }
+
     // @formatter:on
     // CheckStyle: resume line length check
 }

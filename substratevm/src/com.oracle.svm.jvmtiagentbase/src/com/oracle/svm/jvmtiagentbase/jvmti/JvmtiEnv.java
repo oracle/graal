@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.jvmti;
+package com.oracle.svm.jvmtiagentbase.jvmti;
 
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.struct.CBitfield;
+import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
-@CStruct("jvmtiCapabilities")
+@CStruct(value = "_jvmtiEnv", addStructKeyword = true)
 @CContext(JvmtiDirectives.class)
-public interface JvmtiCapabilities extends PointerBase {
-    @CBitfield("can_generate_breakpoint_events")
-    void setCanGenerateBreakpointEvents(int value);
-
-    @CBitfield("can_access_local_variables")
-    void setCanAccessLocalVariables(int value);
-
-    @CBitfield("can_force_early_return")
-    void setCanForceEarlyReturn(int value);
-
-    @CBitfield("can_generate_native_method_bind_events")
-    void setCanGenerateNativeMethodBindEvents(int value);
-
-    @CBitfield("can_get_bytecodes")
-    void setCanGetBytecodes(int value);
-
-    @CBitfield("can_get_constant_pool")
-    void setCanGetConstantPool(int value);
+public interface JvmtiEnv extends PointerBase {
+    @CField("functions")
+    JvmtiInterface getFunctions();
 }

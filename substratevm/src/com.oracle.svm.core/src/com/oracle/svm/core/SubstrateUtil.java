@@ -283,17 +283,26 @@ public class SubstrateUtil {
         return diagnosticsInProgress;
     }
 
-    /**
-     * Prints extensive diagnostic information to the given Log.
-     */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
+    /** Prints extensive diagnostic information to the given Log. */
     public static void printDiagnostics(Log log, Pointer sp, CodePointer ip) {
+        printDiagnostics(log, sp, ip, WordFactory.nullPointer());
+    }
+
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
+    static void printDiagnostics(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context) {
+        log.newline();
         if (diagnosticsInProgress) {
             log.string("Error: printDiagnostics already in progress.").newline();
+            log.newline();
             return;
         }
         diagnosticsInProgress = true;
-        log.newline();
+
+        try {
+            dumpRegisters(log, context);
+        } catch (Exception e) {
+            dumpException(log, "dumpRegisters", e);
+        }
 
         try {
             dumpJavaFrameAnchors(log);
@@ -389,6 +398,16 @@ public class SubstrateUtil {
 
     private static void dumpException(Log log, String context, Exception e) {
         log.newline().string("[!!! Exception during ").string(context).string(": ").string(e.getClass().getName()).string("]").newline();
+    }
+
+    @NeverInline("catch implicit exceptions")
+    private static void dumpRegisters(Log log, RegisterDumper.Context context) {
+        if (context.isNonNull()) {
+            log.string("General Purpose Register Set values:").newline();
+            log.indent(true);
+            RegisterDumper.singleton().dumpRegisters(log, context);
+            log.indent(false);
+        }
     }
 
     @NeverInline("catch implicit exceptions")

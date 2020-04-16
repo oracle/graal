@@ -308,9 +308,6 @@ public class ComponentInstaller extends Launcher {
         if (runLauncher()) {
             return null;
         }
-        if (cmdHandler == null) {
-            error("ERROR_MissingCommand"); // NOI18N
-        }
         return go;
     }
 
@@ -344,6 +341,12 @@ public class ComponentInstaller extends Launcher {
         } else if (env.hasOption(Commands.OPTION_SHOW_VERSION)) {
             printVersion();
         }
+
+        // check only after the version option:
+        if (cmdHandler == null) {
+            error("ERROR_MissingCommand"); // NOI18N
+        }
+
         int srcCount = 0;
         if (input.hasOption(Commands.OPTION_FILES)) {
             srcCount++;
@@ -845,7 +848,7 @@ public class ComponentInstaller extends Launcher {
 
     @Override
     protected void printVersion() {
-        env.output("MSG_InstallerVersion",
+        feedback.output("MSG_InstallerVersion",
                         env.getLocalRegistry().getGraalVersion().displayString());
     }
 

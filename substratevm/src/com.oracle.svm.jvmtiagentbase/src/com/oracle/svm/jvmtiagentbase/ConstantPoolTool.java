@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent;
+package com.oracle.svm.jvmtiagentbase;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -32,7 +32,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * Minimal data extractor for the Java constant pool. See Java Virtual Machine Specification 4.4.
  */
-class ConstantPoolTool {
+public class ConstantPoolTool {
     private static final int INVALID_LENGTH = -1;
 
     @SuppressWarnings("unused")
@@ -75,9 +75,9 @@ class ConstantPoolTool {
         }
     }
 
-    static class MethodReference {
-        final CharSequence name;
-        final CharSequence descriptor;
+    public static class MethodReference {
+        public final CharSequence name;
+        public final CharSequence descriptor;
 
         MethodReference(CharSequence name, CharSequence descriptor) {
             this.name = name;
@@ -90,11 +90,11 @@ class ConstantPoolTool {
     private int cachedIndex = 1;
     private int cachedIndexOffset = 0;
 
-    ConstantPoolTool(ByteBuffer buffer) {
+    public ConstantPoolTool(ByteBuffer buffer) {
         this.buffer = buffer;
     }
 
-    MethodReference readMethodReference(int cpi) {
+    public MethodReference readMethodReference(int cpi) {
         try {
             seekEntryPastTag(cpi, ConstantKind.METHODREF);
             buffer.getShort(); // class: not needed at the moment
@@ -158,15 +158,15 @@ class ConstantPoolTool {
         cachedIndex = cpi;
         cachedIndexOffset = buffer.position();
     }
-}
 
-@SuppressWarnings("serial")
-final class ConstantPoolException extends RuntimeException {
-    ConstantPoolException(String message) {
-        super(message);
-    }
+    @SuppressWarnings("serial")
+    public static final class ConstantPoolException extends RuntimeException {
+        ConstantPoolException(String message) {
+            super(message);
+        }
 
-    ConstantPoolException(String message, Throwable cause) {
-        super(message, cause);
+        ConstantPoolException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 }

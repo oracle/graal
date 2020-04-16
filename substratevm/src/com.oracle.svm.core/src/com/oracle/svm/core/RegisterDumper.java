@@ -22,17 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.jvmti;
+package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CEnum;
-import org.graalvm.nativeimage.c.constant.CEnumValue;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.PointerBase;
 
-@CEnum("jvmtiJlocationFormat")
-@CContext(JvmtiDirectives.class)
-public enum JvmtiLocationFormat {
-    JVMTI_JLOCATION_JVMBCI;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.util.VMError;
 
-    @CEnumValue
-    public native int getCValue();
+public interface RegisterDumper {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static RegisterDumper singleton() {
+        if (!ImageSingletons.contains(RegisterDumper.class)) {
+            throw VMError.shouldNotReachHere();
+        }
+        return ImageSingletons.lookup(RegisterDumper.class);
+    }
+
+    static void dumpReg(Log log, String label, long value) {
+        log.string(label).zhex(value).newline();
+    }
+
+    interface Context extends PointerBase {
+    }
+
+    void dumpRegisters(Log log, Context context);
+
+    PointerBase getHeapBase(Context context);
+
+    PointerBase getThreadPointer(Context context);
+
+    PointerBase getSP(Context context);
+
+    PointerBase getIP(Context context);
 }

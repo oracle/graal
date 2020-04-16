@@ -49,6 +49,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -65,8 +67,17 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import org.graalvm.polyglot.PolyglotException;
 
@@ -229,4 +240,285 @@ public class TagsTest {
             }
         }
     }
+
+    @Test
+    public void testRWVariableTags() {
+        ProxyInstrument instrument = new ProxyInstrument();
+        ProxyInstrument.setDelegate(instrument);
+        instrument.setOnCreate((env) -> {
+            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.ReadVariableTag.class, StandardTags.WriteVariableTag.class).build(),
+                            new ExecutionEventNodeFactory() {
+                                @Override
+                                public ExecutionEventNode create(EventContext context) {
+                                    assert context.getNodeObject() != null;
+                                    return null;
+                                }
+                            });
+        });
+        Context context = Context.create();
+        context.getEngine().getInstruments().get(ProxyInstrument.ID).lookup(ProxyInstrument.Initialize.class);
+        context.eval(RWVariableLanguage.ID, "R a");
+        context.eval(RWVariableLanguage.ID, "W a");
+        context.eval(RWVariableLanguage.ID, "R string");
+        context.eval(RWVariableLanguage.ID, "WSstring");
+        context.eval(RWVariableLanguage.ID, "R a,b,c");
+        context.eval(RWVariableLanguage.ID, "WSa,b,c");
+        try {
+            context.eval(RWVariableLanguage.ID, "BadR a");
+            Assert.fail();
+        } catch (PolyglotException ex) {
+            String message = ex.getMessage();
+            Assert.assertTrue(message, message.indexOf(StandardTags.ReadVariableTag.NAME) > 0);
+        }
+        try {
+            context.eval(RWVariableLanguage.ID, "BadW a");
+            Assert.fail();
+        } catch (PolyglotException ex) {
+            String message = ex.getMessage();
+            Assert.assertTrue(message, message.indexOf(StandardTags.WriteVariableTag.NAME) > 0);
+        }
+        try {
+            context.eval(RWVariableLanguage.ID, "R null");
+            Assert.fail();
+        } catch (PolyglotException ex) {
+            String message = ex.getMessage();
+            Assert.assertTrue(message, message.indexOf("String") > 0);
+        }
+    }
+
+    @TruffleLanguage.Registration(id = RWVariableLanguage.ID, name = "")
+    @ProvidedTags({StandardTags.ReadVariableTag.class, StandardTags.WriteVariableTag.class})
+    public static class RWVariableLanguage extends TruffleLanguage<Env> {
+
+        static final String ID = "rwVariableLanguage";
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+
+                @Child private RWTaggedNode child = new RWTaggedNode(request.getSource());
+
+                @Override
+                protected boolean isInstrumentable() {
+                    return true;
+                }
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return child.execute(frame);
+                }
+            });
+        }
+
+        @GenerateWrapper
+        static class RWTaggedNode extends Node implements InstrumentableNode {
+
+            private final Source source;
+            private final boolean isRead;
+            private final boolean isWrite;
+
+            RWTaggedNode(Source source) {
+                this.source = source;
+                String code = source.getCharacters().toString();
+                isRead = code.startsWith("R") || code.startsWith("BadR");
+                isWrite = code.startsWith("W") || code.startsWith("BadW");
+            }
+
+            RWTaggedNode(RWTaggedNode copy) {
+                this.source = copy.source;
+                this.isRead = copy.isRead;
+                this.isWrite = copy.isWrite;
+            }
+
+            @Override
+            public boolean isInstrumentable() {
+                return true;
+            }
+
+            @Override
+            public WrapperNode createWrapper(ProbeNode probe) {
+                return new RWTaggedNodeWrapper(this, this, probe);
+            }
+
+            @Override
+            public boolean hasTag(Class<? extends Tag> tag) {
+                return tag.equals(StandardTags.ReadVariableTag.class) && isRead ||
+                                tag.equals(StandardTags.WriteVariableTag.class) && isWrite;
+            }
+
+            @Override
+            public Object getNodeObject() {
+                return new NodeObjectDescriptor(source);
+            }
+
+            boolean execute(@SuppressWarnings("unused") VirtualFrame frame) {
+                return true;
+            }
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        static final class NodeObjectDescriptor implements TruffleObject {
+
+            private final String tagName;
+            private final String[] varNames;
+            private final SourceSection[] sourceSections;
+            private final TruffleObject keys;
+
+            private NodeObjectDescriptor(Source source) {
+                String code = source.getCharacters().toString();
+                int index;
+                if (code.startsWith("R")) {
+                    tagName = StandardTags.ReadVariableTag.NAME;
+                    index = 1;
+                } else if (code.startsWith("W")) {
+                    tagName = StandardTags.WriteVariableTag.NAME;
+                    index = 1;
+                } else {
+                    tagName = "Bad";
+                    index = 4;
+                }
+                keys = new NodeObjectArray(new String[]{tagName});
+                boolean haveSourceSections = code.charAt(index++) == 'S';
+                this.varNames = code.substring(index).split(",");
+                this.sourceSections = new SourceSection[varNames.length];
+                if (haveSourceSections) {
+                    int i = 0;
+                    int i1 = index;
+                    int i2;
+                    do {
+                        i2 = code.indexOf(',', i1);
+                        if (i2 < 0) {
+                            i2 = code.length();
+                        }
+                        sourceSections[i] = source.createSection(i1, i2 - i1);
+                        i1 = i2 + 1;
+                        i++;
+                    } while (i1 < code.length());
+                }
+            }
+
+            @ExportMessage
+            @SuppressWarnings("static-method")
+            boolean hasMembers() {
+                return true;
+            }
+
+            @ExportMessage
+            boolean isMemberReadable(String member) {
+                return tagName.equals(member);
+            }
+
+            @ExportMessage
+            @SuppressWarnings("static-method")
+            Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+                return keys;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object readMember(String member) throws UnknownIdentifierException {
+                if (isMemberReadable(member)) {
+                    if (varNames.length == 1) {
+                        if ("string".equalsIgnoreCase(varNames[0])) {
+                            return varNames[0];
+                        } else {
+                            return new NameSymbol(varNames[0], sourceSections[0]);
+                        }
+                    } else {
+                        NameSymbol[] symbols = new NameSymbol[varNames.length];
+                        for (int i = 0; i < varNames.length; i++) {
+                            symbols[i] = new NameSymbol(varNames[i], sourceSections[i]);
+                        }
+                        return new NodeObjectArray(symbols);
+                    }
+                } else {
+                    throw UnknownIdentifierException.create(member);
+                }
+            }
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        static final class NodeObjectArray implements TruffleObject {
+
+            @CompilerDirectives.CompilationFinal(dimensions = 1) private final Object[] elements;
+
+            NodeObjectArray(Object[] elements) {
+                this.elements = elements;
+            }
+
+            @ExportMessage
+            @SuppressWarnings("static-method")
+            boolean hasArrayElements() {
+                return true;
+            }
+
+            @ExportMessage
+            boolean isArrayElementReadable(long index) {
+                return index >= 0 && index < elements.length;
+            }
+
+            @ExportMessage
+            long getArraySize() {
+                return elements.length;
+            }
+
+            @ExportMessage
+            Object readArrayElement(long index) throws InvalidArrayIndexException {
+                if (!isArrayElementReadable(index)) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return elements[(int) index];
+            }
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        static final class NameSymbol implements TruffleObject {
+
+            private final String name;
+            private final SourceSection sourceSection;
+
+            NameSymbol(String name, SourceSection sourceSection) {
+                this.name = name;
+                this.sourceSection = sourceSection;
+            }
+
+            @ExportMessage
+            boolean isString() {
+                return !"null".equalsIgnoreCase(name);
+            }
+
+            @ExportMessage
+            String asString() throws UnsupportedMessageException {
+                if (isString()) {
+                    return name;
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnsupportedMessageException.create();
+                }
+            }
+
+            @ExportMessage
+            boolean hasSourceLocation() {
+                return sourceSection != null;
+            }
+
+            @ExportMessage
+            SourceSection getSourceLocation() throws UnsupportedMessageException {
+                if (sourceSection != null) {
+                    return sourceSection;
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnsupportedMessageException.create();
+                }
+            }
+        }
+
+    }
+
 }

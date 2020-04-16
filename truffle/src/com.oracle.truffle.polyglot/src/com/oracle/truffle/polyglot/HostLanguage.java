@@ -106,7 +106,9 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
         private HostClassLoader getClassloader() {
             if (classloader == null) {
-                classloader = new HostClassLoader(this, internalContext.getEngine().contextClassLoader);
+                ClassLoader parentClassLoader = internalContext.context.config.hostClassLoader != null ? internalContext.context.config.hostClassLoader
+                                : internalContext.getEngine().contextClassLoader;
+                classloader = new HostClassLoader(this, parentClassLoader);
             }
             return classloader;
         }
