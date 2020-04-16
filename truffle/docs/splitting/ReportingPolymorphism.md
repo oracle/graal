@@ -99,10 +99,10 @@ said flag enabled follows.
 
 ```
 ...
-[truffle] split   0-37d4349f-1     multiplyScalar |ASTSize      40/   40 |Calls/Thres       2/    3 |CallsAndLoop/Thres       2/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~441-444:12764-12993
-[truffle] split   1-2ea41516-1     :anonymous |ASTSize       8/    8 |Calls/Thres       3/    3 |CallsAndLoop/Thres       3/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~269:7395-7446
-[truffle] split   2-3a44431a-1     :anonymous |ASTSize      28/   28 |Calls/Thres       4/    5 |CallsAndLoop/Thres       4/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~35-37:1163-1226
-[truffle] split   3-3c7f66c4-1     Function.prototype.apply |ASTSize      18/   18 |Calls/Thres       7/    8 |CallsAndLoop/Thres       7/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~36:1182-1219
+[engine] split   0-37d4349f-1     multiplyScalar |ASTSize      40/   40 |Calls/Thres       2/    3 |CallsAndLoop/Thres       2/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~441-444:12764-12993
+[engine] split   1-2ea41516-1     :anonymous |ASTSize       8/    8 |Calls/Thres       3/    3 |CallsAndLoop/Thres       3/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~269:7395-7446
+[engine] split   2-3a44431a-1     :anonymous |ASTSize      28/   28 |Calls/Thres       4/    5 |CallsAndLoop/Thres       4/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~35-37:1163-1226
+[engine] split   3-3c7f66c4-1     Function.prototype.apply |ASTSize      18/   18 |Calls/Thres       7/    8 |CallsAndLoop/Thres       7/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~36:1182-1219
 ...
 ```
 #### Tracing a splitting summary
@@ -119,34 +119,35 @@ A slightly simplified output of running one of the JavaScript benchmarks with
 said flag enabled follows.
 
 ```
-[truffle] Split count                             :       9783
-[truffle] Split limit                             :      15342
-[truffle] Split count                             :          0
-[truffle] Split limit                             :        574
-[truffle] Splits                                  :        591
-[truffle] Forced splits                           :          0
-[truffle] Nodes created through splitting         :       9979
-[truffle] Nodes created without splitting         :      10700
-[truffle] Increase in nodes                       :     93.26%
-[truffle] Split nodes wasted                      :        390
-[truffle] Percent of split nodes wasted           :      3.91%
-[truffle] Targets wasted due to splitting         :         27
-[truffle] Total nodes executed                    :       7399
+[engine] Splitting Statistics
+Split count                             :       9783
+Split limit                             :      15342
+Split count                             :          0
+Split limit                             :        574
+Splits                                  :        591
+Forced splits                           :          0
+Nodes created through splitting         :       9979
+Nodes created without splitting         :      10700
+Increase in nodes                       :     93.26%
+Split nodes wasted                      :        390
+Percent of split nodes wasted           :      3.91%
+Targets wasted due to splitting         :         27
+Total nodes executed                    :       7399
 
-[truffle] --- SPLIT TARGETS
-[truffle] initialize                              :         60
-[truffle] Function.prototype.apply                :        117
-[truffle] Array.prototype.push                    :          7
-[truffle] initialize                              :          2
-[truffle] magnitude                               :         17
-[truffle] :anonymous                              :        117
-[truffle] add                                     :          5
+--- SPLIT TARGETS
+initialize                              :         60
+Function.prototype.apply                :        117
+Array.prototype.push                    :          7
+initialize                              :          2
+magnitude                               :         17
+:anonymous                              :        117
+add                                     :          5
 ...
 
-[truffle] --- NODES
-[truffle] class ANode                             :         42
-[truffle] class AnotherNode                       :        198
-[truffle] class YetAnotherNode                    :          1
+--- NODES
+class ANode                             :         42
+class AnotherNode                       :        198
+class YetAnotherNode                    :          1
 ...
 ```
 #### Tracing polymorphic specializations
@@ -161,8 +162,8 @@ Let's consider a couple of examples:
 ##### Example 1
 
 ```
-[truffle] [poly-event] Polymorphic event! Source: JSObjectWriteElementTypeCacheNode@e3c0e40   WorkerTask.run
-[truffle] [poly-event] Early return: false callCount: 1, numberOfKnownCallNodes: 1            WorkerTask.run
+[engine] [poly-event] Polymorphic event! Source: JSObjectWriteElementTypeCacheNode@e3c0e40   WorkerTask.run
+[engine] [poly-event] Early return: false callCount: 1, numberOfKnownCallNodes: 1            WorkerTask.run
 ```
 This log section tells us that the `JSObjectWriteElementTypeCacheNode` in the `WorkerTask.run` method turned polymorphic and reported it.
 It also tells us that this is the first time that `WorkerTask.run` is being executed (`callCount: 1`), thus we don't mark it as "needs split" (`Early return: false`)
@@ -170,14 +171,14 @@ It also tells us that this is the first time that `WorkerTask.run` is being exec
 ##### Example 2
 
 ```
-[truffle] [poly-event] Polymorphic event! Source: WritePropertyNode@50313382                  Packet.addTo
-[truffle] [poly-event] One caller! Analysing parent.                                          Packet.addTo
-[truffle] [poly-event]   One caller! Analysing parent.                                        HandlerTask.run
-[truffle] [poly-event]     One caller! Analysing parent.                                      TaskControlBlock.run
-[truffle] [poly-event]       Early return: false callCount: 1, numberOfKnownCallNodes: 1      Scheduler.schedule
-[truffle] [poly-event]     Return: false                                                      TaskControlBlock.run
-[truffle] [poly-event]   Return: false                                                        HandlerTask.run
-[truffle] [poly-event] Return: false                                                          Packet.addTo
+[engine] [poly-event] Polymorphic event! Source: WritePropertyNode@50313382                  Packet.addTo
+[engine] [poly-event] One caller! Analysing parent.                                          Packet.addTo
+[engine] [poly-event]   One caller! Analysing parent.                                        HandlerTask.run
+[engine] [poly-event]     One caller! Analysing parent.                                      TaskControlBlock.run
+[engine] [poly-event]       Early return: false callCount: 1, numberOfKnownCallNodes: 1      Scheduler.schedule
+[engine] [poly-event]     Return: false                                                      TaskControlBlock.run
+[engine] [poly-event]   Return: false                                                        HandlerTask.run
+[engine] [poly-event] Return: false                                                          Packet.addTo
 ```
 In this example the source of the polymorphic specialization is `WritePropertyNode` in `Packet.addTo`.
 Since this call target has only one known caller, we analyse it's parent in the call tree (i.e. the caller).
@@ -187,9 +188,9 @@ This is, in the example, `HandlerTask.run` and the same applies to it as well, l
 ##### Example 3
 
 ```
-[truffle] [poly-event] Polymorphic event! Source: JSObjectWriteElementTypeCacheNode@3e44f2a5  Scheduler.addTask
-[truffle] [poly-event] Set needs split to true                                                Scheduler.addTask
-[truffle] [poly-event] Return: true                                                           Scheduler.addTask
+[engine] [poly-event] Polymorphic event! Source: JSObjectWriteElementTypeCacheNode@3e44f2a5  Scheduler.addTask
+[engine] [poly-event] Set needs split to true                                                Scheduler.addTask
+[engine] [poly-event] Return: true                                                           Scheduler.addTask
 ```
 In this example the source of the polymorphic specialization is `JSObjectWriteElementTypeCacheNode` in `Scheduler.addTask`.
 This call target is immediately marked as "needs split", since all the criteria to do so are met.
@@ -197,12 +198,12 @@ This call target is immediately marked as "needs split", since all the criteria 
 ##### Example 3
 
 ```
-[truffle] [poly-event] Polymorphic event! Source: WritePropertyNode@479cbee5                  TaskControlBlock.checkPriorityAdd
-[truffle] [poly-event] One caller! Analysing parent.                                          TaskControlBlock.checkPriorityAdd
-[truffle] [poly-event]   Set needs split to true                                              Scheduler.queue
-[truffle] [poly-event]   Return: true                                                         Scheduler.queue
-[truffle] [poly-event] Set needs split to true via parent                                     TaskControlBlock.checkPriorityAdd
-[truffle] [poly-event] Return: true                                                           TaskControlBlock.checkPriorityAdd
+[engine] [poly-event] Polymorphic event! Source: WritePropertyNode@479cbee5                  TaskControlBlock.checkPriorityAdd
+[engine] [poly-event] One caller! Analysing parent.                                          TaskControlBlock.checkPriorityAdd
+[engine] [poly-event]   Set needs split to true                                              Scheduler.queue
+[engine] [poly-event]   Return: true                                                         Scheduler.queue
+[engine] [poly-event] Set needs split to true via parent                                     TaskControlBlock.checkPriorityAdd
+[engine] [poly-event] Return: true                                                           TaskControlBlock.checkPriorityAdd
 ```
 In this example the source of the polymorphic specialization is `WritePropertyNode` in `TaskControlBlock.checkPriorityAdd`.
 Since it has only one caller, we look at that caller (`Scheduler.queue`), and since all the criteria necessary seem to be met, we mark it as "needs split". 

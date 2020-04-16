@@ -116,7 +116,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     Assumption.class, "nodeRewritingAssumption");
     private static final WeakReference<OptimizedDirectCallNode> NO_CALL = new WeakReference<>(null);
     private static final WeakReference<OptimizedDirectCallNode> MULTIPLE_CALLS = null;
-    private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
+    private static final String SPLIT_LOG_FORMAT = "[poly-event] %-70s %s";
     private static final int MAX_PROFILED_ARGUMENTS = 256;
     private static final String ARGUMENT_TYPES_ASSUMPTION_NAME = "Profiled Argument Types";
     private static final String RETURN_TYPE_ASSUMPTION_NAME = "Profiled Return Type";
