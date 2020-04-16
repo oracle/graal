@@ -984,21 +984,8 @@ class CMakeBuildTask(mx.NativeBuildTask):
 
     def needsBuild(self, newestInput):
         mx.logv('Checking whether to build {} with CMake'.format(self.subject.name))
-        if self._configure(silent=True):
-            return True, "rebuild needed by CMake"
-        # Makefiles produced by CMake do not support --question. Assume nothing has changed.
-        # return super(CMakeBuildTask, self).needsBuild(newestInput)
-        return False, None
-
-    def _check_guard(self, guard_file, source_dir, cmake_config):
-        if not os.path.exists(guard_file):
-            mx.logv("No guard file - reconfigure")
-            return False
-        with open(guard_file, 'r') as fp:
-            if fp.read() != self._guard_data(source_dir, cmake_config):
-                mx.logv("Guard file changed - reconfigure")
-                return False
-            return True
+        need_configure, reason = self._need_configure()
+        return need_configure, "rebuild needed by CMake ({})".format(reason)
 
     def _write_guard(self, guard_file, source_dir, cmake_config):
         with open(guard_file, 'w') as fp:
@@ -1013,21 +1000,31 @@ class CMakeBuildTask(mx.NativeBuildTask):
         except OSError as e:
             mx.abort(str(e) + "\nError executing 'cmake --version'. Are you sure 'cmake' is installed? ")
 
-    def _configure(self, silent=False):
-        self._check_cmake()
-        _, cwd, env = self._build_run_args()
+    def _need_configure(self):
         source_dir = self.subject.source_dirs()[0]
         guard_file = self.guard_file()
-        if os.path.exists(os.path.join(self.subject.dir, 'Makefile')):
-            if self._check_guard(guard_file, source_dir, self.subject.cmake_config()):
-                return False
-        else:
-            mx.logv("No existing Makefile - reconfigure")
+        if not os.path.exists(os.path.join(self.subject.dir, 'Makefile')):
+            return True, "No existing Makefile - reconfigure"
+        cmake_config = self.subject.cmake_config()
+        if not os.path.exists(guard_file):
+            return True, "No guard file - reconfigure"
+        with open(guard_file, 'r') as fp:
+            if fp.read() != self._guard_data(source_dir, cmake_config):
+                return True, "Guard file changed - reconfigure"
+            return False, None
+
+    def _configure(self, silent=False):
+        need_configure, _ = self._need_configure()
+        if not need_configure:
+            return
+        _, cwd, env = self._build_run_args()
+        source_dir = self.subject.source_dirs()[0]
         cmakefile = os.path.join(self.subject.dir, 'CMakeCache.txt')
         if os.path.exists(cmakefile):
             # remove cache file if it exist
             os.remove(cmakefile)
         cmdline = ["-G", "Unix Makefiles", source_dir] + self.subject.cmake_config()
+        self._check_cmake()
         self.run_cmake(cmdline, silent=silent, cwd=cwd, env=env)
         return True
 
