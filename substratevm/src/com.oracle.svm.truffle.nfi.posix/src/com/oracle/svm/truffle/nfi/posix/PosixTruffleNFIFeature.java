@@ -26,6 +26,8 @@ package com.oracle.svm.truffle.nfi.posix;
 
 import static com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.LM_ID_NEWLM;
 
+import com.oracle.svm.core.c.libc.GLibc;
+import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -136,7 +138,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     @Override
     protected long loadLibraryImpl(long nativeContext, String name, int flags) {
         PointerBase handle;
-        if (Platform.includedIn(Platform.LINUX.class) && (flags & ISOLATED_NAMESPACE_FLAG) != 0) {
+        if (Platform.includedIn(Platform.LINUX.class) && (flags & ISOLATED_NAMESPACE_FLAG) != 0 && LibCBase.singleton().isLibC(GLibc.class)) {
             handle = loadLibraryInNamespace(nativeContext, name, flags & ~ISOLATED_NAMESPACE_FLAG);
         } else {
             handle = PosixUtils.dlopen(name, flags);
