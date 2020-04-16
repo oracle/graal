@@ -90,7 +90,7 @@ final class DefaultPolicy implements InliningPolicy {
         }
     }
 
-    private Data data(CallNode node) {
+    private static Data data(CallNode node) {
         return (Data) node.getPolicyData();
     }
 
