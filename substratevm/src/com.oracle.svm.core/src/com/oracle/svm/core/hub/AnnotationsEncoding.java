@@ -25,108 +25,67 @@
 package com.oracle.svm.core.hub;
 
 import java.lang.annotation.Annotation;
-import java.util.AbstractMap;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 public final class AnnotationsEncoding {
 
+    final Annotation[] allAnnotations;
+    final Annotation[] declaredAnnotations;
     private static final Annotation[] EMPTY_ANNOTATION_ARRAY = new Annotation[0];
+    private static final AnnotationsEncoding EMPTY_ANNOTATIONS_ENCODING = new AnnotationsEncoding(null, null);
 
-    public static boolean equals(Object encode, Object other) {
-        if (encode == other) {
+    public AnnotationsEncoding(Annotation[] allAnnotations, Annotation[] declaredAnnotations) {
+        this.allAnnotations = allAnnotations;
+        this.declaredAnnotations = declaredAnnotations;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
             return true;
         }
-
-        try {
-            Map.Entry<Annotation[], Annotation[]> first = AnnotationsEncoding.decodeAll(encode);
-            Map.Entry<Annotation[], Annotation[]> second = AnnotationsEncoding.decodeAll(other);
-            return Arrays.equals(first.getKey(), second.getKey()) && Arrays.equals(first.getValue(), second.getValue());
-        } catch (ArrayStoreException ignored) {
+        if (other == null || getClass() != other.getClass()) {
             return false;
         }
+
+        AnnotationsEncoding that = (AnnotationsEncoding) other;
+        return Arrays.equals(allAnnotations, that.allAnnotations) &&
+                        Arrays.equals(declaredAnnotations, that.declaredAnnotations);
     }
 
-    public static Map.Entry<Annotation[], Annotation[]> decodeAll(Object encoding) {
-        if (encoding == null) {
-            return new AbstractMap.SimpleEntry<>(EMPTY_ANNOTATION_ARRAY, EMPTY_ANNOTATION_ARRAY);
-        }
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(allAnnotations) + Arrays.hashCode(declaredAnnotations);
+    }
 
-        if (encoding instanceof ArrayStoreException) {
+    public static AnnotationsEncoding decodeAnnotations(Object annotationsEncoding) {
+        if (annotationsEncoding == null) {
+            return EMPTY_ANNOTATIONS_ENCODING;
+        } else if (annotationsEncoding instanceof ArrayStoreException) {
             /* JDK-7183985 was hit at image build time when the annotations were encoded. */
-            throw (ArrayStoreException) encoding;
+            throw (ArrayStoreException) annotationsEncoding;
+        } else if (annotationsEncoding instanceof AnnotationsEncoding) {
+            return (AnnotationsEncoding) annotationsEncoding;
+        } else {
+            throw new ArrayStoreException("annotations encoding should be of type: " + AnnotationsEncoding.class.getName());
         }
-
-        if (!(encoding instanceof Object[])) {
-            throw new ArrayStoreException("bad annotations encoding ");
-        }
-
-        Object[] objAnnotations = ((Object[]) encoding);
-        if (objAnnotations[0] instanceof Annotation) {
-            return new AbstractMap.SimpleEntry<>(((Annotation[]) objAnnotations), EMPTY_ANNOTATION_ARRAY);
-        }
-
-        if (!(objAnnotations[0] instanceof Integer)) {
-            throw new ArrayStoreException("bad annotations encoding.First element should be the size of declared annotations");
-        }
-        int position = (Integer) objAnnotations[0];
-        Annotation[] allAnnotations = new Annotation[objAnnotations.length - 1];
-        for (int i = 0; i < allAnnotations.length; i++) {
-            allAnnotations[i] = (Annotation) objAnnotations[i + 1];
-        }
-        Annotation[] declared = new Annotation[allAnnotations.length - position];
-        System.arraycopy(allAnnotations, position, declared, 0, declared.length);
-        return new AbstractMap.SimpleEntry<>(allAnnotations, declared);
-
     }
 
-    public static Object encodeAnnotations(Set<Annotation> allAnnotations, Set<Annotation> declaredAnnotations) {
-        if (allAnnotations == null || allAnnotations.isEmpty()) {
-            return null;
-        }
-
-        if (declaredAnnotations == null || declaredAnnotations.isEmpty()) {
-            return allAnnotations.toArray(new Annotation[0]);
-        }
-
-        assert allAnnotations.size() >= declaredAnnotations.size();
-        List<Annotation> head = new ArrayList<>();
-        List<Annotation> tail = new ArrayList<>();
-        for (Annotation a : allAnnotations) {
-            if (!declaredAnnotations.contains(a)) {
-                head.add(a);
-            } else {
-                tail.add(a);
-            }
-        }
-
-        int position = head.size();
-        Object[] encoding = new Object[head.size() + tail.size() + 1];
-        encoding[0] = position;
-        System.arraycopy(head.toArray(new Annotation[0]), 0, encoding, 1, head.size());
-        System.arraycopy(tail.toArray(new Annotation[0]), 0, encoding, position + 1, tail.size());
-
-        return encoding;
+    public Annotation[] getAnnotations() {
+        return allAnnotations == null ? EMPTY_ANNOTATION_ARRAY : allAnnotations;
     }
 
-    public static <T extends Annotation> T getAnnotation(Object annotationsEncoding, Class<T> annotationClass) {
-        return filterByType(getAnnotations(annotationsEncoding), annotationClass);
+    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        return filterByType(getAnnotations(), annotationClass);
     }
 
-    public static Annotation[] getDeclaredAnnotations(Object annotationsEncoding) {
-        return decodeAll(annotationsEncoding).getValue();
+    public Annotation[] getDeclaredAnnotations() {
+        return allAnnotations == null ? EMPTY_ANNOTATION_ARRAY : declaredAnnotations;
     }
 
-    public static Annotation[] getAnnotations(Object annotationsEncoding) {
-        return decodeAll(annotationsEncoding).getKey();
-    }
-
-    public static <T extends Annotation> T getDeclaredAnnotation(Object annotationsEncoding, Class<T> annotationClass) {
-        return filterByType(getDeclaredAnnotations(annotationsEncoding), annotationClass);
+    public <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
+        return filterByType(getDeclaredAnnotations(), annotationClass);
     }
 
     @SuppressWarnings("unchecked")
