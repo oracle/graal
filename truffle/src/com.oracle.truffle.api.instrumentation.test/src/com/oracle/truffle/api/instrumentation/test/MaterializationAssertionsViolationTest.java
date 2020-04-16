@@ -156,7 +156,7 @@ public class MaterializationAssertionsViolationTest extends AbstractPolyglotTest
 
     @Before
     public void setup() {
-        setupEnv(Context.create(), ProxyLanguage.setDelegate(new ProxyLanguage() {
+        setupEnv(Context.create(), new ProxyLanguage() {
 
             private final List<CallTarget> targets = new LinkedList<>(); // To prevent from GC
 
@@ -235,7 +235,7 @@ public class MaterializationAssertionsViolationTest extends AbstractPolyglotTest
                 targets.add(target);
                 return target;
             }
-        }));
+        });
     }
 
     @Test
