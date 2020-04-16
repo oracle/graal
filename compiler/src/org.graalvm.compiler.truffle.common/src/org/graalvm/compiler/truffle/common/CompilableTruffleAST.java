@@ -102,4 +102,10 @@ public interface CompilableTruffleAST {
      * @return How many direct callers is this ast known to have.
      */
     int getKnownCallSiteCount();
+
+    /**
+     * @return A {@link JavaConstant} representing the assumption that the nodes of the AST were not
+     *         rewritten.
+     */
+    JavaConstant getNodeRewritingAssumptionConstant();
 }
