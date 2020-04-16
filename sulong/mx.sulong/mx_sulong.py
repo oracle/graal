@@ -951,6 +951,20 @@ class CMakeBuildTask(mx.NativeBuildTask):
     def __str__(self):
         return 'Building {} with CMake'.format(self.subject.name)
 
+    def _build_run_args(self):
+        cmdline, cwd, env = super(CMakeBuildTask, self)._build_run_args()
+
+        def _flatten(lst):
+            for e in lst:
+                if isinstance(e, list):
+                    for sub in _flatten(e):
+                        yield sub
+                else:
+                    yield e
+
+        # flatten cmdline to support for multiple make targets
+        return list(_flatten(cmdline)), cwd, env
+
     def build(self):
         # get cwd and env
         self._configure()
