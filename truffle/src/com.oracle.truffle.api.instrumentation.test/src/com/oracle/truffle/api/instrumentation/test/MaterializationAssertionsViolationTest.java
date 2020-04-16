@@ -50,7 +50,6 @@ import java.util.regex.Pattern;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -58,7 +57,6 @@ import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -66,41 +64,185 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
-public class MaterializationAssertionsViolationTest {
-    private Context context;
-    private TruffleInstrument.Env instrumentEnv;
+public class MaterializationAssertionsViolationTest extends AbstractPolyglotTest {
+    private static final Pattern NODE_PATTERN = Pattern.compile("^S(\\d+)E(\\d+)\\((.*)\\)$");
 
     @Rule public ExpectedException expectedException = ExpectedException.none();
 
-    @Before
-    public void setup() {
-        context = Context.create(MaterializationAssertionViolationLanguage.ID);
-        instrumentEnv = context.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
+    @GenerateWrapper
+    static class CustomMaterializeNode extends Node implements InstrumentableNode {
+
+        private final ProxyLanguage language;
+        private final SourceSection sourceSection;
+        private final int sCount;
+        private final int eCount;
+        @Node.Children protected CustomMaterializeNode[] children;
+
+        CustomMaterializeNode(ProxyLanguage language, com.oracle.truffle.api.source.Source source, int sCount, int eCount, CustomMaterializeNode[] children) {
+            this.language = language;
+            this.sCount = sCount;
+            this.eCount = eCount;
+            this.sourceSection = source.createSection(1);
+            this.children = children;
+        }
+
+        CustomMaterializeNode(CustomMaterializeNode copy) {
+            this(copy, copy.children);
+        }
+
+        CustomMaterializeNode(CustomMaterializeNode copy, CustomMaterializeNode[] children) {
+            this.language = copy.language;
+            this.sCount = copy.sCount;
+            this.eCount = copy.eCount;
+            this.sourceSection = copy.sourceSection;
+            this.children = children;
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probe) {
+            return new CustomMaterializeNodeWrapper(this, this, probe);
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return tag.equals(StandardTags.StatementTag.class);
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return sourceSection;
+        }
+
+        @ExplodeLoop
+        public int execute(@SuppressWarnings("unused") VirtualFrame frame) {
+            int sum = 0;
+            for (CustomMaterializeNode node : children) {
+                sum += node.execute(frame);
+            }
+            return sum + 1;
+        }
+
+        @Override
+        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            int newSCount = sCount;
+            int newECount = eCount;
+            if (materializedTags.contains(StandardTags.StatementTag.class)) {
+                newSCount--;
+            }
+            if (materializedTags.contains(StandardTags.ExpressionTag.class)) {
+                newECount--;
+            }
+            if (newSCount < 0 || newECount < 0) {
+                return this;
+            }
+            return new CustomMaterializeNode(this.language, this.sourceSection.getSource(), Math.max(0, newSCount), Math.max(0, newECount), children);
+        }
     }
 
-    @After
-    public void teardown() {
-        if (context != null) {
-            context.close();
-        }
+    @Before
+    public void setup() {
+        setupEnv(Context.create(), new ProxyLanguage() {
+
+            private final List<CallTarget> targets = new LinkedList<>(); // To prevent from GC
+
+            CustomMaterializeNode[] parseNodes(String code, com.oracle.truffle.api.source.Source completeSource) {
+                int depth = 0;
+                List<CustomMaterializeNode> ret = new ArrayList<>();
+                StringBuilder current = new StringBuilder();
+                for (int i = 0; i < code.length(); i++) {
+                    switch (code.charAt(i)) {
+                        case ' ':
+                        case '\t':
+                        case '\r':
+                        case '\n':
+                            break;
+                        case ',':
+                            if (depth == 0) {
+                                ret.add(parseNode(current.toString(), completeSource));
+                                current.setLength(0);
+                            } else {
+                                current.append(code.charAt(i));
+                            }
+                            break;
+                        case '(':
+                            depth++;
+                            current.append(code.charAt(i));
+                            break;
+                        case ')':
+                            depth--;
+                            current.append(code.charAt(i));
+                            break;
+                        default:
+                            current.append(code.charAt(i));
+                    }
+                }
+                if (depth != 0) {
+                    throw new RuntimeException("Mismatched parentheses for " + code + "!");
+                } else if (current.length() > 0) {
+                    ret.add(parseNode(current.toString(), completeSource));
+                }
+                return ret.toArray(new CustomMaterializeNode[0]);
+            }
+
+            CustomMaterializeNode parseNode(String code, com.oracle.truffle.api.source.Source completeSource) {
+                Matcher matcher = NODE_PATTERN.matcher(code);
+                if (!matcher.find()) {
+                    throw new RuntimeException("Node " + code + " cannot be parsed!");
+                }
+                return new CustomMaterializeNode(languageInstance, completeSource, Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
+                                parseNodes(matcher.group(3), completeSource));
+            }
+
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                com.oracle.truffle.api.source.Source source = request.getSource();
+                String code = source.getCharacters().toString();
+                CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+
+                    @Node.Children private CustomMaterializeNode[] children = parseNodes(code, source);
+
+                    @Override
+                    @ExplodeLoop
+                    public Object execute(VirtualFrame frame) {
+                        int sum = 0;
+                        for (CustomMaterializeNode node : children) {
+                            sum += node.execute(frame);
+                        }
+                        return sum;
+                    }
+
+                    @Override
+                    public SourceSection getSourceSection() {
+                        return source.createSection(1);
+                    }
+
+                });
+                targets.add(target);
+                return target;
+            }
+        });
     }
 
     @Test
     public void testMultipleMaterializationAssertion() {
         expectedException.expect(PolyglotException.class);
         expectedException.expectMessage("java.lang.AssertionError: Node must not be materialized multiple times for the same set of tags!");
-        Source source = Source.create(MaterializationAssertionViolationLanguage.ID, "S2E0()");
+        Source source = Source.create(ProxyLanguage.ID, "S2E0()");
         ExecutionEventListener listener = createListener();
         instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), listener);
         instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), listener);
@@ -114,7 +256,7 @@ public class MaterializationAssertionsViolationTest {
      */
     @Test
     public void testGradualMaterializationAssertionUncaught() {
-        Source source = Source.create(MaterializationAssertionViolationLanguage.ID, "S1E2()");
+        Source source = Source.create(ProxyLanguage.ID, "S1E2()");
         ExecutionEventListener listener = createListener();
         EventBinding<ExecutionEventListener> binding = instrumentEnv.getInstrumenter().attachExecutionEventListener(
                         SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.ExpressionTag.class).build(), listener);
@@ -127,7 +269,7 @@ public class MaterializationAssertionsViolationTest {
     public void testGradualMaterializationAssertionCaught() {
         expectedException.expect(AssertionError.class);
         expectedException.expectMessage("There should always be some new materialize tag!");
-        Source source = Source.create(MaterializationAssertionViolationLanguage.ID, "S1E2()");
+        Source source = Source.create(ProxyLanguage.ID, "S1E2()");
         ExecutionEventListener listener = createListener();
         /*
          * Execute first so that for the subsequent instrumentation, the materializeTags are
@@ -145,7 +287,7 @@ public class MaterializationAssertionsViolationTest {
     public void testNewTreeMaterializationAssertion() {
         expectedException.expect(PolyglotException.class);
         expectedException.expectMessage("java.lang.AssertionError: New tree should be fully materialized!");
-        Source source = Source.create(MaterializationAssertionViolationLanguage.ID, "S1E0(S1E0())");
+        Source source = Source.create(ProxyLanguage.ID, "S1E0(S1E0())");
         ExecutionEventListener listener = createListener();
         instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), listener);
         context.eval(source);
@@ -168,166 +310,5 @@ public class MaterializationAssertionsViolationTest {
 
             }
         };
-    }
-
-    @TruffleLanguage.Registration(id = MaterializationAssertionViolationLanguage.ID, name = "Materialization Assertion Violation Language", version = "1.0")
-    @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class, StandardTags.ExpressionTag.class})
-    public static class MaterializationAssertionViolationLanguage extends ProxyLanguage {
-
-        static final String ID = "truffle-materialization-assertion-violation-language";
-        static final Pattern NODE_PATTERN = Pattern.compile("^S(\\d+)E(\\d+)\\((.*)\\)$");
-
-        private final List<CallTarget> targets = new LinkedList<>(); // To prevent from GC
-
-        CustomMaterializeNode[] parseNodes(String code, com.oracle.truffle.api.source.Source completeSource) {
-            int depth = 0;
-            List<CustomMaterializeNode> ret = new ArrayList<>();
-            StringBuilder current = new StringBuilder();
-            for (int i = 0; i < code.length(); i++) {
-                switch (code.charAt(i)) {
-                    case ' ':
-                    case '\t':
-                    case '\r':
-                    case '\n':
-                        break;
-                    case ',':
-                        if (depth == 0) {
-                            ret.add(parseNode(current.toString(), completeSource));
-                            current.setLength(0);
-                        } else {
-                            current.append(code.charAt(i));
-                        }
-                        break;
-                    case '(':
-                        depth++;
-                        current.append(code.charAt(i));
-                        break;
-                    case ')':
-                        depth--;
-                        current.append(code.charAt(i));
-                        break;
-                    default:
-                        current.append(code.charAt(i));
-                }
-            }
-            if (depth != 0) {
-                throw new RuntimeException("Mismatched parentheses for " + code + "!");
-            } else if (current.length() > 0) {
-                ret.add(parseNode(current.toString(), completeSource));
-            }
-            return ret.toArray(new CustomMaterializeNode[0]);
-        }
-
-        CustomMaterializeNode parseNode(String code, com.oracle.truffle.api.source.Source completeSource) {
-            Matcher matcher = NODE_PATTERN.matcher(code);
-            if (!matcher.find()) {
-                throw new RuntimeException("Node " + code + " cannot be parsed!");
-            }
-            return new CustomMaterializeNode(MaterializationAssertionViolationLanguage.this, completeSource, Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-                            parseNodes(matcher.group(3), completeSource));
-        }
-
-        @Override
-        protected CallTarget parse(ParsingRequest request) throws Exception {
-            com.oracle.truffle.api.source.Source source = request.getSource();
-            String code = source.getCharacters().toString();
-            CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(this) {
-
-                @Node.Children private CustomMaterializeNode[] children = parseNodes(code, source);
-
-                @Override
-                @ExplodeLoop
-                public Object execute(VirtualFrame frame) {
-                    int sum = 0;
-                    for (CustomMaterializeNode node : children) {
-                        sum += node.execute(frame);
-                    }
-                    return sum;
-                }
-
-                @Override
-                public SourceSection getSourceSection() {
-                    return source.createSection(1);
-                }
-
-            });
-            targets.add(target);
-            return target;
-        }
-
-        @GenerateWrapper
-        static class CustomMaterializeNode extends Node implements InstrumentableNode {
-
-            private final MaterializationAssertionViolationLanguage language;
-            private final SourceSection sourceSection;
-            private final int sCount;
-            private final int eCount;
-            @Node.Children protected CustomMaterializeNode[] children;
-
-            CustomMaterializeNode(MaterializationAssertionViolationLanguage language, com.oracle.truffle.api.source.Source source, int sCount, int eCount, CustomMaterializeNode[] children) {
-                this.language = language;
-                this.sCount = sCount;
-                this.eCount = eCount;
-                this.sourceSection = source.createSection(1);
-                this.children = children;
-            }
-
-            CustomMaterializeNode(CustomMaterializeNode copy) {
-                this(copy, copy.children);
-            }
-
-            CustomMaterializeNode(CustomMaterializeNode copy, CustomMaterializeNode[] children) {
-                this.language = copy.language;
-                this.sCount = copy.sCount;
-                this.eCount = copy.eCount;
-                this.sourceSection = copy.sourceSection;
-                this.children = children;
-            }
-
-            @Override
-            public boolean isInstrumentable() {
-                return true;
-            }
-
-            @Override
-            public WrapperNode createWrapper(ProbeNode probe) {
-                return new CustomMaterializeNodeWrapper(this, this, probe);
-            }
-
-            @Override
-            public boolean hasTag(Class<? extends Tag> tag) {
-                return tag.equals(StandardTags.StatementTag.class);
-            }
-
-            @Override
-            public SourceSection getSourceSection() {
-                return sourceSection;
-            }
-
-            @ExplodeLoop
-            public int execute(@SuppressWarnings("unused") VirtualFrame frame) {
-                int sum = 0;
-                for (CustomMaterializeNode node : children) {
-                    sum += node.execute(frame);
-                }
-                return sum + 1;
-            }
-
-            @Override
-            public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-                int newSCount = sCount;
-                int newECount = eCount;
-                if (materializedTags.contains(StandardTags.StatementTag.class)) {
-                    newSCount--;
-                }
-                if (materializedTags.contains(StandardTags.ExpressionTag.class)) {
-                    newECount--;
-                }
-                if (newSCount < 0 || newECount < 0) {
-                    return this;
-                }
-                return new CustomMaterializeNode(this.language, this.sourceSection.getSource(), Math.max(0, newSCount), Math.max(0, newECount), children);
-            }
-        }
     }
 }
