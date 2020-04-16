@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle.api;
+package com.oracle.svm.core.hub;
 
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import org.graalvm.compiler.core.common.NumUtil;
 
-import com.oracle.svm.core.heap.ReferenceInternals;
-import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
+@DuplicatedInNativeCode
+public enum ReferenceType {
+    None(0),     // non-reference class
+    Other(1),    // Subclass of Reference, but not a subclass of one of the classes below
+    Soft(2),     // Subclass of SoftReference
+    Weak(3),     // Subclass of WeakReference
+    Unused(4),
+    Phantom(5);  // Subclass of PhantomReference
 
-public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
+    private final byte value;
 
-    public final ResolvedJavaField referentField = findField(lookupType(Target_java_lang_ref_Reference.class), ReferenceInternals.REFERENT_FIELD_NAME);
+    ReferenceType(int value) {
+        this.value = NumUtil.safeToByte(value);
+    }
 
-    public SubstrateKnownTruffleTypes(MetaAccessProvider metaAccess) {
-        super(metaAccess);
+    public byte getValue() {
+        return value;
     }
 }
