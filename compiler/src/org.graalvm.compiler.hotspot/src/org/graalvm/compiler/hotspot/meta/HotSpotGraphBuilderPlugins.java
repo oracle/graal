@@ -287,10 +287,8 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getSuperclass", Receiver.class);
 
         if (config.jvmAccIsHiddenClass != 0) {
-System.err.println("registering isHiddenClass");
-            r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isHiddenClass", Receiver.class);
+            r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isHidden", Receiver.class);
         }
-else System.err.println("NOT registering isHiddenClass");
 
         if (config.getFieldOffset("ArrayKlass::_component_mirror", Integer.class, "oop", Integer.MAX_VALUE, JDK <= 8) != Integer.MAX_VALUE) {
             r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getComponentType", Receiver.class);

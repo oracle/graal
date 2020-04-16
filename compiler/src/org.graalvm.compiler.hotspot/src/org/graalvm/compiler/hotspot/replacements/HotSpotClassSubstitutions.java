@@ -82,7 +82,7 @@ public class HotSpotClassSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false, optional = true)
-    public static boolean isHiddenClass(final Class<?> thisObj) {
+    public static boolean isHidden(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         if (klass.isNull()) {
             // Class for primitive type
