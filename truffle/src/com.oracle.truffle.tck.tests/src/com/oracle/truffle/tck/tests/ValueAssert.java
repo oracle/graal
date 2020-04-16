@@ -77,9 +77,11 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -649,8 +651,8 @@ public class ValueAssert {
         assertNotEquals(0, objectList1.hashCode());
         assertNotNull(objectList1.toString());
 
-        assertEquals(receivedObjects, objectList1);
-        assertEquals(receivedObjects, objectList2);
+        assertCollectionEqualValues(receivedObjects, objectList1);
+        assertCollectionEqualValues(receivedObjects, objectList2);
 
         if (value.hasMembers()) {
             Map<Object, Object> objectMap1 = value.as(OBJECT_OBJECT_MAP);
@@ -675,6 +677,65 @@ public class ValueAssert {
         }
         assertEquals(receivedObjectsIntMap, objectMap3);
         assertEquals(receivedObjectsLongMap, objectMap4);
+    }
+
+    private static void assertCollectionEqualValues(Collection<? extends Object> expected, Collection<? extends Object> actual) {
+        assertEquals(expected.size(), actual.size());
+        Iterator<? extends Object> expectedi = expected.iterator();
+        Iterator<? extends Object> actuali = actual.iterator();
+        while (expectedi.hasNext()) {
+            assertEqualValues(expectedi.next(), actuali.next());
+        }
+    }
+
+    private static void assertEqualValues(Object expected, Object actual) {
+        Value v0 = Value.asValue(expected);
+        Value v1 = Value.asValue(actual);
+        List<Trait> expectTraits = Arrays.asList(detectSupportedTypes(v0));
+        List<Trait> actualTraits = Arrays.asList(detectSupportedTypes(v1));
+        assertEquals(expectTraits, actualTraits);
+        for (Trait trait : actualTraits) {
+            switch (trait) {
+                case NUMBER:
+                    if (v0.fitsInLong()) {
+                        assertEquals(v0.asLong(), v1.asLong());
+                    } else {
+                        assertFalse(v1.fitsInLong());
+                    }
+                    if (v0.fitsInDouble()) {
+                        assertEquals(Double.doubleToLongBits(v0.asDouble()), Double.doubleToLongBits(v1.asDouble()));
+                    } else {
+                        assertFalse(v1.fitsInDouble());
+                    }
+                    break;
+                case STRING:
+                    assertEquals(v0.asString(), v1.asString());
+                    break;
+                case BOOLEAN:
+                    assertEquals(v0.asBoolean(), v1.asBoolean());
+                    break;
+                case HOST_OBJECT:
+                    assertEquals(v0, v1);
+                    break;
+                case PROXY_OBJECT:
+                    assertEquals(v0, v1);
+                    break;
+                case DURATION:
+                    assertEquals(v0.asDuration(), v1.asDuration());
+                    break;
+                case DATE:
+                    assertEquals(v0.asDate(), v1.asDate());
+                    break;
+                case TIME:
+                    assertEquals(v0.asTime(), v1.asTime());
+                    break;
+                case TIMEZONE:
+                    assertEquals(v0.asTimeZone(), v1.asTimeZone());
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 
     @SafeVarargs
