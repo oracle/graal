@@ -277,15 +277,19 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         Path jar1 = createJar(tempDir1);
         Path jar2 = createJar(tempDir2);
         try {
-            ClassLoader hostClassLoader = new URLClassLoader(new URL[]{jar1.toUri().toURL()});
-            setupEnv(Context.newBuilder().allowAllAccess(true).hostClassLoader(hostClassLoader).build());
-            languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar2.toString()));
+            URLClassLoader hostClassLoader = new URLClassLoader(new URL[]{jar1.toUri().toURL()});
+            try {
+                setupEnv(Context.newBuilder().allowAllAccess(true).hostClassLoader(hostClassLoader).build());
+                languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar2.toString()));
 
-            Object newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
-            assertEquals(42, read(newSymbol, "staticField"));
+                Object newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
+                assertEquals(42, read(newSymbol, "staticField"));
 
-            newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME_2);
-            assertEquals(42, read(newSymbol, "staticField"));
+                newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME_2);
+                assertEquals(42, read(newSymbol, "staticField"));
+            } finally {
+                hostClassLoader.close();
+            }
         } finally {
             Files.deleteIfExists(jar1);
             Files.deleteIfExists(jar2);
