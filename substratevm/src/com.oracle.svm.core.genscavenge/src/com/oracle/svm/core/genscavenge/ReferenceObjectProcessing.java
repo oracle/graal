@@ -57,11 +57,22 @@ public class ReferenceObjectProcessing {
      */
     private static UnsignedWord maxSoftRefAccessIntervalMs = UnsignedUtils.MAX_VALUE;
 
+    /** Treat all soft references as weak, typically to reclaim space when low on memory. */
+    private static boolean softReferencesAreWeak = false;
+
     /**
      * The first timestamp that was set as {@link SoftReference} clock, for examining references
      * that were created earlier than that.
      */
     private static long initialSoftRefClock = 0;
+
+    /*
+     * Enables (or disables) reclaiming all objects that are softly reachable only, typically as a
+     * last resort to avoid running out of memory.
+     */
+    public static void setSoftReferencesAreWeak(boolean enabled) {
+        softReferencesAreWeak = enabled;
+    }
 
     @AlwaysInline("GC performance")
     public static void discoverIfReference(Object object, ObjectReferenceVisitor refVisitor) {
@@ -106,7 +117,7 @@ public class ReferenceObjectProcessing {
             trace.string(" referent is in a to-space]").newline();
             return;
         }
-        if (dr instanceof SoftReference) {
+        if (!softReferencesAreWeak && dr instanceof SoftReference) {
             long clock = ReferenceInternals.getSoftReferenceClock();
             long timestamp = ReferenceInternals.getSoftReferenceTimestamp((SoftReference<?>) dr);
             if (timestamp == 0) { // created or last accessed before the clock was initialized

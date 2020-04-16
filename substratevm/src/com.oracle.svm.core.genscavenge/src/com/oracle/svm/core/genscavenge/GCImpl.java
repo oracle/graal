@@ -115,7 +115,7 @@ public class GCImpl implements GC {
      */
     private final FramePointerMapWalker frameWalker;
     private final GreyToBlackObjectVisitor greyToBlackObjectVisitor;
-    private final CollectionPolicy alwaysCompletelyInstance;
+    private final CollectionPolicy collectOnlyCompletelyPolicy;
 
     private final Accounting accounting;
     private final CollectionVMOperation collectOperation;
@@ -151,7 +151,7 @@ public class GCImpl implements GC {
         this.greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
         this.frameWalker = new FramePointerMapWalker(greyToBlackObjRefVisitor);
         this.greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
-        this.alwaysCompletelyInstance = new CollectionPolicy.OnlyCompletely();
+        this.collectOnlyCompletelyPolicy = new CollectionPolicy.OnlyCompletely();
         this.collectionInProgress = Latch.factory("Collection in progress");
         this.oldGenerationSizeExceeded = new OutOfMemoryError("Garbage-collected heap size exceeded.");
         this.gcManagementFactory = new GarbageCollectorManagementFactory();
@@ -244,14 +244,8 @@ public class GCImpl implements GC {
         visitWatchersBefore();
 
         /* Collect. */
-        collectImpl(cause.getName());
+        boolean outOfMemory = collectImpl(cause.getName());
 
-        /* Check if out of memory. */
-        UnsignedWord maxBytes = HeapPolicy.getMaximumHeapSize();
-        UnsignedWord usedBytes = getChunkUsedBytesAfterCollection();
-        boolean outOfMemory = usedBytes.aboveThan(maxBytes);
-        /* Notify Reference object processing. */
-        ReferenceObjectProcessing.afterCollection(usedBytes, maxBytes);
         /* Run any collection watchers after the collection. */
         visitWatchersAfter();
         /* Reset for the next collection. */
@@ -269,9 +263,9 @@ public class GCImpl implements GC {
     }
 
     @SuppressWarnings("try")
-    private void collectImpl(String cause) {
+    private boolean collectImpl(String cause) {
         final Log trace = Log.noopLog().string("[GCImpl.collectImpl:").newline().string("  epoch: ").unsigned(getCollectionEpoch()).string("  cause: ").string(cause).newline();
-        final HeapImpl heap = HeapImpl.getHeapImpl();
+        boolean outOfMemory;
 
         precondition();
 
@@ -286,40 +280,55 @@ public class GCImpl implements GC {
                 HeapImpl.getHeapImpl().verifyBeforeGC(cause, getCollectionEpoch());
             }
 
-            CommittedMemoryProvider.get().beforeGarbageCollection();
+            outOfMemory = doCollectImpl(getPolicy());
 
-            getAccounting().beforeCollection();
-
-            try (Timer ct = collectionTimer.open()) {
-                /*
-                 * Always scavenge the young generation, then maybe scavenge the old generation.
-                 * Scavenging the young generation will free up the chunks from the young
-                 * generation, so that when the scavenge of the old generation needs chunks it will
-                 * find them on the free list.
-                 *
-                 */
-                if (getPolicy().collectIncrementally()) {
-                    scavenge(true);
-                }
-                completeCollection = getPolicy().collectCompletely();
-                if (completeCollection) {
-                    scavenge(false);
+            if (outOfMemory) {
+                // Avoid running out of memory with a full GC that reclaims softly reachable objects
+                ReferenceObjectProcessing.setSoftReferencesAreWeak(true);
+                try {
+                    outOfMemory = doCollectImpl(collectOnlyCompletelyPolicy);
+                } finally {
+                    ReferenceObjectProcessing.setSoftReferencesAreWeak(false);
                 }
             }
-
-            CommittedMemoryProvider.get().afterGarbageCollection(completeCollection);
         }
-
-        getAccounting().afterCollection(completeCollection, collectionTimer);
 
         trace.string("  Verify after: ");
         try (Timer vat = verifyAfterTimer.open()) {
-            heap.verifyAfterGC(cause, getCollectionEpoch());
+            HeapImpl.getHeapImpl().verifyAfterGC(cause, getCollectionEpoch());
         }
 
         postcondition();
 
         trace.string("]").newline();
+        return outOfMemory;
+    }
+
+    @SuppressWarnings("try")
+    private boolean doCollectImpl(CollectionPolicy appliedPolicy) {
+        CommittedMemoryProvider.get().beforeGarbageCollection();
+
+        getAccounting().beforeCollection();
+
+        try (Timer ct = collectionTimer.open()) {
+            if (appliedPolicy.collectIncrementally()) {
+                scavenge(true);
+            }
+            completeCollection = appliedPolicy.collectCompletely();
+            if (completeCollection) {
+                scavenge(false);
+            }
+        }
+        CommittedMemoryProvider.get().afterGarbageCollection(completeCollection);
+
+        getAccounting().afterCollection(completeCollection, collectionTimer);
+        UnsignedWord maxBytes = HeapPolicy.getMaximumHeapSize();
+        UnsignedWord usedBytes = getChunkUsedBytesAfterCollection();
+        boolean outOfMemory = usedBytes.aboveThan(maxBytes);
+
+        ReferenceObjectProcessing.afterCollection(usedBytes, maxBytes);
+
+        return outOfMemory;
     }
 
     /*
@@ -503,7 +512,7 @@ public class GCImpl implements GC {
     public void collectCompletely(final GCCause cause) {
         final CollectionPolicy oldPolicy = getPolicy();
         try {
-            setPolicy(alwaysCompletelyInstance);
+            setPolicy(collectOnlyCompletelyPolicy);
             collect(cause);
         } finally {
             setPolicy(oldPolicy);
