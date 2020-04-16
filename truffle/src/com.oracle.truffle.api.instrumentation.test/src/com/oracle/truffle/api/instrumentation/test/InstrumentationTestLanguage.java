@@ -375,6 +375,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("CALL_WITH") || tag.equals("PRINT") || tag.equals("THROW")) {
                 numberOfIdents = 2;
             }
+            int stringLiteralIndex = -1;
+            if (tag.equals("PRINT")) {
+                stringLiteralIndex = 1;
+            }
             List<String> multipleTags = null;
             if (tag.equals("MULTIPLE")) {
                 multipleTags = multipleTags();
@@ -393,7 +397,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     while (current() != ')') {
                         if (argIndex < numberOfIdents) {
                             skipWhiteSpace();
-                            idents[argIndex] = ident();
+                            idents[argIndex] = (argIndex == stringLiteralIndex) ? stringLiteral() : ident();
                         } else {
                             children.add(statement());
                         }
@@ -550,6 +554,21 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             if (builder.length() == 0) {
                 error("expected ident");
             }
+            return builder.toString();
+        }
+
+        private String stringLiteral() {
+            char c = current();
+            if (c != '"') {
+                return ident();
+            }
+            next();
+            StringBuilder builder = new StringBuilder();
+            while ((c = current()) != EOF && c != '"') {
+                builder.append(c);
+                next();
+            }
+            next();
             return builder.toString();
         }
 
