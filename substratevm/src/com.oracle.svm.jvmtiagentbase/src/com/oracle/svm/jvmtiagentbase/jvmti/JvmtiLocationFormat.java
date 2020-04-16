@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.restrict;
+package com.oracle.svm.jvmtiagentbase.jvmti;
 
-import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
 
-import org.graalvm.compiler.phases.common.LazyValue;
+@CEnum("jvmtiJlocationFormat")
+@CContext(JvmtiDirectives.class)
+public enum JvmtiLocationFormat {
+    JVMTI_JLOCATION_JVMBCI;
 
-import com.oracle.svm.configure.trace.AccessAdvisor;
-import com.oracle.svm.configure.trace.LazyValueUtils;
-import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-
-class AbstractAccessVerifier {
-    protected final AccessAdvisor accessAdvisor;
-
-    AbstractAccessVerifier(AccessAdvisor advisor) {
-        this.accessAdvisor = advisor;
-    }
-
-    protected boolean shouldApproveWithoutChecks(JNIEnvironment env, JNIObjectHandle callerClass) {
-        return accessAdvisor.shouldIgnoreCaller(lazyClassNameOrNull(env, callerClass));
-    }
-
-    protected static LazyValue<String> lazyClassNameOrNull(JNIEnvironment env, JNIObjectHandle clazz) {
-        return LazyValueUtils.lazyGet(() -> getClassNameOrNull(env, clazz));
-    }
+    @CEnumValue
+    public native int getCValue();
 }

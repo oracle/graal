@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,12 @@
  */
 package com.oracle.svm.agent.restrict;
 
-import static com.oracle.svm.agent.Support.clearException;
-import static com.oracle.svm.agent.Support.fromCString;
-import static com.oracle.svm.agent.Support.fromJniString;
-import static com.oracle.svm.agent.Support.handles;
-import static com.oracle.svm.agent.Support.jniFunctions;
-import static com.oracle.svm.agent.Support.jvmtiEnv;
-import static com.oracle.svm.agent.Support.jvmtiFunctions;
+import static com.oracle.svm.jvmtiagentbase.Support.clearException;
+import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
+import static com.oracle.svm.jvmtiagentbase.Support.fromJniString;
+import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
+import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
+import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
@@ -40,9 +39,10 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
-import com.oracle.svm.agent.Support;
-import com.oracle.svm.agent.Support.WordSupplier;
-import com.oracle.svm.agent.jvmti.JvmtiError;
+import com.oracle.svm.agent.NativeImageAgent;
+import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.Support.WordSupplier;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.core.util.WordPredicate;
@@ -53,10 +53,12 @@ import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 public class ReflectAccessVerifier extends AbstractAccessVerifier {
     private final TypeAccessChecker typeAccessChecker;
+    private final NativeImageAgent agent;
 
-    public ReflectAccessVerifier(TypeAccessChecker typeAccessChecker, AccessAdvisor advisor) {
+    public ReflectAccessVerifier(TypeAccessChecker typeAccessChecker, AccessAdvisor advisor, NativeImageAgent agent) {
         super(advisor);
         this.typeAccessChecker = typeAccessChecker;
+        this.agent = agent;
     }
 
     public boolean verifyForName(JNIEnvironment env, JNIObjectHandle callerClass, String className) {
@@ -128,7 +130,7 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
             return array;
         }
         WordPredicate<JNIObjectHandle> predicate = f -> shouldRetainField(env, clazz, f, declaredOnly);
-        return filterArray(env, array, () -> handles().getJavaLangReflectField(env), predicate);
+        return filterArray(env, array, () -> agent.handles().getJavaLangReflectField(env), predicate);
     }
 
     public JNIObjectHandle filterGetMethods(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle array,

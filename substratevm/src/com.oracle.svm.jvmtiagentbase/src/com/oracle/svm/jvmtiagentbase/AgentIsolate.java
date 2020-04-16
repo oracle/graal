@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent;
+package com.oracle.svm.jvmtiagentbase;
 
 import static org.graalvm.word.WordFactory.nullPointer;
 
@@ -35,7 +35,11 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.util.VMError;
 
-final class AgentIsolate {
+/**
+ * A utility class for managing the JVMTI agent's isolate. The JVMTI agent uses a single isolate
+ * that is created during the {@link JvmtiAgentBase#onLoad} callback.
+ */
+public final class AgentIsolate {
     private static final CGlobalData<WordPointer> GLOBAL_ISOLATE = CGlobalDataFactory.createWord();
 
     public static final class Prologue {
@@ -58,18 +62,6 @@ final class AgentIsolate {
             }
             if (CEntryPointActions.enterIsolate(global) != 0) {
                 CEntryPointActions.bailoutInPrologue();
-            }
-        }
-    }
-
-    public static final class Epilogue {
-        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
-                        "Failed to leave the current IsolateThread context.");
-
-        static void leave() {
-            int code = CEntryPointActions.leave();
-            if (code != 0) {
-                CEntryPointActions.failFatally(code, errorMessage.get());
             }
         }
     }

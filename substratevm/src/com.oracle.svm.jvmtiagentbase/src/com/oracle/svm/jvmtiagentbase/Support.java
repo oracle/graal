@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent;
+package com.oracle.svm.jvmtiagentbase;
 
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
@@ -30,8 +30,6 @@ import static org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -41,10 +39,10 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.agent.jvmti.JvmtiEnv;
-import com.oracle.svm.agent.jvmti.JvmtiError;
-import com.oracle.svm.agent.jvmti.JvmtiFrameInfo;
-import com.oracle.svm.agent.jvmti.JvmtiInterface;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -55,15 +53,18 @@ import com.oracle.svm.jni.nativeapi.JNINativeInterface;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIValue;
 
+/**
+ * A utility class that contains helper methods for JNI/JVMTI that agents can use.
+ */
 public final class Support {
 
     public static boolean isInitialized() {
         boolean initialized = jvmtiEnv.isNonNull();
-        assert initialized == jniFunctions.isNonNull() && initialized == (handles != null);
+        assert initialized == jniFunctions.isNonNull();
         return initialized;
     }
 
-    public static void initialize(JvmtiEnv jvmti, JNIEnvironment localJni) {
+    public static void initialize(JvmtiEnv jvmti) {
         VMError.guarantee(!isInitialized());
 
         WordPointer functionsPtr = StackValue.get(WordPointer.class);
@@ -72,18 +73,15 @@ public final class Support {
 
         jvmtiEnv = jvmti;
         jniFunctions = functionsPtr.read();
-        handles = new JavaHandles(localJni);
     }
 
-    public static void destroy(JNIEnvironment env) {
+    public static void destroy() {
         jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), jniFunctions);
-        handles().destroy(env);
-        handles = null;
         jniFunctions = nullPointer();
         jvmtiEnv = nullPointer();
     }
 
-    static String getSystemProperty(JvmtiEnv jvmti, String propertyName) {
+    public static String getSystemProperty(JvmtiEnv jvmti, String propertyName) {
         try (CCharPointerHolder propertyKey = toCString(propertyName)) {
             String propertyValue = null;
             CCharPointerPointer propertyValuePtr = StackValue.get(CCharPointerPointer.class);
@@ -95,7 +93,7 @@ public final class Support {
         }
     }
 
-    static String[] getSystemProperties(JvmtiEnv jvmti) {
+    public static String[] getSystemProperties(JvmtiEnv jvmti) {
         CIntPointer countPtr = StackValue.get(CIntPointer.class);
         WordPointer propertyPtr = StackValue.get(WordPointer.class);
         check(jvmti.getFunctions().GetSystemProperties().invoke(jvmti, countPtr, propertyPtr));
@@ -117,8 +115,6 @@ public final class Support {
     /** The original unmodified JNI function table. */
     private static JNINativeInterface jniFunctions;
 
-    private static JavaHandles handles;
-
     public static JvmtiEnv jvmtiEnv() {
         return jvmtiEnv;
     }
@@ -129,167 +125,6 @@ public final class Support {
 
     public static JNINativeInterface jniFunctions() {
         return jniFunctions;
-    }
-
-    public static JavaHandles handles() {
-        return handles;
-    }
-
-    public static final class JavaHandles {
-        private final ReentrantLock globalRefsLock = new ReentrantLock();
-        private JNIObjectHandle[] globalRefs = new JNIObjectHandle[16];
-        private int globalRefCount = 0;
-
-        public final JNIMethodId javaLangClassGetName;
-        public final JNIMethodId javaLangClassForName3;
-        public final JNIMethodId javaLangReflectMemberGetName;
-        public final JNIMethodId javaLangReflectMemberGetDeclaringClass;
-        public final JNIMethodId javaUtilEnumerationHasMoreElements;
-        public final JNIMethodId javaUtilMissingResourceExceptionCtor3;
-        public final JNIObjectHandle javaLangClassLoader;
-        public final JNIObjectHandle javaLangSecurityException;
-        public final JNIObjectHandle javaLangNoClassDefFoundError;
-        public final JNIObjectHandle javaLangNoSuchMethodError;
-        public final JNIObjectHandle javaLangNoSuchMethodException;
-        public final JNIObjectHandle javaLangNoSuchFieldError;
-        public final JNIObjectHandle javaLangNoSuchFieldException;
-        public final JNIObjectHandle javaLangClassNotFoundException;
-        public final JNIObjectHandle javaLangRuntimeException;
-        public final JNIObjectHandle javaUtilMissingResourceException;
-
-        // HotSpot crashes when looking these up eagerly
-        private JNIObjectHandle javaLangReflectField;
-        private JNIObjectHandle javaLangReflectMethod;
-        private JNIObjectHandle javaLangReflectConstructor;
-
-        private JNIObjectHandle javaUtilCollections;
-        private JNIMethodId javaUtilCollectionsEmptyEnumeration;
-
-        private JNIMethodId javaUtilResourceBundleGetBundleImplSLCC;
-        private boolean queriedJavaUtilResourceBundleGetBundleImplSLCC;
-
-        private JavaHandles(JNIEnvironment env) {
-            JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");
-            try (CCharPointerHolder name = toCString("getName"); CCharPointerHolder signature = toCString("()Ljava/lang/String;")) {
-                javaLangClassGetName = jniFunctions.getGetMethodID().invoke(env, javaLangClass, name.get(), signature.get());
-                guarantee(javaLangClassGetName.isNonNull());
-            }
-            javaLangClassForName3 = getMethodId(env, javaLangClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", true);
-
-            JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
-            javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);
-            javaLangReflectMemberGetDeclaringClass = getMethodId(env, javaLangReflectMember, "getDeclaringClass", "()Ljava/lang/Class;", false);
-
-            JNIObjectHandle javaUtilEnumeration = findClass(env, "java/util/Enumeration");
-            javaUtilEnumerationHasMoreElements = getMethodId(env, javaUtilEnumeration, "hasMoreElements", "()Z", false);
-
-            javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
-            javaLangSecurityException = newClassGlobalRef(env, "java/lang/SecurityException");
-            javaLangNoClassDefFoundError = newClassGlobalRef(env, "java/lang/NoClassDefFoundError");
-            javaLangNoSuchMethodError = newClassGlobalRef(env, "java/lang/NoSuchMethodError");
-            javaLangNoSuchMethodException = newClassGlobalRef(env, "java/lang/NoSuchMethodException");
-            javaLangNoSuchFieldError = newClassGlobalRef(env, "java/lang/NoSuchFieldError");
-            javaLangNoSuchFieldException = newClassGlobalRef(env, "java/lang/NoSuchFieldException");
-            javaLangClassNotFoundException = newClassGlobalRef(env, "java/lang/ClassNotFoundException");
-            javaLangRuntimeException = newClassGlobalRef(env, "java/lang/RuntimeException");
-            javaUtilMissingResourceException = newClassGlobalRef(env, "java/util/MissingResourceException");
-            javaUtilMissingResourceExceptionCtor3 = getMethodId(env, javaUtilMissingResourceException, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V", false);
-        }
-
-        private static JNIObjectHandle findClass(JNIEnvironment env, String className) {
-            try (CCharPointerHolder name = toCString(className)) {
-                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
-                guarantee(h.notEqual(nullHandle()));
-                return h;
-            }
-        }
-
-        private JNIObjectHandle newClassGlobalRef(JNIEnvironment env, String className) {
-            return newTrackedGlobalRef(env, findClass(env, className));
-        }
-
-        private static JNIMethodId getMethodId(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, boolean isStatic) {
-            JNIMethodId id = getMethodIdOptional(env, clazz, name, signature, isStatic);
-            guarantee(id.isNonNull());
-            return id;
-        }
-
-        private static JNIMethodId getMethodIdOptional(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, boolean isStatic) {
-            try (CCharPointerHolder cname = toCString(name); CCharPointerHolder csignature = toCString(signature)) {
-                if (isStatic) {
-                    return jniFunctions.getGetStaticMethodID().invoke(env, clazz, cname.get(), csignature.get());
-                } else {
-                    return jniFunctions.getGetMethodID().invoke(env, clazz, cname.get(), csignature.get());
-                }
-            }
-        }
-
-        public JNIObjectHandle newTrackedGlobalRef(JNIEnvironment env, JNIObjectHandle ref) {
-            JNIObjectHandle global = jniFunctions.getNewGlobalRef().invoke(env, ref);
-            guarantee(global.notEqual(nullHandle()));
-            globalRefsLock.lock();
-            try {
-                if (globalRefCount == globalRefs.length) {
-                    globalRefs = Arrays.copyOf(globalRefs, globalRefs.length * 2);
-                }
-                globalRefs[globalRefCount] = global;
-                globalRefCount++;
-            } finally {
-                globalRefsLock.unlock();
-            }
-            return global;
-        }
-
-        public JNIObjectHandle getJavaLangReflectField(JNIEnvironment env) {
-            if (javaLangReflectField.equal(nullHandle())) {
-                javaLangReflectField = newClassGlobalRef(env, "java/lang/reflect/Field");
-            }
-            return javaLangReflectField;
-        }
-
-        public JNIObjectHandle getJavaLangReflectMethod(JNIEnvironment env) {
-            if (javaLangReflectMethod.equal(nullHandle())) {
-                javaLangReflectMethod = newClassGlobalRef(env, "java/lang/reflect/Method");
-            }
-            return javaLangReflectMethod;
-        }
-
-        public JNIObjectHandle getJavaLangReflectConstructor(JNIEnvironment env) {
-            if (javaLangReflectConstructor.equal(nullHandle())) {
-                javaLangReflectConstructor = newClassGlobalRef(env, "java/lang/reflect/Constructor");
-            }
-            return javaLangReflectConstructor;
-        }
-
-        public JNIObjectHandle getJavaUtilCollections(JNIEnvironment env) {
-            if (javaUtilCollections.equal(nullHandle())) {
-                javaUtilCollections = newClassGlobalRef(env, "java/util/Collections");
-            }
-            return javaUtilCollections;
-        }
-
-        public JNIMethodId getJavaUtilCollectionsEmptyEnumeration(JNIEnvironment env) {
-            if (javaUtilCollectionsEmptyEnumeration.isNull()) {
-                javaUtilCollectionsEmptyEnumeration = getMethodId(env, getJavaUtilCollections(env), "emptyEnumeration", "()Ljava/util/Enumeration;", true);
-            }
-            return javaUtilCollectionsEmptyEnumeration;
-        }
-
-        public JNIMethodId tryGetJavaUtilResourceBundleGetBundleImplSLCC(JNIEnvironment env) {
-            if (!queriedJavaUtilResourceBundleGetBundleImplSLCC) {
-                JNIObjectHandle javaUtilResourceBundle = findClass(env, "java/util/ResourceBundle");
-                javaUtilResourceBundleGetBundleImplSLCC = getMethodIdOptional(env, javaUtilResourceBundle, "getBundleImpl",
-                                "(Ljava/lang/String;Ljava/util/Locale;Ljava/lang/Class;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;", true);
-                queriedJavaUtilResourceBundleGetBundleImplSLCC = true;
-            }
-            return javaUtilResourceBundleGetBundleImplSLCC;
-        }
-
-        public void destroy(JNIEnvironment env) {
-            for (int i = 0; i < globalRefCount; i++) {
-                jniFunctions().getDeleteGlobalRef().invoke(env, globalRefs[i]);
-            }
-        }
     }
 
     public static String fromCString(CCharPointer s) {
@@ -310,6 +145,12 @@ public final class Support {
         return null;
     }
 
+    public static JNIObjectHandle toJniString(JNIEnvironment jni, String string) {
+        try (CCharPointerHolder cString = toCString(string)) {
+            return jniFunctions().getNewStringUTF().invoke(jni, cString.get());
+        }
+    }
+
     public static CCharPointerHolder toCString(String s) {
         // TODO: this is supposed to produce modified UTF-8 when used with JNI.
         return CTypeConversion.toCString(s);
@@ -319,7 +160,7 @@ public final class Support {
         return getMethodDeclaringClass(getCallerMethod(depth));
     }
 
-    static JNIObjectHandle getDirectCallerClass() {
+    public static JNIObjectHandle getDirectCallerClass() {
         return getCallerClass(1);
     }
 
@@ -343,7 +184,7 @@ public final class Support {
 
     public static String getClassNameOr(JNIEnvironment env, JNIObjectHandle clazz, String forNullHandle, String forNullNameOrException) {
         if (clazz.notEqual(nullHandle())) {
-            JNIObjectHandle clazzName = callObjectMethod(env, clazz, Support.handles().javaLangClassGetName);
+            JNIObjectHandle clazzName = callObjectMethod(env, clazz, JvmtiAgentBase.singleton().handles().javaLangClassGetName);
             String result = Support.fromJniString(env, clazzName);
             if (result == null || clearException(env)) {
                 result = forNullNameOrException;
@@ -490,6 +331,12 @@ public final class Support {
         args.addressOf(0).setObject(l0);
         args.addressOf(1).setObject(l1);
         return jniFunctions().getCallLongMethodA().invoke(env, obj, method, args);
+    }
+
+    public static int callIntMethodL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0) {
+        JNIValue args = StackValue.get(1, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        return jniFunctions().getCallIntMethodA().invoke(env, obj, method, args);
     }
 
     public static JNIObjectHandle newObjectLLL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId ctor, JNIObjectHandle l0, JNIObjectHandle l1, JNIObjectHandle l2) {

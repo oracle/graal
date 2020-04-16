@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.jvmti;
+package com.oracle.svm.jvmtiagentbase.jvmti;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -139,6 +139,14 @@ public interface JvmtiInterface extends PointerBase {
     interface GetClassLoaderFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv env, JNIObjectHandle clazz, PointerBase classLoaderPtr);
+    }
+
+    @CField("GetSourceFileName")
+    GetSourceFileNameFunctionPointer GetSourceFileName();
+
+    interface GetSourceFileNameFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv env, JNIObjectHandle clazz, CCharPointerPointer sourceName);
     }
 
     @CField("GetMethodName")
