@@ -699,6 +699,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         blacklistAllMethods(metaAccess, ListIterator.class);
         blacklistAllMethods(metaAccess, ReentrantLock.class);
 
+        whitelistMethod(metaAccess, BigInteger.class, "signum");
         whitelistMethod(metaAccess, ReentrantLock.class, "isLocked");
         whitelistMethod(metaAccess, ReentrantLock.class, "isHeldByCurrentThread");
 
