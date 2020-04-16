@@ -121,13 +121,14 @@ suite = {
       "sha1" : "0fde45454791eff6b1cd1dbed21645ebe073c0d2",
       "license" : "Apache-2.0-LLVM",
     },
-    "LLVM_ORG_LIBCXX_SRC" : {
-      "version" : "9.0.0-5-g80b1d876fd-bgb66b241662",
+    "LLVM_ORG_SRC" : {
+      # version difference since the sources where repackaged
+      "version" : "9.0.0-5-g80b1d876fd-bg0c808efbe5",
       "packedResource" : True,
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/libcxx-src-llvmorg-{version}.tar.gz"],
-      "sha1" : "5bfe4fd7df77e119834fbfd2567194d093ad338e",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-src-llvmorg-{version}.tar.gz"],
+      "sha1" : "27bea70346768ee43893df3f65cf785c5b5d0342",
       "license" : "Apache-2.0-LLVM",
-    },
+      },
   },
   "projects" : {
     "org.graalvm.options" : {
