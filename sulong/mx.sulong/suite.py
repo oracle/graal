@@ -507,6 +507,7 @@ suite = {
       ],
       "buildDependencies" : [
         "sdk:LLVM_TOOLCHAIN",
+        "sdk:LLVM_ORG_SRC",
       ],
       "buildEnv" : {
         "CFLAGS" : "-Xclang -disable-O0-optnone",
@@ -517,7 +518,7 @@ suite = {
         "LLVM_TOOLCHAIN_LIB" : "<path:LLVM_TOOLCHAIN>/lib",
         "LIBSULONG" : "<lib:sulong>",
         "LIBSULONGXX" : "<lib:sulong++>",
-        "LIBCXX_SRC" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>",
+        "LIBCXX_SRC" : "<path:sdk:LLVM_ORG_SRC>",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -567,15 +568,15 @@ suite = {
     "com.oracle.truffle.llvm.libraries.bitcode.libcxxabi" : {
       "subDir" : "projects",
       "vpath" : True,
-      "sourceDir" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/libcxxabi",
+      "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/libcxxabi",
       "class" : "CMakeProject",
       "makeTarget" : "install",
       "results" : ["native"],
       "cmakeConfig" : {
-        "LLVM_PATH" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/llvm",
+        "LLVM_PATH" : "<path:sdk:LLVM_ORG_SRC>/llvm",
         "LIBCXXABI_INCLUDE_TESTS": "NO",
-        "LIBCXXABI_LIBCXX_INCLUDES" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/libcxx/include",
-        "LIBCXXABI_LIBCXX_PATH" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/libcxx",
+        "LIBCXXABI_LIBCXX_INCLUDES" : "<path:sdk:LLVM_ORG_SRC>/libcxx/include",
+        "LIBCXXABI_LIBCXX_PATH" : "<path:sdk:LLVM_ORG_SRC>/libcxx",
         "LIBCXXABI_ENABLE_STATIC" : "NO",
         "CMAKE_C_COMPILER" : "<toolchainGetToolPath:native,CC>",
         "CMAKE_CXX_COMPILER" :  "<toolchainGetToolPath:native,CXX>",
@@ -583,23 +584,24 @@ suite = {
       },
       "buildDependencies" : [
         "SULONG_BOOTSTRAP_TOOLCHAIN",
+        "sdk:LLVM_ORG_SRC",
       ],
       "license" : "BSD-new",
     },
     "com.oracle.truffle.llvm.libraries.bitcode.libcxx" : {
       "subDir" : "projects",
       "vpath" : True,
-      "sourceDir" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/libcxx",
+      "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/libcxx",
       "class" : "CMakeProject",
       "makeTarget" : "install",
       "results" : ["native"],
       "cmakeConfig" : {
-        "LLVM_PATH" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/llvm",
+        "LLVM_PATH" : "<path:sdk:LLVM_ORG_SRC>/llvm",
         "LIBCXX_INCLUDE_BENCHMARKS": "NO",
         "LIBCXX_INCLUDE_TESTS": "NO",
         "LIBCXX_CXX_ABI" : "libcxxabi",
         "LIBCXX_CXX_ABI_LIBRARY_PATH" : "<path:com.oracle.truffle.llvm.libraries.bitcode.libcxxabi>/native/lib",
-        "LIBCXX_CXX_ABI_INCLUDE_PATHS" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/libcxxabi/include",
+        "LIBCXX_CXX_ABI_INCLUDE_PATHS" : "<path:sdk:LLVM_ORG_SRC>/libcxxabi/include",
         "LIBCXX_ENABLE_STATIC" : "NO",
         "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
         "CMAKE_C_COMPILER" : "<toolchainGetToolPath:native,CC>",
@@ -610,6 +612,7 @@ suite = {
       },
       "buildDependencies" : [
         "sdk:LLVM_TOOLCHAIN",
+        "sdk:LLVM_ORG_SRC",
       ],
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode.libcxxabi",
