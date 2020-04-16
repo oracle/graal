@@ -170,8 +170,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         private static final ArgumentsProfile INVALID = new ArgumentsProfile();
 
         // Invariant to simplify conditions: types is non-null if assumption is valid
-        private final OptimizedAssumption assumption;
-        @CompilationFinal(dimensions = 1) private final Class<?>[] types;
+        final OptimizedAssumption assumption;
+        @CompilationFinal(dimensions = 1) final Class<?>[] types;
 
         private ArgumentsProfile() {
             this.assumption = createInvalidAssumption(ARGUMENT_TYPES_ASSUMPTION_NAME);
@@ -190,8 +190,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         private static final ReturnProfile INVALID = new ReturnProfile();
 
         // Invariant to simplify conditions: type is non-null if assumption is valid
-        private final OptimizedAssumption assumption;
-        private final Class<?> type;
+        final OptimizedAssumption assumption;
+        final Class<?> type;
 
         private ReturnProfile() {
             this.assumption = createInvalidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
