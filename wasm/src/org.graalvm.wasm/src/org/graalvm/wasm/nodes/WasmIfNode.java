@@ -107,7 +107,7 @@ public final class WasmIfNode extends WasmNode {
     }
 
     @Override
-    int brIfProfilesLength() {
-        return trueBranch.brIfProfilesLength() + (falseBranch != null ? falseBranch.brIfProfilesLength() : 0);
+    int profileCount() {
+        return trueBranch.profileCount() + (falseBranch != null ? falseBranch.profileCount() : 0);
     }
 }

@@ -274,14 +274,14 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int initialIntConstantOffset;
     @CompilationFinal private final int initialLongConstantOffset;
     @CompilationFinal private final int initialBranchTableOffset;
-    @CompilationFinal private final int initialBrIfProfileOffset;
-    @CompilationFinal private int brIfProfilesLength;
+    @CompilationFinal private final int initialProfileOffset;
+    @CompilationFinal private int profileCount;
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Children private Node[] children;
 
     public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, byte continuationTypeId, int initialStackPointer,
                     int initialByteConstantOffset, int initialIntConstantOffset, int initialLongConstantOffset, int initialBranchTableOffset,
-                    int initialBrIfProfileOffset) {
+                    int initialProfileOffset) {
         super(wasmModule, codeEntry, -1);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;
@@ -291,7 +291,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         this.initialIntConstantOffset = initialIntConstantOffset;
         this.initialLongConstantOffset = initialLongConstantOffset;
         this.initialBranchTableOffset = initialBranchTableOffset;
-        this.initialBrIfProfileOffset = initialBrIfProfileOffset;
+        this.initialProfileOffset = initialProfileOffset;
     }
 
     private ContextReference<WasmContext> contextReference() {
@@ -310,7 +310,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         this.intConstantLength = intConstantLength;
         this.longConstantLength = longConstantLength;
         this.branchTableLength = branchTableLength;
-        this.brIfProfilesLength = brIfProfilesLength;
+        this.profileCount = brIfProfilesLength;
         this.children = children;
     }
 
@@ -335,8 +335,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @Override
-    int brIfProfilesLength() {
-        return brIfProfilesLength;
+    int profileCount() {
+        return profileCount;
     }
 
     public int startOfset() {
@@ -352,7 +352,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         int longConstantOffset = initialLongConstantOffset;
         int branchTableOffset = initialBranchTableOffset;
         int stackPointer = initialStackPointer;
-        int brIfProfileCounter = initialBrIfProfileOffset;
+        int profileOffset = initialProfileOffset;
         int offset = startOffset;
         trace("block/if/loop EXECUTE");
         while (offset < startOffset + byteLength()) {
@@ -491,8 +491,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     intConstantOffset++;
                     // endregion
 
-                    boolean condition = codeEntry().profileBrIf(brIfProfileCounter, popCondition(frame, stackPointer));
-                    ++brIfProfileCounter;
+                    boolean condition = codeEntry().profileCondition(profileOffset, popCondition(frame, stackPointer));
+                    ++profileOffset;
 
                     if (condition) {
                         TargetOffset unwindCounter = TargetOffset.createOrCached(unwindCounterValue);

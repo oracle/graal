@@ -118,6 +118,6 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
 
     abstract int branchTableLength();
 
-    abstract int brIfProfilesLength();
+    abstract int profileCount();
 
 }
