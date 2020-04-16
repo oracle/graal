@@ -59,7 +59,7 @@ class EspressoVm(GuestVm, JavaVm):
             return self.host_vm().run(cwd, mx_espresso._espresso_standalone_command(args))
 
 
-# Benchmark parameter from AWFY rebench.conf
+# Benchmark-specific parameter from AWFY rebench.conf
 _awfyConfig = {
     "DeltaBlue"  : 12000,
     "Richards"   : 100,
@@ -88,7 +88,7 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
         return "Graal"
 
     def subgroup(self):
-        return "graal-compiler"
+        return "espresso"
 
     def benchSuiteName(self):
         return self.name()
@@ -112,17 +112,17 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument('-i', '--iterations', default=self.awfyIterations())
         parser.add_argument('-p', '--param', default=self.awfyBenchmarkParam()[benchname])
-        args, remaining = parser.parse_known_args(runArgs)  
+        args, remaining = parser.parse_known_args(runArgs)
         return [str(args.iterations), str(args.param)] + remaining
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         benchArg = ""
         if benchmarks is None:
             mx.abort("Suite can only run a single benchmark per VM instance.")
-        elif len(benchmarks) == 0:
-            mx.abort("Must specify at least one benchmark.")
+        elif len(benchmarks) != 1:
+            mx.abort("Must specify exactly one benchmark to run.")
         else:
-            benchArg = ",".join(benchmarks)
+            benchArg = benchmarks[0]
         runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
         return (self.vmArgs(bmSuiteArgs) + ["-cp", self.awfyPath()] + ["Harness"] + [benchArg] + runArgs)
 
@@ -147,28 +147,13 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
                     "benchmark": ("<benchmark>", str),
                     "bench-suite": self.benchSuiteName(),
                     "config.vm-flags": ' '.join(self.vmArgs(bmSuiteArgs)),
-                    "metric.name": "final-time",
+                    "metric.name": "warmup",
                     "metric.value": ("<runtime>", float),
                     "metric.unit": "us",
                     "metric.type": "numeric",
                     "metric.score-function": "id",
                     "metric.better": "lower",
                     "metric.iteration": ("$iteration", int)
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                r"(?P<benchmark>[a-zA-Z0-9_\-]+): iterations=(?P<iterations>[0-9]+) average: (?P<average>[0-9]+)us total: (?P<total>[0-9]+)us",
-                {
-                    "benchmark": ("<benchmark>", str),
-                    "bench-suite": self.benchSuiteName(),                    
-                    "config.vm-flags": ' '.join(self.vmArgs(bmSuiteArgs)),
-                    "metric.name": "total-time",
-                    "metric.value": ("<total>", float),
-                    "metric.unit": "us",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": 0
                 }
             )
         ]
