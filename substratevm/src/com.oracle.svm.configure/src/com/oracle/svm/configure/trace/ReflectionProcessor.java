@@ -99,7 +99,6 @@ class ReflectionProcessor extends AbstractProcessor {
         switch (function) {
             case "loadClass":
             case "forName": {
-                assert clazz.equals("java.lang.Class");
                 expectSize(args, 1);
                 String name = (String) args.get(0);
                 configuration.getOrCreateType(name);
