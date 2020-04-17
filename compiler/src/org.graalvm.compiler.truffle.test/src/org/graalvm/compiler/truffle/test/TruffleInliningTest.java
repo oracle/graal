@@ -48,7 +48,7 @@ import org.graalvm.polyglot.Context;
 
 public abstract class TruffleInliningTest extends TestWithPolyglotOptions {
 
-    private static final String[] DEFAULT_OTIONS = {"engine.Compilation", "false"};
+    private static final String[] DEFAULT_OPTIONS = {"engine.Compilation", "false", "engine.LanguageAgnosticInlining", "false"};
 
     class InlineTestRootNode extends RootNode {
 
@@ -270,10 +270,10 @@ public abstract class TruffleInliningTest extends TestWithPolyglotOptions {
     protected Context setupContext(String... keyValuePairs) {
         String[] newOptions;
         if (keyValuePairs.length == 0) {
-            newOptions = DEFAULT_OTIONS;
+            newOptions = DEFAULT_OPTIONS;
         } else {
-            newOptions = Arrays.copyOf(DEFAULT_OTIONS, DEFAULT_OTIONS.length + keyValuePairs.length);
-            System.arraycopy(keyValuePairs, 0, newOptions, DEFAULT_OTIONS.length, keyValuePairs.length);
+            newOptions = Arrays.copyOf(DEFAULT_OPTIONS, DEFAULT_OPTIONS.length + keyValuePairs.length);
+            System.arraycopy(keyValuePairs, 0, newOptions, DEFAULT_OPTIONS.length, keyValuePairs.length);
         }
         return super.setupContext(newOptions);
     }
