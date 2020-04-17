@@ -90,7 +90,7 @@ class ReflectionProcessor extends AbstractProcessor {
         }
         String clazz = (String) entry.get("class");
         String callerClass = (String) entry.get("caller_class");
-        if (advisor.shouldIgnoreCaller(lazyValue(callerClass))) {
+        if (advisor.shouldIgnore(lazyValue(clazz), lazyValue(callerClass))) {
             return;
         }
         ConfigurationMemberKind memberKind = ConfigurationMemberKind.PUBLIC;
@@ -98,12 +98,12 @@ class ReflectionProcessor extends AbstractProcessor {
         String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
         switch (function) {
             case "loadClass":
-                if (advisor.shouldIgnoreLoadClass(lazyValue(callerClass))) {
+                if (advisor.shouldIgnoreLoadClass(lazyValue(singleElement(args)), lazyValue(callerClass))) {
                     break;
                 }
+                // fall through
             case "forName": {
-                expectSize(args, 1);
-                String name = (String) args.get(0);
+                String name = singleElement(args);
                 configuration.getOrCreateType(name);
                 break;
             }

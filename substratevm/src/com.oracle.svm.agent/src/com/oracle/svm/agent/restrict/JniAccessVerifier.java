@@ -40,13 +40,15 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.agent.NativeImageAgent;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
+
+import jdk.vm.ci.meta.MetaUtil;
 
 /**
  * In restriction mode, decides whether to permit or deny individual accesses via JNI, using
@@ -66,43 +68,57 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
 
     @SuppressWarnings("unused")
     public boolean verifyDefineClass(JNIEnvironment env, CCharPointer name, JNIObjectHandle loader, CCharPointer buf, int bufLen, JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        LazyValue<String> javaName = lazyJniFindClassName(name);
+        if (shouldApproveWithoutChecks(javaName, lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
-        try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "defining classes is not permitted.")) {
+        try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "defining classes is not permitted: " + javaName.get())) {
             // SecurityException seems most fitting from the exceptions allowed by the JNI spec
             jniFunctions().getThrowNew().invoke(env, agent.handles().javaLangSecurityException, message.get());
         }
         return false;
     }
 
-    public boolean verifyFindClass(JNIEnvironment env, CCharPointer cname, JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+    public boolean verifyFindClass(JNIEnvironment env, CCharPointer name, JNIObjectHandle callerClass) {
+        LazyValue<String> javaName = lazyJniFindClassName(name);
+        if (shouldApproveWithoutChecks(javaName, lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
-        String name = fromCString(cname);
-        if (name != null) {
-            if (!name.startsWith("[") && name.length() > 1) {
-                name = "L" + name + ";"; // FindClass doesn't require those
-            }
-            if (typeAccessChecker.getConfiguration().getByInternalName(name) != null) {
-                return true;
-            }
+        if (javaName.get() != null && typeAccessChecker.getConfiguration().get(javaName.get()) != null) {
+            return true;
         }
-        try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to class: " + name)) {
+        try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to class: " + javaName.get())) {
             jniFunctions().getThrowNew().invoke(env, agent.handles().javaLangNoClassDefFoundError, message.get());
         }
         return false;
     }
 
+    private static LazyValue<String> lazyJniFindClassName(CCharPointer name) {
+        return lazyGet(() -> {
+            String s = fromCString(name);
+            if (s != null) {
+                if (!s.startsWith("[") && s.length() > 1) {
+                    s = "L" + s + ";";
+                }
+                try {
+                    return MetaUtil.internalNameToJava(s, true, true);
+                } catch (Exception ignored) {
+                    // likely malformed input from the observed application
+                }
+            }
+            return null;
+        });
+    }
+
     public boolean verifyGetMethodID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer cname, CCharPointer csignature, JNIMethodId result, JNIObjectHandle callerClass) {
+        LazyValue<String> clazzName = lazyClassNameOrNull(env, clazz);
         LazyValue<String> callerClassName = lazyClassNameOrNull(env, callerClass);
-        if (shouldApproveWithoutChecks(callerClassName)) {
+        if (shouldApproveWithoutChecks(clazzName, callerClassName)) {
             return true;
         }
         assert result.isNonNull();
         String name = fromCString(cname);
-        if (accessAdvisor.shouldIgnoreJniMethodLookup(lazyClassNameOrNull(env, clazz), lazyValue(name), lazyGet(() -> fromCString(csignature)), callerClassName)) {
+        if (accessAdvisor.shouldIgnoreJniMethodLookup(clazzName, lazyValue(name), lazyGet(() -> fromCString(csignature)), callerClassName)) {
             return true;
         }
         WordPointer declaringPtr = StackValue.get(WordPointer.class);
@@ -124,7 +140,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
                     @SuppressWarnings("unused") CCharPointer csignature, JNIFieldId result, JNIObjectHandle callerClass) {
 
         assert result.isNonNull();
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, clazz, callerClass)) {
             return true;
         }
         // Check if the member in the declaring method is registered.
@@ -144,7 +160,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
 
     public boolean verifyThrowNew(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle callerClass) {
         LazyValue<String> callerClassName = lazyClassNameOrNull(env, callerClass);
-        if (shouldApproveWithoutChecks(callerClassName)) {
+        if (shouldApproveWithoutChecks(lazyClassNameOrNull(env, clazz), callerClassName)) {
             return true;
         }
         String name = ConfigurationMethod.CONSTRUCTOR_NAME;
@@ -162,7 +178,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
 
     public boolean verifyFromReflectedMethod(JNIEnvironment env, JNIObjectHandle declaring, String name, String signature, JNIMethodId result, JNIObjectHandle callerClass) {
         assert result.isNonNull();
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, declaring, callerClass)) {
             return true;
         }
         return typeAccessChecker.isMethodAccessible(env, declaring, name, () -> signature, result, declaring);
@@ -170,7 +186,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
 
     public boolean verifyFromReflectedField(JNIEnvironment env, JNIObjectHandle declaring, String name, JNIFieldId result, JNIObjectHandle callerClass) {
         assert result.isNonNull();
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, declaring, callerClass)) {
             return true;
         }
         return typeAccessChecker.isFieldAccessible(env, declaring, () -> name, result, declaring);
@@ -181,7 +197,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         if (reflectTypeAccessChecker == null) {
             return true;
         }
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, clazz, callerClass)) {
             return true;
         }
         return reflectTypeAccessChecker.isMethodAccessible(env, clazz, name, () -> signature, methodId, declaring);
@@ -192,18 +208,14 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         if (reflectTypeAccessChecker == null) {
             return true;
         }
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, clazz, callerClass)) {
             return true;
         }
         return reflectTypeAccessChecker.isFieldAccessible(env, clazz, () -> name, fieldId, declaring);
     }
 
     public boolean verifyNewObjectArray(JNIEnvironment env, JNIObjectHandle arrayClass, JNIObjectHandle callerClass) {
-        LazyValue<String> callerClassName = lazyClassNameOrNull(env, callerClass);
-        if (shouldApproveWithoutChecks(callerClassName)) {
-            return true;
-        }
-        if (accessAdvisor.shouldIgnoreJniNewObjectArray(lazyClassNameOrNull(env, arrayClass), callerClassName)) {
+        if (shouldApproveWithoutChecks(env, arrayClass, callerClass)) {
             return true;
         }
         return typeAccessChecker.getType(arrayClass) != null;
