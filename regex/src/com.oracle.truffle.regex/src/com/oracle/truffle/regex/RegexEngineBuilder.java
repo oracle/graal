@@ -111,7 +111,7 @@ public final class RegexEngineBuilder extends AbstractRegexObject {
                     @Cached ToStringNode expectOptionsNode,
                     @CachedLibrary(limit = "1") InteropLibrary fallbackCompilers) throws ArityException, UnsupportedTypeException {
         if (args.length > 2) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw ArityException.create(2, args.length);
         }
         RegexOptions options = RegexOptions.DEFAULT;
@@ -121,7 +121,7 @@ public final class RegexEngineBuilder extends AbstractRegexObject {
         TruffleObject fallbackCompiler = null;
         if (args.length >= 2) {
             if (!(fallbackCompilers.isExecutable(args[1]))) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnsupportedTypeException.create(args);
             }
             fallbackCompiler = (TruffleObject) args[1];

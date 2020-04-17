@@ -75,7 +75,7 @@ public abstract class InputCharAtNode extends Node {
         try {
             return toCharNode.execute(inputs.readArrayElement(input, index));
         } catch (UnsupportedMessageException | InvalidArrayIndexException | UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             // should never be reached
             throw new RuntimeException(e);
         }

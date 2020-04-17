@@ -78,7 +78,7 @@ public abstract class ExpectStringOrTruffleObjectNode extends Node {
             }
             return input;
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnsupportedTypeException.create(new Object[]{input});
         }
     }
