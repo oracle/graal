@@ -34,6 +34,7 @@ import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -42,6 +43,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -122,7 +125,10 @@ public final class LLVMContext {
 
     @CompilationFinal private Env env;
     private final LLVMScope globalScope;
+    private final LLVMScope globalScopeTmp;
+
     private final ArrayList<LLVMLocalScope> localScopes;
+    private final ArrayList<LLVMLocalScope> localScopesTmp;
 
     private final DynamicLinkChain dynamicLinkChain;
     private final List<RootCallTarget> destructorFunctions;
@@ -193,7 +199,9 @@ public final class LLVMContext {
         assert !internalLibraryNames.isEmpty() : "No internal libraries?";
 
         this.globalScope = new LLVMScope();
+        this.globalScopeTmp = new LLVMScope();
         this.localScopes = new ArrayList<>();
+        this.localScopesTmp = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
 
         this.mainArguments = getMainArguments(env);
@@ -706,8 +714,130 @@ public final class LLVMContext {
         return globalScope;
     }
 
+    public LLVMScope getGlobalScopeTmp() {
+        return globalScopeTmp;
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public static Pair<Collection<LLVMSymbol>, Collection<LLVMSymbol>> checkGlobalScopeTmp(Collection<LLVMSymbol> original, Collection<LLVMSymbol> tmp) {
+        Collection<LLVMSymbol> globals = new ArrayList<>(original);
+        Collection<LLVMSymbol> globalsTmp = new ArrayList<>(tmp);
+
+        for (LLVMSymbol symbol : tmp) {
+            globals.remove(symbol);
+        }
+
+        for (LLVMSymbol symbol : original) {
+            globalsTmp.remove(symbol);
+        }
+
+        return Pair.create(globals, globalsTmp);
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public static void printCheckScope(Collection<LLVMSymbol> originals, Collection<LLVMSymbol> tmps) {
+        Pair<Collection<LLVMSymbol>, Collection<LLVMSymbol>> globals = checkGlobalScopeTmp(originals, tmps);
+        Collection<LLVMSymbol> original = globals.getLeft();
+        Collection<LLVMSymbol> tmp = globals.getRight();
+
+        System.out.println("**********************************Original**********************************");
+        for (LLVMSymbol symbol : original) {
+            System.out.println("original symbol not in tmp: " + symbol.getName() + ", library: " + symbol.getLibrary() + ", location: " + symbol.getBitcodeID(true) + ", " +
+                            symbol.getSymbolIndex(true) + ", symbol: " + symbol);
+        }
+
+        System.out.println("**********************************TMP**********************************");
+        for (LLVMSymbol symbol : tmp) {
+            System.out.println("tmp symbol not in original: " + symbol.getName() + ", library: " + symbol.getLibrary() + ", location: " + symbol.getBitcodeID(true) + ", " +
+                            symbol.getSymbolIndex(true) + ", symbol: " + symbol);
+        }
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public static void assertCheckScope(Collection<LLVMSymbol> originals, Collection<LLVMSymbol> tmps) {
+        Pair<Collection<LLVMSymbol>, Collection<LLVMSymbol>> globals = checkGlobalScopeTmp(originals, tmps);
+        Collection<LLVMSymbol> original = globals.getLeft();
+        Collection<LLVMSymbol> tmp = globals.getRight();
+        assert original.isEmpty();
+        assert tmp.isEmpty();
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public void assertCheckLocalScope() {
+        LLVMLocalScope[] lscope = new LLVMLocalScope[localScopes.size()];
+        int i = 0;
+        for (LLVMLocalScope scope : localScopes) {
+            lscope[i] = scope;
+            i++;
+        }
+
+        LLVMLocalScope[] tscope = new LLVMLocalScope[localScopesTmp.size()];
+        int j = 0;
+        for (LLVMLocalScope scope : localScopesTmp) {
+            tscope[j] = scope;
+            j++;
+        }
+
+        for (int n = 0; n < lscope.length; n++) {
+            assertCheckScope(lscope[n].values(), tscope[n].values());
+        }
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public void assertCheckGlobalScope() {
+        assertCheckScope(globalScope.values(), globalScopeTmp.values());
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public void printCheckLocalScope() {
+        LLVMLocalScope[] lscope = new LLVMLocalScope[localScopes.size()];
+        int i = 0;
+        for (LLVMLocalScope scope : localScopes) {
+            lscope[i] = scope;
+            i++;
+        }
+
+        LLVMLocalScope[] tscope = new LLVMLocalScope[localScopesTmp.size()];
+        int j = 0;
+        for (LLVMLocalScope scope : localScopesTmp) {
+            tscope[j] = scope;
+            j++;
+        }
+
+        System.out.println("++++++++++++++++++++++++++++++++++++++LOCALS++++++++++++++++++++++++++++++++++++++");
+        for (int n = 0; n < lscope.length; n++) {
+            printCheckScope(lscope[n].values(), tscope[n].values());
+        }
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public void printCheckGlobalScope() {
+        System.out.println("++++++++++++++++++++++++++++++++++++++GLOBALS++++++++++++++++++++++++++++++++++++++");
+        printCheckScope(globalScope.values(), globalScopeTmp.values());
+    }
+
     public void addLocalScope(LLVMLocalScope scope) {
         localScopes.add(scope);
+    }
+
+    public void addLocalScopeTmp(LLVMLocalScope scope) {
+        localScopesTmp.add(scope);
+    }
+
+    public LLVMLocalScope getLocalScopeTmp(int id) {
+        for (LLVMLocalScope scope : localScopesTmp) {
+            if (scope.containID(id)) {
+                return scope;
+            }
+        }
+        return null;
     }
 
     public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {
