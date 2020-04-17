@@ -33,6 +33,7 @@ import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static com.oracle.svm.configure.trace.LazyValueUtils.lazyGet;
 import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 
+import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
@@ -95,9 +96,13 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
     }
 
     public boolean verifyGetMethodID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer cname, CCharPointer csignature, JNIMethodId result, JNIObjectHandle callerClass) {
+        LazyValue<String> callerClassName = lazyClassNameOrNull(env, callerClass);
+        if (shouldApproveWithoutChecks(callerClassName)) {
+            return true;
+        }
         assert result.isNonNull();
         String name = fromCString(cname);
-        if (accessAdvisor.shouldIgnoreJniMethodLookup(lazyClassNameOrNull(env, clazz), lazyValue(name), lazyGet(() -> fromCString(csignature)), lazyClassNameOrNull(env, callerClass))) {
+        if (accessAdvisor.shouldIgnoreJniMethodLookup(lazyClassNameOrNull(env, clazz), lazyValue(name), lazyGet(() -> fromCString(csignature)), callerClassName)) {
             return true;
         }
         WordPointer declaringPtr = StackValue.get(WordPointer.class);
@@ -138,9 +143,13 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
     }
 
     public boolean verifyThrowNew(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle callerClass) {
+        LazyValue<String> callerClassName = lazyClassNameOrNull(env, callerClass);
+        if (shouldApproveWithoutChecks(callerClassName)) {
+            return true;
+        }
         String name = ConfigurationMethod.CONSTRUCTOR_NAME;
         String signature = "(Ljava/lang/String;)V";
-        if (accessAdvisor.shouldIgnoreJniMethodLookup(lazyClassNameOrNull(env, clazz), lazyValue(name), lazyValue(signature), lazyClassNameOrNull(env, callerClass))) {
+        if (accessAdvisor.shouldIgnoreJniMethodLookup(lazyClassNameOrNull(env, clazz), lazyValue(name), lazyValue(signature), callerClassName)) {
             return true;
         }
         JNIMethodId result;
@@ -190,13 +199,13 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
     }
 
     public boolean verifyNewObjectArray(JNIEnvironment env, JNIObjectHandle arrayClass, JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        LazyValue<String> callerClassName = lazyClassNameOrNull(env, callerClass);
+        if (shouldApproveWithoutChecks(callerClassName)) {
             return true;
         }
-        if (accessAdvisor.shouldIgnoreJniNewObjectArray(lazyClassNameOrNull(env, arrayClass), lazyClassNameOrNull(env, callerClass))) {
+        if (accessAdvisor.shouldIgnoreJniNewObjectArray(lazyClassNameOrNull(env, arrayClass), callerClassName)) {
             return true;
         }
         return typeAccessChecker.getType(arrayClass) != null;
     }
-
 }
