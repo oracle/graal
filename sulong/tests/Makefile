@@ -47,6 +47,9 @@ endif
 CXXFLAGS+=-DLIBCXXABI_SILENT_TERMINATE
 
 .PHONY: default
+ifeq ($(strip $(REF_TARGETS) $(BC_TARGETS)),)
+$(error No test files to compile!)
+endif
 default: $(REF_TARGETS) $(BC_TARGETS)
 
 include $(TOP)/Makefile.common

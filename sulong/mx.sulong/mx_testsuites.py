@@ -114,7 +114,14 @@ class SulongTestSuiteBase(mx.NativeProject):  # pylint: disable=too-many-ancesto
 class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
                  buildSharedObject=False, **args):
-        d = os.path.join(suite.dir, subDir)  # use common Makefile for all test suites
+        # d = os.path.join(suite.dir, subDir)  # use common Makefile for all test suites
+        projectDir = args.pop('dir', None)
+        if projectDir:
+            d = os.path.join(suite.dir, projectDir)
+        elif subDir is None:
+            d = os.path.join(suite.dir, name)
+        else:
+            d = os.path.join(suite.dir, subDir, name)
         super(SulongTestSuite, self).__init__(suite, name, subDir, deps, workingSets, results, output, d, **args)
         self.vpath = True
         self.buildRef = buildRef
@@ -149,7 +156,7 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
     def getTests(self):
         if not hasattr(self, '_tests'):
             self._tests = []
-            root = os.path.join(self.dir, self.name)
+            root = os.path.join(self.dir)
             for path, _, files in os.walk(root):
                 for f in files:
                     absPath = os.path.join(path, f)
@@ -161,7 +168,6 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
 
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
         env = super(SulongTestSuite, self).getBuildEnv(replaceVar=replaceVar)
-        env['VPATH'] = os.path.join(self.dir, self.name)
         env['PROJECT'] = self.name
         env['TESTS'] = ' '.join(self.getTests())
         env['VARIANTS'] = ' '.join(self.getVariants())
@@ -250,7 +256,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         vmArgs += [
             "-Dsulongtest.externalTestSuitePath=" + self.getOutput(),
             "-Dsulongtest.testSourcePath=" + self.get_test_source(),
-            "-Dsulongtest.testConfigPath=" + os.path.join(self.dir, self.configDir),
+            "-Dsulongtest.testConfigPath=" + os.path.join(self.dir, "..", self.configDir),
             ]
         if hasattr(self, 'extraLibs'):
             vmArgs.append('-Dpolyglot.llvm.libraries=' + ':'.join(self.extraLibs))
@@ -287,7 +293,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         exclude_files = []
 
         # full name check is cheaper than pattern matching
-        for exclude in mx_buildtools.collectExcludes(os.path.join(self.dir, self.configDir)):
+        for exclude in mx_buildtools.collectExcludes(os.path.join(self.dir, "..", self.configDir)):
             if _maybe_pattern(exclude):
                 exclude_patterns.append(exclude)
             else:
