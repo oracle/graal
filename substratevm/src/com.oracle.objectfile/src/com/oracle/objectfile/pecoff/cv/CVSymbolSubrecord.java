@@ -190,15 +190,14 @@ abstract class CVSymbolSubrecord {
 
         private Map<String, String> map = new HashMap<>(ENVMAP_INITIAL_CAPACITY);
 
-        /*
-         * Example: cwd = C:\tmp\graal-8 cl =
-         * C:\tmp\graal-8\ojdkbuild\tools\toolchain\vs2010e\VC\Bin\x86_amd64\cl.exe cmd = -Zi -MT
-         * -IC:\tmp\graal-8\tools\toolchain\vs2010e\VC\INCLUDE
-         * -IC:\tmp\graal-8\tools\toolchain\sdk71\INCLUDE
-         * -IC:\tmp\graal-8\tools\toolchain\sdk71\INCLUDE\gl -TC -X src = helloworld.c pdb =
-         * C:\tmp\graal-8\vc100.pdb
+        /*-
+         * Example contents of the environment block:
+         *   cwd = C:\tmp\graal-8
+         *   cl = C:\tmp\graal-8\ojdkbuild\tools\toolchain\vs2010e\VC\Bin\x86_amd64\cl.exe
+         *   cmd = -Zi -MT -IC:\tmp\graal-8\tools\toolchain\vs2010e\VC\INCLUDE -IC:\tmp\graal-8\tools\toolchain\sdk71\INCLUDE -IC:\tmp\graal-8\tools\toolchain\sdk71\INCLUDE\gl -TC -X
+         *   src = helloworld.c
+         *   pdb = C:\tmp\graal-8\vc100.pdb
          */
-
         CVEnvBlockRecord(CVDebugInfo cvDebugInfo) {
             super(cvDebugInfo, CVDebugConstants.S_ENVBLOCK);
 
