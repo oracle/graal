@@ -73,6 +73,7 @@ public class UnsafeWasmMemory extends WasmMemory {
     public void validateAddress(Node node, long address, long offset) {
         WasmTracing.trace("validating memory address: 0x%016X (%d)", address, address);
         if (address < 0 || address + offset > this.byteSize()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             trapOutOfBounds(node, address, offset);
         }
     }
