@@ -1041,14 +1041,22 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return schedule.nodesFor(block);
     }
 
+    /**
+     * Check whether conversion of an If to a Conditional causes extra unconditional work. Generally
+     * that transformation is beneficial if it doesn't result in extra work in the main path.
+     */
     private boolean isSafeConditionalInput(ValueNode value, AbstractBeginNode successor) {
         assert successor.hasNoUsages();
-        if (value.isConstant() || value instanceof ParameterNode) {
+        if (value.isConstant() || value instanceof ParameterNode || condition.inputs().contains(value)) {
+            // Assume constants are cheap to evaluate and Parameters are always evaluated. Any input
+            // to the condition itself is also unconditionally evaluated.
             return true;
         }
 
-        if (graph().isAfterFixedReadPhase()) {
+        if (value instanceof FixedNode && graph().isAfterFixedReadPhase()) {
             List<Node> nodes = getNodesForBlock(successor);
+            // The successor block is empty so assume that this input evaluated before the
+            // condition.
             return nodes != null && nodes.size() == 2;
         }
         return false;
