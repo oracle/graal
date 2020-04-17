@@ -1087,8 +1087,6 @@ final class Runner {
             ExternalLibrary lib = parseContext.dependencyQueueRemoveFirst();
             parseLibrary(lib, parseContext);
         }
-
-        updateOverriddenSymbols(sulongLibraryResults);
         return sulongLibraries;
     }
 
@@ -1231,78 +1229,6 @@ final class Runner {
             return name;
         }
         return name.substring(0, index);
-    }
-
-    private void updateOverriddenSymbols(LLVMParserResult[] sulongLibraryResults) {
-        if (sulongLibraryResults.length > 1) {
-            EconomicMap<LLVMSymbol, List<LLVMAlias>> usagesInAliases = computeUsagesInAliases(sulongLibraryResults);
-
-            // the array elements are sorted from strong to weak
-            LLVMParserResult strongerLib = sulongLibraryResults[0];
-            for (int i = 1; i < sulongLibraryResults.length; i++) {
-                LLVMParserResult weakerLib = sulongLibraryResults[i];
-                overrideConflictingSymbols(weakerLib, strongerLib, usagesInAliases);
-                weakerLib.getRuntime().getFileScope().addMissingEntries(strongerLib.getRuntime().getFileScope());
-                strongerLib = weakerLib;
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static EconomicMap<LLVMSymbol, List<LLVMAlias>> computeUsagesInAliases(LLVMParserResult[] sulongLibraryResults) {
-        EconomicMap<LLVMSymbol, List<LLVMAlias>> usages = EconomicMap.create();
-        for (LLVMParserResult parserResult : sulongLibraryResults) {
-            for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
-                if (symbol instanceof LLVMAlias) {
-                    LLVMAlias alias = (LLVMAlias) symbol;
-                    LLVMSymbol target = alias.getTarget();
-
-                    List<LLVMAlias> aliases = usages.get(target);
-                    if (aliases == null) {
-                        aliases = new ArrayList<>();
-                        usages.put(target, aliases);
-                    }
-                    aliases.add(alias);
-                }
-            }
-        }
-        return usages;
-    }
-
-    @SuppressWarnings("unused")
-    private void overrideConflictingSymbols(LLVMParserResult currentLib, LLVMParserResult strongerLib, EconomicMap<LLVMSymbol, List<LLVMAlias>> usagesInAliases) {
-        LLVMScope globalScope = context.getGlobalScope();
-        LLVMScope weakerScope = currentLib.getRuntime().getFileScope();
-        LLVMScope strongerScope = strongerLib.getRuntime().getFileScope();
-
-        for (LLVMSymbol strongerSymbol : strongerScope.values()) {
-            String name = strongerSymbol.getName();
-            LLVMSymbol weakerSymbol = weakerScope.get(name);
-            if (weakerSymbol != null) {
-                boolean shouldOverride = strongerSymbol.isFunction() || strongerSymbol.isGlobalVariable() && !strongerSymbol.asGlobalVariable().isReadOnly();
-                if (shouldOverride) {
-                    /*
-                     * We already have a function with the same name in another (more important)
-                     * library. We update the global scope and all aliases pointing to the weaker
-                     * symbol to point to the stronger symbol instead.
-                     */
-
-                    // if the weaker symbol is exported, export the stronger symbol instead
-                    if (globalScope.get(name) == weakerSymbol) {
-                        globalScope.rename(name, strongerSymbol);
-                        localScope.rename(name, strongerSymbol);
-                    }
-
-                    // modify all aliases that point to the weaker symbol
-                    List<LLVMAlias> affectedAliases = usagesInAliases.get(weakerSymbol);
-                    if (affectedAliases != null) {
-                        for (LLVMAlias alias : affectedAliases) {
-                            alias.setTarget(strongerSymbol);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     @SuppressWarnings("unchecked")
