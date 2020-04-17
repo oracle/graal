@@ -64,7 +64,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
                         if (!LoopTransformations.isUnrollableLoop(loop)) {
                             continue;
                         }
-                        if (getPolicies().shouldPartiallyUnroll(loop)) {
+                        if (getPolicies().shouldPartiallyUnroll(loop, context)) {
                             if (loop.loopBegin().isSimpleLoop()) {
                                 // First perform the pre/post transformation and do the partial
                                 // unroll when we come around again.
