@@ -364,19 +364,6 @@ public class HeapImpl extends Heap {
         return result;
     }
 
-    /** Return the size, in bytes, of the actual used memory, not the committed memory. */
-    public UnsignedWord getUsedObjectBytes() {
-        final Space edenSpace = getYoungGeneration().getEden();
-        final UnsignedWord edenBytes = edenSpace.getObjectBytes();
-        UnsignedWord survivorFromBytes = WordFactory.zero();
-        for (int i = 0; i < HeapPolicy.getMaxSurvivorSpaces(); i++) {
-            survivorFromBytes = survivorFromBytes.add(getYoungGeneration().getSurvivorFromSpaceAt(i).getObjectBytes());
-        }
-        final Space fromSpace = getOldGeneration().getFromSpace();
-        final UnsignedWord oldFromBytes = fromSpace.getObjectBytes();
-        return edenBytes.add(survivorFromBytes).add(oldFromBytes);
-    }
-
     protected void report(Log log) {
         report(log, HeapPolicyOptions.TraceHeapChunks.getValue());
     }
