@@ -59,6 +59,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 @ExportLibrary(InteropLibrary.class)
 public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
+    private static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
     private static final String[] NO_KEYS = new String[0];
 
     protected final long offset;
@@ -343,10 +344,202 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
         }
     }
 
-    private static final class Primitive extends LLVMDebugObject {
+    @ExportLibrary(InteropLibrary.class)
+    static final class Primitive extends LLVMDebugObject {
 
         Primitive(LLVMDebugValue value, long offset, LLVMSourceType type, LLVMSourceLocation declaration) {
             super(value, offset, type, declaration);
+        }
+
+        /**
+         * Some special primitive debugger values like "unavailable" are represented as strings.
+         */
+        @ExportMessage
+        @TruffleBoundary
+        boolean isString() {
+            Object v = getValue();
+            return v instanceof String;
+        }
+
+        /**
+         * Some special primitive debugger values like "unavailable" are represented as strings.
+         */
+        @ExportMessage
+        @TruffleBoundary
+        String asString() throws UnsupportedMessageException {
+            Object v = getValue();
+            if (v instanceof String) {
+                return (String) v;
+            } else {
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isNumber() {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                return true;
+            } else {
+                return UNCACHED_INTEROP.isNumber(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        @SuppressWarnings("unused")
+        boolean fitsInByte() {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                try {
+                    byte b = ((BigInteger) v).byteValueExact();
+                    return true;
+                } catch (ArithmeticException e) {
+                    return false;
+                }
+            } else {
+                return UNCACHED_INTEROP.fitsInByte(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        @SuppressWarnings("unused")
+        boolean fitsInShort() {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                try {
+                    short s = ((BigInteger) v).shortValueExact();
+                    return true;
+                } catch (ArithmeticException e) {
+                    return false;
+                }
+            } else {
+                return UNCACHED_INTEROP.fitsInShort(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        @SuppressWarnings("unused")
+        boolean fitsInInt() {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                try {
+                    int i = ((BigInteger) v).intValueExact();
+                    return true;
+                } catch (ArithmeticException e) {
+                    return false;
+                }
+            } else {
+                return UNCACHED_INTEROP.fitsInInt(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        @SuppressWarnings("unused")
+        boolean fitsInLong() {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                try {
+                    long l = ((BigInteger) v).longValueExact();
+                    return true;
+                } catch (ArithmeticException e) {
+                    return false;
+                }
+            } else {
+                return UNCACHED_INTEROP.fitsInLong(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean fitsInFloat() {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                return true;
+            } else {
+                return UNCACHED_INTEROP.fitsInFloat(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean fitsInDouble() {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                return true;
+            } else {
+                return UNCACHED_INTEROP.fitsInDouble(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        byte asByte() throws UnsupportedMessageException {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                return ((BigInteger) v).byteValue();
+            } else {
+                return UNCACHED_INTEROP.asByte(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        short asShort() throws UnsupportedMessageException {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                return ((BigInteger) v).shortValue();
+            } else {
+                return UNCACHED_INTEROP.asShort(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        int asInt() throws UnsupportedMessageException {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                return ((BigInteger) v).intValue();
+            } else {
+                return UNCACHED_INTEROP.asInt(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        long asLong() throws UnsupportedMessageException {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                return ((BigInteger) v).longValue();
+            } else {
+                return UNCACHED_INTEROP.asLong(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        float asFloat() throws UnsupportedMessageException {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                return ((BigInteger) v).floatValue();
+            } else {
+                return UNCACHED_INTEROP.asFloat(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        double asDouble() throws UnsupportedMessageException {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                return ((BigInteger) v).doubleValue();
+            } else {
+                return UNCACHED_INTEROP.asDouble(v);
+            }
         }
 
         @Override
