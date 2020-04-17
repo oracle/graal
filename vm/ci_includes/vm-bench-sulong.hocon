@@ -84,6 +84,7 @@ bench-llvm-native: ${bench-llvm-common} ${bench-llvm-linux} ${sulong-weekly-noti
   targets: [daily, bench]
   run: [
     [cd, ${compiler-suite-root}]
+    [mx, --dynamicimport, "/sdk", build, --dep, LLVM_TOOLCHAIN]
     ${bench-llvm-linux.cmd} [--, --native-vm, clang, --native-vm-config, O3]
   ]
 }
