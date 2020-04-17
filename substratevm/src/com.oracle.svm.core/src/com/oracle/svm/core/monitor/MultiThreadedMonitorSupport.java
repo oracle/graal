@@ -334,6 +334,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     protected ReentrantLock getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting) {
         assert obj.getClass() != Target_java_lang_ref_ReferenceQueue_Lock.class : "ReferenceQueue.Lock must have a monitor field or we can deadlock accessing WeakIdentityHashMap below";
+        VMError.guarantee(!additionalMonitorsLock.isHeldByCurrentThread(),
+                        "Recursive manipulation of the additionalMonitors map can lead to table corruptions and double insertion of a monitor for the same object");
 
         /*
          * Lock the monitor map and maybe add a monitor for this object. This serialization might be
