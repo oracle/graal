@@ -32,10 +32,10 @@ import java.util.HashSet;
 import jdk.tools.jaotc.binformat.BinaryContainer;
 import jdk.tools.jaotc.binformat.ReadOnlyDataContainer;
 import jdk.tools.jaotc.AOTCompiledClass.AOTKlassData;
+import jdk.vm.ci.code.site.Call;
 import org.graalvm.compiler.code.CompilationResult;
 
 import jdk.vm.ci.code.site.Mark;
-import jdk.vm.ci.code.site.Site;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 
@@ -306,23 +306,11 @@ final class CompiledMethodInfo {
         return null;
     }
 
-    boolean hasMark(Site call, MarkId id) {
-        for (Mark m : compilationResult.getMarks()) {
-            int adjOffset = m.pcOffset;
-            if (archStr.equals("aarch64")) {
-                // The mark is at the end of a group of three instructions:
-                // adrp; add; ldr
-                adjOffset += 12;
-            } else {
-                // X64-specific code.
-                // Call instructions are aligned to 8
-                // bytes - 1 on x86 to patch address atomically,
-                adjOffset = (adjOffset & (-8)) + 7;
-            }
-            // Mark points before aligning nops.
-            if ((call.pcOffset == adjOffset) && MarkId.getEnum((int) m.id) == id) {
-                return true;
-            }
+    boolean hasMark(Call call, MarkId id) {
+        assert id == MarkId.INVOKESTATIC || id == MarkId.INVOKESPECIAL;
+        Mark mark = compilationResult.getAssociatedMark(call);
+        if (mark != null) {
+            return MarkId.getEnum((int) mark.id) == id;
         }
         return false;
     }
