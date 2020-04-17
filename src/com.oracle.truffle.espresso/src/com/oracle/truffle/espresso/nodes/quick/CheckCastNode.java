@@ -73,7 +73,7 @@ public abstract class CheckCastNode extends QuickNode {
         }
         Meta meta = typeToCheck.getMeta();
         throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                getExceptionMessage(root, receiver));
+                        getExceptionMessage(root, receiver));
     }
 
     @TruffleBoundary
