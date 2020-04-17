@@ -28,6 +28,10 @@ import org.graalvm.compiler.phases.common.LazyValue;
 
 import com.oracle.svm.configure.filters.RuleNode;
 
+/**
+ * Decides if a recorded access should be included in a configuration. Also advises the agent's
+ * {@code AccessVerifier} classes which accesses to ignore when the agent is in restriction mode.
+ */
 public final class AccessAdvisor {
 
     private static final RuleNode internalsFilter;

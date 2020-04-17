@@ -51,6 +51,10 @@ import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
+/**
+ * In restriction mode, decides whether to permit or deny individual reflective accesses, using
+ * {@link AccessAdvisor} to decide additional exemptions from its own rules, such as system classes.
+ */
 public class ReflectAccessVerifier extends AbstractAccessVerifier {
     private final TypeAccessChecker typeAccessChecker;
     private final NativeImageAgent agent;

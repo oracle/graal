@@ -47,6 +47,10 @@ import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
+/**
+ * In restriction mode, decides whether to permit or deny individual accesses via JNI, using
+ * {@link AccessAdvisor} for additional exemptions from its own rules, such as system classes.
+ */
 public class JniAccessVerifier extends AbstractAccessVerifier {
     private final TypeAccessChecker typeAccessChecker;
     private final TypeAccessChecker reflectTypeAccessChecker;
