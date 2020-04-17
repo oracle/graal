@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.agent.restrict;
 
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyNull;
 import static com.oracle.svm.jvmtiagentbase.Support.fromJniString;
 
 import com.oracle.svm.configure.config.ResourceConfiguration;
@@ -54,7 +55,7 @@ public class ResourceAccessVerifier extends AbstractAccessVerifier {
     }
 
     public boolean verifyGetBundle(JNIEnvironment env, JNIObjectHandle baseName, @SuppressWarnings("unused") JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(lazyNull(), lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
         String bundleName = fromJniString(env, baseName);

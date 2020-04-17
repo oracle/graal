@@ -29,8 +29,15 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.phases.common.LazyValue;
 
 public class LazyValueUtils {
+    static final LazyValue<?> NULL_VALUE = new LazyValue<>(() -> null);
+
     public static <T> LazyValue<T> lazyValue(T value) {
-        return new LazyValue<>(() -> value);
+        return (value != null) ? new LazyValue<>(() -> value) : lazyNull();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> LazyValue<T> lazyNull() {
+        return (LazyValue<T>) NULL_VALUE;
     }
 
     public static <T> LazyValue<T> lazyGet(Supplier<T> supplier) {

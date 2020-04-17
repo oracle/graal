@@ -40,12 +40,12 @@ class AbstractAccessVerifier {
         this.accessAdvisor = advisor;
     }
 
-    protected boolean shouldApproveWithoutChecks(JNIEnvironment env, JNIObjectHandle callerClass) {
-        return shouldApproveWithoutChecks(lazyClassNameOrNull(env, callerClass));
+    protected boolean shouldApproveWithoutChecks(JNIEnvironment env, JNIObjectHandle queriedClass, JNIObjectHandle callerClass) {
+        return shouldApproveWithoutChecks(lazyClassNameOrNull(env, queriedClass), lazyClassNameOrNull(env, callerClass));
     }
 
-    protected boolean shouldApproveWithoutChecks(LazyValue<String> callerClass) {
-        return accessAdvisor.shouldIgnoreCaller(callerClass);
+    protected boolean shouldApproveWithoutChecks(LazyValue<String> queriedClassName, LazyValue<String> callerClassName) {
+        return accessAdvisor.shouldIgnore(queriedClassName, callerClassName);
     }
 
     protected static LazyValue<String> lazyClassNameOrNull(JNIEnvironment env, JNIObjectHandle clazz) {
