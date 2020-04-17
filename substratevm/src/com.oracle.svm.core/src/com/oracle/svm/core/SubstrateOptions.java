@@ -462,7 +462,4 @@ public class SubstrateOptions {
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
     public static final HostedOptionKey<String[]> DebugInfoSourceSearchPath = new HostedOptionKey<String[]>(null) {
     };
-
-    @Option(help = "Temporary flag.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
-    public static final HostedOptionKey<Boolean> LowLatencyGCReferenceHandling = new HostedOptionKey<>(false);
 }
