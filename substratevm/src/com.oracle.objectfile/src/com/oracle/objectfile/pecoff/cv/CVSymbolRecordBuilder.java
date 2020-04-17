@@ -91,14 +91,25 @@ final class CVSymbolRecordBuilder {
         final Range primaryRange = primaryEntry.getPrimary();
         // debug("addfunc(" + methodName + ") numtypes = %d\n",
         // cvDebugInfo.getCVTypeSection().getRecords().size());
+
+        /* S_PROC32 add function definition */
         int functionTypeIndex = addTypeRecords(primaryEntry);
         byte funcFlags = 0;
         CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvDebugInfo, methodName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0, 0,
                         functionTypeIndex, primaryRange.getLo(), (short) 0, funcFlags);
         addToSymbolRecord(proc32);
-        int frameFlags = 0; /* LLVM uses 0x14000; */
+
+        /* S_FRAMEPROC add frame definitions */
+        int asynceh = 1 << 9;  /* aync eh  (msc uses 1, clang uses 0) */
+        int localBP = 1 << 14; /* local base pointer = SP (0=none, 1=sp, 2=bp 3=r13) */
+        int paramBP = 1 << 16; /* param base pointer = SP */
+        int frameFlags = asynceh + localBP + paramBP; /* LLVM uses 0x14000; */
         addToSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, primaryRange.getHi() - primaryRange.getLo(), frameFlags));
+
         /* TODO: add local variables, and their types */
+        /* TODO: add block definitions */
+
+        /* S_END add end record */
         addToSymbolRecord(new CVSymbolSubrecord.CVSymbolEndRecord(cvDebugInfo));
         addLineNumberRecords(primaryEntry, methodName);
     }
