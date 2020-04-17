@@ -98,6 +98,9 @@ class ReflectionProcessor extends AbstractProcessor {
         String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
         switch (function) {
             case "loadClass":
+                if (advisor.shouldIgnoreLoadClass(lazyValue(callerClass))) {
+                    break;
+                }
             case "forName": {
                 expectSize(args, 1);
                 String name = (String) args.get(0);
