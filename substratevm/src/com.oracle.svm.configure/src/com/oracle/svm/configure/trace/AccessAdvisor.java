@@ -154,4 +154,14 @@ public final class AccessAdvisor {
         }
         return false;
     }
+
+    public boolean shouldIgnoreLoadClass(LazyValue<String> callerClass) {
+        /*
+         * Without a caller, we assume that the class loader was invoked directly by the VM, which
+         * indicates a system class (compiler, JVMCI, etc.) that we shouldn't need in our
+         * configuration. The class loader could also have been called via JNI in a manually
+         * attached native thread without Java frames, but that is unusual.
+         */
+        return callerClass.get() == null || shouldIgnoreCaller(callerClass);
+    }
 }
