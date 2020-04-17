@@ -1026,6 +1026,16 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public int getAsynchronousStackDepth(Object polylgotLanguage) {
+            return ((PolyglotLanguage) polylgotLanguage).engine.getAsynchronousStackDepth();
+        }
+
+        @Override
+        public void setAsynchronousStackDepth(Object polyglotInstrument, int depth) {
+            getEngine(polyglotInstrument).setAsynchronousStackDepth((PolyglotInstrument) polyglotInstrument, depth);
+        }
+
+        @Override
         public boolean isCreateProcessAllowed(Object polylgotLanguageContext) {
             return ((PolyglotLanguageContext) polylgotLanguageContext).context.config.createProcessAllowed;
         }

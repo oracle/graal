@@ -54,13 +54,16 @@ import java.io.InputStreamReader;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.Reader;
+import java.lang.reflect.Method;
 import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
@@ -77,10 +80,18 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
@@ -93,12 +104,14 @@ import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
@@ -115,6 +128,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class InstrumentationTest extends AbstractInstrumentationTest {
 
@@ -2117,6 +2131,251 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             });
         }
 
+    }
+
+    @Test
+    public void testAsynchronousStacks1() throws Exception {
+        // Do not store asynchronous stacks by default
+        Method getAsynchronousStackDepthMethod = TruffleLanguage.class.getDeclaredMethod("getAsynchronousStackDepth");
+        getAsynchronousStackDepthMethod.setAccessible(true);
+
+        assertEquals(0, getAsynchronousStackDepthMethod.invoke(language));
+        instrumentEnv.setAsynchronousStackDepth(2);
+        assertEquals(2, getAsynchronousStackDepthMethod.invoke(language));
+    }
+
+    @Test
+    public void testAsynchronousStacks2() {
+        RootNode root = new RootNode(language) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return 42;
+            }
+        };
+        Truffle.getRuntime().createCallTarget(root);
+        Frame frame = Truffle.getRuntime().createMaterializedFrame(new Object[]{}, root.getFrameDescriptor());
+        List<TruffleStackTraceElement> stack = TruffleStackTrace.getAsynchronousStackTrace(root.getCallTarget(), frame);
+        // No asynchronous stack by default
+        assertNull(stack);
+    }
+
+    @Test
+    public void testAsynchronousStacks3() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new AsyncRootNode(language, 0));
+            }
+
+            class AsyncRootNode extends RootNode {
+
+                private final TruffleLanguage<?> language;
+                private final int level;
+                private final FrameSlot targetSlot;
+                @Node.Child private AsyncNode child;
+
+                AsyncRootNode(TruffleLanguage<?> language, int level) {
+                    super(language);
+                    this.language = language;
+                    this.level = level;
+                    this.targetSlot = getFrameDescriptor().findOrAddFrameSlot("target", FrameSlotKind.Object);
+                    this.child = new AsyncNode(level);
+                }
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    storeInvokedTarget(frame.materialize());
+                    child.execute(frame);
+                    return 42;
+                }
+
+                @TruffleBoundary
+                private void storeInvokedTarget(MaterializedFrame frame) {
+                    CallTarget callTarget = Truffle.getRuntime().getCurrentFrame().getCallTarget();
+                    frame.setObject(targetSlot, callTarget);
+                }
+
+                @Override
+                public SourceSection getSourceSection() {
+                    return com.oracle.truffle.api.source.Source.newBuilder(ID, Integer.toString(level), "level").build().createSection(1);
+                }
+
+                @Override
+                protected boolean isInstrumentable() {
+                    return true;
+                }
+
+                @Override
+                protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
+                    assertSame(this.getFrameDescriptor(), frame.getFrameDescriptor());
+                    AsyncRootNode invoker = new AsyncRootNode(language, level + 1);
+                    RootCallTarget invokerTarget = Truffle.getRuntime().createCallTarget(invoker);
+                    Frame invokerFrame = Truffle.getRuntime().createMaterializedFrame(new Object[]{level + 1}, invoker.getFrameDescriptor());
+                    TruffleStackTraceElement element = TruffleStackTraceElement.create(invoker.child, invokerTarget, invokerFrame);
+                    return Collections.singletonList(element);
+                }
+
+            }
+        });
+        AtomicReference<List<TruffleStackTraceElement>> asyncStack = new AtomicReference<>();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext ctx, VirtualFrame frame) {
+                assertNull(asyncStack.get());
+                asyncStack.set(TruffleStackTrace.getAsynchronousStackTrace(ctx.getInstrumentedNode().getRootNode().getCallTarget(), frame));
+            }
+
+            @Override
+            public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+            }
+        });
+        int ret = context.eval(ProxyLanguage.ID, "").asInt();
+        assertEquals(42, ret);
+        List<TruffleStackTraceElement> stack = asyncStack.get();
+        int numTestLevels = 10;
+        for (int i = 1; i < numTestLevels; i++) {
+            assertEquals(1, stack.size());
+            TruffleStackTraceElement element = stack.get(0);
+            assertEquals(i, ((AsyncNode) element.getLocation()).getLevel());
+            assertEquals(Integer.toString(i), element.getTarget().getRootNode().getSourceSection().getCharacters());
+            stack = TruffleStackTrace.getAsynchronousStackTrace(element.getTarget(), element.getFrame());
+        }
+    }
+
+    @GenerateWrapper
+    static class AsyncNode extends Node implements InstrumentableNode {
+
+        private final int level;
+
+        AsyncNode(int level) {
+            this.level = level;
+        }
+
+        AsyncNode(AsyncNode copy) {
+            this.level = copy.level;
+        }
+
+        int getLevel() {
+            return level;
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "").build().createSection(1);
+        }
+
+        public void execute(@SuppressWarnings("unused") VirtualFrame frame) {
+        }
+
+        @Override
+        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+            return new AsyncNodeWrapper(this, this, probe);
+        }
+
+    }
+
+    @Test
+    public void testAsynchronousStacks4() throws IOException, InterruptedException {
+        String code = "ROOT(DEFINE(af11, ROOT(STATEMENT))," +
+                        "DEFINE(af12, ROOT(CALL(af11)))," +
+                        "DEFINE(af13, ROOT(CALL(af12)))," +
+                        "DEFINE(af14, ROOT(CALL(af13)))," +
+                        "DEFINE(af21, ROOT(STATEMENT, SPAWN(af14)))," +
+                        "DEFINE(af22, ROOT(CALL(af21)))," +
+                        "DEFINE(af23, ROOT(CALL(af22)))," +
+                        "DEFINE(af24, ROOT(CALL(af23)))," +
+                        "DEFINE(f1, ROOT(STATEMENT, SPAWN(af24)))," +
+                        "DEFINE(f2, ROOT(CALL(f1)))," +
+                        "DEFINE(f3, ROOT(CALL(f2)))," +
+                        "DEFINE(f4, ROOT(CALL(f3)))," +
+                        "CALL(f4))";
+        Source source = Source.create(InstrumentationTestLanguage.ID, code);
+        teardown();
+        CountDownLatch instrumentationFinished = new CountDownLatch(1);
+        Context asyncContext = Context.newBuilder().engine(Engine.create()).allowCreateThread(true).build();
+        AsynchronousStacksInstrument testInstrument = new AsynchronousStacksInstrument();
+        testInstrument.instrumentationFinished = instrumentationFinished;
+        setupEnv(asyncContext, new ProxyLanguage() {
+            // Not to block the context's thread access
+            @Override
+            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                return true;
+            }
+        }, testInstrument);
+        run(source);
+        instrumentationFinished.await();
+        run(Source.create(InstrumentationTestLanguage.ID, "JOIN()"));
+    }
+
+    public static class AsynchronousStacksInstrument extends ProxyInstrument {
+
+        private final int testDepth = 2;
+        private final int prgDepth = 4;
+        CountDownLatch instrumentationFinished;
+
+        @Override
+        protected void onCreate(TruffleInstrument.Env env) {
+            env.setAsynchronousStackDepth(testDepth);
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), new ExecutionEventListener() {
+
+                private int count = 0;
+
+                @Override
+                public void onEnter(EventContext ctx, VirtualFrame frame) {
+                    CallTarget[] lastCallTarget = new CallTarget[]{null};
+                    Frame[] lastFrame = new Frame[]{null};
+                    Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
+                        @Override
+                        public Void visitFrame(FrameInstance frameInstance) {
+                            lastCallTarget[0] = frameInstance.getCallTarget();
+                            lastFrame[0] = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
+                            return null;
+                        }
+                    });
+                    List<TruffleStackTraceElement> asyncStack = TruffleStackTrace.getAsynchronousStackTrace(lastCallTarget[0], lastFrame[0]);
+                    switch (count) {
+                        case 0:
+                            assertNull(asyncStack);
+                            break;
+                        case 1:
+                            assertEquals(testDepth, asyncStack.size());
+                            TruffleStackTraceElement lastElement = asyncStack.get(testDepth - 1);
+                            assertNull(lastElement.getFrame());
+                            env.setAsynchronousStackDepth(Integer.MAX_VALUE);
+                            break;
+                        case 2:
+                            assertEquals(prgDepth, asyncStack.size());
+                            lastElement = asyncStack.get(prgDepth - 1);
+                            asyncStack = TruffleStackTrace.getAsynchronousStackTrace(lastElement.getTarget(), lastElement.getFrame());
+                            assertEquals(testDepth, asyncStack.size());
+                            lastElement = asyncStack.get(testDepth - 1);
+                            assertNull(lastElement.getFrame());
+                            instrumentationFinished.countDown();
+                            break;
+                        default:
+                            throw new IllegalStateException(Integer.toString(count));
+                    }
+                    count++;
+                }
+
+                @Override
+                public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+                }
+
+                @Override
+                public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                }
+            });
+        }
     }
 
     private static final class MyKillException extends ThreadDeath {
