@@ -565,42 +565,27 @@ suite = {
       },
       "license" : "BSD-new",
     },
-    "com.oracle.truffle.llvm.libraries.bitcode.libcxxabi" : {
+    "com.oracle.truffle.llvm.libraries.bitcode.libcxx" : {
       "subDir" : "projects",
       "vpath" : True,
-      "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/libcxxabi",
+      "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/llvm",
       "class" : "CMakeProject",
-      "makeTarget" : "install",
+      "makeTarget" : ["install-libcxxabi", "install-libcxx"],
       "results" : ["native"],
       "cmakeConfig" : {
-        "LLVM_PATH" : "<path:sdk:LLVM_ORG_SRC>/llvm",
+        "LLVM_ENABLE_PROJECTS" : "libcxx;libcxxabi",
+        "LLVM_INCLUDE_DOCS" : "NO",
+        "LLVM_TARGETS_TO_BUILD" : "X86",
         "LIBCXXABI_INCLUDE_TESTS": "NO",
         "LIBCXXABI_LIBCXX_INCLUDES" : "<path:sdk:LLVM_ORG_SRC>/libcxx/include",
         "LIBCXXABI_LIBCXX_PATH" : "<path:sdk:LLVM_ORG_SRC>/libcxx",
         "LIBCXXABI_ENABLE_STATIC" : "NO",
-        "CMAKE_C_COMPILER" : "<toolchainGetToolPath:native,CC>",
-        "CMAKE_CXX_COMPILER" :  "<toolchainGetToolPath:native,CXX>",
-        "CMAKE_INSTALL_PREFIX" : "native",
-      },
-      "buildDependencies" : [
-        "SULONG_BOOTSTRAP_TOOLCHAIN",
-        "sdk:LLVM_ORG_SRC",
-      ],
-      "license" : "BSD-new",
-    },
-    "com.oracle.truffle.llvm.libraries.bitcode.libcxx" : {
-      "subDir" : "projects",
-      "vpath" : True,
-      "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/libcxx",
-      "class" : "CMakeProject",
-      "makeTarget" : "install",
-      "results" : ["native"],
-      "cmakeConfig" : {
-        "LLVM_PATH" : "<path:sdk:LLVM_ORG_SRC>/llvm",
         "LIBCXX_INCLUDE_BENCHMARKS": "NO",
         "LIBCXX_INCLUDE_TESTS": "NO",
         "LIBCXX_CXX_ABI" : "libcxxabi",
-        "LIBCXX_CXX_ABI_LIBRARY_PATH" : "<path:com.oracle.truffle.llvm.libraries.bitcode.libcxxabi>/native/lib",
+        # shouldn't this be detected automatically?
+        "LIBCXX_CXX_ABI_LIBRARY_PATH" : "<path:com.oracle.truffle.llvm.libraries.bitcode.libcxx>/native/lib",
+        # shouldn't this be detected automatically?
         "LIBCXX_CXX_ABI_INCLUDE_PATHS" : "<path:sdk:LLVM_ORG_SRC>/libcxxabi/include",
         "LIBCXX_ENABLE_STATIC" : "NO",
         "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
@@ -611,14 +596,10 @@ suite = {
         "CMAKE_INSTALL_PREFIX" : "native",
       },
       "buildDependencies" : [
-        "sdk:LLVM_TOOLCHAIN",
         "sdk:LLVM_ORG_SRC",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+        "sdk:LLVM_TOOLCHAIN",
       ],
-      "dependencies" : [
-        "com.oracle.truffle.llvm.libraries.bitcode.libcxxabi",
-      ],
-      "buildEnv" : {
-      },
     },
 
     "com.oracle.truffle.llvm.tests.debug.native" : {
@@ -1151,7 +1132,6 @@ suite = {
       "platformDependent" : True,
       "layout" : {
         "./": [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxxabi/*",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/*",
         ],
         "./native/lib/" : [
@@ -1168,7 +1148,6 @@ suite = {
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
         "com.oracle.truffle.llvm.libraries.mock",
-        "com.oracle.truffle.llvm.libraries.bitcode.libcxxabi",
         "com.oracle.truffle.llvm.libraries.bitcode.libcxx",
       ],
       "license" : "BSD-new",
