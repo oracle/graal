@@ -35,6 +35,7 @@ import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -73,10 +74,11 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
     }
 
     public boolean verifyLoadClass(JNIEnvironment env, JNIObjectHandle callerClass, String className) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        LazyValue<String> callerClassName = lazyClassNameOrNull(env, callerClass);
+        if (shouldApproveWithoutChecks(callerClassName)) {
             return true;
         }
-        if (accessAdvisor.shouldIgnoreLoadClass(lazyClassNameOrNull(env, callerClass))) {
+        if (accessAdvisor.shouldIgnoreLoadClass(callerClassName)) {
             return true;
         }
         return className == null || typeAccessChecker.getConfiguration().get(className) != null;

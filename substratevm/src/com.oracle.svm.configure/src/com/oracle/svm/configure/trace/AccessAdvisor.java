@@ -80,9 +80,7 @@ public final class AccessAdvisor {
     }
 
     public boolean shouldIgnoreJniMethodLookup(LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass) {
-        if (shouldIgnoreCaller(callerClass)) {
-            return true;
-        }
+        assert !shouldIgnoreCaller(callerClass) : "must have been checked before";
         if (!heuristicsEnabled) {
             return false;
         }
@@ -125,9 +123,7 @@ public final class AccessAdvisor {
     }
 
     public boolean shouldIgnoreJniClassLookup(LazyValue<String> name, LazyValue<String> callerClass) {
-        if (shouldIgnoreCaller(callerClass)) {
-            return true;
-        }
+        assert !shouldIgnoreCaller(callerClass) : "must have been checked before";
         if (!heuristicsEnabled) {
             return false;
         }
@@ -139,9 +135,7 @@ public final class AccessAdvisor {
     }
 
     public boolean shouldIgnoreJniNewObjectArray(LazyValue<String> arrayClass, LazyValue<String> callerClass) {
-        if (shouldIgnoreCaller(callerClass)) {
-            return true;
-        }
+        assert !shouldIgnoreCaller(callerClass) : "must have been checked before";
         if (!heuristicsEnabled) {
             return false;
         }
@@ -156,12 +150,13 @@ public final class AccessAdvisor {
     }
 
     public boolean shouldIgnoreLoadClass(LazyValue<String> callerClass) {
+        assert !shouldIgnoreCaller(callerClass) : "must have been checked before";
         /*
          * Without a caller, we assume that the class loader was invoked directly by the VM, which
          * indicates a system class (compiler, JVMCI, etc.) that we shouldn't need in our
          * configuration. The class loader could also have been called via JNI in a manually
          * attached native thread without Java frames, but that is unusual.
          */
-        return callerClass.get() == null || shouldIgnoreCaller(callerClass);
+        return callerClass.get() == null;
     }
 }

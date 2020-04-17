@@ -41,7 +41,11 @@ class AbstractAccessVerifier {
     }
 
     protected boolean shouldApproveWithoutChecks(JNIEnvironment env, JNIObjectHandle callerClass) {
-        return accessAdvisor.shouldIgnoreCaller(lazyClassNameOrNull(env, callerClass));
+        return shouldApproveWithoutChecks(lazyClassNameOrNull(env, callerClass));
+    }
+
+    protected boolean shouldApproveWithoutChecks(LazyValue<String> callerClass) {
+        return accessAdvisor.shouldIgnoreCaller(callerClass);
     }
 
     protected static LazyValue<String> lazyClassNameOrNull(JNIEnvironment env, JNIObjectHandle clazz) {
