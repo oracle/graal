@@ -100,7 +100,7 @@ final class CVSymbolRecordBuilder {
         addToSymbolRecord(proc32);
 
         /* S_FRAMEPROC add frame definitions */
-        int asynceh = 1 << 9; /* aync eh  (msc uses 1, clang uses 0) */
+        int asynceh = 1 << 9; /* aync eh (msc uses 1, clang uses 0) */
         int localBP = 1 << 14; /* local base pointer = SP (0=none, 1=sp, 2=bp 3=r13) */
         int paramBP = 1 << 16; /* param base pointer = SP */
         int frameFlags = asynceh + localBP + paramBP; /* LLVM uses 0x14000; */
