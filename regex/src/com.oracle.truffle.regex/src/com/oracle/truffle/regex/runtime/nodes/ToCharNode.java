@@ -69,12 +69,12 @@ public abstract class ToCharNode extends Node {
         try {
             int asInt = args.asInt(arg);
             if (asInt > Character.MAX_VALUE) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnsupportedTypeException.create(new Object[]{arg});
             }
             return (char) asInt;
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnsupportedTypeException.create(new Object[]{arg});
         }
     }

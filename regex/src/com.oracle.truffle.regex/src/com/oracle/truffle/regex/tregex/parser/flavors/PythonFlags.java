@@ -243,7 +243,7 @@ public final class PythonFlags extends AbstractConstantKeysObject {
             case "VERBOSE":
                 return isVerbose();
             default:
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);
         }
     }
