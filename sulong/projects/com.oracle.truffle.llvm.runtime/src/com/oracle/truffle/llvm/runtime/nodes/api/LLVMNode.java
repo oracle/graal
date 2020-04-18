@@ -195,4 +195,19 @@ public abstract class LLVMNode extends Node {
         }
         return LLVMNativeMemory.isDerefHandleMemory(addr);
     }
+
+    /**
+     * Get the closest parent of {@code node} with the given type, or {@code null} is no node in the
+     * parent chain has the given type.
+     */
+    public static <T extends Node> T getParent(Node node, Class<T> clazz) {
+        Node current = node;
+        while (current != null) {
+            if (clazz.isInstance(current)) {
+                return clazz.cast(current);
+            }
+            current = current.getParent();
+        }
+        return null;
+    }
 }

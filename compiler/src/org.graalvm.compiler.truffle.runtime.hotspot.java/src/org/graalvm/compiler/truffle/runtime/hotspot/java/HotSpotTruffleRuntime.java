@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.java;
 
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -95,7 +96,7 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     }
 
     @Override
-    public void log(String message) {
-        TTY.println(message);
+    protected OutputStream getDefaultLogStream() {
+        return TTY.out;
     }
 }

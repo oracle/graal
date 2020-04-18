@@ -74,6 +74,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
@@ -241,6 +242,10 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         public BackgroundCompileQueue createBackgroundCompileQueue(@SuppressWarnings("unused") SubstrateTruffleRuntime runtime) {
             return new BackgroundCompileQueue();
+        }
+
+        public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
+            return (CompilableTruffleAST) KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(OptimizedCallTarget.class, constant), Object.class);
         }
     }
 
@@ -615,12 +620,13 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     private boolean includeCallee(ResolvedJavaMethod implementationMethod, GraalFeature.CallTreeNode calleeNode, List<AnalysisMethod> implementationMethods) {
+        Uninterruptible uninterruptibleAnnotation = implementationMethod.getAnnotation(Uninterruptible.class);
         if (implementationMethod.getAnnotation(CompilerDirectives.TruffleBoundary.class) != null) {
             return false;
         } else if (SubstrateUtil.NativeImageLoadingShield.isNeverInline(implementationMethod)) {
             /* Ensure that NeverInline methods are also never inlined during Truffle compilation. */
             return false;
-        } else if (implementationMethod.getAnnotation(Uninterruptible.class) != null) {
+        } else if (uninterruptibleAnnotation != null && !uninterruptibleAnnotation.mayBeInlined()) {
             /* The semantics of Uninterruptible would get lost during partial evaluation. */
             return false;
         } else if (implementationMethod.getAnnotation(TruffleCallBoundary.class) != null) {
@@ -886,15 +892,19 @@ final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget {
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     long initializedTimestamp;
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    Class<?>[] profiledArgumentTypes;
+    Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget_ArgumentsProfile argumentsProfile;
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    OptimizedAssumption profiledArgumentTypesAssumption;
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    Class<?> profiledReturnType;
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    OptimizedAssumption profiledReturnTypeAssumption;
+    Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget_ReturnProfile returnProfile;
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     Class<? extends Throwable> profiledExceptionType;
+}
+
+@TargetClass(className = "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget$ArgumentsProfile", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget_ArgumentsProfile {
+}
+
+@TargetClass(className = "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget$ReturnProfile", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget_ReturnProfile {
 }
 
 // Checkstyle: stop

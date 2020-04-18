@@ -104,8 +104,10 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
+import java.io.OutputStream;
 import java.io.StringWriter;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -408,6 +410,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         StatisticsListener.install(this);
         TraceASTCompilationListener.install(this);
         JFRListener.install(this);
+        TruffleSplittingStrategy.installListener(this);
         installShutdownHooks();
     }
 
@@ -1084,6 +1087,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public boolean isTruffleBoundary(ResolvedJavaMethod method) {
         return getAnnotation(TruffleBoundary.class, method) != null;
     }
+
+    @Override
+    public final void log(CompilableTruffleAST compilable, String message) {
+        ((OptimizedCallTarget) compilable).engine.getLogger().log(Level.INFO, message);
+    }
+
+    protected abstract OutputStream getDefaultLogStream();
 
     // https://bugs.openjdk.java.net/browse/JDK-8209535
 

@@ -74,6 +74,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -563,6 +564,26 @@ public abstract class TruffleInstrument {
             } catch (Throwable t) {
                 throw engineToInstrumentException(t);
             }
+        }
+
+        /**
+         * Request for languages to provide stack frames of scheduled asynchronous execution.
+         * Languages might not provide asynchronous stack frames by default for performance reasons.
+         * At most <code>depth</code> asynchronous stack frames are asked for. When multiple
+         * instruments call this method, the languages get a maximum depth of these calls and may
+         * therefore provide longer asynchronous stacks than requested. Also, languages may provide
+         * asynchronous stacks if it's of no performance penalty, or if requested by other options.
+         * <p/>
+         * Asynchronous stacks can then be accessed via
+         * {@link TruffleStackTrace#getAsynchronousStackTrace(CallTarget, Frame)}.
+         *
+         * @param depth the requested stack depth, 0 means no asynchronous stack frames are
+         *            required.
+         * @see TruffleStackTrace#getAsynchronousStackTrace(CallTarget, Frame)
+         * @since 20.1.0
+         */
+        public void setAsynchronousStackDepth(int depth) {
+            InstrumentAccessor.engineAccess().setAsynchronousStackDepth(polyglotInstrument, depth);
         }
 
         /**

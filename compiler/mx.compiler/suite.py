@@ -1846,6 +1846,9 @@ suite = {
         "org.graalvm.compiler.truffle.jfr",
         "truffle:TRUFFLE_API",
       ],
+      "requires" : [
+        "java.logging",
+      ],
       "uses" : [
         "org.graalvm.compiler.truffle.jfr.EventFactory.Provider"
       ],

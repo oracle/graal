@@ -57,8 +57,6 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
 
     public abstract Object executeCondition(VirtualFrame frame);
 
-    public abstract int[] getSuccessors();
-
     public abstract boolean checkCase(VirtualFrame frame, int i, Object value);
 
     /**

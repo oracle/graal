@@ -712,14 +712,16 @@ public class TruffleGraphBuilderPlugins {
             DebugContext debug = access.getDebug();
             try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
                 TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
-                String callTargetName = truffleMethod != null ? truffleMethod.getName() : "";
-                Map<String, Object> properties = new LinkedHashMap<>();
-                properties.put("location", location);
-                properties.put("method", targetMethod.format("%h.%n"));
-                PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, callTargetName,
-                                Collections.singletonList(access),
-                                "location argument not PE-constant", properties);
-                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Location argument is not a partial evaluation constant: %s", location);
+                if (truffleMethod != null) {    // Never null in compilation but can be null in
+                                                // TrufflCompilerImplTest
+                    Map<String, Object> properties = new LinkedHashMap<>();
+                    properties.put("location", location);
+                    properties.put("method", targetMethod.format("%h.%n"));
+                    PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, truffleMethod.getCompilable(),
+                                    Collections.singletonList(access),
+                                    "location argument not PE-constant", properties);
+                    debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Location argument is not a partial evaluation constant: %s", location);
+                }
             } catch (Throwable t) {
                 debug.handle(t);
             }

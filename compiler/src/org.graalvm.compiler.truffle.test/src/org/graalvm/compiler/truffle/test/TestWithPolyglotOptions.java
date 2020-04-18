@@ -51,6 +51,10 @@ public abstract class TestWithPolyglotOptions {
         for (int i = 0; i < keyValuePairs.length; i += 2) {
             builder.option(keyValuePairs[i], keyValuePairs[i + 1]);
         }
+        return setupContext(builder);
+    }
+
+    protected final Context setupContext(Context.Builder builder) {
         cleanup();
         Context newContext = builder.build();
         newContext.enter();

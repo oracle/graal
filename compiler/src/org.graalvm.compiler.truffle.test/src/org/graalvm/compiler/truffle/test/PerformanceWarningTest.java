@@ -30,8 +30,6 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.debug.LogStream;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
@@ -61,9 +59,12 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @SuppressWarnings("unused") private static final L9b object5 = new L9b();
     @SuppressWarnings("unused") private static final Boolean inFirstTier = GraalCompilerDirectives.inFirstTier();
 
+    private ByteArrayOutputStream outContent;
+
     @Before
     public void setUp() {
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.TracePerformanceWarnings", "all").option(
+        outContent = new ByteArrayOutputStream();
+        setupContext(Context.newBuilder().logHandler(outContent).allowAllAccess(true).allowExperimentalOptions(true).option("engine.TracePerformanceWarnings", "all").option(
                         "engine.TreatPerformanceWarningsAsErrors", "all").option("engine.CompilationFailureAction", "ExitVM").build());
     }
 
@@ -115,10 +116,9 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @SuppressWarnings("try")
     private void testHelper(RootNode rootNode, boolean expectException, String... outputStrings) {
 
-        // Compile and capture output to TTY.
-        ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+        // Compile and capture output to logger's stream.
         boolean seenException = false;
-        try (TTY.Filter filter = new TTY.Filter(new LogStream(outContent))) {
+        try {
             GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
             DebugContext debug = new Builder(TruffleCompilerOptions.getOptions()).build();

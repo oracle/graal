@@ -65,6 +65,15 @@ ifdef CLANG_LLVM_OBJCOPY
 else
   LLVM_OBJCOPY?=llvm-objcopy
 endif
+
+ifndef TOOLCHAIN_CLANG
+  TOOLCHAIN_CLANG=/error/TOOLCHAIN_CLANG/not/set
+endif
+
+ifndef TOOLCHAIN_CLANGXX
+  TOOLCHAIN_CLANG=/error/TOOLCHAIN_CLANGXX/not/set
+endif
+
 FC?=gfortran
 
 CFLAGS+= $(SUITE_CFLAGS)
@@ -255,6 +264,43 @@ $(eval $(call OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
 $(eval $(call OPT_RULES,O1,-O1))
 $(eval $(call OPT_RULES,O2,-O2))
 $(eval $(call OPT_RULES,O3,-O3))
+
+# toolchain rule
+define TOOLCHAIN_OPT_RULES
+%.c.dir/$(1)_toolchain.bc: %.c
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANG) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $$@ $$<
+
+%.gcc.dir/$(1)_toolchain.bc: %.gcc
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANG) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $$@ $$<
+
+%.cint.dir/$(1)_toolchain.bc: %.cint
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANG) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $$@ $$<
+
+%.cpp.dir/$(1)_toolchain.bc: %.cpp
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
+
+%.cc.dir/$(1)_toolchain.bc: %.cc
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
+
+%.C.dir/$(1)_toolchain.bc: %.C
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
+
+%.gpp.dir/$(1)_toolchain.bc: %.gpp
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
+
+endef
+
+$(eval $(call TOOLCHAIN_OPT_RULES,plain,))
+$(eval $(call TOOLCHAIN_OPT_RULES,O1,-O1))
+$(eval $(call TOOLCHAIN_OPT_RULES,O2,-O2))
+$(eval $(call TOOLCHAIN_OPT_RULES,O3,-O3))
 
 # disable implicit rules
 .SUFFIXES:

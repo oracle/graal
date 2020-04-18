@@ -89,6 +89,7 @@ public class FrameInfoQueryResult {
         protected ValueType type;
         protected JavaKind kind;
         protected boolean isCompressedReference; // for JavaKind.Object
+        protected boolean isEliminatedMonitor;
         protected long data;
         protected JavaConstant value;
         protected String name;
@@ -115,6 +116,15 @@ public class FrameInfoQueryResult {
          */
         public boolean isCompressedReference() {
             return isCompressedReference;
+        }
+
+        /**
+         * When true, the value is a monitor (a {@link FrameInfoQueryResult#numLocks lock slot},
+         * located after the local variables and expression stack slots) that was eliminated and
+         * re-locking must be performed during deoptimization.
+         */
+        public boolean isEliminatedMonitor() {
+            return isEliminatedMonitor;
         }
 
         /**

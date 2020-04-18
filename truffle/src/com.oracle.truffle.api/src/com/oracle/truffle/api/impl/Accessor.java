@@ -55,7 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -84,6 +84,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -135,6 +136,10 @@ public abstract class Accessor {
         getTVMCI().onEngineClosed(runtimeData);
     }
 
+    protected OutputStream getConfiguredLogStream() {
+        return getTVMCI().getConfiguredLogStream();
+    }
+
     public abstract static class NodeSupport {
 
         public abstract boolean isInstrumentable(RootNode rootNode);
@@ -155,6 +160,8 @@ public abstract class Accessor {
                         boolean interactive);
 
         public abstract Object getPolyglotEngine(RootNode rootNode);
+
+        public abstract List<TruffleStackTraceElement> findAsynchronousFrames(CallTarget target, Frame frame);
 
         public abstract int getRootNodeBits(RootNode root);
 
@@ -333,7 +340,7 @@ public abstract class Accessor {
 
         public abstract PolyglotException wrapGuestException(String languageId, Throwable exception);
 
-        public abstract <T> T getOrCreateRuntimeData(Object polyglotEngine, Function<OptionValues, T> constructor);
+        public abstract <T> T getOrCreateRuntimeData(Object polyglotEngine, BiFunction<OptionValues, Supplier<TruffleLogger>, T> constructor);
 
         public abstract Set<? extends Class<?>> getProvidedTags(LanguageInfo language);
 
@@ -353,13 +360,17 @@ public abstract class Accessor {
 
         public abstract Object asBoxedGuestValue(Object guestObject, Object polyglotLanguageContext);
 
-        public abstract Handler getLogHandler(Object polyglotEngine);
+        public abstract Object createDefaultLoggerCache();
 
-        public abstract Map<String, Level> getLogLevels(Object polyglotObject);
+        public abstract Handler getLogHandler(Object loggerCache);
+
+        public abstract Map<String, Level> getLogLevels(Object loggerCache);
+
+        public abstract Object getLoggerOwner(Object loggerCache);
 
         public abstract TruffleLogger getLogger(Object polyglotInstrument, String name);
 
-        public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
+        public abstract LogRecord createLogRecord(Object loggerCache, Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
         public abstract Object getCurrentOuterContext();
 
@@ -398,6 +409,10 @@ public abstract class Accessor {
         public abstract TruffleFile getTruffleFile(String path);
 
         public abstract TruffleFile getTruffleFile(URI uri);
+
+        public abstract int getAsynchronousStackDepth(Object polylgotLanguage);
+
+        public abstract void setAsynchronousStackDepth(Object polyglotInstrument, int depth);
 
         public abstract boolean isCreateProcessAllowed(Object polylgotLanguageContext);
 
@@ -537,7 +552,7 @@ public abstract class Accessor {
 
         public abstract Object getDefaultLoggers();
 
-        public abstract Object createEngineLoggers(Object polyglotEngine, Map<String, Level> logLevels);
+        public abstract Object createEngineLoggers(Object spi, Map<String, Level> logLevels);
 
         public abstract void closeEngineLoggers(Object loggers);
 

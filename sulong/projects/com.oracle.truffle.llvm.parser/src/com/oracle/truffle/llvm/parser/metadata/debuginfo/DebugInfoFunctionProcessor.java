@@ -297,9 +297,7 @@ public final class DebugInfoFunctionProcessor {
         }
 
         if (isDeclaration) {
-            final DbgDeclareInstruction dbgDeclare = new DbgDeclareInstruction(value, variable, expression);
-            variable.addDeclaration(dbgDeclare);
-            return dbgDeclare;
+            return new DbgDeclareInstruction(value, variable, expression);
 
         } else {
             long index = 0;
@@ -310,9 +308,7 @@ public final class DebugInfoFunctionProcessor {
                     index = l;
                 }
             }
-            final DbgValueInstruction dbgValue = new DbgValueInstruction(value, variable, index, expression);
-            variable.addValue(dbgValue);
-            return dbgValue;
+            return new DbgValueInstruction(value, variable, index, expression);
         }
     }
 

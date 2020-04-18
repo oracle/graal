@@ -245,6 +245,7 @@ public class ForeignCallStub extends Stub {
             ResolvedJavaMethod thisMethod = getGraphMethod();
             GraphKit kit = new GraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString());
             StructuredGraph graph = kit.getGraph();
+            graph.disableFrameStateVerification();
             ParameterNode[] params = createParameters(kit, args);
             ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));
             ValueNode result = createTargetCall(kit, params, thread);

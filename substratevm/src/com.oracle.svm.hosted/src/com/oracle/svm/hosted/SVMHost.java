@@ -370,12 +370,10 @@ public final class SVMHost implements HostVM {
                 return HubType.ObjectArray;
             }
         } else if (type.isInstanceClass()) {
-            if (SubstrateOptions.UseCardRememberedSetHeap.getValue() || SubstrateOptions.LowLatencyGCReferenceHandling.getValue()) {
-                if (Reference.class.isAssignableFrom(type.getJavaClass())) {
-                    return HubType.InstanceReference;
-                }
-                assert !Target_java_lang_ref_Reference.class.isAssignableFrom(type.getJavaClass()) : "should not see substitution type here";
+            if (Reference.class.isAssignableFrom(type.getJavaClass())) {
+                return HubType.InstanceReference;
             }
+            assert !Target_java_lang_ref_Reference.class.isAssignableFrom(type.getJavaClass()) : "should not see substitution type here";
             return HubType.Instance;
         } else {
             return HubType.Other;
@@ -383,17 +381,15 @@ public final class SVMHost implements HostVM {
     }
 
     private static ReferenceType computeReferenceType(AnalysisType type) {
-        if (SubstrateOptions.UseCardRememberedSetHeap.getValue() || SubstrateOptions.LowLatencyGCReferenceHandling.getValue()) {
-            Class<?> clazz = type.getJavaClass();
-            if (PhantomReference.class.isAssignableFrom(clazz)) {
-                return ReferenceType.Phantom;
-            } else if (WeakReference.class.isAssignableFrom(clazz)) {
-                return ReferenceType.Weak;
-            } else if (SoftReference.class.isAssignableFrom(clazz)) {
-                return ReferenceType.Soft;
-            } else if (Reference.class.isAssignableFrom(clazz)) {
-                return ReferenceType.Other;
-            }
+        Class<?> clazz = type.getJavaClass();
+        if (PhantomReference.class.isAssignableFrom(clazz)) {
+            return ReferenceType.Phantom;
+        } else if (WeakReference.class.isAssignableFrom(clazz)) {
+            return ReferenceType.Weak;
+        } else if (SoftReference.class.isAssignableFrom(clazz)) {
+            return ReferenceType.Soft;
+        } else if (Reference.class.isAssignableFrom(clazz)) {
+            return ReferenceType.Other;
         }
         return ReferenceType.None;
     }

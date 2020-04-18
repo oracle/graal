@@ -24,20 +24,45 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import com.oracle.svm.core.meta.SharedType;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
-import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.code.StackLockValue;
+import jdk.vm.ci.code.VirtualObject;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.JavaValue;
+import jdk.vm.ci.meta.Value;
+
 public final class SubstrateDebugInfoBuilder extends DebugInfoBuilder {
-    public SubstrateDebugInfoBuilder(NodeValueMap nodeValueMap, DebugContext debug) {
-        super(nodeValueMap, debug);
+
+    private final SharedMethod method;
+
+    public SubstrateDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
+        super(nodeValueMap, graph.getDebug());
+        this.method = (SharedMethod) graph.method();
     }
 
     @Override
     protected JavaKind storageKind(JavaType type) {
         return ((SharedType) type).getStorageKind();
+    }
+
+    @Override
+    protected JavaValue computeLockValue(FrameState state, int lockIndex) {
+        JavaValue object = toJavaValue(state.lockAt(lockIndex));
+        boolean eliminated = object instanceof VirtualObject || state.monitorIdAt(lockIndex).isEliminated();
+
+        if (eliminated && method.isDeoptTarget()) {
+            throw VMError.shouldNotReachHere("Deoptimization target method must not have virtual objects or eliminated locks: " + method);
+        }
+
+        return new StackLockValue(object, Value.ILLEGAL, eliminated);
     }
 }
