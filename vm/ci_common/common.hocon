@@ -129,8 +129,7 @@ fastr_linux: ${fastr} {
     PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/zlib/1.2.11/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/curl/7.50.1/include"
     PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.8.5/lib64"
     GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1-gcc4.8.5/lib64/R",
-    FC: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
-    FF: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
+    FASTR_FC: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
   }
 }
 
@@ -140,8 +139,7 @@ fastr_darwin: ${fastr} {
   }
   environment:  {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
-    FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
-    FF: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
+    FASTR_FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
     TZDIR: "/usr/share/zoneinfo"
     FASTR_LIBZ_VER: "1.2.11"
     GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1.8.3.0/lib/R/"
