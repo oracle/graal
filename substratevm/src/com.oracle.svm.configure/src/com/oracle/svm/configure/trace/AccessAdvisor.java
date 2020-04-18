@@ -58,7 +58,7 @@ public final class AccessAdvisor {
         accessWithoutCallerFilter.addOrGetChildren("jdk.vm.ci.**", RuleNode.Inclusion.Exclude);
         accessWithoutCallerFilter.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Exclude);
         accessWithoutCallerFilter.addOrGetChildren("org.graalvm.libgraal.**", RuleNode.Inclusion.Exclude);
-        accessWithoutCallerFilter.addOrGetChildren("java.lang.String[]", RuleNode.Inclusion.Exclude);
+        accessWithoutCallerFilter.addOrGetChildren("[Ljava.lang.String;", RuleNode.Inclusion.Exclude);
         // ^ String[]: for command-line argument arrays created before Java main method is called
         accessWithoutCallerFilter.removeRedundantNodes();
     }
