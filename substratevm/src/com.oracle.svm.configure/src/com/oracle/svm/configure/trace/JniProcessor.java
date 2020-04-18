@@ -65,16 +65,14 @@ class JniProcessor extends AbstractProcessor {
         LazyValue<String> callerClassLazyValue = lazyValue(callerClass);
         // Special: FindClass and DefineClass take the class in question as a string argument
         if (function.equals("FindClass") || function.equals("DefineClass")) {
-            String name = singleElement(args);
-            if (name.charAt(0) != '[') {
-                name = "L" + name + ";";
-            }
-            String qualifiedJavaName = MetaUtil.internalNameToJava(name, true, false);
-            if (!advisor.shouldIgnore(lazyValue(qualifiedJavaName), callerClassLazyValue)) {
+            String lookupName = singleElement(args);
+            String internalName = (lookupName.charAt(0) != '[') ? ('L' + lookupName + ';') : lookupName;
+            String forNameString = MetaUtil.internalNameToJava(internalName, true, true);
+            if (!advisor.shouldIgnore(lazyValue(forNameString), callerClassLazyValue)) {
                 if (function.equals("FindClass")) {
-                    configuration.getOrCreateType(name);
-                } else if (!qualifiedJavaName.startsWith("com.sun.proxy.$Proxy")) { // DefineClass
-                    logWarning("Unsupported JNI function DefineClass used to load class " + name);
+                    configuration.getOrCreateType(forNameString);
+                } else if (!lookupName.startsWith("com/sun/proxy/$Proxy")) { // DefineClass
+                    logWarning("Unsupported JNI function DefineClass used to load class " + forNameString);
                 }
             }
             return;
@@ -133,7 +131,7 @@ class JniProcessor extends AbstractProcessor {
             }
             case "NewObjectArray": {
                 expectSize(args, 0);
-                String arrayQualifiedJavaName = MetaUtil.internalNameToJava(clazz, true, false);
+                String arrayQualifiedJavaName = MetaUtil.internalNameToJava(clazz, true, true);
                 config.getOrCreateType(arrayQualifiedJavaName);
                 break;
             }

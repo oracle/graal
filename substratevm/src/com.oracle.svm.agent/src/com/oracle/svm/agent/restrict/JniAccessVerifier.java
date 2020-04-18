@@ -68,7 +68,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
 
     @SuppressWarnings("unused")
     public boolean verifyDefineClass(JNIEnvironment env, CCharPointer name, JNIObjectHandle loader, CCharPointer buf, int bufLen, JNIObjectHandle callerClass) {
-        LazyValue<String> javaName = lazyJniFindClassName(name);
+        LazyValue<String> javaName = lazyConvertFindClassName(name);
         if (shouldApproveWithoutChecks(javaName, lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
@@ -80,7 +80,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
     }
 
     public boolean verifyFindClass(JNIEnvironment env, CCharPointer name, JNIObjectHandle callerClass) {
-        LazyValue<String> javaName = lazyJniFindClassName(name);
+        LazyValue<String> javaName = lazyConvertFindClassName(name);
         if (shouldApproveWithoutChecks(javaName, lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
@@ -93,7 +93,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         return false;
     }
 
-    private static LazyValue<String> lazyJniFindClassName(CCharPointer name) {
+    private static LazyValue<String> lazyConvertFindClassName(CCharPointer name) {
         return lazyGet(() -> {
             String s = fromCString(name);
             if (s != null) {
