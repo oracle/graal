@@ -140,7 +140,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         this.gen = gen;
         this.builder = gen.getBuilder();
         this.runtimeConfiguration = runtimeConfiguration;
-        this.debugInfoBuilder = new SubstrateDebugInfoBuilder(this, graph.getDebug());
+        this.debugInfoBuilder = new SubstrateDebugInfoBuilder(graph, this);
         setCompilationResultMethod(gen.getCompilationResult(), graph);
 
         for (Block block : graph.getLastSchedule().getCFG().getBlocks()) {
