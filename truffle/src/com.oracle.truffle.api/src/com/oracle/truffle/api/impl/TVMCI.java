@@ -41,14 +41,17 @@
 package com.oracle.truffle.api.impl;
 
 import java.io.Closeable;
+import java.io.OutputStream;
 import java.util.Objects;
-import java.util.function.Function;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.impl.Accessor.CallInlined;
@@ -284,7 +287,7 @@ public abstract class TVMCI {
      * The resulting instance is cached in the Engine.
      */
     @SuppressWarnings("unchecked")
-    protected static <T> T getOrCreateRuntimeData(RootNode rootNode, Function<OptionValues, T> constructor) {
+    protected static <T> T getOrCreateRuntimeData(RootNode rootNode, BiFunction<OptionValues, Supplier<TruffleLogger>, T> constructor) {
         Objects.requireNonNull(constructor);
         final Accessor.NodeSupport nodesAccess = TVMCIAccessor.nodesAccess();
         final EngineSupport engineAccess = TVMCIAccessor.engineAccess();
@@ -346,6 +349,13 @@ public abstract class TVMCI {
 
     protected void applyPolyglotEngine(RootNode from, RootNode to) {
         TVMCIAccessor.nodesAccess().applyPolyglotEngine(from, to);
+    }
+
+    /**
+     * Returns the logging stream if it was explicitly configured by the {@code DumpFile} option.
+     */
+    protected OutputStream getConfiguredLogStream() {
+        return null;
     }
 
 }

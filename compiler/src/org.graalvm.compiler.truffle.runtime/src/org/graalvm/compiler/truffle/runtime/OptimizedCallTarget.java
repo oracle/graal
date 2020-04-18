@@ -120,7 +120,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     OptimizedCallTarget.class, ReturnProfile.class, "returnProfile");
     private static final WeakReference<OptimizedDirectCallNode> NO_CALL = new WeakReference<>(null);
     private static final WeakReference<OptimizedDirectCallNode> MULTIPLE_CALLS = null;
-    private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
+    private static final String SPLIT_LOG_FORMAT = "[poly-event] %-70s %s";
     private static final int MAX_PROFILED_ARGUMENTS = 256;
 
     /** The AST to be executed when this call target is called. */
@@ -731,8 +731,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             GraalTruffleRuntime rt = runtime();
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("ASTSize", getNonTrivialNodeCount());
-            rt.logEvent(0, "opt fail", toString(), properties);
-            rt.log(reasonAndStackTrace.get());
+            rt.logEvent(this, 0, "opt fail", toString(), properties, reasonAndStackTrace.get());
             if (action == ExceptionAction.ExitVM) {
                 String reason;
                 if (getOptionValue(PolyglotCompilerOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {
@@ -748,8 +747,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    public static final void log(String message) {
-        runtime().log(message);
+    public final void log(String message) {
+        runtime().log(this, message);
     }
 
     @Override

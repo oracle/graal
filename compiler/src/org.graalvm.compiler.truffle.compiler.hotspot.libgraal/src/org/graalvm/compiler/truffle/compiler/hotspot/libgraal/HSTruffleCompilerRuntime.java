@@ -307,10 +307,10 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     @SVMToHotSpot(Log)
     @Override
-    public void log(String message) {
+    public void log(CompilableTruffleAST compilable, String message) {
         JNIEnv env = env();
         JString jniMessage = JNIUtil.createHSString(env, message);
-        callLog(env, getHandle(), jniMessage);
+        callLog(env, getHandle(), ((HSCompilableTruffleAST) compilable).getHandle(), jniMessage);
     }
 
     @Override

@@ -1013,6 +1013,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
             // don't commit to the close if still running as this might cause races in the executing
             // context.
+            if (this.runtimeData != null) {
+                EngineAccessor.ACCESSOR.onEngineClosed(this.runtimeData);
+            }
             if (closeContexts) {
                 Object loggers = getEngineLoggers();
                 if (loggers != null) {
@@ -1029,9 +1032,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             } else if (logHandler != null) {
                 // called from shutdown hook, at least flush the logging handler
                 logHandler.flush();
-            }
-            if (this.runtimeData != null) {
-                EngineAccessor.ACCESSOR.onEngineClosed(this.runtimeData);
             }
         }
     }
@@ -1412,10 +1412,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 useErr = INSTRUMENT.createDelegatingOutput(configErr, this.err);
             }
 
-            Handler useHandler = PolyglotLogHandler.asHandler(logHandlerOrStream);
+            Handler useHandler = PolyglotLoggers.asHandler(logHandlerOrStream);
             useHandler = useHandler != null ? useHandler : logHandler;
             useHandler = useHandler != null ? useHandler
-                            : PolyglotLogHandler.createStreamHandler(
+                            : PolyglotLoggers.createStreamHandler(
                                             configErr == null ? INSTRUMENT.getOut(this.err) : configErr,
                                             false, true);
 
@@ -1526,7 +1526,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             synchronized (this) {
                 res = engineLoggers;
                 if (res == null) {
-                    res = LANGUAGE.createEngineLoggers(this, logLevels);
+                    res = LANGUAGE.createEngineLoggers(PolyglotLoggers.createEngineSPI(this), logLevels);
                     for (ContextWeakReference contextRef : contexts) {
                         PolyglotContextImpl context = contextRef.get();
                         if (context != null && !context.config.logLevels.isEmpty()) {

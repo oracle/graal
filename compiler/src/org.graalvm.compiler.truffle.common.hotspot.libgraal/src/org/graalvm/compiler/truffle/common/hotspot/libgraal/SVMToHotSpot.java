@@ -115,7 +115,7 @@ public @interface SVMToHotSpot {
         IsTargetStable(boolean.class, Decision.class),
         IsTruffleBoundary(boolean.class, HotSpotTruffleCompilerRuntime.class, long.class),
         IsValueType(boolean.class, HotSpotTruffleCompilerRuntime.class, long.class),
-        Log(void.class, HotSpotTruffleCompilerRuntime.class, String.class),
+        Log(void.class, HotSpotTruffleCompilerRuntime.class, CompilableTruffleAST.class, String.class),
         OnCodeInstallation(void.class, HotSpotTruffleCompilerRuntime.class, CompilableTruffleAST.class, long.class),
         OnCompilationFailed(void.class, CompilableTruffleAST.class, Supplier.class, boolean.class, boolean.class),
         OnFailure(void.class, TruffleCompilerListener.class, CompilableTruffleAST.class, String.class, boolean.class, boolean.class),

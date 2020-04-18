@@ -41,6 +41,7 @@ import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.io.OutputStream;
 
 final class GraalTVMCI extends TVMCI {
 
@@ -202,6 +203,11 @@ final class GraalTVMCI extends TVMCI {
     @Override
     protected void applyPolyglotEngine(@SuppressWarnings("unused") RootNode from, RootNode to) {
         super.applyPolyglotEngine(from, to);
+    }
+
+    @Override
+    protected OutputStream getConfiguredLogStream() {
+        return TruffleDebugOptions.getConfiguredLogStream();
     }
 
 }

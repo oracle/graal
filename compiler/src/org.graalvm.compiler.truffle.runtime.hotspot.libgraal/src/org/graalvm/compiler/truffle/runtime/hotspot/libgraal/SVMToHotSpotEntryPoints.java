@@ -238,8 +238,8 @@ final class SVMToHotSpotEntryPoints {
     }
 
     @SVMToHotSpot(Log)
-    static void log(HotSpotTruffleCompilerRuntime truffleRuntime, String message) {
-        truffleRuntime.log(message);
+    static void log(HotSpotTruffleCompilerRuntime truffleRuntime, CompilableTruffleAST compilable, String message) {
+        truffleRuntime.log(compilable, message);
     }
 
     @SVMToHotSpot(CreateInliningPlan)
