@@ -121,6 +121,11 @@ public final class Symbol<T> extends ByteSequence {
         return 0;
     }
 
+    @Override
+    public boolean equals(Object that) {
+        return this == that;
+    }
+
     public static class ModifiedUTF8 {
 
         @SuppressWarnings("unchecked")

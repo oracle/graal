@@ -160,6 +160,7 @@ public final class Target_java_lang_Class {
         }
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(String.class) StaticObject getName0(@Host(Class.class) StaticObject self) {
         Klass klass = self.getMirrorKlass();
@@ -192,6 +193,7 @@ public final class Target_java_lang_Class {
         return self.getMirrorKlass().getDefiningClassLoader();
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(java.lang.reflect.Field[].class) StaticObject getDeclaredFields0(@Host(Class.class) StaticObject self, boolean publicOnly) {
 
@@ -264,6 +266,7 @@ public final class Target_java_lang_Class {
         return fieldsArray;
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(Constructor[].class) StaticObject getDeclaredConstructors0(@Host(Class.class) StaticObject self, boolean publicOnly) {
         ArrayList<Method> collectedMethods = new ArrayList<>();
@@ -367,6 +370,7 @@ public final class Target_java_lang_Class {
         return arr;
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(java.lang.reflect.Method[].class) StaticObject getDeclaredMethods0(@Host(Class.class) StaticObject self, boolean publicOnly) {
         ArrayList<Method> collectedMethods = new ArrayList<>();
@@ -710,6 +714,7 @@ public final class Target_java_lang_Class {
         return cp;
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(String.class) StaticObject getGenericSignature0(@Host(Class.class) StaticObject self) {
         if (self.getMirrorKlass() instanceof ObjectKlass) {

@@ -337,9 +337,12 @@ public final class VM extends NativeEnv implements ContextAccess {
         return System.nanoTime();
     }
 
+    @TruffleBoundary(allowInlining = true)
     @VmImpl
     @JniImpl
     public static int JVM_IHashCode(@Host(Object.class) StaticObject object) {
+        // On SVM + Windows, the System.identityHashCode substitution triggers the blacklisted
+        // methods (System.currentTimeMillis?) check.
         return System.identityHashCode(MetaUtil.maybeUnwrapNull(object));
     }
 

@@ -30,7 +30,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.JVM_ACC_WRITTEN_FL
 
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 
@@ -531,22 +530,9 @@ public final class ObjectKlass extends Klass {
     public Method itableLookup(Klass interfKlass, int index) {
         assert (index >= 0) : "Undeclared interface method";
         try {
-            return itable[findITableIndex(interfKlass)][index];
+            return itable[fastLookup(interfKlass, iKlassTable)][index];
         } catch (IndexOutOfBoundsException e) {
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError, "Class " + getName() + " does not implement interface " + interfKlass.getName());
-        }
-    }
-
-    private int findITableIndex(Klass interfKlass) {
-        if (itableLength < 5) {
-            for (int i = 0; i < itableLength; i++) {
-                if (iKlassTable[i] == interfKlass) {
-                    return i;
-                }
-            }
-            return -1;
-        } else {
-            return Arrays.binarySearch(iKlassTable, interfKlass, KLASS_ID_COMPARATOR);
         }
     }
 

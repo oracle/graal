@@ -69,6 +69,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
      * @param self the memberName
      * @param ref the target. Can be either a mathod or a field.
      */
+    @TruffleBoundary
     @Substitution
     public static void init(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self, @Host(Object.class) StaticObject ref) {
         Klass mnKlass = self.getKlass();
@@ -233,6 +234,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
      * @param caller the class that commands the resolution
      * @return The resolved memberName. Note that it should be the same reference as self
      */
+    @TruffleBoundary
     @Substitution
     public static @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject resolve(
                     @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self,

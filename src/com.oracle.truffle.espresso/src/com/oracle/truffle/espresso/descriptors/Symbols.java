@@ -45,6 +45,7 @@ public final class Symbols {
     }
 
     @SuppressWarnings("unchecked")
+    @TruffleBoundary
     <T> Symbol<T> lookup(ByteSequence sequence) {
         return (Symbol<T>) symbols.get(new SymbolKey(sequence));
     }
