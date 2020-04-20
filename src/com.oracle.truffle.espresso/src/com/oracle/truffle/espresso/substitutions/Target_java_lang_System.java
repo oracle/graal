@@ -27,8 +27,8 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.VM;
 import com.oracle.truffle.object.DebugCounter;
 
 @EspressoSubstitutions
@@ -40,7 +40,7 @@ public final class Target_java_lang_System {
     @Substitution
     public static int identityHashCode(@Host(Object.class) StaticObject self) {
         SYSTEM_IDENTITY_HASH_CODE_COUNT.inc();
-        return System.identityHashCode(MetaUtil.maybeUnwrapNull(self));
+        return VM.JVM_IHashCode(self);
     }
 
     @Substitution
