@@ -511,7 +511,7 @@ final class Runner {
         }
 
         @TruffleBoundary
-        protected boolean containsSymbol(LLVMSymbol localSymbol){
+        protected boolean containsSymbol(LLVMSymbol localSymbol) {
             return symbol.equals(localSymbol);
         }
 
@@ -570,7 +570,7 @@ final class Runner {
 
         @Override
         @TruffleBoundary
-        protected boolean containsSymbol(LLVMSymbol globalSymbol){
+        protected boolean containsSymbol(LLVMSymbol globalSymbol) {
             return symbol.equals(globalSymbol);
         }
 
