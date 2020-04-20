@@ -114,6 +114,7 @@ public class ApplicationSourceCache extends SourceCache {
                         sourcePath = subPath;
                     } else {
                         subPath = sourcePath.resolve("java");
+                        file = subPath.toFile();
                         if (file.exists() && file.isDirectory()) {
                             sourcePath = subPath;
                         }
