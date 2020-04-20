@@ -53,6 +53,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
         setupContext();
         OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
         Assume.assumeFalse(callTarget.getOptionValue(PolyglotCompilerOptions.CompileImmediately));
+        Assume.assumeFalse(callTarget.getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining));
     }
 
     @Test
