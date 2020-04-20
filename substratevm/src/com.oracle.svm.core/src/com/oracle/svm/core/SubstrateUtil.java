@@ -574,7 +574,11 @@ public class SubstrateUtil {
     private static void dumpStacktraceRaw(Log log, Pointer sp) {
         log.string("Raw Stacktrace:").newline();
         log.indent(true);
-        log.hexdump(sp, 8, 128);
+        /*
+         * We have to be careful here and not dump too much of the stack: if there are not many
+         * frames on the stack, we segfault when going past the beginning of the stack.
+         */
+        log.hexdump(sp, 8, 16);
         log.indent(false);
     }
 
