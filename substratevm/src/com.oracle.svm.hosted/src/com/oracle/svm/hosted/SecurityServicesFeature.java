@@ -109,6 +109,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.provider.SeedGenerator"), "for substitutions");
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
 
+        if(JavaVersionUtil.JAVA_SPEC >= 11) {
+            /* sun.security.provider.AbstractDrbg$SeederHolder has a static final EntropySource seeder field. */
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
+        }
+
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.provider.FileInputStreamPool"), "for substitutions");
         }
