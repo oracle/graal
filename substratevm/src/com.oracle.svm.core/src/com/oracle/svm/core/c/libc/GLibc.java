@@ -48,4 +48,9 @@ public class GLibc implements LibCBase {
     public List<String> getCCompilerOptions() {
         return Collections.emptyList();
     }
+
+    @Override
+    public boolean hasIsolatedNamespaces() {
+        return true;
+    }
 }

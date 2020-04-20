@@ -97,4 +97,9 @@ public class MuslLibc implements LibCBase {
         VMError.guarantee(specFilePath != null);
         return specFilePath.toAbsolutePath();
     }
+
+    @Override
+    public boolean hasIsolatedNamespaces() {
+        return false;
+    }
 }
