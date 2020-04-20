@@ -1162,7 +1162,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
         }
         return builder.build();
-
     }
 
     private static void addAcceptsAssertion(CodeTreeBuilder executeBody, CodeTree customAccept) {
@@ -1176,7 +1175,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         } else {
             accepts = executeBody.create().string("this.accepts(", name, ")").build();
         }
-        executeBody.startAssert().tree(accepts).string(" : ").doubleQuote("Invalid library usage. Library does not accept given receiver.").end();
+        executeBody.startAssert().tree(accepts).string(" : ").doubleQuote(INVALID_LIBRARY_USAGE_MESSAGE).end();
     }
 
     private static final String INVALID_LIBRARY_USAGE_MESSAGE = "Invalid library usage. Library does not accept given receiver.";
