@@ -449,13 +449,13 @@ final class Runner {
             this.symbol = symbol;
         }
 
-        void allocateScope(LLVMContext context, int ID) {
+        void allocateScope(LLVMContext context, int id) {
             LLVMScope globalScope = context.getGlobalScopeTmp();
             LLVMSymbol exportedSymbol = globalScope.get(symbol.getName());
             if (exportedSymbol == null && symbol.isExported()) {
                 globalScope.register(symbol);
             }
-            LLVMLocalScope localScope = context.getLocalScopeTmp(ID);
+            LLVMLocalScope localScope = context.getLocalScopeTmp(id);
             LLVMSymbol exportedSymbolFromLocal = localScope.get(symbol.getName());
             if (exportedSymbolFromLocal == null && symbol.isExported()) {
                 localScope.register(symbol);
@@ -937,7 +937,7 @@ final class Runner {
         private final LLVMScope fileScope;
         private NodeFactory nodeFactory;
 
-        private final int ID;
+        private final int id;
         private final int globalLength;
 
         InitializeSymbolsNode(LLVMParserResult result, NodeFactory nodeFactory, boolean lazyParsing, boolean isSulongLibrary, Object moduleName) throws TypeOverflowException {
@@ -946,7 +946,7 @@ final class Runner {
             this.fileScope = result.getRuntime().getFileScope();
             this.checkGlobals = LLVMCheckSymbolNodeGen.create();
             this.globalLength = result.getSymbolTableSize();
-            this.ID = result.getRuntime().getBitcodeID();
+            this.id = result.getRuntime().getBitcodeID();
 
             // allocate all non-pointer types as two structs
             // one for read-only and one for read-write
@@ -998,7 +998,7 @@ final class Runner {
 
         @SuppressWarnings("unchecked")
         public void initializeSymbolTable(LLVMContext context) {
-            context.registerSymbolTable(ID, new AssumedValue[globalLength]);
+            context.registerSymbolTable(id, new AssumedValue[globalLength]);
             context.registerScope(fileScope);
         }
 
@@ -1511,10 +1511,10 @@ final class Runner {
 
     private static final class InitializeScopeNode extends LLVMNode {
         @Children final AllocScopeNode[] allocScopes;
-        private final int ID;
+        private final int id;
 
         InitializeScopeNode(LLVMParserResult result) {
-            this.ID = result.getRuntime().getBitcodeID();
+            this.id = result.getRuntime().getBitcodeID();
             ArrayList<AllocScopeNode> allocScopesList = new ArrayList<>();
             LLVMScope fileScope = result.getRuntime().getFileScope();
             for (LLVMSymbol symbol : fileScope.values()) {
@@ -1527,7 +1527,7 @@ final class Runner {
             synchronized (context) {
                 for (int i = 0; i < allocScopes.length; i++) {
                     AllocScopeNode allocScope = allocScopes[i];
-                    allocScope.allocateScope(context, ID);
+                    allocScope.allocateScope(context, id);
                 }
             }
         }
@@ -1552,11 +1552,11 @@ final class Runner {
     private static final class InitializeExternalNode extends LLVMNode {
         @Child LLVMWriteSymbolNode writeSymbols;
         @Children AllocExternalSymbolNode[] allocExternalSymbols;
-        private final int ID;
+        private final int id;
         private final NodeFactory nodeFactory;
 
         InitializeExternalNode(LLVMParserResult result) {
-            this.ID = result.getRuntime().getBitcodeID();
+            this.id = result.getRuntime().getBitcodeID();
             this.nodeFactory = result.getRuntime().getNodeFactory();
             LLVMScope fileScope = result.getRuntime().getFileScope();
             ArrayList<AllocExternalSymbolNode> allocExternaSymbolsList = new ArrayList<>();
@@ -1588,7 +1588,7 @@ final class Runner {
          */
         @ExplodeLoop
         void execute(LLVMContext context) {
-            LLVMLocalScope localScope = context.getLocalScopeTmp(ID);
+            LLVMLocalScope localScope = context.getLocalScopeTmp(id);
             LLVMScope globalScope = context.getGlobalScopeTmp();
             LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
             NFIContextExtension nfiContextExtension = getNfiContextExtension();
@@ -1631,11 +1631,11 @@ final class Runner {
 
         @Children final AllocExternalSymbolNode[] allocExternalSymbols;
         @Child LLVMWriteSymbolNode writeSymbols;
-        private final int ID;
+        private final int id;
 
         InitializeOverwriteNode(LLVMParserResult result) {
             this.writeSymbols = LLVMWriteSymbolNodeGen.create();
-            this.ID = result.getRuntime().getBitcodeID();
+            this.id = result.getRuntime().getBitcodeID();
             ArrayList<AllocExternalSymbolNode> allocExternaSymbolsList = new ArrayList<>();
             LLVMScope fileScope = result.getRuntime().getFileScope();
 
@@ -1663,7 +1663,7 @@ final class Runner {
 
         @ExplodeLoop
         void execute(LLVMContext context) {
-            LLVMLocalScope localScope = context.getLocalScopeTmp(ID);
+            LLVMLocalScope localScope = context.getLocalScopeTmp(id);
             LLVMScope globalScope = context.getGlobalScopeTmp();
             for (int i = 0; i < allocExternalSymbols.length; i++) {
                 AllocExternalSymbolNode allocSymbol = allocExternalSymbols[i];
