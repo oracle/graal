@@ -848,7 +848,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     this.managementPtr = null;
                 }
             } else {
-                assert getUncached().isNull(managementPtr);
+                assert managementPtr == null;
             }
 
             getUncached().execute(disposeMokapotContext, vmPtr);
@@ -1882,14 +1882,14 @@ public final class VM extends NativeEnv implements ContextAccess {
                             "Use '--java.EnableManagement=true' to enable experimental support for j.l.management native APIs.");
             return RawPointer.nullInstance();
         }
-        if (getUncached().isNull(managementPtr)) {
+        if (managementPtr == null) {
             try {
                 managementPtr = (TruffleObject) getUncached().execute(initializeManagementContext, lookupVmImplCallback);
                 assert getUncached().isPointer(managementPtr);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
-            assert !getUncached().isNull(managementPtr);
+            assert managementPtr != null && !getUncached().isNull(managementPtr);
         }
         return managementPtr;
     }
