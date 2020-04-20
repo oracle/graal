@@ -212,15 +212,17 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             FrameSlot[] nullableAfterBlock = getNullableFrameSlots(frame, liveness.getNullableAfterBlock()[j]);
             blockNodes[j].setNullableFrameSlots(nullableBeforeBlock, nullableAfterBlock);
         }
-
-        FrameSlot loopSuccessorSlot = null;
-        LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
-        cfg.build();
         info.setBlocks(blockNodes);
 
-        if (cfg.isReducible() && cfg.getCFGLoops().size() > 0) {
-            loopSuccessorSlot = frame.addFrameSlot(LOOP_SUCCESSOR_FRAME_ID, FrameSlotKind.Int);
-            resolveLoops(blockNodes, cfg, frame, loopSuccessorSlot, info, options);
+        FrameSlot loopSuccessorSlot = null;
+        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_OSR)) {
+            LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
+            cfg.build();
+
+            if (cfg.isReducible() && cfg.getCFGLoops().size() > 0) {
+                loopSuccessorSlot = frame.addFrameSlot(LOOP_SUCCESSOR_FRAME_ID, FrameSlotKind.Int);
+                resolveLoops(blockNodes, cfg, frame, loopSuccessorSlot, info, options);
+            }
         }
 
         LLVMSourceLocation location = method.getLexicalScope();
