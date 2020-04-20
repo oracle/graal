@@ -482,7 +482,7 @@ final class Runner {
             super(symbol);
         }
 
-        @Specialization(guards = {"localScope != null", "cachedLocalSymbol != null", "localScope.get(symbol.getName()) == cachedLocalSymbol", "!(symbol.equals(cachedLocalSymbol))"})
+        @Specialization(guards = {"cachedLocalSymbol != null", "localScope.get(symbol.getName()) == cachedLocalSymbol", "!(symbol.equals(cachedLocalSymbol))"})
         LLVMPointer allocateFromLocalScopeCached(@SuppressWarnings("unused") LLVMLocalScope localScope,
                         @SuppressWarnings("unused") LLVMScope globalScope,
                         @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
@@ -495,7 +495,7 @@ final class Runner {
             return pointer;
         }
 
-        @Specialization(replaces = "allocateFromLocalScopeCached", guards = {"localScope != null", "localScope.get(symbol.getName()) != null", "!(symbol.equals(localScope.get(symbol.getName())))"})
+        @Specialization(replaces = "allocateFromLocalScopeCached", guards = {"localScope.get(symbol.getName()) != null", "!(symbol.equals(localScope.get(symbol.getName())))"})
         LLVMPointer allocateFromLocalScope(LLVMLocalScope localScope,
                         @SuppressWarnings("unused") LLVMScope globalScope,
                         @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
@@ -532,7 +532,7 @@ final class Runner {
             super(symbol);
         }
 
-        @Specialization(guards = {"globalScope != null", "localScope.get(symbol.getName()) == null", "cachedGlobalSymbol != null", "globalScope.get(symbol.getName()) == cachedGlobalSymbol",
+        @Specialization(guards = {"localScope.get(symbol.getName()) == null", "cachedGlobalSymbol != null", "globalScope.get(symbol.getName()) == cachedGlobalSymbol",
                         "!(symbol.equals(cachedGlobalSymbol))"})
         LLVMPointer allocateFromGlobalScopeCached(@SuppressWarnings("unused") LLVMLocalScope localScope,
                         @SuppressWarnings("unused") LLVMScope globalScope,
@@ -546,7 +546,7 @@ final class Runner {
             return pointer;
         }
 
-        @Specialization(replaces = "allocateFromGlobalScopeCached", guards = {"globalScope != null", "localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) != null",
+        @Specialization(replaces = "allocateFromGlobalScopeCached", guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) != null",
                         "!(symbol.equals(globalScope.get(symbol.getName())))"})
         LLVMPointer allocateFromGlobalScope(@SuppressWarnings("unused") LLVMLocalScope localScope,
                         LLVMScope globalScope,
