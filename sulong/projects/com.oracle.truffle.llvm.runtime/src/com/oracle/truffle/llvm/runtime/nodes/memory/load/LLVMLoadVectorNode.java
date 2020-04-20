@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadDoubleVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadFloatVectorNodeGen;
@@ -65,7 +64,6 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 @NodeField(name = "vectorLength", type = int.class)
 public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
-    @Children private volatile LLVMObjectReadNode[] foreignReadNodes;
 
     public abstract int getVectorLength();
 
