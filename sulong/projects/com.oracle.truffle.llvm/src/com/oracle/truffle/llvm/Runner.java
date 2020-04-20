@@ -440,6 +440,9 @@ final class Runner {
         return createLibraryCallTarget(source.getName(), parserResults, initializationOrder);
     }
 
+    /**
+     * Allocating a symbol to the global and local scope of a module.
+     */
     private static final class AllocScopeNode extends LLVMNode {
 
         static final AllocScopeNode[] EMPTY = {};
@@ -463,6 +466,35 @@ final class Runner {
         }
     }
 
+    /**
+     * The structure for allocating symbols to the symbol table is as follows:
+     *
+     *               AllocExistingLocalSymbolsNode
+     *                               /
+     *                              /
+     *              AllocExistingGlobalSymbolsNode
+     *                   /              \
+     *                  /                \
+     *                 /                  \
+     *    AllocExternalFunctionNode     AllocExternalGlobalNode
+     *
+     *  AllocExternalFunctionNode is created for allocating external functions {@link InitializeExternalNode}, which
+     *  has four cases:
+     *  1) If the function is defined in the local scope.
+     *  2) If the function is defined in the global scope.
+     *  3) if the function is an instrinsic function.
+     *  4) And finally, if the function is a native function.
+     *
+     *  This order is very important and cannot be changed.
+     *
+     *  Similarly, AllocExternalGlobalNode is created for allocating external globals {@link InitializeExternalNode}.
+     *
+     *  For overriding defined functions for symbol resolution {@link InitializeOverwriteNode}, AllocExistingGlobalSymbolsNode
+     *  is created for overwriting global symbols as they can be taken from the global and local scope, meanwhile
+     *  AllocExistingLocalSymbolsNode is created for ovewriting functions, as they can only be taken from the local
+     *  scopes.
+     *
+     */
     abstract static class AllocExternalSymbolNode extends LLVMNode {
 
         @SuppressWarnings("unused") static final AllocExternalSymbolNode[] EMPTY = {};
@@ -475,6 +507,9 @@ final class Runner {
         public abstract LLVMPointer execute(LLVMLocalScope localScope, LLVMScope globalScope, LLVMIntrinsicProvider intrinsicProvider, NFIContextExtension nfiContextExtension);
     }
 
+    /**
+     * Allocating symbols to the symbol table as provided by the local scope.
+     */
     abstract static class AllocExistingLocalSymbolsNode extends AllocExternalSymbolNode {
 
         AllocExistingLocalSymbolsNode(LLVMSymbol symbol) {
@@ -530,6 +565,9 @@ final class Runner {
         public abstract LLVMPointer execute(LLVMLocalScope localScope, LLVMScope globalScope, LLVMIntrinsicProvider intrinsicProvider, NFIContextExtension nfiContextExtension);
     }
 
+    /**
+     * Allocating symbols to the symbol table as provided by the global scope.
+     */
     abstract static class AllocExistingGlobalSymbolsNode extends AllocExistingLocalSymbolsNode {
 
         AllocExistingGlobalSymbolsNode(LLVMSymbol symbol) {
@@ -578,6 +616,10 @@ final class Runner {
         public abstract LLVMPointer execute(LLVMLocalScope localScope, LLVMScope globalScope, LLVMIntrinsicProvider intrinsicProvider, NFIContextExtension nfiContextExtension);
     }
 
+    /*
+     * Allocates a managed pointer for the newly constructed function descriptors of a native
+     * function and intrinsic function.
+     */
     abstract static class AllocExternalFunctionNode extends AllocExistingGlobalSymbolsNode {
 
         private final NodeFactory nodeFactory;
@@ -630,6 +672,9 @@ final class Runner {
 
     }
 
+    /**
+     * Allocating a native global symbol to the symbol table as provided by the nfi context.
+     */
     abstract static class AllocExternalGlobalNode extends AllocExistingGlobalSymbolsNode {
 
         AllocExternalGlobalNode(LLVMSymbol symbol) {
@@ -715,24 +760,6 @@ final class Runner {
         }
     }
 
-    @SuppressWarnings("unused")
-    private static final class AllocExistingSymbolNode extends AllocSymbolNode {
-
-        @Child LLVMAccessSymbolNode accessSymbol;
-
-        AllocExistingSymbolNode(LLVMSymbol symbol, LLVMAccessSymbolNode accessSymbol) {
-            super(symbol);
-            this.accessSymbol = accessSymbol;
-        }
-
-        @Override
-        LLVMPointer allocate(LLVMContext context) {
-            LLVMPointer pointer = accessSymbol.execute();
-            context.registerSymbol(symbol, pointer);
-            return pointer;
-        }
-    }
-
     private static final class AllocIntrinsicFunctionNode extends AllocSymbolNode {
 
         private NodeFactory nodeFactory;
@@ -758,88 +785,6 @@ final class Runner {
         LLVMPointer allocate(LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = createAndDefine(context);
             return LLVMManagedPointer.create(functionDescriptor);
-        }
-    }
-
-    /*
-     * Allocates a managed pointer for the newly constructed function descriptors of a native
-     * function.
-     */
-    @SuppressWarnings("unused")
-    private static final class AllocNativeFunctionNode extends AllocSymbolNode {
-
-        @SuppressWarnings("unused")
-        AllocNativeFunctionNode(LLVMFunction function) {
-            super(function);
-        }
-
-        @TruffleBoundary
-        LLVMFunctionDescriptor createAndDefine(LLVMContext context) {
-            NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
-            if (nfiContextExtension == null) {
-                throw new IllegalStateException("NFIContextExtension is null for function: " + symbol.getName());
-            }
-            LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction());
-            NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, symbol.getName());
-
-            if (nativeFunction != null) {
-                functionDescriptor.getFunctionCode().define(nativeFunction.getLibrary(), new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
-                return functionDescriptor;
-            }
-            // null is returned for native functions that does not exists in the NFI context.
-            return null;
-        }
-
-        @Override
-        LLVMPointer allocate(LLVMContext context) {
-            LLVMFunctionDescriptor functionDescriptor = createAndDefine(context);
-            if (functionDescriptor == null) {
-                // null is propagated back up when the native function does not exists in the NFI
-                // context.
-                return null;
-            }
-            return LLVMManagedPointer.create(functionDescriptor);
-        }
-    }
-
-    /*
-     * Allocates a native pointer for the newly constructed global symbol of a native global.
-     */
-    @SuppressWarnings("unused")
-    private static final class AllocNativeGlobalNode extends AllocSymbolNode {
-
-        @SuppressWarnings("unused")
-        AllocNativeGlobalNode(LLVMGlobal global) {
-            super(global);
-        }
-
-        @TruffleBoundary
-        NativePointerIntoLibrary createAndDefine(LLVMContext context) {
-            NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
-            if (nfiContextExtension == null) {
-                throw new IllegalStateException("NFIContextExtension is null for function: " + symbol.getName());
-            }
-            LLVMGlobal global = symbol.asGlobalVariable();
-            NativePointerIntoLibrary pointer = nfiContextExtension.getNativeHandle(context, global.getName());
-            if (pointer != null) {
-                if (!symbol.isDefined()) {
-                    symbol.asGlobalVariable().define(pointer.getLibrary());
-                }
-                return pointer;
-            }
-            // null is returned for native globals that does not exists in the NFI context.
-            return null;
-        }
-
-        @Override
-        LLVMPointer allocate(LLVMContext context) {
-            NativePointerIntoLibrary pointer = createAndDefine(context);
-            if (pointer == null) {
-                // null is propagated back up when the native global does not exists in the NFI
-                // context.
-                return null;
-            }
-            return LLVMNativePointer.create(pointer.getAddress());
         }
     }
 
@@ -1520,6 +1465,17 @@ final class Runner {
         }
     }
 
+    /**
+     * Initialization node for the global scope and the local scope of the module. The scopes are allocated from
+     * the symbols in the file scope of the module.
+     *
+     * @see InitializeSymbolsNode
+     * @see InitializeGlobalNode
+     * @see InitializeModuleNode
+     * @see InitializeOverwriteNode
+     * @see InitializeExternalNode
+     *
+     */
     private static final class InitializeScopeNode extends LLVMNode {
         @Children final AllocScopeNode[] allocScopes;
         private final int id;
