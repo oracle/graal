@@ -367,6 +367,12 @@ public class FileDownloaderTest extends NetworkTestBase {
         dn.setDisplayProgress(true);
         synchronized (conn) {
             conn.nextChunk = 130 * 1024;
+
+            ProxyConnectionFactory pcf = new ProxyConnectionFactory(this, u);
+            dn.setConnectionFactory(pcf);
+
+            pcf.envHttpProxy = null;
+            pcf.envHttpsProxy = null;
         }
 
         AtomicReference<Throwable> exc = new AtomicReference<>();
