@@ -1362,6 +1362,8 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMPowNodeGen.create(args[1], args[2]);
                 case "llvm.powi.f80":
                     return LLVMPowNodeGen.create(args[1], args[2]);
+                case "llvm.round.f32":
+                case "llvm.round.f64":
                 case "llvm.round.f80":
                     return LLVMCMathsIntrinsicsFactory.LLVMRoundNodeGen.create(args[1]);
                 case "llvm.fabs.f32":
