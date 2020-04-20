@@ -77,7 +77,7 @@ public class ApplicationSourceCache extends SourceCache {
                      * application jar /path/to/xxx.jar should have sources /path/to/xxx-sources.jar
                      */
                     int length = fileNameString.length();
-                    fileNameString = fileNameString.substring(0, length - 4) + "-sources.zip";
+                    fileNameString = fileNameString.substring(0, length - 4) + "-sources.jar";
                 }
                 sourcePath = sourcePath.getParent().resolve(fileNameString);
                 if (sourcePath.toFile().exists()) {
@@ -107,6 +107,17 @@ public class ApplicationSourceCache extends SourceCache {
                 // try the path as provided
                 File file = sourcePath.toFile();
                 if (file.exists() && file.isDirectory()) {
+                    // see if we have src/main/java or src/java
+                    Path subPath = sourcePath.resolve("main").resolve("java");
+                    file = subPath.toFile();
+                    if (file.exists() && file.isDirectory()) {
+                        sourcePath = subPath;
+                    } else {
+                        subPath = sourcePath.resolve("java");
+                        if (file.exists() && file.isDirectory()) {
+                            sourcePath = subPath;
+                        }
+                    }
                     srcRoots.add(sourcePath);
                 }
             }
