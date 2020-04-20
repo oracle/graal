@@ -74,7 +74,7 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
                 locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
                 return;
             }
-            locals.setIndex(indexOfNode.execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteral(), innerLiteral.getMask()));
+            locals.setIndex(indexOfNode.execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteral().content(), innerLiteral.getMaskContent()));
             if (locals.getIndex() < 0) {
                 locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
                 return;

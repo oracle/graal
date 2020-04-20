@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
@@ -66,8 +67,13 @@ public class BackReference extends QuantifiableTerm {
     }
 
     @Override
-    public BackReference copy(RegexAST ast, boolean recursive) {
+    public BackReference copy(RegexAST ast) {
         return ast.register(new BackReference(this));
+    }
+
+    @Override
+    public BackReference copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        return copy(ast);
     }
 
     /**

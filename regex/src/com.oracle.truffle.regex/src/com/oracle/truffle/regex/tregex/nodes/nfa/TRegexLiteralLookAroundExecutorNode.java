@@ -49,7 +49,6 @@ import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 /**
  * Specialized {@link TRegexExecutorNode} for matching {@link LookAroundAssertion#isLiteral()
@@ -61,13 +60,13 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNod
     private final boolean negated;
     @Children private CharMatcher[] matchers;
 
-    public TRegexLiteralLookAroundExecutorNode(LookAroundAssertion lookAround, Encoding encoding, CompilationBuffer compilationBuffer) {
+    public TRegexLiteralLookAroundExecutorNode(LookAroundAssertion lookAround, CompilationBuffer compilationBuffer) {
         assert lookAround.isLiteral();
         forward = lookAround.isLookAheadAssertion();
         negated = lookAround.isNegated();
         matchers = new CharMatcher[lookAround.getLiteralLength()];
         for (int i = 0; i < matchers.length; i++) {
-            CharMatcher matcher = CharMatchers.createMatcher(lookAround.getGroup().getFirstAlternative().get(i).asCharacterClass().getCharSet(), encoding, compilationBuffer);
+            CharMatcher matcher = CharMatchers.createMatcher(lookAround.getGroup().getFirstAlternative().get(i).asCharacterClass().getCharSet(), compilationBuffer);
             matchers[forward ? i : matchers.length - (i + 1)] = insert(matcher);
         }
     }

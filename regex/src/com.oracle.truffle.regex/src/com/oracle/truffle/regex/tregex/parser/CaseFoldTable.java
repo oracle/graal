@@ -199,16 +199,6 @@ public class CaseFoldTable {
         }
 
         @Override
-        public int getMinValue() {
-            return 0;
-        }
-
-        @Override
-        public int getMaxValue() {
-            return 0x10ffff;
-        }
-
-        @Override
         public void appendRangesTo(RangesBuffer buffer, int startIndex, int endIndex) {
             throw new UnsupportedOperationException();
         }

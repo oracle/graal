@@ -72,6 +72,10 @@ public class InnerLiteral {
         return mask;
     }
 
+    public Object getMaskContent() {
+        return mask == null ? null : mask.content();
+    }
+
     /**
      * The maximum number of code points the regular expression may match before matching this
      * literal. Example: the inner literal of {@code /a?b/} is {@code "b"}, with a max prefix size

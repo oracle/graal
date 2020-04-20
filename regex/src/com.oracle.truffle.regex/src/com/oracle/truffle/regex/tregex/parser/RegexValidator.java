@@ -51,6 +51,7 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class RegexValidator {
 
@@ -62,7 +63,7 @@ public class RegexValidator {
     public RegexValidator(RegexSource source, RegexFlags flags, RegexOptions options) {
         this.source = source;
         this.flags = flags;
-        this.lexer = new RegexLexer(source, flags, options);
+        this.lexer = new RegexLexer(source, flags, flags.isUnicode() ? Encodings.UTF_16 : Encodings.UTF_16_RAW, options);
     }
 
     @TruffleBoundary

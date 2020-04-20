@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.buffer;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
@@ -56,20 +57,29 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  * @see ObjectArrayBuffer
  * @see ByteArrayBuffer
  * @see ShortArrayBuffer
- * @see CharRangesBuffer
  */
 public class CompilationBuffer {
 
+    private final Encoding encoding;
     private ObjectArrayBuffer<Object> objectBuffer1;
     private ObjectArrayBuffer<Object> objectBuffer2;
     private ByteArrayBuffer byteArrayBuffer;
-    private ShortArrayBuffer shortArrayBuffer;
+    private ShortArrayBuffer shortArrayBuffer1;
+    private ShortArrayBuffer shortArrayBuffer2;
     private IntRangesBuffer intRangesBuffer1;
     private IntRangesBuffer intRangesBuffer2;
     private IntRangesBuffer intRangesBuffer3;
     private CodePointSetAccumulator codePointSetAccumulator1;
     private CodePointSetAccumulator codePointSetAccumulator2;
     private CompilationFinalBitSet byteSizeBitSet;
+
+    public CompilationBuffer(Encoding encoding) {
+        this.encoding = encoding;
+    }
+
+    public Encoding getEncoding() {
+        return encoding;
+    }
 
     @SuppressWarnings("unchecked")
     public <T> ObjectArrayBuffer<T> getObjectBuffer1() {
@@ -97,12 +107,20 @@ public class CompilationBuffer {
         return byteArrayBuffer;
     }
 
-    public ShortArrayBuffer getShortArrayBuffer() {
-        if (shortArrayBuffer == null) {
-            shortArrayBuffer = new ShortArrayBuffer();
+    public ShortArrayBuffer getShortArrayBuffer1() {
+        if (shortArrayBuffer1 == null) {
+            shortArrayBuffer1 = new ShortArrayBuffer();
         }
-        shortArrayBuffer.clear();
-        return shortArrayBuffer;
+        shortArrayBuffer1.clear();
+        return shortArrayBuffer1;
+    }
+
+    public ShortArrayBuffer getShortArrayBuffer2() {
+        if (shortArrayBuffer2 == null) {
+            shortArrayBuffer2 = new ShortArrayBuffer();
+        }
+        shortArrayBuffer2.clear();
+        return shortArrayBuffer2;
     }
 
     public IntRangesBuffer getIntRangesBuffer1() {

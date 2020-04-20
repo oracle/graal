@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 public final class StringUTF8 implements AbstractString {
 
-    private final byte[] str;
+    @CompilationFinal(dimensions = 1) private final byte[] str;
 
     public StringUTF8(byte[] str) {
         this.str = str;
@@ -51,6 +53,11 @@ public final class StringUTF8 implements AbstractString {
     @Override
     public int encodedLength() {
         return str.length;
+    }
+
+    @Override
+    public Object content() {
+        return str;
     }
 
     @Override

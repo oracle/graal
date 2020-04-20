@@ -54,6 +54,11 @@ public final class StringUTF32 implements AbstractString {
     }
 
     @Override
+    public Object content() {
+        return str;
+    }
+
+    @Override
     public AbstractStringIterator iterator() {
         return new StringUTF32Iterator(str);
     }

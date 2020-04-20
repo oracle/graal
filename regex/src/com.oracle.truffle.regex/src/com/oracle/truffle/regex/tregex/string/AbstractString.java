@@ -46,4 +46,6 @@ public interface AbstractString extends Iterable<Integer> {
     AbstractStringIterator iterator();
 
     int encodedLength();
+
+    Object content();
 }

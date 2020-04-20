@@ -234,9 +234,9 @@ public final class NFAGenerator {
                         transitionsBuffer.add(createTransition(sourceState, finalState));
                     }
                 } else if (!containsPositionAssertion) {
-                    assert mergeBuilder.getMatcherBuilder().matchesSomething();
+                    assert mergeBuilder.getCodePointSet().matchesSomething();
                     transitionsBuffer.add(createTransition(sourceState,
-                                    registerMatcherState(stateSetCC, mergeBuilder.getMatcherBuilder(), finishedLookBehinds, containsPrefixStates)));
+                                    registerMatcherState(stateSetCC, mergeBuilder.getCodePointSet(), finishedLookBehinds, containsPrefixStates)));
                 }
                 transitionGBUpdateIndices.clear();
                 transitionGBClearIndices.clear();
@@ -246,7 +246,7 @@ public final class NFAGenerator {
     }
 
     private NFAState createFinalState(StateSet<RegexAST, ? extends RegexASTNode> stateSet) {
-        NFAState state = new NFAState((short) stateID.inc(), stateSet, CodePointSet.getFull(), Collections.emptySet(), false);
+        NFAState state = new NFAState((short) stateID.inc(), stateSet, ast.getEncoding().getFullSet(), Collections.emptySet(), false);
         assert !nfaStates.containsKey(state.getStateSet());
         nfaStates.put(state.getStateSet(), state);
         return state;

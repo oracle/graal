@@ -272,6 +272,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     }
 
     public CharacterClass createCharacterClass(CodePointSet matcherBuilder) {
+        assert encoding.getFullSet().contains(matcherBuilder);
         return register(new CharacterClass(matcherBuilder));
     }
 
@@ -388,12 +389,6 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     public PositionAssertion register(PositionAssertion positionAssertion) {
         nodeCount.inc();
-        switch (positionAssertion.type) {
-            case CARET:
-                break;
-            case DOLLAR:
-                break;
-        }
         return positionAssertion;
     }
 
@@ -544,7 +539,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      * set to true.
      */
     private CharacterClass createPrefixAnyMatcher() {
-        final CharacterClass anyMatcher = createCharacterClass(CodePointSet.getFull());
+        final CharacterClass anyMatcher = createCharacterClass(encoding.getFullSet());
         anyMatcher.setPrefix();
         return anyMatcher;
     }

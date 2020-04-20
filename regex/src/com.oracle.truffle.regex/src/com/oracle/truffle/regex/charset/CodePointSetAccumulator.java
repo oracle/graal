@@ -56,7 +56,7 @@ public class CodePointSetAccumulator implements Iterable<Range> {
         return acc;
     }
 
-    private IntRangesBuffer getTmp() {
+    public IntRangesBuffer getTmp() {
         if (tmp == null) {
             tmp = new IntRangesBuffer();
         }

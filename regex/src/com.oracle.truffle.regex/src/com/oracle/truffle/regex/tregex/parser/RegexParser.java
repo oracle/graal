@@ -79,6 +79,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntries
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public final class RegexParser {
 
@@ -136,12 +137,12 @@ public final class RegexParser {
     private final CompilationBuffer compilationBuffer;
 
     @TruffleBoundary
-    public RegexParser(RegexSource source, RegexOptions options, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
+    public RegexParser(RegexSource source, RegexFlags flags, Encoding encoding, RegexOptions options, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.source = source;
-        this.flags = RegexFlags.parseFlags(source.getFlags());
+        this.flags = flags;
         this.options = options;
-        this.lexer = new RegexLexer(source, flags, options);
-        this.ast = new RegexAST(source, flags, options, flags.isUnicode() && !options.isUTF16ExplodeAstralSymbols() ? Encodings.UTF_16 : Encodings.UTF_16_RAW);
+        this.lexer = new RegexLexer(source, flags, encoding, options);
+        this.ast = new RegexAST(source, flags, options, encoding);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
         this.copyVisitor = new CopyVisitor(ast);
@@ -151,7 +152,7 @@ public final class RegexParser {
     }
 
     private static Group parseRootLess(String pattern) throws RegexSyntaxException {
-        return new RegexParser(new RegexSource(pattern), RegexOptions.DEFAULT, new CompilationBuffer()).parse(false);
+        return new RegexParser(new RegexSource(pattern), RegexFlags.DEFAULT, Encodings.UTF_16_RAW, RegexOptions.DEFAULT, new CompilationBuffer(Encodings.UTF_16_RAW)).parse(false);
     }
 
     @TruffleBoundary
@@ -347,7 +348,7 @@ public final class RegexParser {
             // surrogates
             assert !flags.isUnicode() || !options.isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
             assert !group.hasEnclosedCaptureGroups();
-            cc.setCharSet(cc.getCharSet().createInverse());
+            cc.setCharSet(cc.getCharSet().createInverse(ast.getEncoding()));
             ast.updatePropsCC(cc);
             curSequence.removeLastTerm();
             Group wrapGroup = ast.createGroup();
@@ -402,12 +403,12 @@ public final class RegexParser {
         if (loneLeadSurrogateRanges.matchesSomething()) {
             Sequence loneLeadSurrogateAlternative = group.addSequence(ast);
             loneLeadSurrogateAlternative.add(createCharClass(loneLeadSurrogateRanges, token));
-            loneLeadSurrogateAlternative.add(NO_TRAIL_SURROGATE_AHEAD.copy(ast, true));
+            loneLeadSurrogateAlternative.add(NO_TRAIL_SURROGATE_AHEAD.copyRecursive(ast, compilationBuffer));
         }
 
         if (loneTrailSurrogateRanges.matchesSomething()) {
             Sequence loneTrailSurrogateAlternative = group.addSequence(ast);
-            loneTrailSurrogateAlternative.add(NO_LEAD_SURROGATE_BEHIND.copy(ast, true));
+            loneTrailSurrogateAlternative.add(NO_LEAD_SURROGATE_BEHIND.copyRecursive(ast, compilationBuffer));
             loneTrailSurrogateAlternative.add(createCharClass(loneTrailSurrogateRanges, token));
         }
 
@@ -654,7 +655,7 @@ public final class RegexParser {
     }
 
     private void substitute(Token token, Group substitution) {
-        Group copy = substitution.copy(ast, true);
+        Group copy = substitution.copyRecursive(ast, compilationBuffer);
         if (options.isDumpAutomata()) {
             setSourceSectionVisitor.run(copy, token);
         }

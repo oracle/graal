@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
@@ -54,13 +55,22 @@ public class RegexASTRootNode extends RegexASTSubtreeRootNode {
         setId(InitIDVisitor.REGEX_AST_ROOT_PARENT_ID);
     }
 
-    private RegexASTRootNode(RegexASTRootNode copy, RegexAST ast, boolean recursive) {
-        super(copy, ast, recursive);
+    private RegexASTRootNode(RegexASTRootNode copy, RegexAST ast) {
+        super(copy, ast);
+    }
+
+    private RegexASTRootNode(RegexASTRootNode copy, RegexAST ast, CompilationBuffer compilationBuffer) {
+        super(copy, ast, compilationBuffer);
     }
 
     @Override
-    public RegexASTSubtreeRootNode copy(RegexAST ast, boolean recursive) {
-        return new RegexASTRootNode(this, ast, recursive);
+    public RegexASTSubtreeRootNode copy(RegexAST ast) {
+        return new RegexASTRootNode(this, ast);
+    }
+
+    @Override
+    public RegexASTSubtreeRootNode copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        return new RegexASTRootNode(this, ast, compilationBuffer);
     }
 
     @Override

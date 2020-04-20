@@ -52,7 +52,14 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.SimpleMatchers;
+import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.UTF16Matchers;
+import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.UTF16RawMatchers;
+import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.UTF8Matchers;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
+import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
+import com.oracle.truffle.regex.tregex.string.AbstractString;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
@@ -60,30 +67,25 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 public class DFAStateNode extends DFAAbstractStateNode {
 
-    public static class LoopOptimizationNode extends Node {
+    public abstract static class LoopOptimizationNode extends Node {
 
-        private final short loopTransitionIndex;
-        @CompilationFinal(dimensions = 1) private final char[] indexOfChars;
+        public abstract int execute(Object input, int preLoopIndex, int maxIndex);
+
+        public abstract int encodedLength();
+
+        abstract LoopOptimizationNode nodeSplitCopy();
+    }
+
+    public abstract static class LoopOptIndexOfAnyNode extends LoopOptimizationNode {
+
         @Child private InputIndexOfNode indexOfNode;
 
-        public LoopOptimizationNode(short loopTransitionIndex, char[] indexOfChars) {
-            this.loopTransitionIndex = loopTransitionIndex;
-            this.indexOfChars = indexOfChars;
-        }
-
-        private LoopOptimizationNode nodeSplitCopy() {
-            return new LoopOptimizationNode(loopTransitionIndex, indexOfChars);
-        }
-
-        public char[] getIndexOfChars() {
-            return indexOfChars;
-        }
-
+        @Override
         public int encodedLength() {
             return 1;
         }
 
-        public InputIndexOfNode getIndexOfNode() {
+        InputIndexOfNode getIndexOfNode() {
             if (indexOfNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 indexOfNode = insert(InputIndexOfNode.create());
@@ -92,35 +94,124 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
+    public static final class LoopOptIndexOfAnyCharNode extends LoopOptIndexOfAnyNode {
+
+        @CompilationFinal(dimensions = 1) private final char[] chars;
+
+        public LoopOptIndexOfAnyCharNode(char[] chars) {
+            this.chars = chars;
+        }
+
+        private LoopOptIndexOfAnyCharNode(LoopOptIndexOfAnyCharNode copy) {
+            this.chars = copy.chars;
+        }
+
+        @Override
+        public int execute(Object input, int fromIndex, int maxIndex) {
+            return getIndexOfNode().execute(input, fromIndex, maxIndex, chars);
+        }
+
+        @Override
+        LoopOptimizationNode nodeSplitCopy() {
+            return new LoopOptIndexOfAnyCharNode(this);
+        }
+    }
+
+    public static final class LoopOptIndexOfAnyByteNode extends LoopOptIndexOfAnyNode {
+
+        @CompilationFinal(dimensions = 1) private final byte[] bytes;
+
+        public LoopOptIndexOfAnyByteNode(byte[] bytes) {
+            this.bytes = bytes;
+        }
+
+        private LoopOptIndexOfAnyByteNode(LoopOptIndexOfAnyByteNode copy) {
+            this.bytes = copy.bytes;
+        }
+
+        @Override
+        public int execute(Object input, int fromIndex, int maxIndex) {
+            return getIndexOfNode().execute(input, fromIndex, maxIndex, bytes);
+        }
+
+        @Override
+        LoopOptimizationNode nodeSplitCopy() {
+            return new LoopOptIndexOfAnyByteNode(this);
+        }
+    }
+
+    public static final class LoopOptIndexOfStringNode extends LoopOptimizationNode {
+
+        private final AbstractString str;
+        private final AbstractString mask;
+        @Child private InputIndexOfStringNode indexOfNode;
+
+        public LoopOptIndexOfStringNode(AbstractString str, AbstractString mask) {
+            this.str = str;
+            this.mask = mask;
+        }
+
+        private LoopOptIndexOfStringNode(LoopOptIndexOfStringNode copy) {
+            this.str = copy.str;
+            this.mask = copy.mask;
+        }
+
+        @Override
+        public int execute(Object input, int fromIndex, int maxIndex) {
+            return getIndexOfNode().execute(input, fromIndex, maxIndex, str.content(), mask == null ? null : mask.content());
+        }
+
+        @Override
+        public int encodedLength() {
+            return str.encodedLength();
+        }
+
+        @Override
+        LoopOptimizationNode nodeSplitCopy() {
+            return new LoopOptIndexOfStringNode(this);
+        }
+
+        private InputIndexOfStringNode getIndexOfNode() {
+            if (indexOfNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                indexOfNode = insert(InputIndexOfStringNode.create());
+            }
+            return indexOfNode;
+        }
+    }
+
     private static final byte FLAG_FINAL_STATE = 1;
     private static final byte FLAG_ANCHORED_FINAL_STATE = 1 << 1;
     private static final byte FLAG_HAS_BACKWARD_PREFIX_STATE = 1 << 2;
+    private static final byte FLAG_UTF_16_MUST_DECODE = 1 << 3;
 
     private final byte flags;
+    private final short loopTransitionIndex;
     @Child LoopOptimizationNode loopOptimizationNode;
-    @Children protected final CharMatcher[] matchers;
+    @Child Matchers matchers;
     private final DFASimpleCG simpleCG;
     private final AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher;
     private final BranchProfile stateReachedProfile = BranchProfile.create();
 
     DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
-        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopOptimizationNode.nodeSplitCopy(),
+        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopTransitionIndex, nodeSplitCopy.loopOptimizationNode.nodeSplitCopy(),
                         Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length),
                         nodeSplitCopy.getMatchers(), nodeSplitCopy.simpleCG, nodeSplitCopy.allTransitionsInOneTreeMatcher);
     }
 
-    public DFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers, DFASimpleCG simpleCG,
+    public DFAStateNode(short id, byte flags, short loopTransitionIndex, LoopOptimizationNode loopOptimizationNode, short[] successors, Matchers matchers, DFASimpleCG simpleCG,
                     AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher) {
         super(id, successors);
         assert id > 0;
         this.flags = flags;
+        this.loopTransitionIndex = loopTransitionIndex;
         this.loopOptimizationNode = loopOptimizationNode;
         this.matchers = matchers;
         this.simpleCG = simpleCG;
         this.allTransitionsInOneTreeMatcher = allTransitionsInOneTreeMatcher;
     }
 
-    public static byte buildFlags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState) {
+    public static byte buildFlags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState, boolean utf16MustDecode) {
         byte flags = 0;
         if (finalState) {
             flags |= FLAG_FINAL_STATE;
@@ -131,11 +222,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
         if (hasBackwardPrefixState) {
             flags |= FLAG_HAS_BACKWARD_PREFIX_STATE;
         }
+        if (utf16MustDecode) {
+            flags |= FLAG_UTF_16_MUST_DECODE;
+        }
         return flags;
-    }
-
-    public static LoopOptimizationNode buildLoopOptimizationNode(short loopTransitionIndex, char[] indexOfChars) {
-        return new LoopOptimizationNode(loopTransitionIndex, indexOfChars);
     }
 
     @Override
@@ -143,7 +233,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return new DFAStateNode(this, copyID);
     }
 
-    public final CharMatcher[] getMatchers() {
+    public final Matchers getMatchers() {
         return matchers;
     }
 
@@ -163,12 +253,16 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return flagIsSet(FLAG_HAS_BACKWARD_PREFIX_STATE);
     }
 
+    public boolean utf16MustDecode() {
+        return flagIsSet(FLAG_UTF_16_MUST_DECODE);
+    }
+
     private boolean flagIsSet(byte flag) {
         return (flags & flag) != 0;
     }
 
     public boolean hasLoopToSelf() {
-        return loopOptimizationNode != null;
+        return loopTransitionIndex >= 0;
     }
 
     boolean isLoopToSelf(int transitionIndex) {
@@ -177,7 +271,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     short getLoopToSelf() {
         assert hasLoopToSelf();
-        return loopOptimizationNode.loopTransitionIndex;
+        return loopTransitionIndex;
     }
 
     boolean treeTransitionMatching() {
@@ -186,19 +280,6 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     AllTransitionsInOneTreeMatcher getTreeMatcher() {
         return allTransitionsInOneTreeMatcher;
-    }
-
-    boolean sameResultAsRegularMatchers(TRegexDFAExecutorNode executor, int c, boolean compactString, int allTransitionsMatcherResult) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (executor.isRegressionTestMode()) {
-            for (int i = 0; i < matchers.length; i++) {
-                if (matchers[i].execute(c, compactString)) {
-                    return i == allTransitionsMatcherResult;
-                }
-            }
-            return allTransitionsMatcherResult == -1;
-        }
-        return true;
     }
 
     /**
@@ -217,7 +298,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(compactString);
         if (hasLoopToSelf()) {
-            if (executor.isForward() && loopOptimizationNode.indexOfChars != null) {
+            if (executor.isForward() && loopOptimizationNode != null) {
                 runIndexOf(locals, executor, compactString);
             } else {
                 while (executor.inputHasNext(locals)) {
@@ -226,7 +307,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
                         // simpleCG mode
                         checkFinalState(locals, executor);
                     }
-                    if (!checkMatch(locals, executor, compactString)) {
+                    if (!checkMatchOrTree(locals, executor, compactString)) {
                         if (!executor.isSimpleCG()) {
                             // in ignore-capture-groups mode, we can delay the final state check
                             checkFinalState(locals, executor);
@@ -244,7 +325,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
                 return;
             }
             checkFinalState(locals, executor);
-            checkMatch(locals, executor, compactString);
+            checkMatchOrTree(locals, executor, compactString);
             executor.inputAdvance(locals);
         }
     }
@@ -252,10 +333,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private void runIndexOf(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
         assert executor.isForward();
         final int preLoopIndex = locals.getIndex();
-        int indexOfResult = loopOptimizationNode.getIndexOfNode().execute(locals.getInput(),
-                        preLoopIndex,
-                        executor.getMaxIndex(locals),
-                        loopOptimizationNode.indexOfChars);
+        int indexOfResult = loopOptimizationNode.execute(locals.getInput(), preLoopIndex, executor.getMaxIndex(locals));
         locals.setIndex(indexOfResult < 0 ? executor.getMaxIndex(locals) : indexOfResult);
         if (simpleCG != null && locals.getIndex() > preLoopIndex) {
             int curIndex = locals.getIndex();
@@ -276,10 +354,34 @@ public class DFAStateNode extends DFAAbstractStateNode {
                 executor.inputIncRaw(locals, loopOptimizationNode.encodedLength());
                 locals.setSuccessorIndex(successor);
             } else {
-                checkMatch(locals, executor, compactString);
+                checkMatchOrTree(locals, executor, compactString);
                 executor.inputAdvance(locals);
             }
         }
+    }
+
+    private boolean checkMatchOrTree(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
+        if (treeTransitionMatching()) {
+            return doTreeMatch(locals, executor, compactString);
+        } else {
+            return checkMatch(locals, executor, compactString, false, 0);
+        }
+    }
+
+    boolean doTreeMatch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
+        final int c = executor.inputRead(locals);
+        int successor = getTreeMatcher().checkMatchTree(locals, executor, this, c);
+        assert sameResultAsRegularMatchers(executor, c, compactString, successor) : this.toString();
+        locals.setSuccessorIndex(successor);
+        return isLoopToSelf(successor);
+    }
+
+    boolean sameResultAsRegularMatchers(TRegexDFAExecutorNode executor, int c, boolean compactString, int allTransitionsMatcherResult) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (executor.isRegressionTestMode()) {
+            return allTransitionsMatcherResult == matchers.match(c, compactString);
+        }
+        return true;
     }
 
     /**
@@ -297,25 +399,168 @@ public class DFAStateNode extends DFAAbstractStateNode {
      *         otherwise.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    private boolean checkMatch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
-        final int c = executor.inputRead(locals);
-        if (treeTransitionMatching()) {
-            int successor = getTreeMatcher().checkMatchTree(locals, executor, this, c);
-            assert sameResultAsRegularMatchers(executor, c, compactString, successor) : this.toString();
-            locals.setSuccessorIndex(successor);
-            return isLoopToSelf(successor);
-        } else {
-            for (int i = 0; i < matchers.length; i++) {
-                if (matchers[i].execute(c, compactString)) {
-                    CompilerAsserts.partialEvaluationConstant(i);
-                    locals.setSuccessorIndex(i);
-                    successorFound(locals, executor, i);
-                    return isLoopToSelf(i);
+    boolean checkMatch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString, boolean loopMode, int preLoopIndex) {
+        CompilerAsserts.partialEvaluationConstant(loopMode);
+        if (matchers instanceof SimpleMatchers) {
+            final int c = executor.inputRead(locals);
+            CharMatcher[] cMatchers = ((SimpleMatchers) matchers).getMatchers();
+            if (cMatchers != null) {
+                for (int i = 0; i < cMatchers.length; i++) {
+                    if (match(cMatchers, i, c, compactString)) {
+                        return checkMatchSuccessorFoundHook(locals, executor, loopMode, preLoopIndex, i);
+                    }
                 }
             }
-            locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
-            return false;
+        } else if (matchers instanceof UTF8Matchers) {
+            UTF8Matchers utf8Matchers = (UTF8Matchers) matchers;
+            CharMatcher[] ascii = utf8Matchers.getAscii();
+            CharMatcher[] enc2 = utf8Matchers.getEnc2();
+            CharMatcher[] enc3 = utf8Matchers.getEnc2();
+            CharMatcher[] enc4 = utf8Matchers.getEnc2();
+
+            final int c = executor.inputReadRaw(locals);
+
+            if (executor.isForward()) {
+                if (executor.getInputProfile().profile(c < 128)) {
+                    locals.setNextIndex(executor.inputIncRaw(locals.getIndex()));
+                    if (ascii != null) {
+                        for (int i = 0; i < ascii.length; i++) {
+                            if (match(ascii, i, c, compactString)) {
+                                return checkMatchSuccessorFoundHook(locals, executor, loopMode, preLoopIndex, i);
+                            }
+                        }
+                    }
+                } else {
+                    int nBytes = Integer.numberOfLeadingZeros(~(c << 24));
+                    assert 1 < nBytes && nBytes < 5 : nBytes;
+                    locals.setNextIndex(executor.inputIncRaw(nBytes));
+                    int codepoint;
+                    switch (nBytes) {
+                        case 2:
+                            locals.setNextIndex(executor.inputIncRaw(2));
+                            if (enc2 != null) {
+                                codepoint = ((c & 0x3f) << 6) | (executor.inputReadRaw(locals, locals.getIndex() + 1) & 0x3f);
+                                for (int i = 0; i < enc2.length; i++) {
+                                    if (match(enc2, i, codepoint, compactString)) {
+                                        return checkMatchSuccessorFoundHook(locals, executor, loopMode, preLoopIndex, i);
+                                    }
+                                }
+                            }
+                            break;
+                        case 3:
+                            locals.setNextIndex(executor.inputIncRaw(3));
+                            if (enc3 != null) {
+                                codepoint = ((c & 0x1f) << 12) | ((executor.inputReadRaw(locals, locals.getIndex() + 1) & 0x3f) << 6) | (executor.inputReadRaw(locals, locals.getIndex() + 2) & 0x3f);
+                                for (int i = 0; i < enc3.length; i++) {
+                                    if (match(enc3, i, codepoint, compactString)) {
+                                        return checkMatchSuccessorFoundHook(locals, executor, loopMode, preLoopIndex, i);
+                                    }
+                                }
+                            }
+                            break;
+                        case 4:
+                            locals.setNextIndex(executor.inputIncRaw(4));
+                            if (enc4 != null) {
+                                codepoint = ((c & 0x0f) << 18) |
+                                                ((executor.inputReadRaw(locals, locals.getIndex() + 1) & 0x3f) << 6) |
+                                                ((executor.inputReadRaw(locals, locals.getIndex() + 2) & 0x3f) << 12) |
+                                                (executor.inputReadRaw(locals, locals.getIndex() + 3) & 0x3f);
+                                for (int i = 0; i < enc4.length; i++) {
+                                    if (match(enc4, i, codepoint, compactString)) {
+                                        return checkMatchSuccessorFoundHook(locals, executor, loopMode, preLoopIndex, i);
+                                    }
+                                }
+                            }
+                            break;
+                    }
+                }
+            }
+
+        } else if (matchers instanceof UTF16RawMatchers) {
+            final int c = executor.inputRead(locals);
+            CharMatcher[] latin1 = ((UTF16RawMatchers) matchers).getLatin1();
+            CharMatcher[] bmp = ((UTF16RawMatchers) matchers).getBmp();
+            if (latin1 != null && (bmp == null || compactString || executor.getInputProfile().profile(c < 256))) {
+                for (int i = 0; i < latin1.length; i++) {
+                    if (match(latin1, i, c, compactString)) {
+                        return checkMatchSuccessorFoundHook(locals, executor, loopMode, preLoopIndex, i);
+                    }
+                }
+            } else if (bmp != null) {
+                for (int i = 0; i < bmp.length; i++) {
+                    if (match(bmp, i, c, compactString)) {
+                        return checkMatchSuccessorFoundHook(locals, executor, loopMode, preLoopIndex, i);
+                    }
+                }
+            }
+        } else {
+            assert matchers instanceof UTF16Matchers;
+            assert executor.getEncoding() == Encodings.UTF_16;
+            UTF16Matchers utf16Matchers = (UTF16Matchers) matchers;
+            CharMatcher[] latin1 = utf16Matchers.getLatin1();
+            CharMatcher[] bmp = utf16Matchers.getBmp();
+            CharMatcher[] astral = utf16Matchers.getAstral();
+
+            locals.setNextIndex(executor.inputIncRaw(locals.getIndex()));
+            int c = executor.inputReadRaw(locals);
+
+            if (utf16MustDecode() && executor.inputUTF16IsHighSurrogate(c) && executor.inputHasNext(locals, locals.getNextIndex())) {
+                int c2 = executor.inputReadRaw(locals, locals.getNextIndex());
+                if (executor.inputUTF16IsLowSurrogate(c2)) {
+                    locals.setNextIndex(executor.inputIncRaw(locals.getNextIndex()));
+                    if (astral != null) {
+                        c = executor.inputUTF16ToCodePoint(c, c2);
+                        for (int i = 0; i < astral.length; i++) {
+                            if (match(astral, i, c, compactString)) {
+                                return checkMatchSuccessorFoundHook(locals, executor, loopMode, preLoopIndex, i);
+                            }
+                        }
+                    }
+                    return checkMatchNoMatch(locals, executor, loopMode, preLoopIndex);
+                }
+            } else if (latin1 != null && (bmp == null || compactString || executor.getInputProfile().profile(c < 256))) {
+                for (int i = 0; i < latin1.length; i++) {
+                    if (match(latin1, i, c, compactString)) {
+                        return checkMatchSuccessorFoundHook(locals, executor, loopMode, preLoopIndex, i);
+                    }
+                }
+            }
+            if (bmp != null) {
+                for (int i = 0; i < bmp.length; i++) {
+                    if (match(bmp, i, c, compactString)) {
+                        return checkMatchSuccessorFoundHook(locals, executor, loopMode, preLoopIndex, i);
+                    }
+                }
+            }
         }
+        return checkMatchNoMatch(locals, executor, loopMode, preLoopIndex);
+    }
+
+    private boolean checkMatchNoMatch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean loopMode, int preLoopIndex) {
+        if (matchers.getNoMatchSuccessor() == -1) {
+            if (loopMode) {
+                noSuccessorLoop(locals, executor, preLoopIndex);
+            }
+            locals.setSuccessorIndex(-1);
+            return false;
+        } else {
+            return checkMatchSuccessorFoundHook(locals, executor, loopMode, preLoopIndex, matchers.getNoMatchSuccessor());
+        }
+    }
+
+    private static boolean match(CharMatcher[] matchers, int i, final int c, boolean compactString) {
+        return matchers[i] != null && matchers[i].execute(c, compactString);
+    }
+
+    private boolean checkMatchSuccessorFoundHook(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean loopMode, int preLoopIndex, int i) {
+        CompilerAsserts.partialEvaluationConstant(i);
+        locals.setSuccessorIndex(i);
+        if (loopMode) {
+            successorFoundLoop(locals, executor, i, preLoopIndex);
+        } else {
+            successorFound(locals, executor, i);
+        }
+        return isLoopToSelf(i);
     }
 
     private void checkFinalState(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
@@ -360,6 +605,20 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
+    /**
+     * Hook for {@link CGTrackingDFAStateNode}.
+     */
+    @SuppressWarnings("unused")
+    void successorFoundLoop(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, int i, int preLoopIndex) {
+    }
+
+    /**
+     * Hook for {@link CGTrackingDFAStateNode}.
+     */
+    @SuppressWarnings("unused")
+    void noSuccessorLoop(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, int preLoopIndex) {
+    }
+
     void storeResult(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, @SuppressWarnings("unused") boolean anchored) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (executor.isSimpleCG()) {
@@ -390,7 +649,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         StringBuilder sb = new StringBuilder();
         DebugUtil.appendNodeId(sb, getId()).append(": ");
         if (!treeTransitionMatching()) {
-            sb.append(matchers.length).append(" successors");
+            sb.append(matchers.size()).append(" successors");
         }
         if (isAnchoredFinalState()) {
             sb.append(", AFS");
@@ -402,8 +661,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
         if (treeTransitionMatching()) {
             sb.append("      ").append(getTreeMatcher()).append("\n      successors: ").append(Arrays.toString(successors)).append("\n");
         } else {
-            for (int i = 0; i < matchers.length; i++) {
-                sb.append("      ").append(i).append(": ").append(matchers[i]).append(" -> ");
+            for (int i = 0; i < matchers.size(); i++) {
+                sb.append("      ").append(i).append(": ").append(matchers.toString(i)).append(" -> ");
                 DebugUtil.appendNodeId(sb, getSuccessors()[i]).append("\n");
             }
         }
@@ -415,8 +674,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
     public JsonValue toJson() {
         JsonArray transitions = Json.array();
         if (matchers != null) {
-            for (int i = 0; i < matchers.length; i++) {
-                transitions.append(Json.obj(Json.prop("matcher", matchers[i].toString()), Json.prop("target", successors[i])));
+            for (int i = 0; i < matchers.size(); i++) {
+                transitions.append(Json.obj(Json.prop("matcher", matchers.toString(i)), Json.prop("target", successors[i])));
             }
         }
         return Json.obj(Json.prop("id", getId()),

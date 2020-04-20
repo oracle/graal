@@ -63,6 +63,11 @@ public final class StringUTF16 implements AbstractString {
     }
 
     @Override
+    public Object content() {
+        return str;
+    }
+
+    @Override
     public AbstractStringIterator iterator() {
         return new StringUTF16Iterator(str);
     }

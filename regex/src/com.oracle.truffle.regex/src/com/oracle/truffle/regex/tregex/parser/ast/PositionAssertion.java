@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -93,8 +94,13 @@ public class PositionAssertion extends Term {
     }
 
     @Override
-    public PositionAssertion copy(RegexAST ast, boolean recursive) {
+    public PositionAssertion copy(RegexAST ast) {
         return ast.register(new PositionAssertion(this));
+    }
+
+    @Override
+    public Term copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        return copy(ast);
     }
 
     public RegexASTNode getNext() {

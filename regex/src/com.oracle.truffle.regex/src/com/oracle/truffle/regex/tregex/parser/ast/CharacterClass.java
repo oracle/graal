@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -82,14 +83,19 @@ public class CharacterClass extends QuantifiableTerm {
         this.charSet = charSet;
     }
 
-    private CharacterClass(CharacterClass copy) {
+    private CharacterClass(CharacterClass copy, CodePointSet charSet) {
         super(copy);
-        charSet = copy.charSet;
+        this.charSet = charSet;
     }
 
     @Override
-    public CharacterClass copy(RegexAST ast, boolean recursive) {
-        return ast.register(new CharacterClass(this));
+    public CharacterClass copy(RegexAST ast) {
+        return ast.register(new CharacterClass(this, charSet));
+    }
+
+    @Override
+    public CharacterClass copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        return ast.register(new CharacterClass(this, ast.getEncoding().getFullSet().createIntersection(charSet, compilationBuffer)));
     }
 
     @Override

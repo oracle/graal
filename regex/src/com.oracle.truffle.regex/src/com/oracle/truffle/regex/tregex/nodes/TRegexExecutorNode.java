@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
@@ -59,6 +60,10 @@ public abstract class TRegexExecutorNode extends Node {
     public Encoding getEncoding() {
         assert root != null;
         return root.getEncoding();
+    }
+
+    public ConditionProfile getInputProfile() {
+        return root.getInputProfile();
     }
 
     /**
@@ -147,7 +152,7 @@ public abstract class TRegexExecutorNode extends Node {
         return UTF16.isLowSurrogate(c, isForward());
     }
 
-    protected int inputUTF16ToCodePoint(int highSurrogate, int lowSurrogate) {
+    public int inputUTF16ToCodePoint(int highSurrogate, int lowSurrogate) {
         return isForward() ? Character.toCodePoint((char) highSurrogate, (char) lowSurrogate) : Character.toCodePoint((char) lowSurrogate, (char) highSurrogate);
     }
 

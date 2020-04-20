@@ -53,7 +53,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.runtime.nodes.ToCharNode;
-import com.oracle.truffle.regex.tregex.string.StringUTF16;
 
 @GenerateUncached
 public abstract class InputReadNode extends Node {
@@ -63,6 +62,11 @@ public abstract class InputReadNode extends Node {
     }
 
     public abstract int execute(Object input, int index);
+
+    @Specialization
+    static int doBytes(byte[] input, int index) {
+        return Byte.toUnsignedInt(input[index]);
+    }
 
     @Specialization
     static int doString(String input, int index) {
@@ -82,9 +86,15 @@ public abstract class InputReadNode extends Node {
         }
     }
 
-    public static int readWithMask(TruffleObject input, int indexInput, StringUTF16 mask, int indexMask, InputReadNode charAtNode) {
+    public static int readWithMask(TruffleObject input, int indexInput, String mask, int indexMask, InputReadNode charAtNode) {
         CompilerAsserts.partialEvaluationConstant(mask == null);
         int c = charAtNode.execute(input, indexInput);
         return (mask == null ? c : (c | mask.charAt(indexMask)));
+    }
+
+    public static int readWithMask(TruffleObject input, int indexInput, byte[] mask, int indexMask, InputReadNode charAtNode) {
+        CompilerAsserts.partialEvaluationConstant(mask == null);
+        int c = charAtNode.execute(input, indexInput);
+        return (mask == null ? c : (c | Byte.toUnsignedInt(mask[indexMask])));
     }
 }

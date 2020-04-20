@@ -58,12 +58,17 @@ public abstract class InputLengthNode extends Node {
     public abstract int execute(Object input);
 
     @Specialization
-    static int getLength(String input) {
+    static int doBytes(byte[] input) {
+        return input.length;
+    }
+
+    @Specialization
+    static int doString(String input) {
         return input.length();
     }
 
     @Specialization(guards = "inputs.hasArrayElements(input)", limit = "2")
-    static int doBoxedCharArray(Object input,
+    static int doTruffleObj(Object input,
                     @CachedLibrary("input") InteropLibrary inputs) {
         try {
             long length = inputs.getArraySize(input);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,53 +38,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.regex.tregex.util;
 
-package com.oracle.truffle.regex.tregex.matchers;
+import com.oracle.truffle.api.TruffleLogger;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Specialization;
+public final class Loggers {
 
-public abstract class ProfilingCharMatcher extends CharMatcher {
-
-    @Child private CharMatcher byteMatcher;
-    @Child private CharMatcher charMatcher;
-
-    ProfilingCharMatcher(CharMatcher byteMatcher, CharMatcher charMatcher) {
-        this.byteMatcher = byteMatcher;
-        this.charMatcher = charMatcher;
-    }
-
-    public static ProfilingCharMatcher create(CharMatcher byteMatcher, CharMatcher charMatcher) {
-        return ProfilingCharMatcherNodeGen.create(byteMatcher, charMatcher);
-    }
-
-    @Specialization(guards = "compactString")
-    boolean matchCompactString(int c, boolean compactString) {
-        return byteMatcher.execute(c, compactString);
-    }
-
-    @Specialization(guards = {"!compactString", "isByte(c)"})
-    boolean matchByte(int c, boolean compactString) {
-        return byteMatcher.execute(c, compactString);
-    }
-
-    @Specialization(guards = "!compactString", replaces = "matchByte")
-    boolean matchChar(int c, boolean compactString) {
-        return charMatcher.execute(c, compactString);
-    }
-
-    static boolean isByte(int c) {
-        return c < 256;
-    }
-
-    @Override
-    public int estimatedCost() {
-        return charMatcher.estimatedCost();
-    }
-
-    @TruffleBoundary
-    @Override
-    public String toString() {
-        return charMatcher.toString();
-    }
+    public static final TruffleLogger LOG_SWITCH_TO_EAGER = TruffleLogger.getLogger("regex", "SwitchToEager");
+    public static final TruffleLogger LOG_TOTAL_COMPILATION_TIME = TruffleLogger.getLogger("regex", "TotalCompilationTime");
+    public static final TruffleLogger LOG_PHASES = TruffleLogger.getLogger("regex", "Phases");
+    public static final TruffleLogger LOG_BAILOUT_MESSAGES = TruffleLogger.getLogger("regex", "BailoutMessages");
+    public static final TruffleLogger LOG_AUTOMATON_SIZES = TruffleLogger.getLogger("regex", "AutomatonSizes");
+    public static final TruffleLogger LOG_COMPILER_FALLBACK = TruffleLogger.getLogger("regex", "CompilerFallback");
+    public static final TruffleLogger LOG_INTERNAL_ERRORS = TruffleLogger.getLogger("regex", "InternalErrors");
+    public static final TruffleLogger LOG_TREGEX_COMPILATIONS = TruffleLogger.getLogger("regex", "TRegexCompilations");
 }
