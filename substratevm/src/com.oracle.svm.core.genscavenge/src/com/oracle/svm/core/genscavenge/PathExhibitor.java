@@ -263,14 +263,19 @@ public class PathExhibitor {
             this.target = targetMatcher;
             this.result = resultPath;
         }
+    }
+
+    public static class FrameVisitor extends StackFrameVisitor {
+        TargetMatcher target;
+        PathEdge result;
+
+        void initialize(TargetMatcher targetMatcher, PathEdge resultPath) {
+            this.target = targetMatcher;
+            this.result = resultPath;
+        }
 
         void reset() {
             initialize(null, null);
-        }
-    }
-
-    public static class FrameVisitor extends AbstractVisitor implements StackFrameVisitor {
-        FrameVisitor() {
         }
 
         @Override

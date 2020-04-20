@@ -803,7 +803,7 @@ public class GCImpl implements GC {
             DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
             if (deoptFrame == null) {
                 if (codeInfo.isNull()) {
-                    throw JavaStackWalker.reportUnknownFrameEncountered(walk, sp, deoptFrame);
+                    throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, deoptFrame);
                 }
 
                 CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
