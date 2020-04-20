@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -127,11 +128,13 @@ public final class Target_java_lang_System {
         }
     }
 
+    @TruffleBoundary(allowInlining = true)
     @Substitution
     public static long currentTimeMillis() {
         return System.currentTimeMillis();
     }
 
+    @TruffleBoundary(allowInlining = true)
     @Substitution
     public static long nanoTime() {
         return System.nanoTime();
