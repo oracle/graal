@@ -323,7 +323,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             Arrays.fill(indexMapping, -1);
             List<LLVMStatementNode> bodyNodes = new ArrayList<>();
             // add header to body nodes
-            bodyNodes.add(nodes[headerId]);
+            LLVMBasicBlockNode header = nodes[headerId];
+            bodyNodes.add(header);
             indexMapping[headerId] = 0;
             // add body nodes
             int i = 1;
@@ -337,6 +338,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             LLVMControlFlowNode loopNode = runtime.getNodeFactory().createLoop(loopBody, loopSuccessors);
             // replace header block with loop node
             nodes[headerId] = LLVMBasicBlockNode.createBasicBlockNode(options, new LLVMStatementNode[0], loopNode, headerId, "loopAt" + headerId);
+            nodes[headerId].setNullableFrameSlots(header.nullableBefore, header.nullableAfter);
             // remove inner loops to reduce number of nodes
             for (CFGLoop innerLoop : loop.getInnerLoops()) {
                 nodes[innerLoop.getHeader().id] = null;
