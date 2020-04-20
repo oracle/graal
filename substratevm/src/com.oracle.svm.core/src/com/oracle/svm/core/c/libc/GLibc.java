@@ -30,6 +30,8 @@ import java.util.List;
 
 public class GLibc implements LibCBase {
 
+    public static final int ISOLATED_NAMESPACE_FLAG = 0x10000;
+
     @Override
     public String getJDKStaticLibsPath() {
         return LibCBase.PATH_DEFAULT;
@@ -47,5 +49,10 @@ public class GLibc implements LibCBase {
     @Override
     public List<String> getCCompilerOptions() {
         return Collections.emptyList();
+    }
+
+    @Override
+    public int getIsolatedNamespaceFlag() {
+        return ISOLATED_NAMESPACE_FLAG;
     }
 }

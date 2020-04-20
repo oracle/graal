@@ -43,6 +43,7 @@ import com.oracle.svm.core.util.VMError;
 
 public class MuslLibc implements LibCBase {
 
+    public static final int ISOLATED_NAMESPACE_NOT_SUPPORTED = 0;
     private Path specFilePath;
 
     private static final String GCC_MUSL_TEMPLATE_PATH = "specs/gcc-musl-specs.input";
@@ -96,5 +97,10 @@ public class MuslLibc implements LibCBase {
     public Path getSpecFilePath() {
         VMError.guarantee(specFilePath != null);
         return specFilePath.toAbsolutePath();
+    }
+
+    @Override
+    public int getIsolatedNamespaceFlag() {
+        return ISOLATED_NAMESPACE_NOT_SUPPORTED;
     }
 }
