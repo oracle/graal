@@ -59,7 +59,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -76,8 +75,10 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
+import com.oracle.svm.core.stack.ThreadStackPrinter.StackFramePrintVisitor;
+import com.oracle.svm.core.stack.ThreadStackPrinter.Stage0StackFramePrintVisitor;
+import com.oracle.svm.core.stack.ThreadStackPrinter.Stage1StackFramePrintVisitor;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
@@ -273,10 +274,6 @@ public class SubstrateUtil {
         void invoke();
     }
 
-    private static final StackFrameVisitor Stage0Visitor = new ThreadStackPrinter.Stage0StackFrameVisitor();
-
-    private static final StackFrameVisitor Stage1Visitor = new ThreadStackPrinter.Stage1StackFrameVisitor();
-
     private static volatile boolean diagnosticsInProgress = false;
 
     public static boolean isPrintDiagnosticsInProgress() {
@@ -355,23 +352,7 @@ public class SubstrateUtil {
             dumpException(log, "dumpStacktraceRaw", e);
         }
 
-        try {
-            dumpStacktraceStage0(log, sp, ip);
-        } catch (Exception e) {
-            dumpException(log, "dumpStacktraceStage0", e);
-        }
-
-        try {
-            dumpStacktraceStage1(log, sp, ip);
-        } catch (Exception e) {
-            dumpException(log, "dumpStacktraceStage1", e);
-        }
-
-        try {
-            dumpStacktrace(log, sp, ip);
-        } catch (Exception e) {
-            dumpException(log, "dumpStacktrace", e);
-        }
+        dumpStacktrace(log, sp, ip);
 
         if (VMOperationControl.isFrozen()) {
             /* Only used for diagnostics - iterate all threads without locking the threads mutex. */
@@ -400,7 +381,6 @@ public class SubstrateUtil {
         log.newline().string("[!!! Exception during ").string(context).string(": ").string(e.getClass().getName()).string("]").newline();
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpRegisters(Log log, RegisterDumper.Context context) {
         if (context.isNonNull()) {
             log.string("General Purpose Register Set values:").newline();
@@ -410,7 +390,6 @@ public class SubstrateUtil {
         }
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpJavaFrameAnchors(Log log) {
         log.string("JavaFrameAnchor dump:").newline();
         log.indent(true);
@@ -425,14 +404,12 @@ public class SubstrateUtil {
         log.indent(false);
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpDeoptStubPointer(Log log) {
         if (DeoptimizationSupport.enabled()) {
             log.string("DeoptStubPointer address: ").zhex(DeoptimizationSupport.getDeoptStubPointer().rawValue()).newline().newline();
         }
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpTopFrame(Log log, Pointer sp, CodePointer ip) {
         log.string("TopFrame info:").newline();
         log.indent(true);
@@ -491,7 +468,6 @@ public class SubstrateUtil {
         return CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpVMThreads(Log log) {
         log.string("VMThreads info:").newline();
         log.indent(true);
@@ -503,7 +479,6 @@ public class SubstrateUtil {
         log.indent(false);
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpVMThreadState(Log log, IsolateThread currentThread) {
         log.string("VM Thread State for current thread ").zhex(currentThread.rawValue()).string(":").newline();
         log.indent(true);
@@ -511,7 +486,6 @@ public class SubstrateUtil {
         log.indent(false);
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpRecentVMOperations(Log log) {
         log.string("VMOperation dump:").newline();
         log.indent(true);
@@ -544,17 +518,14 @@ public class SubstrateUtil {
         }
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpRecentRuntimeCodeCacheOperations(Log log) {
         CodeInfoTable.getRuntimeCodeCache().logRecentOperations(log);
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpRuntimeCodeCacheTable(Log log) {
         CodeInfoTable.getRuntimeCodeCache().logTable(log);
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpRecentDeopts(Log log) {
         log.string("Deoptimizer dump:").newline();
         log.indent(true);
@@ -562,7 +533,6 @@ public class SubstrateUtil {
         log.indent(false);
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpCounters(Log log) {
         log.string("Dump Counters:").newline();
         log.indent(true);
@@ -570,7 +540,6 @@ public class SubstrateUtil {
         log.indent(false);
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpStacktraceRaw(Log log, Pointer sp) {
         log.string("Raw Stacktrace:").newline();
         log.indent(true);
@@ -582,35 +551,26 @@ public class SubstrateUtil {
         log.indent(false);
     }
 
-    @NeverInline("catch implicit exceptions")
-    private static void dumpStacktraceStage0(Log log, Pointer sp, CodePointer ip) {
-        log.string("Stacktrace Stage0:").newline();
-        log.indent(true);
-        JavaStackWalker.walkCurrentThreadWithForcedIP(sp, ip, Stage0Visitor);
-        log.indent(false);
-    }
+    private static final Stage0StackFramePrintVisitor[] PRINT_VISITORS = new Stage0StackFramePrintVisitor[]{Stage0StackFramePrintVisitor.SINGLETON, Stage1StackFramePrintVisitor.SINGLETON,
+                    StackFramePrintVisitor.SINGLETON};
 
-    @NeverInline("catch implicit exceptions")
-    private static void dumpStacktraceStage1(Log log, Pointer sp, CodePointer ip) {
-        log.string("Stacktrace Stage1:").newline();
-        log.indent(true);
-        JavaStackWalker.walkCurrentThreadWithForcedIP(sp, ip, Stage1Visitor);
-        log.indent(false);
-    }
-
-    @NeverInline("catch implicit exceptions")
     private static void dumpStacktrace(Log log, Pointer sp, CodePointer ip) {
-        log.string("Full Stacktrace:").newline();
-        log.indent(true);
-        ThreadStackPrinter.printStacktrace(sp, ip);
-        log.indent(false);
+        for (int i = 0; i < PRINT_VISITORS.length; i++) {
+            try {
+                log.string("Stacktrace Stage ").signed(i).string(":").newline();
+                log.indent(true);
+                ThreadStackPrinter.printStacktrace(sp, ip, PRINT_VISITORS[i], log);
+                log.indent(false);
+            } catch (Exception e) {
+                dumpException(log, "dumpStacktrace", e);
+            }
+        }
     }
 
-    @NeverInline("catch implicit exceptions")
     private static void dumpStacktrace(Log log, IsolateThread vmThread) {
         log.string("Full Stacktrace for VMThread ").zhex(vmThread.rawValue()).string(":").newline();
         log.indent(true);
-        JavaStackWalker.walkThread(vmThread, ThreadStackPrinter.AllocationFreeStackFrameVisitor);
+        JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
         log.indent(false);
     }
 
