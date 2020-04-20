@@ -53,7 +53,7 @@ import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 public final class FunctionDefinition extends FunctionSymbol implements Constant, MetadataAttachmentHolder {
 
-    private static final InstructionBlock[] EMPTY = new InstructionBlock[0];
+    public static final InstructionBlock[] EMPTY = new InstructionBlock[0];
 
     private final List<FunctionParameter> parameters = new ArrayList<>();
     private final Visibility visibility;

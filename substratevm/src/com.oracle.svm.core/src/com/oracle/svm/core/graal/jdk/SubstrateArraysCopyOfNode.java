@@ -26,32 +26,19 @@ package com.oracle.svm.core.graal.jdk;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
 
-import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
-import org.graalvm.compiler.nodes.spi.VirtualizerTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
-
-import com.oracle.svm.core.graal.nodes.SubstrateVirtualArrayNode;
-
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Implementation for substrate Arrays.copyOf(). It is currently used only to intrinsify copying of
  * Object arrays (no primitive arrays).
  */
 @NodeInfo(cycles = CYCLES_64, size = NodeSize.SIZE_64)
-public final class SubstrateArraysCopyOfNode extends DeoptimizingFixedWithNextNode implements Lowerable, VirtualizableAllocation {
+public final class SubstrateArraysCopyOfNode extends DeoptimizingFixedWithNextNode implements SubstrateArraysCopyOf {
     public static final NodeClass<SubstrateArraysCopyOfNode> TYPE = NodeClass.create(SubstrateArraysCopyOfNode.class);
 
     @Input ValueNode original;
@@ -64,61 +51,35 @@ public final class SubstrateArraysCopyOfNode extends DeoptimizingFixedWithNextNo
      * The stamp is conservative. The concrete type will be loaded from newTypeObject.
      */
     public SubstrateArraysCopyOfNode(@InjectedNodeParameter Stamp stamp, ValueNode original, ValueNode originaLength, ValueNode newLength, ValueNode newArrayType) {
-        super(TYPE, computeStamp(stamp));
+        super(TYPE, SubstrateArraysCopyOf.computeStamp(stamp));
         this.original = original;
         this.originalLength = originaLength;
         this.newLength = newLength;
         this.newArrayType = newArrayType;
     }
 
+    @Override
     public ValueNode getOriginal() {
         return original;
     }
 
-    public ValueNode getOriginaLength() {
+    @Override
+    public ValueNode getOriginalLength() {
         return originalLength;
     }
 
+    @Override
     public ValueNode getNewArrayType() {
         return newArrayType;
     }
 
+    @Override
     public ValueNode getNewLength() {
         return newLength;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override
     public boolean canDeoptimize() {
         return true;
     }
-
-    private static Stamp computeStamp(Stamp result) {
-        if (result instanceof ObjectStamp) {
-            return result.join(StampFactory.objectNonNull());
-        }
-        return result;
-    }
-
-    @Override
-    public void virtualize(VirtualizerTool tool) {
-        if (!newArrayType.isConstant()) {
-            /*
-             * This is an object array copy. If the new array type is not a constant then it cannot
-             * be vitualized.
-             */
-            return;
-        }
-
-        /* from index is always 0 for Arrays.copyOf. */
-        ValueNode from = ConstantNode.forInt(0);
-        ResolvedJavaType newComponentType = tool.getConstantReflection().asJavaType(newArrayType.asConstant()).getComponentType();
-        GraphUtil.virtualizeArrayCopy(tool, original, originalLength, newLength, from, newComponentType, JavaKind.Object, graph(),
-                        (componentType, length) -> new SubstrateVirtualArrayNode(componentType, length));
-    }
-
 }

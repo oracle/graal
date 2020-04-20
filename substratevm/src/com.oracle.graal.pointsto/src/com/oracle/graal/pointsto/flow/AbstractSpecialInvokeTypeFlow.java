@@ -72,6 +72,13 @@ public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow
     public abstract void onObservedUpdate(BigBang bb);
 
     @Override
+    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+        assert this.isClone();
+        /* When the receiver flow saturates start observing the flow of the receiver type. */
+        replaceObservedWith(bb, receiverType);
+    }
+
+    @Override
     public abstract Collection<MethodFlowsGraph> getCalleesFlows(BigBang bb);
 
     @Override

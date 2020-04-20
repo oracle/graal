@@ -144,12 +144,12 @@ import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
-import org.graalvm.compiler.nodes.java.RawMonitorEnterNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
@@ -337,9 +337,11 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                     allocationSnippets.lower((VerifyHeapNode) n, tool);
                 }
-            } else if (n instanceof RawMonitorEnterNode) {
+            } else if (n instanceof MonitorEnterNode) {
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
-                    monitorSnippets.lower((RawMonitorEnterNode) n, registers, tool);
+                    monitorSnippets.lower((MonitorEnterNode) n, registers, tool);
+                } else {
+                    loadHubForMonitorEnterNode((MonitorEnterNode) n, tool, graph);
                 }
             } else if (n instanceof MonitorExitNode) {
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
@@ -425,6 +427,14 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             }
         }
 
+    }
+
+    protected void loadHubForMonitorEnterNode(MonitorEnterNode monitor, LoweringTool tool, StructuredGraph graph) {
+        if (monitor.getObjectData() == null) {
+            ValueNode objectNonNull = createNullCheckedValue(monitor.object(), monitor, tool);
+            monitor.setObject(objectNonNull);
+            monitor.setObjectData(graph.addOrUnique(LoadHubNode.create(objectNonNull, tool.getStampProvider(), tool.getMetaAccess(), tool.getConstantReflection())));
+        }
     }
 
     private static void lowerComputeObjectAddressNode(ComputeObjectAddressNode n) {

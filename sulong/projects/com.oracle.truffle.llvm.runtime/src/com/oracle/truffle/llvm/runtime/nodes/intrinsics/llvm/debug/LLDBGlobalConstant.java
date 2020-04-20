@@ -33,8 +33,8 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
@@ -173,7 +173,7 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
         if (isInNative()) {
             return new LLDBMemoryValue(LLVMNativePointer.cast(globals[index].get()));
         } else {
-            return LLVMLanguage.getLLDBSupport().createDebugValueBuilder().build(globals[index].get());
+            return CommonNodeFactory.createDebugValueBuilder().build(globals[index].get());
         }
     }
 

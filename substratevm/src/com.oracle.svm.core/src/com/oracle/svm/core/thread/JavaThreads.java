@@ -51,19 +51,21 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.heap.ReferenceHandlerThreadFeature;
 import com.oracle.svm.core.jdk.ManagementSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
@@ -535,11 +537,13 @@ public abstract class JavaThreads {
     protected abstract void yield();
 
     /**
-     * Wake any thread which is waiting by other means, such as VM-internal condition variables, so
+     * Wake a thread which is waiting by other means, such as VM-internal condition variables, so
      * that they can check their interrupted status.
      */
-    protected static void wakeUpVMConditionWaiters() {
-        Heap.getHeap().wakeUpReferencePendingListWaiters();
+    protected static void wakeUpVMConditionWaiters(Thread thread) {
+        if (ReferenceHandler.useDedicatedThread() && thread == ImageSingletons.lookup(ReferenceHandlerThreadFeature.class).getThread()) {
+            Heap.getHeap().wakeUpReferencePendingListWaiters();
+        }
     }
 
     static StackTraceElement[] getStackTrace(Thread thread) {
@@ -666,7 +670,7 @@ public abstract class JavaThreads {
         final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
         // Change the Java thread state while parking.
         final int oldStatus = JavaThreads.getThreadStatus(thread);
-        int newStatus = MonitorSupport.maybeAdjustNewParkStatus(ThreadStatus.PARKED);
+        int newStatus = MonitorSupport.singleton().maybeAdjustNewParkStatus(ThreadStatus.PARKED);
         JavaThreads.setThreadStatus(thread, newStatus);
         try {
             parkEvent.condWait();
@@ -688,7 +692,7 @@ public abstract class JavaThreads {
          */
         final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
         final int oldStatus = JavaThreads.getThreadStatus(thread);
-        int newStatus = MonitorSupport.maybeAdjustNewParkStatus(ThreadStatus.PARKED_TIMED);
+        int newStatus = MonitorSupport.singleton().maybeAdjustNewParkStatus(ThreadStatus.PARKED_TIMED);
         JavaThreads.setThreadStatus(thread, newStatus);
         try {
             parkEvent.condTimedWait(delayNanos);

@@ -120,7 +120,8 @@ public interface VirtualizerTool {
     // operations on the current node
 
     /**
-     * Deletes the current node and replaces it with the given virtualized object.
+     * Deletes the current node and replaces it with the given virtualized object. If the current
+     * node is a {@link WithExceptionNode}, kills the exception edge.
      *
      * @param virtualObject the virtualized object that should replace the current node.
      */
@@ -134,15 +135,10 @@ public interface VirtualizerTool {
     void replaceWithValue(ValueNode replacement);
 
     /**
-     * Deletes the current node.
+     * Deletes the current node. If the current node is a {@link WithExceptionNode}, kills the
+     * exception edge.
      */
     void delete();
-
-    /**
-     * Deletes the current node, which must be a {@link WithExceptionNode}. Kills the exception
-     * edge.
-     */
-    void deleteAndKillExceptionEdge();
 
     /**
      * Replaces an input of the current node.

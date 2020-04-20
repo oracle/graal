@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -293,7 +296,7 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
              */
             stackBoundary = stackBoundary.add(WordFactory.unsigned(deoptFrameSize));
         }
-        if (KnownIntrinsics.readStackPointer().belowOrEqual(stackBoundary)) {
+        if (probability(LUDICROUSLY_SLOW_PATH_PROBABILITY, KnownIntrinsics.readStackPointer().belowOrEqual(stackBoundary))) {
 
             /*
              * This check is constant folded during snippet lowering, to avoid setting up a boolean

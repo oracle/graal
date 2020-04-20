@@ -44,6 +44,7 @@ import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.WasmTracing;
 import sun.misc.Unsafe;
@@ -53,6 +54,7 @@ public class UnsafeWasmMemory extends WasmMemory {
     private long startAddress;
     private long pageSize;
     private final long maxPageSize;
+    private final ConditionProfile outOfBoundsAccesses = ConditionProfile.createBinaryProfile();
 
     public UnsafeWasmMemory(long initPageSize, long maxPageSize) {
         try {
@@ -72,7 +74,7 @@ public class UnsafeWasmMemory extends WasmMemory {
     @Override
     public void validateAddress(Node node, long address, long offset) {
         WasmTracing.trace("validating memory address: 0x%016X (%d)", address, address);
-        if (address < 0 || address + offset > this.byteSize()) {
+        if (outOfBoundsAccesses.profile(address < 0 || address + offset > this.byteSize())) {
             trapOutOfBounds(node, address, offset);
         }
     }

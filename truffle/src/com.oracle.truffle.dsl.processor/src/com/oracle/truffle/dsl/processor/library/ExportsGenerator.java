@@ -83,8 +83,8 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
-import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -825,8 +825,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         if ((!cached || libraryExports.isFinalReceiver()) && ElementUtils.needsCastTo(castMethod.getParameters().get(0).asType(), exportReceiverType)) {
             GeneratorUtils.mergeSupressWarnings(castMethod, "cast");
         }
-        if (!cached && ElementUtils.findAnnotationMirror(castMethod, types.CompilerDirectives_TruffleBoundary) == null) {
-            castMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
+        if (!cached) {
+            GeneratorUtils.addBoundaryOrTransferToInterpreter(castMethod, builder);
         }
         builder.startReturn().tree(createReceiverCast(libraryExports, castMethod.getParameters().get(0).asType(), exportReceiverType, CodeTreeBuilder.singleString("receiver"), cached)).end();
         return castMethod;
@@ -987,12 +987,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         CodeTree defaultAccepts = createDefaultAccepts(uncachedClass, constructor, libraryExports, exportReceiverType, "receiver", false);
 
         CodeExecutableElement acceptUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Library, ACCEPTS));
-        if (ElementUtils.findAnnotationMirror(acceptUncached, types.CompilerDirectives_TruffleBoundary) == null) {
-            acceptUncached.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
-        }
         acceptUncached.getModifiers().remove(Modifier.ABSTRACT);
         acceptUncached.renameArguments("receiver");
         builder = acceptUncached.createBuilder();
+        GeneratorUtils.addBoundaryOrTransferToInterpreter(acceptUncached, builder);
         if (acceptsAssertions != null) {
             builder.tree(acceptsAssertions);
         }
@@ -1066,13 +1064,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 // prepend accepts assertion
                 CodeTree originalBody = uncachedExecute.getBodyTree();
                 CodeTreeBuilder b = uncachedExecute.createBuilder();
+                GeneratorUtils.addBoundaryOrTransferToInterpreter(uncachedExecute, b);
                 addAcceptsAssertion(b);
                 b.tree(originalBody);
             }
-            if (ElementUtils.findAnnotationMirror(uncachedExecute, types.CompilerDirectives_TruffleBoundary) == null) {
-                uncachedExecute.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
-            }
-
         }
 
         return uncachedClass;
@@ -1099,6 +1094,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         cachedExecute.getModifiers().remove(Modifier.ABSTRACT);
         builder = cachedExecute.createBuilder();
         if (targetMethod == null && message.getMessageElement().getModifiers().contains(Modifier.ABSTRACT)) {
+            GeneratorUtils.addBoundaryOrTransferToInterpreter(cachedExecute, builder);
             builder.startThrow().startNew(context.getType(AbstractMethodError.class)).end().end();
         } else {
             builder.startReturn();

@@ -64,16 +64,16 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ControlSinkNode;
+import org.graalvm.compiler.nodes.DeoptBciSupplier;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.DeoptBciSupplier;
-import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -83,7 +83,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -1157,22 +1156,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, MethodSubstitutionPlugin plugin, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
                     boolean trackNodeSourcePosition);
-
-    @Override
-    protected void handleFixedNode(MethodScope s, LoopScope loopScope, int nodeOrderId, FixedNode node) {
-        PEMethodScope methodScope = (PEMethodScope) s;
-
-        if (node instanceof ForeignCallNode) {
-            ForeignCallNode foreignCall = (ForeignCallNode) node;
-            if (foreignCall.bci() == BytecodeFrame.UNKNOWN_BCI && methodScope.invokeData != null && !BytecodeFrame.isPlaceholderBci(methodScope.invokeData.invoke.bci())) {
-                foreignCall.setBci(methodScope.invokeData.invoke.bci());
-            }
-        } else if (node instanceof DeoptBciSupplier) {
-            ((DeoptBciSupplier) node).setBci(methodScope.invokeData.invoke.bci());
-        }
-
-        super.handleFixedNode(methodScope, loopScope, nodeOrderId, node);
-    }
 
     @SuppressWarnings("try")
     @Override

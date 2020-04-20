@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,30 +24,29 @@
  */
 package com.oracle.svm.agent;
 
-import static com.oracle.svm.agent.Support.check;
-import static com.oracle.svm.agent.Support.checkJni;
-import static com.oracle.svm.agent.Support.checkNoException;
-import static com.oracle.svm.agent.Support.clearException;
-import static com.oracle.svm.agent.Support.fromCString;
-import static com.oracle.svm.agent.Support.fromJniString;
-import static com.oracle.svm.agent.Support.getCallerClass;
-import static com.oracle.svm.agent.Support.getCallerMethod;
-import static com.oracle.svm.agent.Support.getClassNameOr;
-import static com.oracle.svm.agent.Support.getClassNameOrNull;
-import static com.oracle.svm.agent.Support.getDirectCallerClass;
-import static com.oracle.svm.agent.Support.getMethodDeclaringClass;
-import static com.oracle.svm.agent.Support.getObjectArgument;
-import static com.oracle.svm.agent.Support.handles;
-import static com.oracle.svm.agent.Support.jniFunctions;
-import static com.oracle.svm.agent.Support.jvmtiEnv;
-import static com.oracle.svm.agent.Support.jvmtiFunctions;
-import static com.oracle.svm.agent.Support.testException;
-import static com.oracle.svm.agent.Support.toCString;
-import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
-import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_PREPARE;
-import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_NATIVE_METHOD_BIND;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
+import static com.oracle.svm.jvmtiagentbase.Support.check;
+import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
+import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
+import static com.oracle.svm.jvmtiagentbase.Support.clearException;
+import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
+import static com.oracle.svm.jvmtiagentbase.Support.fromJniString;
+import static com.oracle.svm.jvmtiagentbase.Support.getCallerClass;
+import static com.oracle.svm.jvmtiagentbase.Support.getCallerMethod;
+import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOr;
+import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
+import static com.oracle.svm.jvmtiagentbase.Support.getDirectCallerClass;
+import static com.oracle.svm.jvmtiagentbase.Support.getMethodDeclaringClass;
+import static com.oracle.svm.jvmtiagentbase.Support.getObjectArgument;
+import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
+import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
+import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
+import static com.oracle.svm.jvmtiagentbase.Support.testException;
+import static com.oracle.svm.jvmtiagentbase.Support.toCString;
+import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
+import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_PREPARE;
+import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_NATIVE_METHOD_BIND;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.nio.ByteBuffer;
@@ -79,15 +78,6 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.agent.ConstantPoolTool.MethodReference;
-import com.oracle.svm.agent.Support.WordSupplier;
-import com.oracle.svm.agent.jvmti.JvmtiCapabilities;
-import com.oracle.svm.agent.jvmti.JvmtiEnv;
-import com.oracle.svm.agent.jvmti.JvmtiError;
-import com.oracle.svm.agent.jvmti.JvmtiEventCallbacks;
-import com.oracle.svm.agent.jvmti.JvmtiEventMode;
-import com.oracle.svm.agent.jvmti.JvmtiFrameInfo;
-import com.oracle.svm.agent.jvmti.JvmtiLocationFormat;
 import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
 import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
 import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
@@ -99,6 +89,18 @@ import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeMethod;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIValue;
+import com.oracle.svm.jvmtiagentbase.AgentIsolate;
+import com.oracle.svm.jvmtiagentbase.ConstantPoolTool;
+import com.oracle.svm.jvmtiagentbase.ConstantPoolTool.MethodReference;
+import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.Support.WordSupplier;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiCapabilities;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -124,10 +126,10 @@ import jdk.vm.ci.meta.MetaUtil;
  */
 final class BreakpointInterceptor {
     private static TraceWriter traceWriter;
-
     private static ReflectAccessVerifier accessVerifier;
     private static ProxyAccessVerifier proxyVerifier;
     private static ResourceAccessVerifier resourceVerifier;
+    private static NativeImageAgent agent;
 
     private static Map<Long, Breakpoint> installedBreakpoints;
 
@@ -182,7 +184,7 @@ final class BreakpointInterceptor {
         if (allowed) {
             boolean classLoaderValid = true;
             WordPointer classLoaderPtr = StackValue.get(WordPointer.class);
-            if (bp.method == handles().javaLangClassForName3) {
+            if (bp.method == agent.handles().javaLangClassForName3) {
                 classLoaderValid = (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), nullHandle(), 0, 2, classLoaderPtr) == JvmtiError.JVMTI_ERROR_NONE);
             } else {
                 classLoaderPtr.write(nullHandle());
@@ -197,9 +199,12 @@ final class BreakpointInterceptor {
             }
             result = TraceWriter.UNKNOWN_VALUE;
             if (classLoaderValid) {
-                CIntPointer initializePtr = StackValue.get(CIntPointer.class);
-                initializePtr.write(0);
-                result = nullHandle().notEqual(Support.callStaticObjectMethodLIL(jni, bp.clazz, handles().javaLangClassForName3, name, initializePtr.read(), classLoaderPtr.read()));
+                /*
+                 * Even if the original call requested class initialization, disable it because
+                 * recursion checks keep us from seeing events of interest during initialization.
+                 */
+                int initialize = 0;
+                result = nullHandle().notEqual(Support.callStaticObjectMethodLIL(jni, bp.clazz, agent.handles().javaLangClassForName3, name, initialize, classLoaderPtr.read()));
                 if (clearException(jni)) {
                     result = false;
                 }
@@ -207,8 +212,8 @@ final class BreakpointInterceptor {
         }
         traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, result, className);
         if (!allowed) {
-            try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to class: " + className)) {
-                jniFunctions().getThrowNew().invoke(jni, handles().javaLangClassNotFoundException, message.get());
+            try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to class: " + className)) {
+                jniFunctions().getThrowNew().invoke(jni, agent.handles().javaLangClassNotFoundException, message.get());
             }
         }
         return allowed;
@@ -243,19 +248,19 @@ final class BreakpointInterceptor {
     }
 
     private static boolean getMethods(JNIEnvironment jni, Breakpoint bp) {
-        return handleGetMethods(jni, bp, false, () -> handles().getJavaLangReflectMethod(jni));
+        return handleGetMethods(jni, bp, false, () -> agent.handles().getJavaLangReflectMethod(jni));
     }
 
     private static boolean getDeclaredMethods(JNIEnvironment jni, Breakpoint bp) {
-        return handleGetMethods(jni, bp, true, () -> handles().getJavaLangReflectMethod(jni));
+        return handleGetMethods(jni, bp, true, () -> agent.handles().getJavaLangReflectMethod(jni));
     }
 
     private static boolean getConstructors(JNIEnvironment jni, Breakpoint bp) {
-        return handleGetMethods(jni, bp, true, () -> handles().getJavaLangReflectConstructor(jni));
+        return handleGetMethods(jni, bp, true, () -> agent.handles().getJavaLangReflectConstructor(jni));
     }
 
     private static boolean getDeclaredConstructors(JNIEnvironment jni, Breakpoint bp) {
-        return handleGetMethods(jni, bp, true, () -> handles().getJavaLangReflectConstructor(jni));
+        return handleGetMethods(jni, bp, true, () -> agent.handles().getJavaLangReflectConstructor(jni));
     }
 
     private static boolean handleGetMethods(JNIEnvironment jni, Breakpoint bp, boolean declaredOnly, WordSupplier<JNIObjectHandle> elementClass) {
@@ -296,7 +301,7 @@ final class BreakpointInterceptor {
         }
         JNIObjectHandle declaring = nullHandle();
         if (!declaredOnly && result.notEqual(nullHandle())) {
-            declaring = Support.callObjectMethod(jni, result, handles().javaLangReflectMemberGetDeclaringClass);
+            declaring = Support.callObjectMethod(jni, result, agent.handles().javaLangReflectMemberGetDeclaringClass);
             if (clearException(jni)) {
                 declaring = nullHandle();
             }
@@ -304,9 +309,9 @@ final class BreakpointInterceptor {
         boolean allowed = result.equal(nullHandle()) || accessVerifier == null || accessVerifier.verifyGetField(jni, self, name, result, (declaredOnly ? self : declaring), callerClass);
         traceBreakpoint(jni, self, declaring, callerClass, bp.specification.methodName, allowed && result.notEqual(nullHandle()), fromJniString(jni, name));
         if (!allowed) {
-            try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to field: " +
+            try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to field: " +
                             getClassNameOr(jni, self, "(null)", "(?)") + "." + fromJniString(jni, name))) {
-                jniFunctions().getThrowNew().invoke(jni, handles().javaLangNoSuchFieldException, message.get());
+                jniFunctions().getThrowNew().invoke(jni, agent.handles().javaLangNoSuchFieldException, message.get());
             }
         }
         return allowed;
@@ -325,7 +330,7 @@ final class BreakpointInterceptor {
 
     /** Native breakpoint for the JDK 8 {@code sun.misc.Unsafe.objectFieldOffset} native method. */
     @CEntryPoint
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     static long nativeObjectFieldOffset(JNIEnvironment jni, JNIObjectHandle self, JNIObjectHandle field) {
         VMError.guarantee(NATIVE_OBJECTFIELDOFFSET_BREAKPOINT_SPEC.installed != null &&
                         NATIVE_OBJECTFIELDOFFSET_BREAKPOINT_SPEC.installed.replacedFunction.isNonNull(), "incompletely installed");
@@ -341,11 +346,11 @@ final class BreakpointInterceptor {
         JNIObjectHandle name = nullHandle();
         JNIObjectHandle declaring = nullHandle();
         if (field.notEqual(nullHandle())) {
-            name = Support.callObjectMethod(jni, field, handles().javaLangReflectMemberGetName);
+            name = Support.callObjectMethod(jni, field, agent.handles().javaLangReflectMemberGetName);
             if (clearException(jni)) {
                 name = nullHandle();
             }
-            declaring = Support.callObjectMethod(jni, field, handles().javaLangReflectMemberGetDeclaringClass);
+            declaring = Support.callObjectMethod(jni, field, agent.handles().javaLangReflectMemberGetDeclaringClass);
             if (clearException(jni)) {
                 declaring = nullHandle();
             }
@@ -368,11 +373,11 @@ final class BreakpointInterceptor {
         JNIObjectHandle name = nullHandle();
         JNIObjectHandle declaring = nullHandle();
         if (field.notEqual(nullHandle())) {
-            name = Support.callObjectMethod(jni, field, handles().javaLangReflectMemberGetName);
+            name = Support.callObjectMethod(jni, field, agent.handles().javaLangReflectMemberGetName);
             if (clearException(jni)) {
                 name = nullHandle();
             }
-            declaring = Support.callObjectMethod(jni, field, handles().javaLangReflectMemberGetDeclaringClass);
+            declaring = Support.callObjectMethod(jni, field, agent.handles().javaLangReflectMemberGetDeclaringClass);
             if (clearException(jni)) {
                 declaring = nullHandle();
             }
@@ -387,9 +392,9 @@ final class BreakpointInterceptor {
         boolean allowed = !validResult || accessVerifier == null || accessVerifier.verifyObjectFieldOffset(jni, name, declaring, callerClass);
         traceBreakpoint(jni, clazz, declaring, callerClass, "objectFieldOffset", allowed && validResult, fromJniString(jni, name));
         if (!allowed) {
-            try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit unsafe access to field: " +
+            try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit unsafe access to field: " +
                             getClassNameOr(jni, declaring, "(null)", "(?)") + "." + fromJniString(jni, name))) {
-                jniFunctions().getThrowNew().invoke(jni, handles().javaLangRuntimeException, message.get());
+                jniFunctions().getThrowNew().invoke(jni, agent.handles().javaLangRuntimeException, message.get());
             }
             return false;
         }
@@ -443,7 +448,7 @@ final class BreakpointInterceptor {
         }
         JNIObjectHandle declaring = nullHandle();
         if (!declaredOnly && result.notEqual(nullHandle())) {
-            declaring = Support.callObjectMethod(jni, result, handles().javaLangReflectMemberGetDeclaringClass);
+            declaring = Support.callObjectMethod(jni, result, agent.handles().javaLangReflectMemberGetDeclaringClass);
             if (clearException(jni)) {
                 declaring = nullHandle();
             }
@@ -520,10 +525,10 @@ final class BreakpointInterceptor {
     }
 
     private static void throwNoSuchMethodException(JNIEnvironment jni, JNIObjectHandle clazz, String name, String signature) {
-        try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to method: " +
+        try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to method: " +
                         getClassNameOr(jni, clazz, "(null)", "(?)") + "." + name + signature)) {
 
-            jniFunctions().getThrowNew().invoke(jni, handles().javaLangNoSuchMethodException, message.get());
+            jniFunctions().getThrowNew().invoke(jni, agent.handles().javaLangNoSuchMethodException, message.get());
         }
     }
 
@@ -574,9 +579,9 @@ final class BreakpointInterceptor {
             jvmtiFunctions().ForceEarlyReturnObject().invoke(jvmtiEnv(), nullHandle(), result);
         }
         if (!allowed) {
-            try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit reflective array instantiation: " +
+            try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit reflective array instantiation: " +
                             getClassNameOr(jni, resultClass, "(?)", "(?)"))) {
-                jniFunctions().getThrowNew().invoke(jni, handles().javaLangRuntimeException, message.get());
+                jniFunctions().getThrowNew().invoke(jni, agent.handles().javaLangRuntimeException, message.get());
             }
         }
         return allowed;
@@ -621,7 +626,7 @@ final class BreakpointInterceptor {
     }
 
     private static boolean hasEnumerationElements(JNIEnvironment jni, JNIObjectHandle obj) {
-        boolean hasElements = Support.callBooleanMethod(jni, obj, handles().javaUtilEnumerationHasMoreElements);
+        boolean hasElements = Support.callBooleanMethod(jni, obj, agent.handles().javaUtilEnumerationHasMoreElements);
         if (clearException(jni)) {
             hasElements = false;
         }
@@ -631,8 +636,8 @@ final class BreakpointInterceptor {
     private static void forceGetResourceReturn(JNIEnvironment env, boolean returnsEnumeration) {
         JNIObjectHandle newResult = nullHandle();
         if (returnsEnumeration) {
-            JNIObjectHandle javaUtilCollections = handles().getJavaUtilCollections(env);
-            JNIMethodId emptyEnumeration = handles().getJavaUtilCollectionsEmptyEnumeration(env);
+            JNIObjectHandle javaUtilCollections = agent.handles().getJavaUtilCollections(env);
+            JNIMethodId emptyEnumeration = agent.handles().getJavaUtilCollectionsEmptyEnumeration(env);
             if (javaUtilCollections.notEqual(nullHandle()) && emptyEnumeration.isNonNull()) {
                 newResult = Support.callObjectMethod(env, javaUtilCollections, emptyEnumeration);
                 if (clearException(env)) {
@@ -719,8 +724,8 @@ final class BreakpointInterceptor {
         if (ifaceNames instanceof Object[]) {
             interfaceString = Arrays.toString((Object[]) ifaceNames);
         }
-        try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit proxy class for interfaces: " + interfaceString)) {
-            jniFunctions().getThrowNew().invoke(jni, handles().javaLangSecurityException, message.get());
+        try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit proxy class for interfaces: " + interfaceString)) {
+            jniFunctions().getThrowNew().invoke(jni, agent.handles().javaLangSecurityException, message.get());
         }
     }
 
@@ -767,7 +772,7 @@ final class BreakpointInterceptor {
     private static boolean getBundleImplJDK11OrLater(JNIEnvironment jni, Breakpoint bp) {
         JNIMethodId intermediateMethod = getCallerMethod(2);
         JNIMethodId callerMethod; // caller of getBundle(), not immediate caller
-        if (intermediateMethod.equal(handles().tryGetJavaUtilResourceBundleGetBundleImplSLCC(jni))) {
+        if (intermediateMethod.equal(agent.handles().tryGetJavaUtilResourceBundleGetBundleImplSLCC(jni))) {
             // getBundleImpl <- getBundleImpl <- getBundleImpl(S,L,C,C) <- getBundle <- [caller]
             callerMethod = getCallerMethod(4);
         } else { // getBundleImpl <- getBundle(Impl|FromModule) <- getBundle <- [caller]
@@ -794,9 +799,10 @@ final class BreakpointInterceptor {
 
     private static boolean endGetBundleImpl(JNIEnvironment jni, JNIObjectHandle baseName, boolean allowed) {
         if (!allowed) {
-            try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to resource bundle: " + fromJniString(jni, baseName))) {
+            try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to resource bundle: " + fromJniString(jni, baseName))) {
                 JNIObjectHandle msg = jniFunctions().getNewStringUTF().invoke(jni, message.get());
-                JNIObjectHandle ex = Support.newObjectLLL(jni, handles().javaUtilMissingResourceException, handles().javaUtilMissingResourceExceptionCtor3, msg, nullHandle(), nullHandle());
+                JNIObjectHandle ex = Support.newObjectLLL(jni, agent.handles().javaUtilMissingResourceException, agent.handles().javaUtilMissingResourceExceptionCtor3, msg, nullHandle(),
+                                nullHandle());
                 jniFunctions().getThrow().invoke(jni, ex);
             }
         }
@@ -816,7 +822,7 @@ final class BreakpointInterceptor {
         CIntPointer frameCountPtr = StackValue.get(CIntPointer.class);
         if (jvmtiFunctions().GetStackTrace().invoke(jvmtiEnv(), nullHandle(), 1, 1, frameInfo, frameCountPtr) == JvmtiError.JVMTI_ERROR_NONE && frameCountPtr.read() == 1) {
             callerClass = getMethodDeclaringClass(frameInfo.getMethod());
-            if (callerClass.notEqual(nullHandle()) && jniFunctions().getIsAssignableFrom().invoke(jni, callerClass, handles().javaLangClassLoader)) {
+            if (callerClass.notEqual(nullHandle()) && jniFunctions().getIsAssignableFrom().invoke(jni, callerClass, agent.handles().javaLangClassLoader)) {
                 // ignore recursive class loader calls, we must have seen the root invocation
                 return true;
             }
@@ -841,8 +847,8 @@ final class BreakpointInterceptor {
         }
         traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, result, className);
         if (!allowed) {
-            try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to class: " + className)) {
-                jniFunctions().getThrowNew().invoke(jni, handles().javaLangClassNotFoundException, message.get());
+            try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to class: " + className)) {
+                jniFunctions().getThrowNew().invoke(jni, agent.handles().javaLangClassNotFoundException, message.get());
             }
         }
         return allowed;
@@ -888,7 +894,7 @@ final class BreakpointInterceptor {
             try {
                 MethodReference ref = new ConstantPoolTool(buffer).readMethodReference(cpi);
                 return methodName.contentEquals(ref.name) && signature.contentEquals(ref.descriptor);
-            } catch (ConstantPoolException e) {
+            } catch (ConstantPoolTool.ConstantPoolException e) {
                 return false; // unsupported class file format?
             }
         } finally {
@@ -908,7 +914,7 @@ final class BreakpointInterceptor {
     }
 
     @CEntryPoint
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static void onBreakpoint(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni,
                     @SuppressWarnings("unused") JNIObjectHandle thread, JNIMethodId method, @SuppressWarnings("unused") long location) {
 
@@ -929,7 +935,7 @@ final class BreakpointInterceptor {
     }
 
     @CEntryPoint
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static void onNativeMethodBind(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni,
                     @SuppressWarnings("unused") JNIObjectHandle thread, JNIMethodId method, CodePointer address, WordPointer newAddressPtr) {
 
@@ -952,7 +958,7 @@ final class BreakpointInterceptor {
     }
 
     @CEntryPoint
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static void onClassPrepare(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni,
                     @SuppressWarnings("unused") JNIObjectHandle thread, JNIObjectHandle clazz) {
 
@@ -961,14 +967,14 @@ final class BreakpointInterceptor {
     }
 
     private static void installBreakpointIfClassLoader(JNIEnvironment jni, JNIObjectHandle clazz, Map<Long, Breakpoint> breakpoints) {
-        if (jniFunctions().getIsAssignableFrom().invoke(jni, clazz, handles().javaLangClassLoader)) {
+        if (jniFunctions().getIsAssignableFrom().invoke(jni, clazz, agent.handles().javaLangClassLoader)) {
             String className = getClassNameOrNull(jni, clazz);
             if (className != null) {
                 BreakpointSpecification proto = CLASSLOADER_LOAD_CLASS_BREAKPOINT_SPECIFICATION;
                 JNIMethodId method = resolveBreakpointMethod(jni, clazz, proto.methodName, proto.signature, true);
                 if (method.isNonNull() && jvmtiFunctions().SetBreakpoint().invoke(jvmtiEnv(), method, 0L) == JvmtiError.JVMTI_ERROR_NONE) {
                     BreakpointSpecification spec = new BreakpointSpecification(className, proto.methodName, proto.signature, proto.handler, proto.optional);
-                    JNIObjectHandle gclazz = handles().newTrackedGlobalRef(jni, clazz);
+                    JNIObjectHandle gclazz = agent.handles().newTrackedGlobalRef(jni, clazz);
                     breakpoints.put(method.rawValue(), new Breakpoint(spec, gclazz, method));
                 }
             }
@@ -985,12 +991,13 @@ final class BreakpointInterceptor {
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class);
 
     public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, TraceWriter writer, ReflectAccessVerifier verifier,
-                    ProxyAccessVerifier prverifier, ResourceAccessVerifier resverifier, boolean exptlClassLoaderSupport) {
+                    ProxyAccessVerifier prverifier, ResourceAccessVerifier resverifier, NativeImageAgent nativeImageTracingAgent, boolean exptlClassLoaderSupport) {
 
         BreakpointInterceptor.traceWriter = writer;
         BreakpointInterceptor.accessVerifier = verifier;
         BreakpointInterceptor.proxyVerifier = prverifier;
         BreakpointInterceptor.resourceVerifier = resverifier;
+        BreakpointInterceptor.agent = nativeImageTracingAgent;
         BreakpointInterceptor.experimentalClassLoaderSupport = exptlClassLoaderSupport;
 
         JvmtiCapabilities capabilities = UnmanagedMemory.calloc(SizeOf.get(JvmtiCapabilities.class));
@@ -1115,7 +1122,7 @@ final class BreakpointInterceptor {
             }
             checkNoException(jni);
         }
-        clazz = handles().newTrackedGlobalRef(jni, clazz);
+        clazz = agent.handles().newTrackedGlobalRef(jni, clazz);
         checkNoException(jni);
         return clazz;
     }

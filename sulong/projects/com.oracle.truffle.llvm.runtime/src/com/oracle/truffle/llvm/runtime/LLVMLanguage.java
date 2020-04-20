@@ -310,11 +310,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected Iterable<Scope> findLocalScopes(LLVMContext context, Node node, Frame frame) {
-        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
-            final Iterable<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(node, frame, context);
-            return scopes;
-        } else {
+        if (context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
             return LLVMDebuggerScopeFactory.createIRLevelScope(node, frame, context);
+        } else {
+            return LLVMDebuggerScopeFactory.createSourceLevelScope(node, frame, context);
         }
     }
 }

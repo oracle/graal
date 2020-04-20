@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNodeGen.LLVMNegateNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue.ManagedToComparableValue;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 @NodeChild(type = LLVMExpressionNode.class)
@@ -50,6 +51,18 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
 
     public LLVMPointerCompareNode(NativePointerCompare op) {
         this.op = op;
+    }
+
+    // the first two cases are redundant but much more efficient than the ones below
+
+    @Specialization
+    boolean doCompare(long a, long b) {
+        return op.compare(a, b);
+    }
+
+    @Specialization
+    boolean doCompare(LLVMNativePointer a, LLVMNativePointer b) {
+        return op.compare(a.asNative(), b.asNative());
     }
 
     @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "3", rewriteOn = UnsupportedMessageException.class)

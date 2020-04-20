@@ -32,12 +32,15 @@ import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -157,6 +160,8 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
 
         ObjectCloneLowering objectCloneLowering = new ObjectCloneLowering();
         lowerings.put(SubstrateObjectCloneNode.class, objectCloneLowering);
+        ObjectCloneWithExceptionLowering objectCloneWithExceptionLowering = new ObjectCloneWithExceptionLowering();
+        lowerings.put(ObjectCloneWithExceptionNode.class, objectCloneWithExceptionLowering);
     }
 
     final class ObjectCloneLowering implements NodeLoweringProvider<SubstrateObjectCloneNode> {
@@ -172,6 +177,19 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             args.add("thisObj", node.getObject());
 
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+        }
+    }
+
+    final class ObjectCloneWithExceptionLowering implements NodeLoweringProvider<ObjectCloneWithExceptionNode> {
+        @Override
+        public void lower(ObjectCloneWithExceptionNode node, LoweringTool tool) {
+            StructuredGraph graph = node.graph();
+
+            ForeignCallsProvider foreignCalls = tool.getProviders().getForeignCalls();
+            ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(foreignCalls, CLONE, node.getObject()));
+            call.setBci(node.bci());
+            call.setStamp(node.stamp(NodeView.DEFAULT));
+            graph.replaceWithExceptionSplit(node, call);
         }
     }
 }

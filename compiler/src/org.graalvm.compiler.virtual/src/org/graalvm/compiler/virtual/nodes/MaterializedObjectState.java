@@ -54,8 +54,4 @@ public final class MaterializedObjectState extends EscapeObjectState implements 
         return graph().addWithoutUnique(new MaterializedObjectState(object(), materializedValue));
     }
 
-    @Override
-    public void applyToNonVirtual(NodeClosure<? super ValueNode> closure) {
-        closure.apply(this, materializedValue);
-    }
 }

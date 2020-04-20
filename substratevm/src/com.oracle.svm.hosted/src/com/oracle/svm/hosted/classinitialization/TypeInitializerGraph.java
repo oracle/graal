@@ -35,13 +35,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
-import org.graalvm.compiler.nodes.java.AccessFieldNode;
-
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.SourceTypeFlowBase;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -51,7 +46,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 
-import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Keeps a type-hierarchy dependency graph for {@link AnalysisType}s from {@code universe}. Each
@@ -171,48 +166,8 @@ public class TypeInitializerGraph {
      */
     private Safety initialMethodSafety(AnalysisMethod m) {
         return m.getTypeFlow().getInvokes().stream().anyMatch(this::isInvokeInitiallyUnsafe) ||
-                        hasStaticFieldAccess(m) ||
+                        hostVM.hasClassInitializerSideEffect(m) ||
                         isSubstitutedMethod(m) ? Safety.UNSAFE : Safety.SAFE;
-    }
-
-    /**
-     * Classes are only safe for automatic initialization if the class initializer has no side
-     * effect on other classes and cannot be influenced by other classes. Otherwise there would be
-     * observable side effects. For example, if a class initializer of class A writes a static field
-     * B.f in class B, then someone could rely on reading the old value of B.f before triggering
-     * initialization of A. Similarly, if a class initializer of class A reads a static field B.f,
-     * then an early automatic initialization of class A could read a non-yet-set value of B.f.
-     *
-     * Note that it is not necessary to disallow instance field accesses: Objects allocated by the
-     * class initializer itself can always be accessed because they are independent from other
-     * initializers; all other objects must be loaded transitively from a static field.
-     *
-     * Currently, we are conservative and mark all methods that access static fields as unsafe for
-     * automatic class initialization (unless the class initializer itself accesses a static field
-     * of its own class - the common way of initializing static fields). The check could be relaxed
-     * by tracking the call chain, i.e., allowing static field accesses when the root method of the
-     * call chain is the class initializer. But this does not fit well into the current approach
-     * where each method has a `Safety` flag.
-     */
-    private static boolean hasStaticFieldAccess(AnalysisMethod m) {
-        StructuredGraph graph = m.getTypeFlow().getGraph();
-        if (graph != null) {
-            for (Node n : graph.getNodes()) {
-                if (n instanceof AccessFieldNode) {
-                    ResolvedJavaField field = ((AccessFieldNode) n).field();
-                    if (field.isStatic() && (!m.isClassInitializer() || !field.getDeclaringClass().equals(m.getDeclaringClass()))) {
-                        return true;
-                    }
-                } else if (n instanceof UnsafeAccessNode) {
-                    /*
-                     * Unsafe memory access nodes are rare, so it does not pay off to check what
-                     * kind of field they are accessing.
-                     */
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private boolean isSubstitutedMethod(AnalysisMethod m) {
@@ -277,11 +232,13 @@ public class TypeInitializerGraph {
     private Optional<AnalysisType> getInitializerType(InvokeTypeFlow i) {
         if (i.getTargetMethod().equals(ensureInitializedMethod)) {
             assert i.getActualParameters().length == 1 : "ensureInitialized should have only one parameter, found " + i.getActualParameters().length;
-            if (i.getActualParameters()[0].getSource() instanceof ConstantNode) {
-                assert SubstrateObjectConstant
-                                .asObject(((ConstantNode) i.getActualParameters()[0].getSource()).asConstant()) instanceof DynamicHub : "ensureInitialized must receive a constant dynamic hub";
-                DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(((ConstantNode) i.getActualParameters()[0].getSource()).asConstant());
-                return Optional.of(hostVM.lookupType(hub));
+            if (i.getActualParameters()[0] instanceof SourceTypeFlowBase) {
+                JavaConstant value = ((SourceTypeFlowBase) i.getActualParameters()[0]).getConstantValue();
+                if (value != null) {
+                    assert SubstrateObjectConstant.asObject(value) instanceof DynamicHub : "ensureInitialized must receive a constant dynamic hub";
+                    DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(value);
+                    return Optional.of(hostVM.lookupType(hub));
+                }
             }
         }
         return Optional.empty();

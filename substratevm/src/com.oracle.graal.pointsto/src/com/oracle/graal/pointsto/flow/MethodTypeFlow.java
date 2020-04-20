@@ -34,10 +34,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
-import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -54,6 +54,9 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaConstant;
+
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     protected MethodFlowsGraph originalMethodFlows;
@@ -61,7 +64,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     private int localCallingContextDepth;
 
     private final AnalysisMethod method;
-    private StructuredGraph graphRef;
+    protected EconomicMap<JavaConstant, BytecodePosition> objectConstants;
 
     private volatile boolean methodParsed;
     private InvokeTypeFlow parsingReason;
@@ -80,6 +83,10 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return method;
     }
 
+    public EconomicMap<JavaConstant, BytecodePosition> getObjectConstants() {
+        return objectConstants;
+    }
+
     public InvokeTypeFlow getParsingReason() {
         return parsingReason;
     }
@@ -89,10 +96,8 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         InvokeTypeFlow invokeFlow = parsingReason;
 
         while (invokeFlow != null) {
-            AnalysisMethod caller = invokeFlow.location.getMethod();
-            Invoke invokeNode = invokeFlow.invoke();
-            parsingContext.add(caller.asStackTraceElement(invokeNode.bci()));
-            invokeFlow = invokeFlow.location.getMethod().getTypeFlow().parsingReason;
+            parsingContext.add(invokeFlow.getSource().getMethod().asStackTraceElement(invokeFlow.getSource().getBCI()));
+            invokeFlow = ((AnalysisMethod) invokeFlow.getSource().getMethod()).getTypeFlow().parsingReason;
         }
         return parsingContext.toArray(new StackTraceElement[parsingContext.size()]);
     }
@@ -239,8 +244,18 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return result;
     }
 
+    /** Check if the type flow is saturated, i.e., any of its clones is saturated. */
+    public boolean isSaturated(BigBang bb, TypeFlow<?> originalTypeFlow) {
+        boolean saturated = false;
+        for (MethodFlowsGraph methodFlows : clonedMethodFlows.values()) {
+            TypeFlow<?> clonedTypeFlow = methodFlows.lookupCloneOf(bb, originalTypeFlow);
+            saturated |= clonedTypeFlow.isSaturated();
+        }
+        return saturated;
+    }
+
     // get original parameter
-    protected FormalParamTypeFlow getParameterFlow(int idx) {
+    public FormalParamTypeFlow getParameterFlow(int idx) {
         return originalMethodFlows.getParameter(idx);
     }
 
@@ -257,23 +272,19 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return originalMethodFlows.getInvokeFlows();
     }
 
-    public StructuredGraph getGraph() {
-        return graphRef;
-    }
+    private static ParameterNode computeReturnedParameter(StructuredGraph graph) {
 
-    private ParameterNode computeReturnedParamter() {
-
-        if (graphRef == null) {
+        if (graph == null) {
             // Some methods, e.g., native ones, don't have a graph.
             return null;
         }
 
         ParameterNode retParam = null;
 
-        for (ParameterNode param : graphRef.getNodes(ParameterNode.TYPE)) {
+        for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             if (param.stamp(NodeView.DEFAULT) instanceof ObjectStamp) {
                 boolean returnsParameter = true;
-                NodeIterable<ReturnNode> retIterable = graphRef.getNodes(ReturnNode.TYPE);
+                NodeIterable<ReturnNode> retIterable = graph.getNodes(ReturnNode.TYPE);
                 returnsParameter &= retIterable.count() > 0;
                 for (ReturnNode ret : retIterable) {
                     returnsParameter &= ret.result() == param;
@@ -305,10 +316,12 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     private synchronized void doParse(BigBang bb, InvokeTypeFlow reason) {
         if (!methodParsed) {
             parsingReason = reason;
+            StructuredGraph graph = null;
             try {
                 MethodTypeFlowBuilder builder = bb.createMethodTypeFlowBuilder(bb, this);
                 builder.apply();
-                graphRef = builder.graph;
+                graph = builder.graph;
+
             } catch (BytecodeParserError ex) {
                 /* Rewrite some bytecode parsing errors as unsupported features. */
                 if (ex.getCause() instanceof UnsupportedFeatureException) {
@@ -331,7 +344,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
             bb.numParsedGraphs.incrementAndGet();
 
-            returnedParameter = computeReturnedParamter();
+            returnedParameter = computeReturnedParameter(graph);
 
             methodParsed = true;
         }

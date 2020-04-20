@@ -743,8 +743,8 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         mx.Extractor.create(self.subject.sources.get_path(False)).extract(self.subject.out_dir)
 
         mx.log('Applying patches...')
-        git_apply = ['git', 'apply', '--whitespace=nowarn', '--directory',
-                     os.path.relpath(self.subject.delegate.dir, self.subject.suite.vc_dir).replace(os.sep, '/')]
+        git_apply = ['git', 'apply', '--whitespace=nowarn', '--unsafe-paths', '--directory',
+                     os.path.relpath(self.subject.delegate.dir, self.subject.suite.vc_dir)]
         for patch in self.subject.patches:
             mx.run(git_apply + [patch], cwd=self.subject.suite.vc_dir)
 

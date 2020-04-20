@@ -68,13 +68,13 @@ public abstract class InputLengthNode extends Node {
         try {
             long length = inputs.getArraySize(input);
             if (length > Integer.MAX_VALUE) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 // should never be reached
                 throw new RuntimeException("should not reach here");
             }
             return (int) length;
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             // should never be reached
             throw new RuntimeException(e);
         }

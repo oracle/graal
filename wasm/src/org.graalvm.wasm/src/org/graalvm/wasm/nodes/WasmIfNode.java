@@ -105,4 +105,9 @@ public final class WasmIfNode extends WasmNode {
     int branchTableLength() {
         return trueBranch.branchTableLength() + (falseBranch != null ? falseBranch.branchTableLength() : 0);
     }
+
+    @Override
+    int profileCount() {
+        return trueBranch.profileCount() + (falseBranch != null ? falseBranch.profileCount() : 0);
+    }
 }

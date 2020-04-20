@@ -38,12 +38,12 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.graph.Node;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 public class MethodFlowsGraph {
 
@@ -513,7 +513,7 @@ public class MethodFlowsGraph {
         doAddFlow(key, invokeTypeFlow, invokeFlows);
     }
 
-    private static <T extends TypeFlow<? extends Node>> void doAddFlow(Object key, T flow, Map<Object, T> map) {
+    private static <T extends TypeFlow<BytecodePosition>> void doAddFlow(Object key, T flow, Map<Object, T> map) {
         if (map.containsKey(key)) {
             assert key instanceof Integer;
             /*
@@ -551,10 +551,15 @@ public class MethodFlowsGraph {
          * TODO cache the result
          */
         List<MethodFlowsGraph> callers = new ArrayList<>();
-        for (AnalysisMethod caller : method.getJavaInvocations()) {
+        for (AnalysisMethod caller : method.getCallers()) {
             for (MethodFlowsGraph callerFlowGraph : caller.getTypeFlow().getFlows()) {
                 for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokeFlows()) {
-                    for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getCalleesFlows(bb)) {
+                    InvokeTypeFlow invoke = callerInvoke;
+                    if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(callerInvoke)) {
+                        /* The invoke has been replaced by the context insensitive one. */
+                        invoke = callerInvoke.getTargetMethod().getContextInsensitiveInvoke();
+                    }
+                    for (MethodFlowsGraph calleeFlowGraph : invoke.getCalleesFlows(bb)) {
                         // 'this' method graph was found among the callees of an invoke flow in one
                         // of the clones of the caller methods, hence we regiter that clone as a
                         // caller for 'this' method clone

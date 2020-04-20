@@ -103,6 +103,7 @@ class NativeImageVM(GraalVm):
             self.extra_run_args = []
             self.extra_agent_run_args = []
             self.extra_profile_run_args = []
+            self.extra_agent_profile_run_args = []
             self.benchmark_name = None
             self.benchmark_output_dir = None
             self.needs_config = True
@@ -110,6 +111,8 @@ class NativeImageVM(GraalVm):
             self.profile_dir = None
             self.log_dir = None
             self.pgo_iteration_num = None
+            self.only_prepare_native_image = False
+            self.only_run_prepared_image = False
 
         def parse(self, args):
             def add_to_list(arg, name, arg_list):
@@ -129,6 +132,7 @@ class NativeImageVM(GraalVm):
                     found |= add_to_list(trimmed_arg, 'extra-run-arg', self.extra_run_args)
                     found |= add_to_list(trimmed_arg, 'extra-agent-run-arg', self.extra_agent_run_args)
                     found |= add_to_list(trimmed_arg, 'extra-profile-run-arg', self.extra_profile_run_args)
+                    found |= add_to_list(trimmed_arg, 'extra-agent-profile-run-arg', self.extra_agent_profile_run_args)
                     if trimmed_arg.startswith('needs-config='):
                         self.needs_config = trimmed_arg[len('needs-config='):] == 'true'
                         found = True
@@ -144,10 +148,18 @@ class NativeImageVM(GraalVm):
                     if trimmed_arg.startswith('instrumentation-iteration-num='):
                         self.pgo_iteration_num = trimmed_arg[len('instrumentation-iteration-num='):]
                         found = True
+                    if trimmed_arg.startswith('prepare-native-image='):
+                        self.only_prepare_native_image = trimmed_arg[len('prepare-native-image=') :] == 'true'
+                        found = True
+                    if trimmed_arg.startswith('run-prepared-image='):
+                        self.only_run_prepared_image = trimmed_arg[len('run-prepared-image=') :] == 'true'
+                        found = True
                     if not found:
                         mx.abort("Invalid benchmark argument: " + arg)
                 else:
                     benchmark_run_args += [arg]
+            if self.only_prepare_native_image and self.only_run_prepared_image:
+                mx.abort("Only one of the following options can be chosen: prepare-native-image, run-prepared-image.")
 
             return benchmark_run_args + executable + image_run_args
 
@@ -224,113 +236,138 @@ class NativeImageVM(GraalVm):
             executable, classpath_arguments, system_properties, image_run_args = NativeImageVM.extract_benchmark_arguments(original_java_run_args)
             executable_suffix = ('-' + config.benchmark_name) if config.benchmark_name else ''
             executable_name = (os.path.splitext(os.path.basename(executable[1]))[0] + executable_suffix if executable[0] == '-jar' else executable[0] + executable_suffix).lower()
+            final_image_name = executable_name + '-' + self.config_name()
             non_tmp_dir = os.path.abspath(config.benchmark_output_dir) if config.benchmark_output_dir else None
-            config.output_dir = mx.mkdtemp(suffix='bench-' + executable_name, prefix='native-image', dir=non_tmp_dir)
-            config.profile_dir = config.output_dir
-            config.log_dir = config.output_dir
-            profile_path_no_extension = os.path.join(config.profile_dir, executable_name)
-            extension = '.iprof'
-            profile_path = profile_path_no_extension + extension
-            image_path = os.path.join(config.output_dir, executable_name)
 
-            # Agent configuration and/or HotSpot profiling
-            needs_config = (config.config_dir is None) and config.needs_config
-            if needs_config or self.hotspot_pgo:
-                hotspot_vm_args = ['-ea', '-esa'] if self.is_gate else []
-                hotspot_run_args = []
+            if config.only_prepare_native_image or config.only_run_prepared_image:
+                bench_suite = mx.suite('vm-enterprise')
+                root_dir = mx.join(bench_suite.dir, "mxbuild")
+                output_dir_path = mx.join(os.path.abspath(root_dir), 'native-image-bench-' + executable_name + '-' + self.config_name())
+                if config.only_prepare_native_image:
+                    if os.path.exists(output_dir_path):
+                        os.rmdir(output_dir_path)
+                    os.mkdir(output_dir_path)
+                config.output_dir = output_dir_path
+            else:
+                config.output_dir = mx.mkdtemp(suffix='bench-' + executable_name, prefix='native-image', dir=non_tmp_dir)
 
-                if needs_config:
-                    config.config_dir = os.path.join(config.output_dir, 'config')
-                    hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir), '-XX:-UseJVMCINativeLibrary']
+            if not config.only_run_prepared_image:
+                config.profile_dir = config.output_dir
+                config.log_dir = config.output_dir
+                profile_path_no_extension = os.path.join(config.profile_dir, executable_name)
+                extension = '.iprof'
+                profile_path = profile_path_no_extension + extension
 
-                if self.hotspot_pgo:
-                    hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]
+                # Agent configuration and/or HotSpot profiling
+                needs_config = (config.config_dir is None) and config.needs_config
+                if needs_config or self.hotspot_pgo:
+                    hotspot_vm_args = ['-ea', '-esa'] if self.is_gate else []
+                    hotspot_run_args = []
 
-                if config.extra_agent_run_args:
-                    hotspot_run_args += config.extra_profile_run_args if self.hotspot_pgo and not self.is_gate else config.extra_agent_run_args
-                else:
-                    hotspot_run_args += image_run_args
+                    if needs_config:
+                        config.config_dir = os.path.join(config.output_dir, 'config')
+                        hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir), '-XX:-UseJVMCINativeLibrary']
 
-                hotspot_args = hotspot_vm_args + classpath_arguments + executable + system_properties + hotspot_run_args
-                hs_stdout_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-hot-spot-stdout.log'))
-                hs_stderr_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-hot-spot-stderr.log'))
-                with open(hs_stdout_path, 'a') as hs_stdout, open(hs_stderr_path, 'a') as hs_stderr:
-                    mx.log('Running with HotSpot to get the configuration files and profiles. This could take a while...')
-                    mx.log('Command: ' + ' '.join(['java'] + hotspot_args))
-                    mx.log('The standard output saved to ' + hs_stdout_path)
-                    mx.log('The standard error saved to ' + hs_stderr_path)
-                    exit_code = super(NativeImageVM, self).run_java(
-                        hotspot_args, out=hs_stdout.write, err=hs_stderr.write, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
-                    mx.log("Hotspot run finished with exit code " + str(exit_code) + ".")
-                    with open(os.path.join(config.config_dir, 'reflect-config.json'), 'r') as reflect_config:
-                        mx.log("The content of reflect-config.json is: ")
-                        mx.log(reflect_config.read())
+                    if self.hotspot_pgo:
+                        hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]
 
-            base_image_build_args = [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
-            base_image_build_args += ['--no-fallback', '--no-server']
-            base_image_build_args += ['-J-ea', '-J-esa', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '-H:+TraceClassInitialization'] if self.is_gate else []
-            base_image_build_args += system_properties
-            base_image_build_args += classpath_arguments
-            base_image_build_args += executable
-            base_image_build_args += ['-H:Name=' + executable_name, '-H:Path=' + config.output_dir]
-            if needs_config:
-                base_image_build_args += ['-H:ConfigurationFileDirectories=' + config.config_dir]
-            if self.is_llvm:
-                base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature']
-            base_image_build_args += config.extra_image_build_arguments
-
-            # PGO instrumentation
-            i = 0
-            instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
-            if not self.hotspot_pgo:
-                pgo_verification_output_path = os.path.join(config.output_dir, executable_name + '-probabilities.log')
-                while i < instrumented_iterations:
-                    pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
-                    instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
-                    instrument_image_build_args = base_image_build_args + instrument_args
-                    mx.log('Building the instrumentation image with: ')
-                    mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in instrument_image_build_args]))
-                    mx.run(instrument_image_build_args, out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
-
-                    image_run_cmd = [image_path]
-                    profile_path = profile_path_no_extension + (str(i) + extension if i > 0 else extension)
-                    image_run_cmd += ['-XX:ProfilesDumpFile=' + profile_path]
-                    if config.extra_profile_run_args:
-                        image_run_cmd += config.extra_profile_run_args
+                    if self.hotspot_pgo and not self.is_gate and config.extra_agent_profile_run_args:
+                        hotspot_run_args += config.extra_agent_profile_run_args
+                    elif config.extra_agent_run_args:
+                        hotspot_run_args += config.extra_agent_run_args
                     else:
-                        image_run_cmd += image_run_args + config.extra_run_args
+                        hotspot_run_args += image_run_args
 
-                    mx.log('Running the instrumented image with: ')
-                    mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
-                    inst_stdout_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stdout.log'))
-                    inst_stderr_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stderr.log'))
-                    with open(inst_stdout_path, 'a') as inst_stdout, open(inst_stderr_path, 'a') as inst_stderr:
-                        mx.log('The standard output saved to ' + inst_stdout_path)
-                        mx.log('The standard error saved to ' + inst_stderr_path)
-                        mx.run(image_run_cmd, out=inst_stdout.write,
-                               err=inst_stderr.write, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+                    hotspot_args = hotspot_vm_args + classpath_arguments + executable + system_properties + hotspot_run_args
+                    hs_stdout_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-hot-spot-stdout.log'))
+                    hs_stderr_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-hot-spot-stderr.log'))
+                    with open(hs_stdout_path, 'a') as hs_stdout, open(hs_stderr_path, 'a') as hs_stderr:
+                        mx.log('Running with HotSpot to get the configuration files and profiles. This could take a while...')
+                        mx.log('Command: ' + ' '.join(['java'] + hotspot_args))
+                        mx.log('The standard output saved to ' + hs_stdout_path)
+                        mx.log('The standard error saved to ' + hs_stderr_path)
+                        exit_code = super(NativeImageVM, self).run_java(
+                            hotspot_args, out=hs_stdout.write, err=hs_stderr.write, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+                        mx.log("Hotspot run finished with exit code " + str(exit_code) + ".")
+                        with open(os.path.join(config.config_dir, 'reflect-config.json'), 'r') as reflect_config:
+                            mx.log("The content of reflect-config.json is: ")
+                            mx.log(reflect_config.read())
 
-                    image_size = os.stat(image_path).st_size
-                    mx.log('Produced image size is ' + str(image_size) + ' B')
+                base_image_build_args = [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
+                base_image_build_args += ['--no-fallback', '--no-server']
+                base_image_build_args += ['-J-ea', '-J-esa', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '-H:+TraceClassInitialization'] if self.is_gate else []
+                base_image_build_args += system_properties
+                base_image_build_args += classpath_arguments
+                base_image_build_args += executable
+                base_image_build_args += ['-H:Path=' + config.output_dir]
+                if needs_config:
+                    base_image_build_args += ['-H:ConfigurationFileDirectories=' + config.config_dir]
+                if self.is_llvm:
+                    base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature']
+                base_image_build_args += config.extra_image_build_arguments
 
-                    i += 1
+                # PGO instrumentation
+                i = 0
+                instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
+                if not self.hotspot_pgo:
+                    while i < instrumented_iterations:
+                        instrumentation_image_name = executable_name + '-instrument' + (str(i) if i > 0 else '')
+                        executable_name_args = ['-H:Name=' + instrumentation_image_name]
+                        image_path = os.path.join(config.output_dir, instrumentation_image_name)
+                        pgo_verification_output_path = os.path.join(config.output_dir, instrumentation_image_name + '-probabilities.log')
+                        pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
+                        instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
 
-            # Build the final image
-            pgo_verification_output_path = os.path.join(config.output_dir, executable_name + '-probabilities.log')
-            pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path] if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo else []
-            final_image_args = base_image_build_args + pgo_args
-            mx.log('Building the final image with: ')
-            mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in final_image_args]))
-            mx.run(final_image_args, out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+                        instrument_image_build_args = base_image_build_args + executable_name_args + instrument_args
+                        mx.log('Building the instrumentation image with: ')
+                        mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in instrument_image_build_args]))
+                        mx.run(instrument_image_build_args, out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+
+                        image_run_cmd = [image_path]
+                        profile_path = profile_path_no_extension + (str(i) + extension if i > 0 else extension)
+                        image_run_cmd += ['-XX:ProfilesDumpFile=' + profile_path]
+                        if config.extra_profile_run_args:
+                            image_run_cmd += config.extra_profile_run_args
+                        else:
+                            image_run_cmd += image_run_args + config.extra_run_args
+
+                        mx.log('Running the instrumented image with: ')
+                        mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
+                        inst_stdout_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stdout.log'))
+                        inst_stderr_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stderr.log'))
+                        with open(inst_stdout_path, 'a') as inst_stdout, open(inst_stderr_path, 'a') as inst_stderr:
+                            mx.log('The standard output saved to ' + inst_stdout_path)
+                            mx.log('The standard error saved to ' + inst_stderr_path)
+                            mx.run(image_run_cmd, out=inst_stdout.write,
+                                   err=inst_stderr.write, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+
+                        image_size = os.stat(image_path).st_size
+                        mx.log('Produced image size is ' + str(image_size) + ' B')
+
+                        i += 1
+
+                # Build the final image
+                executable_name_args = ['-H:Name=' + final_image_name]
+                pgo_verification_output_path = os.path.join(config.output_dir, final_image_name + '-probabilities.log')
+                pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path] if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo else []
+                final_image_args = base_image_build_args + executable_name_args + pgo_args
+                mx.log('Building the final image with: ')
+                mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in final_image_args]))
+                mx.run(final_image_args, out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
 
             # Execute the benchmark
-            image_run_cmd = [image_path] + image_run_args + config.extra_run_args
-            mx.log('Running the produced native executable with: ')
-            mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
-            mx.run(image_run_cmd, out=out, err=err, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
-            image_path = mx.join(config.output_dir, executable_name)
-            image_size = os.stat(image_path).st_size
-            mx.log('Final image size is ' + str(image_size) + ' B')
+            if not config.only_prepare_native_image:
+                image_path = os.path.join(config.output_dir, final_image_name)
+                if os.path.exists(image_path):
+                    image_run_cmd = [image_path] + image_run_args + config.extra_run_args
+                    mx.log('Running the produced native executable with: ')
+                    mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
+                    mx.run(image_run_cmd, out=out, err=err, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+                    image_path = mx.join(config.output_dir, final_image_name)
+                    image_size = os.stat(image_path).st_size
+                    mx.log('Final image size is ' + str(image_size) + ' B')
+                else:
+                    mx.log('\n\n\nImage ' + image_path + ' doesn\'t exist\n\n\n')
 
 
 class NativeImageBuildVm(GraalVm):
