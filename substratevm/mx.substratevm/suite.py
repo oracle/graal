@@ -905,10 +905,22 @@ suite = {
                 "compiler:GRAAL",
             ],
             "moduleInfo" : {
-              "name" : "org.graalvm.nativeimage.builder",
-              "exports" : [
-                "* to org.graalvm.nativeimage.driver",
-              ],
+                "name" : "org.graalvm.nativeimage.builder",
+                "exports" : [
+                    "com.oracle.svm.hosted                        to java.base",
+                    "com.oracle.svm.hosted.agent                  to java.instrument",
+                    "* to org.graalvm.nativeimage.driver",
+                ],
+                "requiresConcealed" : {
+                    "jdk.internal.vm.ci" : [
+                        "jdk.vm.ci.meta",
+                        "jdk.vm.ci.code",
+                        "jdk.vm.ci.services",
+                        "jdk.vm.ci.runtime",
+                        "jdk.vm.ci.amd64",
+                        "jdk.vm.ci.aarch64",
+                    ],
+                },
             },
         },
 
@@ -1079,9 +1091,15 @@ suite = {
                 "com.oracle.graal.pointsto",
                 "com.oracle.graal.pointsto.api",
                 "com.oracle.graal.pointsto.reports",
+                "com.oracle.graal.pointsto.util",
+                "com.oracle.graal.pointsto.meta",
+                "com.oracle.graal.pointsto.infrastructure",
               ],
               "requiresConcealed" : {
                 "java.base" : ["jdk.internal.module"],
+                "jdk.internal.vm.ci" : [
+                  "jdk.vm.ci.meta",
+                ],
               }
             },
         },
