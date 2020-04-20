@@ -831,6 +831,7 @@ public final class LLVMContext {
         localScopesTmp.add(scope);
     }
 
+    @TruffleBoundary
     public LLVMLocalScope getLocalScopeTmp(int id) {
         for (LLVMLocalScope scope : localScopesTmp) {
             if (scope.containID(id)) {
