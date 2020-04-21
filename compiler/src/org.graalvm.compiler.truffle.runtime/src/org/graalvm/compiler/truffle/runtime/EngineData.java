@@ -220,7 +220,7 @@ public final class EngineData {
                 if (deprecationMessage.isEmpty()) {
                     deprecationMessage = "Will be removed with no replacement.";
                 }
-                getLogger().log(Level.WARNING, String.format("WARNING: The option '%s' is deprecated.%n%s", optionName, deprecationMessage));
+                getLogger().log(Level.WARNING, String.format("The option '%s' is deprecated.%n%s", optionName, deprecationMessage));
             }
         }
     }
