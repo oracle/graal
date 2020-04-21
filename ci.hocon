@@ -65,7 +65,7 @@ include "compiler/ci_includes/gate_tasks.hocon"
 include "substratevm/ci_includes/gate.hocon"
 
 # Publish Javadoc
-include "ci_includes/publish-javadoc.hocon"
+# include "ci_includes/publish-javadoc.hocon"
 
 # ------------------- VM ----------------------
 include "vm/ci_common/common.hocon"

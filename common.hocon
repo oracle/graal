@@ -1,5 +1,5 @@
 # overlay version
-overlay = 342aa921cb7cc26612d0be82f6141a6d6ff8e41d
+overlay = e479c1d038a4b606149989babd02d24b87228146
 
 # oraclejdk* are released OracleJDK binaries
 # oraclejdk* are JDKs based on OracleJDK binaries
@@ -11,7 +11,7 @@ include "common.json"
 # to another branch/commit in a Graal PR when mx changes are required for the PR.
 mx : {
   packages : {
-    mx: "HEAD"
+    mx: "5.261.3"
   }
 }
 
