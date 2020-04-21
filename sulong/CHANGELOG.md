@@ -1,3 +1,12 @@
+# Version 20.2.0
+
+Changes:
+
+Removed:
+
+* Removed the `--llvm.sourcePath` option (deprecated since 19.0), use
+  `--inspect.SourcePath` instead.
+
 # Version 20.1.0
 
 Changes:

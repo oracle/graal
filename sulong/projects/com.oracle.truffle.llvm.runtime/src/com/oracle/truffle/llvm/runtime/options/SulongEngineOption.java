@@ -64,12 +64,6 @@ public final class SulongEngineOption {
                    "Paths are delimited by a colon \'" + OPTION_ARRAY_SEPARATOR + "\'.")
     public static final OptionKey<String> LIBRARY_PATH = new OptionKey<>("");
 
-    @Option(name = "llvm.sourcePath",
-            category = OptionCategory.USER,
-            help = "This option is deprecated. Use --inspect.SourcePath instead.",
-            deprecated = true)
-    public static final OptionKey<String> SOURCE_PATH = new OptionKey<>("");
-
     public static final String LOAD_CXX_LIBRARIES_NAME = "llvm.loadC++Libraries";
     @Option(name = LOAD_CXX_LIBRARIES_NAME,
             category = OptionCategory.EXPERT,
