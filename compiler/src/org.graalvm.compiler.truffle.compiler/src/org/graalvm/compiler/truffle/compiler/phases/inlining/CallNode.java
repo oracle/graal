@@ -51,7 +51,7 @@ import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 
 @NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
-public final class CallNode extends Node {
+public final class CallNode extends Node implements Comparable<CallNode> {
 
     private static final NodeClass<CallNode> TYPE = NodeClass.create(CallNode.class);
     private final TruffleCallNode truffleCaller;
@@ -59,6 +59,7 @@ public final class CallNode extends Node {
     private final TruffleCallNode[] truffleCallees;
     private final double rootRelativeFrequency;
     private final int depth;
+    private final int id;
     // Effectively final, populated only as part of expansion. Cannot be final because of Successor
     // annotation
     @Successor private NodeSuccessorList<CallNode> children;
@@ -76,7 +77,7 @@ public final class CallNode extends Node {
     private Invoke invoke;
 
     // Needs to be protected because of the @NodeInfo annotation
-    protected CallNode(TruffleCallNode truffleCaller, CompilableTruffleAST truffleAST, double rootRelativeFrequency, int depth) {
+    protected CallNode(TruffleCallNode truffleCaller, CompilableTruffleAST truffleAST, double rootRelativeFrequency, int depth, int id) {
         super(TYPE);
         this.state = State.Cutoff;
         this.recursionDepth = -1;
@@ -86,6 +87,7 @@ public final class CallNode extends Node {
         this.truffleCallees = truffleAST == null ? new TruffleCallNode[0] : truffleAST.getCallNodes();
         this.children = new NodeSuccessorList<>(this, 0);
         this.depth = depth;
+        this.id = id;
     }
 
     /**
@@ -94,7 +96,7 @@ public final class CallNode extends Node {
     static CallNode makeRoot(CallTree callTree, PartialEvaluator.Request request) {
         Objects.requireNonNull(callTree);
         Objects.requireNonNull(request);
-        CallNode root = new CallNode(null, request.compilable, 1, 0);
+        CallNode root = new CallNode(null, request.compilable, 1, 0, callTree.nextId());
         callTree.add(root);
         root.ir = request.graph;
         root.policyData = callTree.getPolicy().newCallNodeData(root);
@@ -180,7 +182,7 @@ public final class CallNode extends Node {
         for (TruffleCallNode childCallNode : truffleCallees) {
             double relativeFrequency = calculateFrequency(truffleAST, childCallNode);
             double childFrequency = relativeFrequency * rootRelativeFrequency;
-            CallNode callNode = new CallNode(childCallNode, childCallNode.getCurrentCallTarget(), childFrequency, depth + 1);
+            CallNode callNode = new CallNode(childCallNode, childCallNode.getCurrentCallTarget(), childFrequency, depth + 1, getCallTree().nextId());
             getCallTree().add(callNode);
             children.add(callNode);
             callNode.policyData = getPolicy().newCallNodeData(callNode);
@@ -212,7 +214,7 @@ public final class CallNode extends Node {
     private void addIndirectChildren(GraphManager.Entry entry) {
         for (Invoke indirectInvoke : entry.indirectInvokes) {
             if (indirectInvoke != null && indirectInvoke.isAlive()) {
-                CallNode child = new CallNode(null, null, 0, depth + 1);
+                CallNode child = new CallNode(null, null, 0, depth + 1, getCallTree().nextId());
                 child.state = State.Indirect;
                 child.invoke = indirectInvoke;
                 getCallTree().add(child);
@@ -377,6 +379,11 @@ public final class CallNode extends Node {
                         ", truffleCallNode=" + truffleCaller +
                         ", truffleAST=" + truffleAST +
                         '}';
+    }
+
+    @Override
+    public int compareTo(CallNode o) {
+        return Integer.compare(id, o.id);
     }
 
     public enum State {
