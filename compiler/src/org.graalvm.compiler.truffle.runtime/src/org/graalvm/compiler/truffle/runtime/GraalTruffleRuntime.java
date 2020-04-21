@@ -31,7 +31,6 @@ import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGrap
 import java.io.CharArrayWriter;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.ref.WeakReference;
@@ -47,7 +46,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicMap;
@@ -687,14 +685,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         try {
             listeners.onCompilationFailed(callTarget, t.toString(), false, false);
         } finally {
-            callTarget.onCompilationFailed(new Supplier<String>() {
-                @Override
-                public String get() {
-                    StringWriter writer = new StringWriter();
-                    t.printStackTrace(new PrintWriter(writer));
-                    return writer.toString();
-                }
-            }, false, false);
+            callTarget.onCompilationFailed(() -> CompilableTruffleAST.serializeException(t), false, false);
         }
     }
 

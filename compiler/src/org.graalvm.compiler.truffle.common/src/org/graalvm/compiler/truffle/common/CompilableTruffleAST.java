@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.common;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.function.Supplier;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -48,8 +50,9 @@ public interface CompilableTruffleAST {
     /**
      * Notifies this object that a compilation of the AST it represents failed.
      *
-     * @param reasonAndStackTrace the output of {@link Throwable#printStackTrace()} for the
-     *            exception representing the reason for compilation failure
+     * @param serializedException serializedException a serialized representation of the exception
+     *            representing the reason for compilation failure. See
+     *            {@link #serializeException(Throwable)}.
      * @param bailout specifies whether the failure was a bailout or an error in the compiler. A
      *            bailout means the compiler aborted the compilation based on some of property of
      *            the AST (e.g., too big). A non-bailout means an unexpected error in the compiler
@@ -58,7 +61,7 @@ public interface CompilableTruffleAST {
      *            change if this AST is compiled again. This value is meaningless if
      *            {@code bailout == false}.
      */
-    void onCompilationFailed(Supplier<String> reasonAndStackTrace, boolean bailout, boolean permanentBailout);
+    void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout);
 
     /**
      * Gets a descriptive name for this call target.
@@ -108,4 +111,33 @@ public interface CompilableTruffleAST {
      *         rewritten.
      */
     JavaConstant getNodeRewritingAssumptionConstant();
+
+    /**
+     * Returns {@code e} serialized as a string. The format of the returned string is:
+     *
+     * <pre>
+     *  (class_name ":")+ "\n" stack_trace
+     * </pre>
+     * <p>
+     * where the first {@code class_name} is {@code e.getClass().getName()} and every subsequent
+     * {@code class_name} is the super class of the previous one up to but not including
+     * {@code Throwable}. For example:
+     *
+     * <pre>
+     * "java.lang.NullPointerException:java.lang.RuntimeException:java.lang.Exception:\n" +
+     *                 "java.lang.NullPointerException: compiler error\n\tat MyClass.mash(MyClass.java:9)\n\tat MyClass.main(MyClass.java:6)"
+     * </pre>
+     */
+    static String serializeException(Throwable e) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        Class<?> c = e.getClass();
+        while (c != Throwable.class) {
+            pw.print(c.getName() + ':');
+            c = c.getSuperclass();
+        }
+        pw.print('\n');
+        e.printStackTrace(pw);
+        return sw.toString();
+    }
 }
