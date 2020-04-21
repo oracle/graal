@@ -2711,6 +2711,11 @@ def _parse_cmd_arg(arg_name, env_var_name=None, separator=',', parse_bool=True, 
         value_list = value if isinstance(value, list) else value.split(separator)
         if not value_from_env:
             value_list = expand_env_placeholder(value_list)
+        if parse_bool:
+            for val in value_list:
+                val = _str_to_bool(val)
+                if isinstance(val, bool):
+                    return val
         return value_list
 
 
