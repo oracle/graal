@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.replacements.test;
 
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.options.OptionValues;
@@ -55,6 +59,17 @@ public class StringIndexOfCharConstantBindingTest extends StringIndexOfCharTest 
         // Force recompile if constant binding should be done
         return super.getCode(installedCodeOwner, graph0,
                         /* forceCompile */ true, /* installAsDefault */ false, options);
+    }
+
+    @Override
+    protected void checkHighTierGraph(StructuredGraph graph) {
+        if (this.sourceString.length() < GraalOptions.StringIndexOfLimit.getValue(graph.getOptions()) && this.constantChar < Character.MIN_SUPPLEMENTARY_CODE_POINT) {
+            StartNode start = graph.start();
+            FixedNode next = start.next();
+            assertTrue(next instanceof ReturnNode);
+            ReturnNode returnNode = (ReturnNode) next;
+            assertTrue(returnNode.result().isConstant());
+        }
     }
 
     @Test
