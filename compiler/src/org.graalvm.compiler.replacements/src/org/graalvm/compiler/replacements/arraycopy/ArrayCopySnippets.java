@@ -223,8 +223,15 @@ public abstract class ArrayCopySnippets implements Snippets {
 
                 counters.objectCheckcastDifferentTypeCounter.inc();
                 counters.objectCheckcastDifferentTypeCopiedCounter.add(length);
-
-                System.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length);
+                int copiedElements = CheckcastArrayCopyCallNode.checkcastArraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, superCheckOffset, destElemKlass, false);
+                if (probability(SLOW_PATH_PROBABILITY, copiedElements != 0)) {
+                    /*
+                     * the stub doesn't throw the ArrayStoreException, but returns the number of
+                     * copied elements (xor'd with -1).
+                     */
+                    copiedElements ^= -1;
+                    System.arraycopy(nonNullSrc, srcPos + copiedElements, nonNullDest, destPos + copiedElements, length - copiedElements);
+                }
             }
         }
     }
