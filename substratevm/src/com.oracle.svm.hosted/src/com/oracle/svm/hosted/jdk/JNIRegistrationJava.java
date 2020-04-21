@@ -55,7 +55,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
 
     private static final Consumer<DuringAnalysisAccess> CORESERVICES_LINKER = (duringAnalysisAccess -> {
         FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) duringAnalysisAccess;
-        accessImpl.getNativeLibraries().addLibrary("-framework CoreServices", false);
+        accessImpl.getNativeLibraries().addDynamicNonJniLibrary("-framework CoreServices");
     });
 
     @Override
