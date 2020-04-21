@@ -138,7 +138,7 @@ public class InsightInstrument extends TruffleInstrument {
                     CallTarget target;
                     try {
                         target = env.parse(script, "insight", "agent");
-                    } catch (IOException ex) {
+                    } catch (Exception ex) {
                         throw InsightException.raise(ex);
                     }
                     target.call(insight, agent);
