@@ -229,6 +229,7 @@ public final class CallNode extends Node {
         addChildren();
         assert state == State.Expanded;
         assert ir == null;
+        // TODO: GR-22688 - This could potentially bail out, we shouldn't bailout entirely.
         GraphManager.Entry entry = getCallTree().getGraphManager().pe(truffleAST);
         ir = copyGraphAndUpdateInvokes(entry);
         addIndirectChildren(entry);

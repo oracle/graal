@@ -29,6 +29,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Exclu
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LanguageAgnosticInlining;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalNodeCount;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PrintExpansionHistogram;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
@@ -53,9 +54,11 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -513,12 +516,13 @@ public abstract class PartialEvaluator {
         ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
         InlineInvokePlugin[] inlineInvokePlugins;
         HistogramInlineInvokePlugin histogramPlugin = null;
+        NodeLimitControlPlugin nodeLimitControlPlugin = new NodeLimitControlPlugin(request.options.get(MaximumGraalNodeCount));
         Boolean printTruffleExpansionHistogram = getPolyglotOptionValue(request.options, PrintExpansionHistogram);
         if (printTruffleExpansionHistogram) {
             histogramPlugin = new HistogramInlineInvokePlugin(request.graph);
-            inlineInvokePlugins = new InlineInvokePlugin[]{replacements, inlineInvokePlugin, histogramPlugin};
+            inlineInvokePlugins = new InlineInvokePlugin[]{replacements, nodeLimitControlPlugin, inlineInvokePlugin, histogramPlugin};
         } else {
-            inlineInvokePlugins = new InlineInvokePlugin[]{replacements, inlineInvokePlugin};
+            inlineInvokePlugins = new InlineInvokePlugin[]{replacements, nodeLimitControlPlugin, inlineInvokePlugin};
         }
 
         SourceLanguagePositionProvider sourceLanguagePosition = new TruffleSourceLanguagePositionProvider(request.inliningPlan);
@@ -627,6 +631,25 @@ public abstract class PartialEvaluator {
         @Override
         public String getLanguage() {
             return delegate.getLanguage();
+        }
+    }
+
+    private static final class NodeLimitControlPlugin implements InlineInvokePlugin {
+
+        NodeLimitControlPlugin(int nodeLimit) {
+            this.nodeLimit = nodeLimit;
+        }
+
+        private final int nodeLimit;
+
+        @Override
+        public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+            final StructuredGraph graph = b.getGraph();
+            if (graph.getNodeCount() > nodeLimit) {
+                throw b.bailout("Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Limit: " + nodeLimit);
+            }
+            // continue onto other plugins.
+            return null;
         }
     }
 }
