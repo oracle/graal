@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import java.util.Arrays;
+
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.TypeReader;
 
@@ -251,6 +253,7 @@ public class FrameInfoDecoder {
                 valueInfo.type = valueType;
                 valueInfo.kind = extractKind(flags);
                 valueInfo.isCompressedReference = extractIsCompressedReference(flags);
+                valueInfo.isEliminatedMonitor = extractIsEliminatedMonitor(flags);
             }
             if (valueType.hasData) {
                 long valueInfoData = readBuffer.getSV();
@@ -304,9 +307,23 @@ public class FrameInfoDecoder {
     protected static final int KIND_SHIFT = TYPE_SHIFT + TYPE_BITS;
     protected static final int KIND_MASK_IN_PLACE = ((1 << KIND_BITS) - 1) << KIND_SHIFT;
 
+    /**
+     * Value not used by {@link JavaKind} as a marker for eliminated monitors. The kind of a monitor
+     * is always {@link JavaKind#Object}.
+     */
+    protected static final int IS_ELIMINATED_MONITOR_KIND_VALUE = 15;
+
     protected static final int IS_COMPRESSED_REFERENCE_BITS = 1;
     protected static final int IS_COMPRESSED_REFERENCE_SHIFT = KIND_SHIFT + KIND_BITS;
     protected static final int IS_COMPRESSED_REFERENCE_MASK_IN_PLACE = ((1 << IS_COMPRESSED_REFERENCE_BITS) - 1) << IS_COMPRESSED_REFERENCE_SHIFT;
+
+    protected static final JavaKind[] KIND_VALUES;
+
+    static {
+        KIND_VALUES = Arrays.copyOf(JavaKind.values(), IS_ELIMINATED_MONITOR_KIND_VALUE + 1);
+        assert KIND_VALUES[IS_ELIMINATED_MONITOR_KIND_VALUE] == null;
+        KIND_VALUES[IS_ELIMINATED_MONITOR_KIND_VALUE] = JavaKind.Object;
+    }
 
     /* Allow allocation-free access to ValueType values */
     private static final ValueType[] ValueTypeValues = ValueType.values();
@@ -315,14 +332,15 @@ public class FrameInfoDecoder {
         return ValueTypeValues[(flags & TYPE_MASK_IN_PLACE) >> TYPE_SHIFT];
     }
 
-    /* Allow allocation-free access to JavaKind values */
-    private static final JavaKind[] JavaKindValues = JavaKind.values();
-
     private static JavaKind extractKind(int flags) {
-        return JavaKindValues[(flags & KIND_MASK_IN_PLACE) >> KIND_SHIFT];
+        return KIND_VALUES[(flags & KIND_MASK_IN_PLACE) >> KIND_SHIFT];
     }
 
     private static boolean extractIsCompressedReference(int flags) {
         return (flags & IS_COMPRESSED_REFERENCE_MASK_IN_PLACE) != 0;
+    }
+
+    private static boolean extractIsEliminatedMonitor(int flags) {
+        return ((flags & KIND_MASK_IN_PLACE) >> KIND_SHIFT) == IS_ELIMINATED_MONITOR_KIND_VALUE;
     }
 }

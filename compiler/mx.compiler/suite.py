@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "20.1.0",
+  "version" : "20.2.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -1845,6 +1845,9 @@ suite = {
         "org.graalvm.compiler.truffle.runtime.serviceprovider",
         "org.graalvm.compiler.truffle.jfr",
         "truffle:TRUFFLE_API",
+      ],
+      "requires" : [
+        "java.logging",
       ],
       "uses" : [
         "org.graalvm.compiler.truffle.jfr.EventFactory.Provider"

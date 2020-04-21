@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import java.util.Objects;
-
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
@@ -132,13 +130,13 @@ public final class ArrayUtils {
 
     private static void checkArgs(int length, int fromIndex, int maxIndex, int nValues) {
         if (fromIndex < 0) {
-            throw new IllegalArgumentException("fromIndex must be positive");
+            illegalArgumentException("fromIndex must be positive");
         }
         if (maxIndex > length || maxIndex < fromIndex) {
-            throw new IllegalArgumentException("maxIndex out of range");
+            illegalArgumentException("maxIndex out of range");
         }
         if (nValues == 0) {
-            throw new IllegalArgumentException("no search values provided");
+            illegalArgumentException("no search values provided");
         }
     }
 
@@ -312,13 +310,13 @@ public final class ArrayUtils {
 
     private static void checkArgsIndexOf(int hayStackLength, int fromIndex, int length, int needleLength, int maskLength) {
         if (fromIndex < 0 || length < 0) {
-            throw new IllegalArgumentException("fromIndex and length must be positive");
+            illegalArgumentException("fromIndex and length must be positive");
         }
         if (fromIndex + length > hayStackLength) {
-            throw new IllegalArgumentException("length out of range");
+            illegalArgumentException("length out of range");
         }
         if (needleLength != maskLength) {
-            throw new IllegalArgumentException("mask and needle length must be equal");
+            illegalArgumentException("mask and needle length must be equal");
         }
     }
 
@@ -359,8 +357,8 @@ public final class ArrayUtils {
      * @since 19.3
      */
     public static boolean regionEqualsWithOrMask(byte[] a1, int fromIndex1, byte[] a2, int fromIndex2, int length, byte[] mask) {
-        Objects.requireNonNull(a1);
-        Objects.requireNonNull(a2);
+        requireNonNull(a1);
+        requireNonNull(a2);
         checkArgsRegionEquals(fromIndex1, fromIndex2, length);
         if (regionEqualsOutOfBounds(a1.length, fromIndex1, a2.length, fromIndex2, length)) {
             return false;
@@ -391,8 +389,8 @@ public final class ArrayUtils {
      * @since 19.3
      */
     public static boolean regionEqualsWithOrMask(char[] a1, int fromIndex1, char[] a2, int fromIndex2, int length, char[] mask) {
-        Objects.requireNonNull(a1);
-        Objects.requireNonNull(a2);
+        requireNonNull(a1);
+        requireNonNull(a2);
         checkArgsRegionEquals(fromIndex1, fromIndex2, length);
         if (regionEqualsOutOfBounds(a1.length, fromIndex1, a2.length, fromIndex2, length)) {
             return false;
@@ -424,8 +422,8 @@ public final class ArrayUtils {
      * @since 19.3
      */
     public static boolean regionEqualsWithOrMask(String a1, int fromIndex1, String a2, int fromIndex2, int length, String mask) {
-        Objects.requireNonNull(a1);
-        Objects.requireNonNull(a2);
+        requireNonNull(a1);
+        requireNonNull(a2);
         checkArgsRegionEquals(fromIndex1, fromIndex2, length);
         if (regionEqualsOutOfBounds(a1.length(), fromIndex1, a2.length(), fromIndex2, length)) {
             return false;
@@ -448,17 +446,29 @@ public final class ArrayUtils {
 
     private static void checkArgsRegionEquals(int fromIndex1, int fromIndex2, int length) {
         if (fromIndex1 < 0 || fromIndex2 < 0 || length < 0) {
-            throw new IllegalArgumentException("length, fromIndex1 and fromIndex2 must be positive");
+            illegalArgumentException("length, fromIndex1 and fromIndex2 must be positive");
         }
     }
 
     private static void checkMaskLengthRegionEquals(int length, int maskLength) {
         if (length > maskLength) {
-            throw new IllegalArgumentException("mask length must be greater or equal to length");
+            illegalArgumentException("mask length must be greater or equal to length");
         }
     }
 
     private static boolean regionEqualsOutOfBounds(int a1Length, int fromIndex1, int a2Length, int fromIndex2, int length) {
         return a1Length - fromIndex1 < length || a2Length - fromIndex2 < length;
+    }
+
+    private static void requireNonNull(Object obj) {
+        if (obj == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new NullPointerException();
+        }
+    }
+
+    private static void illegalArgumentException(String msg) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new IllegalArgumentException(msg);
     }
 }

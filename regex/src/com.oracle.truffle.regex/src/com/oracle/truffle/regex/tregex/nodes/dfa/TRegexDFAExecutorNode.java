@@ -161,7 +161,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         CompilerAsserts.compilationConstant(states);
         CompilerAsserts.compilationConstant(states.length);
         if (!validArgs(locals)) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException(String.format("Got illegal args! (fromIndex %d, initialIndex %d, maxIndex %d)",
                             locals.getFromIndex(), locals.getIndex(), locals.getMaxIndex()));
         }

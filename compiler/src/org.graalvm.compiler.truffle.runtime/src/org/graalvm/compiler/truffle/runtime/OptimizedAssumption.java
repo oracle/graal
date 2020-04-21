@@ -32,8 +32,10 @@ import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import java.util.logging.Level;
 
 import jdk.vm.ci.meta.JavaKind.FormatWithToString;
 import org.graalvm.options.OptionValues;
@@ -163,6 +165,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         }
 
         OptionValues engineOptions = null;
+        TruffleLogger logger = null;
         boolean logStackTrace = false;
 
         Entry e = dependencies;
@@ -174,14 +177,17 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                 if (engineOptions == null) {
                     if (callTarget != null) {
                         engineOptions = callTarget.getOptionValues();
+                        logger = callTarget.engine.getLogger();
                     } else {
-                        engineOptions = GraalTVMCI.getEngineData(null).engineOptions;
+                        EngineData engineData = GraalTVMCI.getEngineData(null);
+                        engineOptions = engineData.engineOptions;
+                        logger = engineData.getLogger();
                     }
                 }
 
                 if (TruffleRuntimeOptions.getPolyglotOptionValue(engineOptions, PolyglotCompilerOptions.TraceAssumptions)) {
                     logStackTrace = true;
-                    logInvalidatedDependency(dependency, message);
+                    logInvalidatedDependency(dependency, message, logger);
                 }
             }
             e = e.next;
@@ -192,7 +198,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         isValid = false;
 
         if (logStackTrace) {
-            logStackTrace(engineOptions);
+            logStackTrace(engineOptions, logger);
         }
     }
 
@@ -275,15 +281,15 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         return isValid;
     }
 
-    private void logInvalidatedDependency(OptimizedAssumptionDependency dependency, String message) {
+    private void logInvalidatedDependency(OptimizedAssumptionDependency dependency, String message, TruffleLogger logger) {
         final StringBuilder sb = new StringBuilder("assumption '").append(name).append("' invalidated installed code '").append(dependency);
         if (message != null && !message.isEmpty()) {
             sb.append("' with message '").append(message);
         }
-        GraalTruffleRuntime.getRuntime().log(sb.toString());
+        logger.log(Level.INFO, sb.toString());
     }
 
-    private static void logStackTrace(OptionValues engineOptions) {
+    private static void logStackTrace(OptionValues engineOptions, TruffleLogger logger) {
         final int skip = 1;
         final int limit = TruffleRuntimeOptions.getPolyglotOptionValue(engineOptions, PolyglotCompilerOptions.TraceStackTraceLimit);
         StackTraceElement[] stackTrace = new Throwable().getStackTrace();
@@ -297,6 +303,6 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             strb.append("\n    ...");
         }
 
-        GraalTruffleRuntime.getRuntime().log(strb.toString());
+        logger.log(Level.INFO, strb.toString());
     }
 }

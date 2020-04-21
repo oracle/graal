@@ -117,7 +117,7 @@ public final class CEntryPointCallStubSupport {
         this.nativeLibraries = nativeLibraries;
     }
 
-    NativeLibraries getNativeLibraries() {
+    public NativeLibraries getNativeLibraries() {
         assert nativeLibraries != null;
         return nativeLibraries;
     }

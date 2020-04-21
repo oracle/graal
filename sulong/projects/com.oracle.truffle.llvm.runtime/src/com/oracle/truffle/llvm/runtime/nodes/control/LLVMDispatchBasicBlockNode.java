@@ -50,19 +50,26 @@ import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnreachableNode;
+import com.oracle.truffle.llvm.runtime.types.symbols.LocalVariableDebugInfo;
 
 public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
     private final FrameSlot exceptionValueSlot;
+    private final LocalVariableDebugInfo debugInfo;
 
     @Children private final LLVMBasicBlockNode[] bodyNodes;
 
     @CompilationFinal private final FrameSlot loopSuccessorSlot;
 
-    public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, FrameSlot loopSuccessorSlot) {
+    public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, FrameSlot loopSuccessorSlot, LocalVariableDebugInfo debugInfo) {
         this.exceptionValueSlot = exceptionValueSlot;
         this.bodyNodes = bodyNodes;
         this.loopSuccessorSlot = loopSuccessorSlot;
+        this.debugInfo = debugInfo;
+    }
+
+    public LocalVariableDebugInfo getDebugInfo() {
+        return debugInfo;
     }
 
     /**

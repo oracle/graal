@@ -29,29 +29,44 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue.Builder;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLVMDebugValue.Builder {
+public final class LLVMToDebugDeclaration implements LLVMDebugValue.Builder {
 
-    public abstract LLVMDebugValue executeWithTarget(Object value);
+    private static final LLVMNativeLibrary NATIVE_LIBRARY = LibraryFactory.resolve(LLVMNativeLibrary.class).getUncached();
 
-    @Override
-    public LLVMDebugValue build(Object irValue) {
-        return executeWithTarget(irValue);
+    private static final LLVMToDebugDeclaration INSTANCE = new LLVMToDebugDeclaration();
+
+    public static Builder getInstance() {
+        return INSTANCE;
     }
 
-    @Specialization
-    protected LLVMDebugValue fromPointer(LLVMPointer pointer) {
+    private LLVMToDebugDeclaration() {
+        // singleton
+    }
+
+    @Override
+    public LLVMDebugValue build(Object value) {
+        LLVMPointer pointer;
+        if (LLVMPointer.isInstance(value)) {
+            pointer = LLVMPointer.cast(value);
+        } else {
+            if (!NATIVE_LIBRARY.isPointer(value)) {
+                // @llvm.dbg.declare is supposed to tell us the location of the variable in memory,
+                // there should never be a case where this cannot be resolved to a pointer. If it
+                // happens anyhow this is a safe default.
+                return LLVMDebugValue.UNAVAILABLE;
+            }
+            pointer = NATIVE_LIBRARY.toNativePointer(value);
+        }
         if (LLVMManagedPointer.isInstance(pointer)) {
             final Object target = LLVMManagedPointer.cast(pointer).getObject();
             if (target instanceof LLVMGlobalContainer) {
@@ -76,19 +91,5 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
         } else {
             return new LLDBMemoryValue(LLVMManagedPointer.create(currentValue));
         }
-    }
-
-    @Specialization(limit = "3", guards = "llvmNative.isPointer(address)")
-    protected LLVMDebugValue fromNative(Object address,
-                    @CachedLibrary("address") LLVMNativeLibrary llvmNative) {
-        return fromPointer(llvmNative.toNativePointer(address));
-    }
-
-    @Fallback
-    protected LLVMDebugValue fromGenericObject(@SuppressWarnings("unused") Object object) {
-        // @llvm.dbg.declare is supposed to tell us the location of the variable in memory, there
-        // should never be a case where this cannot be resolved to a pointer. If it happens anyhow
-        // this is a safe default.
-        return LLVMDebugValue.UNAVAILABLE;
     }
 }

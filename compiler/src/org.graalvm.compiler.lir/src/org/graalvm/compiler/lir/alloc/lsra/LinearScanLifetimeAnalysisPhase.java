@@ -399,8 +399,22 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                 if (Assertions.detailedAssertionsEnabled(allocator.getOptions())) {
                     reportFailure(numBlocks);
                 }
+                BitSet bs = allocator.getBlockData(startBlock).liveIn;
+                StringBuilder sb = new StringBuilder();
+                for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i + 1)) {
+                    int variableNumber = allocator.getVariableNumber(i);
+                    if (variableNumber >= 0) {
+                        sb.append("v").append(variableNumber);
+                    } else {
+                        sb.append(allocator.getRegisters().get(i));
+                    }
+                    sb.append(System.lineSeparator());
+                    if (i == Integer.MAX_VALUE) {
+                        break;
+                    }
+                }
                 // bailout if this occurs in product mode.
-                throw new GraalError("liveIn set of first block must be empty: " + allocator.getBlockData(startBlock).liveIn);
+                throw new GraalError("liveIn set of first block must be empty: " + allocator.getBlockData(startBlock).liveIn + " Live operands:" + sb.toString());
             }
         }
     }

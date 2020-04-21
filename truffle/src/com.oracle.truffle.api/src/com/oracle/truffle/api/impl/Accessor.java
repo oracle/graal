@@ -55,7 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -134,6 +134,10 @@ public abstract class Accessor {
 
     protected void onEngineClosed(Object runtimeData) {
         getTVMCI().onEngineClosed(runtimeData);
+    }
+
+    protected OutputStream getConfiguredLogStream() {
+        return getTVMCI().getConfiguredLogStream();
     }
 
     public abstract static class NodeSupport {
@@ -336,7 +340,7 @@ public abstract class Accessor {
 
         public abstract PolyglotException wrapGuestException(String languageId, Throwable exception);
 
-        public abstract <T> T getOrCreateRuntimeData(Object polyglotEngine, Function<OptionValues, T> constructor);
+        public abstract <T> T getOrCreateRuntimeData(Object polyglotEngine, BiFunction<OptionValues, Supplier<TruffleLogger>, T> constructor);
 
         public abstract Set<? extends Class<?>> getProvidedTags(LanguageInfo language);
 
@@ -356,13 +360,17 @@ public abstract class Accessor {
 
         public abstract Object asBoxedGuestValue(Object guestObject, Object polyglotLanguageContext);
 
-        public abstract Handler getLogHandler(Object polyglotEngine);
+        public abstract Object createDefaultLoggerCache();
 
-        public abstract Map<String, Level> getLogLevels(Object polyglotObject);
+        public abstract Handler getLogHandler(Object loggerCache);
+
+        public abstract Map<String, Level> getLogLevels(Object loggerCache);
+
+        public abstract Object getLoggerOwner(Object loggerCache);
 
         public abstract TruffleLogger getLogger(Object polyglotInstrument, String name);
 
-        public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
+        public abstract LogRecord createLogRecord(Object loggerCache, Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
         public abstract Object getCurrentOuterContext();
 
@@ -544,7 +552,7 @@ public abstract class Accessor {
 
         public abstract Object getDefaultLoggers();
 
-        public abstract Object createEngineLoggers(Object polyglotEngine, Map<String, Level> logLevels);
+        public abstract Object createEngineLoggers(Object spi, Map<String, Level> logLevels);
 
         public abstract void closeEngineLoggers(Object loggers);
 

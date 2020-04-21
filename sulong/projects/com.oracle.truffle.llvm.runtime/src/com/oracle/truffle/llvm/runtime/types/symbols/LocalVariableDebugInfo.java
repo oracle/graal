@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
+package com.oracle.truffle.llvm.runtime.types.symbols;
 
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
+import java.util.Map;
 
-@FunctionalInterface
-public interface LLVMDebugBuilder {
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 
-    static LLVMDebugBuilder createDeclaration() {
-        return CommonNodeFactory::createDebugDeclarationBuilder;
-    }
+public interface LocalVariableDebugInfo {
 
-    static LLVMDebugBuilder createValue() {
-        return CommonNodeFactory::createDebugValueBuilder;
-    }
-
-    LLVMDebugValue.Builder createBuilder();
+    /**
+     * Query the debug information available for the position in bitcode described by {@code node},
+     * taking information from the given frame.
+     */
+    Map<LLVMSourceSymbol, Object> getLocalVariables(Frame frame, Node node);
 
 }

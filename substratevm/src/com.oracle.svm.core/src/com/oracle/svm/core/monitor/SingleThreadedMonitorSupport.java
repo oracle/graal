@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.monitor;
 
-import org.graalvm.nativeimage.IsolateThread;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 /**
  * Without support for threads, there is no need for any monitor operations.
@@ -42,8 +42,13 @@ public class SingleThreadedMonitorSupport extends MonitorSupport {
     }
 
     @Override
-    public void lockRematerializedObject(Object obj, IsolateThread lockingThread, int recursionDepth) {
-        /* Synchronization is a no-op in single threaded mode. */
+    public Object prepareRelockObject(Object obj) {
+        return null;
+    }
+
+    @Uninterruptible(reason = "called during deoptimization")
+    @Override
+    public void doRelockObject(Object obj, Object lockData) {
     }
 
     @Override

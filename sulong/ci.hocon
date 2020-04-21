@@ -98,6 +98,7 @@ sulong-gateTest40-darwin: ${sulong-gateTest-darwin} ${sulong-gateTest-default-to
         CLANG_CXX: "clang-4.0 --driver-mode=g++"
         CLANG_NO_OPTNONE: "1"
     }
+    timelimit: "0:45:00"
 }
 
 sulong-gateTestLLVMorg-darwin: ${sulong-gateTest-darwin} {
@@ -105,6 +106,7 @@ sulong-gateTestLLVMorg-darwin: ${sulong-gateTest-darwin} {
     environment: {
         LD_LIBRARY_PATH: "$BUILD_DIR/main/sulong/mxbuild/darwin-amd64/SULONG_LLVM_ORG/lib:$LD_LIBRARY_PATH"
     }
+    timelimit: "0:45:00"
 }
 
 requireGCC: {

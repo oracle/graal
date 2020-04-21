@@ -97,35 +97,33 @@ public final class PerformanceInformationHandler implements Closeable {
                         getPolyglotOptionValue(handler.options, TreatPerformanceWarningsAsErrors).contains(warningKind);
     }
 
-    public static void logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind warningKind, String callTargetName, List<? extends Node> locations, String details,
+    public static void logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind warningKind, CompilableTruffleAST compilable, List<? extends Node> locations, String details,
                     Map<String, Object> properties) {
         PerformanceInformationHandler handler = instance.get();
         handler.addWarning(warningKind);
-        logPerformanceWarningImpl(callTargetName, "perf warn", details, properties);
-        handler.logPerformanceStackTrace(locations);
+        logPerformanceWarningImpl(compilable, "perf warn", details, properties, handler.getPerformanceStackTrace(locations));
     }
 
-    private static void logInliningWarning(String callTargetName, String details, Map<String, Object> properties) {
-        logPerformanceWarningImpl(callTargetName, "inlining warn", details, properties);
+    private static void logInliningWarning(CompilableTruffleAST compilable, String details, Map<String, Object> properties) {
+        logPerformanceWarningImpl(compilable, "inlining warn", details, properties, null);
     }
 
-    private static void logPerformanceInfo(String callTargetName, List<? extends Node> locations, String details, Map<String, Object> properties) {
-        logPerformanceWarningImpl(callTargetName, "perf info", details, properties);
-        instance.get().logPerformanceStackTrace(locations);
+    private static void logPerformanceInfo(CompilableTruffleAST compilable, List<? extends Node> locations, String details, Map<String, Object> properties) {
+        logPerformanceWarningImpl(compilable, "perf info", details, properties, instance.get().getPerformanceStackTrace(locations));
     }
 
-    private static void logPerformanceWarningImpl(String callTargetName, String msg, String details, Map<String, Object> properties) {
+    private static void logPerformanceWarningImpl(CompilableTruffleAST compilable, String event, String details, Map<String, Object> properties, String message) {
         TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
-        runtime.logEvent(0, msg, String.format("%-60s|%s", callTargetName, details), properties);
+        runtime.logEvent(compilable, 0, event, String.format("%-60s|%s", compilable.getName(), details), properties, message);
     }
 
-    private void logPerformanceStackTrace(List<? extends Node> locations) {
+    private String getPerformanceStackTrace(List<? extends Node> locations) {
         if (locations == null || locations.isEmpty()) {
-            return;
+            return null;
         }
         int limit = getPolyglotOptionValue(options, TraceStackTraceLimit); // TODO
         if (limit <= 0) {
-            return;
+            return null;
         }
 
         EconomicMap<String, List<Node>> groupedByStackTrace = EconomicMap.create(Equivalence.DEFAULT);
@@ -148,18 +146,22 @@ public final class PerformanceInformationHandler implements Closeable {
             }
             groupedByStackTrace.get(stackTraceAsString).add(location);
         }
+        StringBuilder builder = new StringBuilder();
         MapCursor<String, List<Node>> entry = groupedByStackTrace.getEntries();
         while (entry.advance()) {
             String stackTrace = entry.getKey();
             List<Node> locationGroup = entry.getValue();
-            TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
+            if (builder.length() > 0) {
+                builder.append(String.format("%n"));
+            }
             if (stackTrace.isEmpty()) {
-                runtime.log(String.format("  No stack trace available for %s.", locationGroup));
+                builder.append(String.format("  No stack trace available for %s.", locationGroup));
             } else {
-                runtime.log(String.format("  Approximated stack trace for %s:", locationGroup));
-                runtime.log(stackTrace);
+                builder.append(String.format("  Approximated stack trace for %s:", locationGroup));
+                builder.append(stackTrace);
             }
         }
+        return builder.toString();
     }
 
     @SuppressWarnings("try")
@@ -173,7 +175,7 @@ public final class PerformanceInformationHandler implements Closeable {
                 }
                 TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
                 if (runtime.getInlineKind(call.targetMethod(), true).allowsInlining()) {
-                    logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL, target.getName(), Arrays.asList(call),
+                    logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL, target, Arrays.asList(call),
                                     String.format("Partial evaluation could not inline the virtual runtime call %s to %s (%s).",
                                                     call.invokeKind(),
                                                     call.targetMethod(),
@@ -202,7 +204,7 @@ public final class PerformanceInformationHandler implements Closeable {
                 ResolvedJavaType type = entry.getKey();
                 String reason = "Partial evaluation could not resolve virtual instanceof to an exact type due to: " +
                                 String.format(type.isInterface() ? "interface type check: %s" : "too deep in class hierarchy: %s", type);
-                logPerformanceInfo(target.getName(), entry.getValue(), reason, Collections.singletonMap("Nodes", entry.getValue()));
+                logPerformanceInfo(target, entry.getValue(), reason, Collections.singletonMap("Nodes", entry.getValue()));
             }
         }
 
@@ -243,20 +245,20 @@ public final class PerformanceInformationHandler implements Closeable {
         return !isPrimarySupertype(type);
     }
 
-    static void reportDecisionIsNull(JavaConstant target, JavaConstant callNode) {
+    static void reportDecisionIsNull(CompilableTruffleAST compilable, JavaConstant callNode) {
         if (TruffleCompilerOptions.getPolyglotOptionValue(instance.get().options, TraceInlining)) {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("callNode", callNode.toValueString());
-            logInliningWarning(target.toValueString(), "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
+            logInliningWarning(compilable, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
         }
     }
 
-    static void reportCallTargetChanged(JavaConstant target, JavaConstant callNode, TruffleInliningPlan.Decision decision) {
+    static void reportCallTargetChanged(CompilableTruffleAST compilable, JavaConstant callNode, TruffleInliningPlan.Decision decision) {
         if (TruffleCompilerOptions.getPolyglotOptionValue(instance.get().options, TraceInlining)) {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("originalTarget", decision.getTargetName());
             properties.put("callNode", callNode.toValueString());
-            logInliningWarning(target.toValueString(), "CallTarget changed during compilation. Call node could not be inlined.", properties);
+            logInliningWarning(compilable, "CallTarget changed during compilation. Call node could not be inlined.", properties);
         }
     }
 }

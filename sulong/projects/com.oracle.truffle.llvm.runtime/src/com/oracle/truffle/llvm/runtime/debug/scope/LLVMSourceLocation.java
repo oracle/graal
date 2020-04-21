@@ -419,6 +419,10 @@ public abstract class LLVMSourceLocation {
         return new LineScope(null, Kind.UNKNOWN, "<unknown>", sourceSection != null ? sourceSection : UNAVAILABLE_SECTION);
     }
 
+    /**
+     * Returns the given location if it's non-null, otherwise a default "unavailable" location. This
+     * is useful, e.g., if a non-null location is required to enable instrumentation.
+     */
     public static LLVMSourceLocation orDefault(LLVMSourceLocation location) {
         return location != null ? location : UNAVAILABLE_LOCATION;
     }

@@ -74,13 +74,14 @@ public @interface HotSpotToSVM {
         InstallTruffleCallBoundaryMethods,
         IsBasicDumpEnabled,
         IsDumpChannelOpen,
-        Log,
         NewCompiler,
         OpenCompilation,
         OpenDebugContext,
         OpenDebugContextScope,
         PendingTransferToInterpreterOffset,
         ReleaseHandle,
-        Shutdown;
+        Shutdown,
+        TtyWriteByte,
+        TtyWriteBytes;
     }
 }

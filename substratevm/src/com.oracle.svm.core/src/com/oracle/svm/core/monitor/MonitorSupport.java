@@ -26,7 +26,8 @@ package com.oracle.svm.core.monitor;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
+
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 /**
  * This interface provides functions related to monitor operations (the Java "synchronized" keyword
@@ -50,12 +51,26 @@ public abstract class MonitorSupport {
     public abstract void monitorExit(Object obj);
 
     /*
-     * Support for objects that are re-materialized during deoptimization and need to be re-locked.
-     * Deoptimization can happen in any thread, so the object must appear as if it had been locked
-     * by the provided locking thread. To safely allow this, the provided object must be a newly
-     * allocated object that has never been part of any locking operation.
+     * Support for objects that are re-locked during deoptimization. This method is called when
+     * preparing the {@link DeoptimizedFrame}. This is done in a VM operation and can therefore run
+     * in any thread. The actual locking therefore should be done in {@link #doRelockObject}.
+     * However, {@link #doRelockObject} is {@link Uninterruptible} and therefore must not allocate.
+     * Any allocation of a lock object must therefore be done early in this method.
+     * 
+     * The object returned by this method is passed as a parameter to {@link #doRelockObject}.
      */
-    public abstract void lockRematerializedObject(Object obj, IsolateThread lockingThread, int recursionDepth);
+    public abstract Object prepareRelockObject(Object obj);
+
+    /*
+     * Support for objects that are re-locked during deoptimization. This method is called just
+     * before returning to the deoptimized frame, i.e., it always runs in the thread that either
+     * already is the owner of the monitor, or must be the owner of the monitor after this method.
+     * 
+     * @param lockData The value returned by a prior call to {@link #prepareRelockObject} for the
+     * object.
+     */
+    @Uninterruptible(reason = "called during deoptimization")
+    public abstract void doRelockObject(Object obj, Object lockData);
 
     /**
      * Implements the semantics of {@link Thread#holdsLock}.

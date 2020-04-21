@@ -40,8 +40,8 @@ public class LLVMOptions {
     @Option(help = "Dump contents of the generated stackmap to the specified file", type = OptionType.Debug)//
     public static final HostedOptionKey<String> DumpLLVMStackMap = new HostedOptionKey<>(null);
 
-    @Option(help = "How many batches per thread should be used for LLVM compilation. 0 means a single batch, -1 means all functions separately", type = OptionType.Debug)//
-    public static final HostedOptionKey<Integer> LLVMBatchesPerThread = new HostedOptionKey<>(1);
+    @Option(help = "Maximum size of batches used for LLVM compilation. 0 means a single batch, 1 means all functions separately", type = OptionType.Debug)//
+    public static final HostedOptionKey<Integer> LLVMMaxFunctionsPerBatch = new HostedOptionKey<>(1000);
 
     @Option(help = "Path to a custom ld binary for LLVM linking")//
     public static final HostedOptionKey<String> CustomLD = new HostedOptionKey<>("");
@@ -52,5 +52,5 @@ public class LLVMOptions {
     @Option(help = "Return special registers from functions in LLVM bitcode. This may decrease performance if the target doesn't support returning multiple values from a function.")//
     public static final HostedOptionKey<Boolean> ReturnSpecialRegs = new HostedOptionKey<>(true);
 
-    public static final List<HostedOptionKey<?>> allOptions = Arrays.asList(IncludeLLVMDebugInfo, DumpLLVMStackMap, LLVMBatchesPerThread, CustomLD, BitcodeOptimizations, ReturnSpecialRegs);
+    public static final List<HostedOptionKey<?>> allOptions = Arrays.asList(IncludeLLVMDebugInfo, DumpLLVMStackMap, LLVMMaxFunctionsPerBatch, CustomLD, BitcodeOptimizations, ReturnSpecialRegs);
 }

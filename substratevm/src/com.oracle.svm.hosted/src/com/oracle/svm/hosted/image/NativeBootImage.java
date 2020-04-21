@@ -394,6 +394,17 @@ public abstract class NativeBootImage extends AbstractBootImage {
         return objectFile.createDefinedSymbol(name, section, position, wordSize, false, true);
     }
 
+    private ObjectFile.Symbol defineRelocationForSymbol(String name, long position) {
+        ObjectFile.Symbol symbol = null;
+        if (objectFile.getSymbolTable().getSymbol(name) == null) {
+            symbol = objectFile.createUndefinedSymbol(name, 0, true);
+        }
+        ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
+        int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + position);
+        baseSectionImpl.markRelocationSite(offsetInSection, wordSize, RelocationKind.DIRECT, name, false, 0L);
+        return symbol;
+    }
+
     /**
      * Create the image sections for code, constants, and the heap.
      */
@@ -458,7 +469,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
             // - The constants go at the beginning of the read-only data section.
             codeCache.writeConstants(writer, roDataBuffer);
             // - Non-heap global data goes at the beginning of the read-write data section.
-            cGlobals.writeData(rwDataBuffer, (offset, symbolName) -> defineDataSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET));
+            cGlobals.writeData(
+                            rwDataBuffer,
+                            (offset, symbolName) -> defineDataSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET),
+                            (offset, symbolName) -> defineRelocationForSymbol(symbolName, offset));
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
 
             /*

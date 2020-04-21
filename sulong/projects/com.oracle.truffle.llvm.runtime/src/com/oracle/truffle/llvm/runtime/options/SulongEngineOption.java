@@ -126,8 +126,14 @@ public final class SulongEngineOption {
 
     @Option(name = "llvm.enableLVI",
             category = OptionCategory.EXPERT,
-            help = "Enable source-level inspection of local variables.")
+            help = "This option is deprecated, local variable inspection is always enabled.",
+            deprecated = true)
     public static final OptionKey<Boolean> ENABLE_LVI = new OptionKey<>(false);
+
+    @Option(name = "llvm.OSR",
+            category = OptionCategory.EXPERT,
+            help = "Enable on-stack-replacement of loops.")
+    public static final OptionKey<Boolean> ENABLE_OSR = new OptionKey<>(true);
 
     public static final String LAZY_PARSING_NAME = "llvm.lazyParsing";
     @Option(name = LAZY_PARSING_NAME,

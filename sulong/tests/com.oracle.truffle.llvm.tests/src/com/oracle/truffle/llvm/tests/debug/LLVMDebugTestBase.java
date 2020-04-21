@@ -118,19 +118,19 @@ public abstract class LLVMDebugTestBase {
 
     protected Source loadOriginalSource() {
         final File file = getSourcePath().resolve(testName).toFile();
-        Assert.assertTrue("Locate Source", file.exists());
+        Assert.assertTrue("Locate Source " + file, file.exists());
         return loadSource(file);
     }
 
     protected Source loadBitcodeSource() {
         final File file = getBitcodePath().resolve(Paths.get(testName + ".dir", configuration)).toFile();
-        Assert.assertTrue("Locate Bitcode", file.exists());
+        Assert.assertTrue("Locate Bitcode " + file, file.exists());
         return loadSource(file);
     }
 
     private Trace readTrace() {
         final Path path = getTracePath().resolve(testName + TRACE_EXT);
-        Assert.assertTrue("Locate Trace", path.toFile().exists());
+        Assert.assertTrue("Locate Trace " + path, path.toFile().exists());
         return Trace.parse(path);
     }
 

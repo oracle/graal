@@ -61,7 +61,9 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getPolyglotOptionValue;
 
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.logging.Level;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EngineModeEnum;
@@ -71,6 +73,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLogger;
 
 /**
  * Class used to store data used by the compiler in the Engine. Enables "global" compiler state per
@@ -78,10 +81,10 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  */
 public final class EngineData {
 
-    static final Function<OptionValues, EngineData> ENGINE_DATA_SUPPLIER = new Function<OptionValues, EngineData>() {
+    static final BiFunction<OptionValues, Supplier<TruffleLogger>, EngineData> ENGINE_DATA_SUPPLIER = new BiFunction<OptionValues, Supplier<TruffleLogger>, EngineData>() {
         @Override
-        public EngineData apply(OptionValues engineOptions) {
-            return new EngineData(engineOptions);
+        public EngineData apply(OptionValues engineOptions, Supplier<TruffleLogger> loggerFactory) {
+            return new EngineData(engineOptions, loggerFactory);
         }
     };
 
@@ -90,8 +93,9 @@ public final class EngineData {
     int splitLimit;
     int splitCount;
     public final long id;
+    private final Supplier<TruffleLogger> loggerFactory;
     @CompilationFinal OptionValues engineOptions;
-    final TruffleSplittingStrategy.SplitStatisticsReporter reporter;
+    final TruffleSplittingStrategy.SplitStatisticsData splittingStatistics;
     @CompilationFinal public StatisticsListener statisticsListener;
 
     /*
@@ -133,12 +137,16 @@ public final class EngineData {
     @CompilationFinal public int firstTierCallAndLoopThreshold;
     @CompilationFinal public int lastTierCallThreshold;
 
-    EngineData(OptionValues options) {
+    // Cached logger
+    private volatile TruffleLogger logger;
+
+    EngineData(OptionValues options, Supplier<TruffleLogger> loggerFactory) {
         this.id = engineCounter.incrementAndGet();
+        this.loggerFactory = loggerFactory;
         loadOptions(options);
 
-        // the reporter requires options to be initialized
-        this.reporter = new TruffleSplittingStrategy.SplitStatisticsReporter(this);
+        // the splittingStatistics requires options to be initialized
+        this.splittingStatistics = new TruffleSplittingStrategy.SplitStatisticsData();
     }
 
     void loadOptions(OptionValues options) {
@@ -203,7 +211,7 @@ public final class EngineData {
 
     private void validateOptions() {
         if (compilationFailureAction == ExceptionAction.Throw && backgroundCompilation) {
-            GraalTruffleRuntime.getRuntime().log("WARNING: The 'Throw' value of the 'engine.CompilationFailureAction' option requires the 'engine.BackgroundCompilation' option to be set to 'false'.");
+            getLogger().log(Level.WARNING, "The 'Throw' value of the 'engine.CompilationFailureAction' option requires the 'engine.BackgroundCompilation' option to be set to 'false'.");
         }
         for (OptionDescriptor descriptor : PolyglotCompilerOptions.getDescriptors()) {
             if (descriptor.isDeprecated() && engineOptions.hasBeenSet(descriptor.getKey())) {
@@ -212,7 +220,7 @@ public final class EngineData {
                 if (deprecationMessage.isEmpty()) {
                     deprecationMessage = "Will be removed with no replacement.";
                 }
-                GraalTruffleRuntime.getRuntime().log(String.format("WARNING: The option '%s' is deprecated.%n%s", optionName, deprecationMessage));
+                getLogger().log(Level.WARNING, String.format("WARNING: The option '%s' is deprecated.%n%s", optionName, deprecationMessage));
             }
         }
     }
@@ -237,6 +245,15 @@ public final class EngineData {
         } else {
             return getPolyglotOptionValue(options, CompilationThreshold);
         }
+    }
+
+    public TruffleLogger getLogger() {
+        TruffleLogger result = logger;
+        if (result == null) {
+            result = loggerFactory.get();
+            logger = result;
+        }
+        return result;
     }
 
 }

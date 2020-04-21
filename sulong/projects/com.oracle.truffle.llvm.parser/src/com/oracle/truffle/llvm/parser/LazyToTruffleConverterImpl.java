@@ -58,6 +58,7 @@ import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisR
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProcessor;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.Kind;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
@@ -65,6 +66,8 @@ import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.nodes.LLVMBitcodeInstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation;
@@ -95,6 +98,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
 public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
@@ -137,9 +141,6 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         NodeFactory nodeFactory = runtime.getNodeFactory();
         OptionValues options = context.getEnv().getOptions();
 
-        // parse the function block
-        parser.parse(diProcessor, source, runtime);
-
         String printASTOption = options.get(SulongEngineOption.PRINT_AST);
         boolean printAST = false;
         if (!printASTOption.isEmpty()) {
@@ -153,6 +154,9 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             }
         }
 
+        // parse the function block
+        parser.parse(diProcessor, source, runtime);
+
         // prepare the phis
         final Map<InstructionBlock, List<Phi>> phis = LLVMPhiManager.getPhis(method);
 
@@ -163,61 +167,68 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(phis, method, runtime.getContext().lifetimeAnalysisStream());
 
         // setup the frameDescriptor
-        final FrameDescriptor frame = StackManager.createFrame(method);
+        FrameDescriptor frame = new FrameDescriptor();
+        LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, frame, getStackSpaceFactory, dataLayout, options.get(SulongEngineOption.LL_DEBUG));
 
-        LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, frame, getStackSpaceFactory, dataLayout);
+        frame.addFrameSlot(LLVMUserException.FRAME_SLOT_ID, null, FrameSlotKind.Object);
+        frame.addFrameSlot(LLVMStack.FRAME_ID, PointerType.VOID, FrameSlotKind.Object);
 
-        HashSet<Integer> notNullable = new HashSet<>();
-        LLVMRuntimeDebugInformation dbgInfoHandler = new LLVMRuntimeDebugInformation(frame, context, notNullable, symbols);
-        dbgInfoHandler.registerStaticDebugSymbols(method);
+        for (FunctionParameter parameter : method.getParameters()) {
+            symbols.findOrAddFrameSlot(frame, parameter);
+        }
+
+        HashSet<Integer> neededForDebug = getDebugValues();
 
         // create blocks and translate instructions
-        boolean initDebugValues = dbgInfoHandler.isEnabled();
-        List<LLVMBasicBlockNode> blockNodes = new ArrayList<>();
+        boolean initDebugValues = true;
+        LLVMRuntimeDebugInformation info = new LLVMRuntimeDebugInformation(method.getBlocks().size());
+        LLVMBasicBlockNode[] blockNodes = new LLVMBasicBlockNode[method.getBlocks().size()];
         for (InstructionBlock block : method.getBlocks()) {
             List<Phi> blockPhis = phis.get(block);
             ArrayList<LLVMLivenessAnalysis.NullerInformation> blockNullerInfos = liveness.getNullableWithinBlock()[block.getBlockIndex()];
-            LLVMBitcodeInstructionVisitor visitor = LLVMBitcodeInstructionVisitor.create(frame, uniquesRegion, blockPhis, method.getParameters().size(), symbols, context, runtime.getLibrary(),
-                            blockNullerInfos, notNullable, dbgInfoHandler, dataLayout, nodeFactory);
+            LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(frame, uniquesRegion, blockPhis, method.getParameters().size(), symbols, context, runtime.getLibrary(),
+                            blockNullerInfos, neededForDebug, dataLayout, nodeFactory);
 
             if (initDebugValues) {
                 for (SourceVariable variable : method.getSourceFunction().getVariables()) {
-                    final LLVMStatementNode initNode = dbgInfoHandler.createInitializer(variable);
-                    if (initNode != null) {
-                        visitor.addStatementUnchecked(initNode);
+                    if (variable.hasFragments()) {
+                        visitor.initializeAggregateLocalVariable(variable);
                     }
                 }
                 initDebugValues = false;
             }
 
             for (int i = 0; i < block.getInstructionCount(); i++) {
-                Instruction instruction = block.getInstruction(i);
                 visitor.setInstructionIndex(i);
-                instruction.accept(visitor);
+                block.getInstruction(i).accept(visitor);
             }
             LLVMStatementNode[] nodes = visitor.finish();
-            blockNodes.add(LLVMBasicBlockNode.createBasicBlockNode(options, nodes, visitor.getControlFlowNode(), block.getBlockIndex(), block.getName()));
+            info.setBlockDebugInfo(block.getBlockIndex(), visitor.getDebugInfo());
+            blockNodes[block.getBlockIndex()] = LLVMBasicBlockNode.createBasicBlockNode(options, nodes, visitor.getControlFlowNode(), block.getBlockIndex(), block.getName());
         }
 
-        for (int j = 0; j < blockNodes.size(); j++) {
+        for (int j = 0; j < blockNodes.length; j++) {
             FrameSlot[] nullableBeforeBlock = getNullableFrameSlots(frame, liveness.getNullableBeforeBlock()[j]);
             FrameSlot[] nullableAfterBlock = getNullableFrameSlots(frame, liveness.getNullableAfterBlock()[j]);
-            blockNodes.get(j).setNullableFrameSlots(nullableBeforeBlock, nullableAfterBlock);
+            blockNodes[j].setNullableFrameSlots(nullableBeforeBlock, nullableAfterBlock);
         }
+        info.setBlocks(blockNodes);
 
         FrameSlot loopSuccessorSlot = null;
-        LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
-        cfg.build();
+        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_OSR)) {
+            LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
+            cfg.build();
 
-        if (cfg.isReducible() && cfg.getCFGLoops().size() > 0) {
-            loopSuccessorSlot = frame.addFrameSlot(LOOP_SUCCESSOR_FRAME_ID, FrameSlotKind.Int);
-            blockNodes = resolveLoops(blockNodes, cfg, frame, loopSuccessorSlot, options);
+            if (cfg.isReducible() && cfg.getCFGLoops().size() > 0) {
+                loopSuccessorSlot = frame.addFrameSlot(LOOP_SUCCESSOR_FRAME_ID, FrameSlotKind.Int);
+                resolveLoops(blockNodes, cfg, frame, loopSuccessorSlot, info, options);
+            }
         }
 
         LLVMSourceLocation location = method.getLexicalScope();
-        LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame(frame).toArray(LLVMStatementNode.NO_STATEMENTS);
+        LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame(frame, symbols).toArray(LLVMStatementNode.NO_STATEMENTS);
         LLVMExpressionNode body = nodeFactory.createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), blockNodes, uniquesRegion.build(), copyArgumentsToFrameArray, location,
-                        frame, loopSuccessorSlot);
+                        frame, loopSuccessorSlot, info);
 
         RootNode rootNode = nodeFactory.createFunctionStartNode(body, frame, method.getName(), method.getSourceName(), method.getParameters().size(), source, location);
         method.onAfterParse();
@@ -230,7 +241,27 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         return Truffle.getRuntime().createCallTarget(rootNode);
     }
 
-    public static void printCompactTree(Node node) {
+    private HashSet<Integer> getDebugValues() {
+        HashSet<Integer> neededForDebug = new HashSet<>();
+        for (InstructionBlock block : method.getBlocks()) {
+            for (Instruction instruction : block.getInstructions()) {
+                SymbolImpl value;
+                if (instruction instanceof DbgValueInstruction) {
+                    value = ((DbgValueInstruction) instruction).getValue();
+                } else if (instruction instanceof DbgDeclareInstruction) {
+                    value = ((DbgDeclareInstruction) instruction).getValue();
+                } else {
+                    continue;
+                }
+                if (value instanceof SSAValue) {
+                    neededForDebug.add(((SSAValue) value).getFrameIdentifier());
+                }
+            }
+        }
+        return neededForDebug;
+    }
+
+    private static void printCompactTree(Node node) {
         printCompactTree(new PrintWriter(System.out), null, node, null, 1);
     }
 
@@ -283,23 +314,24 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         p.flush();
     }
 
-    private List<LLVMBasicBlockNode> resolveLoops(List<LLVMBasicBlockNode> nodes, LLVMControlFlowGraph cfg, FrameDescriptor frame, FrameSlot loopSuccessorSlot, OptionValues options) {
-        List<LLVMBasicBlockNode> resolvedNodes = new ArrayList<>(nodes);
+    private void resolveLoops(LLVMBasicBlockNode[] nodes, LLVMControlFlowGraph cfg, FrameDescriptor frame, FrameSlot loopSuccessorSlot, LLVMRuntimeDebugInformation info, OptionValues options) {
         // The original array is needed to access the frame nuller information for outgoing control
         // flow egdes
-        LLVMBasicBlockNode[] originalBodyNodes = nodes.toArray(new LLVMBasicBlockNode[0]);
+        LLVMBasicBlockNode[] originalBodyNodes = nodes.clone();
+        info.setBlocks(originalBodyNodes);
         for (CFGLoop loop : cfg.getCFGLoops()) {
             int headerId = loop.getHeader().id;
-            int[] indexMapping = new int[resolvedNodes.size()];
+            int[] indexMapping = new int[nodes.length];
             Arrays.fill(indexMapping, -1);
             List<LLVMStatementNode> bodyNodes = new ArrayList<>();
             // add header to body nodes
-            bodyNodes.add(resolvedNodes.get(headerId));
+            LLVMBasicBlockNode header = nodes[headerId];
+            bodyNodes.add(header);
             indexMapping[headerId] = 0;
             // add body nodes
             int i = 1;
             for (CFGBlock block : loop.getBody()) {
-                bodyNodes.add(resolvedNodes.get(block.id));
+                bodyNodes.add(nodes[block.id]);
                 indexMapping[block.id] = i++;
             }
             int[] loopSuccessors = loop.getSuccessorIDs();
@@ -307,13 +339,13 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                             originalBodyNodes, headerId, indexMapping, loopSuccessors, loopSuccessorSlot);
             LLVMControlFlowNode loopNode = runtime.getNodeFactory().createLoop(loopBody, loopSuccessors);
             // replace header block with loop node
-            resolvedNodes.set(headerId, LLVMBasicBlockNode.createBasicBlockNode(options, new LLVMStatementNode[0], loopNode, headerId, "loopAt" + headerId));
+            nodes[headerId] = LLVMBasicBlockNode.createBasicBlockNode(options, new LLVMStatementNode[0], loopNode, headerId, "loopAt" + headerId);
+            nodes[headerId].setNullableFrameSlots(header.nullableBefore, header.nullableAfter);
             // remove inner loops to reduce number of nodes
             for (CFGLoop innerLoop : loop.getInnerLoops()) {
-                resolvedNodes.set(innerLoop.getHeader().id, null);
+                nodes[innerLoop.getHeader().id] = null;
             }
         }
-        return resolvedNodes;
     }
 
     @Override
@@ -440,7 +472,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
      * Copies arguments to the current frame, handling normal "primitives" and byval pointers (e.g.
      * for structs).
      */
-    private List<LLVMStatementNode> copyArgumentsToFrame(FrameDescriptor frame) {
+    private List<LLVMStatementNode> copyArgumentsToFrame(FrameDescriptor frame, LLVMSymbolReadResolver symbols) {
         NodeFactory nodeFactory = runtime.getNodeFactory();
         List<FunctionParameter> parameters = method.getParameters();
         List<LLVMStatementNode> formalParamInits = new ArrayList<>();
@@ -454,7 +486,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         }
 
         for (FunctionParameter parameter : parameters) {
-            FrameSlot slot = LLVMSymbolReadResolver.findOrAddFrameSlot(frame, parameter);
+            FrameSlot slot = symbols.findOrAddFrameSlot(frame, parameter);
 
             if (parameter.getType() instanceof PointerType && functionParameterHasByValueAttribute(parameter)) {
                 // It's a struct passed as a pointer but originally passed by value (because LLVM

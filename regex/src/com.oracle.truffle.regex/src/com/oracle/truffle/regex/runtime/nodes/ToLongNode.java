@@ -69,7 +69,7 @@ public abstract class ToLongNode extends Node {
         try {
             return args.asLong(arg);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnsupportedTypeException.create(new Object[]{arg});
         }
     }
