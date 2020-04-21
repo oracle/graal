@@ -130,6 +130,11 @@ public final class SulongEngineOption {
             deprecated = true)
     public static final OptionKey<Boolean> ENABLE_LVI = new OptionKey<>(false);
 
+    @Option(name = "llvm.OSR",
+            category = OptionCategory.EXPERT,
+            help = "Enable on-stack-replacement of loops.")
+    public static final OptionKey<Boolean> ENABLE_OSR = new OptionKey<>(true);
+
     public static final String LAZY_PARSING_NAME = "llvm.lazyParsing";
     @Option(name = LAZY_PARSING_NAME,
             category = OptionCategory.EXPERT,

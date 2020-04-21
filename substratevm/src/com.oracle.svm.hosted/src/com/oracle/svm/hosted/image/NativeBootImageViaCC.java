@@ -40,7 +40,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
@@ -49,7 +48,6 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -123,9 +121,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
-
-            LibCBase currentLibc = ImageSingletons.lookup(LibCBase.class);
-            additionalPreOptions.addAll(currentLibc.getLinkerPreOptions());
         }
 
         @Override
