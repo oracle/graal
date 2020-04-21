@@ -33,14 +33,14 @@ import java.util.PriorityQueue;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
-final class DefaultPolicy implements InliningPolicy {
+final class DefaultInliningPolicy implements InliningPolicy {
 
     private static final int MAX_DEPTH = 15;
     private static final Comparator<CallNode> CALL_NODE_COMPARATOR = (o1, o2) -> Double.compare(o2.getRootRelativeFrequency(), o1.getRootRelativeFrequency());
     private final OptionValues options;
     private int expandedCount;
 
-    DefaultPolicy(OptionValues options) {
+    DefaultInliningPolicy(OptionValues options) {
         this.options = options;
     }
 
