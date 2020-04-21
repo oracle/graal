@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.string.AbstractString;
 import com.oracle.truffle.regex.tregex.string.StringUTF16;
 
 public abstract class InputStartsWithNode extends Node {
@@ -54,10 +53,10 @@ public abstract class InputStartsWithNode extends Node {
         return InputStartsWithNodeGen.create();
     }
 
-    public abstract boolean execute(Object input, AbstractString prefix, AbstractString mask);
+    public abstract boolean execute(Object input, Object prefix, Object mask);
 
     @Specialization(guards = "mask == null")
-    public boolean startsWith(String input, StringUTF16 prefix, @SuppressWarnings("unused") AbstractString mask) {
+    public boolean startsWith(String input, StringUTF16 prefix, @SuppressWarnings("unused") Object mask) {
         return input.startsWith(prefix.toString());
     }
 
@@ -67,7 +66,7 @@ public abstract class InputStartsWithNode extends Node {
     }
 
     @Specialization(guards = "mask == null")
-    public boolean startsWithTruffleObjNoMask(TruffleObject input, StringUTF16 prefix, @SuppressWarnings("unused") AbstractString mask,
+    public boolean startsWithTruffleObjNoMask(TruffleObject input, StringUTF16 prefix, @SuppressWarnings("unused") Object mask,
                     @Cached("create()") InputLengthNode lengthNode,
                     @Cached("create()") InputReadNode charAtNode) {
         return startsWithTruffleObj(input, prefix, null, lengthNode, charAtNode);

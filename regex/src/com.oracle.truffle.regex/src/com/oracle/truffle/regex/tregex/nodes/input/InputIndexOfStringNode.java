@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexRootNode;
-import com.oracle.truffle.regex.tregex.string.AbstractString;
 import com.oracle.truffle.regex.tregex.string.StringUTF16;
 
 public abstract class InputIndexOfStringNode extends Node {
@@ -56,10 +55,10 @@ public abstract class InputIndexOfStringNode extends Node {
         return InputIndexOfStringNodeGen.create();
     }
 
-    public abstract int execute(Object input, int fromIndex, int maxIndex, AbstractString match, AbstractString mask);
+    public abstract int execute(Object input, int fromIndex, int maxIndex, Object match, Object mask);
 
     @Specialization(guards = "mask == null")
-    public int doString(String input, int fromIndex, int maxIndex, StringUTF16 match, @SuppressWarnings("unused") AbstractString mask) {
+    public int doString(String input, int fromIndex, int maxIndex, StringUTF16 match, @SuppressWarnings("unused") Object mask) {
         int result = input.indexOf(match.toString(), fromIndex);
         return result >= maxIndex ? -1 : result;
     }
@@ -70,7 +69,7 @@ public abstract class InputIndexOfStringNode extends Node {
     }
 
     @Specialization
-    public int doTruffleObject(TruffleObject input, int fromIndex, int maxIndex, StringUTF16 match, StringUTF16 mask,
+    public int doTruffleObject(TruffleObject input, int fromIndex, int maxIndex, StringUTF16 match, Object mask,
                     @Cached("create()") InputLengthNode lengthNode,
                     @Cached("create()") InputRegionMatchesNode regionMatchesNode) {
         if (maxIndex > lengthNode.execute(input)) {

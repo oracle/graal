@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.string.AbstractString;
 import com.oracle.truffle.regex.tregex.string.StringUTF16;
 
 public abstract class InputEndsWithNode extends Node {
@@ -54,10 +53,10 @@ public abstract class InputEndsWithNode extends Node {
         return InputEndsWithNodeGen.create();
     }
 
-    public abstract boolean execute(Object input, AbstractString suffix, AbstractString mask);
+    public abstract boolean execute(Object input, Object suffix, Object mask);
 
     @Specialization(guards = "mask == null")
-    public boolean endsWith(String input, StringUTF16 suffix, @SuppressWarnings("unused") AbstractString mask) {
+    public boolean endsWith(String input, StringUTF16 suffix, @SuppressWarnings("unused") Object mask) {
         return input.endsWith(suffix.toString());
     }
 
@@ -67,7 +66,7 @@ public abstract class InputEndsWithNode extends Node {
     }
 
     @Specialization(guards = "mask == null")
-    public boolean endsWithTruffleObjNoMask(TruffleObject input, StringUTF16 suffix, @SuppressWarnings("unused") AbstractString mask,
+    public boolean endsWithTruffleObjNoMask(TruffleObject input, StringUTF16 suffix, @SuppressWarnings("unused") Object mask,
                     @Cached("create()") InputLengthNode lengthNode,
                     @Cached("create()") InputReadNode charAtNode) {
         return endsWithTruffleObj(input, suffix, null, lengthNode, charAtNode);

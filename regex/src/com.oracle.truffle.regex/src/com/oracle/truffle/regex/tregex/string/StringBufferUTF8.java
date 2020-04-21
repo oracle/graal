@@ -93,7 +93,7 @@ public final class StringBufferUTF8 extends ByteArrayBuffer implements AbstractS
             return;
         }
         int c1 = cp1;
-        int c2 = cp1;
+        int c2 = cp2;
         // Checkstyle: stop
         switch (n) {
             case 4:
@@ -126,7 +126,7 @@ public final class StringBufferUTF8 extends ByteArrayBuffer implements AbstractS
             return;
         }
         int c1 = cp1;
-        int c2 = cp1;
+        int c2 = cp2;
         // Checkstyle: stop
         switch (n) {
             case 4:

@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.string.AbstractString;
 import com.oracle.truffle.regex.tregex.string.StringUTF16;
 
 public abstract class InputEqualsNode extends Node {
@@ -54,10 +53,10 @@ public abstract class InputEqualsNode extends Node {
         return InputEqualsNodeGen.create();
     }
 
-    public abstract boolean execute(Object input, AbstractString string, AbstractString mask);
+    public abstract boolean execute(Object input, Object string, Object mask);
 
     @Specialization(guards = "mask == null")
-    public boolean execEquals(String input, StringUTF16 string, @SuppressWarnings("unused") AbstractString mask) {
+    public boolean execEquals(String input, StringUTF16 string, @SuppressWarnings("unused") Object mask) {
         return input.equals(string.toString());
     }
 
@@ -67,7 +66,7 @@ public abstract class InputEqualsNode extends Node {
     }
 
     @Specialization(guards = "mask == null")
-    public boolean equalsTruffleObjNoMask(TruffleObject input, StringUTF16 string, @SuppressWarnings("unused") AbstractString mask,
+    public boolean equalsTruffleObjNoMask(TruffleObject input, StringUTF16 string, @SuppressWarnings("unused") Object mask,
                     @Cached("create()") InputLengthNode lengthNode,
                     @Cached("create()") InputReadNode charAtNode) {
         return equalsTruffleObj(input, string, null, lengthNode, charAtNode);
