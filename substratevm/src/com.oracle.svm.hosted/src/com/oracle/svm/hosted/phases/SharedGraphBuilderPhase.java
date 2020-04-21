@@ -69,6 +69,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         this.wordTypes = wordTypes;
     }
 
+    @Override
+    protected void run(StructuredGraph graph) {
+        super.run(graph);
+        assert wordTypes == null || wordTypes.ensureGraphContainsNoWordTypeReferences(graph);
+    }
+
     public abstract static class SharedBytecodeParser extends BytecodeParser {
 
         private final boolean explicitExceptionEdges;

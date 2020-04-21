@@ -237,14 +237,14 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
     private static void fillArgsArray(HostedGraphKit graphKit, ValueNode argumentArray, int receiverOffset, ValueNode[] args, Class<?>[] argTypes) {
         for (int i = 0; i < argTypes.length; i++) {
-            JavaKind argKind = JavaKind.fromJavaClass(argTypes[i]);
-
             ValueNode arg = graphKit.createLoadIndexed(argumentArray, i, JavaKind.Object);
+            ResolvedJavaType argType = graphKit.getMetaAccess().lookupJavaType(argTypes[i]);
+            JavaKind argKind = graphKit.asKind(argType);
             if (argKind.isPrimitive()) {
                 arg = createCheckcast(graphKit, arg, graphKit.getMetaAccess().lookupJavaType(argKind.toBoxedJavaClass()), true);
                 arg = graphKit.createUnboxing(arg, argKind, graphKit.getMetaAccess());
             } else {
-                arg = createCheckcast(graphKit, arg, graphKit.getMetaAccess().lookupJavaType(argTypes[i]), false);
+                arg = createCheckcast(graphKit, arg, argType, false);
             }
 
             args[i + receiverOffset] = arg;
@@ -386,7 +386,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             if (isDeletedField(targetField)) {
                 handleDeletedField(graphKit, providers, targetField, kind);
 
-            } else if (canImplicitCast(targetField.getJavaKind(), kind)) {
+            } else if (canImplicitCast(graphKit.asKind(targetField.getType()), kind)) {
 
                 ValueNode receiver;
                 if (targetField.isStatic()) {
@@ -398,12 +398,12 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
                 }
 
                 ValueNode ret = graphKit.append(LoadFieldNode.create(graphKit.getAssumptions(), receiver, targetField));
-                ret = doImplicitCast(graphKit, targetField.getJavaKind(), kind, ret);
+                ret = doImplicitCast(graphKit, graphKit.asKind(targetField.getType()), kind, ret);
 
                 graphKit.createReturn(ret, kind);
 
             } else {
-                throwIllegalArgumentException(graphKit, "cannot read field of type " + targetField.getJavaKind() + " with " + method.getName());
+                throwIllegalArgumentException(graphKit, "cannot read field of type " + graphKit.asKind(targetField.getType()) + " with " + method.getName());
             }
 
             return graphKit.finalizeGraph();
@@ -426,7 +426,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             HostedGraphKit graphKit = new HostedGraphKit(ctx, providers, method);
             ResolvedJavaField targetField = providers.getMetaAccess().lookupJavaField(field);
 
-            JavaKind fieldKind = targetField.getJavaKind();
+            JavaKind fieldKind = graphKit.asKind(targetField.getType());
             if (isDeletedField(targetField)) {
                 handleDeletedField(graphKit, providers, targetField, JavaKind.Void);
 

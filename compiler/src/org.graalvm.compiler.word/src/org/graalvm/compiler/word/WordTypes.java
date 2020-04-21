@@ -26,8 +26,12 @@ package org.graalvm.compiler.word;
 
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 
+import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.word.Word.Operation;
@@ -163,4 +167,30 @@ public class WordTypes {
     public ResolvedJavaType getWordImplType() {
         return wordImplType;
     }
+
+    /**
+     * Verify that the given graph does not reference word types in their object representation. We
+     * cannot only check the stamps of the nodes but also stamp field of nodes as those can cause
+     * optimizations to create wrong code later on (for example a pi stamp of instanceof stamp).
+     */
+    public boolean ensureGraphContainsNoWordTypeReferences(StructuredGraph graph) {
+        for (Node n : graph.getNodes()) {
+            if (n instanceof ValueNode) {
+                assert !isWord((ValueNode) n) : "Node " + n + " is a word type and not rewritten after graph building, this is invalid.";
+                Fields f = n.getNodeClass().getData();
+                for (int i = 0; i < f.getCount(); i++) {
+                    Object fieldValue = f.get(n, i);
+                    if (fieldValue instanceof AbstractObjectStamp) {
+                        AbstractObjectStamp os = (AbstractObjectStamp) fieldValue;
+                        assert !isWord(os.type()) : "Stamp Field " + f.getName(i) + " of node " + n + " is a word type and not rewritten after graph building, this is invalid";
+                    } else if (fieldValue instanceof ResolvedJavaType) {
+                        ResolvedJavaType type = (ResolvedJavaType) fieldValue;
+                        assert !isWord(type) : "ResolvedJavaType Field " + f.getName(i) + " of node " + n + " is a word type and not rewritten after graph building, this is invalid";
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
 }
