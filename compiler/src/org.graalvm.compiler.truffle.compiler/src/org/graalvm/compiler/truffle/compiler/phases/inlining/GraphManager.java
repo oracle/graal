@@ -84,7 +84,6 @@ final class GraphManager {
 
     EconomicMap<TruffleCallNode, Invoke> peRoot() {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
-        rootRequest.graph.getAssumptions().record(new TruffleAssumption(rootRequest.compilable.getNodeRewritingAssumptionConstant()));
         partialEvaluator.doGraphPE(rootRequest, plugin, graphCacheForInlining);
         return plugin.getTruffleCallNodeToInvoke();
     }
