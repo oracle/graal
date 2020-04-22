@@ -78,7 +78,7 @@ public abstract class SourceCache {
         initSrcRoots();
     }
 
-    /** Add dirs or jars found in the classpath */
+    /** Add dirs or jars found in the classpath. */
     protected void initSrcRoots() {
         for (Path classPathEntry : classPathEntries) {
             trySourceRoot(classPathEntry, true);
