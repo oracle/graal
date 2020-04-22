@@ -181,6 +181,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
 // Skip benchmakrs that fail in jvm mode due to dlmopen limitations.
 local scala_dacapo = 'scala-dacapo:*[scalac,kiama]';
+local awfy = 'awfy:*';
 
 {
   builds: [
@@ -211,7 +212,10 @@ local scala_dacapo = 'scala-dacapo:*[scalac,kiama]';
 
     // Benchmarks
     jdk8_daily_bench_linux        + espresso_benchmark('jvm-ce', scala_dacapo)                            + {name: 'espresso-bench-jvm-ce-scala-dacapo-jdk8-linux-amd64'},
-    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ee', scala_dacapo)                            + {name: 'espresso-bench-jvm-ee-scala-dacapo-jdk8-linux-amd64'}
+    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ee', scala_dacapo)                            + {name: 'espresso-bench-jvm-ee-scala-dacapo-jdk8-linux-amd64'},
+    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
+    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ee', awfy)                                    + {name: 'espresso-bench-jvm-ee-awfy-jdk8-linux-amd64'}
+
 
     // Compilation on SVM is broken GR-22475
     // jdk8_daily_bench_linux        + espresso_benchmark('native-ce', scala_dacapo)                         + {name: 'espresso-bench-native-ce-scala-dacapo-jdk8-linux-amd64'},
