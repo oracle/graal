@@ -36,7 +36,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Function;
-import java.util.function.ToLongFunction;
 
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.ElementImpl;
@@ -170,16 +169,7 @@ public class ELFRelocationSection extends ELFSection {
     private final boolean withExplicitAddends;
     private final ELFSection relocated;
     private final ELFSymtab syms;
-    /*
-     * The anonymous class is used here instead of lambda due to the issue
-     * https://github.com/oracle/graal/issues/2356
-     */
-    private final Map<Entry, Entry> entries = new TreeMap<>(Comparator.comparingLong(new ToLongFunction<Entry>() {
-        @Override
-        public long applyAsLong(Entry entry) {
-            return entry.getOffset();
-        }
-    }));
+    private final Map<Entry, Entry> entries = new TreeMap<>(Comparator.comparingLong(Entry::getOffset));
 
     ELFRelocationSection(ELFObjectFile owner, String name, ELFSection relocated, ELFSymtab syms, boolean withExplicitAddends) {
         owner.super(name, owner.getWordSizeInBytes(), withExplicitAddends ? SectionType.RELA : SectionType.REL, EnumSet.noneOf(ELFSectionFlag.class), -1);
