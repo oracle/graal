@@ -900,6 +900,32 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
+    public void replaceAtUsages(Node other, InputType... inputTypes) {
+        checkReplaceWith(other);
+        int i = 0;
+        int usageCount = this.getUsageCount();
+        if (usageCount == 0) {
+            return;
+        }
+        usages: while (i < usageCount) {
+            Node usage = this.getUsageAt(i);
+            for (Position pos : usage.inputPositions()) {
+                for (InputType type : inputTypes) {
+                    if (pos.getInputType() == type && pos.get(usage) == this) {
+                        replaceAtUsagePos(other, usage, pos);
+                        this.movUsageFromEndTo(i);
+                        usageCount--;
+                        continue usages;
+                    }
+                }
+            }
+            i++;
+        }
+        if (hasNoUsages()) {
+            maybeNotifyZeroUsages(this);
+        }
+    }
+
     private void maybeNotifyInputChanged(Node node) {
         if (graph != null) {
             assert !graph.isFrozen();
