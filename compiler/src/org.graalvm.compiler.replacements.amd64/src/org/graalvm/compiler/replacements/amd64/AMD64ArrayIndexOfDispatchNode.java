@@ -178,44 +178,43 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
 
             if (searchValues.size() == 1 && searchValues.get(0).isConstant()) {
                 int ch = searchValues.get(0).asJavaConstant().asInt();
-                if (ch < Character.MIN_SUPPLEMENTARY_CODE_POINT) {
-                    if (arrayKind == JavaKind.Byte) {
-                        // Java 9+
-                        if (valueKind == JavaKind.Byte && length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions())) {
-                            for (int i = fromIndexConstant; i < length; i++) {
-                                if ((provider.readArrayElement(arrayConstant, i).asInt() & 0xFF) == ch) {
-                                    return ConstantNode.forInt(i);
-                                }
-                            }
-                            return ConstantNode.forInt(-1);
-                        } else if (length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions()) * 2) {
-                            assert valueKind == JavaKind.Char;
-                            length >>= 1;
-                            for (int i = fromIndexConstant; i < length; i++) {
-                                byte b0 = (byte) (provider.readArrayElement(arrayConstant, i * 2).asInt() & 0xFF);
-                                byte b1 = (byte) (provider.readArrayElement(arrayConstant, i * 2 + 1).asInt() & 0xFF);
-                                char c;
-                                if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
-                                    c = (char) (b0 << 8 | b1);
-                                } else {
-                                    c = (char) (b0 | b1 << 8);
-                                }
-                                if (c == ch) {
-                                    return ConstantNode.forInt(i);
-                                }
-                            }
-                            return ConstantNode.forInt(-1);
-                        }
-                    } else if (arrayKind == JavaKind.Char && length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions())) {
-                        // Java 8
-                        assert valueKind == JavaKind.Char;
+                assert ch < Character.MIN_SUPPLEMENTARY_CODE_POINT;
+                if (arrayKind == JavaKind.Byte) {
+                    // Java 9+
+                    if (valueKind == JavaKind.Byte && length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions())) {
                         for (int i = fromIndexConstant; i < length; i++) {
-                            if ((provider.readArrayElement(arrayConstant, i).asInt() & 0xFFFF) == ch) {
+                            if ((provider.readArrayElement(arrayConstant, i).asInt() & 0xFF) == ch) {
+                                return ConstantNode.forInt(i);
+                            }
+                        }
+                        return ConstantNode.forInt(-1);
+                    } else if (length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions()) * 2) {
+                        assert valueKind == JavaKind.Char;
+                        length >>= 1;
+                        for (int i = fromIndexConstant; i < length; i++) {
+                            int b0 = provider.readArrayElement(arrayConstant, i * 2).asInt() & 0xFF;
+                            int b1 = provider.readArrayElement(arrayConstant, i * 2 + 1).asInt() & 0xFF;
+                            char c;
+                            if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+                                c = (char) ((b0 << 8) | b1);
+                            } else {
+                                c = (char) (b0 | (b1 << 8));
+                            }
+                            if (c == ch) {
                                 return ConstantNode.forInt(i);
                             }
                         }
                         return ConstantNode.forInt(-1);
                     }
+                } else if (arrayKind == JavaKind.Char && length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions())) {
+                    // Java 8
+                    assert valueKind == JavaKind.Char;
+                    for (int i = fromIndexConstant; i < length; i++) {
+                        if ((provider.readArrayElement(arrayConstant, i).asInt() & 0xFFFF) == ch) {
+                            return ConstantNode.forInt(i);
+                        }
+                    }
+                    return ConstantNode.forInt(-1);
                 }
             }
         }
