@@ -64,10 +64,6 @@ public final class LLVMParserRuntime {
         return fileScope;
     }
 
-    public LLVMScope getGlobalScope() {
-        return context.getGlobalScope();
-    }
-
     public NodeFactory getNodeFactory() {
         return nodeFactory;
     }
