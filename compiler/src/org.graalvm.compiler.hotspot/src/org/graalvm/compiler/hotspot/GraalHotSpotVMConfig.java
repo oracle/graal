@@ -633,6 +633,26 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         }
     }
 
+    public final int shenandoahSATBQueueMarkingOffset;
+    public final int shenandoahSATBQueueIndexOffset;
+    public final int shenandoahSATBQueueBufferOffset;
+    {
+        if (JDK <= 8) {
+            int satbMarkQueueBufferOffset = getFieldOffset("PtrQueue::_buf", Integer.class, "void**");
+            int satbMarkQueueIndexOffset = getFieldOffset("PtrQueue::_index", Integer.class, "size_t");
+            int satbMarkQueueActiveOffset = getFieldOffset("PtrQueue::_active", Integer.class, "bool");
+            int javaThreadSatbMarkQueueOffset = getFieldOffset("JavaThread::_satb_mark_queue", Integer.class);
+
+            shenandoahSATBQueueMarkingOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueActiveOffset;
+            shenandoahSATBQueueIndexOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueIndexOffset;
+            shenandoahSATBQueueBufferOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueBufferOffset;
+        } else {
+            shenandoahSATBQueueMarkingOffset = getConstant("ShenandoahThreadLocalData::satb_mark_queue_active_offset", Integer.class);
+            shenandoahSATBQueueIndexOffset = getConstant("ShenandoahThreadLocalData::satb_mark_queue_index_offset", Integer.class);
+            shenandoahSATBQueueBufferOffset = getConstant("ShenandoahThreadLocalData::satb_mark_queue_buffer_offset", Integer.class);
+         }
+    }
+
     public final int klassOffset = getFieldValue("java_lang_Class::_klass_offset", Integer.class, "int");
     public final int arrayKlassOffset = getFieldValue("java_lang_Class::_array_klass_offset", Integer.class, "int");
 
@@ -834,6 +854,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long writeBarrierPreAddress = getAddress("JVMCIRuntime::write_barrier_pre");
     public final long writeBarrierPostAddress = getAddress("JVMCIRuntime::write_barrier_post");
     public final long validateObject = getAddress("JVMCIRuntime::validate_object");
+
+    public final long shenandoahConcmarkBarrierAddress = getAddress("JVMCIRuntime::shenandoah_concmark_barrier");
 
     public final long testDeoptimizeCallInt = getAddress("JVMCIRuntime::test_deoptimize_call_int");
 

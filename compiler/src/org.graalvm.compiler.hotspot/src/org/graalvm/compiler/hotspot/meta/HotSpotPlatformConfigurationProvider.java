@@ -64,8 +64,8 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
     private BarrierSet createBarrierSet(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         boolean useDeferredInitBarriers = config.useDeferredInitBarriers;
         ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
+        ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
         if (config.useG1GC) {
-            ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
             return new G1BarrierSet(objectArrayType, referentField) {
                 @Override
                 protected boolean writeRequiresPostBarrier(FixedAccessNode node, ValueNode writtenValue) {
@@ -76,7 +76,7 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
                 }
             };
         } else if (config.useShenandoahGC) {
-            return new ShenandoahBarrierSet(config);
+            return new ShenandoahBarrierSet(config, objectArrayType, referentField);
         } else {
             return new CardTableBarrierSet(objectArrayType) {
                 @Override
