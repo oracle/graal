@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.heap.AllocationFreeList;
 import com.oracle.svm.core.log.Log;
 
 /**
@@ -86,20 +85,5 @@ public interface HeapVerifier {
             Log.log().string("[HeapVerificationError.throwError:  message: ").string("Heap verification failed").string("]").newline();
             throw SINGLETON;
         }
-    }
-
-    abstract class MemoryChecker extends AllocationFreeList.Element<HeapVerifier.MemoryChecker> {
-
-        /**
-         * Check if a pointer meets some criteria, and do something useful if it does. In the
-         * context of a heap verifier, if this method returns true, verification fails.
-         *
-         * @param ptr The pointer to be checked.
-         * @return true of the pointer was identified, false otherwise.
-         */
-        public abstract boolean check(Pointer ptr);
-
-        /** For tracing. */
-        public abstract String getName();
     }
 }
