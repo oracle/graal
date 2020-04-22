@@ -94,6 +94,7 @@ public @interface SVMToHotSpot {
         GetLineNumber(int.class, TruffleSourceLanguagePosition.class),
         GetLoopExplosionKind(int.class, HotSpotTruffleCompilerRuntime.class, long.class),
         GetNodeRewritingAssumption(long.class, TruffleInliningPlan.Decision.class),
+        GetNodeRewritingAssumptionConstant(long.class, CompilableTruffleAST.class),
         GetNonTrivialNodeCount(int.class, CompilableTruffleAST.class),
         GetOffsetEnd(int.class, TruffleSourceLanguagePosition.class),
         GetOffsetStart(int.class, TruffleSourceLanguagePosition.class),
