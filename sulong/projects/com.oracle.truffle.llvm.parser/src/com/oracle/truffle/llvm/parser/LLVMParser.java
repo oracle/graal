@@ -67,13 +67,12 @@ public final class LLVMParser {
         List<GlobalVariable> definedGlobals = new ArrayList<>();
         List<FunctionSymbol> externalFunctions = new ArrayList<>();
         List<FunctionSymbol> definedFunctions = new ArrayList<>();
-        List<GlobalAlias> aliases = new ArrayList<>();
 
         defineGlobals(module.getGlobalVariables(), definedGlobals, externalGlobals);
         defineFunctions(module, definedFunctions, externalFunctions, targetDataLayout);
-        defineAliases(module.getAliases(), aliases);
+        defineAliases(module.getAliases());
 
-        return new LLVMParserResult(runtime, definedFunctions, externalFunctions, definedGlobals, externalGlobals, aliases, targetDataLayout);
+        return new LLVMParserResult(runtime, definedFunctions, externalFunctions, definedGlobals, externalGlobals, targetDataLayout);
     }
 
     private void defineGlobals(List<GlobalVariable> globals, List<GlobalVariable> definedGlobals, List<GlobalVariable> externalGlobals) {
@@ -103,9 +102,9 @@ public final class LLVMParser {
         }
     }
 
-    private void defineAliases(List<GlobalAlias> aliases, List<GlobalAlias> definedAliases) {
+    private void defineAliases(List<GlobalAlias> aliases) {
         for (GlobalAlias alias : aliases) {
-            defineAlias(alias, definedAliases);
+            defineAlias(alias);
         }
     }
 
@@ -129,18 +128,17 @@ public final class LLVMParser {
         runtime.getFileScope().register(llvmFunction);
     }
 
-    private void defineAlias(GlobalAlias alias, List<GlobalAlias> definedAliases) {
+    private void defineAlias(GlobalAlias alias) {
         LLVMSymbol alreadyRegisteredSymbol = runtime.getFileScope().get(alias.getName());
         if (alreadyRegisteredSymbol != null) {
             // this alias was already registered by a recursive call
             assert alreadyRegisteredSymbol instanceof LLVMAlias;
             return;
         }
-        definedAliases.add(alias);
-        defineAlias(alias.getName(), alias.isExported(), alias.getValue(), definedAliases);
+        defineAlias(alias.getName(), alias.isExported(), alias.getValue());
     }
 
-    private void defineAlias(String aliasName, boolean isAliasExported, SymbolImpl value, List<GlobalAlias> definedAliases) {
+    private void defineAlias(String aliasName, boolean isAliasExported, SymbolImpl value) {
         if (value instanceof FunctionSymbol) {
             FunctionSymbol function = (FunctionSymbol) value;
             defineAlias(function.getName(), aliasName, isAliasExported);
@@ -149,12 +147,12 @@ public final class LLVMParser {
             defineAlias(global.getName(), aliasName, isAliasExported);
         } else if (value instanceof GlobalAlias) {
             GlobalAlias target = (GlobalAlias) value;
-            defineAlias(target, definedAliases);
+            defineAlias(target);
             defineAlias(target.getName(), aliasName, isAliasExported);
         } else if (value instanceof CastConstant) {
             // TODO (chaeubl): this is not perfectly accurate as we are loosing the type cast
             CastConstant cast = (CastConstant) value;
-            defineAlias(aliasName, isAliasExported, cast.getValue(), definedAliases);
+            defineAlias(aliasName, isAliasExported, cast.getValue());
         } else {
             throw new LLVMLinkerException("Unknown alias type: " + value.getClass());
         }

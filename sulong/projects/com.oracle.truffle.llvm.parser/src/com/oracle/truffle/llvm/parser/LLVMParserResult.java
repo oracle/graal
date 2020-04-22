@@ -29,14 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class LLVMParserResult {
 
@@ -45,7 +44,6 @@ public final class LLVMParserResult {
     private final List<FunctionSymbol> externalFunctions;
     private final List<GlobalVariable> definedGlobals;
     private final List<GlobalVariable> externalGlobals;
-    private final List<GlobalAlias> aliases;
     private List<ExternalLibrary> dependencies;
     private final DataLayout dataLayout;
     private final int symbolTableSize;
@@ -55,14 +53,12 @@ public final class LLVMParserResult {
                     List<FunctionSymbol> externalFunctions,
                     List<GlobalVariable> definedGlobals,
                     List<GlobalVariable> externalGlobals,
-                    List<GlobalAlias> aliases,
                     DataLayout dataLayout) {
         this.runtime = runtime;
         this.definedFunctions = definedFunctions;
         this.externalFunctions = externalFunctions;
         this.definedGlobals = definedGlobals;
         this.externalGlobals = externalGlobals;
-        this.aliases = aliases;
         this.dataLayout = dataLayout;
         this.symbolTableSize = definedFunctions.size() + externalFunctions.size() + definedGlobals.size() + externalGlobals.size();
     }
@@ -85,10 +81,6 @@ public final class LLVMParserResult {
 
     public List<GlobalVariable> getExternalGlobals() {
         return externalGlobals;
-    }
-
-    public List<GlobalAlias> getAliases() {
-        return aliases;
     }
 
     public List<ExternalLibrary> getDependencies() {
