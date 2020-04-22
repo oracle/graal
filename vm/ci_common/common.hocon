@@ -172,11 +172,11 @@ gate_vm_darwin: ${vm_darwin} {
 }
 
 bench_vm_linux: ${vm_linux} {
-  targets: [bench, post-merge]
+  targets: [bench]
 }
 
 bench_vm_darwin: ${vm_darwin} {
-  targets: [bench, post-merge]
+  targets: [bench]
 }
 
 bench_daily_vm_linux: ${vm_linux} {

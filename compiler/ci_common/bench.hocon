@@ -56,7 +56,7 @@ default-heap: {
 }
 
 bench-dacapo: ${bench-common} ${default-heap} ${dacapo-bench-notifications} {
-  targets : [bench, post-merge]
+  targets : [bench]
   run: [
     ${bench-jvmci.mx-dacapo} ${bench-arguments}
   ]
@@ -72,7 +72,7 @@ bench-dacapo-timing: ${bench-common} ${default-heap} ${dacapo-bench-notification
 # Scala DaCapo-related targets
 
 bench-scala-dacapo: ${bench-common} ${default-heap} ${scala-dacapo-bench-notifications} {
-  targets: [bench, post-merge]
+  targets: [bench]
   run: [
     ${bench-jvmci.mx-scala-dacapo} ${bench-arguments}
   ]
@@ -110,7 +110,7 @@ bench-specjvm2008: ${bench-common} ${large-heap} ${specjvm-bench-notifications} 
 }
 
 bench-specjvm2008-Single: ${bench-specjvm2008} ${specjvm-bench-notifications} {
-  targets: [bench, post-merge]
+  targets: [bench]
   run: [
     ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} [
       "--", "-ikv", "-it", "240s", "-wt", "120s"
@@ -161,7 +161,7 @@ bench-micros-graal-dist: ${bench-common} ${default-heap} ${micros-bench-notifica
 # Renaissance-related targets
 
 bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
-  targets: [bench, post-merge]
+  targets: [bench]
   run: [
     ${bench-jvmci.mx-renaissance} ${bench-arguments}
   ]
@@ -169,7 +169,7 @@ bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notificat
 }
 
 bench-renaissance-no-db-shootout: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
-  targets: [bench, post-merge]
+  targets: [bench]
   run: [
     ${bench-jvmci.mx-renaissance-no-db-shootout} ${bench-arguments}
   ]
@@ -177,7 +177,7 @@ bench-renaissance-no-db-shootout: ${bench-common} ${default-heap} ${renaissance-
 }
 
 bench-renaissance-legacy: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
-  targets: [bench, post-merge]
+  targets: [bench]
   run: [
     ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments}
   ]

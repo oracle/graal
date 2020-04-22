@@ -13,7 +13,7 @@
   },
 
   bench: {
-    targets+: ['bench', 'post-merge'],
+    targets+: ['bench'],
   },
 
   common: {
@@ -21,6 +21,7 @@
       MX_PYTHON: 'python3',
     },
     packages+: {
+      'mx': '5.261.3',
       '00:pip:logilab-common': '==1.4.4',
       'pip:pylint': '==1.9.3',
       'pip:ninja_syntax': '==1.7.2',
