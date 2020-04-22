@@ -26,6 +26,7 @@ package com.oracle.svm.truffle.api;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.io.OutputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -396,11 +397,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public void log(String message) {
-        TTY.println(message);
-    }
-
-    @Override
     public Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumptionConstant) {
         return TruffleFeature.getSupport().registerOptimizedAssumptionDependency(optimizedAssumptionConstant);
     }
@@ -408,5 +404,15 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public JavaConstant getCallTargetForCallNode(JavaConstant callNodeConstant) {
         return TruffleFeature.getSupport().getCallTargetForCallNode(callNodeConstant);
+    }
+
+    @Override
+    public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
+        return TruffleFeature.getSupport().asCompilableTruffleAST(constant);
+    }
+
+    @Override
+    protected OutputStream getDefaultLogStream() {
+        return TTY.out;
     }
 }

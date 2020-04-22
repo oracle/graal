@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
@@ -44,8 +44,7 @@ final class LLDBBoxedPrimitive implements LLVMDebugValue {
     }
 
     private LLVMDebugValue unbox() {
-        final LLVMDebugValue.Builder builder = LLVMLanguage.getLLDBSupport().createDebugValueBuilder();
-        return builder.build(boxedValue);
+        return CommonNodeFactory.createDebugValueBuilder().build(boxedValue);
     }
 
     private static boolean isMatchingSize(Object value, long bitSize) {

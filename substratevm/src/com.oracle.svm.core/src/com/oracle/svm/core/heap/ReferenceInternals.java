@@ -24,7 +24,11 @@
  */
 package com.oracle.svm.core.heap;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+
 import java.lang.ref.Reference;
+import java.lang.ref.SoftReference;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.GraalError;
@@ -36,6 +40,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -76,14 +81,8 @@ public final class ReferenceInternals {
         ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), value.toObject());
     }
 
-    public static <T> boolean needsDiscovery(Reference<T> instance) {
-        /*
-         * If the Reference has been allocated but not yet initialized (null referent), its
-         * soon-to-be referent will still be strongly reachable because it is on the call stack to
-         * the constructor. If the Reference is initialized but has a null referent, it has already
-         * been enqueued (either manually or by the GC) and does not need to be discovered.
-         */
-        return getReferentPointer(instance).isNonNull() && getNextDiscovered(instance) == null;
+    public static <T> Pointer getReferentFieldAddress(Reference<T> instance) {
+        return Word.objectToUntrackedPointer(instance).add(WordFactory.unsigned(Target_java_lang_ref_Reference.referentFieldOffset));
     }
 
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered}. */
@@ -176,6 +175,22 @@ public final class ReferenceInternals {
     }
 
     // Checkstyle: disallow synchronization
+
+    public static long getSoftReferenceClock() {
+        return Target_java_lang_ref_SoftReference.clock;
+    }
+
+    public static void updateSoftReferenceClock() {
+        long now = TimeUtils.divideNanosToMillis(System.nanoTime()); // should be monotonous, ensure
+        if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, now >= Target_java_lang_ref_SoftReference.clock)) {
+            Target_java_lang_ref_SoftReference.clock = now;
+        }
+    }
+
+    public static long getSoftReferenceTimestamp(SoftReference<?> instance) {
+        Target_java_lang_ref_SoftReference<?> ref = SubstrateUtil.cast(instance, Target_java_lang_ref_SoftReference.class);
+        return ref.timestamp;
+    }
 
     public static ResolvedJavaType getReferenceType(MetaAccessProvider metaAccess) {
         return metaAccess.lookupJavaType(Reference.class);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,8 +70,11 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -375,6 +378,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("CALL_WITH") || tag.equals("PRINT") || tag.equals("THROW")) {
                 numberOfIdents = 2;
             }
+            int stringLiteralIndex = -1;
+            if (tag.equals("PRINT")) {
+                stringLiteralIndex = 1;
+            }
             List<String> multipleTags = null;
             if (tag.equals("MULTIPLE")) {
                 multipleTags = multipleTags();
@@ -393,7 +400,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     while (current() != ')') {
                         if (argIndex < numberOfIdents) {
                             skipWhiteSpace();
-                            idents[argIndex] = ident();
+                            idents[argIndex] = (argIndex == stringLiteralIndex) ? stringLiteral() : ident();
                         } else {
                             children.add(statement());
                         }
@@ -553,6 +560,21 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return builder.toString();
         }
 
+        private String stringLiteral() {
+            char c = current();
+            if (c != '"') {
+                return ident();
+            }
+            next();
+            StringBuilder builder = new StringBuilder();
+            while ((c = current()) != EOF && c != '"') {
+                builder.append(c);
+                next();
+            }
+            next();
+            return builder.toString();
+        }
+
         private void skipWhiteSpace() {
             while (Character.isWhitespace(current())) {
                 next();
@@ -626,6 +648,16 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @Override
         public String getName() {
             return name;
+        }
+
+        @Override
+        protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
+            Object[] arguments = frame.getArguments();
+            if (arguments.length == 0 || !(arguments[0] instanceof AsyncStackInfo)) {
+                return null;
+            }
+            AsyncStackInfo asyncInfo = (AsyncStackInfo) arguments[0];
+            return asyncInfo.createStackTraceElements();
         }
 
         @Override
@@ -1286,22 +1318,88 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private void spawnCall() {
+            InstrumentationTestLanguage language = lookupLanguageReference(InstrumentationTestLanguage.class).get();
+            int asyncDepth = language.getAsynchronousStackDepth();
+            AsyncStackInfo asyncInfo;
+            if (asyncDepth > 0) {
+                asyncInfo = new AsyncStackInfo();
+                asyncInfo.addCall(this, null);
+                if (asyncDepth > 1) {
+                    Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Boolean>() {
+                        @Override
+                        public Boolean visitFrame(FrameInstance frameInstance) {
+                            Node node = frameInstance.getCallNode();
+                            if (node == null) {
+                                return null;
+                            }
+                            Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+                            asyncInfo.addCall(node, frame);
+                            if (asyncInfo.callNodes.size() < asyncDepth) {
+                                return null;
+                            } else {
+                                return Boolean.FALSE;
+                            }
+                        }
+                    });
+                }
+            } else {
+                asyncInfo = null;
+            }
             InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
             Thread t = context.env.createThread(new Runnable() {
                 @Override
                 public void run() {
-                    callNode.call(new Object[0]);
+                    if (asyncInfo != null) {
+                        callNode.call(new Object[]{asyncInfo});
+                    } else {
+                        callNode.call(new Object[0]);
+                    }
                 }
             });
-            t.start();
             synchronized (context.spawnedThreads) {
                 context.spawnedThreads.add(t);
             }
+            t.start();
         }
 
         @Override
         protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new SpawnNode(identifier, cloneUninitialized(children, materializedTags));
+        }
+    }
+
+    private static final class AsyncStackInfo {
+
+        private final List<Node> callNodes = new ArrayList<>();
+        private AsyncStackInfo previous;
+
+        AsyncStackInfo() {
+        }
+
+        private void addCall(Node callNode, Frame frame) {
+            assert callNode != null;
+            this.callNodes.add(callNode);
+            if (frame != null) {
+                Object[] arguments = frame.getArguments();
+                if (arguments.length > 0 && arguments[0] instanceof AsyncStackInfo) {
+                    previous = (AsyncStackInfo) arguments[0];
+                }
+            }
+        }
+
+        private List<TruffleStackTraceElement> createStackTraceElements() {
+            List<TruffleStackTraceElement> elements = new ArrayList<>(callNodes.size());
+            for (Node callNode : callNodes) {
+                RootCallTarget callTarget = callNode.getRootNode().getCallTarget();
+                Frame frame;
+                if (previous != null) {
+                    frame = Truffle.getRuntime().createMaterializedFrame(new Object[]{previous});
+                } else {
+                    frame = null;
+                }
+                elements.add(TruffleStackTraceElement.create(callNode, callTarget, frame));
+            }
+            return elements;
         }
     }
 

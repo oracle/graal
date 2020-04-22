@@ -333,8 +333,12 @@ _RENAISSANCE_EXTRA_AGENT_ARGS = [
 ]
 
 RENAISSANCE_EXTRA_PROFILE_ARGS = [
+    # extra-profile-run-arg is used to pass a number of instrumentation image run iterations
     '-Dnative-image.benchmark.extra-profile-run-arg=-r',
-    '-Dnative-image.benchmark.extra-profile-run-arg=3'
+    '-Dnative-image.benchmark.extra-profile-run-arg=1',
+    # extra-agent-profile-run-arg is used to pass a number of agent runs to provide profiles
+    '-Dnative-image.benchmark.extra-agent-profile-run-arg=-r',
+    '-Dnative-image.benchmark.extra-agent-profile-run-arg=5'
 ]
 
 _renaissance_config = {
@@ -414,7 +418,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchma
         vm_args = self.vmArgs(bmSuiteArgs)
 
         agent_args = _RENAISSANCE_EXTRA_AGENT_ARGS + ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg]
-        pgo_args = RENAISSANCE_EXTRA_PROFILE_ARGS + ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg]
+        pgo_args = RENAISSANCE_EXTRA_PROFILE_ARGS + ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg, '-Dnative-image.benchmark.extra-agent-profile-run-arg=' + bench_arg]
         benchmark_name = '-Dnative-image.benchmark.benchmark-name=' + bench_arg
 
         return agent_args + pgo_args + [benchmark_name] + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.renaissancePath()] + run_args + [bench_arg]
@@ -553,8 +557,12 @@ _DACAPO_EXTRA_AGENT_ARGS = [
 ]
 
 _DACAPO_EXTRA_PROFILE_ARGS = [
+    # extra-profile-run-arg is used to pass a number of instrumentation image run iterations
     '-Dnative-image.benchmark.extra-profile-run-arg=-n',
-    '-Dnative-image.benchmark.extra-profile-run-arg=5'
+    '-Dnative-image.benchmark.extra-profile-run-arg=1',
+    # extra-agent-profile-run-arg is used to pass a number of agent runs to provide profiles
+    '-Dnative-image.benchmark.extra-agent-profile-run-arg=-n',
+    '-Dnative-image.benchmark.extra-agent-profile-run-arg=5'
 ]
 
 '''
@@ -641,7 +649,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite, B
         else:
             bench_arg = benchmarks[0]
         agent_args = ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg] + _DACAPO_EXTRA_AGENT_ARGS
-        pgo_args = ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg] + _DACAPO_EXTRA_PROFILE_ARGS
+        pgo_args = ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg, '-Dnative-image.benchmark.extra-agent-profile-run-arg=' + bench_arg] + _DACAPO_EXTRA_PROFILE_ARGS
         benchmark_name = '-Dnative-image.benchmark.benchmark-name=' + bench_arg
 
         run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))
@@ -743,7 +751,7 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.ScalaDaCapoBenchma
         else:
             bench_arg = benchmarks[0]
         agent_args = ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg] + _DACAPO_EXTRA_AGENT_ARGS
-        pgo_args = ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg] + _DACAPO_EXTRA_PROFILE_ARGS
+        pgo_args = ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg, '-Dnative-image.benchmark.extra-agent-profile-run-arg=' + bench_arg] + _DACAPO_EXTRA_PROFILE_ARGS
         benchmark_name = '-Dnative-image.benchmark.benchmark-name=' + bench_arg
 
         run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))

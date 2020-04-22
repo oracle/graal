@@ -38,7 +38,7 @@ public abstract class DebuggerDomain extends Domain {
     protected DebuggerDomain() {
     }
 
-    public abstract void setAsyncCallStackDepth(int maxDepth);
+    public abstract void setAsyncCallStackDepth(int maxDepth) throws CommandProcessException;
 
     public abstract void setBlackboxPatterns(String[] patterns);
 

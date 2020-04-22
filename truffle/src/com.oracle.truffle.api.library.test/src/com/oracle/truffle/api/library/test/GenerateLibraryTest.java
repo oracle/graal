@@ -47,6 +47,7 @@ import static org.junit.Assert.fail;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -70,6 +71,10 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             return "default";
         }
 
+        public abstract void abstractMethod(Object receiver);
+
+        public abstract void abstractMethodWithFrame(Object receiver, VirtualFrame frame);
+
     }
 
     @ExportLibrary(SampleLibrary.class)
@@ -83,6 +88,14 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
 
         Sample(String name) {
             this.name = name;
+        }
+
+        @ExportMessage
+        void abstractMethod() {
+        }
+
+        @ExportMessage
+        void abstractMethodWithFrame(VirtualFrame frame) {
         }
 
         @ExportMessage
@@ -112,7 +125,6 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     }
 
     private abstract static class InvalidLibrary extends Library {
-
     }
 
     @Test

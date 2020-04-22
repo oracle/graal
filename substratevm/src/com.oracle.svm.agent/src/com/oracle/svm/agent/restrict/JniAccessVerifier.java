@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,12 @@
  */
 package com.oracle.svm.agent.restrict;
 
-import static com.oracle.svm.agent.Support.fromCString;
-import static com.oracle.svm.agent.Support.getClassNameOr;
-import static com.oracle.svm.agent.Support.handles;
-import static com.oracle.svm.agent.Support.jniFunctions;
-import static com.oracle.svm.agent.Support.jvmtiEnv;
-import static com.oracle.svm.agent.Support.jvmtiFunctions;
-import static com.oracle.svm.agent.Support.toCString;
+import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
+import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOr;
+import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
+import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
+import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
+import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static com.oracle.svm.configure.trace.LazyValueUtils.lazyGet;
 import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 
@@ -39,8 +38,8 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
-import com.oracle.svm.agent.Agent;
-import com.oracle.svm.agent.jvmti.JvmtiError;
+import com.oracle.svm.agent.NativeImageAgent;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -51,11 +50,13 @@ import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 public class JniAccessVerifier extends AbstractAccessVerifier {
     private final TypeAccessChecker typeAccessChecker;
     private final TypeAccessChecker reflectTypeAccessChecker;
+    private final NativeImageAgent agent;
 
-    public JniAccessVerifier(TypeAccessChecker typeAccessChecker, TypeAccessChecker reflectTypeAccessChecker, AccessAdvisor advisor) {
+    public JniAccessVerifier(TypeAccessChecker typeAccessChecker, TypeAccessChecker reflectTypeAccessChecker, AccessAdvisor advisor, NativeImageAgent agent) {
         super(advisor);
         this.typeAccessChecker = typeAccessChecker;
         this.reflectTypeAccessChecker = reflectTypeAccessChecker;
+        this.agent = agent;
     }
 
     @SuppressWarnings("unused")
@@ -63,9 +64,9 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         if (shouldApproveWithoutChecks(env, callerClass)) {
             return true;
         }
-        try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "defining classes is not permitted.")) {
+        try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "defining classes is not permitted.")) {
             // SecurityException seems most fitting from the exceptions allowed by the JNI spec
-            jniFunctions().getThrowNew().invoke(env, handles().javaLangSecurityException, message.get());
+            jniFunctions().getThrowNew().invoke(env, agent.handles().javaLangSecurityException, message.get());
         }
         return false;
     }
@@ -83,8 +84,8 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
                 return true;
             }
         }
-        try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to class: " + name)) {
-            jniFunctions().getThrowNew().invoke(env, handles().javaLangNoClassDefFoundError, message.get());
+        try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to class: " + name)) {
+            jniFunctions().getThrowNew().invoke(env, agent.handles().javaLangNoClassDefFoundError, message.get());
         }
         return false;
     }
@@ -102,10 +103,10 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
                 return true;
             }
         }
-        try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to method: " +
+        try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to method: " +
                         getClassNameOr(env, clazz, "(null)", "(?)") + "." + name + fromCString(csignature))) {
 
-            jniFunctions().getThrowNew().invoke(env, handles().javaLangNoSuchMethodError, message.get());
+            jniFunctions().getThrowNew().invoke(env, agent.handles().javaLangNoSuchMethodError, message.get());
         }
         return false;
     }
@@ -125,9 +126,9 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
                 return true;
             }
         }
-        try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to field: " +
+        try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to field: " +
                         getClassNameOr(env, clazz, "(null)", "(?)") + "." + fromCString(cname))) {
-            jniFunctions().getThrowNew().invoke(env, handles().javaLangNoSuchFieldError, message.get());
+            jniFunctions().getThrowNew().invoke(env, agent.handles().javaLangNoSuchFieldError, message.get());
         }
         return false;
     }

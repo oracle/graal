@@ -39,6 +39,7 @@ import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Option;
+import java.io.OutputStream;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 
@@ -56,6 +57,15 @@ final class TruffleDebugOptions {
             return values.get(key);
         }
         return key.getDefaultValue();
+    }
+
+    static OutputStream getConfiguredLogStream() {
+        OptionValues values = getOptions();
+        if (values.hasBeenSet(LogFile)) {
+            return GraalTruffleRuntime.getRuntime().getDefaultLogStream();
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -101,4 +111,7 @@ final class TruffleDebugOptions {
     // Initialized by the options of the same name in org.graalvm.compiler.debug.DebugOptions
     @Option(help = "", category = OptionCategory.INTERNAL) //
     static final OptionKey<PrintGraphTarget> PrintGraph = new OptionKey<>(File, PrintGraphTarget.getOptionType());
+    // Initialized by the options of the same name in compiler
+    @Option(help = "", category = OptionCategory.EXPERT) //
+    static final OptionKey<String> LogFile = new OptionKey<>(null, OptionType.defaultType(String.class));
 }

@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -105,8 +106,8 @@ import org.graalvm.compiler.phases.graph.MergeableState;
 import org.graalvm.compiler.phases.graph.PostOrderNodeIterator;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.nodes.ArrayCopy;
-import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.word.WordCastNode;
 import org.graalvm.util.GuardedAnnotationAccess;
@@ -140,8 +141,10 @@ import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.runtime.JVMCI;
 
@@ -226,12 +229,16 @@ public class MethodTypeFlowBuilder {
                 }
 
                 // Register used types and fields before canonicalization can optimize them.
-                registerUsedElements();
+                registerUsedElements(null);
 
                 CanonicalizerPhase.create().apply(graph, bb.getProviders());
 
                 // Do it again after canonicalization changed type checks and field accesses.
-                registerUsedElements();
+                EconomicMap<JavaConstant, BytecodePosition> objectConstants = EconomicMap.create();
+                registerUsedElements(objectConstants);
+                if (!objectConstants.isEmpty()) {
+                    methodFlow.objectConstants = objectConstants;
+                }
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -239,7 +246,7 @@ public class MethodTypeFlowBuilder {
         return true;
     }
 
-    public void registerUsedElements() {
+    public void registerUsedElements(EconomicMap<JavaConstant, BytecodePosition> objectConstants) {
         for (Node n : graph.getNodes()) {
             if (n instanceof InstanceOfNode) {
                 InstanceOfNode node = (InstanceOfNode) n;
@@ -293,6 +300,9 @@ public class MethodTypeFlowBuilder {
                     assert StampTool.isExactType(cn);
                     AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn);
                     type.registerAsInHeap();
+                    if (objectConstants != null) {
+                        objectConstants.put(cn.asJavaConstant(), cn.getNodeSourcePosition());
+                    }
                 }
 
             } else if (n instanceof ForeignCallNode) {
@@ -328,8 +338,9 @@ public class MethodTypeFlowBuilder {
                  * exact return type.
                  */
                 TypeFlow<?> returnTypeFlow = methodFlow.getResultFlow().getDeclaredType().getTypeFlow(this.bb, true);
-                returnTypeFlow = new ProxyTypeFlow(null, returnTypeFlow);
-                FormalReturnTypeFlow resultFlow = new FormalReturnTypeFlow(null, returnType, method);
+                BytecodePosition source = new BytecodePosition(null, method, 0);
+                returnTypeFlow = new ProxyTypeFlow(source, returnTypeFlow);
+                FormalReturnTypeFlow resultFlow = new FormalReturnTypeFlow(source, returnType, method);
                 returnTypeFlow.addOriginalUse(this.bb, resultFlow);
                 methodFlow.addMiscEntry(returnTypeFlow);
                 methodFlow.setResult(resultFlow);
@@ -1376,6 +1387,10 @@ public class MethodTypeFlowBuilder {
                          * actual return builder is materialized.
                          */
                         ActualReturnTypeFlow actualReturn = null;
+                        /*
+                         * Get the receiver type from the invoke, it may be more precise than the
+                         * method declaring class.
+                         */
                         AnalysisType receiverType = invoke.getInvokeKind().hasReceiver() ? (AnalysisType) invoke.getReceiverType() : null;
                         InvokeTypeFlow invokeFlow = null;
                         switch (target.invokeKind()) {
@@ -1424,19 +1439,19 @@ public class MethodTypeFlowBuilder {
                     state.add(target, invokeBuilder);
                 }
 
-            } else if (n instanceof BasicObjectCloneNode) {
-                BasicObjectCloneNode node = (BasicObjectCloneNode) n;
+            } else if (n instanceof ObjectClone) {
+                ObjectClone node = (ObjectClone) n;
                 BytecodeLocation cloneLabel = bb.analysisPolicy().createAllocationSite(bb, node.bci(), methodFlow.getMethod());
                 TypeFlowBuilder<?> inputBuilder = state.lookup(node.getObject());
                 AnalysisType inputType = (AnalysisType) StampTool.typeOrNull(node.getObject());
 
                 TypeFlowBuilder<?> cloneBuilder = TypeFlowBuilder.create(bb, node, CloneTypeFlow.class, () -> {
-                    CloneTypeFlow cloneFlow = new CloneTypeFlow(node, inputType, cloneLabel, inputBuilder.get());
+                    CloneTypeFlow cloneFlow = new CloneTypeFlow(node.asNode(), inputType, cloneLabel, inputBuilder.get());
                     methodFlow.addClone(cloneFlow);
                     return cloneFlow;
                 });
                 cloneBuilder.addObserverDependency(inputBuilder);
-                state.add(node, cloneBuilder);
+                state.add(node.asNode(), cloneBuilder);
             } else if (n instanceof MonitorEnterNode) {
                 MonitorEnterNode node = (MonitorEnterNode) n;
                 BytecodeLocation monitorLocation = BytecodeLocation.create(uniqueKey(node), methodFlow.getMethod());

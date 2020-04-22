@@ -2664,7 +2664,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public boolean hasMembers(Object receiver) {
-            return (boolean) cache.hasMembers.call(languageContext, receiver);
+            return (boolean) CALL_PROFILED.call(cache.hasMembers, languageContext, receiver);
         }
 
         @Override
@@ -2807,12 +2807,12 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public boolean canInstantiate(Object receiver) {
-            return (boolean) cache.canInstantiate.call(languageContext, receiver);
+            return (boolean) CALL_PROFILED.call(cache.canInstantiate, languageContext, receiver);
         }
 
         @Override
         public Value newInstance(Object receiver, Object[] arguments) {
-            return (Value) cache.newInstance.call(languageContext, receiver, arguments);
+            return (Value) CALL_PROFILED.call(cache.newInstance, languageContext, receiver, arguments);
         }
 
         @Override

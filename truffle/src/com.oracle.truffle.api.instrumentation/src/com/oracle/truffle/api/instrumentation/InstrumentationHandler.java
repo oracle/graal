@@ -184,16 +184,8 @@ final class InstrumentationHandler {
                     if (sourceSection != null) {
                         visitor.adoptSource(sourceSection.getSource());
                     }
-                    RootNode previousRoot = visitor.root;
-                    Set<Class<?>> previousProvidedTags = visitor.providedTags;
-                    SourceSection previousRootSourceSection = visitor.rootSourceSection;
-                    int previousRootBits = visitor.rootBits;
-                    visitRoot(root, root, visitor, false, true);
+                    visitRootAndRestoreVisitorState(root, visitor, true);
                     rootSources = visitor.getSources();
-                    visitor.root = previousRoot;
-                    visitor.providedTags = previousProvidedTags;
-                    visitor.rootSourceSection = previousRootSourceSection;
-                    visitor.rootBits = previousRootBits;
                 } else {
                     hasSourceBindings = false;
                     sources.clear();
@@ -224,6 +216,31 @@ final class InstrumentationHandler {
             visitRoot(root, root, visitorBuilder.buildVisitor(), false, true);
         }
 
+    }
+
+    private void visitRootAndRestoreVisitorState(RootNode root, FindSourcesVisitor visitor, boolean firstExecution) {
+        RootNode previousRoot = visitor.root;
+        Set<Class<?>> previousProvidedTags = visitor.providedTags;
+        SourceSection previousRootSourceSection = visitor.rootSourceSection;
+        int previousRootBits = visitor.rootBits;
+        int previousComputingRootNodeBits = visitor.computingRootNodeBits;
+        boolean previousFirstExecution = visitor.firstExecution;
+        boolean previousVisitingRetiredNodes = visitor.visitingRetiredNodes;
+        boolean previousVisitingMaterialized = visitor.visitingMaterialized;
+        Set<Class<? extends Tag>> previousMaterializeTags = visitor.materializeTags;
+        try {
+            visitRoot(root, root, visitor, false, firstExecution);
+        } finally {
+            visitor.root = previousRoot;
+            visitor.providedTags = previousProvidedTags;
+            visitor.rootSourceSection = previousRootSourceSection;
+            visitor.rootBits = previousRootBits;
+            visitor.computingRootNodeBits = previousComputingRootNodeBits;
+            visitor.firstExecution = previousFirstExecution;
+            visitor.visitingRetiredNodes = previousVisitingRetiredNodes;
+            visitor.visitingMaterialized = previousVisitingMaterialized;
+            visitor.materializeTags = previousMaterializeTags;
+        }
     }
 
     private static class FindSourcesVisitor extends AbstractNodeVisitor {
@@ -316,15 +333,7 @@ final class InstrumentationHandler {
                             if (sourceSection != null) {
                                 visitor.adoptSource(sourceSection.getSource());
                             }
-                            RootNode previousRoot = visitor.root;
-                            Set<Class<?>> previousProvidedTags = visitor.providedTags;
-                            SourceSection previousRootSourceSection = visitor.rootSourceSection;
-                            int previousRootBits = visitor.rootBits;
-                            visitRoot(root, root, visitor, false, true);
-                            visitor.root = previousRoot;
-                            visitor.providedTags = previousProvidedTags;
-                            visitor.rootSourceSection = previousRootSourceSection;
-                            visitor.rootBits = previousRootBits;
+                            visitRootAndRestoreVisitorState(root, visitor, true);
                         }
                         rootSources = visitor.getSources();
                     }
@@ -667,7 +676,7 @@ final class InstrumentationHandler {
                                 if (sourceSection != null) {
                                     visitor.adoptSource(sourceSection.getSource());
                                 }
-                                visitRoot(root, root, visitor, false, false);
+                                visitRootAndRestoreVisitorState(root, visitor, false);
                                 Source[] visitedSources = visitor.getSources();
                                 if (visitedSources != null) {
                                     for (Source source : visitedSources) {
@@ -713,7 +722,7 @@ final class InstrumentationHandler {
                                 if (sourceSection != null) {
                                     visitor.adoptSource(sourceSection.getSource());
                                 }
-                                visitRoot(root, root, visitor, false, false);
+                                visitRootAndRestoreVisitorState(root, visitor, false);
                                 Source[] visitedSources = visitor.getSources();
                                 if (visitedSources != null) {
                                     for (Source source : visitedSources) {

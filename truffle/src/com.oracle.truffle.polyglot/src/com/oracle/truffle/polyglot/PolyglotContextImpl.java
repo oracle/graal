@@ -616,7 +616,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     private PolyglotThreadInfo createThreadInfo(Thread current) {
         assert Thread.holdsLock(this);
-        PolyglotThreadInfo threadInfo = new PolyglotThreadInfo(current);
+        PolyglotThreadInfo threadInfo = new PolyglotThreadInfo(this, current);
 
         boolean singleThread = isSingleThreaded();
         List<PolyglotLanguage> deniedLanguages = null;
@@ -1177,7 +1177,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 if (!this.config.logLevels.isEmpty()) {
                     EngineAccessor.LANGUAGE.configureLoggers(this, null, getAllLoggers(engine));
                 }
-                if (this.config.logHandler != null && !PolyglotLogHandler.isSameLogSink(this.config.logHandler, engine.logHandler)) {
+                if (this.config.logHandler != null && !PolyglotLoggers.isSameLogSink(this.config.logHandler, engine.logHandler)) {
                     this.config.logHandler.close();
                 }
             }
@@ -1332,7 +1332,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         allowedLanguages,
                         Collections.emptyMap(),
                         fs, internalFs, engine.logHandler, false, null,
-                        EnvironmentAccess.INHERIT, null, null, null);
+                        EnvironmentAccess.INHERIT, null, null, null, null);
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         try {
             context.sourcesToInvalidate = new ArrayList<>();

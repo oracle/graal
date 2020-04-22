@@ -151,7 +151,7 @@ public class TruffleReadOnlyMap extends AbstractRegexObject {
             if (value != null) {
                 return value;
             }
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnknownIdentifierException.create(symbol);
         }
 

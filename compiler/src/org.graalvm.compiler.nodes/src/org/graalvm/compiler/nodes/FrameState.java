@@ -35,6 +35,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -44,9 +45,11 @@ import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.IterableNodeType;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -607,33 +610,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     }
 
     @Override
-    public void applyToNonVirtual(NodeClosure<? super ValueNode> closure) {
-        for (ValueNode value : values) {
-            if (value != null) {
-                closure.apply(this, value);
-            }
-        }
-
-        if (monitorIds != null) {
-            for (MonitorIdNode monitorId : monitorIds) {
-                if (monitorId != null) {
-                    closure.apply(this, monitorId);
-                }
-            }
-        }
-
-        if (virtualObjectMappings != null) {
-            for (EscapeObjectState state : virtualObjectMappings) {
-                state.applyToNonVirtual(closure);
-            }
-        }
-
-        if (outerFrameState() != null) {
-            outerFrameState().applyToNonVirtual(closure);
-        }
-    }
-
-    @Override
     public void applyToVirtual(VirtualClosure closure) {
         closure.apply(this);
         if (virtualObjectMappings != null) {
@@ -643,6 +619,27 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         }
         if (outerFrameState() != null) {
             outerFrameState().applyToVirtual(closure);
+        }
+    }
+
+    @Override
+    public void applyToNonVirtual(NodePositionClosure<? super Node> closure) {
+        Iterator<Position> iter = inputPositions().iterator();
+        while (iter.hasNext()) {
+            Position pos = iter.next();
+            if (pos.get(this) != null) {
+                if (pos.getInputType() == InputType.Value || pos.getInputType() == Association) {
+                    closure.apply(this, pos);
+                }
+            }
+        }
+        if (virtualObjectMappings != null) {
+            for (EscapeObjectState state : virtualObjectMappings) {
+                state.applyToNonVirtual(closure);
+            }
+        }
+        if (outerFrameState() != null) {
+            outerFrameState().applyToNonVirtual(closure);
         }
     }
 
@@ -667,4 +664,5 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     public boolean isExceptionHandlingBCI() {
         return bci == BytecodeFrame.AFTER_EXCEPTION_BCI || bci == BytecodeFrame.UNWIND_BCI;
     }
+
 }

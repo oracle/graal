@@ -56,7 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -170,6 +170,11 @@ final class EngineAccessor extends Accessor {
     @Override
     protected void onEngineClosed(Object runtimeData) {
         super.onEngineClosed(runtimeData);
+    }
+
+    @Override
+    protected OutputStream getConfiguredLogStream() {
+        return super.getConfiguredLogStream();
     }
 
     @Override
@@ -789,15 +794,15 @@ final class EngineAccessor extends Accessor {
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T> T getOrCreateRuntimeData(Object polyglotEngine, Function<OptionValues, T> constructor) {
+        public <T> T getOrCreateRuntimeData(Object polyglotEngine, BiFunction<OptionValues, Supplier<TruffleLogger>, T> constructor) {
             if (polyglotEngine == null) {
                 OptionValues engineOptionValues = PolyglotEngineImpl.getEngineOptionsWithNoEngine();
-                return constructor.apply(engineOptionValues);
+                return constructor.apply(engineOptionValues, PolyglotLoggers.createCompilerLoggerProvider(null));
             }
 
             final PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;
             if (engine.runtimeData == null) {
-                engine.runtimeData = constructor.apply(engine.engineOptionValues);
+                engine.runtimeData = constructor.apply(engine.engineOptionValues, PolyglotLoggers.createCompilerLoggerProvider(engine));
             }
             return (T) engine.runtimeData;
         }
@@ -841,29 +846,33 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Handler getLogHandler(Object polyglotEngine) {
-            return polyglotEngine == null ? PolyglotLogHandler.INSTANCE : new PolyglotLogHandler((PolyglotEngineImpl) polyglotEngine);
+        public Object createDefaultLoggerCache() {
+            return PolyglotLoggers.defaultSPI();
         }
 
         @Override
-        public LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown) {
-            return PolyglotLogHandler.createLogRecord(level, loggerName, message, className, methodName, parameters, thrown);
+        public Handler getLogHandler(Object loggerCache) {
+            return ((PolyglotLoggers.LoggerCache) loggerCache).getLogHandler();
+        }
+
+        @Override
+        public LogRecord createLogRecord(Object loggerCache, Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown) {
+            return ((PolyglotLoggers.LoggerCache) loggerCache).createLogRecord(level, loggerName, message, className, methodName, parameters, thrown);
         }
 
         @Override
         public Object getCurrentOuterContext() {
-            return PolyglotLogHandler.getCurrentOuterContext();
+            return PolyglotLoggers.getCurrentOuterContext();
         }
 
         @Override
-        public Map<String, Level> getLogLevels(final Object polyglotObject) {
-            if (polyglotObject instanceof PolyglotContextImpl) {
-                return ((PolyglotContextImpl) polyglotObject).config.logLevels;
-            } else if (polyglotObject instanceof PolyglotEngineImpl) {
-                return ((PolyglotEngineImpl) polyglotObject).logLevels;
-            } else {
-                throw new AssertionError();
-            }
+        public Map<String, Level> getLogLevels(final Object loggerCache) {
+            return ((PolyglotLoggers.LoggerCache) loggerCache).getLogLevels();
+        }
+
+        @Override
+        public Object getLoggerOwner(Object loggerCache) {
+            return ((PolyglotLoggers.LoggerCache) loggerCache).getEngine();
         }
 
         @Override
@@ -882,7 +891,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Set<String> getInternalIds() {
-            return Collections.singleton(PolyglotEngineImpl.OPTION_GROUP_ENGINE);
+            return PolyglotLoggers.getInternalIds();
         }
 
         @Override
@@ -1023,6 +1032,16 @@ final class EngineAccessor extends Accessor {
         @Override
         public Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object polyglotContext) {
             return ((PolyglotContextImpl) polyglotContext).engine.getFileTypeDetectorsSupplier();
+        }
+
+        @Override
+        public int getAsynchronousStackDepth(Object polylgotLanguage) {
+            return ((PolyglotLanguage) polylgotLanguage).engine.getAsynchronousStackDepth();
+        }
+
+        @Override
+        public void setAsynchronousStackDepth(Object polyglotInstrument, int depth) {
+            getEngine(polyglotInstrument).setAsynchronousStackDepth((PolyglotInstrument) polyglotInstrument, depth);
         }
 
         @Override

@@ -163,6 +163,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     final Assumption noInnerContexts = Truffle.getRuntime().createAssumption("No inner contexts.");
     final Assumption noThreadTimingNeeded = Truffle.getRuntime().createAssumption("No enter timing needed.");
     final Assumption noPriorityChangeNeeded = Truffle.getRuntime().createAssumption("No priority change needed.");
+    final Assumption customHostClassLoader = Truffle.getRuntime().createAssumption("No custom host class loader needed.");
 
     volatile OptionDescriptors allOptions;
     volatile boolean closed;
@@ -180,6 +181,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     private volatile EngineLimits limits;
     final boolean conservativeContextReferences;
     private final MessageTransport messageInterceptor;
+    private volatile int asynchronousStackDepth = 0;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine,
@@ -784,6 +786,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
             l.initialize(context.config.limits, context);
         }
+        if (context.config.hostClassLoader != null) {
+            context.engine.customHostClassLoader.invalidate();
+        }
     }
 
     synchronized void removeContext(PolyglotContextImpl context) {
@@ -1008,6 +1013,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
             // don't commit to the close if still running as this might cause races in the executing
             // context.
+            if (this.runtimeData != null) {
+                EngineAccessor.ACCESSOR.onEngineClosed(this.runtimeData);
+            }
             if (closeContexts) {
                 Object loggers = getEngineLoggers();
                 if (loggers != null) {
@@ -1024,9 +1032,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             } else if (logHandler != null) {
                 // called from shutdown hook, at least flush the logging handler
                 logHandler.flush();
-            }
-            if (this.runtimeData != null) {
-                EngineAccessor.ACCESSOR.onEngineClosed(this.runtimeData);
             }
         }
     }
@@ -1135,6 +1140,26 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     HostClassCache getHostClassCache() {
         return hostClassCache;
+    }
+
+    @TruffleBoundary
+    int getAsynchronousStackDepth() {
+        return asynchronousStackDepth;
+    }
+
+    @TruffleBoundary
+    void setAsynchronousStackDepth(PolyglotInstrument polyglotInstrument, int depth) {
+        assert depth >= 0 : String.format("Wrong depth: %d", depth);
+        int newDepth = 0;
+        synchronized (this) {
+            polyglotInstrument.requestedAsyncStackDepth = depth;
+            for (PolyglotInstrument instrument : idToInstrument.values()) {
+                if (instrument.requestedAsyncStackDepth > newDepth) {
+                    newDepth = instrument.requestedAsyncStackDepth;
+                }
+            }
+        }
+        asynchronousStackDepth = newDepth;
     }
 
     private static final class PolyglotShutDownHook implements Runnable {
@@ -1333,7 +1358,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
                     Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
-                    EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory) {
+                    EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader) {
         try {
             PolyglotContextImpl context;
             synchronized (this) {
@@ -1387,10 +1412,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 useErr = INSTRUMENT.createDelegatingOutput(configErr, this.err);
             }
 
-            Handler useHandler = PolyglotLogHandler.asHandler(logHandlerOrStream);
+            Handler useHandler = PolyglotLoggers.asHandler(logHandlerOrStream);
             useHandler = useHandler != null ? useHandler : logHandler;
             useHandler = useHandler != null ? useHandler
-                            : PolyglotLogHandler.createStreamHandler(
+                            : PolyglotLoggers.createStreamHandler(
                                             configErr == null ? INSTRUMENT.getOut(this.err) : configErr,
                                             false, true);
 
@@ -1413,7 +1438,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
                             allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
                             allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
-                            environmentAccess, environment, zone, polyglotLimits);
+                            environmentAccess, environment, zone, polyglotLimits, hostClassLoader);
             context = loadPreinitializedContext(config, hostAccess);
             boolean replayEvents = false;
             if (context == null) {
@@ -1501,7 +1526,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             synchronized (this) {
                 res = engineLoggers;
                 if (res == null) {
-                    res = LANGUAGE.createEngineLoggers(this, logLevels);
+                    res = LANGUAGE.createEngineLoggers(PolyglotLoggers.createEngineSPI(this), logLevels);
                     for (ContextWeakReference contextRef : contexts) {
                         PolyglotContextImpl context = contextRef.get();
                         if (context != null && !context.config.logLevels.isEmpty()) {

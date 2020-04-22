@@ -377,6 +377,7 @@ meth public java.util.Map<java.lang.String,com.oracle.truffle.api.nodes.Language
 meth public org.graalvm.options.OptionValues getOptions()
 meth public org.graalvm.polyglot.io.MessageEndpoint startServer(java.net.URI,org.graalvm.polyglot.io.MessageEndpoint) throws java.io.IOException,org.graalvm.polyglot.io.MessageTransport$VetoException
 meth public void registerService(java.lang.Object)
+meth public void setAsynchronousStackDepth(int)
 supr java.lang.Object
 hfds INTEROP,err,in,instrumenter,messageTransport,options,out,polyglotInstrument,services
 hcls GuardedExecutableNode,MessageTransportProxy
@@ -397,8 +398,6 @@ meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String id()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String version()
-
-CLSS abstract interface com.oracle.truffle.api.instrumentation.package-info
 
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()

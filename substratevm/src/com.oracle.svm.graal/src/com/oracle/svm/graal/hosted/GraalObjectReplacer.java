@@ -241,7 +241,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
              * Annotations are updated in every analysis iteration, but this is a starting point. It
              * also ensures that all types used by annotations are created eagerly.
              */
-            sMethod.setAnnotationsEncoding(Inflation.encodeAnnotations(aMetaAccess, aMethod.getAnnotations(), null));
+            sMethod.setAnnotationsEncoding(Inflation.encodeAnnotations(aMetaAccess, aMethod.getAnnotations(), aMethod.getDeclaredAnnotations(), null));
         }
         return sMethod;
     }
@@ -271,7 +271,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
              * Annotations are updated in every analysis iteration, but this is a starting point. It
              * also ensures that all types used by annotations are created eagerly.
              */
-            sField.setAnnotationsEncoding(Inflation.encodeAnnotations(aMetaAccess, aField.getAnnotations(), null));
+            sField.setAnnotationsEncoding(Inflation.encodeAnnotations(aMetaAccess, aField.getAnnotations(), aField.getDeclaredAnnotations(), null));
         }
         return sField;
     }
@@ -381,12 +381,14 @@ public class GraalObjectReplacer implements Function<Object, Object> {
         }
 
         for (Map.Entry<AnalysisMethod, SubstrateMethod> entry : methods.entrySet()) {
-            if (entry.getValue().setAnnotationsEncoding(Inflation.encodeAnnotations(metaAccess, entry.getKey().getAnnotations(), entry.getValue().getAnnotationsEncoding()))) {
+            if (entry.getValue().setAnnotationsEncoding(Inflation.encodeAnnotations(metaAccess, entry.getKey().getAnnotations(), entry.getKey().getDeclaredAnnotations(),
+                            entry.getValue().getAnnotationsEncoding()))) {
                 result = true;
             }
         }
         for (Map.Entry<AnalysisField, SubstrateField> entry : fields.entrySet()) {
-            if (entry.getValue().setAnnotationsEncoding(Inflation.encodeAnnotations(metaAccess, entry.getKey().getAnnotations(), entry.getValue().getAnnotationsEncoding()))) {
+            if (entry.getValue().setAnnotationsEncoding(Inflation.encodeAnnotations(metaAccess, entry.getKey().getAnnotations(), entry.getKey().getDeclaredAnnotations(),
+                            entry.getValue().getAnnotationsEncoding()))) {
                 result = true;
             }
         }

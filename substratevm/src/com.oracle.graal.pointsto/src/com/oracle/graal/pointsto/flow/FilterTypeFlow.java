@@ -31,10 +31,12 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 /**
  * The points-to analysis model of an {@code InstanceOfNode}, which represents an instanceof test.
  */
-public class FilterTypeFlow extends TypeFlow<ValueNode> {
+public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     /**
      * If the filter is exact we only compare with the {@link #declaredType}, not including its
@@ -52,7 +54,7 @@ public class FilterTypeFlow extends TypeFlow<ValueNode> {
     }
 
     public FilterTypeFlow(ValueNode node, AnalysisType filterType, boolean isExact, boolean isAssignable, boolean includeNull) {
-        super(node, filterType);
+        super(node.getNodeSourcePosition(), filterType);
         this.isExact = isExact;
         this.isAssignable = isAssignable;
         this.includeNull = includeNull;
@@ -66,7 +68,7 @@ public class FilterTypeFlow extends TypeFlow<ValueNode> {
     }
 
     @Override
-    public TypeFlow<ValueNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         return new FilterTypeFlow(methodFlows, this);
     }
 
@@ -74,8 +76,7 @@ public class FilterTypeFlow extends TypeFlow<ValueNode> {
     public TypeState filter(BigBang bb, TypeState update) {
         if (update.isUnknown()) {
             // Filtering UnknownTypeState would otherwise return EmptyTypeState.
-            AnalysisMethod method = (AnalysisMethod) source.graph().method();
-            bb.reportIllegalUnknownUse(method, source, "Illegal: Filter of UnknownTypeState objects.");
+            bb.reportIllegalUnknownUse((AnalysisMethod) source.getMethod(), source, "Illegal: Filter of UnknownTypeState objects.");
             return TypeState.forEmpty();
         }
 
@@ -102,8 +103,32 @@ public class FilterTypeFlow extends TypeFlow<ValueNode> {
                 result = TypeState.forSubtraction(bb, update, declaredType.getTypeFlow(bb, !includeNull).getState());
             }
         }
-
         return result;
+    }
+
+    @Override
+    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+        if (isAssignable) {
+            TypeFlow<?> sourceFlow = declaredType.getTypeFlow(bb, includeNull);
+
+            /*
+             * First mark this flow as saturated, then swap it out at its uses/observers with its
+             * declared type flow. Marking this flow as saturated first is important: if there are
+             * any uses or observers *in-flight*, i.e., not yet registered at this point, trying to
+             * swap-out will have no effect on those. However, if this flow is already marked as
+             * saturated when the use or observer *lands*, even if that happens while/after
+             * swapping-out, then the corresponding use or observer will be notified of its input
+             * saturation. Otherwise it may neighter get the saturation signal OR get swapped-out.
+             * 
+             * The downside in the later case is that the input/observer will lose the more precise
+             * type information that swapping-out would have provided and will just use the more
+             * conservative approximation, e.g., the target method declared type for invokes.
+             */
+            setSaturated();
+            swapOut(bb, sourceFlow);
+        } else {
+            super.onInputSaturated(bb, input);
+        }
     }
 
     @Override

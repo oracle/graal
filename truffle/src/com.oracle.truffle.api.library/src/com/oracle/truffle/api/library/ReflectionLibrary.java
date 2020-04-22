@@ -126,6 +126,7 @@ public abstract class ReflectionLibrary extends Library {
      */
     @Abstract
     @SuppressWarnings("unused")
+    @TruffleBoundary
     public Object send(Object receiver, Message message, Object... args) throws Exception {
         throw new AbstractMethodError();
     }
