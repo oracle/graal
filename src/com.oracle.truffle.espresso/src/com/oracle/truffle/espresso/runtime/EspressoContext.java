@@ -34,6 +34,7 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -197,6 +198,9 @@ public final class EspressoContext {
     }
 
     public void initializeContext() {
+        EspressoError.guarantee(getEnv().isNativeAccessAllowed(),
+                        "Native access is not allowed by the host environment but it's required to load Espresso/Java native libraries. " +
+                                        "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
         assert !this.initialized;
         eventListener = new EmptyListener();
         // Inject PublicFinalReference in the host VM.
