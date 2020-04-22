@@ -1058,7 +1058,7 @@ public class GCImpl implements GC {
     /** A counter for collections. */
     private UnsignedWord collectionEpoch;
 
-    UnsignedWord getCollectionEpoch() {
+    public UnsignedWord getCollectionEpoch() {
         return collectionEpoch;
     }
 
