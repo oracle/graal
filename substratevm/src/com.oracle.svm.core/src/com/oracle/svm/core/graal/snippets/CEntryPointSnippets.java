@@ -319,6 +319,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             IsolateThread thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(false);
             if (thread.isNull()) { // not attached
                 thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
+                if (thread.isNull()) {
+                    return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
+                }
                 StackOverflowCheck.singleton().initialize(thread);
                 writeCurrentVMThread(thread);
                 int error = VMThreads.singleton().attachThread(thread);
