@@ -1139,9 +1139,7 @@ public class NativeImage {
             showError(leftoverArgs.stream().collect(Collectors.joining(", ", prefix, "")));
         }
 
-        LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageBuilderBootClasspath);
-        finalImageClasspath.addAll(imageBuilderClasspath);
-        finalImageClasspath.addAll(imageProvidedClasspath);
+        LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageProvidedClasspath);
         finalImageClasspath.addAll(imageClasspath);
 
         if (!config.buildFallbackImage() && imageBuilderArgs.contains(oHFallbackThreshold + SubstrateOptions.ForceFallback)) {
