@@ -1645,7 +1645,7 @@ public abstract class InteropLibrary extends Library {
      * This method performs double dispatch by forwarding calls to
      * {@link #isIdenticalOrUndefined(Object, Object)} with receiver and other value first and then
      * with reversed parameters if the result was {@link TriState#UNDEFINED undefined}. This allows
-     * the receiver and the other value to negotiate sameness semantics. This method is supposed to
+     * the receiver and the other value to negotiate identity semantics. This method is supposed to
      * be exported only if the receiver represents a wrapper that forwards messages. In such a case
      * the isIdentical message should be forwarded to the delegate value. Otherwise, the
      * {@link #isIdenticalOrUndefined(Object, Object)} should be exported instead.
