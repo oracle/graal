@@ -555,13 +555,11 @@ insight.on('enter', function(ctx, frame) {
 and print out a message everytime a new prime is added into the filter list:
 
 ```bash
-$ graalvm/bin/lli --llvm.enableLVI --polyglot --experimental-options --insight=agent-limit.js | head -n 3
+$ graalvm/bin/lli --polyglot --experimental-options --insight=agent-limit.js sieve | head -n 3
 found new prime number 2
 found new prime number 3
 found new prime number 5
 ```
-
-Don't forget to request `--llvm.enableLVI` to have access to names of variables.
 
 The mixture of `lli`, polyglot and Insight opens enormous possibilities in tracing,
 controlling and interactive or batch debugging of native programs. Write in
