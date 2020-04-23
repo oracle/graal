@@ -52,11 +52,10 @@ class EspressoVm(GuestVm, JavaVm):
         return self.__class__(self.config_name(), self._options, host_vm)
 
     def run(self, cwd, args):
-        args += self._options
         if hasattr(self.host_vm(), 'run_launcher'):
-            return self.host_vm().run_launcher('espresso', args + self._options, cwd)
+            return self.host_vm().run_launcher('espresso', self._options + args, cwd)
         else:
-            return self.host_vm().run(cwd, mx_espresso._espresso_standalone_command(args))
+            return self.host_vm().run(cwd, mx_espresso._espresso_standalone_command(self._options + args))
 
 
 # Benchmark-specific parameter from AWFY rebench.conf

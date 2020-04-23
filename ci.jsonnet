@@ -150,7 +150,7 @@ local host_jvm(env) = 'graalvm-espresso-' + env;
 local host_jvm_config(env) = if std.startsWith(env, 'jvm') then 'jvm' else 'native';
 
 
-local espresso_benchmark(env, suite) =
+local espresso_benchmark(env, suite, guest_jvm_config='default') =
   clone_graal(env) +
   build_espresso(env) +
   {
@@ -161,7 +161,7 @@ local espresso_benchmark(env, suite) =
             '--',
             '--jvm=' + host_jvm(env), '--jvm-config=' + host_jvm_config(env),
             '--guest',
-            '--jvm=espresso', '--jvm-config=default',
+            '--jvm=espresso', '--jvm-config=' + guest_jvm_config,
             '--vm.Xss32m']
         ),
         ['bench-uploader.py', 'bench-results.json'],
@@ -214,7 +214,8 @@ local awfy = 'awfy:*';
     jdk8_daily_bench_linux        + espresso_benchmark('jvm-ce', scala_dacapo)                            + {name: 'espresso-bench-jvm-ce-scala-dacapo-jdk8-linux-amd64'},
     jdk8_daily_bench_linux        + espresso_benchmark('jvm-ee', scala_dacapo)                            + {name: 'espresso-bench-jvm-ee-scala-dacapo-jdk8-linux-amd64'},
     jdk8_daily_bench_linux        + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
-    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ee', awfy)                                    + {name: 'espresso-bench-jvm-ee-awfy-jdk8-linux-amd64'}
+    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ee', awfy)                                    + {name: 'espresso-bench-jvm-ee-awfy-jdk8-linux-amd64'},
+    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ee', awfy, 'la-inline')                       + {name: 'espresso-bench-jvm-ee-la-inline-awfy-jdk8-linux-amd64'}
 
 
     // Compilation on SVM is broken GR-22475
