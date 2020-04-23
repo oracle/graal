@@ -99,4 +99,6 @@ public interface LibCBase {
     default boolean isLibC(Class<? extends LibCBase> libC) {
         return getClass().equals(libC);
     }
+
+    boolean hasIsolatedNamespaces();
 }
