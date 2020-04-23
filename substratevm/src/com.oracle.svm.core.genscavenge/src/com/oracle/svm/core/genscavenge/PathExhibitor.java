@@ -55,9 +55,7 @@ import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 
-/**
- * Can be used to debug object liveness.
- */
+/** Determines paths from roots to objects or heap regions. */
 public class PathExhibitor {
 
     @NeverInline("Starting a stack walk in the caller frame")
@@ -208,7 +206,6 @@ public class PathExhibitor {
 
     public abstract static class PathElement {
 
-        /** Report this path element. */
         public abstract Log toLog(Log log);
 
         /** Return the base object for this path element, or null for roots. */
@@ -387,7 +384,7 @@ public class PathExhibitor {
         }
     }
 
-    /** A path element for a leaf. */
+    /** Element at the end of a path, the target of the search. */
     public static class LeafElement extends PathElement {
 
         @Override

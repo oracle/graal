@@ -42,27 +42,14 @@ import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.VMThreads;
 
-/**
- * Walk a thread stack verifying the Objects pointed to from the frames.
- *
- * This duplicates a lot of the other stack walking and pointer map iteration code, but that's
- * intentional, in case that code is broken.
- */
-public final class StackVerifier {
+/** Walk the stack of threads, verifying the Objects pointed to from the frames. */
+final class StackVerifier {
 
-    /*
-     * Final state.
-     */
-
-    /** A singleton instance of the ObjectReferenceVisitor. */
     private static final VerifyFrameReferencesVisitor verifyFrameReferencesVisitor = new VerifyFrameReferencesVisitor();
 
-    /** A singleton instance of the StackFrameVerifierVisitor. */
     private final StackFrameVerifierVisitor stackFrameVisitor = new StackFrameVerifierVisitor();
 
-    /** Constructor. */
     StackVerifier() {
-        // Mutable data are passed as arguments.
     }
 
     public boolean verifyInAllThreads(Pointer currentSp, String message) {
@@ -107,7 +94,6 @@ public final class StackVerifier {
         return true;
     }
 
-    /** A StackFrameVisitor to verify a frame. */
     private static class StackFrameVerifierVisitor extends StackFrameVisitor {
 
         @Override
@@ -129,7 +115,6 @@ public final class StackVerifier {
         }
     }
 
-    /** An ObjectReferenceVisitor to verify references from stack frames. */
     private static class VerifyFrameReferencesVisitor implements ObjectReferenceVisitor {
 
         @Override

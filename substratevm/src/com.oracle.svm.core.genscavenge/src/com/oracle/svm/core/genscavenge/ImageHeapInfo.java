@@ -32,8 +32,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 
 /**
- * The image heap consists of multiple partitions that don't necessarily form a contiguous block of
- * memory (there can be holes in between).
+ * Information on the multiple partitions that make up the image heap, which don't necessarily form
+ * a contiguous block of memory (there can be holes in between), and their boundaries.
  */
 public class ImageHeapInfo {
     @UnknownObjectField(types = Object.class) public Object firstReadOnlyPrimitiveObject;

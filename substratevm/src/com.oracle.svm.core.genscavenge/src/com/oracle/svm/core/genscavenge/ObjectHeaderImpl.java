@@ -70,7 +70,6 @@ public class ObjectHeaderImpl extends ObjectHeader {
     private static final UnsignedWord CLEAR_HEADER_BITS             = MASK_HEADER_BITS.not();
     // @formatter:on
 
-    /** Constructor for subclasses. */
     @Platforms(Platform.HOSTED_ONLY.class)
     ObjectHeaderImpl() {
     }
@@ -151,7 +150,6 @@ public class ObjectHeaderImpl extends ObjectHeader {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
-        // Turn the Unsigned header into a Pointer, and then to an Object of type DynamicHub.
         final UnsignedWord pointerBits = clearBits(header);
         final Object objectValue;
         ReferenceAccess referenceAccess = ReferenceAccess.singleton();
@@ -168,7 +166,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
     @Override
     public void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind) {
         assert heapKind == HeapKind.Unmanaged || heapKind == HeapKind.ImageHeap;
-        // headers in unmanaged memory or image heap don't need any GC-specific bits set
+        // Headers in unmanaged memory or image heap don't need any GC-specific bits set
         Word objectHeader = encodeAsObjectHeader(hub, false, false);
         initializeHeaderOfNewObject(objectPointer, objectHeader);
     }
@@ -258,7 +256,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return !isUnalignedHeader(ptrToObj, header);
     }
 
-    /* Must only be called by the write barriers as it does check for image heap objects. */
+    /* Must only be called by the write barriers as it does not check for image heap objects. */
     public static boolean isAlignedHeaderUnsafe(UnsignedWord header) {
         return !testUnalignedBit(header);
     }
@@ -335,10 +333,9 @@ public class ObjectHeaderImpl extends ObjectHeader {
         }
     }
 
-    /** Install in an Object, a forwarding pointer to a different Object. */
+    /** In an Object, install a forwarding pointer to a different Object. */
     protected static void installForwardingPointer(Object original, Object copy) {
         assert !isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
-        /* Turn the copy Object into a Pointer, and encode that as a forwarding pointer. */
         UnsignedWord forwardHeader;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
             if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {

@@ -227,7 +227,7 @@ public class ReferenceObjectProcessing {
 
     public static boolean verify(Reference<?> dr) {
         final Pointer refPointer = ReferenceInternals.getReferentPointer(dr);
-        final int refClassification = HeapVerifierImpl.classifyPointer(refPointer);
+        final int refClassification = HeapVerifier.classifyPointer(refPointer);
         if (refClassification < 0) {
             final Log witness = Log.log();
             witness.string("[ReferenceObjectProcessing.verify:");

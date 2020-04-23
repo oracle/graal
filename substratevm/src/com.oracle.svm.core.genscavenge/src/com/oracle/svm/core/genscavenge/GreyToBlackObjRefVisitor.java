@@ -39,16 +39,13 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 
 /**
- * This visitor is handed *Pointers to Object references* and if necessary it promotes the
+ * This visitor is handed <em>Pointers to Object references</em> and if necessary it promotes the
  * referenced Object and replaces the Object reference with a forwarding pointer.
  *
  * This turns an individual Object reference from grey to black.
  *
  * Since this visitor is used during collection, one instance of it is constructed during native
  * image generation.
- *
- * The vanilla visitObjectReference method is not inlined, but there is a visitObjectReferenceInline
- * available for performance critical code.
  */
 public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     protected final Counters counters;
@@ -79,10 +76,6 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         return visitObjectReferenceInline(objRef, innerOffset, compressed, null);
     }
 
-    /**
-     * This visitor is deals in *Pointers to Object references*. As such it uses Pointer.readObject
-     * and Pointer.writeObject on the Pointer, not Pointer.toObject and Word.fromObject(o).
-     */
     @Override
     @AlwaysInline("GC performance")
     public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed, Object holderObject) {
@@ -90,7 +83,6 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         assert !objRef.isNull();
         counters.noteObjRef();
 
-        // Read the referenced Object carefully.
         final Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
         assert offsetP.isNonNull() || innerOffset == 0;
 
@@ -109,6 +101,7 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         // in a lot of cache misses.
         final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(p);
         if (GCImpl.getGCImpl().isCompleteCollection() || !ObjectHeaderImpl.hasRememberedSet(header)) {
+
             if (ObjectHeaderImpl.isForwardedHeader(header)) {
                 counters.noteForwardedReferent();
                 // Update the reference to point to the forwarded Object.

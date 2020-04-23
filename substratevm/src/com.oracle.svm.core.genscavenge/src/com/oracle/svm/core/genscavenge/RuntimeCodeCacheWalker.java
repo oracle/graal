@@ -36,7 +36,7 @@ import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 
 /**
- * References from the runtime compiled code to the Java heap must be consider as either strong or
+ * References from the runtime compiled code to the Java heap must be considered either strong or
  * weak references, depending on whether the code is currently on the execution stack. Otherwise,
  * constant folding could create memory leaks as it can make heap objects reachable from code.
  * <p>

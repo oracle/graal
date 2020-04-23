@@ -30,43 +30,29 @@ import com.oracle.svm.core.log.Log;
 
 final class SpaceVerifier {
 
-    /**
-     * A factory for a VerifierImpl that will be initialized later.
-     *
-     * @return A Verifier that can be initialized later.
-     */
-    public static SpaceVerifier factory() {
-        return new SpaceVerifier();
+    private Space space;
+
+    SpaceVerifier() {
     }
 
-    /**
-     * Initialize the state of this VerifierImpl.
-     *
-     * @param s The Space to be verified.
-     */
     public void initialize(final Space s) {
         this.space = s;
     }
 
     public boolean verify() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog();
-        trace.string("[SpaceVerifierImpl.verify:").string("  ").string(space.getName()).newline();
-        boolean result = true;
+        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog();
+        trace.string("[SpaceVerifier.verify:").string("  ").string(space.getName()).newline();
         final boolean isTLASpace = ThreadLocalAllocation.isThreadLocalAllocationSpace(space);
         if (isTLASpace) {
             ThreadLocalAllocation.disableThreadLocalAllocation();
         }
-        /* Verify the list structure. */
+        boolean result = true;
         if (!verifyChunkLists()) {
-            HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog().string("verifyChunkLists() returns false").string("]").newline();
+            HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("verifyChunkLists() returns false").string("]").newline();
             result = false;
         }
-        /*
-         * Verify the contents of the chunks. If the chunk lists don't verify, there's no point in
-         * trying to verify the chunks themselves.
-         */
         if (result && !verifyChunks()) {
-            HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog().string("[SpaceVerifierImpl.VerifierImpl.verify:").string("  verifyChunks fails").string("]").newline();
+            HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verify:").string("  verifyChunks fails").string("]").newline();
             result = false;
         }
         trace.string("  returns: ").bool(result).string("]").newline();
@@ -81,12 +67,9 @@ final class SpaceVerifier {
 
     /** Verify the chunk list structures, but not the chunks themselves. */
     private boolean verifyChunkLists() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog();
-        trace.string("[SpaceVerifier.VerifierImpl.verifyChunkLists:");
-        boolean result = true;
-        /* Verify the list structure. */
-        result &= verifyAlignedChunkList();
-        result &= verifyUnalignedList();
+        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog();
+        trace.string("[SpaceVerifier.verifyChunkLists:");
+        boolean result = verifyAlignedChunkList() && verifyUnalignedChunkList();
         trace.string("  returns: ").bool(result);
         trace.string("]").newline();
         return result;
@@ -94,19 +77,16 @@ final class SpaceVerifier {
 
     /** Verify the AlignedChunk list, but not the chunks themselves. */
     private boolean verifyAlignedChunkList() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[SpaceVerifier.VerifierImpl.verifyAlignedChunkList:");
+        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyAlignedChunkList:");
         trace.string("  Space: ").string(space.getName()).newline();
         boolean result = true;
-        /* - Verify the doubly-linked large chunk list. */
         AlignedHeapChunk.AlignedHeader current = space.getFirstAlignedHeapChunk();
         AlignedHeapChunk.AlignedHeader previous = WordFactory.nullPointer();
-        /* - - Run down the list with a trailing pointer to the previous chunk. */
         while (current.isNonNull()) {
-            /* Check the backwards link. */
             final AlignedHeapChunk.AlignedHeader previousOfCurrent = current.getPrevious();
             result &= previousOfCurrent.equal(previous);
             if (!result) {
-                final Log failure = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog().string("[SpaceVerifier.VerifierImpl.verifyAlignedChunkList:");
+                final Log failure = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verifyAlignedChunkList:");
                 failure.string("  space: ").string(space.getName()).string("  doubly-linked list failure").newline();
                 failure.string("  current: ").hex(current);
                 failure.string("  current.previous: ").hex(previousOfCurrent);
@@ -117,10 +97,9 @@ final class SpaceVerifier {
             previous = current;
             current = current.getNext();
         }
-        /* - - Check that the last fixed pointer is correct. */
         result &= previous.equal(space.getLastAlignedHeapChunk());
         if (!result) {
-            final Log failure = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog().string("[SpaceVerifier.VerifierImpl.verifyAlignedChunkList:");
+            final Log failure = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verifyAlignedChunkList:");
             failure.string("  space: ").string(space.getName()).string("  lastAlignedHeapChunk failure").string("]").newline();
             failure.string("  previous: ").hex(previous);
             failure.string("  lastAlignedHeapChunk: ").hex(space.getLastAlignedHeapChunk());
@@ -132,28 +111,24 @@ final class SpaceVerifier {
     }
 
     /** Verify the UnalignedChunks list, but not the chunks themselves. */
-    private boolean verifyUnalignedList() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[SpaceVerifier.verifyUnalignedChunkList:");
+    private boolean verifyUnalignedChunkList() {
+        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyUnalignedChunkList:");
         boolean result = true;
-        /* - Verify the doubly-linked large chunk list. */
         UnalignedHeapChunk.UnalignedHeader current = space.getFirstUnalignedHeapChunk();
         UnalignedHeapChunk.UnalignedHeader previous = WordFactory.nullPointer();
-        /* - - Run down the list with a trailing pointer to the previous chunk. */
         while (current.isNonNull()) {
-            /* Check the backwards link. */
             result &= current.getPrevious().equal(previous);
             if (!result) {
-                final Log failure = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog().string("[SpaceVerifier.VerifierImpl.verifyUnalignedChunkList:");
+                final Log failure = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verifyUnalignedChunkList:");
                 failure.string("  space: ").string(space.getName()).string("  doubly-linked list failure").string("]").newline();
                 break;
             }
             previous = current;
             current = current.getNext();
         }
-        /* - - Check that the last array pointer is correct. */
         result &= previous.equal(space.getLastUnalignedHeapChunk());
         if (!result) {
-            final Log failure = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog().string("[SpaceVerifier.VerifierImpl.verifyUnalignedChunkList:");
+            final Log failure = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verifyUnalignedChunkList:");
             failure.string("  space: ").string(space.getName()).string("  lastUnalignedHeapChunk failure").string("]").newline();
             result = false;
         }
@@ -163,16 +138,14 @@ final class SpaceVerifier {
 
     /** Verify the contents of the chunks. */
     private boolean verifyChunks() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[SpaceVerifier.VerifierImpl.verifyChunks:");
-        boolean result = true;
-        result &= verifyAlignedChunks();
-        result &= verifyUnalignedChunks();
+        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyChunks:");
+        boolean result = verifyAlignedChunks() && verifyUnalignedChunks();
         trace.string("  returns: ").bool(result).string("]").newline();
         return result;
     }
 
     private boolean verifyAlignedChunks() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[SpaceVerifier.VerifierImpl.verifyAlignedChunks:");
+        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyAlignedChunks:");
         boolean result = true;
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
@@ -184,7 +157,7 @@ final class SpaceVerifier {
     }
 
     private boolean verifyUnalignedChunks() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[SpaceVerifier.verifyUnalignedChunks:");
+        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyUnalignedChunks:");
         boolean result = true;
         UnalignedHeapChunk.UnalignedHeader chunk = space.getFirstUnalignedHeapChunk();
         while (chunk.isNonNull()) {
@@ -196,7 +169,7 @@ final class SpaceVerifier {
     }
 
     boolean verifyOnlyCleanCards() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[SpaceVerifier.VerifierImpl.verifyOnlyCleanCards:");
+        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyOnlyCleanCards:");
         trace.string("  space: ").string(space.getName()).newline();
         boolean result = verifyOnlyCleanAlignedChunks() && verifyOnlyCleanUnalignedChunks();
         trace.string("  returns: ").bool(result).string("]").newline();
@@ -204,7 +177,7 @@ final class SpaceVerifier {
     }
 
     private boolean verifyOnlyCleanAlignedChunks() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[SpaceVerifier.VerifierImpl.verifyOnlyAlignedChunks:").newline();
+        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyOnlyCleanAlignedChunks:").newline();
         boolean result = true;
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
@@ -216,22 +189,14 @@ final class SpaceVerifier {
     }
 
     private boolean verifyOnlyCleanUnalignedChunks() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[SpaceVerifier.verifyOnlyCleanUnalignedChunks:").newline();
+        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyOnlyCleanUnalignedChunks:").newline();
         boolean result = true;
         UnalignedHeapChunk.UnalignedHeader chunk = space.getFirstUnalignedHeapChunk();
         while (chunk.isNonNull()) {
-            result &= UnalignedHeapChunk.verifyOnlyCleanCardsOfUnalignedHeapChunk(chunk);
+            result &= UnalignedHeapChunk.verifyOnlyCleanCardsInUnalignedHeapChunk(chunk);
             chunk = chunk.getNext();
         }
         trace.string("  returns: ").bool(result).string("]").newline();
         return result;
     }
-
-    private SpaceVerifier() {
-    }
-
-    /*
-     * State.
-     */
-    private Space space;
 }

@@ -39,27 +39,13 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 
 /**
- * Holder for a pinned object, such that the object doesn't move until the pin is removed. The
- * garbage collector treats pinned object specially to ensure that they are not moved or discarded.
- * <p>
- * This class implements {@link AutoCloseable} so that the pinning can be managed conveniently with
- * a try-with-resource block that releases the pinning automatically:
- *
- * <pre>
- *   int[] array = ...
- *   try (PinnedObject pin = PinnedObject.open(array)) {
- *     CIntPointer rawData = pin.addressOfArrayElement(0);
- *     // it is safe to pass rawData to a C function.
- *   }
- * </pre>
- *
- * TODO: Is pinning a service of all collectors, or just the one I have now?
+ * Support for pinning objects to a memory address with {@link PinnedObject}.
  */
-public class PinnedObjectImpl implements PinnedObject {
+class PinnedObjectImpl implements PinnedObject {
 
     static class PinnedObjectSupportImpl implements PinnedObjectSupport {
         @Override
@@ -85,20 +71,45 @@ public class PinnedObjectImpl implements PinnedObject {
         }
     }
 
-    /**
-     * Releases the pin for the object. After this call, the object can be moved or discarded by the
-     * collector.
-     */
+    static void pushPinnedObject(PinnedObjectImpl newHead) {
+        final Log trace = Log.noopLog().string("[PinnedObject.pushPinnedObject:").string("  newHead: ").object(newHead);
+        final HeapImpl heap = HeapImpl.getHeapImpl();
+        final UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = heap.getPinHead();
+        PinnedObjectImpl sampleHead;
+        do {
+            sampleHead = pinHead.get();
+            newHead.next = sampleHead;
+        } while (!pinHead.compareAndSet(sampleHead, newHead));
+        trace.string("  returns: ").object(newHead).string("]").newline();
+    }
+
+    /** Clears the list head reference and returns the former head object. */
+    static PinnedObjectImpl claimPinnedObjectList() {
+        final Log trace = Log.noopLog().string("[PinnedObject.claimPinnedObjectList:").newline();
+        final HeapImpl heap = HeapImpl.getHeapImpl();
+        final UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = heap.getPinHead();
+        final PinnedObjectImpl result = pinHead.getAndSet(null);
+        trace.string("  returns: ").object(result);
+        return result;
+    }
+
+    private final Object referent;
+
+    private volatile boolean open = true;
+
+    /** Successor on the singly-linked list maintained by {@linkplain #pushPinnedObject}. */
+    private PinnedObjectImpl next;
+
+    PinnedObjectImpl(Object object) {
+        this.referent = object;
+    }
+
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void close() {
         assert open : "Should not call close() on a closed PinnedObject.";
         open = false;
     }
-
-    /*
-     * Access methods.
-     */
 
     @Override
     public Object getObject() {
@@ -130,62 +141,4 @@ public class PinnedObjectImpl implements PinnedObject {
     public PinnedObjectImpl getNext() {
         return next;
     }
-
-    protected void setNext(PinnedObjectImpl nextPinnedObject) {
-        next = nextPinnedObject;
-    }
-
-    /** Constructor. */
-    protected PinnedObjectImpl(Object object) {
-        this.referent = object;
-        this.open = true;
-        this.next = null;
-    }
-
-    /*
-     * Operations on the list of pinned objects.
-     */
-
-    /**
-     * Push an element onto the list. May be called by many threads simultaneously, so it uses a
-     * compareAndSet loop.
-     */
-    public static void pushPinnedObject(PinnedObjectImpl newHead) {
-        final Log trace = Log.noopLog().string("[PinnedObject.pushPinnedObject:").string("  newHead: ").object(newHead);
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final AtomicReference<PinnedObjectImpl> pinHead = heap.getPinHead();
-        PinnedObjectImpl sampleHead;
-        do {
-            sampleHead = pinHead.get();
-            newHead.setNext(sampleHead);
-        } while (!pinHead.compareAndSet(sampleHead, newHead));
-        trace.string("  returns: ").object(newHead).string("]").newline();
-    }
-
-    /**
-     * Claim the entire list. Only called once during each collection, but it uses getAndSet(null)
-     * anyway so I do not have to worry about it.
-     */
-    public static PinnedObjectImpl claimPinnedObjectList() {
-        final Log trace = Log.noopLog().string("[PinnedObject.claimPinnedObjectList:").newline();
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final AtomicReference<PinnedObjectImpl> pinHead = heap.getPinHead();
-        final PinnedObjectImpl result = pinHead.getAndSet(null);
-        trace.string("  returns: ").object(result);
-        return result;
-    }
-
-    /*
-     * State.
-     */
-
-    /** The object that is pinned. */
-    private final Object referent;
-    /** Is this pin open? */
-    private volatile boolean open;
-    /**
-     * Pinned object are on a singly-linked list maintained by
-     * {@linkplain #pushPinnedObject(PinnedObjectImpl)}.
-     */
-    private PinnedObjectImpl next;
 }

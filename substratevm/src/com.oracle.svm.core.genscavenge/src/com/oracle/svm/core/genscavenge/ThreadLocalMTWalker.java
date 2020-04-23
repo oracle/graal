@@ -39,8 +39,8 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
  * The class is registered with the {@link GC} to process VM thread local variables of type
  * {@link Object}.
  */
-public class ThreadLocalMTWalker {
-    public boolean walk(ObjectReferenceVisitor referenceVisitor) {
+final class ThreadLocalMTWalker {
+    boolean walk(ObjectReferenceVisitor referenceVisitor) {
         VMThreadLocalMTSupport threadLocals = ImageSingletons.lookup(VMThreadLocalMTSupport.class);
         for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
             if (!InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) vmThread, NonmovableArrays.fromImageHeap(threadLocals.vmThreadReferenceMapEncoding),

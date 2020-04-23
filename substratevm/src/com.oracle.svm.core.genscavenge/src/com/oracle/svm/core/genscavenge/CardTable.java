@@ -45,56 +45,46 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * A card remembered set table is a remembered set that summarizes pointer stores into a region. A
  * card is "dirty" if a pointer has been stored recently into the memory summarized by the card, or
  * "clean" otherwise.
- *
+ * <p>
  * When looking for roots into the young space, the whole old space need not be searched for
  * pointers, only the parts of the old space covered by dirty cards. (The card table works in
  * concert with the FirstObjectTable to find objects that cross onto memory covered by a card.)
- *
+ * <p>
  * At each pointer store the card corresponding to the destination of the store is dirtied. At each
  * collection, the dirty cards are scanned and the corresponding memory examined for pointers to the
  * young space. When the memory has been scanned, the corresponding card is cleaned.
- *
+ * <p>
  * Implementation notes:
+ * <ul>
+ * <li>In theory, I only need "clean" and "dirty" values in the table, but since bit manipulations
+ * are expensive (particularly atomic bit manipulations), I trade space for time and make each entry
+ * a byte.</li>
  *
- * - Since the card remembered set table is not a real object, the methods here are all static, and
- * if necessary take a Pointer to the table as their first argument.
- *
- * - In theory, I only need "clean" and "dirty" values in the table, but since bit manipulations are
- * expensive (particularly atomic bit manipulations), I trade space for time and make each entry a
- * byte.
- *
- * - The "dirty" value is 0, since that makes dirtying a card a single "clearByte" instructions
+ * <li>The "dirty" value is 0, since that makes dirtying a card a single "clearByte" instructions
  * which is available in all the instruction set architectures I care about, whereas a "setByte"
- * with a non-zero value takes more instruction space.
+ * with a non-zero value takes more instruction space.</li>
  *
- * - There are various proposals for other entry values since no one likes using a byte to hold one
- * bit. For example, one could have a "pre-cleaning" thread that went over the memory and where it
- * found only one interesting pointer, change the card from "dirty" to the offset of that pointer
- * within the card. That feature is not in this version.
- *
+ * <li>There are various proposals for other entry values since no one likes using a byte to hold
+ * one bit. For example, one could have a "pre-cleaning" thread that went over the memory and where
+ * it found only one interesting pointer, change the card from "dirty" to the offset of that pointer
+ * within the card. That feature is not in this version.</li>
+ * </ul>
  */
 public final class CardTable {
 
-    /*
-     * Constants.
-     */
+    private static final int BYTES_COVERED_BY_ENTRY = 512;
 
-    /** The number of bytes of memory covered by an entry. */
-    private static final int MEMORY_BYTES_PER_ENTRY = 512;
-    /** The size of a table entry, in bytes. */
-    private static final int ENTRY_BYTES = 1;
-    /** The values for an entry. */
+    private static final int ENTRY_SIZE_BYTES = 1;
+
     private static final int DIRTY_ENTRY = 0;
     private static final int CLEAN_ENTRY = 1;
 
     /** A LocationIdentity to distinguish card locations from other locations. */
     public static final LocationIdentity CARD_REMEMBERED_SET_LOCATION = NamedLocationIdentity.mutable("CardRememberedSet");
 
-    /** Private unused constructor: There are no instances of this class. */
     private CardTable() {
     }
 
-    /** Dirty an entry in a table. */
     static void dirtyEntryAtIndex(Pointer table, UnsignedWord index) {
         table.writeByte(indexToTableOffset(index), (byte) DIRTY_ENTRY, CARD_REMEMBERED_SET_LOCATION);
     }
@@ -113,14 +103,12 @@ public final class CardTable {
         return referenceToYoungObjectVisitor.containsReferenceToYoungObject(obj);
     }
 
-    /** Initialize a table to "clean". */
     static Pointer cleanTableToPointer(Pointer tableStart, Pointer tableLimit) {
         final UnsignedWord tableOffset = tableLimit.subtract(tableStart);
         final UnsignedWord indexLimit = CardTable.tableOffsetToIndex(tableOffset);
         return CardTable.cleanTableToIndex(tableStart, indexLimit);
     }
 
-    /** Initialize a table to "clean". */
     static Pointer cleanTableToIndex(Pointer table, UnsignedWord indexLimit) {
         for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
             cleanEntryAtIndex(table, index);
@@ -128,26 +116,21 @@ public final class CardTable {
         return table;
     }
 
-    /** Clean an entry in a table. */
     static void cleanEntryAtIndex(Pointer table, UnsignedWord index) {
         table.writeByte(indexToTableOffset(index), (byte) CLEAN_ENTRY, CARD_REMEMBERED_SET_LOCATION);
     }
 
-    static int getMemoryBytesPerEntry() {
-        return MEMORY_BYTES_PER_ENTRY;
+    static int getBytesCoveredByEntry() {
+        return BYTES_COVERED_BY_ENTRY;
     }
 
-    /** Given the size of a memory block, how big is the table to cover it? */
     static UnsignedWord tableSizeForMemorySize(UnsignedWord memorySize) {
-        /* How many entries are there? */
         final UnsignedWord maxIndex = indexLimitForMemorySize(memorySize);
-        return maxIndex.multiply(ENTRY_BYTES);
+        return maxIndex.multiply(ENTRY_SIZE_BYTES);
     }
 
-    /** Turn an offset into the memory into a table index. */
     static UnsignedWord memoryOffsetToIndex(UnsignedWord offset) {
-        /* The unsignedDivide rounds down, which is what I want. */
-        return offset.unsignedDivide(MEMORY_BYTES_PER_ENTRY);
+        return offset.unsignedDivide(BYTES_COVERED_BY_ENTRY);
     }
 
     /**
@@ -155,20 +138,14 @@ public final class CardTable {
      * memory address of this indexed entry, ask for the start of the *next* indexed entry.
      */
     static Pointer indexToMemoryPointer(Pointer memoryStart, UnsignedWord index) {
-        final UnsignedWord offset = index.multiply(MEMORY_BYTES_PER_ENTRY);
+        final UnsignedWord offset = index.multiply(BYTES_COVERED_BY_ENTRY);
         return memoryStart.add(offset);
     }
 
-    /** Given the size of a memory block, how what's the maximum index into that memory? */
     static UnsignedWord indexLimitForMemorySize(UnsignedWord memorySize) {
-        /* How many entries are there? */
-        final UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, WordFactory.unsigned(MEMORY_BYTES_PER_ENTRY));
+        final UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, WordFactory.unsigned(BYTES_COVERED_BY_ENTRY));
         return CardTable.memoryOffsetToIndex(roundedMemory);
     }
-
-    /*
-     * Verification.
-     */
 
     /**
      * Check that:
@@ -178,11 +155,10 @@ public final class CardTable {
      * </ul>
      * I would like to check that every dirty card has a pointer to young space, but a card may be
      * dirtied by the storing of a null, which doesn't point to young space. For extra credit, make
-     * {@link #getMemoryBytesPerEntry} 8 so there's at most one object per card to weed out
+     * {@link #getBytesCoveredByEntry} 8 so there's at most one object per card to weed out
      * ambiguous marked cards.
      */
     protected static boolean verify(Pointer ctStart, Pointer fotStart, Pointer objectsStart, Pointer objectsLimit) {
-
         final Log trace = Log.noopLog().string("[CardTable.verify: ");
         trace.string("  ctStart: ").hex(ctStart).string("  fotStart: ").hex(fotStart).string("  objectsStart: ").hex(objectsStart).string("  objectsLimit: ").hex(objectsLimit).newline();
         if (!verifyCleanCards(ctStart, fotStart, objectsStart, objectsLimit)) {
@@ -199,7 +175,6 @@ public final class CardTable {
         return true;
     }
 
-    /** Read the entry in a table. */
     private static int readEntryAtIndexUnchecked(Pointer table, UnsignedWord index) {
         return table.readByte(indexToTableOffset(index));
     }
@@ -222,17 +197,14 @@ public final class CardTable {
         return isCleanEntry(readEntryAtIndex(table, index));
     }
 
-    /** Convert a byte offset to a table index. */
     private static UnsignedWord tableOffsetToIndex(UnsignedWord offset) {
-        return offset.unsignedDivide(ENTRY_BYTES);
+        return offset.unsignedDivide(ENTRY_SIZE_BYTES);
     }
 
-    /** Convert a table index to a byte offset. */
     private static UnsignedWord indexToTableOffset(UnsignedWord index) {
-        return index.multiply(ENTRY_BYTES);
+        return index.multiply(ENTRY_SIZE_BYTES);
     }
 
-    /** Turn a Pointer into the memory into a table index. */
     private static UnsignedWord memoryPointerToIndex(Pointer memoryStart, Pointer memoryLimit, Pointer memoryPointer) {
         assert memoryStart.belowOrEqual(memoryLimit) : "memoryStart.belowOrEqual(memoryLimit)";
         assert memoryStart.belowOrEqual(memoryPointer) : "memoryStart.belowOrEqual(memoryPointer)";
@@ -241,37 +213,29 @@ public final class CardTable {
         return memoryOffsetToIndex(offset);
     }
 
-    /** Visit the cards in a table. */
     private static boolean visitCards(Pointer table, UnsignedWord indexLimit, CardTable.Visitor visitor) {
-        boolean result = true;
-        result &= visitor.prologue(table, indexLimit);
-        if (result) {
-            for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
-                final int entry = readEntryAtIndex(table, index);
-                result &= visitor.visitEntry(table, index, entry);
-                if (!result) {
-                    break;
-                }
+        if (!visitor.prologue(table, indexLimit)) {
+            return false;
+        }
+        for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
+            int entry = readEntryAtIndex(table, index);
+            if (!visitor.visitEntry(table, index, entry)) {
+                return false;
             }
         }
-        result &= visitor.epilogue(table, indexLimit);
-        return result;
+        return visitor.epilogue(table, indexLimit);
     }
 
     private static ReferenceToYoungObjectVisitor getReferenceToYoungObjectVisitor() {
-        return HeapImpl.getHeapImpl().getHeapVerifierImpl().getReferenceToYoungObjectVisitor();
+        return HeapImpl.getHeapImpl().getHeapVerifier().getReferenceToYoungObjectVisitor();
     }
-
-    /*
-     * Verification.
-     */
 
     /** Check that every clean card indicates an object with no pointers to young space. */
     private static boolean verifyCleanCards(Pointer ctStart, Pointer fotStart, Pointer objectsStart, Pointer objectsLimit) {
         final Log trace = Log.noopLog().string("[CardTable.verifyCleanCards:");
         trace.string("  ctStart: ").hex(ctStart).string("  fotStart: ").hex(fotStart).string("  objectsStart: ").hex(objectsStart).string("  objectsLimit: ").hex(objectsLimit);
         /* Walk the remembered set entries. */
-        final UnsignedWord indexLimit = FirstObjectTable.getTableSizeForMemoryPointers(objectsStart, objectsLimit);
+        final UnsignedWord indexLimit = FirstObjectTable.getTableSizeForMemoryRange(objectsStart, objectsLimit);
         for (UnsignedWord index = WordFactory.zero(); index.belowThan(indexLimit); index = index.add(1)) {
             trace.newline().string("  index: ").unsigned(index);
             if (FirstObjectTable.isUninitializedIndex(fotStart, index)) {
@@ -301,11 +265,9 @@ public final class CardTable {
                     trace.string("  length: ").signed(KnownIntrinsics.readArrayLength(obj));
                 }
                 final boolean containsYoung = getReferenceToYoungObjectVisitor().containsReferenceToYoungObject(obj);
-                /* Return early on failure. */
                 if (containsYoung) {
-                    /* { WITNESS */
                     final boolean witnessForDebugging = true;
-                    final Log witness = (witnessForDebugging ? Log.log() : HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog());
+                    final Log witness = (witnessForDebugging ? Log.log() : HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog());
                     witness.string("[CardTable.verifyCleanCards:").string("  objectsStart: ").hex(objectsStart).string("  objectsLimit: ").hex(objectsLimit).string("  indexLimit: ").unsigned(
                                     indexLimit).newline();
                     witness.string("  index: ").unsigned(index);
@@ -330,7 +292,6 @@ public final class CardTable {
                     /* Repeat the search for old-to-young references, this time as a witness. */
                     getReferenceToYoungObjectVisitor().witnessReferenceToYoungObject(obj);
                     witness.string(" returns false for index: ").unsigned(index).string("]").newline();
-                    /* } WITNESS */
                     return false;
                 }
                 ptr = LayoutEncoding.getObjectEnd(obj);
@@ -355,14 +316,11 @@ public final class CardTable {
                 final UnsignedWord index = memoryPointerToIndex(objectsStart, objectsLimit, ptr);
                 final boolean isClean = isCleanEntryAtIndex(ctStart, index);
                 if (isClean) {
-                    /* { WITNESS */
                     final boolean witnessForDebugging = true;
-                    final Log witness = (witnessForDebugging ? Log.log() : HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog());
+                    final Log witness = (witnessForDebugging ? Log.log() : HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog());
                     witness.string("[CardTable.verifyDirtyCards:").string("  objectsStart: ").hex(objectsStart).string("  objectsLimit: ").hex(objectsLimit).newline();
                     witness.string("  obj: ").object(obj).string("  contains young: ").bool(containsYoung).string("  but index: ").unsigned(index).string(" is clean.").string(" returns false").string(
                                     "]").newline();
-                    /* } WITNESS */
-                    /* Return early on failure. */
                     return false;
                 }
             }
@@ -382,11 +340,11 @@ public final class CardTable {
 
         @Override
         public boolean visitObject(Object obj) {
-            final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).newline();
+            final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).newline();
             visitor.reset();
             trace.string("  calling walkObject").newline();
             if (!InteriorObjRefWalker.walkObject(obj, visitor)) {
-                final Log witness = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog();
+                final Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog();
                 witness.string("[[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).string("  fails InteriorObjRefWalker.walkObject").string("]").newline();
                 return false;
             }
@@ -396,16 +354,14 @@ public final class CardTable {
 
         private boolean containsReferenceToYoungObject(Object obj) {
             if (!visitObject(obj)) {
-                final Log witness = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog();
+                final Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog();
                 witness.string("[[ReferenceToYoungObjectVisitor.containsReferenceToYoungObject:").string("  obj: ").object(obj).string("  fails visitObject").string("]").newline();
             }
             return visitor.found;
         }
 
-        /* Debugging. */
         private boolean witnessReferenceToYoungObject(Object obj) {
             visitor.setWitnessForDebugging(true);
-            /* Ignore whether the interior iteration bailed out early. */
             visitObject(obj);
             visitor.setWitnessForDebugging(false);
             return visitor.found;
@@ -415,10 +371,9 @@ public final class CardTable {
     /** Visit an object reference and return false if it is a reference to the young space. */
     protected static class ReferenceToYoungObjectReferenceVisitor implements ObjectReferenceVisitor {
 
-        /* Mutable state. */
-
         /** Have I found a reference to a young object yet? */
         private boolean found;
+
         /** Should I act as a witness for debugging purposes? */
         private boolean witnessForDebugging;
 
@@ -430,29 +385,21 @@ public final class CardTable {
         }
 
         @Override
-        /* Fail if I find a pointer to young space. */
         public boolean visitObjectReference(Pointer objRef, boolean compressed) {
             final Log trace = Log.noopLog().string("[ReferenceToYoungObjectReferenceVisitor.visitObjectReference: ").string("  objRef: ").hex(objRef).newline();
-            /* Read the referenced Object, carefully. */
             final Pointer p = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
             trace.string("  p: ").hex(p);
-            /* It might be null. */
             if (p.isNull()) {
-                /* Nothing to do. */
                 trace.string("  null pointer returns true]").newline();
                 return true;
             }
-            /* Paranoia in verification code is fine. */
             final boolean paranoid = true;
             if (paranoid) {
-                /* Carefully check out the object. */
                 final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(p);
-                /* It should *not* be a zapped value. */
                 if (ObjectHeaderImpl.isProducedHeapChunkZapped(header) || ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
                     final Log paranoidLog = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
                     paranoidLog.string("  objRef: ").hex(objRef).string("  p: ").hex(p).string("  points to zapped header: ").hex(header).string("]").newline();
                 }
-                /* It should *not* be a forwarding pointer. */
                 if (ObjectHeaderImpl.isForwardedHeader(header)) {
                     final Log paranoidLog = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
                     paranoidLog.string("  objRef: ").hex(objRef).string("  p: ").hex(p).string("  points to header: ").hex(header).string("]").newline();
@@ -461,7 +408,6 @@ public final class CardTable {
             final Object obj = p.toObject();
             trace.string("  obj: ").object(obj).string(" ").object(obj);
             if (HeapImpl.getHeapImpl().isInImageHeap(obj)) {
-                /* Non-heap objects are not in the young space. */
                 trace.string("  non-heap allocated returns true]").newline();
                 return true;
             }
@@ -526,11 +472,9 @@ public final class CardTable {
         }
     }
 
-    /** For testing and debugging. */
     public static final class TestingBackDoor {
 
         private TestingBackDoor() {
-            /* No instances. */
         }
 
         public static void dirtyEntryAtIndex(Pointer table, UnsignedWord index) {

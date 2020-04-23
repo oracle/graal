@@ -35,22 +35,14 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.TimeUtils;
 
-/** A collection policy to decide when to collect incrementally or completely. */
+/** A collection policy decides when to collect incrementally or completely. */
 public abstract class CollectionPolicy {
 
     public static class Options {
-        /**
-         * Pro tip: A fully qualified name looks like
-         * <code>com.oracle.svm.core.genscavenge.CollectionPolicy$ByTime</code>, so if it has a
-         * dollar sign in it you probably have to quote it to protect it from the shell.
-         */
-        @Option(help = "What is the initial collection policy?")//
+        @Option(help = "The initial garbage collection policy, as a fully-qualified class name (might require quotes or escaping).")//
         public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>(ByTime.class.getName());
 
-        /**
-         * Ratio of incremental to complete collection times that cause complete collections.
-         */
-        @Option(help = "Percentage of time that should be spent in young generation collections.")//
+        @Option(help = "Percentage of total collection time that should be spent on young generation collections.")//
         public static final RuntimeOptionKey<Integer> PercentTimeInIncrementalCollection = new RuntimeOptionKey<>(50);
     }
 
@@ -59,20 +51,18 @@ public abstract class CollectionPolicy {
         return HeapPolicy.instantiatePolicy(access, CollectionPolicy.class, Options.InitialCollectionPolicy.getValue());
     }
 
-    /** Return true if this collection should do an incremental collection. */
+    /** Return {@code true} if the current collection should entail an incremental collection. */
     public abstract boolean collectIncrementally();
 
-    /** Return true if this collection should be a complete collection. */
+    /** Return {@code true} if the current collection should entail a complete collection. */
     public abstract boolean collectCompletely();
 
-    /** Constructor for subclasses. */
     CollectionPolicy() {
-        /* Nothing to do. */
     }
 
     public abstract void nameToLog(Log log);
 
-    protected static GCImpl.Accounting getAccounting() {
+    static GCImpl.Accounting getAccounting() {
         return HeapImpl.getHeapImpl().getGCImpl().getAccounting();
     }
 
@@ -132,9 +122,8 @@ public abstract class CollectionPolicy {
 
     /**
      * A collection policy that attempts to balance the time spent in incremental collections and
-     * the time spent in full collections.
-     *
-     * There might be intervening collections that are not chosen by this policy.
+     * the time spent in full collections. There might be intervening collections that are not
+     * chosen by this policy.
      */
     public static class ByTime extends CollectionPolicy {
 
@@ -145,8 +134,10 @@ public abstract class CollectionPolicy {
 
         @Override
         public boolean collectCompletely() {
-            final Log trace = Log.noopLog().string("[CollectionPolicy.ByTime.collectIncrementally:");
-            final boolean result = collectCompletelyBasedOnTime(trace) || collectCompletelyBasedOnSpace(trace);
+            Log trace = Log.noopLog().string("[CollectionPolicy.ByTime.collectIncrementally:");
+
+            boolean result = collectCompletelyBasedOnTime(trace) || collectCompletelyBasedOnSpace(trace);
+
             trace.string("  returns: ").bool(result).string("]").newline();
             return result;
         }
@@ -174,10 +165,6 @@ public abstract class CollectionPolicy {
                             .string("  totalNanos: ").unsigned(totalNanos)
                             .string("  weightedTotalNanos: ").unsigned(weightedTotalNanos)
                             .newline();
-            /*
-             * The comparison is strictly less than, so equality (e.g., at 0 and 0) does not request
-             * a complete collection.
-             */
             return TimeUtils.nanoTimeLessThan(weightedTotalNanos, incrementalNanos);
         }
 
@@ -208,8 +195,10 @@ public abstract class CollectionPolicy {
 
         @Override
         public boolean collectCompletely() {
-            final Log trace = Log.noopLog().string("[CollectionPolicy.BySpaceAndTime.collectCompletely:").newline();
-            final boolean result = decideToCollectCompletely(trace);
+            Log trace = Log.noopLog().string("[CollectionPolicy.BySpaceAndTime.collectCompletely:").newline();
+
+            boolean result = voteOnMaximumSpace(trace) || (!vetoOnMinimumSpace(trace) && !vetoOnIncrementalTime(trace));
+
             trace.string("  returns: ").bool(result).string("]").newline();
             return result;
         }
@@ -219,23 +208,17 @@ public abstract class CollectionPolicy {
             log.string("by space and time: ").signed(Options.PercentTimeInIncrementalCollection.getValue()).string("% in incremental collections");
         }
 
-        /** Cascading tests for whether to do a complete collection. */
-        private static boolean decideToCollectCompletely(Log trace) {
-            return voteOnMaximumSpace(trace) || (!vetoOnMinimumSpace(trace) && !vetoOnIncrementalTime(trace));
-        }
-
         /** If the heap is too full, request a complete collection. */
         private static boolean voteOnMaximumSpace(Log trace) {
             final UnsignedWord youngSize = HeapPolicy.getMaximumYoungGenerationSize();
             final UnsignedWord oldInUse = getAccounting().getOldGenerationAfterChunkBytes();
-            final UnsignedWord averagePromotion = getAccounting().averagePromotedUnpinnedChunkBytes();
-            final UnsignedWord expectedSize = youngSize.add(oldInUse).add(averagePromotion);
+            final UnsignedWord lastPromotion = getAccounting().lastCollectionPromotedChunkBytes();
+            final UnsignedWord expectedSize = youngSize.add(oldInUse).add(lastPromotion);
             final UnsignedWord maxHeapSize = HeapPolicy.getMaximumHeapSize();
             final boolean vote = maxHeapSize.belowThan(expectedSize);
             trace.string("  youngSize: ").unsigned(youngSize)
                             .string("  oldInUse: ").unsigned(oldInUse)
-                            .string("  averagePromotedUnpinnedChunkBytes: ").unsigned(getAccounting().averagePromotedUnpinnedChunkBytes())
-                            .string("  averagePromotion: ").unsigned(averagePromotion)
+                            .string("  lastPromotion: ").unsigned(lastPromotion)
                             .string("  expectedSize: ").unsigned(expectedSize)
                             .string("  maxHeapSize: ").unsigned(maxHeapSize)
                             .string("  vote: ").bool(vote)
