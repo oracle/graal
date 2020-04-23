@@ -1598,7 +1598,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @param other the other value to compare to
      *
-     * @since 20.1
+     * @since 20.2
      */
     @Abstract(ifExported = {"isIdentical", "identityHashCode"})
     protected TriState isIdenticalOrUndefined(Object receiver, Object other) {
@@ -1681,7 +1681,7 @@ public abstract class InteropLibrary extends Library {
      * For a full example please refer to the SLEqualNode of the SimpleLanguage example
      * implementation.
      *
-     * @since 20.1
+     * @since 20.2
      */
     public boolean isIdentical(Object receiver, Object other, InteropLibrary otherInterop) {
         TriState result = this.isIdenticalOrUndefined(receiver, other);
@@ -1699,7 +1699,7 @@ public abstract class InteropLibrary extends Library {
      * {@link #isIdenticalOrUndefined(Object, Object)} instead.
      *
      * @see #isIdenticalOrUndefined(Object, Object)
-     * @since 20.1
+     * @since 20.2
      */
     public final boolean hasIdentity(Object receiver) {
         return this.isIdentical(receiver, receiver, this);
@@ -1729,7 +1729,7 @@ public abstract class InteropLibrary extends Library {
      *             <code>false</code> for the same receiver.
      * @see #isIdenticalOrUndefined(Object, Object)
      * @see #isIdentical(Object, Object, InteropLibrary)
-     * @since 20.1
+     * @since 20.2
      */
     @Abstract(ifExported = "isIdenticalOrUndefined")
     public int identityHashCode(Object receiver) throws UnsupportedMessageException {
@@ -1752,7 +1752,7 @@ public abstract class InteropLibrary extends Library {
      * short-cut for calling <code>InteropLibrary.getFactory().getUncached()</code>.
      *
      * @see LibraryFactory#getUncached()
-     * @since 20.1
+     * @since 20.2
      */
     public static InteropLibrary getUncached() {
         return UNCACHED;
@@ -1763,7 +1763,7 @@ public abstract class InteropLibrary extends Library {
      * for calling <code>InteropLibrary.getFactory().getUncached(v)</code>.
      *
      * @see LibraryFactory#getUncached(Object)
-     * @since 20.1
+     * @since 20.2
      */
     public static InteropLibrary getUncached(Object v) {
         return FACTORY.getUncached(v);

@@ -47,35 +47,35 @@ package com.oracle.truffle.api.utilities;
  * which requires the use of {@link Boolean#equals(Object)} to compare the values. The comparison
  * with {@link Boolean#equals(Object)} is too slow.
  *
- * @since 20.1
+ * @since 20.2
  */
 public enum TriState {
 
     /**
      * The state is true. Similar to {@link Boolean#TRUE}.
      *
-     * @since 20.1
+     * @since 20.2
      */
     TRUE,
 
     /**
      * The state is false. Similar to {@link Boolean#FALSE}.
      *
-     * @since 20.1
+     * @since 20.2
      */
     FALSE,
 
     /**
      * The state is undefined. Similar to <code>null</code>.
      *
-     * @since 20.1
+     * @since 20.2
      */
     UNDEFINED;
 
     /**
      * Create a {@link TriState} from a primitive boolean.
      *
-     * @since 20.1
+     * @since 20.2
      */
     public static TriState valueOf(boolean b) {
         return b ? TRUE : FALSE;
@@ -85,7 +85,7 @@ public enum TriState {
      * Create a {@link TriState} from a boxed {@link Boolean} explicitely checking for
      * <code>null</code> and returning {@link #UNDEFINED}.
      *
-     * @since 20.1
+     * @since 20.2
      */
     public static TriState valueOf(Boolean b) {
         return b == null ? UNDEFINED : (Boolean.TRUE.equals(b) ? TRUE : FALSE);

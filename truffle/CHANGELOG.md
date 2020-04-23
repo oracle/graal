@@ -2,6 +2,16 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 20.2.0
+* Added new identity APIs to `InteropLibrary`:
+    * `hasIdentity(Object receiver)` to find out whether an object specifies identity
+	* `isIdentical(Object receiver, Object other, InteropLibrary otherLib)` to compare the identity of two object
+	* `isIdenticalOrUndefined(Object receiver, Object other)` export to specify the identity of an object.
+	* `identityHashCode(Object receiver)` useful to implement maps that depend on identity.
+* Added `TriState` utility class represents three states TRUE, FALSE and UNDEFINED.
+* Added `InteropLibrary.getUncached()` and `InteropLibrary.getUncached(Object)` short-cut methods for convenience.
+
+
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.
 * Added ability to load external default exports for libraries using a service provider. See `GenerateLibrary(defaultExportLookupEnabled = true)`.
@@ -40,14 +50,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated `DebugValue#as`, other conversion methods should be used instead.
 * Clarify [InteropLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html) javadoc documentation of message exceptions. [UnsupportedMessageException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/UnsupportedMessageException.html) is thrown when the operation is never supported for the given receiver type. In other cases [UnknownIdentifierException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/UnknownIdentifierException.html) or [InvalidArrayIndexException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InvalidArrayIndexException.html) are thrown.
 * Added [TruffleLanguage.Env.initializeLanguage](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#initializeLanguage-com.oracle.truffle.api.nodes.LanguageInfo-) method to force language initialization.
-* Added new identity APIs to `InteropLibrary`:
-    * `hasIdentity(Object receiver)` to find out whether an object specifies identity
-	* `isIdentical(Object receiver, Object other, InteropLibrary otherLib)` to compare the identity of two object
-	* `isIdenticalOrUndefined(Object receiver, Object other)` export to specify the identity of an object.
-	* `identityHashCode(Object receiver)` useful to implement maps that depend on identity.
-* Added `TriState` utility class represents three states TRUE, FALSE and UNDEFINED.
-* Added `InteropLibrary.getUncached()` and `InteropLibrary.getUncached(Object)` short-cut methods for convenience.
-
 
 ## Version 20.0.0
 * Add [Layout#dispatch()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/dsl/Layout.html#dispatch--) to be able to generate override of `ObjectType#dispatch()` method in the generated inner \*Type class.
