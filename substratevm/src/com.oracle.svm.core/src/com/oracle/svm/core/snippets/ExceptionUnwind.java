@@ -199,7 +199,7 @@ public abstract class ExceptionUnwind {
             if (deoptFrame == null) {
                 UntetheredCodeInfo untetheredInfo = walk.getIPCodeInfo();
                 if (untetheredInfo.isNull()) {
-                    JavaStackWalker.reportUnknownFrameEncountered(walk, sp, deoptFrame);
+                    JavaStackWalker.reportUnknownFrameEncountered(sp, ip, deoptFrame);
                     return; /* Unreachable code. */
                 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.chromeinspector.instrument;
+package com.oracle.svm.jni.hosted;
 
-import java.io.IOException;
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
+import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
+import com.oracle.svm.jni.JNILibraryInitializer;
+import org.graalvm.nativeimage.hosted.Feature;
 
-/**
- * A single inspector connection with the inspector protocol. One or more inspector connections may
- * be active on a single web socket connection, when they have different paths.
- */
-public interface InspectorConnection {
+import java.util.List;
 
-    InspectorWSConnection getWSConnection();
+public class JNILibraryLoadFeature implements Feature {
 
-    String getWSPath();
+    private JNILibraryInitializer jniLibraryInitializer = new JNILibraryInitializer();
 
-    default void close() throws IOException {
-        getWSConnection().close(getWSPath());
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        NativeLibrarySupport.singleton().registerLibraryInitializer(jniLibraryInitializer);
     }
 
-    String getURL();
-
-    public interface Open {
-
-        InspectorConnection open(int port, String host, boolean wait);
-
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess access) {
+        NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
+        List<String> staticLibNames = nativeLibraries.getJniStaticLibraries();
+        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(staticLibNames);
+        if (isChanged) {
+            access.requireAnalysisIteration();
+        }
     }
-
 }

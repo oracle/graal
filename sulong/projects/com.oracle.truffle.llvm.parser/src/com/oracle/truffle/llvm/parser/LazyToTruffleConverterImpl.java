@@ -212,15 +212,17 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             FrameSlot[] nullableAfterBlock = getNullableFrameSlots(frame, liveness.getNullableAfterBlock()[j]);
             blockNodes[j].setNullableFrameSlots(nullableBeforeBlock, nullableAfterBlock);
         }
-
-        FrameSlot loopSuccessorSlot = null;
-        LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
-        cfg.build();
         info.setBlocks(blockNodes);
 
-        if (cfg.isReducible() && cfg.getCFGLoops().size() > 0) {
-            loopSuccessorSlot = frame.addFrameSlot(LOOP_SUCCESSOR_FRAME_ID, FrameSlotKind.Int);
-            resolveLoops(blockNodes, cfg, frame, loopSuccessorSlot, info, options);
+        FrameSlot loopSuccessorSlot = null;
+        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_OSR)) {
+            LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
+            cfg.build();
+
+            if (cfg.isReducible() && cfg.getCFGLoops().size() > 0) {
+                loopSuccessorSlot = frame.addFrameSlot(LOOP_SUCCESSOR_FRAME_ID, FrameSlotKind.Int);
+                resolveLoops(blockNodes, cfg, frame, loopSuccessorSlot, info, options);
+            }
         }
 
         LLVMSourceLocation location = method.getLexicalScope();
@@ -323,7 +325,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             Arrays.fill(indexMapping, -1);
             List<LLVMStatementNode> bodyNodes = new ArrayList<>();
             // add header to body nodes
-            bodyNodes.add(nodes[headerId]);
+            LLVMBasicBlockNode header = nodes[headerId];
+            bodyNodes.add(header);
             indexMapping[headerId] = 0;
             // add body nodes
             int i = 1;
@@ -337,6 +340,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             LLVMControlFlowNode loopNode = runtime.getNodeFactory().createLoop(loopBody, loopSuccessors);
             // replace header block with loop node
             nodes[headerId] = LLVMBasicBlockNode.createBasicBlockNode(options, new LLVMStatementNode[0], loopNode, headerId, "loopAt" + headerId);
+            nodes[headerId].setNullableFrameSlots(header.nullableBefore, header.nullableAfter);
             // remove inner loops to reduce number of nodes
             for (CFGLoop innerLoop : loop.getInnerLoops()) {
                 nodes[innerLoop.getHeader().id] = null;

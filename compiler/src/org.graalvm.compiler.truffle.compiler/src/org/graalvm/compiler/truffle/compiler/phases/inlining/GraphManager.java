@@ -39,6 +39,7 @@ import org.graalvm.compiler.truffle.compiler.PEAgnosticInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 
 final class GraphManager {
 
@@ -57,6 +58,7 @@ final class GraphManager {
         if (entry == null) {
             final PEAgnosticInlineInvokePlugin plugin = newPlugin();
             final PartialEvaluator.Request request = newRequest(truffleAST);
+            request.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
             partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
             entry = new Entry(request.graph, plugin.getTruffleCallNodeToInvoke(), plugin.getIndirectInvokes());
             irCache.put(truffleAST, entry);

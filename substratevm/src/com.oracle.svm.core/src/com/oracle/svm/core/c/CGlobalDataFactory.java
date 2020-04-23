@@ -58,6 +58,18 @@ public final class CGlobalDataFactory {
     }
 
     /**
+     * Create a reference to the symbol with the specified name. Calling {@link CGlobalData#get()}
+     * on the returned object at runtime returns the referenced symbol's address.
+     *
+     * @param nonConstant the provided object does not have to be used as a compile-time constant
+     *            (for example, it can be retrieved from a map), but it will always introduce a
+     *            linking dependency on that symbol in the image.
+     */
+    public static <T extends PointerBase> CGlobalData<T> forSymbol(String symbolName, boolean nonConstant) {
+        return new CGlobalDataImpl<>(symbolName, nonConstant);
+    }
+
+    /**
      * Create a chunk of data that is dimensioned and initialized to contain the provided string's
      * contents as {@linkplain Utf8#stringToUtf8(String, boolean) zero-terminated modified UTF-8}.
      */

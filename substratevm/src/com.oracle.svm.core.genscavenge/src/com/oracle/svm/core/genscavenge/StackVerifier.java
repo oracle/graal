@@ -108,7 +108,7 @@ public final class StackVerifier {
     }
 
     /** A StackFrameVisitor to verify a frame. */
-    private static class StackFrameVerifierVisitor implements StackFrameVisitor {
+    private static class StackFrameVerifierVisitor extends StackFrameVisitor {
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the stack.")

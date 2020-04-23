@@ -38,6 +38,7 @@ public final class CallTree extends Graph {
     private final GraphManager graphManager;
     private final CallNode root;
     private final PartialEvaluator.Request request;
+    private int nextId = 0;
     int expanded = 1;
     int inlined = 1;
 
@@ -48,6 +49,10 @@ public final class CallTree extends Graph {
         this.graphManager = new GraphManager(partialEvaluator, request);
         // Should be kept as the last call in the constructor, as this is an argument.
         this.root = CallNode.makeRoot(this, request);
+    }
+
+    int nextId() {
+        return nextId++;
     }
 
     InliningPolicy getPolicy() {

@@ -525,7 +525,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             case PureNFAState.KIND_EMPTY_MATCH:
                 return true;
             default:
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalStateException();
         }
     }
@@ -596,7 +596,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             case PureNFAState.KIND_EMPTY_MATCH:
                 return index;
             default:
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalStateException();
         }
     }

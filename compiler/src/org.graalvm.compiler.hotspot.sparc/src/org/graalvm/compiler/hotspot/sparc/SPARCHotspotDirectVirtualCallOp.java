@@ -66,4 +66,12 @@ final class SPARCHotspotDirectVirtualCallOp extends DirectCallOp {
         Register scratchRegister = g5;
         masm.setx(config.nonOopBits, scratchRegister, true);
     }
+
+    @Override
+    @SuppressWarnings("try")
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(invokeKind.isDirect())) {
+            super.emitCode(crb, masm);
+        }
+    }
 }

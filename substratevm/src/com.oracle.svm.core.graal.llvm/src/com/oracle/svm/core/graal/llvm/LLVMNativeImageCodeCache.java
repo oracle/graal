@@ -43,8 +43,8 @@ import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
@@ -52,6 +52,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
@@ -147,23 +148,18 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     private int createBitcodeBatches(BatchExecutor executor, DebugContext debug) {
-
-        Integer parallelismLevel = LLVMOptions.LLVMBatchesPerThread.getValue();
-        int numBatches;
-        switch (parallelismLevel) {
-            case -1:
-                numBatches = methodIndex.length;
-                break;
-            case 0:
-                numBatches = 1;
-                break;
-            default:
-                numBatches = executor.executor.getExecutorService().getParallelism() * parallelismLevel;
+        batchSize = LLVMOptions.LLVMMaxFunctionsPerBatch.getValue();
+        int numThreads = executor.executor.getExecutorService().getParallelism();
+        int idealSize = NumUtil.divideAndRoundUp(methodIndex.length, numThreads);
+        if (idealSize < batchSize) {
+            batchSize = idealSize;
         }
 
-        batchSize = methodIndex.length / numBatches + ((methodIndex.length % numBatches == 0) ? 0 : 1);
-
-        if (parallelismLevel != -1) {
+        if (batchSize == 0) {
+            batchSize = methodIndex.length;
+        }
+        int numBatches = NumUtil.divideAndRoundUp(methodIndex.length, batchSize);
+        if (batchSize > 1) {
             /* Avoid empty batches with small batch sizes */
             numBatches -= (numBatches * batchSize - methodIndex.length) / batchSize;
 
@@ -360,7 +356,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                     function = methodIndex[id].getQualifiedName();
                     break;
                 case 'b':
-                    function = "batch " + id + " (f" + getBatchStart(id) + "-f" + getBatchEnd(id) + "). Use -H:LLVMBatchesPerThread=-1 to compile each method individually.";
+                    function = "batch " + id + " (f" + getBatchStart(id) + "-f" + getBatchEnd(id) + "). Use -H:LLVMMaxFunctionsPerBatch=1 to compile each method individually.";
                     break;
                 default:
                     throw shouldNotReachHere();

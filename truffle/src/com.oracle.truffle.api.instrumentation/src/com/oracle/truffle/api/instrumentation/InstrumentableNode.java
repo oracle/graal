@@ -538,6 +538,20 @@ class InstrumentableNodeSnippets {
     }
 
     @SuppressWarnings("unused")
+    static class HaltNodeWrapper implements WrapperNode {
+        HaltNodeWrapper(Node node, ProbeNode probe) {
+        }
+
+        public Node getDelegateNode() {
+            return null;
+        }
+
+        public ProbeNode getProbeNode() {
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unused")
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
     @GenerateWrapper
     static class HaltNode extends Node implements InstrumentableNode {
@@ -568,7 +582,21 @@ class InstrumentableNodeSnippets {
         }
 
     }
+
     // END: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
+    @SuppressWarnings("unused")
+    static class ExpressionNodeWrapper implements WrapperNode {
+        ExpressionNodeWrapper(Node node, ProbeNode probe) {
+        }
+
+        public Node getDelegateNode() {
+            return null;
+        }
+
+        public ProbeNode getProbeNode() {
+            return null;
+        }
+    }
 
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode
     @GenerateWrapper

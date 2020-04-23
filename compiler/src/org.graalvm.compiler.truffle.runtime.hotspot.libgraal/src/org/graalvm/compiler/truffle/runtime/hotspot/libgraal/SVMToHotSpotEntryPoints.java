@@ -54,6 +54,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetLineNumber;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetLoopExplosionKind;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetNodeRewritingAssumption;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetNodeRewritingAssumptionConstant;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetNonTrivialNodeCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetOffsetEnd;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetOffsetStart;
@@ -274,6 +275,12 @@ final class SVMToHotSpotEntryPoints {
     @SVMToHotSpot(GetNodeRewritingAssumption)
     static long getNodeRewritingAssumption(TruffleInliningPlan.Decision decision) {
         JavaConstant assumption = decision.getNodeRewritingAssumption();
+        return LibGraal.translate(jvmciRuntime, assumption);
+    }
+
+    @SVMToHotSpot(GetNodeRewritingAssumptionConstant)
+    static long getNodeRewritingAssumptionConstant(CompilableTruffleAST compilable) {
+        JavaConstant assumption = compilable.getNodeRewritingAssumptionConstant();
         return LibGraal.translate(jvmciRuntime, assumption);
     }
 

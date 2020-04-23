@@ -121,7 +121,7 @@ public class RegexEngine extends AbstractConstantKeysObject {
             case PROP_VALIDATE:
                 return ValidateMethod.getInstance();
             default:
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);
         }
     }
@@ -151,7 +151,7 @@ public class RegexEngine extends AbstractConstantKeysObject {
                     @Shared("patternToStringNode") @Cached ToStringNode patternToStringNode,
                     @Shared("flagsToStringNode") @Cached ToStringNode flagsToStringNode) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
         if (!isValidatePropNode.execute(member, PROP_VALIDATE)) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnknownIdentifierException.create(member);
         }
         RegexLanguage.validateRegex(argsToRegexSource(args, patternToStringNode, flagsToStringNode));
@@ -188,7 +188,7 @@ public class RegexEngine extends AbstractConstantKeysObject {
 
     private static RegexSource argsToRegexSource(Object[] args, ToStringNode patternToStringNode, ToStringNode flagsToStringNode) throws ArityException, UnsupportedTypeException {
         if (!(args.length == 1 || args.length == 2)) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw ArityException.create(2, args.length);
         }
         String pattern = patternToStringNode.execute(args[0]);

@@ -22,11 +22,7 @@ common_vm_darwin: ${common_vm} ${darwin} {
     LANG: en_US.UTF-8
     MACOSX_DEPLOYMENT_TARGET: "10.11"
   }
-  setup: ${common_vm.setup} [
-    [set-export, PKG_INCLUDE_FLAGS_OVERRIDE, "-I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"]
-    [set-export, GCC_LIB_PATH, [echo, "${LD_LIBRARY_PATH}", |, tr, "\:", "\\n", |, grep, apps/gcc, |, tail, "-1"]]
-    [set-export, PKG_LDFLAGS_OVERRIDE, "-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L${GCC_LIB_PATH} -L/usr/lib"]
-  ]
+  setup: ${common_vm.setup}
 }
 
 common_vm_windows: ${common_vm} ${windows} {
@@ -83,7 +79,8 @@ truffleruby_linux: ${sulong_linux} {
 truffleruby_darwin: ${sulong_darwin} {}
 
 # FASTR
-# Note: On Linux, FastR depends on the gnur module and on gfortran of a specific version (4.8.5)
+# Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
+# of a specific version (4.8.5 on Linux, 8.3.0 on MacOS)
 # However, we do not need to load those modules, we only configure specific environment variables to
 # point to these specific modules. These modules and the configuration is only necessary for installation of
 # some R packages (that have Fortran code) and in order to run GNU-R
@@ -94,7 +91,7 @@ fastr: {
   }
   downloads: {
     F2C_BINARY: { name: "f2c-binary", version: "7", platformspecific: true },
-    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "5", platformspecific: true },
+    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "6", platformspecific: true },
   }
 }
 
@@ -110,23 +107,22 @@ fastr_linux: ${fastr} {
     PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/zlib/1.2.11/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/curl/7.50.1/include"
     PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.8.5/lib64"
     GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1-gcc4.8.5/lib64/R",
-    FC: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
-    FF: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
+    FASTR_FC: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
   }
 }
 
 fastr_darwin: ${fastr} {
   packages: {
-    "pcre" : "==8.43"
-    "gnur": "==3.6.1"
+    "pcre": "==8.43"
   }
   environment:  {
-    # TODO: check these env vars
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
-    FC: "/usr/local/bin/gfortran-4.9"
+    FASTR_FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
     TZDIR: "/usr/share/zoneinfo"
     FASTR_LIBZ_VER: "1.2.11"
-    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1/lib/R"
+    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1.8.3.0/lib/R/"
+    PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"
+    PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/8.3.0/lib -L/usr/lib"
   }
 }
 
@@ -234,11 +230,6 @@ weekly_vm_linux: ${vm_linux} {
 weekly_vm_darwin: ${vm_darwin} {
   targets: [weekly]
 }
-
-non-product-vm-components: "nju,nic"
-non-product-vm-components-windows: ${non-product-vm-components}",llp"
-
-non-product-native-launchers: "RMain"
 
 mx_vm_common: [mx, --strip-jars, --no-sources, --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers=env.FORCE_BASH_LAUNCHERS,"${non-product-native-launchers}]
 mx_vm_installables: ${mx_vm_common}

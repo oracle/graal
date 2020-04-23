@@ -1280,6 +1280,8 @@ def clinittest(args):
         # Build and run the example
         native_image(
             ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.TestClassInitializationMustBeSafe',
+             '-H:Features=com.oracle.svm.test.TestClassInitializationMustBeSafeFeature',
+             '-H:+TraceClassInitialization',
              '-H:+PrintClassInitialization', '-H:Name=clinittest', '-H:+ReportExceptionStackTraces'] + args)
         mx.run([join(build_dir, 'clinittest')])
 

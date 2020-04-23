@@ -417,7 +417,7 @@ public class RuntimeCodeCache {
         }
     }
 
-    private static final class CodeNotOnStackVerifier implements StackFrameVisitor {
+    private static final class CodeNotOnStackVerifier extends StackFrameVisitor {
         private CodeInfo codeInfoToCheck;
 
         @Platforms(Platform.HOSTED_ONLY.class)

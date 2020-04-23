@@ -42,7 +42,6 @@ package com.oracle.truffle.regex.tregex.nfa;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
@@ -123,7 +122,6 @@ public final class PureNFAMap {
                     acc.addSet(target.getCharSet());
                     break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
                     throw new IllegalStateException();
             }
         }
