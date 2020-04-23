@@ -531,9 +531,41 @@ final class PolyglotLoggers {
                 OutputStream logOut = EngineAccessor.ACCESSOR.getConfiguredLogStream();
                 if (logOut != null) {
                     return createStreamHandler(logOut, false, true);
+                } else {
+                    return handler;
                 }
+            } else {
+                return new SafeHandler(handler);
             }
-            return handler;
+        }
+    }
+
+    private static final class SafeHandler extends Handler {
+
+        private final Handler delegate;
+
+        SafeHandler(Handler delegate) {
+            Objects.requireNonNull(delegate);
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void publish(LogRecord lr) {
+            try {
+                delegate.publish(lr);
+            } catch (Throwable t) {
+                // Called by a compiler thread, never propagate exceptions to the compiler.
+            }
+        }
+
+        @Override
+        public void flush() {
+            delegate.flush();
+        }
+
+        @Override
+        public void close() throws SecurityException {
+            delegate.close();
         }
     }
 }
