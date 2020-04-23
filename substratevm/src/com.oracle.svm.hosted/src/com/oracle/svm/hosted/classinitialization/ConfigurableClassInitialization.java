@@ -502,7 +502,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                 } else {
                     assert specifiedKind.isDelayed() : "Specified kind must be the same as actual kind";
                     String reason = classInitializationConfiguration.lookupReason(c.getTypeName());
-                    detailedMessage.append(c.getTypeName()).append(" the class was requested to be initialized at build time (").append(reason).append("). ")
+                    detailedMessage.append(c.getTypeName()).append(" the class was requested to be initialized at run time (").append(reason).append("). ")
                                     .append(classInitializationErrorMessage(c, "Try avoiding to initialize the class that caused initialization of " + c.getTypeName()))
                                     .append("\n");
                 }
@@ -620,8 +620,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             return InitKind.BUILD_TIME;
         } else if (clazz.isAnnotation()) {
             return InitKind.BUILD_TIME;
-        } else if (Proxy.isProxyClass(clazz)) {
-            /* Proxy classes end up as constants in heap. */
+        } else if (Proxy.isProxyClass(clazz) && isProxyFromAnnotation(clazz)) {
             return InitKind.BUILD_TIME;
         } else if (clazz.getTypeName().contains("$$StringConcat")) {
             return InitKind.BUILD_TIME;
@@ -641,4 +640,12 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         return InitKind.RUN_TIME;
     }
 
+    private static boolean isProxyFromAnnotation(Class<?> clazz) {
+        for (Class<?> interfaces : clazz.getInterfaces()) {
+            if (interfaces.isAnnotation()) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
