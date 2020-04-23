@@ -187,4 +187,3 @@ mx.update_commands(_suite, {
       '[<benchmarks>|*] [-- [VM options] ] [-- [AWFY options] ]]'
     ],
 })
-
