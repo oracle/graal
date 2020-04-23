@@ -1327,6 +1327,9 @@ public final class Value {
     }
 
     /**
+     * Compares the identity of the underlying polyglot objects. This method does not do any
+     * structural comparisons.
+     *
      * {@inheritDoc}
      *
      * @since 20.1
@@ -1340,6 +1343,9 @@ public final class Value {
     }
 
     /**
+     * Returns the identity hash code of the underlying object. This method does not compute the
+     * hash code depending on the contents of the value.
+     *
      * {@inheritDoc}
      *
      * @since 20.1

@@ -146,12 +146,16 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(this);
+        return HostWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public boolean equals(Object o) {
-        return HostWrapper.equals(this, o);
+        if (o instanceof PolyglotMap) {
+            return HostWrapper.equals(languageContext, guestObject, ((PolyglotMap<?, ?>) o).guestObject);
+        } else {
+            return false;
+        }
     }
 
     @TruffleBoundary
