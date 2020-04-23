@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -268,7 +268,7 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected LLVMManagedPointer doManaged(LLVMManagedPointer value,
-                        @Cached("createBinaryProfile()") ConditionProfile negated) {
+                        @Cached ConditionProfile negated) {
             if (negated.profile(value.getObject() instanceof LLVMNegatedForeignObject)) {
                 LLVMNegatedForeignObject obj = (LLVMNegatedForeignObject) value.getObject();
                 assert !(obj.getForeign() instanceof LLVMNegatedForeignObject);

@@ -587,7 +587,7 @@ abstract class ProxyInvokeNode extends Node {
                     @Cached("getMethodGenericReturnType(method)") Type returnType,
                     @CachedLibrary("receiver") InteropLibrary receivers,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary members,
-                    @Cached("createBinaryProfile()") ConditionProfile branchProfile,
+                    @Cached ConditionProfile branchProfile,
                     @Cached("create()") ToHostNode toHost) {
         Object result = invokeOrExecute(languageContext, receiver, arguments, name, receivers, members, branchProfile);
         return toHost.execute(result, returnClass, returnType, languageContext, true);

@@ -134,7 +134,7 @@ abstract class TargetMappingNode extends Node {
         @Specialization
         protected Object doDefault(Object receiver, @SuppressWarnings("unused") PolyglotTargetMapping cachedMapping,
                         PolyglotLanguageContext context, InteropLibrary interop, boolean checkOnly,
-                        @Cached("createBinaryProfile()") ConditionProfile acceptsProfile,
+                        @Cached ConditionProfile acceptsProfile,
                         @Cached(value = "allowsImplementation(context, cachedMapping.sourceType)", allowUncached = true) boolean allowsImplementation,
                         @Cached ToHostNode toHostRecursive) {
             CompilerAsserts.partialEvaluationConstant(checkOnly);
