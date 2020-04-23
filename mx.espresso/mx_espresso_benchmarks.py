@@ -51,7 +51,7 @@ class EspressoVm(GuestVm, JavaVm):
     def with_host_vm(self, host_vm):
         return self.__class__(self.config_name(), self._options, host_vm)
 
-    def run(self, cwd, args):        
+    def run(self, cwd, args):
         if hasattr(self.host_vm(), 'run_launcher'):
             return self.host_vm().run_launcher('espresso', self._options + args, cwd)
         else:
