@@ -39,7 +39,7 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
     }
 
     @Override
-    public int getPCIdx() {
+    public int getReturnPCIdx() {
         return DW_CFA_RIP_IDX;
     }
 

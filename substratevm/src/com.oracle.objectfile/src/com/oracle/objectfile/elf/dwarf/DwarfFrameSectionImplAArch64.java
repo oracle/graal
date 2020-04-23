@@ -34,15 +34,15 @@ public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
     // public static final int DW_CFA_FP_IDX = 29;
     private static final int DW_CFA_LR_IDX = 30;
     private static final int DW_CFA_SP_IDX = 31;
-    private static final int DW_CFA_PC_IDX = 32;
+    // private static final int DW_CFA_PC_IDX = 32;
 
     public DwarfFrameSectionImplAArch64(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
     }
 
     @Override
-    public int getPCIdx() {
-        return DW_CFA_PC_IDX;
+    public int getReturnPCIdx() {
+        return DW_CFA_LR_IDX;
     }
 
     @Override
@@ -54,15 +54,15 @@ public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
     public int writeInitialInstructions(byte[] buffer, int p) {
         int pos = p;
         /*
-         * Register rsp has not been updated and caller pc is in lr:
+         * Register rsp points at the frame base so cfa is at rsp + 0:
          *
          * <ul>
          *
-         * <li><code>register r32 (rpc), r30 (lr)</code>
+         * <li><code>def_cfa r31 (sp) offset 0</code>
          *
          * </ul>
          */
-        pos = writeRegister(DW_CFA_PC_IDX, DW_CFA_LR_IDX, buffer, pos);
+        pos = writeDefCFA(DW_CFA_SP_IDX, 0, buffer, pos);
         return pos;
     }
 }

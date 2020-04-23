@@ -117,7 +117,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>ULEB : data_alignment_factor ... == -8</code>
          *
-         * <li><code>byte : ret_addr reg id ......... x86_64 => 16 AArch64 => 32</code>
+         * <li><code>byte : ret_addr reg id ......... x86_64 => 16 AArch64 => 30</code>
          *
          * <li><code>byte[] : initial_instructions .. includes pad to 8-byte boundary</code>
          *
@@ -131,7 +131,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
             pos += putAsciiStringBytes("", scratch, 0);
             pos += putULEB(1, scratch, 0);
             pos += putSLEB(-8, scratch, 0);
-            pos += putByte((byte) getPCIdx(), scratch, 0);
+            pos += putByte((byte) getReturnPCIdx(), scratch, 0);
             /*
              * Write insns to set up empty frame.
              */
@@ -152,7 +152,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
             pos = putAsciiStringBytes("", buffer, pos);
             pos = putULEB(1, buffer, pos);
             pos = putSLEB(-8, buffer, pos);
-            pos = putByte((byte) getPCIdx(), buffer, pos);
+            pos = putByte((byte) getReturnPCIdx(), buffer, pos);
             /*
              * write insns to set up empty frame
              */
@@ -359,7 +359,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    protected abstract int getPCIdx();
+    protected abstract int getReturnPCIdx();
 
     @SuppressWarnings("unused")
     protected abstract int getSPIdx();
