@@ -196,7 +196,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
         }
 
         private static int getHistoryLength() {
-            return Options.GreyToBlackObjectVisitorDiagnosticHistory.getValue().intValue();
+            return Options.GreyToBlackObjectVisitorDiagnosticHistory.getValue();
         }
 
         /** Map a counter to the bounds of a history array. */

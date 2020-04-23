@@ -70,7 +70,6 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceInternals;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMCondition;
@@ -244,7 +243,7 @@ public class HeapImpl extends Heap {
          * This method exists because Heap is the place clients should ask this question, and to
          * aggregate all the reasons allocation might be disallowed.
          */
-        return NoAllocationVerifier.isActive() || gcImpl.collectionInProgress.getState();
+        return NoAllocationVerifier.isActive() || gcImpl.isCollectionInProgress();
     }
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
@@ -305,29 +304,11 @@ public class HeapImpl extends Heap {
         return oldGeneration;
     }
 
-    public boolean isOldGeneration(Space space) {
-        return space.isOldSpace();
-    }
-
     /** The head of the linked list of object pins. */
-    private AtomicReference<PinnedObjectImpl> pinHead;
+    private final AtomicReference<PinnedObjectImpl> pinHead;
 
     public AtomicReference<PinnedObjectImpl> getPinHead() {
         return pinHead;
-    }
-
-    public boolean isPinned(Object instance) {
-        /* The instance is pinned if it is in the image heap. */
-        if (isInImageHeap(instance)) {
-            return true;
-        }
-        /* Look down the list of individually pinned objects. */
-        for (PinnedObjectImpl pinnedObject = getPinHead().get(); pinnedObject != null; pinnedObject = pinnedObject.getNext()) {
-            if (instance == pinnedObject.getObject()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
@@ -544,18 +525,6 @@ public class HeapImpl extends Heap {
             Log.log().string("[Verify dirtyCard after GC: ");
             heapVerifier.verifyDirtyCard(true);
         }
-    }
-
-    /** For assertions: Verify that the hub is a reference to where DynamicHubs live in the heap. */
-    public boolean assertHub(DynamicHub hub) {
-        /* DynamicHubs live only in the read-only reference section of the image heap. */
-        return imageHeapInfo.isObjectInReadOnlyReferencePartition(hub);
-    }
-
-    /** For assertions: Verify the hub of the object. */
-    public boolean assertHubOfObject(Object obj) {
-        final DynamicHub hub = ObjectHeader.readDynamicHubFromObject(obj);
-        return assertHub(hub);
     }
 
     /*

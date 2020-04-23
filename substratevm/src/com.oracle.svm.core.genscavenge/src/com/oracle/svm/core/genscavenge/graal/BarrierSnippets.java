@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -111,7 +111,6 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         // Least likely (?): object needs a write-barrier and is unaligned.
         counters().postWriteBarrierUnaligned.inc();
         UnalignedHeapChunk.dirtyCardForObjectOfUnalignedHeapChunk(fixedObject, verifyOnly);
-        return;
     }
 
     protected BarrierSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
@@ -173,7 +172,7 @@ class BarrierSnippetCountersFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(CounterFeature.class);
+        return Collections.singletonList(CounterFeature.class);
     }
 
     @Override

@@ -211,9 +211,6 @@ class HeapChunkProvider {
      * but it is <em>not</em> safe with respect to competing pushes. Since pushes can happen during
      * garbage collections, I avoid the ABA problem by making the kernel of this method
      * uninterruptible so it can not be interrupted by a safepoint.
-     *
-     * Note the asymmetry with {@link #popUnusedAlignedChunk()}, which does not use a global free
-     * list.
      */
     private AlignedHeader popUnusedAlignedChunk() {
         log().string("  old list top: ").hex(unusedAlignedChunks.get()).string("  list bytes ").signed(bytesInUnusedAlignedChunks.get()).newline();
@@ -302,14 +299,6 @@ class HeapChunkProvider {
         chunk.setSpace(null);
         chunk.setNext(WordFactory.nullPointer());
         chunk.setPrevious(WordFactory.nullPointer());
-    }
-
-    /**
-     * Reset just the header of an aligned heap chunk. Consider
-     * {@link #resetAlignedHeapChunk(AlignedHeader)}.
-     */
-    static void resetAlignedHeader(AlignedHeader alignedChunk) {
-        resetChunkHeader(alignedChunk, AlignedHeapChunk.getAlignedHeapChunkStart(alignedChunk));
     }
 
     private static void resetAlignedHeapChunk(AlignedHeader chunk) {

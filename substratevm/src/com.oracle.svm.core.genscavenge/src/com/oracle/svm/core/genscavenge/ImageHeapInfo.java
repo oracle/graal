@@ -113,22 +113,6 @@ public class ImageHeapInfo {
         return Word.objectToUntrackedPointer(firstWritableReferenceObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritableReferenceObject));
     }
 
-    public boolean isObjectInReadOnlyPrimitivePartition(Object obj) {
-        return isInReadOnlyPrimitivePartition(Word.objectToUntrackedPointer(obj));
-    }
-
-    public boolean isObjectInWritablePrimitivePartition(Object obj) {
-        return isInWritablePrimitivePartition(Word.objectToUntrackedPointer(obj));
-    }
-
-    public boolean isObjectInReadOnlyReferencePartition(Object obj) {
-        return isInReadOnlyReferencePartition(Word.objectToUntrackedPointer(obj));
-    }
-
-    public boolean isObjectInWritableReferencePartition(Object obj) {
-        return isInWritableReferencePartition(Word.objectToUntrackedPointer(obj));
-    }
-
     /**
      * This method only returns the correct result for pointers that point to the the start of an
      * object. This is sufficient for all our current use cases. This code must be as fast as

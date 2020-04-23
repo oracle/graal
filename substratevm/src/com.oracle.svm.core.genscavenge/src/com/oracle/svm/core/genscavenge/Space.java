@@ -917,21 +917,4 @@ public class Space {
 
         private static final Log log = Log.noopLog();
     }
-
-    public interface Verifier {
-
-        /**
-         * Initialize the state of this Verifier.
-         *
-         * @param s The Space to be verified.
-         */
-        Verifier initialize(Space s);
-
-        /**
-         * Verify that a Space is well formed.
-         *
-         * @return true if well-formed, false otherwise.
-         */
-        boolean verify();
-    }
 }

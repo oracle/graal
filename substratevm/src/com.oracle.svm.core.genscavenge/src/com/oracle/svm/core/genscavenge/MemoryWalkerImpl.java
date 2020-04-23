@@ -54,7 +54,7 @@ public class MemoryWalkerImpl extends MemoryWalker {
     /** A VMOperation that walks memory. */
     protected static final class MemoryWalkerVMOperation extends JavaVMOperation {
 
-        private MemoryWalker.Visitor memoryWalkerVisitor;
+        private final MemoryWalker.Visitor memoryWalkerVisitor;
         private boolean result;
 
         protected MemoryWalkerVMOperation(MemoryWalker.Visitor memoryVisitor) {
@@ -67,17 +67,9 @@ public class MemoryWalkerImpl extends MemoryWalker {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Allocation would change the memory being visited.")
         public void operate() {
             ThreadLocalAllocation.disableThreadLocalAllocation();
-            boolean continueVisiting = true;
-            if (continueVisiting) {
-                continueVisiting = HeapImpl.getHeapImpl().walkMemory(memoryWalkerVisitor);
-            }
-            if (continueVisiting) {
-                continueVisiting = CodeInfoTable.getImageCodeCache().walkImageCode(memoryWalkerVisitor);
-            }
-            if (continueVisiting) {
-                continueVisiting = CodeInfoTable.getRuntimeCodeCache().walkRuntimeMethods(memoryWalkerVisitor);
-            }
-            result = continueVisiting;
+            result = HeapImpl.getHeapImpl().walkMemory(memoryWalkerVisitor) &&
+                            CodeInfoTable.getImageCodeCache().walkImageCode(memoryWalkerVisitor) &&
+                            CodeInfoTable.getRuntimeCodeCache().walkRuntimeMethods(memoryWalkerVisitor);
         }
 
         protected boolean getResult() {

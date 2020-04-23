@@ -154,7 +154,6 @@ public class GCImpl implements GC {
         this.greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
         this.greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
         this.collectOnlyCompletelyPolicy = new CollectionPolicy.OnlyCompletely();
-        this.collectionInProgress = Latch.factory("Collection in progress");
         this.oldGenerationSizeExceeded = new OutOfMemoryError("Garbage-collected heap size exceeded.");
         this.gcManagementFactory = new GarbageCollectorManagementFactory();
 
@@ -708,10 +707,7 @@ public class GCImpl implements GC {
     private void promoteIndividualPinnedObjects() {
         final Log trace = Log.noopLog().string("[GCImpl.promoteIndividualPinnedObjects:").newline();
         try (Timer ppot = promotePinnedObjectsTimer.open()) {
-            /* Capture the PinnedObject list and start a new one. */
-            final PinnedObjectImpl oldList = PinnedObjectImpl.claimPinnedObjectList();
-            /* Walk the list, dealing with the open PinnedObjects. */
-            PinnedObjectImpl rest = oldList;
+            PinnedObjectImpl rest = PinnedObjectImpl.claimPinnedObjectList();
             while (rest != null) {
                 final PinnedObjectImpl first = rest;
                 final PinnedObjectImpl next = first.getNext();
@@ -976,16 +972,20 @@ public class GCImpl implements GC {
 
     /* Collection in progress methods. */
 
-    /** Is a collection in progress? */
-    final Latch collectionInProgress;
+    private boolean collectionInProgress;
+
+    boolean isCollectionInProgress() {
+        return collectionInProgress;
+    }
 
     private void startCollectionOrExit() {
-        CollectionInProgressError.exitIf(collectionInProgress.getState());
-        collectionInProgress.open();
+        CollectionInProgressError.exitIf(collectionInProgress);
+        collectionInProgress = true;
     }
 
     private void finishCollection() {
-        collectionInProgress.close();
+        assert collectionInProgress;
+        collectionInProgress = false;
     }
 
     /** Record that a collection is possible. */
@@ -1192,8 +1192,8 @@ public class GCImpl implements GC {
         private UnsignedWord oldChunkBytesAfter;
         /* History of promotions and copies. */
         private int history;
-        private UnsignedWord[] promotedUnpinnedChunkBytes;
-        private UnsignedWord[] copiedUnpinnedChunkBytes;
+        private final UnsignedWord[] promotedUnpinnedChunkBytes;
+        private final UnsignedWord[] copiedUnpinnedChunkBytes;
         /*
          * Bytes allocated in Objects, as opposed to bytes of chunks. These are only maintained if
          * -R:+PrintGCSummary because they are expensive.
@@ -1303,21 +1303,15 @@ public class GCImpl implements GC {
             history += 1;
         }
 
-        /** Convert the history counter into an index into a bounded history array. */
-        int historyAsIndex() {
-            return historyAsIndex(0);
-        }
-
         /** Convert an offset into an index into a bounded history array. */
         int historyAsIndex(int offset) {
-            return ((history + offset) % Options.GCHistory.getValue().intValue());
+            return ((history + offset) % Options.GCHistory.getValue());
         }
 
         UnsignedWord[] historyFactory(UnsignedWord initial) {
-            assert initial.equal(WordFactory.zero()) : "Can not initialize history to any value except WordFactory.zero().";
-            final UnsignedWord[] result = new UnsignedWord[Options.GCHistory.getValue().intValue()];
             /* Initialization to null/WordFactory.zero() is implicit. */
-            return result;
+            assert initial.equal(WordFactory.zero()) : "Can not initialize history to any value except WordFactory.zero().";
+            return new UnsignedWord[Options.GCHistory.getValue()];
         }
 
         /** Get the current element of a history array. */
@@ -1477,10 +1471,6 @@ public class GCImpl implements GC {
 
         public String getName() {
             return name;
-        }
-
-        public long getStart() {
-            return openNanos;
         }
 
         public long getFinish() {
@@ -1701,7 +1691,7 @@ public class GCImpl implements GC {
 
 final class GarbageCollectorManagementFactory {
 
-    private List<GarbageCollectorMXBean> gcBeanList;
+    private final List<GarbageCollectorMXBean> gcBeanList;
 
     GarbageCollectorManagementFactory() {
         final List<GarbageCollectorMXBean> newList = new ArrayList<>();

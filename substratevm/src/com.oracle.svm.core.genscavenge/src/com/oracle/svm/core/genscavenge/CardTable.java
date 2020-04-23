@@ -399,8 +399,7 @@ public final class CardTable {
                 final Log witness = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog();
                 witness.string("[[ReferenceToYoungObjectVisitor.containsReferenceToYoungObject:").string("  obj: ").object(obj).string("  fails visitObject").string("]").newline();
             }
-            final boolean result = visitor.found;
-            return result;
+            return visitor.found;
         }
 
         /* Debugging. */

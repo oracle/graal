@@ -71,7 +71,7 @@ public class HeapPolicy {
         }
         /* Policy variables. */
         userRequestedGCPolicy = instantiatePolicy(access, HeapPolicy.HintGCPolicy.class, HeapPolicyOptions.UserRequestedGCPolicy.getValue());
-        collectOnAllocationPolicy = CollectOnAllocationPolicy.Sometimes.factory();
+        collectOnAllocationPolicy = new CollectOnAllocationPolicy.Sometimes();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -125,48 +125,9 @@ public class HeapPolicy {
      * Access methods for policy things.
      */
 
-    /* Useful constants. */
-    /* TODO: These should be somewhere more public. */
-    public static UnsignedWord k(int bytes) {
-        assert 0 <= bytes;
-        return k((long) bytes);
-    }
-
-    public static UnsignedWord k(long bytes) {
-        assert 0 <= bytes;
-        return k(WordFactory.unsigned(bytes));
-    }
-
-    public static UnsignedWord k(UnsignedWord bytes) {
-        return bytes.multiply(1024);
-    }
-
-    public static UnsignedWord m(int bytes) {
-        assert 0 <= bytes;
-        return m((long) bytes);
-    }
-
     public static UnsignedWord m(long bytes) {
         assert 0 <= bytes;
-        return m(WordFactory.unsigned(bytes));
-    }
-
-    public static UnsignedWord m(UnsignedWord bytes) {
-        return k(k(bytes));
-    }
-
-    public static UnsignedWord g(int bytes) {
-        assert 0 <= bytes;
-        return g((long) bytes);
-    }
-
-    public static UnsignedWord g(long bytes) {
-        assert 0 <= bytes;
-        return g(WordFactory.unsigned(bytes));
-    }
-
-    public static UnsignedWord g(UnsignedWord bytes) {
-        return k(k(k(bytes)));
+        return WordFactory.unsigned(bytes).multiply(1024).multiply(1024);
     }
 
     /* Option sanity checking. */
@@ -266,9 +227,8 @@ public class HeapPolicy {
         if (PhysicalMemory.hasSize()) {
             final UnsignedWord physicalMemorySize = PhysicalMemory.size();
             final int maximumHeapSizePercent = getMaximumHeapSizePercent();
-            final UnsignedWord sizeFromPercent = physicalMemorySize.unsignedDivide(100).multiply(maximumHeapSizePercent);
             /* Do not cache because `-Xmx` option parsing may not have happened yet. */
-            return sizeFromPercent;
+            return physicalMemorySize.unsignedDivide(100).multiply(maximumHeapSizePercent);
         }
         /* Otherwise return "unlimited". */
         return UnsignedUtils.MAX_VALUE;
@@ -407,68 +367,33 @@ public class HeapPolicy {
      */
     protected abstract static class CollectOnAllocationPolicy {
 
-        /** Constructor for subclasses. */
         CollectOnAllocationPolicy() {
-            /* Nothing to do. */
         }
 
         /** Cause a collection if the policy says to. */
         public abstract void maybeCauseCollection();
 
-        /** A policy that never causes collection on allocation. */
         protected static class Never extends CollectOnAllocationPolicy {
-
-            public static Never factory() {
-                return new Never();
-            }
-
             @Override
             public void maybeCauseCollection() {
-            }
-
-            Never() {
-                super();
-                /* Nothing to do. */
             }
         }
 
         /** A policy that always causes collection on allocation. */
         protected static class Always extends CollectOnAllocationPolicy {
-
-            public static Always factory() {
-                return new Always();
-            }
-
             @Override
             public void maybeCauseCollection() {
                 HeapImpl.getHeapImpl().getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocationAlways);
-            }
-
-            Always() {
-                super();
-                /* Nothing to do. */
             }
         }
 
         /** A policy that causes collections if enough young generation allocation has happened. */
         protected static class Sometimes extends CollectOnAllocationPolicy {
-
-            public static Sometimes factory() {
-                return new Sometimes();
-            }
-
-            /** Cause a collection if the fast-path allocation Space has allocated enough bytes. */
             @Override
             public void maybeCauseCollection() {
-                final HeapImpl heap = HeapImpl.getHeapImpl();
-                /* Has there been enough allocation to provoke a collection? */
                 if (youngUsedBytes.get().aboveOrEqual(getMaximumYoungGenerationSize())) {
-                    heap.getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocationSometimes);
+                    GCImpl.getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocationSometimes);
                 }
-            }
-
-            Sometimes() {
-                super();
             }
         }
     }

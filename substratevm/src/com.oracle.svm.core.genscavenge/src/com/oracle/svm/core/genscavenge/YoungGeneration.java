@@ -192,7 +192,7 @@ public class YoungGeneration extends Generation {
         boolean result = true;
         final HeapImpl heap = HeapImpl.getHeapImpl();
         final HeapVerifierImpl heapVerifier = heap.getHeapVerifierImpl();
-        final SpaceVerifierImpl spaceVerifier = heapVerifier.getSpaceVerifierImpl();
+        final SpaceVerifier spaceVerifier = heapVerifier.getSpaceVerifierImpl();
         // Verify eden space
         spaceVerifier.initialize(getEden());
         if (occasion.equals(HeapVerifier.Occasion.AFTER_COLLECTION)) {
@@ -236,15 +236,15 @@ public class YoungGeneration extends Generation {
     }
 
     boolean slowlyFindPointer(Pointer p) {
-        if (HeapVerifierImpl.slowlyFindPointerInSpace(getEden(), p, HeapVerifierImpl.ChunkLimit.top)) {
+        if (HeapVerifierImpl.slowlyFindPointerInSpace(getEden(), p)) {
             return true;
         }
 
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            if (HeapVerifierImpl.slowlyFindPointerInSpace(getSurvivorFromSpaceAt(i), p, HeapVerifierImpl.ChunkLimit.top)) {
+            if (HeapVerifierImpl.slowlyFindPointerInSpace(getSurvivorFromSpaceAt(i), p)) {
                 return true;
             }
-            if (HeapVerifierImpl.slowlyFindPointerInSpace(getSurvivorToSpaceAt(i), p, HeapVerifierImpl.ChunkLimit.top)) {
+            if (HeapVerifierImpl.slowlyFindPointerInSpace(getSurvivorToSpaceAt(i), p)) {
                 return true;
             }
         }

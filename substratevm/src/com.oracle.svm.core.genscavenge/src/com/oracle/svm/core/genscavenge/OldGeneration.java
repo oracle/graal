@@ -75,15 +75,7 @@ public class OldGeneration extends Generation {
 
     @Override
     public boolean walkObjects(ObjectVisitor visitor) {
-        /* FromSpace probably has lots of objects. */
-        if (!getFromSpace().walkObjects(visitor)) {
-            return false;
-        }
-        /* ToSpace probably is empty. */
-        if (!getToSpace().walkObjects(visitor)) {
-            return false;
-        }
-        return true;
+        return getFromSpace().walkObjects(visitor) && getToSpace().walkObjects(visitor);
     }
 
     /**
@@ -165,7 +157,7 @@ public class OldGeneration extends Generation {
         boolean result = true;
         final HeapImpl heap = HeapImpl.getHeapImpl();
         final HeapVerifierImpl heapVerifier = heap.getHeapVerifierImpl();
-        final SpaceVerifierImpl spaceVerifier = heapVerifier.getSpaceVerifierImpl();
+        final SpaceVerifier spaceVerifier = heapVerifier.getSpaceVerifierImpl();
         /*
          * - The old generation consists of a from space, which should be clean after a collection
          * ...
@@ -228,11 +220,11 @@ public class OldGeneration extends Generation {
     }
 
     boolean slowlyFindPointerInFromSpace(Pointer p) {
-        return HeapVerifierImpl.slowlyFindPointerInSpace(getFromSpace(), p, HeapVerifierImpl.ChunkLimit.top);
+        return HeapVerifierImpl.slowlyFindPointerInSpace(getFromSpace(), p);
     }
 
     boolean slowlyFindPointerInToSpace(Pointer p) {
-        return HeapVerifierImpl.slowlyFindPointerInSpace(getToSpace(), p, HeapVerifierImpl.ChunkLimit.top);
+        return HeapVerifierImpl.slowlyFindPointerInSpace(getToSpace(), p);
     }
 
     /* This could return an enum, but I want to be able to examine it easily from a debugger. */

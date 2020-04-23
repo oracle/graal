@@ -402,46 +402,6 @@ public final class ThreadLocalAllocation {
         log().string("  ThreadLocalAllocator.retireToSpace ]").newline();
     }
 
-    /**
-     * Releases all the memory allocated in this TLAB, without any safety checks that the memory is
-     * no longer referenced from other objects.
-     */
-    public static void releaseMemory(Descriptor tlab) {
-        log().string("[ThreadLocalAllocator.releaseMemory: tlab ").hex(tlab).newline();
-
-        retireAllocationChunk(tlab);
-
-        AlignedHeader alignedChunk = tlab.getAlignedChunk();
-        UnalignedHeader unalignedChunk = tlab.getUnalignedChunk();
-        tlab.setAlignedChunk(WordFactory.nullPointer());
-        tlab.setUnalignedChunk(WordFactory.nullPointer());
-
-        while (alignedChunk.isNonNull()) {
-            AlignedHeader next = alignedChunk.getNext();
-
-            /*
-             * TODO: Should this do a full clean of the header, remembered set, and optionally zap
-             * the contents, or just set the next pointer to null?
-             */
-            HeapChunkProvider.resetAlignedHeader(alignedChunk);
-            log().string("  aligned chunk ").hex(alignedChunk).newline();
-            // Put the chunk on a free list.
-            pushToThreadLocalFreeList(alignedChunk);
-            alignedChunk = next;
-        }
-
-        while (unalignedChunk.isNonNull()) {
-            UnalignedHeader next = unalignedChunk.getNext();
-            unalignedChunk.setNext(WordFactory.nullPointer());
-
-            log().string("  unaligned chunk ").hex(alignedChunk).newline();
-            HeapChunkProvider.get().consumeUnalignedChunk(unalignedChunk);
-            unalignedChunk = next;
-        }
-
-        log().string("  ]").newline();
-    }
-
     /** Push an aligned chunk on the thread-local list of free chunks. */
     @Uninterruptible(reason = "Pushes the free list that is drained, at a safepoint, by garbage collections.")
     private static void pushToThreadLocalFreeList(AlignedHeader alignedChunk) {
@@ -466,54 +426,6 @@ public final class ThreadLocalAllocation {
             freeList.set(next);
         }
         return result;
-    }
-
-    /**
-     * Returns the total memory used by the TLAB in bytes. It counts only the memory actually used,
-     * not the total committed memory.
-     */
-    public static UnsignedWord getObjectBytes(Descriptor tlab) {
-        Log log = log();
-        log.newline();
-        log.string("[ThreadLocalAllocator.usedMemory: tlab ").hex(tlab).newline();
-
-        AlignedHeader aChunk = tlab.getAlignedChunk();
-        UnsignedWord alignedUsedMemory = WordFactory.zero();
-        while (aChunk.isNonNull()) {
-            AlignedHeader next = aChunk.getNext();
-
-            Pointer start = AlignedHeapChunk.getAlignedHeapChunkStart(aChunk);
-            /* The allocation top has a null top; the TLAB is the one advancing the top pointer. */
-            Pointer top = aChunk.getTop().isNull() ? tlab.getAllocationTop(TLAB_TOP_IDENTITY) : aChunk.getTop();
-            UnsignedWord aChunkUsedMemory = top.subtract(start);
-            alignedUsedMemory = alignedUsedMemory.add(aChunkUsedMemory);
-
-            log.string("     aligned chunk: ").hex(aChunk).string(" | used memory: ").unsigned(aChunkUsedMemory).newline();
-            aChunk = next;
-        }
-
-        UnsignedWord unalignedUsedMemory = WordFactory.zero();
-        UnalignedHeader uChunk = tlab.getUnalignedChunk();
-        while (uChunk.isNonNull()) {
-            UnalignedHeader next = uChunk.getNext();
-
-            UnsignedWord uChunkUsedMemory = UnalignedHeapChunk.usedObjectMemoryOfUnalignedHeapChunk(uChunk);
-            unalignedUsedMemory = unalignedUsedMemory.add(uChunkUsedMemory);
-
-            log.string("     unaligned chunk ").hex(uChunk).string(" | used memory: ").unsigned(uChunkUsedMemory).newline();
-            uChunk = next;
-        }
-
-        UnsignedWord tlabUsedMemory = alignedUsedMemory.add(unalignedUsedMemory);
-
-        log.newline();
-        log.string("  aligned used memory: ").unsigned(alignedUsedMemory).newline();
-        log.string("  unaligned used memory: ").unsigned(unalignedUsedMemory).newline();
-        log.string("  TLAB used memory: ").unsigned(tlabUsedMemory).newline();
-
-        log.string("  ]").newline();
-
-        return tlabUsedMemory;
     }
 
     /**
@@ -590,14 +502,6 @@ public final class ThreadLocalAllocation {
             tlab.setAllocationEnd(alignedChunk.getEnd(), TLAB_END_IDENTITY);
             alignedChunk.setTop(WordFactory.nullPointer());
         }
-    }
-
-    public static boolean verifyUninitialized(Descriptor tlab) {
-        assert tlab.getAlignedChunk().isNull();
-        assert tlab.getUnalignedChunk().isNull();
-        assert tlab.getAllocationTop(TLAB_TOP_IDENTITY).isNull();
-        assert tlab.getAllocationTop(TLAB_END_IDENTITY).isNull();
-        return true;
     }
 
     /** Expose some private methods for white-box testing. */

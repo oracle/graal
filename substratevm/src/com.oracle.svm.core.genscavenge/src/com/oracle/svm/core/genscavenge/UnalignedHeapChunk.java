@@ -127,21 +127,11 @@ public class UnalignedHeapChunk extends HeapChunk {
         return getObjectStartOffset();
     }
 
-    @SuppressWarnings("unused")
-    // This is currently unused, but it is the other book-end with
-    // getObjectsStart(UnalignedHeader that) to bracket the Objects.
-    /** Where is the limit of the Objects? */
-    private static Pointer getObjectsLimit(UnalignedHeader that) {
-        // The objects end at the end of the chunk.
-        return that.getEnd();
-    }
-
     /** How large an UnalignedHeapChunk is needed to hold an object of the given size? */
     protected static UnsignedWord getChunkSizeForObject(UnsignedWord objectSize) {
         final UnsignedWord objectStart = getObjectStartOffset();
         final UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
-        final UnsignedWord result = UnsignedUtils.roundUp(objectStart.add(objectSize), alignment);
-        return result;
+        return UnsignedUtils.roundUp(objectStart.add(objectSize), alignment);
     }
 
     /*
@@ -178,8 +168,7 @@ public class UnalignedHeapChunk extends HeapChunk {
         final UnsignedWord startOffset = getObjectStartOffset();
         // Back the Object pointer up to the beginning of the UnalignedHeapChunk.
         final Pointer chunkPointer = objPointer.subtract(startOffset);
-        final UnalignedHeader result = (UnalignedHeader) chunkPointer;
-        return result;
+        return (UnalignedHeader) chunkPointer;
     }
 
     /** Walk the objects in the given chunk, starting from the first object. */
@@ -298,15 +287,7 @@ public class UnalignedHeapChunk extends HeapChunk {
     static UnsignedWord getObjectStartOffset() {
         final UnsignedWord cardTableLimitOffset = getCardTableLimitOffset();
         final UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
-        final UnsignedWord result = UnsignedUtils.roundUp(cardTableLimitOffset, alignment);
-        return result;
-    }
-
-    // TODO: Unused. Are there places it should be used?
-    @SuppressWarnings("unused")
-    private static UnsignedWord getObjectOffset() {
-        // The object in an unaligned chunk is always at offset 0.
-        return WordFactory.zero();
+        return UnsignedUtils.roundUp(cardTableLimitOffset, alignment);
     }
 
     private static UnsignedWord getObjectIndex() {
@@ -327,15 +308,7 @@ public class UnalignedHeapChunk extends HeapChunk {
     public static UnsignedWord committedObjectMemoryOfUnalignedHeapChunk(UnalignedHeader that) {
         final Pointer start = getUnalignedHeapChunkStart(that);
         final Pointer end = that.getEnd();
-        final UnsignedWord result = end.subtract(start);
-        return result;
-    }
-
-    /** How much space is used for the objects in an UnalignedHeapChunk? */
-    public static UnsignedWord usedObjectMemoryOfUnalignedHeapChunk(UnalignedHeader that) {
-        final Pointer start = getUnalignedHeapChunkStart(that);
-        final Pointer top = that.getTop();
-        return top.subtract(start);
+        return end.subtract(start);
     }
 
     /*

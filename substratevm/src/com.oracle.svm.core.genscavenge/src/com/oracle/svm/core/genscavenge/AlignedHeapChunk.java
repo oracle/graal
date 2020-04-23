@@ -121,28 +121,9 @@ public class AlignedHeapChunk extends HeapChunk {
         return asPointer(that).add(getObjectsStartOffset());
     }
 
-    /*
-     * This is currently unused, but it is a book-end with getObjectsStart(AlignedHeader) to bracket
-     * the Objects.
-     */
-    /** Where is the limit of the Objects? */
-    @SuppressWarnings("unused")
-    private static Pointer getObjectsLimit(AlignedHeader that) {
-        /* The objects end at the end of the chunk. */
-        return that.getEnd();
-    }
-
     /** A well-named method, similar to the field access methods on HeapChunk. */
     static Pointer getAlignedHeapChunkStart(AlignedHeader that) {
         return getObjectsStart(that);
-    }
-
-    /**
-     * The overhead of an aligned chunk. All of the overhead is before the start of the objects in
-     * the chunk.
-     */
-    public static UnsignedWord getAlignedHeapOverhead() {
-        return getObjectsStartOffset();
     }
 
     /**
@@ -164,16 +145,6 @@ public class AlignedHeapChunk extends HeapChunk {
     /** The committed object memory is the space between start and end. */
     static UnsignedWord committedObjectMemoryOfAlignedHeapChunk(AlignedHeader that) {
         return that.getEnd().subtract(getAlignedHeapChunkStart(that));
-    }
-
-    /** How much space is used for the objects in an AlignedHeapChunk? */
-    protected static UnsignedWord usedObjectMemoryOfAlignedHeapChunk(AlignedHeader that) {
-        return that.getTop().subtract(getAlignedHeapChunkStart(that));
-    }
-
-    /** How much space is still available for allocation in an AlignedHeapChunk? */
-    static UnsignedWord availableObjectMemoryOfAlignedHeapChunk(AlignedHeader that) {
-        return that.getEnd().subtract(that.getTop());
     }
 
     /** Return the associated AlignedHeapChunk for a given Object. */
@@ -346,8 +317,7 @@ public class AlignedHeapChunk extends HeapChunk {
     static UnsignedWord getObjectsStartOffset() {
         final UnsignedWord fotLimit = getFirstObjectTableLimitOffset();
         final UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
-        final UnsignedWord result = UnsignedUtils.roundUp(fotLimit, alignment);
-        return result;
+        return UnsignedUtils.roundUp(fotLimit, alignment);
     }
 
     /*

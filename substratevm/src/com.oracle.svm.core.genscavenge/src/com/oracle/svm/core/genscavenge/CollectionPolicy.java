@@ -76,7 +76,6 @@ public abstract class CollectionPolicy {
         return HeapImpl.getHeapImpl().getGCImpl().getAccounting();
     }
 
-    /** For debugging: A collection policy that only collects incrementally. */
     public static class OnlyIncrementally extends CollectionPolicy {
 
         @Override
@@ -95,7 +94,6 @@ public abstract class CollectionPolicy {
         }
     }
 
-    /** For debugging: A collection policy that only collects completely. */
     public static class OnlyCompletely extends CollectionPolicy {
 
         @Override
@@ -114,7 +112,6 @@ public abstract class CollectionPolicy {
         }
     }
 
-    /** For debugging: A collection policy that never collects. */
     public static class NeverCollect extends CollectionPolicy {
 
         @Override
@@ -224,19 +221,7 @@ public abstract class CollectionPolicy {
 
         /** Cascading tests for whether to do a complete collection. */
         private static boolean decideToCollectCompletely(Log trace) {
-            /* A vote for a complete collection based on the maximum heap size. */
-            if (voteOnMaximumSpace(trace)) {
-                return true;
-            }
-            /* A veto of a complete collection based on the minimum heap size. */
-            if (vetoOnMinimumSpace(trace)) {
-                return false;
-            }
-            /* A veto of a complete collection based on incremental collection time. */
-            if (vetoOnIncrementalTime(trace)) {
-                return false;
-            }
-            return true;
+            return voteOnMaximumSpace(trace) || (!vetoOnMinimumSpace(trace) && !vetoOnIncrementalTime(trace));
         }
 
         /** If the heap is too full, request a complete collection. */

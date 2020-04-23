@@ -156,8 +156,6 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         @Override
         void close();
 
-        boolean isOpen();
-
         void noteObjRef();
 
         void noteNullReferent();
@@ -192,11 +190,6 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         public void close() {
             toLog();
             reset();
-        }
-
-        @Override
-        public boolean isOpen() {
-            return isOpened;
         }
 
         @Override
@@ -282,52 +275,38 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
         @Override
         public void close() {
-            return;
-        }
-
-        @Override
-        public boolean isOpen() {
-            return false;
         }
 
         @Override
         public void noteObjRef() {
-            return;
         }
 
         @Override
         public void noteNullReferent() {
-            return;
         }
 
         @Override
         public void noteForwardedReferent() {
-            return;
         }
 
         @Override
         public void noteNonHeapReferent() {
-            return;
         }
 
         @Override
         public void noteCopiedReferent() {
-            return;
         }
 
         @Override
         public void noteUnmodifiedReference() {
-            return;
         }
 
         @Override
         public void toLog() {
-            return;
         }
 
         @Override
         public void reset() {
-            return;
         }
 
         protected NoopCounters() {

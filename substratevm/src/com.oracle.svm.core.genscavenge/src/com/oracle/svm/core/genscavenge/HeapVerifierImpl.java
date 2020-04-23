@@ -52,11 +52,11 @@ import com.oracle.svm.core.thread.VMOperation;
 public class HeapVerifierImpl implements HeapVerifier {
 
     /* Instance state. */
-    private final SpaceVerifierImpl spaceVerifier;
+    private final SpaceVerifier spaceVerifier;
     private String cause;
 
     /** A verifier that an object reference is not to the young space. */
-    private ReferenceToYoungObjectVisitor referenceToYoungObjectVisitor;
+    private final ReferenceToYoungObjectVisitor referenceToYoungObjectVisitor;
 
     /* Witnessing verification failures. */
     private final Log witnessLog;
@@ -66,7 +66,7 @@ public class HeapVerifierImpl implements HeapVerifier {
          * The constructor is called during native image generation, at which point there isn't a
          * Heap, so the heap field must be initialized lazily.
          */
-        this.spaceVerifier = SpaceVerifierImpl.factory();
+        this.spaceVerifier = SpaceVerifier.factory();
         this.cause = "Too soon to tell";
         final ReferenceToYoungObjectReferenceVisitor refToYoungObjectReferenceVisitor = new ReferenceToYoungObjectReferenceVisitor();
         this.referenceToYoungObjectVisitor = new ReferenceToYoungObjectVisitor(refToYoungObjectReferenceVisitor);
@@ -296,7 +296,7 @@ public class HeapVerifierImpl implements HeapVerifier {
 
         trace.string("  returns: ").bool(result).string("]").newline();
 
-        return true;
+        return result;
     }
 
     private static boolean verifyYoungGeneration(HeapVerifier.Occasion occasion) {
@@ -436,24 +436,13 @@ public class HeapVerifierImpl implements HeapVerifier {
         return true;
     }
 
-    public enum ChunkLimit {
-        top,
-        end
-    }
-
     static boolean slowlyFindPointer(Pointer p) {
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        if (heap.isInImageHeapSlow(p)) {
-            return true;
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        boolean found = heap.isInImageHeapSlow(p) || slowlyFindPointerInYoungGeneration(p) || slowlyFindPointerInOldGeneration(p);
+        if (!found) {
+            heap.getHeapVerifierImpl().getWitnessLog().string("[HeapVerifierImpl.slowlyFindPointer:").string("  did not find pointer in heap: ").hex(p).string("]").newline();
         }
-        if (slowlyFindPointerInYoungGeneration(p)) {
-            return true;
-        }
-        if (slowlyFindPointerInOldGeneration(p)) {
-            return true;
-        }
-        heap.getHeapVerifierImpl().getWitnessLog().string("[HeapVerifierImpl.slowlyFindPointer:").string("  did not find pointer in heap: ").hex(p).string("]").newline();
-        return false;
+        return found;
     }
 
     private static boolean slowlyFindPointerInYoungGeneration(Pointer p) {
@@ -472,28 +461,19 @@ public class HeapVerifierImpl implements HeapVerifier {
         return HeapChunkProvider.get().slowlyFindPointer(p);
     }
 
-    static boolean slowlyFindPointerInSpace(Space space, Pointer p, HeapVerifierImpl.ChunkLimit chunkLimit) {
-        /* Look through all the chunks in the space. */
-        /* - The aligned chunks. */
+    static boolean slowlyFindPointerInSpace(Space space, Pointer p) {
         AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
             final Pointer start = AlignedHeapChunk.getAlignedHeapChunkStart(aChunk);
-            final Pointer limit = (chunkLimit == ChunkLimit.top ? aChunk.getTop() : aChunk.getEnd());
-            final boolean atLeast = start.belowOrEqual(p);
-            final boolean atMost = p.belowThan(limit);
-            if (atLeast && atMost) {
+            if (start.belowOrEqual(p) && p.belowThan(aChunk.getTop())) {
                 return true;
             }
             aChunk = aChunk.getNext();
         }
-        /* - The unaligned chunks. */
         UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
         while (uChunk.isNonNull()) {
             final Pointer start = UnalignedHeapChunk.getUnalignedHeapChunkStart(uChunk);
-            final Pointer limit = (chunkLimit == ChunkLimit.top ? uChunk.getTop() : uChunk.getEnd());
-            final boolean atLeast = start.belowOrEqual(p);
-            final boolean atMost = p.belowThan(limit);
-            if (atLeast && atMost) {
+            if (start.belowOrEqual(p) && p.belowThan(uChunk.getTop())) {
                 return true;
             }
             uChunk = uChunk.getNext();
@@ -533,7 +513,7 @@ public class HeapVerifierImpl implements HeapVerifier {
         return referenceToYoungObjectVisitor;
     }
 
-    SpaceVerifierImpl getSpaceVerifierImpl() {
+    SpaceVerifier getSpaceVerifierImpl() {
         return spaceVerifier;
     }
 }

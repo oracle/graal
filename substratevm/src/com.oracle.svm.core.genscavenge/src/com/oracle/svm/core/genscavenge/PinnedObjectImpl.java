@@ -150,7 +150,7 @@ public class PinnedObjectImpl implements PinnedObject {
      * Push an element onto the list. May be called by many threads simultaneously, so it uses a
      * compareAndSet loop.
      */
-    public static PinnedObjectImpl pushPinnedObject(PinnedObjectImpl newHead) {
+    public static void pushPinnedObject(PinnedObjectImpl newHead) {
         final Log trace = Log.noopLog().string("[PinnedObject.pushPinnedObject:").string("  newHead: ").object(newHead);
         final HeapImpl heap = HeapImpl.getHeapImpl();
         final AtomicReference<PinnedObjectImpl> pinHead = heap.getPinHead();
@@ -160,7 +160,6 @@ public class PinnedObjectImpl implements PinnedObject {
             newHead.setNext(sampleHead);
         } while (!pinHead.compareAndSet(sampleHead, newHead));
         trace.string("  returns: ").object(newHead).string("]").newline();
-        return newHead;
     }
 
     /**

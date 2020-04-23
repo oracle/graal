@@ -538,7 +538,7 @@ public class PathExhibitor {
     private static final class FindPathToObjectOperation extends JavaVMOperation {
         private final PathExhibitor exhibitor;
         private final Object object;
-        private PathEdge result;
+        private final PathEdge result;
 
         FindPathToObjectOperation(PathExhibitor exhibitor, Object object, PathEdge result) {
             super("FindPathToObjectOperation", SystemEffect.SAFEPOINT);

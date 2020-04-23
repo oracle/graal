@@ -76,8 +76,7 @@ public final class GreyObjectsWalker {
         trace.string("  alignedHeapChunk: ").hex(alignedHeapChunk).string("  isNull: ").bool(aChunk.isNull());
         alignedTop = (aChunk.isNonNull() ? aChunk.getTop() : WordFactory.nullPointer());
         trace.string("  alignedTop: ").hex(alignedTop);
-        final UnalignedHeapChunk.UnalignedHeader uChunk = s.getLastUnalignedHeapChunk();
-        unalignedHeapChunk = uChunk;
+        unalignedHeapChunk = s.getLastUnalignedHeapChunk();
         trace.string("  unalignedChunkPointer: ").hex(unalignedHeapChunk).string("]").newline();
     }
 
@@ -103,8 +102,8 @@ public final class GreyObjectsWalker {
     @AlwaysInline("GC performance")
     private void walkAlignedGreyObjects() {
         /* Locals that start from the snapshot. */
-        AlignedHeapChunk.AlignedHeader aChunk = WordFactory.nullPointer();
-        Pointer aOffset = WordFactory.nullPointer();
+        AlignedHeapChunk.AlignedHeader aChunk;
+        Pointer aOffset;
         if (alignedHeapChunk.isNull() && alignedTop.isNull()) {
             /* If the snapshot is empty, then I have to walk from the beginning of the Space. */
             aChunk = space.getFirstAlignedHeapChunk();

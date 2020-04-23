@@ -474,10 +474,9 @@ public final class FirstObjectTable {
      * Initialize all the entries to the UninitializedEntry value, since I check for that in
      * asserts.
      */
-    private static boolean initializeTableToPointerForAsserts(Pointer table, Pointer tableLimit) {
+    private static void initializeTableToPointerForAsserts(Pointer table, Pointer tableLimit) {
         final UnsignedWord indexLimit = FirstObjectTable.tableOffsetToIndex(tableLimit.subtract(table));
         FirstObjectTable.initializeTableToIndexForAsserts(table, indexLimit);
-        return true;
     }
 
     /**
@@ -597,9 +596,7 @@ public final class FirstObjectTable {
 
     /** Turn a memory offset into a table index. */
     private static UnsignedWord memoryOffsetToIndex(UnsignedWord offset) {
-        /* The unsignedDivide rounds down, which is what I want. */
-        final UnsignedWord result = offset.unsignedDivide(MEMORY_BYTES_PER_ENTRY);
-        return result;
+        return offset.unsignedDivide(MEMORY_BYTES_PER_ENTRY);
     }
 
     /** Turn a memory offset into a table entry. */
