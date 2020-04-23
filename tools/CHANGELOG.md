@@ -4,6 +4,7 @@ This changelog summarizes major changes between Truffle Tools versions.
 
 ## Version 20.1.0
 
+* [GraalVM Insight](docs/Insight-Manual.md#hack-into-the-c-code) can access local variables in C, C++ and other LLVM languages
 * [GraalVM Insight](docs/Insight.md) is the new name for the former *T*-*Trace* technology
 
 ## Version 20.0.0

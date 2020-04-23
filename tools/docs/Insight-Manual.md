@@ -530,7 +530,7 @@ and when the function gets invoked a thousand times, it emits an error
 to terminate the `sieve` execution. Just run the program as:
 
 ```bash
-$ lli --polyglot --insight=agent-limit.js --experimental-options sieve
+$ graalvm/bin/lli --polyglot --insight=agent-limit.js --experimental-options sieve
 Computed 97 primes in 181 ms. Last one is 509
 GraalVM Insight: nextNatural method called 1000 times. enough!
         at <js> :anonymous(<eval>:7:117-185)
@@ -538,6 +538,27 @@ GraalVM Insight: nextNatural method called 1000 times. enough!
         at <llvm> nextPrime(agent-sieve.c:74:1409)
         at <llvm> measure(agent-sieve.c:104:1955)
         at <llvm> main(agent-sieve.c:123:2452)
+```
+
+It is possible to access primitive local variables from the native code. Replace
+the above Insight script with
+
+```js
+insight.on('enter', function(ctx, frame) {
+    print(`found new prime number ${frame.n}`);
+}, {
+    roots: true,
+    rootNameFilter: (n) => n === 'newFilter'
+});
+```
+
+and print out a message everytime a new prime is added into the filter list:
+
+```bash
+$ graalvm/bin/lli --polyglot --experimental-options --insight=agent-limit.js sieve | head -n 3
+found new prime number 2
+found new prime number 3
+found new prime number 5
 ```
 
 The mixture of `lli`, polyglot and Insight opens enormous possibilities in tracing,
