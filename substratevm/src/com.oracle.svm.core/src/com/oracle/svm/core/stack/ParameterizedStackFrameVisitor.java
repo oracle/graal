@@ -32,8 +32,11 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
-/** Given access to a thread stack frame, perform some computation on it. */
-public abstract class StackFrameVisitor extends ParameterizedStackFrameVisitor<Void> {
+/**
+ * Given access to a thread stack frame, perform some computation on it. This is a more generic
+ * version of {@link StackFrameVisitor} that allows an arbitrary object to be passed through.
+ */
+public abstract class ParameterizedStackFrameVisitor<T> {
 
     /**
      * Called for each frame that is visited. Note that unless this method is annotated with
@@ -47,17 +50,24 @@ public abstract class StackFrameVisitor extends ParameterizedStackFrameVisitor<V
      * @param codeInfo Information on the code at the IP, for use with {@link CodeInfoAccess}.
      * @param deoptimizedFrame The information about a deoptimized frame, or {@code null} if the
      *            frame is not deoptimized.
+     * @param data An arbitrary data value passed through the stack walker.
      * @return true if visiting should continue, false otherwise.
      */
-    protected abstract boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame);
+    protected abstract boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, T data);
 
-    @Override
-    protected final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Void data) {
-        return visitFrame(sp, ip, codeInfo, deoptimizedFrame);
-    }
-
-    @Override
-    protected final boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Void data) {
-        throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, deoptimizedFrame);
-    }
+    /**
+     * Called when no {@link CodeInfo frame metadata} can be found for a frame. That usually means
+     * that the VM is in an inconsistent state. The default implementation therefore aborts VM
+     * execution with a fatal error. Stack walking for diagnostic purposes can override this method
+     * to just report a message.
+     *
+     * @param sp The stack pointer of the frame being visited.
+     * @param ip The instruction pointer of the frame being visited.
+     * @param deoptimizedFrame The information about a deoptimized frame, or {@code null} if the
+     *            frame is not deoptimized.
+     * @param data An arbitrary data value passed through the stack walker.
+     * @return The value returned to the caller of stack walking. Note that walking of the thread is
+     *         always aborted, regardless of the return value.
+     */
+    protected abstract boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, T data);
 }

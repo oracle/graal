@@ -55,8 +55,11 @@ final class AMD64HotSpotDirectStaticCallOp extends DirectCallOp {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        crb.recordMark(invokeKind == InvokeKind.Static ? config.MARKID_INVOKESTATIC : config.MARKID_INVOKESPECIAL);
-        super.emitCode(crb, masm);
+        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(invokeKind.isDirect())) {
+            crb.recordMark(invokeKind == InvokeKind.Static ? config.MARKID_INVOKESTATIC : config.MARKID_INVOKESPECIAL);
+            super.emitCode(crb, masm);
+        }
     }
 }

@@ -711,7 +711,17 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     b.end(); // return
                     b.end(); // block
                 } else {
-                    addAcceptsAssertion(b);
+                    CodeTree customAcceptsAssertion;
+                    if (mergedLibraries.isEmpty()) {
+                        // use normal accepts call
+                        customAcceptsAssertion = null;
+                    } else {
+                        // with merged libraries we need to use the default accepts
+                        // for the assertion as merged libraries might require transitions
+                        String name = b.findMethod().getParameters().get(0).getSimpleName().toString();
+                        customAcceptsAssertion = createDefaultAccepts(null, null, libraryExports, exportReceiverType, name, true);
+                    }
+                    addAcceptsAssertion(b, customAcceptsAssertion);
                     b.tree(originalBody);
                 }
             }
@@ -1065,7 +1075,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 CodeTree originalBody = uncachedExecute.getBodyTree();
                 CodeTreeBuilder b = uncachedExecute.createBuilder();
                 GeneratorUtils.addBoundaryOrTransferToInterpreter(uncachedExecute, b);
-                addAcceptsAssertion(b);
+                addAcceptsAssertion(b, null);
                 b.tree(originalBody);
             }
         }
@@ -1152,12 +1162,20 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
         }
         return builder.build();
-
     }
 
-    private static void addAcceptsAssertion(CodeTreeBuilder executeBody) {
+    private static void addAcceptsAssertion(CodeTreeBuilder executeBody, CodeTree customAccept) {
         String name = executeBody.findMethod().getParameters().get(0).getSimpleName().toString();
-        executeBody.startAssert().string("this.accepts(", name, ")").string(" : ").doubleQuote("Invalid library usage. Library does not accept given receiver.").end();
+        CodeTree accepts;
+        if (customAccept != null) {
+            /*
+             * use internal accepts only because otherwise transitions assertions would fail.
+             */
+            accepts = customAccept;
+        } else {
+            accepts = executeBody.create().string("this.accepts(", name, ")").build();
+        }
+        executeBody.startAssert().tree(accepts).string(" : ").doubleQuote(INVALID_LIBRARY_USAGE_MESSAGE).end();
     }
 
     private static final String INVALID_LIBRARY_USAGE_MESSAGE = "Invalid library usage. Library does not accept given receiver.";

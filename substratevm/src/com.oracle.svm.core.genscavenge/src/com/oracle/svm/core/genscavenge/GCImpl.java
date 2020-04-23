@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+//Checkstyle: stop
+
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
@@ -64,11 +66,20 @@ import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoQueryResult;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
+import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.AllocationFreeList;
 import com.oracle.svm.core.heap.AllocationFreeList.PreviouslyRegisteredElementException;
+import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CollectionWatcher;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
@@ -81,6 +92,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
+import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -93,8 +105,8 @@ import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 import com.sun.management.GcInfo;
 
-//Checkstyle: stop
 import sun.management.Util;
+
 //Checkstyle: resume
 
 /**
@@ -110,10 +122,6 @@ public class GCImpl implements GC {
 
     private final RememberedSetConstructor rememberedSetConstructor;
     private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor;
-    /**
-     * A visitor for a frame that walks all the Object references in the frame.
-     */
-    private final FramePointerMapWalker frameWalker;
     private final GreyToBlackObjectVisitor greyToBlackObjectVisitor;
     private final CollectionPolicy collectOnlyCompletelyPolicy;
 
@@ -149,7 +157,6 @@ public class GCImpl implements GC {
 
         this.policy = CollectionPolicy.getInitialPolicy(access);
         this.greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
-        this.frameWalker = new FramePointerMapWalker(greyToBlackObjRefVisitor);
         this.greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
         this.collectOnlyCompletelyPolicy = new CollectionPolicy.OnlyCompletely();
         this.collectionInProgress = Latch.factory("Collection in progress");
@@ -736,6 +743,7 @@ public class GCImpl implements GC {
     @NeverInline("Starting a stack walk in the caller frame. " +
                     "Note that we could start the stack frame also further down the stack, because GC stack frames must not access any objects that are processed by the GC. " +
                     "But we don't store stack frame information for the first frame we would need to process.")
+    @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.", calleeMustBe = false)
     @SuppressWarnings("try")
     private void blackenStackRoots() {
         final Log trace = Log.noopLog().string("[GCImpl.blackenStackRoots:").newline();
@@ -744,7 +752,11 @@ public class GCImpl implements GC {
             trace.string("[blackenStackRoots:").string("  sp: ").hex(sp);
             CodePointer ip = readReturnAddress();
             trace.string("  ip: ").hex(ip).newline();
-            blackenCurrentStack(sp);
+
+            JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
+            JavaStackWalker.initWalk(walk, sp, ip);
+            walkStack(walk);
+
             if (SubstrateOptions.MultiThreaded.getValue()) {
                 /*
                  * Scan the stacks of all the threads. Other threads will be blocked at a safepoint
@@ -760,7 +772,9 @@ public class GCImpl implements GC {
                          */
                         continue;
                     }
-                    blackenStack(vmThread);
+                    if (JavaStackWalker.initWalk(walk, vmThread)) {
+                        walkStack(walk);
+                    }
                     trace.newline();
                 }
             }
@@ -769,14 +783,62 @@ public class GCImpl implements GC {
         trace.string("]").newline();
     }
 
-    @Uninterruptible(reason = "Avoid the virtual call to the visitor.")
-    private void blackenStack(IsolateThread vmThread) {
-        JavaStackWalker.walkThreadInline(vmThread, frameWalker);
-    }
+    /**
+     * This method inlines {@link JavaStackWalker#continueWalk(JavaStackWalk, CodeInfo)} and
+     * {@link CodeInfoTable#visitObjectReferences}. This avoids looking up the
+     * {@link SimpleCodeInfoQueryResult} twice per frame, and also ensures that there are no virtual
+     * calls to a stack frame visitor.
+     */
+    @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.", calleeMustBe = false)
+    private void walkStack(JavaStackWalk walk) {
+        assert VMOperation.isGCInProgress() : "This methods accesses a CodeInfo without a tether";
 
-    @Uninterruptible(reason = "Avoid the virtual call to the visitor.")
-    private void blackenCurrentStack(Pointer sp) {
-        JavaStackWalker.walkCurrentThreadInline(sp, frameWalker);
+        while (true) {
+            SimpleCodeInfoQueryResult queryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
+            Pointer sp = walk.getSP();
+            CodePointer ip = walk.getPossiblyStaleIP();
+
+            /* We are during a GC, so tethering of the CodeInfo is not necessary. */
+            CodeInfo codeInfo = CodeInfoAccess.convert(walk.getIPCodeInfo());
+            DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
+            if (deoptFrame == null) {
+                if (codeInfo.isNull()) {
+                    throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, deoptFrame);
+                }
+
+                CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
+                assert Deoptimizer.checkDeoptimized(sp) == null : "We are at a safepoint, so no deoptimization can have happened even though looking up the code info is not uninterruptible";
+
+                NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getReferenceMapEncoding(codeInfo);
+                long referenceMapIndex = queryResult.getReferenceMapIndex();
+                if (referenceMapIndex == CodeInfoQueryResult.NO_REFERENCE_MAP) {
+                    throw CodeInfoTable.reportNoReferenceMap(sp, ip, codeInfo);
+                }
+                CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, greyToBlackObjRefVisitor);
+            } else {
+                /*
+                 * This is a deoptimized frame. The DeoptimizedFrame object is stored in the frame,
+                 * but it is pinned so we do not need to visit references of the frame.
+                 */
+            }
+
+            if (DeoptimizationSupport.enabled() && codeInfo != CodeInfoTable.getImageCodeInfo()) {
+                /*
+                 * For runtime-compiled code that is currently on the stack, we need to treat all
+                 * the references to Java heap objects as strong references. It is important that we
+                 * really walk *all* those references here. Otherwise, RuntimeCodeCacheWalker might
+                 * decide to invalidate too much code, depending on the order in which the CodeInfo
+                 * objects are visited.
+                 */
+                RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, greyToBlackObjRefVisitor);
+                RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, greyToBlackObjRefVisitor);
+            }
+
+            if (!JavaStackWalker.continueWalk(walk, queryResult, deoptFrame)) {
+                /* No more caller frame found. */
+                return;
+            }
+        }
     }
 
     @SuppressWarnings("try")

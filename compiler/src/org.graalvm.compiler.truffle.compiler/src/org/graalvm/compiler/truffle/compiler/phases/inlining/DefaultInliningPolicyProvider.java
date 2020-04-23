@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.chromeinspector.instrument;
+package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
-import java.io.IOException;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.options.OptionValues;
 
-/**
- * A single inspector connection with the inspector protocol. One or more inspector connections may
- * be active on a single web socket connection, when they have different paths.
- */
-public interface InspectorConnection {
+@ServiceProvider(InliningPolicyProvider.class)
+public class DefaultInliningPolicyProvider extends InliningPolicyProvider {
 
-    InspectorWSConnection getWSConnection();
+    private static final int PRIORITY = 0;
+    private static final String NAME = "Default";
 
-    String getWSPath();
-
-    default void close() throws IOException {
-        getWSConnection().close(getWSPath());
+    public DefaultInliningPolicyProvider() {
+        super(PRIORITY, NAME);
     }
 
-    String getURL();
-
-    public interface Open {
-
-        InspectorConnection open(int port, String host, boolean wait);
-
+    @Override
+    public InliningPolicy get(OptionValues options, CoreProviders providers) {
+        return new DefaultInliningPolicy(options);
     }
-
 }

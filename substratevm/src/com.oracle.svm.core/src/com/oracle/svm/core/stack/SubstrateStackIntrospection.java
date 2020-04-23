@@ -79,7 +79,7 @@ public class SubstrateStackIntrospection implements StackIntrospection {
     }
 }
 
-class PhysicalStackFrameVisitor<T> implements StackFrameVisitor {
+class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
 
     private ResolvedJavaMethod[] curMatchingMethods;
     private final ResolvedJavaMethod[] laterMatchingMethods;

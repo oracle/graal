@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.options.OptionValues;
+@Platforms(Platform.HOSTED_ONLY.class)
+package com.oracle.svm.hosted.xml;
 
-@ServiceProvider(InliningPolicyProvider.class)
-public class DefaultPolicyProvider extends InliningPolicyProvider {
-
-    private static final int PRIORITY = 0;
-    private static final String NAME = "Default";
-
-    public DefaultPolicyProvider() {
-        super(PRIORITY, NAME);
-    }
-
-    @Override
-    public InliningPolicy get(OptionValues options, CoreProviders providers) {
-        return new DefaultPolicy(options);
-    }
-}
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;

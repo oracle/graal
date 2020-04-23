@@ -49,7 +49,7 @@ import org.graalvm.polyglot.io.MessageTransport;
 public class InspectorMessageTransportTest {
 
     private static final String PORT = "54367";
-    private static final Pattern URI_PATTERN = Pattern.compile("ws://.*:" + PORT + "/[\\dA-Fa-f\\-]+");
+    private static final Pattern URI_PATTERN = Pattern.compile("ws://.*:" + PORT + "/[\\dA-Za-z_\\-]+");
     private static final String[] INITIAL_MESSAGES = {
                     "{\"id\":5,\"method\":\"Runtime.enable\"}",
                     "{\"id\":6,\"method\":\"Debugger.enable\"}",
@@ -83,8 +83,8 @@ public class InspectorMessageTransportTest {
 
     @Test
     public void inspectorEndpointExplicitPathTest() {
-        inspectorEndpointTest("simplePath");
-        inspectorEndpointTest("/some/complex/path");
+        inspectorEndpointTest("simplePath" + SecureInspectorPathGenerator.getToken());
+        inspectorEndpointTest("/some/complex/path" + SecureInspectorPathGenerator.getToken());
     }
 
     @Test
@@ -133,7 +133,7 @@ public class InspectorMessageTransportTest {
     @Test
     public void inspectorReconnectTest() throws IOException, InterruptedException {
         Session session = new Session(null);
-        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath", null);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
         Engine engine = endpoint.onOpen(session);
 
         try (Context context = Context.newBuilder().engine(engine).build()) {

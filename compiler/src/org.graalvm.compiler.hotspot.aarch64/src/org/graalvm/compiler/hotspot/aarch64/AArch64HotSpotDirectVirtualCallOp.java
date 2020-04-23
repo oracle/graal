@@ -58,14 +58,17 @@ final class AArch64HotSpotDirectVirtualCallOp extends DirectCallOp {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        // The mark for an invocation that uses an inline cache must be placed at the
-        // instruction that loads the Klass from the inline cache.
-        // For the first invocation this is set to a bitpattern that is guaranteed to never be a
-        // valid object which causes the called function to call a handler that installs the
-        // correct inline cache value here.
-        crb.recordMark(invokeKind == InvokeKind.Virtual ? config.MARKID_INVOKEVIRTUAL : config.MARKID_INVOKEINTERFACE);
-        masm.movNativeAddress(inlineCacheRegister, config.nonOopBits);
-        super.emitCode(crb, masm);
+        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(invokeKind.isDirect())) {
+            // The mark for an invocation that uses an inline cache must be placed at the
+            // instruction that loads the Klass from the inline cache.
+            // For the first invocation this is set to a bitpattern that is guaranteed to never be a
+            // valid object which causes the called function to call a handler that installs the
+            // correct inline cache value here.
+            crb.recordMark(invokeKind == InvokeKind.Virtual ? config.MARKID_INVOKEVIRTUAL : config.MARKID_INVOKEINTERFACE);
+            masm.movNativeAddress(inlineCacheRegister, config.nonOopBits);
+            super.emitCode(crb, masm);
+        }
     }
 }
