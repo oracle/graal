@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,18 +25,80 @@
 package org.graalvm.tools.lsp.server.types;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.util.Objects;
 
+/**
+ * Notification Message.
+ */
 public class NotificationMessage extends Message {
 
-    NotificationMessage(JSONObject json) {
-        super(json);
+    NotificationMessage(JSONObject jsonData) {
+        super(jsonData);
     }
 
+    /**
+     * The method to be invoked.
+     */
     public String getMethod() {
-        return json.getString("method");
+        return jsonData.getString("method");
     }
 
-    public JSONObject getJSONParams() {
-        return json.optJSONObject("params");
+    public NotificationMessage setMethod(String method) {
+        jsonData.put("method", method);
+        return this;
+    }
+
+    /**
+     * The notification's params.
+     */
+    public Object getParams() {
+        return jsonData.opt("params");
+    }
+
+    public NotificationMessage setParams(Object params) {
+        jsonData.putOpt("params", params);
+        return this;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (this.getClass() != obj.getClass()) {
+            return false;
+        }
+        NotificationMessage other = (NotificationMessage) obj;
+        if (!Objects.equals(this.getMethod(), other.getMethod())) {
+            return false;
+        }
+        if (!Objects.equals(this.getParams(), other.getParams())) {
+            return false;
+        }
+        if (!Objects.equals(this.getJsonrpc(), other.getJsonrpc())) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 29 * hash + Objects.hashCode(this.getMethod());
+        if (this.getParams() != null) {
+            hash = 29 * hash + Objects.hashCode(this.getParams());
+        }
+        hash = 29 * hash + Objects.hashCode(this.getJsonrpc());
+        return hash;
+    }
+
+    public static NotificationMessage create(String method, String jsonrpc) {
+        final JSONObject json = new JSONObject();
+        json.put("method", method);
+        json.put("jsonrpc", jsonrpc);
+        return new NotificationMessage(json);
     }
 }

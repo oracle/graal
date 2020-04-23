@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,15 @@
 package org.graalvm.tools.lsp.server.types;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.util.Objects;
 
-public class FoldingRangeProviderOptions {
+/**
+ * Server Capabilities for a [DefinitionRequest](#DefinitionRequest).
+ */
+public class DefinitionOptions extends WorkDoneProgressOptions {
 
-    final JSONObject jsonData;
-
-    FoldingRangeProviderOptions(JSONObject jsonData) {
-        this.jsonData = jsonData;
+    DefinitionOptions(JSONObject jsonData) {
+        super(jsonData);
     }
 
     @Override
@@ -45,17 +47,24 @@ public class FoldingRangeProviderOptions {
         if (this.getClass() != obj.getClass()) {
             return false;
         }
+        DefinitionOptions other = (DefinitionOptions) obj;
+        if (!Objects.equals(this.getWorkDoneProgress(), other.getWorkDoneProgress())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 5;
+        if (this.getWorkDoneProgress() != null) {
+            hash = 89 * hash + Boolean.hashCode(this.getWorkDoneProgress());
+        }
         return hash;
     }
 
-    public static FoldingRangeProviderOptions create() {
+    public static DefinitionOptions create() {
         final JSONObject json = new JSONObject();
-        return new FoldingRangeProviderOptions(json);
+        return new DefinitionOptions(json);
     }
 }

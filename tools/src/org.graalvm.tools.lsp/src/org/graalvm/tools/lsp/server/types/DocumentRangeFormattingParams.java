@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,12 +27,13 @@ package org.graalvm.tools.lsp.server.types;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
-public class DocumentRangeFormattingParams {
-
-    final JSONObject jsonData;
+/**
+ * The parameters of a [DocumentRangeFormattingRequest](#DocumentRangeFormattingRequest).
+ */
+public class DocumentRangeFormattingParams extends WorkDoneProgressParams {
 
     DocumentRangeFormattingParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -92,15 +93,21 @@ public class DocumentRangeFormattingParams {
         if (!Objects.equals(this.getOptions(), other.getOptions())) {
             return false;
         }
+        if (!Objects.equals(this.getWorkDoneToken(), other.getWorkDoneToken())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 31 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 31 * hash + Objects.hashCode(this.getRange());
-        hash = 31 * hash + Objects.hashCode(this.getOptions());
+        hash = 73 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 73 * hash + Objects.hashCode(this.getRange());
+        hash = 73 * hash + Objects.hashCode(this.getOptions());
+        if (this.getWorkDoneToken() != null) {
+            hash = 73 * hash + Objects.hashCode(this.getWorkDoneToken());
+        }
         return hash;
     }
 

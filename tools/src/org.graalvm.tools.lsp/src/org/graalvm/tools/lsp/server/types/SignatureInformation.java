@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,12 +35,10 @@ import java.util.Objects;
  * Represents the signature of something callable. A signature can have a label, like a
  * function-name, a doc-comment, and a set of parameters.
  */
-public class SignatureInformation {
-
-    final JSONObject jsonData;
+public class SignatureInformation extends JSONBase {
 
     SignatureInformation(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -70,7 +68,7 @@ public class SignatureInformation {
         if (documentation instanceof MarkupContent) {
             jsonData.put("documentation", ((MarkupContent) documentation).jsonData);
         } else {
-            jsonData.putOpt("documentation", documentation);
+            jsonData.put("documentation", documentation);
         }
         return this;
     }
@@ -127,13 +125,13 @@ public class SignatureInformation {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.getLabel());
+        int hash = 5;
+        hash = 79 * hash + Objects.hashCode(this.getLabel());
         if (this.getDocumentation() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getDocumentation());
+            hash = 79 * hash + Objects.hashCode(this.getDocumentation());
         }
         if (this.getParameters() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getParameters());
+            hash = 79 * hash + Objects.hashCode(this.getParameters());
         }
         return hash;
     }
