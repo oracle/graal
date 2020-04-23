@@ -54,7 +54,7 @@ public class UnsafeWasmMemory extends WasmMemory {
     private long startAddress;
     private long pageSize;
     private final long maxPageSize;
-    private final ConditionProfile outOfBoundsAccesses = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile outOfBoundsAccesses = ConditionProfile.create();
 
     public UnsafeWasmMemory(long initPageSize, long maxPageSize) {
         try {
