@@ -253,37 +253,36 @@ class MBeanProxy<T extends DynamicMBean> {
     private static void defineClassesInHotSpot(JNI.JNIEnv env) {
         try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.DefineClasses, env)) {
             JNI.JObject classLoader = SVMToHotSpotCalls.getJVMCIClassLoader(env);
-            JNI.JClass svmHsEntryPoints = findClassInHotSpot(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME);
-            if (svmHsEntryPoints.isNull()) {
-                if (defineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS).isNull()) {
-                    checkDefineClassException(env, HS_BEAN_CLASS_NAME);
+            JNI.JClass hsToSvmCalls = defineClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, HS_SVM_CALLS_CLASS);
+            if (hsToSvmCalls.isNonNull()) {
+                try {
+                    registerNatives(env, classLoader, hsToSvmCalls);
+                } finally {
+                    nativeRegistered(env, hsToSvmCalls);
                 }
-
-                if (defineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS).isNull()) {
-                    checkDefineClassException(env, HS_BEAN_FACTORY_CLASS_NAME);
-                }
-
-                if (defineClassInHotSpot(env, classLoader, HS_ISOLATE_THREAD_SCOPE_CLASS_NAME, HS_ISOLATE_THREAD_SCOPE_CLASS).isNull()) {
-                    checkDefineClassException(env, HS_PUSHBACK_ITER_CLASS_NAME);
-                }
-
-                if (defineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull()) {
-                    checkDefineClassException(env, HS_PUSHBACK_ITER_CLASS_NAME);
-                }
-                JNI.JClass hsToSvmCalls = defineClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, HS_SVM_CALLS_CLASS);
-                if (hsToSvmCalls.isNull()) {
-                    checkDefineClassException(env, HS_SVM_CALLS_CLASS_NAME);
-                }
-
-                svmHsEntryPoints = defineClassInHotSpot(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME, SVM_HS_ENTRYPOINTS_CLASS);
-                if (svmHsEntryPoints.isNull()) {
-                    checkDefineClassException(env, SVM_HS_ENTRYPOINTS_CLASS_NAME);
-                }
-                registerNatives(env, classLoader, hsToSvmCalls);
-                checkException(env, "Failed to register natives");
+            } else {
+                hsToSvmCalls = findClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, true);
+                waitForRegisterNatives(env, hsToSvmCalls);
             }
+            JNI.JClass svmHsEntryPoints = defineOrFindClassInHotSpot(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME, SVM_HS_ENTRYPOINTS_CLASS);
+            defineOrFindClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS);
+            defineOrFindClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS);
+            defineOrFindClassInHotSpot(env, classLoader, HS_ISOLATE_THREAD_SCOPE_CLASS_NAME, HS_ISOLATE_THREAD_SCOPE_CLASS);
+            defineOrFindClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull();
             svmToHotSpotEntryPoints = JNIUtil.NewGlobalRef(env, svmHsEntryPoints, "Class<" + SVM_HS_ENTRYPOINTS_CLASS_NAME + ">");
         }
+    }
+
+    private static JNI.JClass defineOrFindClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String clazzName, byte[] clazz) {
+        JNI.JClass res = findClassInHotSpot(env, classLoader, clazzName, false);
+        if (res.isNonNull()) {
+            return res;
+        }
+        res = defineClassInHotSpot(env, classLoader, clazzName, clazz);
+        if (res.isNonNull()) {
+            return res;
+        }
+        return findClassInHotSpot(env, classLoader, clazzName, true);
     }
 
     /**
@@ -292,30 +291,27 @@ class MBeanProxy<T extends DynamicMBean> {
      * @param env the {@code JNIEnv}
      * @param classLoader the class loader to define class in.
      * @param className the class name
+     * @param required if {@code true} the {@link InternalError} is thrown when the class is not
+     *            found, if {@code false} the {@code NULL pointer} is returned when the class is not
+     *            found.
      */
-    private static JNI.JClass findClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String className) {
-        if (classLoader.isNonNull()) {
-            try {
+    private static JNI.JClass findClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String className, boolean required) {
+        Class<? extends Throwable> allowedException = null;
+        try {
+            if (classLoader.isNonNull()) {
+                allowedException = required ? null : ClassNotFoundException.class;
                 return SVMToHotSpotCalls.findClass(env, classLoader, className);
-            } finally {
-                checkFindClassException(env, className, ClassNotFoundException.class);
-            }
-        } else {
-            try {
+            } else {
+                allowedException = required ? null : NoClassDefFoundError.class;
                 return findClassImpl(env, className);
-            } finally {
-                checkFindClassException(env, className, NoClassDefFoundError.class);
+            }
+        } finally {
+            if (allowedException != null) {
+                checkException(env, "Failed to load " + className, allowedException);
+            } else {
+                checkException(env, "Failed to load " + className);
             }
         }
-    }
-
-    private static void checkDefineClassException(JNI.JNIEnv env, String className) {
-        checkException(env, "Failed to define " + className);
-    }
-
-    @SafeVarargs
-    private static void checkFindClassException(JNI.JNIEnv env, String className, Class<? extends Throwable>... allowedExceptions) {
-        checkException(env, "Failed to load " + className, allowedExceptions);
     }
 
     /**
@@ -381,24 +377,25 @@ class MBeanProxy<T extends DynamicMBean> {
                             clazz.length);
         } finally {
             UnmanagedMemory.free(classData);
+            checkException(env, "Failed to define " + clazzName, LinkageError.class);  // LinkageError
+                                                                                       // is allowed
+                                                                                       // the class
+                                                                                       // may be
+                                                                                       // already
+                                                                                       // defined
         }
     }
 
     @SuppressWarnings("try")
     private static void registerNatives(JNI.JNIEnv env, JNI.JObject classLoader, JNI.JClass target) {
         try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.RegisterNatives, env)) {
-            JNI.JClass runtimeClass = findClassInHotSpot(env, classLoader, SVMToHotSpotCalls.CLASS_RUNTIME);
-            if (runtimeClass.isNull()) {
-                throw new InternalError("Cannot load " + SVMToHotSpotCalls.CLASS_RUNTIME);
-            }
-            JNI.JClass libgraalClass = findClassInHotSpot(env, classLoader, SVMToHotSpotCalls.CLASS_LIBGRAAL);
-            if (libgraalClass.isNull()) {
-                throw new InternalError("Cannot load " + SVMToHotSpotCalls.CLASS_LIBGRAAL);
-            }
+            JNI.JClass runtimeClass = findClassInHotSpot(env, classLoader, SVMToHotSpotCalls.CLASS_RUNTIME, true);
+            JNI.JClass libgraalClass = findClassInHotSpot(env, classLoader, SVMToHotSpotCalls.CLASS_LIBGRAAL, true);
             JNI.JObject runtime = SVMToHotSpotCalls.getRuntime(env, runtimeClass);
             if (runtime.isNonNull()) {
                 SVMToHotSpotCalls.registerNatives(env, libgraalClass, runtime, target);
             }
+            checkException(env, "Failed to register natives");
         }
     }
 
@@ -426,5 +423,22 @@ class MBeanProxy<T extends DynamicMBean> {
             SVMToHotSpotCalls.signal(env, svmHsEntryPoints, factory);
             checkException(env, "Failed to register MBean");
         }
+    }
+
+    /**
+     * Unblocks the threads in other isolates waiting for native methods registration.
+     */
+    private static void nativeRegistered(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
+        SVMToHotSpotCalls.nativeRegistered(env, hsToSvmCalls);
+        checkException(env, "Failed to release register natives spin lock.");
+    }
+
+    /**
+     * Blocks waiting for the other isolate thread to register native methods in the
+     * {@code HotSpotToSVMEntryPoints} class.
+     */
+    private static void waitForRegisterNatives(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
+        SVMToHotSpotCalls.waitForRegisterNatives(env, hsToSvmCalls);
+        checkException(env, "Failed to release register natives spin lock.");
     }
 }

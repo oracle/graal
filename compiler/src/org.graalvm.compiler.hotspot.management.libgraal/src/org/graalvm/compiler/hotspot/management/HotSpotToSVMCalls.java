@@ -33,6 +33,11 @@ import org.graalvm.nativeimage.Platforms;
 @Platforms(Platform.HOSTED_ONLY.class)
 final class HotSpotToSVMCalls {
 
+    /**
+     * Used to block threads in different isolates waiting for native methods registration.
+     */
+    private static volatile boolean nativeRegistered;
+
     private HotSpotToSVMCalls() {
     }
 

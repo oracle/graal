@@ -54,6 +54,9 @@ public final class JNI {
     public interface JMethodID extends PointerBase {
     }
 
+    public interface JFieldID extends PointerBase {
+    }
+
     public interface JObject extends PointerBase {
     }
 
@@ -230,6 +233,9 @@ public final class JNI {
         @CField("GetMethodID")
         GetMethodID getGetMethodID();
 
+        @CField("GetStaticFieldID")
+        GetStaticFieldID getGetStaticFieldID();
+
         @CField("CallStaticBooleanMethodA")
         CallStaticBooleanMethodA getCallStaticBooleanMethodA();
 
@@ -247,6 +253,12 @@ public final class JNI {
 
         @CField("CallObjectMethodA")
         CallObjectMethodA getCallObjectMethodA();
+
+        @CField("GetStaticBooleanField")
+        GetStaticBooleanField getGetStaticBooleanField();
+
+        @CField("SetStaticBooleanField")
+        SetStaticBooleanField getSetStaticBooleanField();
 
         @CField("ExceptionCheck")
         ExceptionCheck getExceptionCheck();
@@ -483,6 +495,21 @@ public final class JNI {
     public interface GetDirectBufferAddress extends CFunctionPointer {
         @InvokeCFunctionPointer
         VoidPointer call(JNIEnv env, JObject buf);
+    }
+
+    public interface GetStaticFieldID extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JFieldID call(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig);
+    }
+
+    public interface GetStaticBooleanField extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        boolean call(JNIEnv env, JClass clazz, JFieldID fieldID);
+    }
+
+    public interface SetStaticBooleanField extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void call(JNIEnv env, JClass clazz, JFieldID fieldID, boolean value);
     }
 
     static class JNIHeaderDirectives implements CContext.Directives {

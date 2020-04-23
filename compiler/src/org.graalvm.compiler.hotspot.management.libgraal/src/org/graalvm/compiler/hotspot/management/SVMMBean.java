@@ -629,14 +629,7 @@ class SVMMBean implements DynamicMBean {
                             SVMMBean bean = new SVMMBean(isolate, svmRegistration);
                             String name = HotSpotToSVMCalls.getObjectName(scope.getIsolateThread(), svmRegistration);
                             try {
-                                try {
-                                    platformMBeanServer.registerMBean(bean, new ObjectName(name));
-                                } catch (InstanceAlreadyExistsException e) {
-                                    String newName = name + "_" + Long.toHexString(scope.getIsolateThread());
-                                    TTY.out.printf("WARNING: The object name '%s' is already used by an existing MBean, using '%s' for libgraal MBean.%n",
-                                                    name, newName);
-                                    platformMBeanServer.registerMBean(bean, new ObjectName(newName));
-                                }
+                                platformMBeanServer.registerMBean(bean, new ObjectName(name));
                             } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
                                 e.printStackTrace(TTY.out);
                             }

@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot.management.libgraal;
 
 import static org.graalvm.word.WordFactory.nullPointer;
 import static org.graalvm.libgraal.jni.JNIUtil.GetMethodID;
+import static org.graalvm.libgraal.jni.JNIUtil.GetStaticFieldID;
 import static org.graalvm.libgraal.jni.JNIUtil.GetStaticMethodID;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
@@ -81,6 +82,10 @@ final class SVMToHotSpotCalls {
     private static final String[] METHOD_REGISTER_NATIVES = {
                     "registerNativeMethods",
                     "(Ljdk/vm/ci/hotspot/HotSpotJVMCIRuntime;Ljava/lang/Class;)V"
+    };
+    private static final String[] FIELD_NATIVE_REGISTERED = {
+                    "nativeRegistered",
+                    "Z"
     };
 
     private SVMToHotSpotCalls() {
@@ -172,6 +177,24 @@ final class SVMToHotSpotCalls {
         env.getFunctions().getCallStaticObjectMethodA().call(env, libgraal, registerId, params);
     }
 
+    static void nativeRegistered(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
+        JNI.JFieldID nativeRegisteredId = findStaticField(env, hsToSvmCalls, FIELD_NATIVE_REGISTERED);
+        env.getFunctions().getSetStaticBooleanField().call(env, hsToSvmCalls, nativeRegisteredId, true);
+    }
+
+    static boolean waitForRegisterNatives(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
+        JNI.JFieldID nativeRegisteredId = findStaticField(env, hsToSvmCalls, FIELD_NATIVE_REGISTERED);
+        JNI.GetStaticBooleanField access = env.getFunctions().getGetStaticBooleanField();
+        boolean res;
+        do {
+            res = access.call(env, hsToSvmCalls, nativeRegisteredId);
+            if (JNIUtil.ExceptionCheck(env)) {
+                return false;
+            }
+        } while (!res);
+        return true;
+    }
+
     private static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, boolean staticMethod, boolean optional, String[] descriptor) {
         assert descriptor.length == 2;
         JNI.JMethodID result;
@@ -182,6 +205,16 @@ final class SVMToHotSpotCalls {
             } else {
                 MBeanProxy.checkException(env, "Cannot find method " + descriptor[0]);
             }
+            return result;
+        }
+    }
+
+    private static JNI.JFieldID findStaticField(JNI.JNIEnv env, JNI.JClass clazz, String[] descriptor) {
+        assert descriptor.length == 2;
+        JNI.JFieldID result;
+        try (CCharPointerHolder name = toCString(descriptor[0]); CCharPointerHolder sig = toCString(descriptor[1])) {
+            result = GetStaticFieldID(env, clazz, name.get(), sig.get());
+            MBeanProxy.checkException(env, "Cannot find method " + descriptor[0]);
             return result;
         }
     }

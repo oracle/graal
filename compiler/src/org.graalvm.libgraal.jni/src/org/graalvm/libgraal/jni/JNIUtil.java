@@ -95,6 +95,11 @@ public final class JNIUtil {
         return env.getFunctions().getGetMethodID().call(env, clazz, name, sig);
     }
 
+    public static JNI.JFieldID GetStaticFieldID(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig) {
+        traceJNI("GetStaticFieldID");
+        return env.getFunctions().getGetStaticFieldID().call(env, clazz, name, sig);
+    }
+
     public static JObjectArray NewObjectArray(JNIEnv env, int len, JClass componentClass, JObject initialElement) {
         traceJNI("NewObjectArray");
         return env.getFunctions().getNewObjectArray().call(env, len, componentClass, initialElement);
