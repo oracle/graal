@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
  */
 public final class JVMCIVersionCheck {
 
-    private static final Version JVMCI_MIN_VERSION = new Version3(19, 3, 4);
+    private static final Version JVMCI_MIN_VERSION = new Version3(20, 1, 2);
 
     public interface Version {
         boolean isLessThan(Version other);
