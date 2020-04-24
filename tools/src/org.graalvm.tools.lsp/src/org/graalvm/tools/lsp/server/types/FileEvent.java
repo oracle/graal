@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * An event describing a file change.
  */
-public class FileEvent {
-
-    final JSONObject jsonData;
+public class FileEvent extends JSONBase {
 
     FileEvent(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -85,9 +83,9 @@ public class FileEvent {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 37 * hash + Objects.hashCode(this.getUri());
-        hash = 37 * hash + Objects.hashCode(this.getType());
+        int hash = 2;
+        hash = 97 * hash + Objects.hashCode(this.getUri());
+        hash = 97 * hash + Objects.hashCode(this.getType());
         return hash;
     }
 

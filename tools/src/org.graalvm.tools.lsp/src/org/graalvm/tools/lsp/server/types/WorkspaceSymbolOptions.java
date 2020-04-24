@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,15 @@
 package org.graalvm.tools.lsp.server.types;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.util.Objects;
 
-public class ColorProviderOptions {
+/**
+ * Server capabilities for a [WorkspaceSymbolRequest](#WorkspaceSymbolRequest).
+ */
+public class WorkspaceSymbolOptions extends WorkDoneProgressOptions {
 
-    final JSONObject jsonData;
-
-    ColorProviderOptions(JSONObject jsonData) {
-        this.jsonData = jsonData;
+    WorkspaceSymbolOptions(JSONObject jsonData) {
+        super(jsonData);
     }
 
     @Override
@@ -45,17 +47,24 @@ public class ColorProviderOptions {
         if (this.getClass() != obj.getClass()) {
             return false;
         }
+        WorkspaceSymbolOptions other = (WorkspaceSymbolOptions) obj;
+        if (!Objects.equals(this.getWorkDoneProgress(), other.getWorkDoneProgress())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 5;
+        int hash = 7;
+        if (this.getWorkDoneProgress() != null) {
+            hash = 79 * hash + Boolean.hashCode(this.getWorkDoneProgress());
+        }
         return hash;
     }
 
-    public static ColorProviderOptions create() {
+    public static WorkspaceSymbolOptions create() {
         final JSONObject json = new JSONObject();
-        return new ColorProviderOptions(json);
+        return new WorkspaceSymbolOptions(json);
     }
 }
