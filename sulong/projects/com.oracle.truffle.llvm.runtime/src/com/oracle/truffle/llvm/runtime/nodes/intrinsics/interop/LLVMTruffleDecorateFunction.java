@@ -155,7 +155,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     @Specialization(guards = "isAutoDerefHandle(func)")
     protected Object decorateDerefHandle(LLVMNativePointer func, LLVMNativePointer wrapper,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                    @Cached("createBinaryProfile()") ConditionProfile isFunctionDescriptorProfile) {
+                    @Cached ConditionProfile isFunctionDescriptorProfile) {
         LLVMManagedPointer resolved = getReceiver.execute(func);
         if (isFunctionDescriptorProfile.profile(isFunctionDescriptor(resolved.getObject()))) {
             return decorate(resolved, wrapper);
@@ -171,7 +171,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     @Specialization(guards = {"isAutoDerefHandle(func)", "isFunctionDescriptor(wrapper.getObject())"})
     protected Object decorateDerefHandle(LLVMNativePointer func, LLVMManagedPointer wrapper,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                    @Cached("createBinaryProfile()") ConditionProfile isFunctionDescriptorProfile) {
+                    @Cached ConditionProfile isFunctionDescriptorProfile) {
         LLVMManagedPointer resolved = getReceiver.execute(func);
         if (isFunctionDescriptorProfile.profile(isFunctionDescriptor(resolved.getObject()))) {
             return decorate(resolved, wrapper);

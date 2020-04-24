@@ -64,7 +64,7 @@ public class BinaryConditionProfileTest {
 
     @Before
     public void create() {
-        profile = (ConditionProfile) invokeStatic(loadRelative(BinaryConditionProfileTest.class, "ConditionProfile$Binary"), "create");
+        profile = (ConditionProfile) invokeStatic(loadRelative(BinaryConditionProfileTest.class, "ConditionProfile$Binary"), "createLazyLoadClass");
     }
 
     private static boolean wasTrue(ConditionProfile profile) {

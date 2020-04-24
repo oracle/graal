@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -51,7 +51,7 @@ public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode forceAddressNode,
                     @CachedLanguage LLVMLanguage language,
-                    @Cached("createBinaryProfile()") ConditionProfile isDerefProfile) {
+                    @Cached ConditionProfile isDerefProfile) {
         long address = forceAddressNode.executeWithTarget(rawHandle).asNative();
         if (!language.getNoDerefHandleAssumption().isValid() && isDerefProfile.profile(LLVMNativeMemory.isDerefHandleMemory(address))) {
             return context.getDerefHandleContainer().getValue(address).copy();

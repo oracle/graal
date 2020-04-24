@@ -67,7 +67,7 @@ abstract class CommonPointerLibraries {
     @ExportMessage
     @SuppressWarnings("unused")
     static Object getMembers(LLVMPointerImpl receiver, boolean includeInternal,
-                    @Shared("isObject") @Cached("createBinaryProfile()") ConditionProfile isObject) throws UnsupportedMessageException {
+                    @Shared("isObject") @Cached ConditionProfile isObject) throws UnsupportedMessageException {
         if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
             LLVMInteropType.Struct struct = (LLVMInteropType.Struct) receiver.getExportType();
             return new Keys(struct);
@@ -78,7 +78,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static boolean isMemberReadable(LLVMPointerImpl receiver, String ident,
-                    @Shared("isObject") @Cached("createBinaryProfile()") ConditionProfile isObject) {
+                    @Shared("isObject") @Cached ConditionProfile isObject) {
         if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
             LLVMInteropType.Struct struct = (LLVMInteropType.Struct) receiver.getExportType();
             LLVMInteropType.StructMember member = struct.findMember(ident);
@@ -98,7 +98,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static boolean isMemberModifiable(LLVMPointerImpl receiver, String ident,
-                    @Shared("isObject") @Cached("createBinaryProfile()") ConditionProfile isObject) {
+                    @Shared("isObject") @Cached ConditionProfile isObject) {
         if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
             LLVMInteropType.Struct struct = (LLVMInteropType.Struct) receiver.getExportType();
             LLVMInteropType.StructMember member = struct.findMember(ident);
@@ -134,7 +134,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static long getArraySize(LLVMPointerImpl receiver,
-                    @Shared("isArray") @Cached("createBinaryProfile()") ConditionProfile isArray) throws UnsupportedMessageException {
+                    @Shared("isArray") @Cached ConditionProfile isArray) throws UnsupportedMessageException {
         if (isArray.profile(receiver.getExportType() instanceof LLVMInteropType.Array)) {
             return ((LLVMInteropType.Array) receiver.getExportType()).getLength();
         } else {
@@ -144,7 +144,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static boolean isArrayElementReadable(LLVMPointerImpl receiver, long idx,
-                    @Shared("isArray") @Cached("createBinaryProfile()") ConditionProfile isArray) {
+                    @Shared("isArray") @Cached ConditionProfile isArray) {
         if (isArray.profile(receiver.getExportType() instanceof LLVMInteropType.Array)) {
             long length = ((LLVMInteropType.Array) receiver.getExportType()).getLength();
             return Long.compareUnsigned(idx, length) < 0;
@@ -163,7 +163,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static boolean isArrayElementModifiable(LLVMPointerImpl receiver, long idx,
-                    @Shared("isArray") @Cached("createBinaryProfile()") ConditionProfile isArray) {
+                    @Shared("isArray") @Cached ConditionProfile isArray) {
         if (isArray.profile(receiver.getExportType() instanceof LLVMInteropType.Array)) {
             LLVMInteropType.Array arrayType = (LLVMInteropType.Array) receiver.getExportType();
             if (arrayType.getElementType() instanceof LLVMInteropType.Value) {

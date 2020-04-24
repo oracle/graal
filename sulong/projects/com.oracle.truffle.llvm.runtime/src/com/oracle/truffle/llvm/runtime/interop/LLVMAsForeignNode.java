@@ -69,7 +69,7 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
     @Specialization
     Object doForeign(Object pointer,
                     @Cached("createClassProfile()") ValueProfile objectProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile foreignProfile,
+                    @Cached ConditionProfile foreignProfile,
                     @Cached BranchProfile nonForeignProfile) {
         if (LLVMManagedPointer.isInstance(pointer)) {
             LLVMManagedPointer managed = LLVMManagedPointer.cast(pointer);
