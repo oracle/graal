@@ -140,7 +140,7 @@ public class DebugOptions {
     @Option(help = "Enable dumping to the C1Visualizer. Enabling this option implies PrintBackendCFG.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintCFG = new OptionKey<>(false);
     @Option(help = "Enable dumping LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintBackendCFG = new OptionKey<>(true);
+    public static final OptionKey<Boolean> PrintBackendCFG = new OptionKey<>(false);
     @Option(help = "Enable dumping CFG built during initial BciBlockMapping", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBlockMapping = new OptionKey<>(false);
 
