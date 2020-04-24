@@ -84,7 +84,7 @@ final class PECoffSymtabStruct {
             sym = new PECoffSymbolStruct(index, type, storageclass, secHdrIndex, offset);
             symbols.add(sym);
         } else {
-            int nameSize = name.getBytes().length;
+            int nameSize = name.getBytes(StandardCharsets.UTF_8).length;
 
             // We can't trust strTabContent.length() since that is
             // chars (UTF16), keep track of bytes on our own.
