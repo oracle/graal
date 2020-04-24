@@ -140,9 +140,11 @@ what is found in each classpath entry. Given a jar file entry like
 /path/to/foo.jar, the corresponding jar /path/to/foo-sources.jar is
 considered as a candidate zip file system from which source files may
 be extracted. When the entry specifies a dir like /path/to/bar/classes
-or /path/to/bar/target/classes then directory /path/to/bar/src is
-considered as a candidate. Finally, the current directory in which the
-native image program is being run is also considered as a candidate.
+or /path/to/bar/target/classes then one of the directories
+/path/to/bar/src/main/java, /path/to/bar/src/java or /path/to/bar/src
+is selected as a candidate (in that order of preference). Finally, the
+current directory in which the native image program is being run is
+also considered as a candidate.
 
 These lookup strategies are only provisional and may need extending in
 future. Note however that it is possible to make missing sources
