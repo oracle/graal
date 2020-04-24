@@ -55,7 +55,7 @@ abstract class GuestToHostRootNode extends RootNode {
 
     private final String boundaryName;
 
-    static final CallInlined CALL_INLINED = EngineAccessor.ACCESSOR.getCallInlined();
+    static final CallInlined CALL_INLINED = EngineAccessor.RUNTIME.getCallInlined();
 
     protected GuestToHostRootNode(Class<?> targetType, String methodName) {
         super(null);

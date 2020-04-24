@@ -116,30 +116,6 @@ public abstract class Accessor {
         TruffleLocator.initializeNativeImageTruffleLocator();
     }
 
-    protected ThreadLocal<Object> createFastThreadLocal() {
-        return getTVMCI().createFastThreadLocal();
-    }
-
-    protected IndirectCallNode createUncachedIndirectCall() {
-        return getTVMCI().createUncachedIndirectCall();
-    }
-
-    protected <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
-        return getTVMCI().createBlockNode(elements, executor);
-    }
-
-    protected void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
-        getTVMCI().reloadEngineOptions(runtimeData, optionValues);
-    }
-
-    protected void onEngineClosed(Object runtimeData) {
-        getTVMCI().onEngineClosed(runtimeData);
-    }
-
-    protected OutputStream getConfiguredLogStream() {
-        return getTVMCI().getConfiguredLogStream();
-    }
-
     abstract static class Support {
 
         Support(String onlyAllowedClassName) {
@@ -184,10 +160,6 @@ public abstract class Accessor {
         public abstract void setRootNodeBits(RootNode root, int bits);
 
         public abstract Lock getLock(Node node);
-
-        public void reportPolymorphicSpecialize(Node node) {
-            getTVMCI().reportPolymorphicSpecialize(node);
-        }
 
         public abstract void clearPolyglotEngine(RootNode rootNode);
 
@@ -715,9 +687,9 @@ public abstract class Accessor {
             super(IMPL_CLASS_NAME);
         }
 
-        protected abstract void markMaterializeCalled(FrameDescriptor descriptor);
+        public abstract void markMaterializeCalled(FrameDescriptor descriptor);
 
-        protected abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
+        public abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
     }
 
     public abstract static class IOSupport extends Support {
@@ -729,6 +701,58 @@ public abstract class Accessor {
         }
 
         public abstract TruffleProcessBuilder createProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command);
+    }
+
+    public abstract static class RuntimeSupport {
+
+        static final Object PERMISSION = new Object();
+
+        protected RuntimeSupport(Object permission) {
+            if (permission != PERMISSION) {
+                throw new AssertionError("Invalid permission to create runtime support.");
+            }
+        }
+
+        public abstract IndirectCallNode createUncachedIndirectCall();
+
+        /**
+         * Reports the execution count of a loop.
+         *
+         * @param source the Node which invoked the loop.
+         * @param iterations the number iterations to report to the runtime system
+         */
+        public abstract void onLoopCount(Node source, int iterations);
+
+        /**
+         * Returns the compiler options specified available from the runtime.
+         */
+        public abstract OptionDescriptors getCompilerOptionDescriptors();
+
+        /**
+         * Returns <code>true</code> if the java stack frame is a representing a guest language
+         * call. Needs to return <code>true</code> only once per java stack frame per guest language
+         * call.
+         */
+        public abstract boolean isGuestCallStackFrame(@SuppressWarnings("unused") StackTraceElement e);
+
+        public abstract void initializeProfile(CallTarget target, Class<?>[] argumentTypes);
+
+        public abstract <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor);
+
+        public abstract void reloadEngineOptions(Object runtimeData, OptionValues optionValues);
+
+        public abstract void onEngineClosed(Object runtimeData);
+
+        public abstract OutputStream getConfiguredLogStream();
+
+        public abstract void reportPolymorphicSpecialize(Node source);
+
+        public abstract CallInlined getCallInlined();
+
+        public abstract CallProfiled getCallProfiled();
+
+        public abstract CastUnsafe getCastUnsafe();
+
     }
 
     public static final class JDKSupport {
@@ -778,8 +802,7 @@ public abstract class Accessor {
         private static final Accessor.IOSupport IO;
         private static final Accessor.FrameSupport FRAMES;
         private static final Accessor.EngineSupport ENGINE;
-        private static final Accessor.JDKSupport JDKSERVICES;
-        private static final TVMCI RUNTIME;
+        private static final Accessor.RuntimeSupport RUNTIME;
 
         static {
             // Eager load all accessors so the above fields are all set and all methods are
@@ -792,8 +815,7 @@ public abstract class Accessor {
             IO = loadSupport(IOSupport.IMPL_CLASS_NAME);
             FRAMES = loadSupport(FrameSupport.IMPL_CLASS_NAME);
             ENGINE = loadSupport(EngineSupport.IMPL_CLASS_NAME);
-            JDKSERVICES = new JDKSupport();
-            RUNTIME = getTVMCI();
+            RUNTIME = getTVMCI().createRuntimeSupport(RuntimeSupport.PERMISSION);
         }
 
         @SuppressWarnings("unchecked")
@@ -808,6 +830,8 @@ public abstract class Accessor {
             }
         }
     }
+
+    private static final Accessor.JDKSupport JDKSERVICES = new JDKSupport();
 
     protected Accessor() {
         switch (this.getClass().getName()) {
@@ -827,7 +851,8 @@ public abstract class Accessor {
             case "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor":
             case "com.oracle.truffle.api.test.polyglot.FileSystemsTest$TestAPIAccessor":
             case "com.oracle.truffle.api.impl.TVMCIAccessor":
-            case "org.graalvm.compiler.truffle.runtime.CompilerRuntimeAccessor":
+            case "com.oracle.truffle.api.impl.DefaultRuntimeAccessor":
+            case "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor":
             case "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor":
             case "com.oracle.truffle.api.library.LibraryAccessor":
                 // OK, classes allowed to use accessors
@@ -865,7 +890,7 @@ public abstract class Accessor {
         return Constants.FRAMES;
     }
 
-    public final TVMCI runtimeSupport() {
+    public final RuntimeSupport runtimeSupport() {
         return Constants.RUNTIME;
     }
 
@@ -874,7 +899,7 @@ public abstract class Accessor {
     }
 
     public final JDKSupport jdkSupport() {
-        return Constants.JDKSERVICES;
+        return JDKSERVICES;
     }
 
     /**
@@ -907,14 +932,6 @@ public abstract class Accessor {
         return result;
     }
 
-    protected OptionDescriptors getCompilerOptions() {
-        TVMCI support = getTVMCI();
-        if (support == null) {
-            return OptionDescriptors.EMPTY;
-        }
-        return support.getCompilerOptionDescriptors();
-    }
-
     public abstract static class CallInlined {
 
         public abstract Object call(Node callNode, CallTarget target, Object... arguments);
@@ -929,41 +946,10 @@ public abstract class Accessor {
         public abstract <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact);
     }
 
-    protected CastUnsafe getCastUnsafe() {
-        return getTVMCI().getCastUnsafe();
-    }
-
-    protected CallInlined getCallInlined() {
-        return getTVMCI().getCallInlined();
-    }
-
     public abstract static class CallProfiled {
 
         public abstract Object call(CallTarget target, Object... arguments);
 
-    }
-
-    protected CallProfiled getCallProfiled() {
-        return getTVMCI().getCallProfiled();
-    }
-
-    protected boolean isGuestCallStackElement(StackTraceElement element) {
-        TVMCI support = getTVMCI();
-        if (support == null) {
-            return false;
-        }
-        return support.isGuestCallStackFrame(element);
-    }
-
-    protected void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
-        getTVMCI().initializeProfile(target, argumentTypes);
-    }
-
-    protected void onLoopCount(Node source, int iterations) {
-        TVMCI support = getTVMCI();
-        if (support != null) {
-            support.onLoopCount(source, iterations);
-        }
     }
 
 }

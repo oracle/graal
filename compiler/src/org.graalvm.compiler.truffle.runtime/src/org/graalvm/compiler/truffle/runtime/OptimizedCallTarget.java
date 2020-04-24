@@ -291,9 +291,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.engine = GraalTVMCI.getEngineData(rootNode);
         this.resetCompilationProfile();
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
-        final GraalTVMCI tvmci = runtime().getTvmci();
-        this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? tvmci.adoptChildrenAndCount(rootNode) : -1;
-        tvmci.setCallTarget(rootNode, this);
+        this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
+        GraalRuntimeAccessor.NODES.setCallTarget(rootNode, this);
     }
 
     final Assumption getNodeRewritingAssumption() {
@@ -512,7 +511,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             throw rethrow(profileExceptionType(t));
         } catch (Throwable t) {
             Throwable profiledT = profileExceptionType(t);
-            runtime().getTvmci().onThrowable(null, this, profiledT, frame);
+            GraalRuntimeAccessor.LANGUAGE.onThrowable(null, this, profiledT, frame);
             throw rethrow(profiledT);
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
@@ -541,12 +540,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private synchronized void initialize() {
         if (!initialized) {
-            GraalTVMCI tvmci = runtime().getTvmci();
-            if (sourceCallTarget == null && rootNode.isCloningAllowed() && !tvmci.isCloneUninitializedSupported(rootNode)) {
+            if (sourceCallTarget == null && rootNode.isCloningAllowed() && !GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
                 // We are the source CallTarget, so make a copy.
                 this.uninitializedRootNode = NodeUtil.cloneNode(rootNode);
             }
-            tvmci.onFirstExecution(this);
+            GraalRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode());
             if (engine.callTargetStatistics) {
                 this.initializedTimestamp = System.nanoTime();
             } else {
@@ -658,10 +656,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         assert sourceCallTarget == null;
         ensureInitialized();
         RootNode clonedRoot;
-        GraalTVMCI tvmci = runtime().getTvmci();
-        if (tvmci.isCloneUninitializedSupported(rootNode)) {
+        if (GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
             assert uninitializedRootNode == null;
-            clonedRoot = tvmci.cloneUninitialized(rootNode);
+            clonedRoot = GraalRuntimeAccessor.NODES.cloneUninitialized(rootNode);
         } else {
             clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
         }
@@ -1419,8 +1416,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /**
      * Call without verifying the argument profile. Needs to be initialized by
-     * {@link GraalTVMCI#initializeProfile(CallTarget, Class[])}. Potentially crashes the VM if the
-     * argument profile is incompatible with the actual arguments. Use with caution.
+     * {@link OptimizedCallTarget#initializeProfiledArgumentTypes(Object[])}. Potentially crashes
+     * the VM if the argument profile is incompatible with the actual arguments. Use with caution.
      */
     static class OptimizedCallProfiled extends CallProfiled {
         @Override
@@ -1440,7 +1437,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             try {
                 return ((OptimizedCallTarget) target).inlinedPERoot(arguments);
             } catch (Throwable t) {
-                OptimizedCallTarget.runtime().getTvmci().onThrowable(callNode, ((OptimizedCallTarget) target), t, null);
+                GraalRuntimeAccessor.LANGUAGE.onThrowable(callNode, ((OptimizedCallTarget) target), t, null);
                 throw OptimizedCallTarget.rethrow(t);
             }
         }

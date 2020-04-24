@@ -63,6 +63,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
@@ -106,7 +107,6 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
-import java.util.concurrent.atomic.AtomicReference;
 
 final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -202,7 +202,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.contextClassLoader = contextClassLoader;
         this.boundEngine = boundEngine;
         this.logHandler = logHandler;
-        this.castUnsafe = EngineAccessor.ACCESSOR.getCastUnsafe();
+        this.castUnsafe = EngineAccessor.RUNTIME.getCastUnsafe();
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
@@ -284,7 +284,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.contextClassLoader = prototype.contextClassLoader;
         this.boundEngine = prototype.boundEngine;
         this.logHandler = prototype.logHandler;
-        this.castUnsafe = EngineAccessor.ACCESSOR.getCastUnsafe();
+        this.castUnsafe = EngineAccessor.RUNTIME.getCastUnsafe();
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
@@ -357,7 +357,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     private static OptionDescriptors createEngineOptionDescriptors() {
         OptionDescriptors engineOptionDescriptors = new PolyglotEngineOptionsOptionDescriptors();
-        OptionDescriptors compilerOptionDescriptors = EngineAccessor.ACCESSOR.getCompilerOptions();
+        OptionDescriptors compilerOptionDescriptors = EngineAccessor.RUNTIME.getCompilerOptionDescriptors();
         return OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
     }
 
@@ -396,7 +396,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.engineOptionValues.putAll(originalEngineOptions, newAllowExperimentalOptions);
 
         if (this.runtimeData != null) {
-            EngineAccessor.ACCESSOR.reloadEngineOptions(this.runtimeData, this.engineOptionValues);
+            EngineAccessor.RUNTIME.reloadEngineOptions(this.runtimeData, this.engineOptionValues);
         }
 
         for (PolyglotLanguage language : languagesOptions.keySet()) {
@@ -1014,7 +1014,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             // don't commit to the close if still running as this might cause races in the executing
             // context.
             if (this.runtimeData != null) {
-                EngineAccessor.ACCESSOR.onEngineClosed(this.runtimeData);
+                EngineAccessor.RUNTIME.onEngineClosed(this.runtimeData);
             }
             if (closeContexts) {
                 Object loggers = getEngineLoggers();

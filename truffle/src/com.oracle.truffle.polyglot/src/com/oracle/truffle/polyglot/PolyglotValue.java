@@ -121,7 +121,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
     protected final PolyglotLanguageContext languageContext;
 
     static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
-    static final CallProfiled CALL_PROFILED = EngineAccessor.ACCESSOR.getCallProfiled();
+    static final CallProfiled CALL_PROFILED = EngineAccessor.RUNTIME.getCallProfiled();
 
     PolyglotValue(PolyglotLanguageContext languageContext) {
         super(languageContext.getEngine().impl);
@@ -907,7 +907,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         CallTarget target = Truffle.getRuntime().createCallTarget(root);
         Class<?>[] types = root.getArgumentTypes();
         if (types != null) {
-            EngineAccessor.ACCESSOR.initializeProfile(target, types);
+            EngineAccessor.RUNTIME.initializeProfile(target, types);
         }
         return target;
     }

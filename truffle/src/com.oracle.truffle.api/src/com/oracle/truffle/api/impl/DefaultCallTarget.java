@@ -63,7 +63,7 @@ public final class DefaultCallTarget implements RootCallTarget {
     DefaultCallTarget(RootNode function) {
         this.rootNode = function;
         this.rootNode.adoptChildren();
-        getRuntime().getTvmci().setCallTarget(function, this);
+        DefaultRuntimeAccessor.NODES.setCallTarget(function, this);
     }
 
     @Override
@@ -84,7 +84,7 @@ public final class DefaultCallTarget implements RootCallTarget {
         try {
             return getRootNode().execute(frame);
         } catch (Throwable t) {
-            getRuntime().getTvmci().onThrowable(callNode, this, t, frame);
+            DefaultRuntimeAccessor.LANGUAGE.onThrowable(callNode, this, t, frame);
             throw t;
         } finally {
             getRuntime().popFrame();
@@ -101,7 +101,7 @@ public final class DefaultCallTarget implements RootCallTarget {
         try {
             return getRootNode().execute(frame);
         } catch (Throwable t) {
-            getRuntime().getTvmci().onThrowable(null, this, t, frame);
+            DefaultRuntimeAccessor.LANGUAGE.onThrowable(null, this, t, frame);
             throw t;
         } finally {
             getRuntime().popFrame();
@@ -111,7 +111,7 @@ public final class DefaultCallTarget implements RootCallTarget {
     private void initialize() {
         synchronized (this) {
             if (!this.initialized) {
-                getRuntime().getTvmci().onFirstExecution(this);
+                DefaultRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode());
                 this.initialized = true;
             }
         }

@@ -51,35 +51,16 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 
 final class NodeAccessor extends Accessor {
 
     static final NodeAccessor ACCESSOR = new NodeAccessor();
 
+    static final InteropSupport INTEROP = ACCESSOR.interopSupport();
+    static final EngineSupport ENGINE = ACCESSOR.engineSupport();
+    static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
+
     private NodeAccessor() {
-    }
-
-    @Override
-    protected ThreadLocal<Object> createFastThreadLocal() {
-        return super.createFastThreadLocal();
-    }
-
-    @Override
-    protected void onLoopCount(Node source, int iterations) {
-        super.onLoopCount(source, iterations);
-    }
-
-    @Override
-    protected IndirectCallNode createUncachedIndirectCall() {
-        IndirectCallNode callNode = super.createUncachedIndirectCall();
-        assert !callNode.isAdoptable();
-        return callNode;
-    }
-
-    @Override
-    protected <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
-        return super.createBlockNode(elements, executor);
     }
 
     static final class AccessNodes extends NodeSupport {

@@ -138,7 +138,7 @@ public final class TruffleRuntimeOptions {
             if (hasBeenSet(values, key)) {
                 Object value = getPolyglotOptionValue(values, key);
                 if (!isPrimitiveType(value)) {
-                    value = CompilerRuntimeAccessor.engineAccessor().getUnparsedOptionValue(values, key);
+                    value = GraalRuntimeAccessor.ENGINE.getUnparsedOptionValue(values, key);
                 }
                 if (value != null) {
                     map.put(desc.getName(), value);
