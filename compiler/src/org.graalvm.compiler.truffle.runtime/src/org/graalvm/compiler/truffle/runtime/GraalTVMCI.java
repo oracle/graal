@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor.GraalRuntimeSupport;
-
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.RootNode;

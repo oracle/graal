@@ -117,37 +117,28 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public CallInlined getCallInlined() {
-            return DefaultCallTarget.CALL_INLINED;
+        public Object callInlined(Node callNode, CallTarget target, Object... arguments) {
+            return ((DefaultCallTarget) target).callDirectOrIndirect(callNode, arguments);
         }
 
         @Override
-        public CallProfiled getCallProfiled() {
-            return DefaultCallTarget.CALL_PROFILED;
+        public Object callProfiled(CallTarget target, Object... arguments) {
+            return ((DefaultCallTarget) target).call(arguments);
         }
 
         @Override
-        public CastUnsafe getCastUnsafe() {
-            return CAST_UNSAFE;
+        public Object[] castArrayFixedLength(Object[] args, int length) {
+            return args;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
+            return (T) value;
         }
 
         @Override
         public void reportPolymorphicSpecialize(Node source) {
-        }
-
-        private static final DefaultCastUnsafe CAST_UNSAFE = new DefaultCastUnsafe();
-
-        private static final class DefaultCastUnsafe extends CastUnsafe {
-            @Override
-            public Object[] castArrayFixedLength(Object[] args, int length) {
-                return args;
-            }
-
-            @SuppressWarnings("unchecked")
-            @Override
-            public <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
-                return (T) value;
-            }
         }
 
     }

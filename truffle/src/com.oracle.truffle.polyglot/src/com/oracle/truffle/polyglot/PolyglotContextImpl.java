@@ -81,7 +81,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -358,10 +357,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             contextImpl = contextImpls[language.index];
         } else {
             CompilerAsserts.partialEvaluationConstant(language);
-            CastUnsafe unsafe = language.engine.castUnsafe;
-            contextImpl = unsafe.castArrayFixedLength(contextImpls, language.engine.contextLength)[language.index];
+
+            contextImpl = EngineAccessor.RUNTIME.castArrayFixedLength(contextImpls, language.engine.contextLength)[language.index];
             Class<?> castClass = language.contextClass;
-            contextImpl = unsafe.unsafeCast(contextImpl, castClass, true, castClass != Void.class, true);
+            contextImpl = EngineAccessor.RUNTIME.unsafeCast(contextImpl, castClass, true, castClass != Void.class, true);
         }
         assert language.contextClass == (contextImpl == null ? Void.class : contextImpl.getClass()) : "Instable context class";
         return contextImpl;
@@ -411,7 +410,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
         assert context != null;
         if (CompilerDirectives.inCompiledCode()) {
-            context = enteredInEngine.castUnsafe.unsafeCast(context, PolyglotContextImpl.class, true, true, true);
+            context = EngineAccessor.RUNTIME.unsafeCast(context, PolyglotContextImpl.class, true, true, true);
         }
         return (PolyglotContextImpl) context;
     }

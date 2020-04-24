@@ -94,7 +94,6 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -176,7 +175,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     private volatile Object engineLoggers;
     private volatile Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier;
 
-    final CastUnsafe castUnsafe;
     final int contextLength;
     private volatile EngineLimits limits;
     final boolean conservativeContextReferences;
@@ -202,7 +200,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.contextClassLoader = contextClassLoader;
         this.boundEngine = boundEngine;
         this.logHandler = logHandler;
-        this.castUnsafe = EngineAccessor.RUNTIME.getCastUnsafe();
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
@@ -284,7 +281,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.contextClassLoader = prototype.contextClassLoader;
         this.boundEngine = prototype.boundEngine;
         this.logHandler = prototype.logHandler;
-        this.castUnsafe = EngineAccessor.RUNTIME.getCastUnsafe();
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));

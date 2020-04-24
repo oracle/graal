@@ -42,11 +42,8 @@ package com.oracle.truffle.api.impl;
 
 import static com.oracle.truffle.api.impl.DefaultTruffleRuntime.getRuntime;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.impl.Accessor.CallInlined;
-import com.oracle.truffle.api.impl.Accessor.CallProfiled;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -116,18 +113,4 @@ public final class DefaultCallTarget implements RootCallTarget {
             }
         }
     }
-
-    static final CallInlined CALL_INLINED = new CallInlined() {
-        @Override
-        public Object call(Node callNode, CallTarget target, Object... arguments) {
-            return ((DefaultCallTarget) target).callDirectOrIndirect(callNode, arguments);
-        }
-    };
-
-    static final CallProfiled CALL_PROFILED = new CallProfiled() {
-        @Override
-        public Object call(CallTarget target, Object... arguments) {
-            return ((DefaultCallTarget) target).call(arguments);
-        }
-    };
 }

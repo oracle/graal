@@ -45,7 +45,6 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -56,8 +55,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor.CallInlined;
-import com.oracle.truffle.api.impl.Accessor.CallProfiled;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -931,7 +928,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    private boolean isValidArgumentProfile(Object[] args) {
+    final boolean isValidArgumentProfile(Object[] args) {
         assert callProfiled;
         ArgumentsProfile argumentsProfile = this.argumentsProfile;
         return argumentsProfile.assumption.isValid() && checkProfiledArgumentTypes(args, argumentsProfile.types);
@@ -1412,35 +1409,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             rootNode = rootNode.getParent();
         }
         toDump.add(rootNode);
-    }
-
-    /**
-     * Call without verifying the argument profile. Needs to be initialized by
-     * {@link OptimizedCallTarget#initializeProfiledArgumentTypes(Object[])}. Potentially crashes
-     * the VM if the argument profile is incompatible with the actual arguments. Use with caution.
-     */
-    static class OptimizedCallProfiled extends CallProfiled {
-        @Override
-        public Object call(CallTarget target, Object... args) {
-            OptimizedCallTarget castTarget = (OptimizedCallTarget) target;
-            assert castTarget.isValidArgumentProfile(args) : "Invalid argument profile. UnsafeCalls need to explicity initialize the profile.";
-            return castTarget.doInvoke(args);
-        }
-    }
-
-    static class OptimizedCallInlined extends CallInlined {
-
-        static final String CALL_METHOD_NAME = "call";
-
-        @Override
-        public Object call(Node callNode, CallTarget target, Object... arguments) {
-            try {
-                return ((OptimizedCallTarget) target).inlinedPERoot(arguments);
-            } catch (Throwable t) {
-                GraalRuntimeAccessor.LANGUAGE.onThrowable(callNode, ((OptimizedCallTarget) target), t, null);
-                throw OptimizedCallTarget.rethrow(t);
-            }
-        }
     }
 
     final void setNonTrivialNodeCount(int nonTrivialNodeCount) {
