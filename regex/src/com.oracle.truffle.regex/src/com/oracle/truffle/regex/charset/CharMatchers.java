@@ -63,14 +63,19 @@ import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
- * Helper class for converting 16-bit code point sets to {@link CharMatcher}s.
+ * Helper class for converting {@link CodePointSet}s to {@link CharMatcher}s.
  */
 public class CharMatchers {
 
     /**
-     * Create a new {@link CharMatcher} from the given code point set. The given set must contain
-     * either none or all of the code points above {@code 0xffff}. Code points above {@code 0xffff}
-     * are cut off.
+     * Create a new {@link CharMatcher} from the given code point set, based on {@code encoding}:
+     * <ul>
+     * <li>If {@code encoding} is {@link Encodings#UTF_16_RAW}, the given set must contain either
+     * none or all of the code points above {@code 0xffff}. Code points above {@code 0xffff} are cut
+     * off.</li>
+     * <li>{@link Encodings#UTF_16} implies the full Unicode range, the code point set may contain
+     * any valid (or even {@link Constants#SURROGATES invalid} codepoint.</li>
+     * </ul>
      */
     public static CharMatcher createMatcher(CodePointSet cps, Encoding encoding, CompilationBuffer compilationBuffer) {
         if (encoding == Encodings.UTF_16) {
@@ -84,6 +89,7 @@ public class CharMatchers {
 
     private static CharMatcher createMatcherIntl(ImmutableSortedListOfIntRanges cps, CompilationBuffer compilationBuffer) {
         if (cps.matchesMinAndMax() || cps.inverseIsSameHighByte()) {
+            // the inverse of the given set is easier to match, generate inverted matcher
             return createMatcher(cps.createInverse(), compilationBuffer, true);
         }
         return createMatcher(cps, compilationBuffer, false);

@@ -129,7 +129,7 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     /**
-     * Returns the largest value contained in the inverse of this set. Must not be called on empty
+     * Returns the smallest value contained in the inverse of this set. Must not be called on empty
      * or full sets.
      */
     default int inverseGetMin() {
