@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import static com.oracle.truffle.api.nodes.NodeAccessor.ENGINE;
+import static com.oracle.truffle.api.nodes.NodeAccessor.LANGUAGE;
+
 import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -50,7 +53,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 
 /**
  * Represents an executable node in a Truffle AST. The executable node represents an AST fragment
@@ -80,7 +82,7 @@ public abstract class ExecutableNode extends Node {
         if (language != null) {
             this.engineRef = language;
         } else {
-            this.engineRef = getCurrentPolyglotEngine();
+            this.engineRef = ENGINE.getCurrentPolyglotEngine();
         }
         /*
          * This can no longer happen for normal languages. It could only happen for language
@@ -109,18 +111,9 @@ public abstract class ExecutableNode extends Node {
     final Object getEngine() {
         Object ref = engineRef;
         if (ref instanceof TruffleLanguage<?>) {
-            return NodeAccessor.ACCESSOR.engineSupport().getPolyglotEngine(NodeAccessor.ACCESSOR.languageSupport().getPolyglotLanguageInstance((TruffleLanguage<?>) ref));
+            return ENGINE.getPolyglotEngine(LANGUAGE.getPolyglotLanguageInstance((TruffleLanguage<?>) ref));
         } else {
             return ref;
-        }
-    }
-
-    private static Object getCurrentPolyglotEngine() {
-        EngineSupport engine = NodeAccessor.ACCESSOR.engineSupport();
-        if (engine != null) {
-            return engine.getCurrentPolyglotEngine();
-        } else {
-            return null;
         }
     }
 
@@ -144,7 +137,7 @@ public abstract class ExecutableNode extends Node {
     public final LanguageInfo getLanguageInfo() {
         TruffleLanguage<?> language = getLanguage();
         if (language != null) {
-            return NodeAccessor.ACCESSOR.languageSupport().getLanguageInfo(language);
+            return LANGUAGE.getLanguageInfo(language);
         } else {
             return null;
         }
@@ -190,8 +183,8 @@ public abstract class ExecutableNode extends Node {
             if (languageClass != null) {
                 Object engine = executableNode.getEngine();
                 TruffleLanguage<?> language = executableNode.getLanguage();
-                this.languageReference = NodeAccessor.ACCESSOR.engineSupport().lookupLanguageReference(engine, language, languageClass);
-                this.contextReference = NodeAccessor.ACCESSOR.engineSupport().lookupContextReference(engine, language, languageClass);
+                this.languageReference = ENGINE.lookupLanguageReference(engine, language, languageClass);
+                this.contextReference = ENGINE.lookupContextReference(engine, language, languageClass);
             } else {
                 this.languageReference = null;
                 this.contextReference = null;

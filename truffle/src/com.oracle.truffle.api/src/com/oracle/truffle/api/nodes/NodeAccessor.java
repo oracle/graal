@@ -54,11 +54,13 @@ import com.oracle.truffle.api.impl.Accessor;
 
 final class NodeAccessor extends Accessor {
 
-    static final NodeAccessor ACCESSOR = new NodeAccessor();
+    private static final NodeAccessor ACCESSOR = new NodeAccessor();
 
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
+    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
+    static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
 
     private NodeAccessor() {
     }
