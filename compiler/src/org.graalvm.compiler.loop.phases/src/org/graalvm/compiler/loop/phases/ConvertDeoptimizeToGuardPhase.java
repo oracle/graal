@@ -219,7 +219,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<CoreProviders> {
                             if (survivingSuccessor instanceof LoopExitNode) {
                                 newGuard = ProxyNode.forGuard(guard, (LoopExitNode) survivingSuccessor);
                             }
-                            survivingSuccessor.replaceAtUsages(InputType.Guard, newGuard);
+                            survivingSuccessor.replaceAtUsages(newGuard, InputType.Guard);
 
                             graph.getDebug().log("Converting deopt on %-5s branch of %s to guard for remaining branch %s.", negateGuardCondition, ifNode, survivingSuccessor);
                             FixedNode next = pred.next();

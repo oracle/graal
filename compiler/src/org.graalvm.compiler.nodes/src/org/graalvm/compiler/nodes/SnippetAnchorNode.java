@@ -48,8 +48,8 @@ public final class SnippetAnchorNode extends FixedWithNextNode implements Simpli
     @Override
     public void simplify(SimplifierTool tool) {
         AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(this);
-        replaceAtUsages(Anchor, prevBegin);
-        replaceAtUsages(Guard, prevBegin);
+        replaceAtUsages(prevBegin, Anchor);
+        replaceAtUsages(prevBegin, Guard);
         if (tool.allUsagesAvailable() && hasNoUsages()) {
             graph().removeFixed(this);
         }

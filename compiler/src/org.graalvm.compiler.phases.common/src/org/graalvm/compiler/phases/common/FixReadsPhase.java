@@ -408,7 +408,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                 ConstantNode stampConstant = ConstantNode.forConstant(newStamp, constant, metaAccess, graph);
                 debug.log("RawConditionElimination: constant stamp replaces %1s with %1s", node, stampConstant);
                 counterConstantReplacements.increment(debug);
-                node.replaceAtUsages(InputType.Value, stampConstant);
+                node.replaceAtUsages(stampConstant, InputType.Value);
                 GraphUtil.tryKillUnused(node);
                 return true;
             }

@@ -335,7 +335,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 if (constant != null && !(node instanceof ConstantNode)) {
                     ConstantNode stampConstant = ConstantNode.forConstant(valueNode.stamp(NodeView.DEFAULT), constant, context.getMetaAccess(), graph);
                     debug.log("Canonicalizer: constant stamp replaces %1s with %1s", valueNode, stampConstant);
-                    valueNode.replaceAtUsages(InputType.Value, stampConstant);
+                    valueNode.replaceAtUsages(stampConstant, InputType.Value);
                     GraphUtil.tryKillUnused(valueNode);
                     return true;
                 } else if (improvedStamp) {

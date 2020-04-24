@@ -271,7 +271,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                      */
                     FloatingNode canonical = canonicalizeBoxing((BoxNode) n, metaAccess, tool.getConstantReflection());
                     if (canonical != null) {
-                        n.replaceAtUsages(InputType.Memory, (ValueNode) ((BoxNode) n).getLastLocationAccess());
+                        n.replaceAtUsages((ValueNode) ((BoxNode) n).getLastLocationAccess(), InputType.Memory);
                         graph.replaceFixedWithFloating((FixedWithNextNode) n, canonical);
                     }
                 } else if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
@@ -1023,7 +1023,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 addObject.replaceAtUsagesAndDelete(allocations[index]);
             } else {
                 assert enters != null;
-                commit.replaceAtUsages(InputType.Memory, enters.get(enters.size() - 1));
+                commit.replaceAtUsages(enters.get(enters.size() - 1), InputType.Memory);
             }
         }
         if (enters != null) {
@@ -1267,7 +1267,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         graph.addBeforeFixed(n, preMembar);
         MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_READ));
         graph.addAfterFixed(n, postMembar);
-        n.replaceAtUsages(InputType.Memory, postMembar);
+        n.replaceAtUsages(postMembar, InputType.Memory);
         ReadNode nonVolatileRead = graph.add(new ReadNode(n.getAddress(), n.getLocationIdentity(), n.getAccessStamp(NodeView.DEFAULT), n.getBarrierType()));
         graph.replaceFixedWithFixed(n, nonVolatileRead);
     }
@@ -1281,7 +1281,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         graph.addBeforeFixed(n, preMembar);
         MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_WRITE));
         graph.addAfterFixed(n, postMembar);
-        n.replaceAtUsages(InputType.Memory, postMembar);
+        n.replaceAtUsages(postMembar, InputType.Memory);
         WriteNode nonVolatileWrite = graph.add(new WriteNode(n.getAddress(), n.getLocationIdentity(), n.value(), n.getBarrierType()));
         graph.replaceFixedWithFixed(n, nonVolatileWrite);
     }

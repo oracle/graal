@@ -876,7 +876,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
-    public void replaceAtUsages(InputType type, Node other) {
+    public void replaceAtUsages(Node other, InputType type) {
         checkReplaceWith(other);
         int i = 0;
         int usageCount = this.getUsageCount();
