@@ -140,7 +140,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     /* Values encoded in high 2 bits. */
     public static final byte DW_CFA_advance_loc = 0x1;
     public static final byte DW_CFA_offset = 0x2;
-    @SuppressWarnings("unused") public static final byte DW_CFA_restore = 0x3;
+    public static final byte DW_CFA_restore = 0x3;
 
     /* Values encoded in low 6 bits. */
     public static final byte DW_CFA_nop = 0x0;
@@ -163,9 +163,11 @@ public class DwarfDebugInfo extends DebugInfoBase {
     private DwarfARangesSectionImpl dwarfARangesSection;
     private DwarfLineSectionImpl dwarfLineSection;
     private DwarfFrameSectionImpl dwarfFameSection;
+    private ELFMachine elfMachine;
 
     public DwarfDebugInfo(ELFMachine elfMachine, ByteOrder byteOrder) {
         super(byteOrder);
+        this.elfMachine = elfMachine;
         dwarfStrSection = new DwarfStrSectionImpl(this);
         dwarfAbbrevSection = new DwarfAbbrevSectionImpl(this);
         dwarfInfoSection = new DwarfInfoSectionImpl(this);
@@ -200,5 +202,9 @@ public class DwarfDebugInfo extends DebugInfoBase {
 
     public DwarfLineSectionImpl getLineSectionImpl() {
         return dwarfLineSection;
+    }
+
+    public ELFMachine getELFMachine() {
+        return elfMachine;
     }
 }
