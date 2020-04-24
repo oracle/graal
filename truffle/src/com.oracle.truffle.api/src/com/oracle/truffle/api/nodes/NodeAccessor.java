@@ -121,12 +121,12 @@ final class NodeAccessor extends Accessor {
 
         @Override
         public Object getPolyglotEngine(RootNode rootNode) {
-            return rootNode.polyglotEngine;
+            return rootNode.getEngine();
         }
 
         @Override
         public TruffleLanguage<?> getLanguage(RootNode rootNode) {
-            return rootNode.language;
+            return rootNode.getLanguage();
         }
 
         @Override
@@ -153,12 +153,12 @@ final class NodeAccessor extends Accessor {
 
         @Override
         public void clearPolyglotEngine(RootNode rootNode) {
-            rootNode.polyglotEngine = null;
+            rootNode.clearEngineRef();
         }
 
         @Override
         public void applyPolyglotEngine(RootNode from, RootNode to) {
-            to.polyglotEngine = from.polyglotEngine;
+            to.applyEngineRef(from);
         }
 
         @Override

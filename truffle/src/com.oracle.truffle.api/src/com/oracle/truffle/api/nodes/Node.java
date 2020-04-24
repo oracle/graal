@@ -595,7 +595,11 @@ public abstract class Node implements NodeInterface, Cloneable {
         // it is never reset to null, and thus, rootNode is always reachable.
         // GIL: used for nodes that are replace in ASTs that are not yet adopted
         RootNode root = getRootNode();
-        return root == null ? GIL_LOCK : root.lock;
+        if (root == null) {
+            return GIL_LOCK;
+        } else {
+            return root.getLazyLock();
+        }
     }
 
     /**
@@ -667,16 +671,17 @@ public abstract class Node implements NodeInterface, Cloneable {
             }
             ExecutableNode executableNode = getExecutableNode();
             if (executableNode != null) {
-                if (executableNode.language != null && executableNode.language.getClass() == languageClass) {
-                    return NodeAccessor.ACCESSOR.engineSupport().getDirectLanguageReference(executableNode.polyglotEngine,
-                                    executableNode.language, languageClass);
+                TruffleLanguage<?> language = executableNode.getLanguage();
+                Object engine = executableNode.getEngine();
+                if (language != null && language.getClass() == languageClass) {
+                    return NodeAccessor.ACCESSOR.engineSupport().getDirectLanguageReference(engine, language, languageClass);
                 } else {
                     ReferenceCache cache = executableNode.lookupReferenceCache(languageClass);
                     if (cache != null) {
                         return (LanguageReference<T>) cache.languageReference;
                     } else {
-                        return NodeAccessor.ACCESSOR.engineSupport().lookupLanguageReference(executableNode.polyglotEngine,
-                                        executableNode.language, languageClass);
+                        return NodeAccessor.ACCESSOR.engineSupport().lookupLanguageReference(engine,
+                                        language, languageClass);
                     }
                 }
             }
@@ -781,16 +786,18 @@ public abstract class Node implements NodeInterface, Cloneable {
             }
             ExecutableNode executableNode = getExecutableNode();
             if (executableNode != null) {
-                if (executableNode.language != null && executableNode.language.getClass() == languageClass) {
-                    return NodeAccessor.ACCESSOR.engineSupport().getDirectContextReference(executableNode.polyglotEngine,
-                                    executableNode.language, languageClass);
+                TruffleLanguage<?> language = executableNode.getLanguage();
+                Object engine = executableNode.getEngine();
+                if (language != null && language.getClass() == languageClass) {
+                    return NodeAccessor.ACCESSOR.engineSupport().getDirectContextReference(engine,
+                                    language, languageClass);
                 } else {
                     ReferenceCache cache = executableNode.lookupReferenceCache(languageClass);
                     if (cache != null) {
                         return (ContextReference<C>) cache.contextReference;
                     } else {
-                        return NodeAccessor.ACCESSOR.engineSupport().lookupContextReference(executableNode.polyglotEngine,
-                                        executableNode.language, languageClass);
+                        return NodeAccessor.ACCESSOR.engineSupport().lookupContextReference(engine,
+                                        language, languageClass);
                     }
                 }
             }

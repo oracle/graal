@@ -41,6 +41,9 @@
 package com.oracle.truffle.api.nodes;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CallTarget;
@@ -123,9 +126,11 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public abstract class RootNode extends ExecutableNode {
 
+    private static final AtomicReferenceFieldUpdater<RootNode, ReentrantLock> LOCK_UPDATER = AtomicReferenceFieldUpdater.newUpdater(RootNode.class, ReentrantLock.class, "lock");
+
     private volatile RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
-    final ReentrantLock lock = new ReentrantLock();
+    private volatile ReentrantLock lock;
 
     volatile byte instrumentationBits;
 
@@ -169,7 +174,7 @@ public abstract class RootNode extends ExecutableNode {
     @SuppressWarnings("deprecation")
     @Deprecated
     public final <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
-        if (language == null) {
+        if (getLanguage() == null) {
             return null;
         }
         return getLanguage(languageClass).getContextReference().get();
@@ -402,6 +407,25 @@ public abstract class RootNode extends ExecutableNode {
         return new Constant(constant);
     }
 
+    final Lock getLazyLock() {
+        ReentrantLock l = this.lock;
+        if (l == null) {
+            l = initializeLock();
+        }
+        return l;
+    }
+
+    private ReentrantLock initializeLock() {
+        ReentrantLock l = new ReentrantLock();
+        if (RootNode.LOCK_UPDATER.compareAndSet(this, null, l)) {
+            return l;
+        } else {
+            // if CAS failed, lock is already initialized; cannot be null after that.
+            l = Objects.requireNonNull(this.lock);
+        }
+        return l;
+    }
+
     private static final class Constant extends RootNode {
 
         private final Object value;
@@ -416,4 +440,5 @@ public abstract class RootNode extends ExecutableNode {
             return value;
         }
     }
+
 }
