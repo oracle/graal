@@ -100,6 +100,7 @@ import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 import java.net.URL;
 import java.net.URLClassLoader;
 import org.graalvm.polyglot.Source;
+import org.junit.Assume;
 
 public class ContextAPITest {
     private static HostAccess CONFIG;
@@ -252,6 +253,7 @@ public class ContextAPITest {
 
     @Test
     public void testExperimentalOptionException() {
+        Assume.assumeFalse(Boolean.getBoolean("polyglot.engine.AllowExperimentalOptions"));
         AbstractPolyglotTest.assertFails(() -> Context.newBuilder().option("optiontestlang1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
             assertEquals("Option 'optiontestlang1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(). Do not use experimental options in production environments.",
                             e.getMessage());

@@ -42,5 +42,4 @@ final class GraalTVMCI extends TVMCI {
     static void resetEngineData() {
         TVMCI.resetFallbackEngineData();
     }
-
 }
