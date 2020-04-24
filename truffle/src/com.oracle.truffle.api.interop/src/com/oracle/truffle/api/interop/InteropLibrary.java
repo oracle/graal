@@ -64,8 +64,6 @@ import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Represents the library that specifies the interoperability message protocol between Truffle
@@ -1182,22 +1180,7 @@ public abstract class InteropLibrary extends Library {
      * @since 19.0
      */
     protected final boolean assertAdopted() {
-        assert assertAdoptedImpl();
-        return true;
-    }
-
-    private boolean assertAdoptedImpl() {
-        Node node = this;
-        do {
-            if (node instanceof RootNode || node instanceof LegacyToLibraryNode || node instanceof InteropAccessNode) {
-                // we all nodes with root nodes or
-                // unadopted that use the compatibility bridge
-                return true;
-            }
-            node = node.getParent();
-        } while (node != null);
-
-        assert false : "Invalid library usage. Cached library must be adopted by a RootNode before it is executed.";
+        assert this.getRootNode() != null : "Invalid library usage. Cached library must be adopted by a RootNode before it is executed.";
         return true;
     }
 
