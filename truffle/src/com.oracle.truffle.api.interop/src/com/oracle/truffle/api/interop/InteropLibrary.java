@@ -71,8 +71,6 @@ import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.TriState;
 
@@ -1776,20 +1774,7 @@ public abstract class InteropLibrary extends Library {
      * @since 19.0
      */
     protected final boolean assertAdopted() {
-        assert assertAdoptedImpl();
-        return true;
-    }
-
-    private boolean assertAdoptedImpl() {
-        Node node = this;
-        do {
-            if (node instanceof RootNode) {
-                return true;
-            }
-            node = node.getParent();
-        } while (node != null);
-
-        assert false : "Invalid library usage. Cached library must be adopted by a RootNode before it is executed.";
+        assert this.getRootNode() != null : "Invalid library usage. Cached library must be adopted by a RootNode before it is executed.";
         return true;
     }
 

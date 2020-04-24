@@ -190,10 +190,10 @@ abstract class HostExecuteNode extends Node {
     }
 
     // Note: checkArgTypes must be evaluated after selectOverload.
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "static-method"})
     @ExplodeLoop
     @Specialization(guards = {"method == cachedMethod", "checkArgTypes(args, cachedArgTypes, interop, languageContext, asVarArgs)"}, limit = "LIMIT")
-    static Object doOverloadedCached(OverloadedMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
+    final Object doOverloadedCached(OverloadedMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
                     @Cached("method") OverloadedMethod cachedMethod,
                     @Cached ToHostNode toJavaNode,
                     @Cached ToGuestValueNode toGuest,
@@ -229,8 +229,9 @@ abstract class HostExecuteNode extends Node {
         return doInvoke(overload, receiverProfile.profile(obj), convertedArguments, languageContext, toGuest);
     }
 
+    @SuppressWarnings("static-method")
     @Specialization(replaces = "doOverloadedCached")
-    static Object doOverloadedUncached(OverloadedMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
+    final Object doOverloadedUncached(OverloadedMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
                     @Shared("toHost") @Cached ToHostNode toJavaNode,
                     @Shared("toGuest") @Cached ToGuestValueNode toGuest,
                     @Shared("varArgsProfile") @Cached ConditionProfile isVarArgsProfile,
@@ -275,7 +276,7 @@ abstract class HostExecuteNode extends Node {
     }
 
     @SuppressWarnings("unchecked")
-    private static void fillArgTypesArray(Object[] args, TypeCheckNode[] cachedArgTypes, SingleMethod selected, boolean varArgs, List<SingleMethod> applicable, int priority,
+    private void fillArgTypesArray(Object[] args, TypeCheckNode[] cachedArgTypes, SingleMethod selected, boolean varArgs, List<SingleMethod> applicable, int priority,
                     PolyglotLanguageContext languageContext) {
         if (cachedArgTypes == null) {
             return;
@@ -328,7 +329,11 @@ abstract class HostExecuteNode extends Node {
                 PolyglotTargetMapping[] otherMappings = otherPossibleMappings != null ? otherPossibleMappings.toArray(HostClassCache.EMPTY_MAPPINGS) : HostClassCache.EMPTY_MAPPINGS;
                 argType = new TargetMappingType(argType, mappings, otherMappings);
             }
-            cachedArgTypes[i] = argType;
+            /*
+             * We need to eagerly insert as the cachedArgTypes might be used before they are adopted
+             * by the DSL.
+             */
+            cachedArgTypes[i] = insert(argType);
         }
 
         assert checkArgTypes(args, cachedArgTypes, InteropLibrary.getFactory().getUncached(), languageContext, false) : Arrays.toString(cachedArgTypes);
@@ -445,12 +450,12 @@ abstract class HostExecuteNode extends Node {
     }
 
     @TruffleBoundary
-    static SingleMethod selectOverload(OverloadedMethod method, Object[] args, PolyglotLanguageContext languageContext) throws ArityException, UnsupportedTypeException {
+    SingleMethod selectOverload(OverloadedMethod method, Object[] args, PolyglotLanguageContext languageContext) throws ArityException, UnsupportedTypeException {
         return selectOverload(method, args, languageContext, null);
     }
 
     @TruffleBoundary
-    static SingleMethod selectOverload(OverloadedMethod method, Object[] args, PolyglotLanguageContext languageContext, TypeCheckNode[] cachedArgTypes)
+    SingleMethod selectOverload(OverloadedMethod method, Object[] args, PolyglotLanguageContext languageContext, TypeCheckNode[] cachedArgTypes)
                     throws ArityException, UnsupportedTypeException {
         SingleMethod[] overloads = method.getOverloads();
         List<SingleMethod> applicableByArity = new ArrayList<>();
@@ -499,7 +504,8 @@ abstract class HostExecuteNode extends Node {
         throw noApplicableOverloadsException(overloads, args);
     }
 
-    private static SingleMethod findBestCandidate(List<SingleMethod> applicableByArity, Object[] args, PolyglotLanguageContext languageContext, boolean varArgs, int priority,
+    @SuppressWarnings("static-method")
+    private SingleMethod findBestCandidate(List<SingleMethod> applicableByArity, Object[] args, PolyglotLanguageContext languageContext, boolean varArgs, int priority,
                     TypeCheckNode[] cachedArgTypes) throws UnsupportedTypeException {
         List<SingleMethod> candidates = new ArrayList<>();
 
