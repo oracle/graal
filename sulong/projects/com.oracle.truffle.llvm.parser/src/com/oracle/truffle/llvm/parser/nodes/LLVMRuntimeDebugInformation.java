@@ -266,7 +266,11 @@ public final class LLVMRuntimeDebugInformation implements LocalVariableDebugInfo
             }
             current = current.getParent();
         }
-        return null;
+        /*
+         * If `node` is not a child of a basic block, we are stopped before entering the dispatch
+         * loop. Treat this as if we're stopped at the first statement of the first block.
+         */
+        return getLocalVariablesForIndex(frame, 0, 0);
     }
 
     /**
