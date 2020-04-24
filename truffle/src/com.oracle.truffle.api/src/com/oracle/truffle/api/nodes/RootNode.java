@@ -417,9 +417,7 @@ public abstract class RootNode extends ExecutableNode {
 
     private ReentrantLock initializeLock() {
         ReentrantLock l = new ReentrantLock();
-        if (RootNode.LOCK_UPDATER.compareAndSet(this, null, l)) {
-            return l;
-        } else {
+        if (!RootNode.LOCK_UPDATER.compareAndSet(this, null, l)) {
             // if CAS failed, lock is already initialized; cannot be null after that.
             l = Objects.requireNonNull(this.lock);
         }
