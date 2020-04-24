@@ -141,10 +141,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         callMethods = null;
     }
 
-    private Object cachedIncludesExcludes;
-    private ArrayList<String> includes;
-    private ArrayList<String> excludes;
-
     private final GraalTruffleRuntimeListenerDispatcher listeners = new GraalTruffleRuntimeListenerDispatcher();
 
     protected volatile TruffleCompiler truffleCompiler;
@@ -599,58 +595,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             // or Graal's module descriptor does not declare a use of capability.
             return null;
         }
-    }
-
-    @SuppressFBWarnings(value = "", justification = "Cache that does not need to use equals to compare.")
-    final boolean acceptForCompilation(RootNode rootNode) {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
-        if (!callTarget.engine.compilation) {
-            return false;
-        }
-        String includesExcludes = callTarget.engine.compileOnly;
-        if (includesExcludes != null) {
-            if (cachedIncludesExcludes != includesExcludes) {
-                parseCompileOnly(includesExcludes);
-                this.cachedIncludesExcludes = includesExcludes;
-            }
-
-            String name = rootNode.getName();
-            boolean included = includes.isEmpty();
-            if (name != null) {
-                for (int i = 0; !included && i < includes.size(); i++) {
-                    if (name.contains(includes.get(i))) {
-                        included = true;
-                    }
-                }
-            }
-            if (!included) {
-                return false;
-            }
-            if (name != null) {
-                for (String exclude : excludes) {
-                    if (name.contains(exclude)) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
-    protected void parseCompileOnly(String includesExcludes) {
-        ArrayList<String> includesList = new ArrayList<>();
-        ArrayList<String> excludesList = new ArrayList<>();
-
-        String[] items = includesExcludes.split(",");
-        for (String item : items) {
-            if (item.startsWith("~")) {
-                excludesList.add(item.substring(1));
-            } else {
-                includesList.add(item);
-            }
-        }
-        this.includes = includesList;
-        this.excludes = excludesList;
     }
 
     public abstract SpeculationLog createSpeculationLog();

@@ -357,6 +357,29 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         }
     }
 
+    @Test
+    public void testCompilation() {
+        testCompilationImpl(null, true);
+        testCompilationImpl(true, true);
+        testCompilationImpl(false, false);
+    }
+
+    private void testCompilationImpl(Boolean compileOptionValue, boolean expectedCompiled) {
+        String[] options = compileOptionValue == null ? new String[0] : new String[]{"engine.Compilation", compileOptionValue.toString()};
+        setupContext(options);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
+        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold);
+        for (int i = 0; i < compilationThreshold; i++) {
+            assertNotCompiled(target);
+            target.call();
+        }
+        if (expectedCompiled) {
+            assertCompiled(target);
+        } else {
+            assertNotCompiled(target);
+        }
+    }
+
     private static OptimizedCallTarget findOSRTarget(Node loopNode) {
         if (loopNode instanceof OptimizedOSRLoopNode) {
             return ((OptimizedOSRLoopNode) loopNode).getCompiledOSRLoop();
