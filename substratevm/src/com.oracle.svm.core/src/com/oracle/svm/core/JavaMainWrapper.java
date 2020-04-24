@@ -63,6 +63,8 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Counter;
 
 import jdk.vm.ci.code.Architecture;
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
 
 @InternalVMMethod
 public class JavaMainWrapper {
@@ -133,6 +135,12 @@ public class JavaMainWrapper {
         int exitCode;
         try {
             if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
+                if (SubstrateUtil.isPosix()) {
+                    if (SubstrateOptions.InstallExitHandlers.getValue()) {
+                        installExitHandlers();
+                    }
+                }
+
                 /*
                  * When options are not parsed yet, it is also too early to run the startup hooks
                  * because they often depend on option values. The user is expected to manually run
@@ -176,6 +184,22 @@ public class JavaMainWrapper {
             Counter.logValues();
         }
         return exitCode;
+    }
+
+    private static Signal SIGHUP = new Signal("HUP");
+    private static Signal SIGINT = new Signal("INT");
+    private static Signal SIGTERM = new Signal("TERM");
+
+    private static void exitHandler(Signal sig) {
+        int posixConformHandlerReturnValue = 128 + sig.getNumber();
+        System.exit(posixConformHandlerReturnValue);
+    }
+    private static SignalHandler exitHandler = JavaMainWrapper::exitHandler;
+
+    private static void installExitHandlers() {
+        Signal.handle(SIGHUP, exitHandler);
+        Signal.handle(SIGINT, exitHandler);
+        Signal.handle(SIGTERM, exitHandler);
     }
 
     @CEntryPoint

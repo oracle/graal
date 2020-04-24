@@ -770,4 +770,9 @@ public class SubstrateUtil {
                             (neverInline != null && Arrays.stream(neverInline).anyMatch(re -> MethodFilter.parse(re).matches(method)));
         }
     }
+
+    @Fold
+    public static boolean isPosix() {
+        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
+    }
 }

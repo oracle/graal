@@ -34,6 +34,7 @@ import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature.AfterAnalysisAccess;
@@ -51,7 +52,7 @@ import com.oracle.svm.util.ReflectionUtil;
 public class JNIRegistrationUtil {
 
     protected static boolean isPosix() {
-        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
+        return SubstrateUtil.isPosix();
     }
 
     protected static boolean isLinux() {

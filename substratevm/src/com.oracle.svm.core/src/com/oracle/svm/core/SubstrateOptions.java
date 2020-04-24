@@ -425,6 +425,11 @@ public class SubstrateOptions {
     @Option(help = "Show native-toolchain information and image-build settings", type = User)//
     public static final HostedOptionKey<Boolean> DumpTargetInfo = new HostedOptionKey<>(false);
 
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @APIOption(name = "install-exit-handlers")//
+    @Option(help = "Provide SIGHUP/SIGINT/SIGTERM exit handlers for executable images", type = User)//
+    public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
+
     @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.Expert)//
     public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);
 
