@@ -86,6 +86,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
         return pointer.getOffset() == 0 && pointer.getObject() instanceof String;
     }
 
+    // XYZ
     protected static boolean isForeign(LLVMManagedPointer pointer) {
         return pointer.getOffset() == 0 && pointer.getObject() instanceof LLVMTypedForeignObject;
     }

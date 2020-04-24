@@ -75,6 +75,7 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
             LLVMManagedPointer managed = LLVMManagedPointer.cast(pointer);
             if (managed.getOffset() == 0) {
                 Object object = objectProfile.profile(managed.getObject());
+                // XYZ
                 if (foreignProfile.profile(object instanceof LLVMTypedForeignObject)) {
                     return ((LLVMTypedForeignObject) object).getForeign();
                 } else if (!(object instanceof LLVMInternalTruffleObject) && !LLVMPointer.isInstance(object)) {

@@ -647,6 +647,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
         private boolean isPointerToForeign() {
             if (value.isManagedPointer()) {
                 Object base = value.getManagedPointerBase();
+                // XYZ
                 return base instanceof LLVMTypedForeignObject;
             } else {
                 return false;
@@ -668,6 +669,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
         public Object getMemberSafe(String identifier) {
             if (FOREIGN_KEYS[0].equals(identifier)) {
                 Object base = value.getManagedPointerBase();
+                // XYZ
                 if (base instanceof LLVMTypedForeignObject) {
                     return ((LLVMTypedForeignObject) base).getForeign();
                 } else {
@@ -792,6 +794,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
             }
 
             Object obj = value.asInteropValue();
+            // XYZ
             if (obj instanceof LLVMTypedForeignObject) {
                 obj = ((LLVMTypedForeignObject) obj).getForeign();
             }

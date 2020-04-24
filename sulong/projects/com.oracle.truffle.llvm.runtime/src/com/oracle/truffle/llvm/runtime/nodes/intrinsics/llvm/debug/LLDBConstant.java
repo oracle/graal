@@ -365,6 +365,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                     foreign = LLVMManagedPointer.cast(pointer).getObject();
                 }
 
+                // XYZ
                 if (foreign instanceof LLVMTypedForeignObject) {
                     return ((LLVMTypedForeignObject) foreign).getForeign();
                 }
@@ -408,6 +409,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                     return false;
 
                 } else {
+                    // XYZ
                     return !(target instanceof LLVMTypedForeignObject);
                 }
             } else {
@@ -689,6 +691,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
 
         @Override
         public Object asInteropValue() {
+            // XYZ
             if (value instanceof LLVMTypedForeignObject) {
                 return ((LLVMTypedForeignObject) value).getForeign();
             }

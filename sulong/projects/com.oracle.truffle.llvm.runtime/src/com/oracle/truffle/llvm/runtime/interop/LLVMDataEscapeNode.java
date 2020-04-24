@@ -279,6 +279,7 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
                 Object object = objectProfile.profile(managed.getObject());
                 if (managed.getOffset() == 0) {
                     // pointer to the beginning of a managed object
+                    // XYZ
                     if (isTypedForeignObject.profile(object instanceof LLVMTypedForeignObject)) {
                         // foreign object -- unpack it
                         return escapingForeign((LLVMTypedForeignObject) object, type);

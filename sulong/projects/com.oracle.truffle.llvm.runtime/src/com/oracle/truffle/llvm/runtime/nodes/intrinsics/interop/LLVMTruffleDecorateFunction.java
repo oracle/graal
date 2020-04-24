@@ -181,6 +181,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
         return doGeneric(func, wrapper);
     }
 
+    // XYZ
     private Object decorateForeign(LLVMManagedPointer resolved, LLVMManagedPointer wrapper) {
         LLVMTypedForeignObject foreign = (LLVMTypedForeignObject) resolved.getObject();
         return decorateForeign(foreign, (LLVMFunctionDescriptor) wrapper.getObject());
@@ -225,6 +226,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
         return LLVMManagedPointer.create(wrappedFunction);
     }
 
+    // XYZ
     protected static boolean isForeignFunction(Object object) {
         return object instanceof LLVMTypedForeignObject;
     }

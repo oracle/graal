@@ -65,6 +65,7 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         return (LLVMFunctionDescriptor) pointer.getObject();
     }
 
+    // XYZ
     @Specialization(guards = {"isForeignFunction(pointer.getObject())", "pointer.getOffset() == 0"})
     protected LLVMTypedForeignObject doForeign(LLVMManagedPointer pointer) {
         return (LLVMTypedForeignObject) pointer.getObject();
@@ -99,6 +100,7 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         }
     }
 
+    // XYZ
     @Specialization(guards = "isAutoDerefHandle(pointer.asNative())")
     protected LLVMTypedForeignObject doDerefHandle(LLVMNativePointer pointer,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver) {
@@ -110,6 +112,7 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         return ctxRef.get().getFunctionDescriptor(function);
     }
 
+    // XYZ
     protected static boolean isForeignFunction(Object object) {
         return object instanceof LLVMTypedForeignObject;
     }

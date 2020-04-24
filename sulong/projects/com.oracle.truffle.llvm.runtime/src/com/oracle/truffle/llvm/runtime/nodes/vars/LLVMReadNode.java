@@ -205,6 +205,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
             return ForeignAttachInteropTypeNodeGen.create();
         }
 
+        // XYZ
         @Specialization(guards = "object.getType() == null")
         protected Object doForeign(LLVMTypedForeignObject object, LLVMInteropType.Structured type) {
             return LLVMTypedForeignObject.create(object.getForeign(), type);

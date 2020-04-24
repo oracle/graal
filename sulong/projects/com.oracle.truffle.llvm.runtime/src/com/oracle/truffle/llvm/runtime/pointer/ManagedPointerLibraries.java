@@ -36,10 +36,12 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 
 @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = LLVMPointerImpl.class)
 abstract class ManagedPointerLibraries extends CommonPointerLibraries {
 
     @ExportMessage
@@ -96,6 +98,18 @@ abstract class ManagedPointerLibraries extends CommonPointerLibraries {
     static LLVMNativePointer toNativePointer(LLVMPointerImpl receiver,
                     @CachedLibrary("receiver.object") LLVMNativeLibrary natives) {
         return natives.toNativePointer(receiver.object).increment(receiver.getOffset());
+    }
+
+    @ExportMessage
+    static boolean isForeign(LLVMPointerImpl receiver,
+                    @CachedLibrary(limit = "3") LLVMAsForeignLibrary asForeigns) {
+        return asForeigns.isForeign(receiver.object);
+    }
+
+    @ExportMessage
+    static Object asForeign(LLVMPointerImpl receiver,
+                    @CachedLibrary(limit = "3") LLVMAsForeignLibrary asForeigns) {
+        return asForeigns.asForeign(receiver.object);
     }
 
 }

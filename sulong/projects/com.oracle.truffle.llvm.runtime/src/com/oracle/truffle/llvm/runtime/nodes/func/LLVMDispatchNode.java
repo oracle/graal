@@ -99,6 +99,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return signature;
     }
 
+    // XYZ
     /**
      * {@code function} is expected to be either {@link LLVMFunctionDescriptor},
      * {@link LLVMTypedForeignObject} or {@link LLVMNativePointer}, and it needs to be resolved
@@ -232,6 +233,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return LLVMNativeConvertNode.createFromNative(type.getReturnType());
     }
 
+    // XYZ
     @Specialization
     protected Object doForeign(LLVMTypedForeignObject foreign, Object[] arguments,
                     @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
