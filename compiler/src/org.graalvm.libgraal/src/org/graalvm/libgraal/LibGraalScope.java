@@ -38,7 +38,7 @@ public final class LibGraalScope implements AutoCloseable {
     private final LibGraalScope parent;
     private final boolean topLevel;
     private final HotSpotJVMCIRuntime runtime;
-    private final long isolate;
+    private final long isolateAddress;
     private final long isolateThread;
 
     /**
@@ -80,10 +80,10 @@ public final class LibGraalScope implements AutoCloseable {
         if (parent == null) {
             long[] isolateBox = {0};
             top = LibGraal.attachCurrentThread(runtime, false, isolateBox);
-            isolate = isolateBox[0];
-            isolateThread = LibGraal.getCurrentIsolateThread(isolate);
+            isolateAddress = isolateBox[0];
+            isolateThread = LibGraal.getCurrentIsolateThread(isolateAddress);
         } else {
-            isolate = parent.isolate;
+            isolateAddress = parent.isolateAddress;
             isolateThread = parent.isolateThread;
         }
         topLevel = top;
@@ -91,10 +91,10 @@ public final class LibGraalScope implements AutoCloseable {
     }
 
     /**
-     * Gets the isolate associated with this scope.
+     * Gets the address of the isolate associated with this scope.
      */
-    public long getIsolate() {
-        return isolate;
+    public long getIsolateAddress() {
+        return isolateAddress;
     }
 
     @Override

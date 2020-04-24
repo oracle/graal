@@ -61,6 +61,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.printer.NoDeadCodeVerifyHandler;
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -195,10 +196,16 @@ final class Target_org_graalvm_compiler_debug_TTY {
 final class Target_org_graalvm_compiler_serviceprovider_IsolateUtil {
 
     @Substitute
-    public static long getIsolate() {
+    public static long getIsolateAddress() {
         return CurrentIsolate.getIsolate().rawValue();
     }
+
+    @Substitute
+    public static long getIsolateID() {
+        return ImageSingletons.lookup(GraalSupport.class).getIsolateId();
+    }
 }
+
 /*
  * The following substitutions replace methods where reflection is used in the Graal code.
  */

@@ -82,10 +82,10 @@ public class GlobalMetrics {
             return DebugContext.getDefaultLogStream();
         } else {
             int lastDot = metricsFile.lastIndexOf('.');
-            String isolateID = IsolateUtil.getIsolateID();
+            long isolateID = IsolateUtil.getIsolateID();
             Path path;
-            if (lastDot != -1 && !isolateID.isEmpty()) {
-                path = Paths.get(metricsFile.substring(0, lastDot) + isolateID + metricsFile.substring(lastDot));
+            if (lastDot != -1 && isolateID != 0L) {
+                path = Paths.get(metricsFile.substring(0, lastDot) + '@' + isolateID + metricsFile.substring(lastDot));
             } else {
                 path = Paths.get(metricsFile + isolateID);
             }
@@ -107,10 +107,10 @@ public class GlobalMetrics {
             PrintStream p = null;
             try {
                 p = openPrintStream(metricsFile);
-                String isolateID = IsolateUtil.getIsolateID();
+                String isolateID = IsolateUtil.getIsolateID(false);
                 if (!csv) {
                     if (!map.isEmpty()) {
-                        p.printf("++ Aggregated Metrics%s ++%n", isolateID);
+                        p.printf("++ Aggregated Metrics %s ++%n", isolateID);
                     }
                 }
                 String csvFormat = CSVUtil.buildFormatString("%s", "%s", "%s");
@@ -126,7 +126,7 @@ public class GlobalMetrics {
                 }
                 if (!csv) {
                     if (!map.isEmpty()) {
-                        p.printf("-- Aggregated Metrics%s --%n", isolateID);
+                        p.printf("-- Aggregated Metrics %s --%n", isolateID);
                     }
                 }
             } catch (IOException e) {

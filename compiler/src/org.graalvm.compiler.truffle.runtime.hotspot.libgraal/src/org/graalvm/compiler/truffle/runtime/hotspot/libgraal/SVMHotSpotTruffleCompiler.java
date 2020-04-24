@@ -63,7 +63,7 @@ final class SVMHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
         protected Handle initialValue() {
             HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
             try (LibGraalScope scope = new LibGraalScope(jvmciRuntime)) {
-                long isolate = scope.getIsolate();
+                long isolate = scope.getIsolateAddress();
                 synchronized (isolateToHandle) {
                     Handle compiler = isolateToHandle.get(isolate);
                     if (compiler == null) {

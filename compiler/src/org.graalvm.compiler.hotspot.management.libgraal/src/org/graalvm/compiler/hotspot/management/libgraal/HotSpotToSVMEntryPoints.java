@@ -38,6 +38,8 @@ import javax.management.MBeanParameterInfo;
 import javax.management.ReflectionException;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
+
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
@@ -119,7 +121,11 @@ final class HotSpotToSVMEntryPoints {
         try (HotSpotToSVMScope<Id> s = scope) {
             ObjectHandles globalHandles = ObjectHandles.getGlobal();
             MBeanProxy<?> registration = globalHandles.get(WordFactory.pointer(svmRegistration));
+            long isolateID = IsolateUtil.getIsolateID();
             String name = registration.getName();
+            if (isolateID != 0L) {
+                name += '@' + isolateID;
+            }
             scope.setObjectResult(JNIUtil.createHSString(env, name));
         }
         return scope.getObjectResult();

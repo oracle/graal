@@ -108,7 +108,7 @@ public class DiagnosticsOutputDirectory {
             // directory specified by the DumpPath option.
             baseDir = Paths.get(".");
         }
-        return baseDir.resolve("graal_diagnostics_" + GraalServices.getExecutionID() + IsolateUtil.getIsolateID()).toAbsolutePath().toString();
+        return baseDir.resolve("graal_diagnostics_" + GraalServices.getExecutionID() + '@' + IsolateUtil.getIsolateID()).toAbsolutePath().toString();
     }
 
     /**

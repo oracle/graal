@@ -66,7 +66,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         protected Handle initialValue() {
             HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
             try (LibGraalScope scope = new LibGraalScope(runtime)) {
-                long isolate = scope.getIsolate();
+                long isolate = scope.getIsolateAddress();
                 synchronized (isolateToHandle) {
                     Handle libgraalRT = isolateToHandle.get(isolate);
                     if (libgraalRT == null) {

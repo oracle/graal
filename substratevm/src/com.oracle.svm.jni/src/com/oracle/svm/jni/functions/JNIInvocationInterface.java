@@ -34,6 +34,7 @@ import java.io.CharConversionException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -137,6 +138,7 @@ final class JNIInvocationInterface {
         @CEntryPointOptions(prologue = JNICreateJavaVMPrologue.class, publishAs = Publish.SymbolOnly, include = CEntryPointOptions.NotIncludedAutomatically.class)
         static int JNI_CreateJavaVM(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
             // NOTE: could check version, extra options (-verbose etc.), hooks etc.
+            WordPointer javavmIdPointer = WordFactory.nullPointer();
             if (vmArgs.isNonNull()) {
                 Pointer p = (Pointer) vmArgs.getOptions();
                 int count = vmArgs.getNOptions();
@@ -145,13 +147,22 @@ final class JNIInvocationInterface {
                     JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
                     CCharPointer str = option.getOptionString();
                     if (str.isNonNull()) {
-                        options.add(CTypeConversion.toJavaString(option.getOptionString()));
+                        String optionString = CTypeConversion.toJavaString(option.getOptionString());
+                        if (optionString.equals("_javavm_id")) {
+                            javavmIdPointer = option.getExtraInfo();
+                        } else {
+                            options.add(optionString);
+                        }
                     }
                 }
                 RuntimeOptionParser.parseAndConsumeAllOptions(options.toArray(new String[0]));
             }
             JNIJavaVM javavm = JNIFunctionTables.singleton().getGlobalJavaVM();
             JNIJavaVMList.addJavaVM(javavm);
+            if (javavmIdPointer.isNonNull()) {
+                long javavmId = IsolateUtil.getIsolateID();
+                javavmIdPointer.write(WordFactory.pointer(javavmId));
+            }
             RuntimeSupport.getRuntimeSupport().addTearDownHook(new Runnable() {
                 @Override
                 public void run() {
