@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMDoubleDataEscapeNodeGen;
@@ -50,7 +49,6 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -273,7 +271,8 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
                         @Cached("createClassProfile()") ValueProfile objectProfile,
                         @Cached ConditionProfile isManagedPointer,
                         @Cached ConditionProfile isTypedForeignObject,
-                        @Cached ConditionProfile typedProfile) {
+                        @Cached ConditionProfile typedProfile,
+                        @CachedLibrary(limit = "3") LLVMNativeLibrary library) {
 
             if (isManagedPointer.profile(LLVMManagedPointer.isInstance(address))) {
                 LLVMManagedPointer managed = LLVMManagedPointer.cast(address);
@@ -284,9 +283,7 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
                         // foreign object -- unpack it
                         return escapingForeign((LLVMTypedForeignObject) object, type);
                     } else {
-                        if (object instanceof LLVMObjectAccess) {
-                            // internal object -- fallthrough
-                        } else if (object instanceof DynamicObject && ((DynamicObject) object).getShape().getObjectType() instanceof LLVMObjectAccess) {
+                        if (library.isInternalObject(object)) {
                             // internal object -- fallthrough
                         } else if (object instanceof LLVMInternalTruffleObject) {
                             // internal object -- fallthrough

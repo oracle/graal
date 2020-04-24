@@ -29,13 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
 
 public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
-
-    protected static LLVMObjectWriteNode createForeignWrite() {
-        return LLVMObjectAccessFactory.createWrite();
-    }
 }

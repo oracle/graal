@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,6 +46,11 @@ abstract class LLVMNativeLibraryDefaults {
 
     @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Object.class)
     static class DefaultLibrary {
+
+        @ExportMessage
+        static boolean isInternalObject(@SuppressWarnings("unused") Object receiver) {
+            return false;
+        }
 
         @ExportMessage
         @SuppressWarnings("unused")
@@ -124,6 +129,11 @@ abstract class LLVMNativeLibraryDefaults {
 
     @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Long.class)
     static class LongLibrary {
+
+        @ExportMessage
+        static boolean isInternalObject(@SuppressWarnings("unused") Long receiver) {
+            return false;
+        }
 
         @ExportMessage
         @SuppressWarnings("unused")
