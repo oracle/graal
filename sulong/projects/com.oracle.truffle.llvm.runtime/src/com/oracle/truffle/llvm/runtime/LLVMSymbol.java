@@ -40,6 +40,7 @@ public abstract class LLVMSymbol {
     @CompilationFinal private ExternalLibrary library;
     private final int moduleId;
     private final int symbolIndex;
+    private final boolean exported;
     static final LLVMSymbol[] EMPTY = {};
 
     // Index for non-parsed symbols, such as alias, and function symbol for inline assembly.
@@ -54,11 +55,12 @@ public abstract class LLVMSymbol {
     // Index reserved for non-parsed miscellaneous functions.
     private static int miscFunctionIndex = 0;
 
-    public LLVMSymbol(String name, ExternalLibrary library, int bitcodeID, int symbolIndex) {
+    public LLVMSymbol(String name, ExternalLibrary library, int bitcodeID, int symbolIndex, boolean exported) {
         this.name = name;
         this.library = library;
         this.moduleId = bitcodeID;
         this.symbolIndex = symbolIndex;
+        this.exported = exported;
     }
 
     public String getName() {
@@ -85,6 +87,10 @@ public abstract class LLVMSymbol {
 
     public String getKind() {
         return this.getClass().getSimpleName();
+    }
+
+    public boolean isExported() {
+        return exported;
     }
 
     /**
@@ -127,8 +133,6 @@ public abstract class LLVMSymbol {
     public abstract boolean isFunction();
 
     public abstract boolean isAlias();
-
-    public abstract boolean isExported();
 
     public abstract LLVMFunction asFunction();
 

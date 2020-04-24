@@ -38,14 +38,11 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 public class LLVMAlias extends LLVMSymbol {
 
-    private boolean exported;
-
     @CompilationFinal private LLVMSymbol target;
 
     public LLVMAlias(ExternalLibrary library, String name, LLVMSymbol target, boolean exported) {
-        super(name, library, LLVMSymbol.INVALID_ID, LLVMSymbol.INVALID_ID);
+        super(name, library, LLVMSymbol.INVALID_ID, LLVMSymbol.INVALID_ID, exported);
         setTarget(target);
-        this.exported = exported;
     }
 
     public LLVMSymbol getTarget() {
@@ -78,11 +75,6 @@ public class LLVMAlias extends LLVMSymbol {
     @Override
     public boolean isAlias() {
         return true;
-    }
-
-    @Override
-    public boolean isExported() {
-        return exported;
     }
 
     @Override
