@@ -81,9 +81,10 @@ bench-llvm-sulong-graalvm-ce: ${bench_vm_ce_linux_base} ${bench-llvm-sulong-comm
 }
 
 bench-llvm-native: ${bench-llvm-common} ${bench-llvm-linux} ${sulong-weekly-notifications} {
-  targets: [daily, bench]
+  targets: [weekly, bench]
   run: [
     [cd, ${compiler-suite-root}]
+    [mx, --dynamicimport, "/sdk", build, --dep, LLVM_TOOLCHAIN]
     ${bench-llvm-linux.cmd} [--, --native-vm, clang, --native-vm-config, O3]
   ]
 }
@@ -95,7 +96,7 @@ builds += [
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-native-la-inline-csuite", environment: { JVM_CONFIG: native-la-inline } }
   ${bench-llvm-sulong-core} {name: daily-bench-sulong-graal-core-csuite}
   # sulong reference benchmark
-  ${bench-llvm-native} {name: "daily-bench-clangO3-csuite"}
+  ${bench-llvm-native} {name: "weekly-bench-clangO3-csuite"}
 
   # upload bitcode files
   ${bench-llvm-sulong-graalvm-ce} {
