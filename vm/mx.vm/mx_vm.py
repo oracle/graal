@@ -34,9 +34,10 @@ import mx_sdk_vm, mx_sdk_vm_impl
 import mx_vm_benchmark
 import mx_vm_gate
 
-import os
-from os.path import join, relpath
 
+import os, json, shutil
+from os.path import join, relpath, exists, abspath
+from argparse import ArgumentParser
 
 _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
@@ -186,3 +187,76 @@ class GraalVmSymLinksBuildTask(mx.ProjectBuildTask):
 
     def __str__(self):
         return "Generating GraalVM symlinks in the vm suite"
+
+
+def fetch_labsjdk(args):
+    parser = ArgumentParser(prog='mx fetch-labsjdk')
+    parser.add_argument('--java-version', action='store', help='numeric value representing requested JDK version')
+    parser.add_argument('--java-distribution', action='store', help='ce or ee')
+    parser.add_argument('-q', '--quiet', action='store_true', help='suppress logging output')
+    args = parser.parse_args(args)
+
+    _available_distributions = ['ce', 'ee']
+
+    java_distribution = 'ce'
+    if args.java_distribution is not None:
+        if args.java_distribution not in _available_versions:
+            mx.abort("Java distribution isn't valid. Valid distributions are: {}".format(_available_distributions))
+        java_distribution = args.java_distribution
+
+    _available_versions = ['8', '11']
+
+    java_version = '11'
+    if args.java_version is not None:
+        if args.java_version not in _available_versions:
+            mx.abort("Java version number isn't valid. Valid Java version numbers are {}".format(_available_versions))
+        java_version = args.java_version
+
+    primary_suite = mx.primary_suite()
+    common_location = join(primary_suite.vc_dir, 'common.json')
+
+    with open(common_location) as common_file:
+            common_cfg = json.load(common_file)
+
+    if java_version == '11':
+        labs_distribution = 'labsjdk-{}-11'.format(java_distribution)
+    elif java_version == '8':
+        labs_distribution = 'openjdk8'
+
+    labs_version = common_cfg['jdks'][labs_distribution]['version']
+    labs_short_version = 'jvmci' + labs_version.split('jvmci')[1]
+    machine = mx.get_os() + '-' + mx.get_arch()
+
+    if java_version == '11':
+        labs_filename = 'labsjdk-{}-{}'.format(labs_version, machine)
+        labs_repository = 'graalvm/labs-openjdk-11'
+    elif java_version == '8':
+        labs_filename = 'openjdk-{}-{}'.format(labs_version, machine)
+        labs_repository = 'graalvm/openjdk8-jvmci-builder'
+
+    labs_archive = "{}.tar.gz".format(labs_filename)
+    labs_url = 'https://github.com/{}/releases/download/{}/{}'.format(labs_repository, labs_short_version, labs_archive)
+
+    jdk_path = join('bin', 'jdks')
+    jdk_folder = join(jdk_path, "{}-{}-{}".format(labs_distribution, labs_short_version, machine))
+
+    if not exists(jdk_folder):
+        mx._opts.no_download_progress = args.quiet
+        mx.download(join(jdk_path, labs_archive), [labs_url], verbose=not args.quiet)
+        untar = mx.TarExtractor(join(jdk_path, labs_archive))
+
+        with untar._open() as tar_file:
+            curr_jdk_folder = untar._getnames(tar_file)[0]
+
+        untar.extract(jdk_path)
+        os.remove(join(jdk_path, labs_archive))
+        os.rename(join(jdk_path, curr_jdk_folder), jdk_folder)
+
+    if mx.get_os() == 'darwin':
+        jdk_folder = join(jdk_folder, 'Contents', 'Home')
+
+    print('export JAVA_HOME={}'.format(jdk_folder))
+
+mx.update_commands(_suite, {
+    'fetch-labsjdk': [fetch_labsjdk, '']
+})
