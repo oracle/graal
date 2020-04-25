@@ -40,7 +40,7 @@ public class EmbeddingDoubled {
                     + "}\n"
                     + "insight.on('return', fibreturn, {\n"
                     + "  roots: true,\n"
-                    + "  rootNameFilter: (n) => n.indexOf('fib') >= 0\n"
+                    + "  rootNameFilter: '.*fib.*'\n"
                     + "});\n"
                     + "\n";
 

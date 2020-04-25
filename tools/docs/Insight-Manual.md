@@ -333,7 +333,7 @@ insight.on('enter', function(ctx, frame) {
    print('fib for ' + frame.n);
 }, {
    roots: true,
-   rootNameFilter: (name) => 'fib' === name
+   rootNameFilter: 'fib'
 });
 ```
 
@@ -458,7 +458,7 @@ insight.on('enter', (ev, frame) => {
     }
 }, {
     roots: true,
-    rootNameFilter: (n) => n === 'log'
+    rootNameFilter: 'log'
 });
 ```
 
@@ -521,7 +521,7 @@ insight.on('enter', function(ctx, frame) {
     }
 }, {
     roots: true,
-    rootNameFilter: (n) => n === 'nextNatural'
+    rootNameFilter: 'nextNatural'
 });
 ```
 
@@ -585,7 +585,7 @@ insight.on('enter', (ctx, frame) => {
     }
 }, {
   roots: true,
-  rootNameFilter: (name) => name === 'Filter'
+  rootNameFilter: 'Filter'
 });
 
 insight.on('return', (ctx, frame) => {
@@ -594,7 +594,7 @@ insight.on('return', (ctx, frame) => {
     max = 0;
 }, {
     roots: true,
-    rootNameFilter: (name) => name === 'measure'
+    rootNameFilter: 'measure'
 });
 ```
 
@@ -622,7 +622,7 @@ insight.on('enter', (ctx, frame) => {
     }
 }, {
   roots: true,
-  rootNameFilter: (name) => name === 'Filter'
+  rootNameFilter: 'Filter'
 });
 ```
 

@@ -324,7 +324,7 @@ public class AgentObjectTest {
             agentAPI.on("enter", (ctx, frame) -> {
                 assertNull("No function entered yet", functionName[0]);
                 functionName[0] = ctx.name();
-            }, AgentObjectFactory.createConfig(false, false, true, (name) -> "foo".equals(name), null));
+            }, AgentObjectFactory.createConfig(false, false, true, "foo", null));
             agentAPI.on("close", () -> {
                 finished[0] = true;
             });
@@ -587,7 +587,7 @@ public class AgentObjectTest {
                 assertTrue(names.isEmpty());
                 names.addAll(frame.keySet());
             };
-            agentAPI.on("enter", captureNames, createConfig(true, false, false, (name) -> "mul".equals(name), null));
+            agentAPI.on("enter", captureNames, createConfig(true, false, false, "mul.*", null));
             c.eval(sampleScript);
             agentAPI.off("enter", captureNames);
 
@@ -597,7 +597,7 @@ public class AgentObjectTest {
             agentAPI.on("enter", (ctx, frame) -> {
                 values[0] = frame.get("a");
                 values[1] = frame.get("b");
-            }, AgentObjectFactory.createConfig(true, false, false, (name) -> "mul".equals(name), null));
+            }, AgentObjectFactory.createConfig(true, false, false, "mul", null));
 
             Value mul = c.getBindings(InstrumentationTestLanguage.ID).getMember("mul");
             assertNotNull("mul function found", mul);

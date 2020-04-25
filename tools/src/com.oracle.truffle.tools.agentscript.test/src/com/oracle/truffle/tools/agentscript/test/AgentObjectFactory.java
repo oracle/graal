@@ -53,7 +53,7 @@ final class AgentObjectFactory extends ProxyLanguage {
 
     static InsightAPI.OnConfig createConfig(
                     boolean expressions, boolean statements, boolean roots,
-                    Predicate<String> rootNameFilter, Predicate<SourceInfo> sourceFilter) {
+                    String rootNameFilter, Predicate<SourceInfo> sourceFilter) {
         InsightAPI.OnConfig config = new InsightAPI.OnConfig();
         config.expressions = expressions;
         config.statements = statements;
