@@ -93,7 +93,7 @@ For example following script is going to observe who calls `process.exit`:
 ```bash
 $ curl --data \
   'insight.on("enter", (ctx, frame) => { console.log(new Error("call to exit").stack); }, \
-  { roots: true, rootNameFilter: n => n === "exit" });' \
+  { roots: true, rootNameFilter: "exit" });' \
   -X POST http://localhost:9999/
 ```
 

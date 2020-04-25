@@ -36,10 +36,10 @@ insight: Unknown attribute misnamedAttribute
 >[1] js --jvm --experimental-options --insight=agent-error3.js log.js
 insight: Unknown event type 'enterOrLeave'.*
 >[7] js --jvm --experimental-options --insight=agent-error.js log.js
-Error while initializing {id: "insight", version: "0.5"}
+Error while initializing {id: "insight", version: "0.6"}
 .*at <js> :anonymous.*agent-error.js.*
 >[7] js --experimental-options --insight=agent-error.js log.js
-Error while initializing {id: "insight", version: "0.5"}
+Error while initializing {id: "insight", version: "0.6"}
 .*at <js> :anonymous.*agent-error.js.*
 >[7] js --jvm --experimental-options --insight=agent-error4.js -f log.js
 Error loading of source log.js.*

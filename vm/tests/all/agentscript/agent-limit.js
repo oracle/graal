@@ -8,7 +8,7 @@ insight.on('enter', function(ctx, frame) {
     }
 }, {
     roots: true,
-    rootNameFilter: (n) => n === 'nextNatural'
+    rootNameFilter: 'n...Natural'
 });
 
 
