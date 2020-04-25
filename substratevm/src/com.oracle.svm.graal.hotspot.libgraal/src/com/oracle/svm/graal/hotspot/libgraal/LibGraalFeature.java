@@ -98,6 +98,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.word.Pointer;
 
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -537,7 +538,6 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         HotSpotProviders originalProvider = compiler.getGraalRuntime().getHostProviders();
         return (HotSpotReplacementsImpl) originalProvider.getReplacements();
     }
-
 }
 
 @TargetClass(className = "jdk.vm.ci.hotspot.SharedLibraryJVMCIReflection", onlyWith = LibGraalFeature.IsEnabled.class)
@@ -586,6 +586,15 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     @Substitute
     private static void shutdownLibGraal() {
         VMRuntime.shutdown();
+    }
+}
+
+@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_hotspot_HotSpotTTYStreamProvider {
+
+    @Substitute
+    private static Pointer getLockPointer() {
+        return LibGraalEntryPoints.LOG_FILE_LOCK.get();
     }
 }
 

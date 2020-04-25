@@ -35,6 +35,7 @@ import java.util.Map;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.hotspot.CompilationTask;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
+import org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -49,8 +50,12 @@ import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.util.OptionsEncoder;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -68,6 +73,11 @@ import sun.misc.Unsafe;
 public final class LibGraalEntryPoints {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+
+    /**
+     * @see org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider.Locker
+     */
+    static final CGlobalData<Pointer> LOG_FILE_LOCK = CGlobalDataFactory.createWord((Pointer) WordFactory.unsigned(HotSpotTTYStreamProvider.Locker.UNLOCKED));
 
     @SuppressWarnings("unused")
     @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_org_graalvm_libgraal_LibGraal_getCurrentIsolateThread")

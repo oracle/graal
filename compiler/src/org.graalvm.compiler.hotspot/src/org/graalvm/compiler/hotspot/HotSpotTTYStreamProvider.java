@@ -26,13 +26,18 @@ package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.defaultOptions;
+import static org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider.Locker.UNLOCKED;
+import static org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider.Locker.UNLOCKED_AFTER_LOCKED;
+import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.List;
+import java.util.Random;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.TTYStreamProvider;
@@ -42,6 +47,8 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -65,6 +72,148 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
     @Override
     public PrintStream getStream() {
         return Options.LogFile.getStream();
+    }
+
+    /**
+     * Gets a pointer to a word that will be used to synchronize write operations to the log file.
+     */
+    private static Pointer getLockPointer() {
+        // Substituted by Target_org_graalvm_compiler_hotspot_HotSpotTTYStreamProvider
+        return WordFactory.nullPointer();
+    }
+
+    /**
+     * Provides mutual exclusion using a pointer to a lock word. Locking is implemented by spinning
+     * with a sleep in between each spin.
+     */
+    public static class Locker implements AutoCloseable {
+        /**
+         * Initial max milliseconds to sleep in each spin loop iteration while waiting for the lock
+         * to be unlocked.
+         */
+        private static final int INITIAL_SLEEP = 5;
+
+        /**
+         * Absolute max milliseconds to sleep in each spin loop iteration while waiting for the lock
+         * to be unlocked.
+         */
+        private static final int MAX_SLEEP = 2000;
+
+        /**
+         * Pointer to a word used in conjunctions with CAS operations to implement a lock. The word
+         * must have been initialized to {@link #UNLOCKED}.
+         */
+        private final Pointer lock;
+
+        /**
+         * Value for the lock word denoting that it is unlocked.
+         */
+        public static final long UNLOCKED = 0;
+
+        /**
+         * Value for the lock word denoting that it is locked.
+         */
+        static final long LOCKED = 1;
+
+        /**
+         * Value for the lock word denoting that it is unlocked after being locked.
+         */
+        public static final long UNLOCKED_AFTER_LOCKED = 2;
+
+        /**
+         * The value of the lock word prior to this object acquiring the lock.
+         */
+        long initialValue;
+
+        /**
+         * Value to set the lock word to when this object releases the lock.
+         */
+        private final long unlockValue;
+
+        /**
+         * Opens a scope which locks {@code lock}. The lock is released by {@link #close()}.
+         *
+         * @param lock pointer to lock word
+         * @param rand RNG to mitigate threads waiting for the lock from clashing with each other
+         */
+        public Locker(Pointer lock, Random rand) {
+            this(lock, rand, UNLOCKED);
+        }
+
+        /**
+         * Opens a scope which locks {@code lock}. The lock is released by {@link #close()}.
+         *
+         * @param lock pointer to lock word
+         * @param rand RNG to mitigate threads waiting for the lock from clashing with each other
+         * @param unlockValue the value to write to the lock word to release the lock
+         */
+        public Locker(Pointer lock, Random rand, long unlockValue) {
+            this.unlockValue = unlockValue;
+            this.lock = lock;
+            int sleep_limit = INITIAL_SLEEP;
+            while (true) {
+                long value = lock.readLong(0);
+                if (value == LOCKED) {
+                    try {
+                        // Randomize sleep time to mitigate waiting threads
+                        // performing in lock-step with each other.
+                        int sleep = rand.nextInt(sleep_limit);
+                        Thread.sleep(sleep);
+                        // Exponential back-off up to MAX_SLEEP ms
+                        sleep_limit = Math.min(MAX_SLEEP, sleep_limit * 2);
+                    } catch (InterruptedException e) {
+                    }
+                    continue;
+                }
+                if (lock.compareAndSwapLong(0, value, LOCKED, ANY_LOCATION) == value) {
+                    initialValue = value;
+                    break;
+                }
+            }
+        }
+
+        @Override
+        public void close() {
+            lock.writeLong(0, unlockValue);
+        }
+    }
+
+    /**
+     * An output stream for writing to a file where each write operation is synchronized across the
+     * whole process, not just the threads within the current isolate.
+     */
+    static class ProcessSynchronizedOutputStream extends OutputStream {
+        private final Pointer lock;
+        private final File file;
+        private final Random rand;
+
+        /**
+         * Creates a global output stream for writing the file denoted by {@code name} where each
+         * operation is serialized on {@code lock}.
+         */
+        public ProcessSynchronizedOutputStream(Pointer lock, String name) {
+            this.lock = lock;
+            this.file = new File(name);
+            this.rand = new Random();
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            try (Locker l = new Locker(lock, rand);
+                            FileOutputStream out = new FileOutputStream(file, file.length() > 0)) {
+                out.write(b, off, len);
+            }
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public void write(int b) throws IOException {
+            try (Locker l = new Locker(lock, rand);
+                            FileOutputStream out = new FileOutputStream(file, file.length() > 0)) {
+                out.write(b);
+            }
+        }
     }
 
     /**
@@ -114,7 +263,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
         class DelayedOutputStream extends OutputStream {
             @NativeImageReinitialize private volatile OutputStream lazy;
 
-            private OutputStream lazy() {
+            private OutputStream lazy() throws FileNotFoundException {
                 if (lazy == null) {
                     synchronized (this) {
                         if (lazy == null) {
@@ -129,13 +278,15 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                                         lazy = System.err;
                                         break;
                                     default:
-                                        try {
+                                        boolean isolateSpecific = nameTemplate.contains("%i") || nameTemplate.contains("%I");
+                                        Pointer lock = getLockPointer();
+                                        if (!isolateSpecific && lock.isNonNull()) {
+                                            lazy = new ProcessSynchronizedOutputStream(lock, name);
+                                        } else {
                                             final boolean enableAutoflush = true;
                                             FileOutputStream result = new FileOutputStream(name);
                                             printVMConfig(enableAutoflush, result);
                                             lazy = result;
-                                        } catch (FileNotFoundException e) {
-                                            throw new RuntimeException("couldn't open file: " + name, e);
                                         }
                                 }
                                 return lazy;
@@ -143,8 +294,15 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
 
                             lazy = HotSpotJVMCIRuntime.runtime().getLogStream();
                             PrintStream ps = new PrintStream(lazy);
-                            ps.printf("[Use -D%sLogFile=<path> to redirect Graal log output to a file.]%n", GRAAL_OPTION_PROPERTY_PREFIX);
-                            ps.flush();
+                            Pointer lock = getLockPointer();
+                            try (Locker l = lock.isNull() ? null : new Locker(lock, new Random(), UNLOCKED_AFTER_LOCKED)) {
+                                if (l == null || l.initialValue == UNLOCKED) {
+                                    // Use Locker to ensure the following message is printed once
+                                    // per process instead of once per isolate.
+                                    ps.printf("[Use -D%sLogFile=<path> to redirect Graal log output to a file.]%n", GRAAL_OPTION_PROPERTY_PREFIX);
+                                    ps.flush();
+                                }
+                            }
                         }
                     }
                 }
@@ -196,5 +354,4 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
             return new PrintStream(new DelayedOutputStream());
         }
     }
-
 }
