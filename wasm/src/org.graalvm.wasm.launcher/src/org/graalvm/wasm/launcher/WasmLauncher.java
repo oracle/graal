@@ -56,9 +56,9 @@ import java.util.Map;
 import java.util.Set;
 
 public class WasmLauncher extends AbstractLanguageLauncher {
-    private File file;
+    private File file = null;
     private VersionAction versionAction = VersionAction.None;
-    private String[] programArgs;
+    private String[] programArguments = null;
 
     public static void main(String[] args) {
         new WasmLauncher().launch(args);
@@ -68,13 +68,12 @@ public class WasmLauncher extends AbstractLanguageLauncher {
     protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
         final ListIterator<String> argIterator = arguments.listIterator();
         final ArrayList<String> unrecognizedArguments = new ArrayList<>();
+        final List<String> programArgumentsList = new ArrayList<>();
 
-        argsLoop: while (argIterator.hasNext()) {
+        while (argIterator.hasNext()) {
             final String argument = argIterator.next();
             if (argument.startsWith("-")) {
                 switch (argument) {
-                    case "--":
-                        break argsLoop;
                     case "--show-version":
                         versionAction = VersionAction.PrintAndContinue;
                         break;
@@ -86,17 +85,17 @@ public class WasmLauncher extends AbstractLanguageLauncher {
                         break;
                 }
             } else {
-                if (file != null) {
-                    throw abort("Can specify only one binary name.");
-                }
                 file = new File(argument);
+                programArgumentsList.add(file.getAbsolutePath());
+                break;
             }
         }
 
         // collect the program args:
-        List<String> programArgumentsList = arguments.subList(argIterator.nextIndex(), arguments.size());
-        programArgumentsList.add(0, file.getAbsolutePath());
-        programArgs = programArgumentsList.toArray(new String[programArgumentsList.size()]);
+        while (argIterator.hasNext()) {
+            programArgumentsList.add(argIterator.next());
+        }
+        programArguments = programArgumentsList.toArray(new String[0]);
 
         return unrecognizedArguments;
     }
@@ -119,7 +118,8 @@ public class WasmLauncher extends AbstractLanguageLauncher {
     }
 
     private int execute(Context.Builder contextBuilder) {
-        contextBuilder.arguments(getLanguageId(), programArgs);
+        contextBuilder.arguments(getLanguageId(), programArguments);
+
         try (Context context = contextBuilder.build()) {
             runVersionAction(versionAction, context.getEngine());
             context.eval(Source.newBuilder(getLanguageId(), file).build());
