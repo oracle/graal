@@ -223,8 +223,8 @@ public class OnStackReplacementPhase extends Phase {
                 }
             }
 
-            osr.replaceAtUsages(InputType.Guard, osrStart);
-            osr.replaceAtUsages(InputType.Anchor, osrStart);
+            osr.replaceAtUsages(osrStart, InputType.Guard);
+            osr.replaceAtUsages(osrStart, InputType.Anchor);
         }
         debug.dump(DebugContext.DETAILED_LEVEL, graph, "OnStackReplacement after replacing entry proxies");
         GraphUtil.killCFG(start);

@@ -261,7 +261,7 @@ public final class ArrayCopyCallNode extends FixedWithNextNode implements Lowera
     public Node canonical(CanonicalizerTool tool) {
         if (getLength().isConstant() && getLength().asConstant().isDefaultForKind()) {
             if (lastLocationAccess != null) {
-                replaceAtUsages(InputType.Memory, lastLocationAccess.asNode());
+                replaceAtUsages(lastLocationAccess.asNode(), InputType.Memory);
             }
             return null;
         }

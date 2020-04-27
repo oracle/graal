@@ -98,7 +98,7 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
             LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(stamp(NodeView.DEFAULT)));
 
             loadException.setStateAfter(stateAfter());
-            replaceAtUsages(InputType.Value, loadException);
+            replaceAtUsages(loadException, InputType.Value);
             graph().replaceFixedWithFixed(this, entry);
             entry.graph().addAfterFixed(entry, loadException);
 
