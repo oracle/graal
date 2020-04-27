@@ -69,12 +69,15 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     public static final NodeClass<IntegerSwitchNode> TYPE = NodeClass.create(IntegerSwitchNode.class);
 
     protected final int[] keys;
+    // True if keys = [0, 1, 2, ..., n]
+    protected final boolean areKeysContiguous;
 
     public IntegerSwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
         super(TYPE, value, successors, keySuccessors, keyProbabilities);
         assert keySuccessors.length == keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
+        areKeysContiguous = keys.length < 2 || keys[keys.length - 1] - keys[0] + 1 == keys.length;
         assert value.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp && value.stamp(NodeView.DEFAULT).getStackKind().isNumericInteger();
         assert assertSorted();
         assert assertNoUntargettedSuccessor();
@@ -151,10 +154,12 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     }
 
     public int successorIndexAtKey(int key) {
-        for (int i = 0; i < keyCount(); i++) {
-            if (keys[i] == key) {
-                return keySuccessorIndex(i);
-            }
+        if (areKeysContiguous && keys[0] <= key && key <= keys[keys.length - 1]) {
+            return keySuccessorIndex(key - keys[0]);
+        }
+        int index = Arrays.binarySearch(keys, key);
+        if (index >= 0) {
+            return keySuccessorIndex(index);
         }
         return keySuccessorIndex(keyCount());
     }
