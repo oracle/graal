@@ -277,7 +277,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
          * BeginNode as a guard input, so replace guard users of the Begin with the NullCheck and
          * then remove the Begin from the graph.
          */
-        nonTrappingContinuation.replaceAtUsages(InputType.Guard, trappingNullCheck);
+        nonTrappingContinuation.replaceAtUsages(trappingNullCheck, InputType.Guard);
 
         if (nonTrappingContinuation instanceof BeginNode) {
             GraphUtil.unlinkFixedNode(nonTrappingContinuation);

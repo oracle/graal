@@ -575,7 +575,7 @@ double do_calculations() {
   return checksum;
 }
 
-int benchmarkWarmupCount() {
+int benchmarkIterationsCount() {
   return 20;
 }
 
@@ -589,7 +589,7 @@ void benchmarkSetupEach() {
   freelist_init();
 }
 
-void benchmarkTeardownEach() {
+void benchmarkTeardownEach(char* outputFile) {
 }
 
 int benchmarkRun() {

@@ -216,6 +216,7 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
             '-cp',
             cp,
             '--no-server',
+            '-H:+TruffleCheckBlackListedMethods',
             '-H:-FoldSecurityManagerGetter',
             '-H:TruffleTCKPermissionsReportFile={}'.format(report_file),
             '-H:Path={}'.format(svmbuild),

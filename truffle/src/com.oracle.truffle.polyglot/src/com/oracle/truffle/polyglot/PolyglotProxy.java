@@ -841,6 +841,7 @@ final class PolyglotProxy implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     static int identityHashCode(PolyglotProxy receiver) {
         return System.identityHashCode(receiver.proxy);
     }

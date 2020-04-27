@@ -122,6 +122,7 @@ final class HostFunction implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     static int identityHashCode(HostFunction receiver) {
         return System.identityHashCode(receiver.method);
     }

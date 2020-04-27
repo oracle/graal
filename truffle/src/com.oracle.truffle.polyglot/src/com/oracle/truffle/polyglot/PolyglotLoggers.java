@@ -528,7 +528,7 @@ final class PolyglotLoggers {
 
         private static Handler resolveHandler(Handler handler) {
             if (isDefaultHandler(handler)) {
-                OutputStream logOut = EngineAccessor.ACCESSOR.getConfiguredLogStream();
+                OutputStream logOut = EngineAccessor.RUNTIME.getConfiguredLogStream();
                 if (logOut != null) {
                     return createStreamHandler(logOut, false, true);
                 } else {

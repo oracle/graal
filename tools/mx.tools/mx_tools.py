@@ -29,8 +29,11 @@
 # ----------------------------------------------------------------------------------------------------
 
 import os
-from os.path import exists
+from os.path import exists, join
 import re
+import tempfile
+import shutil
+import glob
 
 import mx
 
@@ -134,6 +137,31 @@ def checkLinks(javadocDir):
 
     if err:
         mx.abort('There are wrong references in Javadoc')
+
+def lsp_types_gen(args):
+    generators_dir = join(_suite.dir, 'generators')
+    out = join(_suite.get_output_root(), 'lsp-types')
+    if exists(out):
+        mx.rmtree(out)
+    mx.run(['npm', 'install'], nonZeroIsFatal=True, cwd=generators_dir)
+    mx.run(['npm', 'run', 'compile'], nonZeroIsFatal=True, cwd=generators_dir)
+    repository = open(join(generators_dir, 'resources', 'REPOSITORY'), 'r').read()
+    branch = open(join(generators_dir, 'resources', 'VERSION'), 'r').read()
+    tmpdir = tempfile.mkdtemp()
+    catfile = open(join(tmpdir, 'lsp.ts'), 'w')
+    mx.run(['git', 'clone', '-b', branch, repository, 'lib'], nonZeroIsFatal=True, cwd=tmpdir)
+    spec_files = glob.glob(join(tmpdir, 'lib/types/src/*.ts'))
+    spec_files.extend(glob.glob(join(tmpdir, 'lib/jsonrpc/src/*.ts')))
+    spec_files.extend(glob.glob(join(tmpdir, 'lib/protocol/src/*.ts')))
+    for file_name in spec_files:
+        with open(file_name, 'r') as input_file:
+            shutil.copyfileobj(input_file, catfile)
+        catfile.flush()
+    pkg = open(join(generators_dir, 'resources', 'PACKAGE'), 'r').read()
+    mx.run(['node', 'out/generator.js', '--source', catfile.name, '--target', out, '--suffixNested', '--pkg', pkg, '--license', 'resources/license.txt'], nonZeroIsFatal=True, cwd=generators_dir)
+    mx.rmtree(tmpdir)
+    mx.run(['patch', '-p1', '-s', '-i', join(generators_dir, 'resources', 'patch.diff')], nonZeroIsFatal=True, cwd=out)
+    mx.log('LSP types generated to: ' + out)
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -246,4 +274,5 @@ for mode in ['jvm', 'native']:
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, ''],
     'gate' : [mx_gate.gate, ''],
+    'lsp-types-gen' : [lsp_types_gen, ''],
 })

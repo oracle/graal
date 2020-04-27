@@ -116,31 +116,23 @@ public abstract class Accessor {
         TruffleLocator.initializeNativeImageTruffleLocator();
     }
 
-    protected ThreadLocal<Object> createFastThreadLocal() {
-        return getTVMCI().createFastThreadLocal();
+    abstract static class Support {
+
+        Support(String onlyAllowedClassName) {
+            if (!getClass().getName().equals(onlyAllowedClassName)) {
+                throw new AssertionError("No custom subclasses of support classes allowed. Implementation must be " + onlyAllowedClassName + ".");
+            }
+        }
+
     }
 
-    protected IndirectCallNode createUncachedIndirectCall() {
-        return getTVMCI().createUncachedIndirectCall();
-    }
+    public abstract static class NodeSupport extends Support {
 
-    protected <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
-        return getTVMCI().createBlockNode(elements, executor);
-    }
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.nodes.NodeAccessor$AccessNodes";
 
-    protected void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
-        getTVMCI().reloadEngineOptions(runtimeData, optionValues);
-    }
-
-    protected void onEngineClosed(Object runtimeData) {
-        getTVMCI().onEngineClosed(runtimeData);
-    }
-
-    protected OutputStream getConfiguredLogStream() {
-        return getTVMCI().getConfiguredLogStream();
-    }
-
-    public abstract static class NodeSupport {
+        protected NodeSupport() {
+            super(IMPL_CLASS_NAME);
+        }
 
         public abstract boolean isInstrumentable(RootNode rootNode);
 
@@ -169,10 +161,6 @@ public abstract class Accessor {
 
         public abstract Lock getLock(Node node);
 
-        public void reportPolymorphicSpecialize(Node node) {
-            getTVMCI().reportPolymorphicSpecialize(node);
-        }
-
         public abstract void clearPolyglotEngine(RootNode rootNode);
 
         public abstract void applyPolyglotEngine(RootNode from, RootNode to);
@@ -181,7 +169,13 @@ public abstract class Accessor {
 
     }
 
-    public abstract static class SourceSupport {
+    public abstract static class SourceSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.source.SourceAccessor$SourceSupportImpl";
+
+        protected SourceSupport() {
+            super(IMPL_CLASS_NAME);
+        }
 
         public abstract Object getSourceIdentifier(Source source);
 
@@ -202,11 +196,13 @@ public abstract class Accessor {
         public abstract void invalidateAfterPreinitialiation(Source source);
     }
 
-    public abstract static class DumpSupport {
-        public abstract void dump(Node newNode, Node newChild, CharSequence reason);
-    }
+    public abstract static class InteropSupport extends Support {
 
-    public abstract static class InteropSupport {
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.interop.InteropAccessor$InteropImpl";
+
+        protected InteropSupport() {
+            super(IMPL_CLASS_NAME);
+        }
 
         public abstract boolean isTruffleObject(Object value);
 
@@ -221,7 +217,14 @@ public abstract class Accessor {
         public abstract Object unwrapLegacyMetaObjectWrapper(Object receiver);
     }
 
-    public abstract static class EngineSupport {
+    public abstract static class EngineSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.polyglot.EngineAccessor$EngineImpl";
+
+        protected EngineSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
         public abstract <T> Iterable<T> loadServices(Class<T> type);
 
         public abstract Object getInstrumentationHandler(Object polyglotObject);
@@ -460,7 +463,13 @@ public abstract class Accessor {
         public abstract RuntimeException engineToInstrumentException(Throwable t);
     }
 
-    public abstract static class LanguageSupport {
+    public abstract static class LanguageSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.LanguageAccessor$LanguageImpl";
+
+        protected LanguageSupport() {
+            super(IMPL_CLASS_NAME);
+        }
 
         public abstract void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object polyglotLanguage, Object polyglotLanguageInstance);
 
@@ -590,7 +599,13 @@ public abstract class Accessor {
 
     }
 
-    public abstract static class InstrumentSupport {
+    public abstract static class InstrumentSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.instrumentation.InstrumentAccessor$InstrumentImpl";
+
+        protected InstrumentSupport() {
+            super(IMPL_CLASS_NAME);
+        }
 
         public abstract void initializeInstrument(Object instrumentationHandler, Object polyglotInstrument, String instrumentClassName, Supplier<? extends Object> instrumentSupplier);
 
@@ -664,14 +679,83 @@ public abstract class Accessor {
 
     }
 
-    public abstract static class FrameSupport {
-        protected abstract void markMaterializeCalled(FrameDescriptor descriptor);
+    public abstract static class FrameSupport extends Support {
 
-        protected abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.frame.FrameAccessor$FramesImpl";
+
+        protected FrameSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract void markMaterializeCalled(FrameDescriptor descriptor);
+
+        public abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
     }
 
-    public abstract static class IOSupport {
+    public abstract static class IOSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.io.IOAccessor$IOSupportImpl";
+
+        protected IOSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
         public abstract TruffleProcessBuilder createProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command);
+    }
+
+    public abstract static class RuntimeSupport {
+
+        static final Object PERMISSION = new Object();
+
+        protected RuntimeSupport(Object permission) {
+            if (permission != PERMISSION) {
+                throw new AssertionError("Invalid permission to create runtime support.");
+            }
+        }
+
+        public abstract IndirectCallNode createUncachedIndirectCall();
+
+        /**
+         * Reports the execution count of a loop.
+         *
+         * @param source the Node which invoked the loop.
+         * @param iterations the number iterations to report to the runtime system
+         */
+        public abstract void onLoopCount(Node source, int iterations);
+
+        /**
+         * Returns the compiler options specified available from the runtime.
+         */
+        public abstract OptionDescriptors getCompilerOptionDescriptors();
+
+        /**
+         * Returns <code>true</code> if the java stack frame is a representing a guest language
+         * call. Needs to return <code>true</code> only once per java stack frame per guest language
+         * call.
+         */
+        public abstract boolean isGuestCallStackFrame(@SuppressWarnings("unused") StackTraceElement e);
+
+        public abstract void initializeProfile(CallTarget target, Class<?>[] argumentTypes);
+
+        public abstract <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor);
+
+        public abstract void reloadEngineOptions(Object runtimeData, OptionValues optionValues);
+
+        public abstract void onEngineClosed(Object runtimeData);
+
+        public abstract OutputStream getConfiguredLogStream();
+
+        public abstract void reportPolymorphicSpecialize(Node source);
+
+        public abstract Object callInlined(Node callNode, CallTarget target, Object... arguments);
+
+        public abstract Object callProfiled(CallTarget target, Object... arguments);
+
+        public abstract Object[] castArrayFixedLength(Object[] args, int length);
+
+        @SuppressWarnings({"unchecked"})
+        public abstract <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact);
+
     }
 
     public static final class JDKSupport {
@@ -721,20 +805,20 @@ public abstract class Accessor {
         private static final Accessor.IOSupport IO;
         private static final Accessor.FrameSupport FRAMES;
         private static final Accessor.EngineSupport ENGINE;
-        private static final Accessor.JDKSupport JDKSERVICES;
+        private static final Accessor.RuntimeSupport RUNTIME;
 
         static {
             // Eager load all accessors so the above fields are all set and all methods are
             // usable
-            LANGUAGE = loadSupport("com.oracle.truffle.api.LanguageAccessor$LanguageImpl");
-            NODES = loadSupport("com.oracle.truffle.api.nodes.NodeAccessor$AccessNodes");
-            INSTRUMENT = loadSupport("com.oracle.truffle.api.instrumentation.InstrumentAccessor$InstrumentImpl");
-            SOURCE = loadSupport("com.oracle.truffle.api.source.SourceAccessor$SourceSupportImpl");
-            INTEROP = loadSupport("com.oracle.truffle.api.interop.InteropAccessor$InteropImpl");
-            IO = loadSupport("com.oracle.truffle.api.io.IOAccessor$IOSupportImpl");
-            FRAMES = loadSupport("com.oracle.truffle.api.frame.FrameAccessor$FramesImpl");
-            ENGINE = loadSupport("com.oracle.truffle.polyglot.EngineAccessor$EngineImpl");
-            JDKSERVICES = new JDKSupport();
+            LANGUAGE = loadSupport(LanguageSupport.IMPL_CLASS_NAME);
+            NODES = loadSupport(NodeSupport.IMPL_CLASS_NAME);
+            INSTRUMENT = loadSupport(InstrumentSupport.IMPL_CLASS_NAME);
+            SOURCE = loadSupport(SourceSupport.IMPL_CLASS_NAME);
+            INTEROP = loadSupport(InteropSupport.IMPL_CLASS_NAME);
+            IO = loadSupport(IOSupport.IMPL_CLASS_NAME);
+            FRAMES = loadSupport(FrameSupport.IMPL_CLASS_NAME);
+            ENGINE = loadSupport(EngineSupport.IMPL_CLASS_NAME);
+            RUNTIME = getTVMCI().createRuntimeSupport(RuntimeSupport.PERMISSION);
         }
 
         @SuppressWarnings("unchecked")
@@ -749,6 +833,8 @@ public abstract class Accessor {
             }
         }
     }
+
+    private static final Accessor.JDKSupport JDKSERVICES = new JDKSupport();
 
     protected Accessor() {
         switch (this.getClass().getName()) {
@@ -768,7 +854,8 @@ public abstract class Accessor {
             case "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor":
             case "com.oracle.truffle.api.test.polyglot.FileSystemsTest$TestAPIAccessor":
             case "com.oracle.truffle.api.impl.TVMCIAccessor":
-            case "org.graalvm.compiler.truffle.runtime.CompilerRuntimeAccessor":
+            case "com.oracle.truffle.api.impl.DefaultRuntimeAccessor":
+            case "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor":
             case "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor":
             case "com.oracle.truffle.api.library.LibraryAccessor":
                 // OK, classes allowed to use accessors
@@ -806,12 +893,16 @@ public abstract class Accessor {
         return Constants.FRAMES;
     }
 
+    public final RuntimeSupport runtimeSupport() {
+        return Constants.RUNTIME;
+    }
+
     public final IOSupport ioSupport() {
         return Constants.IO;
     }
 
     public final JDKSupport jdkSupport() {
-        return Constants.JDKSERVICES;
+        return JDKSERVICES;
     }
 
     /**
@@ -842,65 +933,6 @@ public abstract class Accessor {
             tvmci = result;
         }
         return result;
-    }
-
-    protected OptionDescriptors getCompilerOptions() {
-        TVMCI support = getTVMCI();
-        if (support == null) {
-            return OptionDescriptors.EMPTY;
-        }
-        return support.getCompilerOptionDescriptors();
-    }
-
-    public abstract static class CallInlined {
-
-        public abstract Object call(Node callNode, CallTarget target, Object... arguments);
-
-    }
-
-    public abstract static class CastUnsafe {
-
-        public abstract Object[] castArrayFixedLength(Object[] args, int length);
-
-        @SuppressWarnings({"unchecked"})
-        public abstract <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact);
-    }
-
-    protected CastUnsafe getCastUnsafe() {
-        return getTVMCI().getCastUnsafe();
-    }
-
-    protected CallInlined getCallInlined() {
-        return getTVMCI().getCallInlined();
-    }
-
-    public abstract static class CallProfiled {
-
-        public abstract Object call(CallTarget target, Object... arguments);
-
-    }
-
-    protected CallProfiled getCallProfiled() {
-        return getTVMCI().getCallProfiled();
-    }
-
-    protected boolean isGuestCallStackElement(StackTraceElement element) {
-        TVMCI support = getTVMCI();
-        if (support == null) {
-            return false;
-        }
-        return support.isGuestCallStackFrame(element);
-    }
-
-    protected void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
-        getTVMCI().initializeProfile(target, argumentTypes);
-    }
-
-    protected void onLoopCount(Node source, int iterations) {
-        TVMCI support = getTVMCI();
-        if (support != null) {
-            support.onLoopCount(source, iterations);
-        }
     }
 
 }

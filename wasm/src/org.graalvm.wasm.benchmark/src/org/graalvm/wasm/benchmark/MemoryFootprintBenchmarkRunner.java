@@ -112,7 +112,6 @@ public class MemoryFootprintBenchmarkRunner {
             assert benchmarkCase != null : String.format("Test case %s/%s not found.", BENCHCASES_RESOURCE, caseSpec);
 
             final Context.Builder contextBuilder = Context.newBuilder("wasm");
-            contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,memory");
 
             final List<Double> results = new ArrayList<>();
 

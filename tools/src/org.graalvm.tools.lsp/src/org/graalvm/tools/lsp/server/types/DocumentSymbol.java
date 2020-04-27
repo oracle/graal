@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,16 +36,15 @@ import java.util.Objects;
  * document. Document symbols can be hierarchical and they have two ranges: one that encloses its
  * definition and one that points to its most interesting range, e.g. the range of an identifier.
  */
-public class DocumentSymbol {
-
-    final JSONObject jsonData;
+public class DocumentSymbol extends JSONBase {
 
     DocumentSymbol(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
-     * The name of this symbol.
+     * The name of this symbol. Will be displayed in the user interface and therefore must not be an
+     * empty string or a string only consisting of white spaces.
      */
     public String getName() {
         return jsonData.getString("name");
@@ -185,18 +184,18 @@ public class DocumentSymbol {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 53 * hash + Objects.hashCode(this.getName());
+        hash = 29 * hash + Objects.hashCode(this.getName());
         if (this.getDetail() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getDetail());
+            hash = 29 * hash + Objects.hashCode(this.getDetail());
         }
-        hash = 53 * hash + Objects.hashCode(this.getKind());
+        hash = 29 * hash + Objects.hashCode(this.getKind());
         if (this.getDeprecated() != null) {
-            hash = 53 * hash + Boolean.hashCode(this.getDeprecated());
+            hash = 29 * hash + Boolean.hashCode(this.getDeprecated());
         }
-        hash = 53 * hash + Objects.hashCode(this.getRange());
-        hash = 53 * hash + Objects.hashCode(this.getSelectionRange());
+        hash = 29 * hash + Objects.hashCode(this.getRange());
+        hash = 29 * hash + Objects.hashCode(this.getSelectionRange());
         if (this.getChildren() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getChildren());
+            hash = 29 * hash + Objects.hashCode(this.getChildren());
         }
         return hash;
     }

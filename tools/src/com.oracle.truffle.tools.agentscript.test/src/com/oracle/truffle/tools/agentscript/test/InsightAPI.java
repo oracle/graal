@@ -170,7 +170,12 @@ public interface InsightAPI {
         public boolean expressions;
         public boolean statements;
         public boolean roots;
-        public Predicate<String> rootNameFilter;
+
+        /** String with a regular expression to match name of functions.
+         * Prior to version 0.6 this had to be a
+         * {@code Function<String,Boolean>}.
+         */
+        public String rootNameFilter;
         /* @since 0.4 */
         public Predicate<SourceInfo> sourceFilter;
     }

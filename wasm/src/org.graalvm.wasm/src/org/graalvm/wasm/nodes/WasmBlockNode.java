@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1404,9 +1404,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case I64_LE_S: {
                     stackPointer--;
-                    int x = popInt(frame, stackPointer);
+                    long x = pop(frame, stackPointer);
                     stackPointer--;
-                    int y = popInt(frame, stackPointer);
+                    long y = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, y <= x ? 1 : 0);
                     stackPointer++;
                     trace("0x%016X <= 0x%016X ? [i64]", y, x);

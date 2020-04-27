@@ -178,7 +178,7 @@ public abstract class LoopTransformations {
                 ControlSplitNode duplicatedControlSplit = duplicateLoop.getDuplicatedNode(controlSplitNode);
                 if (duplicatedControlSplit.isAlive()) {
                     AbstractBeginNode survivingSuccessor = (AbstractBeginNode) position.get(duplicatedControlSplit);
-                    survivingSuccessor.replaceAtUsages(InputType.Guard, newBegin);
+                    survivingSuccessor.replaceAtUsages(newBegin, InputType.Guard);
                     graph.removeSplitPropagate(duplicatedControlSplit, survivingSuccessor);
                 }
             }
@@ -187,7 +187,7 @@ public abstract class LoopTransformations {
         for (ControlSplitNode controlSplitNode : controlSplitNodeSet) {
             if (controlSplitNode.isAlive()) {
                 AbstractBeginNode survivingSuccessor = (AbstractBeginNode) firstPosition.get(controlSplitNode);
-                survivingSuccessor.replaceAtUsages(InputType.Guard, originalLoopBegin);
+                survivingSuccessor.replaceAtUsages(originalLoopBegin, InputType.Guard);
                 graph.removeSplitPropagate(controlSplitNode, survivingSuccessor);
             }
         }

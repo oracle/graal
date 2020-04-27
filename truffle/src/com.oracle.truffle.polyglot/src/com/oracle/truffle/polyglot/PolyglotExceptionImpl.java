@@ -564,7 +564,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         }
 
         static boolean isGuestCall(StackTraceElement element) {
-            return isLazyStackTraceElement(element) || EngineAccessor.ACCESSOR.isGuestCallStackElement(element);
+            return isLazyStackTraceElement(element) || EngineAccessor.RUNTIME.isGuestCallStackFrame(element);
         }
 
         static boolean isHostToGuest(StackTraceElement element) {
