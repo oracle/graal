@@ -643,6 +643,36 @@ public class GraphDecoder {
         assert node.getNodeClass() == methodScope.encodedGraph.getNodeClasses()[typeId];
         makeFixedNodeInputs(methodScope, loopScope, node);
         readProperties(methodScope, node);
+
+        if (node instanceof IntegerSwitchNode && ((IntegerSwitchNode) node).value().isConstant()) {
+            IntegerSwitchNode switchNode = (IntegerSwitchNode) node;
+            int value = switchNode.value().asJavaConstant().asInt();
+            int survivingIndex = switchNode.successorIndexAtKey(value);
+            AbstractBeginNode survivingSuccessor = null;
+            Edges edges = node.getNodeClass().getSuccessorEdges();
+
+            // TODO: encode the graph so that we can directly skip to survivingIndex.
+            for (int index = 0; index < edges.getDirectCount(); index++) {
+                readOrderId(methodScope);
+            }
+            for (int index = edges.getDirectCount(); index < edges.getCount(); index++) {
+                int size = methodScope.reader.getSVInt();
+                if (size != -1) {
+                    NodeList<Node> nodeList = new NodeSuccessorList<>(node, size);
+                    edges.initializeList(node, index, nodeList);
+                    for (int idx = 0; idx < size; idx++) {
+                        int orderId = readOrderId(methodScope);
+                        if (survivingIndex == idx) {
+                            survivingSuccessor = (AbstractBeginNode) makeStubNode(methodScope, loopScope, orderId);
+                        }
+                    }
+                }
+            }
+
+            graph.removeSplit(switchNode, survivingSuccessor);
+            return loopScope;
+        }
+
         makeSuccessorStubs(methodScope, successorAddScope, node, updatePredecessors);
 
         LoopScope resultScope = loopScope;
@@ -1452,7 +1482,8 @@ public class GraphDecoder {
                 edges.initializeList(node, index, nodeList);
                 for (int idx = 0; idx < size; idx++) {
                     int orderId = readOrderId(methodScope);
-                    Node value = makeStubNode(methodScope, loopScope, orderId);
+                    Node value = null;
+                    value = makeStubNode(methodScope, loopScope, orderId);
                     nodeList.initialize(idx, value);
                     if (updatePredecessors && value != null) {
                         edges.update(node, null, value);

@@ -224,20 +224,6 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         } else if (node instanceof ArrayLengthNode) {
             ArrayLengthNode arrayLengthNode = (ArrayLengthNode) node;
             return arrayLengthNode.canonical(canonicalizerTool);
-        } else if (node instanceof IntegerSwitchNode && ((IntegerSwitchNode) node).value().isConstant()) {
-            IntegerSwitchNode switchNode = (IntegerSwitchNode) node;
-            int value = switchNode.value().asJavaConstant().asInt();
-            AbstractBeginNode survivingSuccessor = switchNode.successorAtKey(value);
-            List<Node> allSuccessors = switchNode.successors().snapshot();
-
-            graph.removeSplit(switchNode, survivingSuccessor);
-            for (Node successor : allSuccessors) {
-                if (successor != survivingSuccessor) {
-                    assert ((AbstractBeginNode) successor).next() == null : "must not be parsed yet";
-                    successor.safeDelete();
-                }
-            }
-            return node;
         } else if (node instanceof Canonicalizable) {
             return ((Canonicalizable) node).canonical(canonicalizerTool);
         } else {
