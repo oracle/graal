@@ -155,6 +155,9 @@ final class Target_java_lang_ClassLoader {
     @Alias @RecomputeFieldValue(kind = Kind.Reset)//
     private Vector<Class<?>> classes;
 
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    private ConcurrentHashMap<String, Object> parallelLockMap;
+
     /**
      * Reset ClassLoader.packages; accessing packages via ClassLoader is currently not supported and
      * the SystemClassLoader may capture some hosted packages.

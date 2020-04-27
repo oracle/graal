@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.agent;
 
+import static com.oracle.svm.core.util.VMError.guarantee;
+import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
@@ -45,8 +47,6 @@ import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_PREPARE;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_NATIVE_METHOD_BIND;
-import static com.oracle.svm.core.util.VMError.guarantee;
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.nio.ByteBuffer;
@@ -78,6 +78,17 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
+import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
+import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
+import com.oracle.svm.configure.config.ConfigurationMethod;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.jni.nativeapi.JNIEnvironment;
+import com.oracle.svm.jni.nativeapi.JNIMethodId;
+import com.oracle.svm.jni.nativeapi.JNINativeMethod;
+import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jni.nativeapi.JNIValue;
 import com.oracle.svm.jvmtiagentbase.AgentIsolate;
 import com.oracle.svm.jvmtiagentbase.ConstantPoolTool;
 import com.oracle.svm.jvmtiagentbase.ConstantPoolTool.MethodReference;
@@ -90,17 +101,6 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
-import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
-import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
-import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
-import com.oracle.svm.configure.config.ConfigurationMethod;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
-import com.oracle.svm.jni.nativeapi.JNINativeMethod;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-import com.oracle.svm.jni.nativeapi.JNIValue;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -182,15 +182,11 @@ final class BreakpointInterceptor {
         boolean allowed = (accessVerifier == null || accessVerifier.verifyForName(jni, callerClass, className));
         Object result = false;
         if (allowed) {
-            boolean initializeValid = true;
             boolean classLoaderValid = true;
-            CIntPointer initializePtr = StackValue.get(CIntPointer.class);
             WordPointer classLoaderPtr = StackValue.get(WordPointer.class);
             if (bp.method == agent.handles().javaLangClassForName3) {
-                initializeValid = (jvmtiFunctions().GetLocalInt().invoke(jvmtiEnv(), nullHandle(), 0, 1, initializePtr) == JvmtiError.JVMTI_ERROR_NONE);
                 classLoaderValid = (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), nullHandle(), 0, 2, classLoaderPtr) == JvmtiError.JVMTI_ERROR_NONE);
             } else {
-                initializePtr.write(1);
                 classLoaderPtr.write(nullHandle());
                 if (callerClass.notEqual(nullHandle())) {
                     /*
@@ -202,8 +198,13 @@ final class BreakpointInterceptor {
                 }
             }
             result = TraceWriter.UNKNOWN_VALUE;
-            if (initializeValid && classLoaderValid) {
-                result = nullHandle().notEqual(Support.callStaticObjectMethodLIL(jni, bp.clazz, agent.handles().javaLangClassForName3, name, initializePtr.read(), classLoaderPtr.read()));
+            if (classLoaderValid) {
+                /*
+                 * Even if the original call requested class initialization, disable it because
+                 * recursion checks keep us from seeing events of interest during initialization.
+                 */
+                int initialize = 0;
+                result = nullHandle().notEqual(Support.callStaticObjectMethodLIL(jni, bp.clazz, agent.handles().javaLangClassForName3, name, initialize, classLoaderPtr.read()));
                 if (clearException(jni)) {
                     result = false;
                 }
