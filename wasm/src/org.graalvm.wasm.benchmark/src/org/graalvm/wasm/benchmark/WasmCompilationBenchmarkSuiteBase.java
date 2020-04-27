@@ -76,7 +76,7 @@ public abstract class WasmCompilationBenchmarkSuiteBase {
         @Setup(Level.Invocation)
         public void setupInvocation() {
             final Context.Builder contextBuilder = Context.newBuilder("wasm");
-            contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,memory");
+            contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,wasi_snapshot_preview1");
             context = contextBuilder.build();
         }
 

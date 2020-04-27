@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,7 @@ import java.io.IOException;
 import org.graalvm.wasm.test.WasmSuiteBase;
 import org.junit.Test;
 
-public class WasiSdkSuite extends WasmSuiteBase {
+public class WasiSuite extends WasmSuiteBase {
     @Override
     protected String testResource() {
         return "wasi";
@@ -53,7 +53,7 @@ public class WasiSdkSuite extends WasmSuiteBase {
 
     @Override
     protected String includedExternalModules() {
-        return super.includedExternalModules() + ",memory,wasi";
+        return super.includedExternalModules() + ",wasi_snapshot_preview1";
     }
 
     @Override

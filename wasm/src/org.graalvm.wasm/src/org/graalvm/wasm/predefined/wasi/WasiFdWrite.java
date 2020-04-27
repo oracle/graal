@@ -40,30 +40,75 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import java.util.function.Consumer;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmOptions;
-import org.graalvm.wasm.predefined.BuiltinModule;
-import org.graalvm.wasm.predefined.emscripten.UnimplementedNode;
+import org.graalvm.wasm.exception.WasmTrap;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.ValueTypes.I32_TYPE;
-import static org.graalvm.wasm.ValueTypes.I64_TYPE;
+import static org.graalvm.wasm.WasmTracing.trace;
 
-public class WasiModule extends BuiltinModule {
+public class WasiFdWrite extends WasmBuiltinRootNode {
+
+    public WasiFdWrite(WasmLanguage language, WasmModule module) {
+        super(language, module);
+    }
+
     @Override
-    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
-        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        WasmModule module = new WasmModule(name, null, storeConstantsPolicy);
-        importMemory(context, module, "main", "memory", 0, 0);
-        defineFunction(context, module, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, module));
-        defineFunction(context, module, "args_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsGetNode(language, module));
-        defineFunction(context, module, "clock_time_get", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new WasiClockTimeGet(language, module));
-        defineFunction(context, module, "proc_exit", types(I32_TYPE), types(), new WasiProcExitNode(language, module));
-        defineFunction(context, module, "fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWrite(language, module));
-        defineFunction(context, module, "fd_read", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_read", language, module));
-        defineFunction(context, module, "fd_close", types(I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_close", language, module));
-        defineFunction(context, module, "fd_seek", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_seek", language, module));
-        return module;
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+        Object[] args = frame.getArguments();
+        assert args.length == 4;
+        for (Object arg : args) {
+            trace("argument: %s", arg);
+        }
+
+        int stream = (int) args[0];
+        int iov = (int) args[1];
+        int iovcnt = (int) args[2];
+        int pnum = (int) args[3];
+
+        return fdWrite(stream, iov, iovcnt, pnum);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private Object fdWrite(int stream, int iov, int iovcnt, int pnum) {
+        Consumer<Character> charPrinter;
+        switch (stream) {
+            case 1:
+                charPrinter = System.out::print;
+                break;
+            case 2:
+                charPrinter = System.err::print;
+                break;
+            default:
+                throw new WasmTrap(this, "WasiFdWrite: invalid file stream");
+        }
+
+        trace("WasiFdWrite EXECUTE");
+
+        WasmMemory memory = module.symbolTable().memory();
+        int num = 0;
+        for (int i = 0; i < iovcnt; i++) {
+            int ptr = memory.load_i32(this, iov + (i * 8 + 0));
+            int len = memory.load_i32(this, iov + (i * 8 + 4));
+            for (int j = 0; j < len; j++) {
+                final char c = (char) memory.load_i32_8u(this, ptr + j);
+                charPrinter.accept(c);
+            }
+            num += len;
+            memory.store_i32(this, pnum, num);
+        }
+
+        return 0;
+    }
+
+    @Override
+    public String builtinNodeName() {
+        return "___wasi_fd_write";
     }
 }

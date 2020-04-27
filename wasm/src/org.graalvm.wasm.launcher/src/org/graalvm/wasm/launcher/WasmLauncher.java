@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package org.graalvm.wasm.launcher;
 import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
@@ -55,8 +56,9 @@ import java.util.Map;
 import java.util.Set;
 
 public class WasmLauncher extends AbstractLanguageLauncher {
-    private File file;
+    private File file = null;
     private VersionAction versionAction = VersionAction.None;
+    private String[] programArguments = null;
 
     public static void main(String[] args) {
         new WasmLauncher().launch(args);
@@ -66,6 +68,8 @@ public class WasmLauncher extends AbstractLanguageLauncher {
     protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
         final ListIterator<String> argIterator = arguments.listIterator();
         final ArrayList<String> unrecognizedArguments = new ArrayList<>();
+        final List<String> programArgumentsList = new ArrayList<>();
+
         while (argIterator.hasNext()) {
             final String argument = argIterator.next();
             if (argument.startsWith("-")) {
@@ -82,11 +86,17 @@ public class WasmLauncher extends AbstractLanguageLauncher {
                 }
             } else {
                 file = new File(argument);
-                if (argIterator.hasNext()) {
-                    throw abort("No options are allowed after the binary name.");
-                }
+                programArgumentsList.add(file.getAbsolutePath());
+                break;
             }
         }
+
+        // collect the program args:
+        while (argIterator.hasNext()) {
+            programArgumentsList.add(argIterator.next());
+        }
+        programArguments = programArgumentsList.toArray(new String[0]);
+
         return unrecognizedArguments;
     }
 
@@ -108,24 +118,24 @@ public class WasmLauncher extends AbstractLanguageLauncher {
     }
 
     private int execute(Context.Builder contextBuilder) {
+        contextBuilder.arguments(getLanguageId(), programArguments);
+
         try (Context context = contextBuilder.build()) {
             runVersionAction(versionAction, context.getEngine());
             context.eval(Source.newBuilder(getLanguageId(), file).build());
-            // Currently, the spec does not commit to a name for the entry points.
-            // We speculate on the possible exported name.
-            Value entryPoint = context.getBindings(getLanguageId()).getMember("main");
+
+            Value entryPoint = context.getBindings(getLanguageId()).getMember("_start");
             if (entryPoint == null) {
-                // Try the Emscripten naming convention.
-                entryPoint = context.getBindings(getLanguageId()).getMember("_main");
+                throw abort("No start function found, cannot start program.");
             }
-            if (entryPoint == null) {
-                // Try the wasi-sdk naming convention.
-                entryPoint = context.getBindings(getLanguageId()).getMember("_start");
+
+            entryPoint.execute();
+            return 0;
+        } catch (PolyglotException e) {
+            if (e.isExit()) {
+                return e.getExitStatus();
             }
-            if (entryPoint == null) {
-                throw abort("No entry-point function found, cannot start program.");
-            }
-            return entryPoint.execute().asInt();
+            throw e;
         } catch (IOException e) {
             throw abort(String.format("Error loading file '%s': %s", file, e.getMessage()));
         }
