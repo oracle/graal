@@ -407,7 +407,7 @@ public abstract class RootNode extends ExecutableNode {
         return new Constant(constant);
     }
 
-    final Lock getLazyLock() {
+    final ReentrantLock getLazyLock() {
         ReentrantLock l = this.lock;
         if (l == null) {
             l = initializeLock();
