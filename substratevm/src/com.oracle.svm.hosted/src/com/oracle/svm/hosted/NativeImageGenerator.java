@@ -86,6 +86,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
+import com.oracle.svm.hosted.phases.RemoveRedundantClassInitPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeoptimizationGroupingPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
@@ -1293,6 +1294,11 @@ public class NativeImageGenerator {
         ListIterator<BasePhase<? super LowTierContext>> pos = lowTier.findPhase(LoweringPhase.class);
         pos.next();
         pos.add(new StackValuePhase());
+
+        if (hosted) {
+            position = highTier.findPhase(DeadStoreRemovalPhase.class);
+            position.add(new RemoveRedundantClassInitPhase(runtimeCallProviders.getMetaAccess()));
+        }
 
         lowTier.addBeforeLast(new OptimizeExceptionCallsPhase());
 
