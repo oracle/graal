@@ -19,7 +19,7 @@ let initializeTracer = function (tracer) {
         console.log(`agent: handling #${res.id} request for ${req.url}`);
     }, {
         roots: true,
-        rootNameFilter: name => name === 'emit',
+        rootNameFilter: 'emit',
         sourceFilter: src => src.name === 'events.js'
     });
 
