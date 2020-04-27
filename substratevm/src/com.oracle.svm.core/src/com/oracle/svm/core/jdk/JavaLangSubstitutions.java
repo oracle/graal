@@ -35,6 +35,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.lang.annotation.Annotation;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -814,6 +815,54 @@ final class Target_java_lang_Package {
         } else {
             return null;
         }
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        Annotation[] annotations = getAnnotations();
+        if (annotations == null || annotations.length == 0) {
+            return null;
+        }
+
+        for (Annotation a : annotations) {
+            if (annotationClass.isAssignableFrom(a.getClass())) {
+                return (T) a;
+            }
+        }
+        return null;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    public Annotation[] getAnnotations() {
+        Package pkg = SubstrateUtil.cast(this, Package.class);
+        Packages.PackagesSupport packagesSupport = ImageSingletons.lookup(Packages.PackagesSupport.class);
+        return packagesSupport.getAnnotations(pkg);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    public <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
+        Annotation[] annotations = getDeclaredAnnotations();
+        if (annotations == null || annotations.length == 0) {
+            return null;
+        }
+
+        for (Annotation a : annotations) {
+            if (annotationClass.isAssignableFrom(a.getClass())) {
+                return (T) a;
+            }
+        }
+        return null;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    public Annotation[] getDeclaredAnnotations()  {
+        Package pkg = SubstrateUtil.cast(this, Package.class);
+        Packages.PackagesSupport packagesSupport = ImageSingletons.lookup(Packages.PackagesSupport.class);
+        return packagesSupport.getDeclaredAnnotations(pkg);
     }
 }
 
