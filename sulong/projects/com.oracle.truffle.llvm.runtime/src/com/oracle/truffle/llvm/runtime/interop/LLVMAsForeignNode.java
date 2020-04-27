@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @GenerateUncached
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeField(name = "allowNonForeign", type = boolean.class)
+// TODO: Remove and replace with LLVMAsForeignLibrary
 public abstract class LLVMAsForeignNode extends LLVMNode {
     public abstract Object execute(VirtualFrame frame);
 
