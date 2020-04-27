@@ -40,7 +40,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
-    private final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke;
+    private final EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = EconomicMap.create();
     private final List<Invoke> indirectInvokes = new ArrayList<>();
     private final TruffleMetaAccessProvider truffleMetaAccessProvider;
     private final PartialEvaluator partialEvaluator;
@@ -50,7 +50,6 @@ public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
     public PEAgnosticInlineInvokePlugin(TruffleMetaAccessProvider truffleMetaAccessProvider, PartialEvaluator partialEvaluator) {
         this.truffleMetaAccessProvider = truffleMetaAccessProvider;
         this.partialEvaluator = partialEvaluator;
-        this.truffleCallNodeToInvoke = EconomicMap.create();
     }
 
     @Override
@@ -80,13 +79,13 @@ public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
                 return;
             }
             TruffleCallNode truffleCallNode = truffleMetaAccessProvider.findCallNode(lastDirectCallNode);
-            truffleCallNodeToInvoke.put(truffleCallNode, invoke);
+            invokeToTruffleCallNode.put(invoke, truffleCallNode);
             lastDirectCallNode = null;
         }
     }
 
-    public EconomicMap<TruffleCallNode, Invoke> getTruffleCallNodeToInvoke() {
-        return truffleCallNodeToInvoke;
+    public EconomicMap<Invoke, TruffleCallNode> getInvokeToTruffleCallNode() {
+        return invokeToTruffleCallNode;
     }
 
     public List<Invoke> getIndirectInvokes() {
