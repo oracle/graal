@@ -126,7 +126,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             try {
                 super.maybeEagerlyResolve(cpi, bytecode);
             } catch (UnresolvedElementException e) {
-                if (e.getCause() instanceof NoClassDefFoundError) {
+                if (e.getCause() instanceof NoClassDefFoundError || e.getCause() instanceof IllegalAccessError) {
                     /*
                      * Ignore NoClassDefFoundError if thrown from eager resolution attempt. This is
                      * usually followed by a call to ConstantPool.lookupType() which should return
