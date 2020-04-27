@@ -20,7 +20,7 @@ env:
   global:
     - JVMCI_VERSION="jvmci-20.1-b02"
     - JDK8_UPDATE_VERSION="252"
-    - JDK8_UPDATE_VERSION_SUFFIX=""
+    - JDK8_UPDATE_VERSION_SUFFIX="+09"
 
 matrix:
   include:
