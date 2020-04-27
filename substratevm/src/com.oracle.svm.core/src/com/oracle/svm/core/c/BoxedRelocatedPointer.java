@@ -41,9 +41,4 @@ public final class BoxedRelocatedPointer {
     public RelocatedPointer getPointer() {
         return pointer;
     }
-
-    @Override
-    public String toString() {
-        return String.valueOf(pointer.rawValue());
-    }
 }

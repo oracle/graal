@@ -35,6 +35,7 @@ import java.util.function.Function;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.debug.MetricKey;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
@@ -146,6 +147,10 @@ public class GraalObjectReplacer implements Function<Object, Object> {
             dest = providerReplacements.getForeignCallsProvider();
         } else if (source instanceof SnippetReflectionProvider) {
             dest = providerReplacements.getSnippetReflectionProvider();
+
+        } else if (source instanceof MetricKey) {
+            /* Ensure lazily initialized name fields are computed. */
+            ((MetricKey) source).getName();
 
         } else if (shouldBeReplaced(source)) {
             /*
