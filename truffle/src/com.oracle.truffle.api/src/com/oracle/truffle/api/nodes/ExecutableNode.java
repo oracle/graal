@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import static com.oracle.truffle.api.nodes.NodeAccessor.ENGINE;
+import static com.oracle.truffle.api.nodes.NodeAccessor.LANGUAGE;
+
 import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -50,7 +53,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 
 /**
  * Represents an executable node in a Truffle AST. The executable node represents an AST fragment
@@ -61,13 +63,11 @@ import com.oracle.truffle.api.impl.Accessor.EngineSupport;
  * @since 0.31
  */
 public abstract class ExecutableNode extends Node {
+
     /*
-     * Since languages were singletons in the past, we cannot use the Env instance stored in
-     * TruffleLanguage for languages that are not yet migrated. We use this polyglotEngine reference
-     * instead for compatibility.
+     * Either instance of TruffleLanguage, PolyglotEngineImpl or null.
      */
-    @CompilationFinal Object polyglotEngine;
-    final TruffleLanguage<?> language;
+    @CompilationFinal private Object engineRef;
     @CompilationFinal ReferenceCache referenceCache;
 
     /**
@@ -79,23 +79,41 @@ public abstract class ExecutableNode extends Node {
      */
     protected ExecutableNode(TruffleLanguage<?> language) {
         CompilerAsserts.neverPartOfCompilation();
-        this.language = language;
-        if (this.language != null) {
-            this.polyglotEngine = NodeAccessor.ACCESSOR.engineSupport().getPolyglotEngine(NodeAccessor.ACCESSOR.languageSupport().getPolyglotLanguageInstance(this.language));
+        if (language != null) {
+            this.engineRef = language;
         } else {
-            this.polyglotEngine = getCurrentPolyglotEngine();
+            this.engineRef = ENGINE.getCurrentPolyglotEngine();
         }
-        if (language != null && getLanguageInfo() == null) {
-            throw new IllegalArgumentException("Truffle language instance is not initialized.");
+        /*
+         * This can no longer happen for normal languages. It could only happen for language
+         * instances that were created directly without service provider. This case is rare enough,
+         * to not be worth a check for every root node.
+         */
+        assert language == null || getLanguageInfo() != null : "Truffle language instance is not initialized.";
+    }
+
+    final TruffleLanguage<?> getLanguage() {
+        if (engineRef instanceof TruffleLanguage<?>) {
+            return (TruffleLanguage<?>) engineRef;
+        } else {
+            return null;
         }
     }
 
-    private static Object getCurrentPolyglotEngine() {
-        EngineSupport engine = NodeAccessor.ACCESSOR.engineSupport();
-        if (engine != null) {
-            return engine.getCurrentPolyglotEngine();
+    final void applyEngineRef(ExecutableNode node) {
+        this.engineRef = node.engineRef;
+    }
+
+    final void clearEngineRef() {
+        this.engineRef = null;
+    }
+
+    final Object getEngine() {
+        Object ref = engineRef;
+        if (ref instanceof TruffleLanguage<?>) {
+            return ENGINE.getPolyglotEngine(LANGUAGE.getPolyglotLanguageInstance((TruffleLanguage<?>) ref));
         } else {
-            return null;
+            return ref;
         }
     }
 
@@ -117,8 +135,9 @@ public abstract class ExecutableNode extends Node {
      * @since 0.31
      */
     public final LanguageInfo getLanguageInfo() {
+        TruffleLanguage<?> language = getLanguage();
         if (language != null) {
-            return NodeAccessor.ACCESSOR.languageSupport().getLanguageInfo(language);
+            return LANGUAGE.getLanguageInfo(language);
         } else {
             return null;
         }
@@ -138,17 +157,17 @@ public abstract class ExecutableNode extends Node {
     @Deprecated
     @SuppressWarnings({"rawtypes", "unchecked"})
     public final <C extends TruffleLanguage> C getLanguage(Class<C> languageClass) {
+        TruffleLanguage<?> language = getLanguage();
         if (language == null) {
             return null;
         }
-        TruffleLanguage<?> spi = this.language;
-        if (spi.getClass() != languageClass) {
-            if (!languageClass.isInstance(spi) || languageClass == TruffleLanguage.class || !TruffleLanguage.class.isAssignableFrom(languageClass)) {
+        if (language.getClass() != languageClass) {
+            if (!languageClass.isInstance(language) || languageClass == TruffleLanguage.class || !TruffleLanguage.class.isAssignableFrom(languageClass)) {
                 CompilerDirectives.transferToInterpreter();
-                throw new ClassCastException("Illegal language class specified. Expected " + spi.getClass().getName() + ".");
+                throw new ClassCastException("Illegal language class specified. Expected " + language.getClass().getName() + ".");
             }
         }
-        return (C) spi;
+        return (C) language;
     }
 
     static final class ReferenceCache {
@@ -162,10 +181,10 @@ public abstract class ExecutableNode extends Node {
         ReferenceCache(ExecutableNode executableNode, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass, ReferenceCache next) {
             this.languageClass = languageClass;
             if (languageClass != null) {
-                this.languageReference = NodeAccessor.ACCESSOR.engineSupport().lookupLanguageReference(executableNode.polyglotEngine,
-                                executableNode.language, languageClass);
-                this.contextReference = NodeAccessor.ACCESSOR.engineSupport().lookupContextReference(executableNode.polyglotEngine,
-                                executableNode.language, languageClass);
+                Object engine = executableNode.getEngine();
+                TruffleLanguage<?> language = executableNode.getLanguage();
+                this.languageReference = ENGINE.lookupLanguageReference(engine, language, languageClass);
+                this.contextReference = ENGINE.lookupContextReference(engine, language, languageClass);
             } else {
                 this.languageReference = null;
                 this.contextReference = null;
@@ -205,7 +224,7 @@ public abstract class ExecutableNode extends Node {
             if (current == null) {
                 this.referenceCache = new ReferenceCache(this, languageClass, null);
             } else {
-                if (polyglotEngine == null) {
+                if (getEngine() == null) {
                     this.referenceCache = GENERIC;
                 } else {
                     int count = 0;

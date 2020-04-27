@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,18 +26,20 @@ package org.graalvm.compiler.truffle.runtime;
 
 import com.oracle.truffle.api.impl.Accessor;
 
-final class CompilerRuntimeAccessor extends Accessor {
+final class GraalRuntimeAccessor extends Accessor {
 
-    private static final CompilerRuntimeAccessor ACCESSOR = new CompilerRuntimeAccessor();
+    private static final GraalRuntimeAccessor ACCESSOR = new GraalRuntimeAccessor();
 
-    private CompilerRuntimeAccessor() {
+    static final NodeSupport NODES = ACCESSOR.nodeSupport();
+    static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
+    static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
+    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
+    static final JDKSupport JDK = ACCESSOR.jdkSupport();
+    static final EngineSupport ENGINE = ACCESSOR.engineSupport();
+    static final InteropSupport INTEROP = ACCESSOR.interopSupport();
+    static final FrameSupport FRAME = ACCESSOR.framesSupport();
+
+    private GraalRuntimeAccessor() {
     }
 
-    static JDKSupport jdkServicesAccessor() {
-        return ACCESSOR.jdkSupport();
-    }
-
-    static EngineSupport engineAccessor() {
-        return ACCESSOR.engineSupport();
-    }
 }

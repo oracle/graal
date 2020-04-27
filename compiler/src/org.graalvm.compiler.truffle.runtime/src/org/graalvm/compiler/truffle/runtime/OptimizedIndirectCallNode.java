@@ -58,7 +58,7 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
                 exceptionProfile = ValueProfile.createClassProfile();
             }
             Throwable profiledT = exceptionProfile.profile(t);
-            OptimizedCallTarget.runtime().getTvmci().onThrowable(this, null, profiledT, null);
+            GraalRuntimeAccessor.LANGUAGE.onThrowable(this, null, profiledT, null);
             throw OptimizedCallTarget.rethrow(profiledT);
         }
     }
