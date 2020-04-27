@@ -1469,6 +1469,20 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        if (JavaVersionUtil.JAVA_SPEC >= 9) {
+            r.register1("isCompileConstant", Object.class, new InvocationPlugin() {
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode obj) {
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(obj.isConstant()));
+                    return true;
+                }
+            });
+        }
     }
 
     /**
