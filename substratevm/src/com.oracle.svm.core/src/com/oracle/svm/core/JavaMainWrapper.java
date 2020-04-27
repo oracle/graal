@@ -51,9 +51,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -135,10 +133,6 @@ public class JavaMainWrapper {
         int exitCode;
         try {
             if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
-                if (SubstrateOptions.InstallExitHandlers.getValue()) {
-                    Target_java_lang_Terminator.setup();
-                }
-
                 /*
                  * When options are not parsed yet, it is also too early to run the startup hooks
                  * because they often depend on option values. The user is expected to manually run
@@ -292,10 +286,4 @@ public class JavaMainWrapper {
         @RawField
         void setArgv(CCharPointerPointer value);
     }
-}
-
-@TargetClass(className = "java.lang.Terminator")
-final class Target_java_lang_Terminator {
-    @Alias
-    static native void setup();
 }
