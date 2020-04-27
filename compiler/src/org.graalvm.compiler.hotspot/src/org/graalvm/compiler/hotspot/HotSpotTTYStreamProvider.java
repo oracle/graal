@@ -30,7 +30,6 @@ import static org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider.Locker.UNLOC
 import static org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider.Locker.UNLOCKED_AFTER_LOCKED;
 import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -185,7 +184,8 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
      */
     static class ProcessSynchronizedOutputStream extends OutputStream {
         private final Pointer lock;
-        private final File file;
+        private final String name;
+        private FileOutputStream out;
         private final Random rand;
 
         /**
@@ -194,26 +194,41 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
          */
         public ProcessSynchronizedOutputStream(Pointer lock, String name) {
             this.lock = lock;
-            this.file = new File(name);
+            this.name = name;
             this.rand = new Random();
+        }
+
+        private FileOutputStream out() throws FileNotFoundException {
+            if (out == null) {
+                out = new FileOutputStream(name, true);
+            }
+            return out;
         }
 
         @SuppressWarnings("try")
         @Override
         public void write(byte[] b, int off, int len) throws IOException {
-            try (Locker l = new Locker(lock, rand);
-                            FileOutputStream out = new FileOutputStream(file, file.length() > 0)) {
-                out.write(b, off, len);
+            try (Locker l = new Locker(lock, rand)) {
+                out().write(b, off, len);
             }
         }
 
         @SuppressWarnings("try")
         @Override
         public void write(int b) throws IOException {
-            try (Locker l = new Locker(lock, rand);
-                            FileOutputStream out = new FileOutputStream(file, file.length() > 0)) {
-                out.write(b);
+            try (Locker l = new Locker(lock, rand)) {
+                out().write(b);
             }
+        }
+
+        @Override
+        public void flush() throws IOException {
+            out().flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            out().close();
         }
     }
 
