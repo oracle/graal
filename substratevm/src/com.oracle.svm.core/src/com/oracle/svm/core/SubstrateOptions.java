@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.None;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 import static org.graalvm.compiler.options.OptionType.User;
@@ -51,8 +52,6 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
-
-import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 
 public class SubstrateOptions {
 
@@ -424,6 +423,10 @@ public class SubstrateOptions {
     @APIOption(name = "native-image-info")//
     @Option(help = "Show native-toolchain information and image-build settings", type = User)//
     public static final HostedOptionKey<Boolean> DumpTargetInfo = new HostedOptionKey<>(false);
+
+    @APIOption(name = "install-exit-handlers")//
+    @Option(help = "Provide java.lang.Terminator exit handlers for executable images", type = User)//
+    public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
 
     @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.Expert)//
     public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);

@@ -51,12 +51,16 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologue;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -133,6 +137,10 @@ public class JavaMainWrapper {
         int exitCode;
         try {
             if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
+                if (SubstrateOptions.InstallExitHandlers.getValue()) {
+                    Target_java_lang_Terminator.setup();
+                }
+
                 /*
                  * When options are not parsed yet, it is also too early to run the startup hooks
                  * because they often depend on option values. The user is expected to manually run
@@ -286,4 +294,17 @@ public class JavaMainWrapper {
         @RawField
         void setArgv(CCharPointerPointer value);
     }
+}
+
+@TargetClass(className = "java.lang.Terminator")
+final class Target_java_lang_Terminator {
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static Target_jdk_internal_misc_Signal_Handler handler;
+
+    @Alias
+    static native void setup();
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Signal$Handler")
+final class Target_jdk_internal_misc_Signal_Handler {
 }
