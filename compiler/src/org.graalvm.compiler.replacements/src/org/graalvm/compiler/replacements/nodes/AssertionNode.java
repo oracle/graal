@@ -35,6 +35,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -52,22 +53,35 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
 
     public static final NodeClass<AssertionNode> TYPE = NodeClass.create(AssertionNode.class);
     @Input ValueNode condition;
+    @Input ValueNode l1;
+    @Input ValueNode l2;
 
     protected final boolean compileTimeAssertion;
     protected final String message;
 
-    public AssertionNode(boolean compileTimeAssertion, ValueNode condition, String message, Object arg1, Object arg2) {
+    public AssertionNode(boolean compileTimeAssertion, ValueNode condition, String message, ValueNode l1, ValueNode l2) {
         super(TYPE, StampFactory.forVoid());
         this.condition = condition;
         this.compileTimeAssertion = compileTimeAssertion;
-        this.message = message + arg1 + arg2;
+        this.message = message;
+        this.l1 = l1;
+        this.l2 = l2;
+    }
+
+    public AssertionNode(boolean compileTimeAssertion, ValueNode condition, String message, Object arg1, Object arg2) {
+        this(compileTimeAssertion, condition, message + arg1 + arg2, ConstantNode.forLong(0), ConstantNode.forLong(0));
     }
 
     public AssertionNode(boolean compileTimeAssertion, ValueNode condition, String message, long arg1, long arg2) {
-        super(TYPE, StampFactory.forVoid());
-        this.condition = condition;
-        this.compileTimeAssertion = compileTimeAssertion;
-        this.message = message + arg1 + arg2;
+        this(compileTimeAssertion, condition, message + arg1 + arg2, ConstantNode.forLong(arg1), ConstantNode.forLong(arg2));
+    }
+
+    public ValueNode getL1() {
+        return l1;
+    }
+
+    public ValueNode getL2() {
+        return l2;
     }
 
     public ValueNode condition() {
@@ -119,12 +133,11 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
     }
 
     @NodeIntrinsic
-    public static native void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean condition, @ConstantNodeParameter String message, @ConstantNodeParameter Object arg1,
-                    @ConstantNodeParameter Object arg2);
+    public static native void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean condition, @ConstantNodeParameter String message, long arg1, long arg2);
 
     @NodeIntrinsic
-    public static native void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean condition, @ConstantNodeParameter String message, @ConstantNodeParameter long arg1,
-                    @ConstantNodeParameter long arg2);
+    public static native void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean condition, @ConstantNodeParameter String message, @ConstantNodeParameter Object arg1,
+                    @ConstantNodeParameter Object arg2);
 
     public static void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean condition, @ConstantNodeParameter String message) {
         assertion(compileTimeAssertion, condition, message, "", "");
