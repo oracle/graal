@@ -480,23 +480,23 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             pos = writeCopyOp(context, buffer, pos);
 
             /*
-             * On AArch64 gdb expects to see a line record at the start of the method
-             * and a second one at the end of the prologue marking the point where the
-             * method code begins for real. If we don't provide it then gdb will skip
-             * to the second line record when we place a breakpoint on the method.
+             * On AArch64 gdb expects to see a line record at the start of the method and a second
+             * one at the end of the prologue marking the point where the method code begins for
+             * real. If we don't provide it then gdb will skip to the second line record when we
+             * place a breakpoint on the method.
              *
-             * We can identify the end of the prologue for normal methods by noting
-             * where the stack frame height is first adjusted. This should normally
-             * be no more a few instructions in total.
+             * We can identify the end of the prologue for normal methods by noting where the stack
+             * frame height is first adjusted. This should normally be no more a few instructions in
+             * total.
              */
             if (isAArch64() && !primaryEntry.getFrameSizeInfos().isEmpty()) {
                 DebugFrameSizeChange frameSizeChange = primaryEntry.getFrameSizeInfos().get(0);
-                assert frameSizeChange.getType() ==  DebugFrameSizeChange.Type.EXTEND;
+                assert frameSizeChange.getType() == DebugFrameSizeChange.Type.EXTEND;
                 long addressDelta = frameSizeChange.getOffset();
                 if (addressDelta < 16 && (primaryRange.getLo() + addressDelta) < primaryRange.getHi()) {
                     /*
-                     * we should be able to write this with a special opcode as the prologue
-                     * should only be a few instructions
+                     * we should be able to write this with a special opcode as the prologue should
+                     * only be a few instructions
                      */
                     byte opcode = isSpecialOpcode(addressDelta, 0);
                     assert opcode != DW_LNS_undefined;
