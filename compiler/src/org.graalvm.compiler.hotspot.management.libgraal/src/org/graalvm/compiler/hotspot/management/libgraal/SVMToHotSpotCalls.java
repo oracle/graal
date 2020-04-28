@@ -24,11 +24,13 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
-import static org.graalvm.word.WordFactory.nullPointer;
 import static org.graalvm.libgraal.jni.JNIUtil.GetMethodID;
 import static org.graalvm.libgraal.jni.JNIUtil.GetStaticFieldID;
 import static org.graalvm.libgraal.jni.JNIUtil.GetStaticMethodID;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
+import static org.graalvm.word.WordFactory.nullPointer;
+
+import java.util.Random;
 
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
@@ -205,10 +207,22 @@ final class SVMToHotSpotCalls {
         JNI.JFieldID nativesRegisteredId = findStaticField(env, hsToSvmCalls, FIELD_NATIVES_REGISTERED);
         JNI.GetStaticBooleanField access = env.getFunctions().getGetStaticBooleanField();
         boolean res;
+
+        int sleepLimit = 5;
+        Random rand = new Random();
         do {
             res = access.call(env, hsToSvmCalls, nativesRegisteredId);
             if (JNIUtil.ExceptionCheck(env)) {
                 return false;
+            }
+            try {
+                // Randomize sleep time to mitigate waiting threads
+                // performing in lock-step with each other.
+                int sleep = rand.nextInt(sleepLimit);
+                Thread.sleep(sleep);
+                // Exponential back-off up to MAX_SLEEP ms
+                sleepLimit = Math.min(2000, sleepLimit * 2);
+            } catch (InterruptedException e) {
             }
         } while (!res);
         return true;

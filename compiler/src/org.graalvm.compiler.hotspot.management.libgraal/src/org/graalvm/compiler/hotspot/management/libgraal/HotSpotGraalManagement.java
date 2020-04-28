@@ -25,16 +25,17 @@
 package org.graalvm.compiler.hotspot.management.libgraal;
 
 import java.util.function.Supplier;
+
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
+
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-
 import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
-import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 
 /**
  * Dynamically registers a {@link HotSpotGraalRuntimeMBean}s created in SVM heap into
@@ -66,7 +67,11 @@ public final class HotSpotGraalManagement extends MBeanProxy<HotSpotGraalRuntime
                 throw new IllegalArgumentException("Cannot initialize a second management object for runtime " + runtime.getName());
             }
             try {
-                String beanName = String.format("org.graalvm.compiler.hotspot:type=%s_%x", runtime.getName().replace(':', '_'), CurrentIsolate.getIsolate().rawValue());
+                String beanName = "org.graalvm.compiler.hotspot:type=%s" + runtime.getName().replace(':', '_');
+                long id = IsolateUtil.getIsolateID();
+                if (id != 0L) {
+                    beanName += '@' + id;
+                }
                 ObjectName objectName = new ObjectName(beanName);
                 mbean = new HotSpotGraalRuntimeMBean(objectName, runtime);
                 initialize(mbean, beanName, objectName);

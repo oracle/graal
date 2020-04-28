@@ -304,16 +304,16 @@ class MBeanProxy<T extends DynamicMBean> {
                 hsToSvmCalls = findClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, true);
                 waitForRegisterNatives(env, hsToSvmCalls);
             }
-            JNI.JClass svmHsEntryPoints = defineOrFindClassInHotSpot(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME, SVM_HS_ENTRYPOINTS_CLASS);
-            defineOrFindClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS);
-            defineOrFindClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS);
-            defineOrFindClassInHotSpot(env, classLoader, HS_ISOLATE_THREAD_SCOPE_CLASS_NAME, HS_ISOLATE_THREAD_SCOPE_CLASS);
-            defineOrFindClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull();
+            JNI.JClass svmHsEntryPoints = findOrDefineClassInHotSpot(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME, SVM_HS_ENTRYPOINTS_CLASS);
+            findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS);
+            findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS);
+            findOrDefineClassInHotSpot(env, classLoader, HS_ISOLATE_THREAD_SCOPE_CLASS_NAME, HS_ISOLATE_THREAD_SCOPE_CLASS);
+            findOrDefineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull();
             svmToHotSpotEntryPoints = JNIUtil.NewGlobalRef(env, svmHsEntryPoints, "Class<" + SVM_HS_ENTRYPOINTS_CLASS_NAME + ">");
         }
     }
 
-    private static JNI.JClass defineOrFindClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String clazzName, byte[] clazz) {
+    private static JNI.JClass findOrDefineClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String clazzName, byte[] clazz) {
         JNI.JClass res = findClassInHotSpot(env, classLoader, clazzName, false);
         if (res.isNonNull()) {
             return res;
@@ -393,7 +393,8 @@ class MBeanProxy<T extends DynamicMBean> {
      * @param classLoader the class loader to define class in.
      * @param clazzName the class name
      * @param clazz the class byte code
-     * @return the defined class
+     * @return the defined class or {@code null} if the class was already defined
+     * @throw {@link InternalError} if something else goes wrong when trying to define the class
      */
     private static JNI.JClass defineClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String clazzName, byte[] clazz) {
         CCharPointer classData = UnmanagedMemory.malloc(clazz.length);
@@ -442,7 +443,7 @@ class MBeanProxy<T extends DynamicMBean> {
     }
 
     /**
-     * Notifies the factory thread in HotSpot heap about new management bean instances to register.
+     * Notifies the factory thread in HotSpot heap of new management bean instances to register.
      */
     @SuppressWarnings("try")
     private static void signalRegistrationRequest() {
@@ -501,7 +502,7 @@ class MBeanProxy<T extends DynamicMBean> {
         ACTIVE,
 
         /**
-         * Closed, new MBean registrations are no more accepted.
+         * Closed, new MBean registrations are no longer accepted.
          */
         CLOSED
     }
