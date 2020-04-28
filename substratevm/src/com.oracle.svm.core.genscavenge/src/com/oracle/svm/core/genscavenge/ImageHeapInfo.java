@@ -35,7 +35,7 @@ import com.oracle.svm.core.annotate.UnknownObjectField;
  * Information on the multiple partitions that make up the image heap, which don't necessarily form
  * a contiguous block of memory (there can be holes in between), and their boundaries.
  */
-public class ImageHeapInfo {
+public final class ImageHeapInfo {
     @UnknownObjectField(types = Object.class) public Object firstReadOnlyPrimitiveObject;
     @UnknownObjectField(types = Object.class) public Object lastReadOnlyPrimitiveObject;
 

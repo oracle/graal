@@ -32,8 +32,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 
 /** A Generation is a collection of one or more Spaces. */
-public abstract class Generation {
-
+abstract class Generation {
     private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)

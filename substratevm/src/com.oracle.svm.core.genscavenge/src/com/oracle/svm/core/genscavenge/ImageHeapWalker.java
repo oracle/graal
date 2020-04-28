@@ -95,7 +95,7 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
     private final boolean isWritable;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected MemoryWalkerAccessBase(String regionName, boolean containsReferences, boolean isWritable) {
+    MemoryWalkerAccessBase(String regionName, boolean containsReferences, boolean isWritable) {
         this.regionName = regionName;
         this.containsReferences = containsReferences;
         this.isWritable = isWritable;
@@ -135,7 +135,7 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
 
 final class ReadOnlyPrimitiveMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected ReadOnlyPrimitiveMemoryWalkerAccess() {
+    ReadOnlyPrimitiveMemoryWalkerAccess() {
         super("read-only primitives", false, false);
     }
 
@@ -152,7 +152,7 @@ final class ReadOnlyPrimitiveMemoryWalkerAccess extends MemoryWalkerAccessBase {
 
 final class ReadOnlyReferenceMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected ReadOnlyReferenceMemoryWalkerAccess() {
+    ReadOnlyReferenceMemoryWalkerAccess() {
         super("read-only references", true, false);
     }
 
@@ -169,7 +169,7 @@ final class ReadOnlyReferenceMemoryWalkerAccess extends MemoryWalkerAccessBase {
 
 final class WritablePrimitiveMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected WritablePrimitiveMemoryWalkerAccess() {
+    WritablePrimitiveMemoryWalkerAccess() {
         super("writable primitives", false, true);
     }
 
@@ -186,7 +186,7 @@ final class WritablePrimitiveMemoryWalkerAccess extends MemoryWalkerAccessBase {
 
 final class WritableReferenceMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected WritableReferenceMemoryWalkerAccess() {
+    WritableReferenceMemoryWalkerAccess() {
         super("writable references", true, true);
     }
 

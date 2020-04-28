@@ -58,7 +58,7 @@ import com.oracle.svm.core.util.VMError;
  * heap objects, it is necessary to call {@link Heap#isInImageHeap}. Usually, image heap objects
  * must be treated specially anyways as they neither have a {@link HeapChunk} nor a {@link Space}.
  */
-public class ObjectHeaderImpl extends ObjectHeader {
+public final class ObjectHeaderImpl extends ObjectHeader {
     // @formatter:off
     //                                Name                            Value                         // In hex:
     private static final UnsignedWord UNALIGNED_BIT                 = WordFactory.unsigned(0b001);  // 0 or 8.
@@ -281,7 +281,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return header.and(UNALIGNED_BIT).notEqual(0);
     }
 
-    protected static void setRememberedSetBit(Object o) {
+    static void setRememberedSetBit(Object o) {
         UnsignedWord oldHeader = readHeaderFromObject(o);
         UnsignedWord newHeader = oldHeader.or(REMEMBERED_SET_BIT);
         writeHeaderToObject(o, newHeader);
@@ -314,7 +314,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return headerBits.and(FORWARDED_BIT).notEqual(0);
     }
 
-    public static Object getForwardedObject(Pointer ptr) {
+    static Object getForwardedObject(Pointer ptr) {
         UnsignedWord header = readHeaderFromPointer(ptr);
         assert isForwardedHeader(header);
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
@@ -334,7 +334,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
     }
 
     /** In an Object, install a forwarding pointer to a different Object. */
-    protected static void installForwardingPointer(Object original, Object copy) {
+    static void installForwardingPointer(Object original, Object copy) {
         assert !isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
         UnsignedWord forwardHeader;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
@@ -361,7 +361,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return header.and(MASK_HEADER_BITS);
     }
 
-    protected static UnsignedWord getHeaderBitsFromHeaderCarefully(UnsignedWord header) {
+    static UnsignedWord getHeaderBitsFromHeaderCarefully(UnsignedWord header) {
         VMError.guarantee(!isProducedHeapChunkZapped(header), "Produced chunk zap value");
         VMError.guarantee(!isConsumedHeapChunkZapped(header), "Consumed chunk zap value");
         return header.and(MASK_HEADER_BITS);

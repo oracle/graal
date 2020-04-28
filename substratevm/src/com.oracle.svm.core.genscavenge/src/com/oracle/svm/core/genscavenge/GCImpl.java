@@ -96,32 +96,33 @@ import com.oracle.svm.core.util.VMError;
 /**
  * Garbage collector (incremental or complete) for {@link HeapImpl}.
  */
-public class GCImpl implements GC {
+public final class GCImpl implements GC {
     private final RememberedSetConstructor rememberedSetConstructor = new RememberedSetConstructor();
     private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
     private final GreyToBlackObjectVisitor greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
     private final CollectionPolicy collectOnlyCompletelyPolicy = new CollectionPolicy.OnlyCompletely();
+    private final BlackenImageHeapRootsVisitor blackenImageHeapRootsVisitor = new BlackenImageHeapRootsVisitor();
+    private final ThreadLocalMTWalker threadLocalsWalker = createThreadLocalsWalker();
+    private final RuntimeCodeCacheWalker runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
+    private final RuntimeCodeCacheCleaner runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
 
     private final Accounting accounting = new Accounting();
+    private final Timers timers = new Timers();
+
     private final CollectionVMOperation collectOperation = new CollectionVMOperation();
-
     private final OutOfMemoryError oldGenerationSizeExceeded = new OutOfMemoryError("Garbage-collected heap size exceeded.");
-
     private final NoAllocationVerifier noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
 
     private final GCManagementFactory managementFactory = new GCManagementFactory();
 
-    private final ThreadLocalMTWalker threadLocalsWalker = createThreadLocalsWalker();
-    private final RuntimeCodeCacheWalker runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
-    private final RuntimeCodeCacheCleaner runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
-    private final Timers timers = new Timers();
-
     private CollectionPolicy policy;
     private boolean completeCollection = false;
     private UnsignedWord sizeBefore = WordFactory.zero();
+    private boolean collectionInProgress = false;
+    private UnsignedWord collectionEpoch = WordFactory.zero();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected GCImpl(FeatureAccess access) {
+    GCImpl(FeatureAccess access) {
         this.policy = CollectionPolicy.getInitialPolicy(access);
         RuntimeSupport.getRuntimeSupport().addShutdownHook(this::printGCSummary);
     }
@@ -168,10 +169,10 @@ public class GCImpl implements GC {
         startCollectionOrExit();
 
         timers.resetAllExceptMutator();
-        incrementCollectionEpoch();
+        collectionEpoch = collectionEpoch.add(1);
 
         /* Flush chunks from thread-local lists to global lists. */
-        ThreadLocalAllocation.disableThreadLocalAllocation();
+        ThreadLocalAllocation.disableAndFlushForAllThreads();
 
         printGCBefore(cause.getName());
         boolean outOfMemory = collectImpl(cause.getName());
@@ -743,8 +744,6 @@ public class GCImpl implements GC {
         trace.string("]").newline();
     }
 
-    private final BlackenImageHeapRootsVisitor blackenImageHeapRootsVisitor = new BlackenImageHeapRootsVisitor();
-
     private class BlackenImageHeapRootsVisitor implements MemoryWalker.Visitor {
         @Override
         @SuppressWarnings("try")
@@ -868,10 +867,6 @@ public class GCImpl implements GC {
         trace.string("]").newline();
     }
 
-    /* Collection in progress methods. */
-
-    private boolean collectionInProgress;
-
     boolean isCollectionInProgress() {
         return collectionInProgress;
     }
@@ -931,22 +926,9 @@ public class GCImpl implements GC {
         }
     }
 
-    /* Collection counting. */
-
-    /** A counter for collections. */
-    private UnsignedWord collectionEpoch = WordFactory.zero();
-
     public UnsignedWord getCollectionEpoch() {
         return collectionEpoch;
     }
-
-    private void incrementCollectionEpoch() {
-        collectionEpoch = collectionEpoch.add(1);
-    }
-
-    /*
-     * Field access methods.
-     */
 
     Accounting getAccounting() {
         return accounting;
@@ -968,8 +950,8 @@ public class GCImpl implements GC {
         return rememberedSetConstructor;
     }
 
-    protected static class RememberedSetConstructor implements ObjectVisitor {
-        AlignedHeapChunk.AlignedHeader chunk;
+    static class RememberedSetConstructor implements ObjectVisitor {
+        private AlignedHeapChunk.AlignedHeader chunk;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         RememberedSetConstructor() {
@@ -987,7 +969,7 @@ public class GCImpl implements GC {
         @Override
         @AlwaysInline("GC performance")
         public boolean visitObjectInline(final Object o) {
-            AlignedHeapChunk.setUpRememberedSetForObjectOfAlignedHeapChunk(chunk, o);
+            AlignedHeapChunk.setUpRememberedSetForObject(chunk, o);
             return true;
         }
 
@@ -1018,7 +1000,7 @@ public class GCImpl implements GC {
     }
 
     private static class CollectionVMOperation extends NativeVMOperation {
-        protected CollectionVMOperation() {
+        CollectionVMOperation() {
             super("Garbage collection", SystemEffect.SAFEPOINT);
         }
 
@@ -1092,7 +1074,7 @@ public class GCImpl implements GC {
         log.string(prefix).string("MaximumHeapSize: ").unsigned(HeapPolicy.getMaximumHeapSize()).newline();
         log.string(prefix).string("AlignedChunkSize: ").unsigned(HeapPolicy.getAlignedHeapChunkSize()).newline();
 
-        JavaVMOperation.enqueueBlockingSafepoint("PrintGCSummaryShutdownHook", ThreadLocalAllocation::disableThreadLocalAllocation);
+        JavaVMOperation.enqueueBlockingSafepoint("PrintGCSummaryShutdownHook", ThreadLocalAllocation::disableAndFlushForAllThreads);
         final HeapImpl heap = HeapImpl.getHeapImpl();
         final Space edenSpace = heap.getYoungGeneration().getEden();
         final UnsignedWord youngChunkBytes = edenSpace.getChunkBytes();

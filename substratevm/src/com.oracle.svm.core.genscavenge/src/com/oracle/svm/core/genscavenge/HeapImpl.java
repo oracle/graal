@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+//Checkstyle: stop
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
@@ -86,26 +87,24 @@ import com.oracle.svm.core.thread.VMThreads;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
-//Checkstyle: stop
 import sun.management.Util;
 //Checkstyle: resume
 
 /** An implementation of a card remembered set generational heap. */
-public class HeapImpl extends Heap {
+public final class HeapImpl extends Heap {
     /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
     private static final VMMutex REF_MUTEX = new VMMutex();
     private static final VMCondition REF_CONDITION = new VMCondition(REF_MUTEX);
 
     // Singleton instances, created during image generation.
-    private final YoungGeneration youngGeneration;
-    private final OldGeneration oldGeneration;
-    final HeapChunkProvider chunkProvider;
-    private final ObjectHeaderImpl objectHeaderImpl;
+    private final YoungGeneration youngGeneration = new YoungGeneration("YoungGeneration");
+    private final OldGeneration oldGeneration = new OldGeneration("OldGeneration");
+    final HeapChunkProvider chunkProvider = new HeapChunkProvider();
+    private final ObjectHeaderImpl objectHeaderImpl = new ObjectHeaderImpl();
     private final GCImpl gcImpl;
     private final HeapPolicy heapPolicy;
-
-    private final MemoryMXBean memoryMXBean;
-    private final ImageHeapInfo imageHeapInfo;
+    private final MemoryMXBean memoryMXBean = new HeapImplMemoryMXBean();
+    private final ImageHeapInfo imageHeapInfo = new ImageHeapInfo();
     private HeapVerifier heapVerifier;
     private final StackVerifier stackVerifier;
 
@@ -117,19 +116,15 @@ public class HeapImpl extends Heap {
     private long refListWaiterWakeUpCounter;
 
     /** Head of the linked list of object pins. */
-    private final AtomicReference<PinnedObjectImpl> pinHead;
+    private final AtomicReference<PinnedObjectImpl> pinHead = new AtomicReference<>();
 
     /** A cached list of all the classes, if someone asks for it. */
     private List<Class<?>> classList;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapImpl(FeatureAccess access) {
-        this.youngGeneration = new YoungGeneration("YoungGeneration");
-        this.oldGeneration = new OldGeneration("OldGeneration");
-        this.objectHeaderImpl = new ObjectHeaderImpl();
         this.gcImpl = new GCImpl(access);
         this.heapPolicy = new HeapPolicy(access);
-        this.pinHead = new AtomicReference<>();
         if (getVerifyHeapBeforeGC() || getVerifyHeapAfterGC() || getVerifyStackBeforeGC() || getVerifyStackAfterGC() || getVerifyDirtyCardBeforeGC() || getVerifyDirtyCardAfterGC()) {
             this.heapVerifier = new HeapVerifier();
             this.stackVerifier = new StackVerifier();
@@ -137,10 +132,6 @@ public class HeapImpl extends Heap {
             this.heapVerifier = null;
             this.stackVerifier = null;
         }
-        chunkProvider = new HeapChunkProvider();
-        this.memoryMXBean = new HeapImplMemoryMXBean();
-        this.imageHeapInfo = new ImageHeapInfo();
-        this.classList = null;
         SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(log -> {
             logImageHeapPartitionBoundaries(log).newline();
             zapValuesToLog(log).newline();
@@ -188,12 +179,12 @@ public class HeapImpl extends Heap {
 
     @Override
     public void suspendAllocation() {
-        ThreadLocalAllocation.suspendThreadLocalAllocation();
+        ThreadLocalAllocation.suspendInCurrentThread();
     }
 
     @Override
     public void resumeAllocation() {
-        ThreadLocalAllocation.resumeThreadLocalAllocation();
+        ThreadLocalAllocation.resumeInCurrentThread();
     }
 
     @Override
@@ -211,7 +202,7 @@ public class HeapImpl extends Heap {
     /** Tear down the heap and release its memory. */
     @Override
     @Uninterruptible(reason = "Tear-down in progress.")
-    public final boolean tearDown() {
+    public boolean tearDown() {
         youngGeneration.tearDown();
         oldGeneration.tearDown();
         HeapChunkProvider.get().tearDown();
@@ -278,10 +269,10 @@ public class HeapImpl extends Heap {
         final UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(holderObject);
         if (ObjectHeaderImpl.hasRememberedSet(objectHeader)) {
             if (ObjectHeaderImpl.isAlignedObject(holderObject)) {
-                AlignedHeapChunk.dirtyCardForObjectOfAlignedHeapChunk(holderObject, false);
+                AlignedHeapChunk.dirtyCardForObject(holderObject, false);
             } else {
                 assert ObjectHeaderImpl.isUnalignedObject(holderObject) : "sanity";
-                UnalignedHeapChunk.dirtyCardForObjectOfUnalignedHeapChunk(holderObject, false);
+                UnalignedHeapChunk.dirtyCardForObject(holderObject, false);
             }
         }
     }
@@ -521,7 +512,7 @@ public class HeapImpl extends Heap {
      * @return an approximation to the total amount of memory currently available for future
      *         allocated objects, measured in bytes.
      */
-    public UnsignedWord freeMemory() {
+    UnsignedWord freeMemory() {
         // Report "chunk bytes" rather than the slower but more accurate "object bytes".
         return maxMemory().subtract(HeapPolicy.getYoungUsedBytes()).subtract(getOldUsedChunkBytes());
     }
@@ -530,7 +521,7 @@ public class HeapImpl extends Heap {
      * @return the total amount of memory currently available for current and future objects,
      *         measured in bytes.
      */
-    public UnsignedWord totalMemory() {
+    UnsignedWord totalMemory() {
         return maxMemory();
     }
 
@@ -538,7 +529,7 @@ public class HeapImpl extends Heap {
      * @return the maximum amount of memory that the virtual machine will attempt to use, measured
      *         in bytes
      */
-    public UnsignedWord maxMemory() {
+    UnsignedWord maxMemory() {
         /* Get physical memory size, so it gets set correctly instead of being estimated. */
         PhysicalMemory.size();
         /*
@@ -566,7 +557,7 @@ public class HeapImpl extends Heap {
 
     @Override
     public void detachThread(IsolateThread isolateThread) {
-        ThreadLocalAllocation.disableThreadLocalAllocation(isolateThread);
+        ThreadLocalAllocation.disableAndFlushForThread(isolateThread);
     }
 
     @Fold
@@ -753,7 +744,6 @@ public class HeapImpl extends Heap {
  * memory usage <em>and</em> the non-heap memory usage, all the memory will be walked twice.
  */
 final class HeapImplMemoryMXBean implements MemoryMXBean, NotificationEmitter {
-
     static final long UNDEFINED_MEMORY_USAGE = -1L;
 
     private final MemoryMXBeanMemoryVisitor visitor;
@@ -826,7 +816,6 @@ final class HeapImplMemoryMXBean implements MemoryMXBean, NotificationEmitter {
 
 /** A MemoryWalker.Visitor that records used and committed memory sizes. */
 final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
-
     private UnsignedWord heapUsed;
     private UnsignedWord heapCommitted;
     private UnsignedWord nonHeapUsed;
@@ -888,7 +877,6 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
 @TargetClass(value = java.lang.Runtime.class, onlyWith = UseCardRememberedSetHeap.class)
 @SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {
-
     @Substitute
     private long freeMemory() {
         return HeapImpl.getHeapImpl().freeMemory().rawValue();

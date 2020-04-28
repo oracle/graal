@@ -47,15 +47,15 @@ import com.oracle.svm.core.option.HostedOptionKey;
  * Since this visitor is used during collection, one instance of it is constructed during native
  * image generation.
  */
-public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
-    protected final Counters counters;
+final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
+    private final Counters counters;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public GreyToBlackObjRefVisitor() {
+    GreyToBlackObjRefVisitor() {
         if (Options.GreyToBlackObjRefDemographics.getValue()) {
-            counters = RealCounters.factory();
+            counters = new RealCounters();
         } else {
-            counters = NoopCounters.factory();
+            counters = new NoopCounters();
         }
     }
 
@@ -141,7 +141,6 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         public static final HostedOptionKey<Boolean> GreyToBlackObjRefDemographics = new HostedOptionKey<>(false);
     }
 
-    /** A set of counters. The default implementation is a noop. */
     public interface Counters extends AutoCloseable {
 
         Counters open();
@@ -167,15 +166,32 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     }
 
     public static class RealCounters implements Counters {
+        private long objRef;
+        private long nullObjRef;
+        private long nullReferent;
+        private long forwardedReferent;
+        private long nonHeapReferent;
+        private long copiedReferent;
+        private long unmodifiedReference;
 
-        public static RealCounters factory() {
-            return new RealCounters();
+        RealCounters() {
+            reset();
+        }
+
+        @Override
+        public void reset() {
+            objRef = 0L;
+            nullObjRef = 0L;
+            nullReferent = 0L;
+            forwardedReferent = 0L;
+            nonHeapReferent = 0L;
+            copiedReferent = 0L;
+            unmodifiedReference = 0L;
         }
 
         @Override
         public RealCounters open() {
             reset();
-            isOpened = true;
             return this;
         }
 
@@ -228,37 +244,11 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             log.string("  unmodifiedReference: ").signed(unmodifiedReference);
             log.string("]").newline();
         }
-
-        @Override
-        public void reset() {
-            objRef = 0L;
-            nullObjRef = 0L;
-            nullReferent = 0L;
-            forwardedReferent = 0L;
-            nonHeapReferent = 0L;
-            copiedReferent = 0L;
-            unmodifiedReference = 0L;
-            isOpened = false;
-        }
-
-        protected RealCounters() {
-            reset();
-        }
-
-        protected long objRef;
-        protected long nullObjRef;
-        protected long nullReferent;
-        protected long forwardedReferent;
-        protected long nonHeapReferent;
-        protected long copiedReferent;
-        protected long unmodifiedReference;
-        protected boolean isOpened;
     }
 
     public static class NoopCounters implements Counters {
 
-        public static NoopCounters factory() {
-            return new NoopCounters();
+        NoopCounters() {
         }
 
         @Override
@@ -300,9 +290,6 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
         @Override
         public void reset() {
-        }
-
-        protected NoopCounters() {
         }
     }
 }

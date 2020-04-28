@@ -56,7 +56,25 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 
 /** Determines paths from roots to objects or heap regions. */
-public class PathExhibitor {
+public final class PathExhibitor {
+    private static final FrameSlotVisitor frameSlotVisitor = new FrameSlotVisitor();
+
+    private static final FrameVisitor stackFrameVisitor = new FrameVisitor();
+    private static final BootImageHeapObjRefVisitor bootImageHeapObjRefVisitor = new BootImageHeapObjRefVisitor();
+    private static final HeapObjRefVisitor heapObjRefVisitor = new HeapObjRefVisitor();
+    private static final HeapObjectVisitor heapObjectVisitor = new HeapObjectVisitor();
+    private final ArrayList<PathElement> path = new ArrayList<>();
+
+    public PathExhibitor() {
+    }
+
+    public boolean hasPath() {
+        return path.size() > 1;
+    }
+
+    public PathElement[] getPath() {
+        return path.toArray(new PathElement[0]);
+    }
 
     @NeverInline("Starting a stack walk in the caller frame")
     public void findPathToRange(Pointer rangeBegin, Pointer rangeEnd) {
@@ -76,7 +94,14 @@ public class PathExhibitor {
         }
     }
 
-    void findPathToRoot(Object leaf, PathEdge currentEdge, Pointer currentThreadWalkStackPointer) {
+    public void toLog(final Log log) {
+        for (PathElement element : path) {
+            log.newline();
+            element.toLog(log);
+        }
+    }
+
+    private void findPathToRoot(Object leaf, PathEdge currentEdge, Pointer currentThreadWalkStackPointer) {
         assert VMOperation.isInProgressAtSafepoint();
         if (leaf == null) {
             return;
@@ -113,29 +138,14 @@ public class PathExhibitor {
         }
     }
 
-    public boolean hasPath() {
-        return path.size() > 1;
-    }
-
-    public PathElement[] getPath() {
-        return path.toArray(new PathElement[0]);
-    }
-
-    public void toLog(final Log log) {
-        for (PathElement element : path) {
-            log.newline();
-            element.toLog(log);
-        }
-    }
-
-    protected void findPathToTarget(TargetMatcher target, PathEdge edge, Pointer currentThreadWalkStackPointer) {
+    private void findPathToTarget(TargetMatcher target, PathEdge edge, Pointer currentThreadWalkStackPointer) {
         assert target != null && !edge.isFilled();
         findPathInHeap(target, edge);
         findPathInBootImageHeap(target, edge);
         findPathInStack(target, edge, currentThreadWalkStackPointer);
     }
 
-    protected void findPathInStack(TargetMatcher target, PathEdge edge, Pointer currentThreadWalkStackPointer) {
+    private void findPathInStack(TargetMatcher target, PathEdge edge, Pointer currentThreadWalkStackPointer) {
         if (edge.isFilled()) {
             return;
         }
@@ -157,7 +167,7 @@ public class PathExhibitor {
         }
     }
 
-    protected void findPathInBootImageHeap(TargetMatcher target, PathEdge result) {
+    private void findPathInBootImageHeap(TargetMatcher target, PathEdge result) {
         Heap.getHeap().walkImageHeapObjects(new ObjectVisitor() {
             @Override
             public boolean visitObject(Object obj) {
@@ -170,7 +180,7 @@ public class PathExhibitor {
         });
     }
 
-    protected void findPathInHeap(TargetMatcher target, PathEdge result) {
+    private void findPathInHeap(TargetMatcher target, PathEdge result) {
         if (result.isFilled()) {
             return;
         }
@@ -178,7 +188,7 @@ public class PathExhibitor {
         HeapImpl.getHeapImpl().walkObjects(heapObjectVisitor);
     }
 
-    protected boolean checkForCycles(final Object currentObject) {
+    private boolean checkForCycles(final Object currentObject) {
         boolean result = false;
         for (PathElement seen : path) {
             final Object seenObject = seen.getObject();
@@ -189,20 +199,6 @@ public class PathExhibitor {
         }
         return result;
     }
-
-    public PathExhibitor() {
-        this.path = new ArrayList<>();
-    }
-
-    protected final ArrayList<PathElement> path;
-
-    protected static final FrameSlotVisitor frameSlotVisitor = new FrameSlotVisitor();
-    protected static final FrameVisitor stackFrameVisitor = new FrameVisitor();
-
-    protected static final BootImageHeapObjRefVisitor bootImageHeapObjRefVisitor = new BootImageHeapObjRefVisitor();
-
-    protected static final HeapObjRefVisitor heapObjRefVisitor = new HeapObjRefVisitor();
-    protected static final HeapObjectVisitor heapObjectVisitor = new HeapObjectVisitor();
 
     public abstract static class PathElement {
 
@@ -224,7 +220,7 @@ public class PathExhibitor {
     }
 
     static class ObjectTargetMatcher implements TargetMatcher {
-        final Object target;
+        private final Object target;
 
         ObjectTargetMatcher(Object target) {
             this.target = target;
@@ -237,8 +233,8 @@ public class PathExhibitor {
     }
 
     static class RangeTargetMatcher implements TargetMatcher {
-        final Pointer targetBegin;
-        final Pointer targetEnd;
+        private final Pointer targetBegin;
+        private final Pointer targetEnd;
 
         RangeTargetMatcher(Pointer rangeBegin, Pointer rangeEndExclusive) {
             this.targetBegin = rangeBegin;
@@ -253,8 +249,8 @@ public class PathExhibitor {
     }
 
     static class AbstractVisitor {
-        TargetMatcher target;
-        PathEdge result;
+        protected TargetMatcher target;
+        protected PathEdge result;
 
         void initialize(TargetMatcher targetMatcher, PathEdge resultPath) {
             this.target = targetMatcher;
@@ -263,8 +259,8 @@ public class PathExhibitor {
     }
 
     public static class FrameVisitor extends StackFrameVisitor {
-        TargetMatcher target;
-        PathEdge result;
+        private TargetMatcher target;
+        private PathEdge result;
 
         void initialize(TargetMatcher targetMatcher, PathEdge resultPath) {
             this.target = targetMatcher;
@@ -284,8 +280,8 @@ public class PathExhibitor {
     }
 
     private static class FrameSlotVisitor extends AbstractVisitor implements ObjectReferenceVisitor {
-        CodePointer ip;
-        DeoptimizedFrame deoptFrame;
+        private CodePointer ip;
+        private DeoptimizedFrame deoptFrame;
 
         FrameSlotVisitor() {
         }
@@ -313,7 +309,7 @@ public class PathExhibitor {
     }
 
     private static class BootImageHeapObjRefVisitor extends AbstractVisitor implements ObjectReferenceVisitor {
-        Object container;
+        private Object container;
 
         BootImageHeapObjRefVisitor() {
         }
@@ -351,9 +347,14 @@ public class PathExhibitor {
     }
 
     private static class HeapObjRefVisitor extends AbstractVisitor implements ObjectReferenceVisitor {
-        Pointer containerPointer;
+        private Pointer containerPointer;
 
         HeapObjRefVisitor() {
+        }
+
+        @NeverInline("Starting a stack walk in the caller frame")
+        static boolean isInterfering(Object currentObject) {
+            return currentObject instanceof PathElement || currentObject instanceof FindPathToObjectOperation || currentObject instanceof TargetMatcher;
         }
 
         public void initialize(Pointer container, TargetMatcher targetMatcher, PathEdge edge) {
@@ -377,15 +378,15 @@ public class PathExhibitor {
             }
             return true;
         }
-
-        @NeverInline("Starting a stack walk in the caller frame")
-        static boolean isInterfering(Object currentObject) {
-            return currentObject instanceof PathElement || currentObject instanceof FindPathToObjectOperation || currentObject instanceof TargetMatcher;
-        }
     }
 
     /** Element at the end of a path, the target of the search. */
     public static class LeafElement extends PathElement {
+        private final Object leaf;
+
+        LeafElement(final Object leaf) {
+            this.leaf = leaf;
+        }
 
         @Override
         public Object getObject() {
@@ -399,16 +400,17 @@ public class PathExhibitor {
             log.string("]");
             return log;
         }
-
-        protected LeafElement(final Object leaf) {
-            this.leaf = leaf;
-        }
-
-        protected final Object leaf;
     }
 
     /** A path element for a reference from a Object field. */
     public static class HeapElement extends PathElement {
+        private final Object base;
+        private final UnsignedWord offset;
+
+        HeapElement(final Object base, final UnsignedWord offset) {
+            this.base = base;
+            this.offset = offset;
+        }
 
         @Override
         public Object getObject() {
@@ -427,18 +429,21 @@ public class PathExhibitor {
             log.string("]");
             return log;
         }
-
-        protected HeapElement(final Object base, final UnsignedWord offset) {
-            this.base = base;
-            this.offset = offset;
-        }
-
-        protected final Object base;
-        protected final UnsignedWord offset;
     }
 
     /** A path element for a reference from a stack frame. */
     public static class StackElement extends PathElement {
+        private final Pointer stackSlot;
+        private final CodePointer ip;
+        private final CodePointer deoptSourcePC;
+        private final Pointer slotValue;
+
+        StackElement(final Pointer stackSlot, final CodePointer ip, final DeoptimizedFrame deoptFrame) {
+            this.stackSlot = stackSlot;
+            this.deoptSourcePC = deoptFrame != null ? deoptFrame.getSourcePC() : WordFactory.nullPointer();
+            this.ip = ip;
+            this.slotValue = stackSlot.readWord(0);
+        }
 
         @Override
         public Object getObject() {
@@ -456,22 +461,17 @@ public class PathExhibitor {
             log.string("]");
             return log;
         }
-
-        protected StackElement(final Pointer stackSlot, final CodePointer ip, final DeoptimizedFrame deoptFrame) {
-            this.stackSlot = stackSlot;
-            this.deoptSourcePC = deoptFrame != null ? deoptFrame.getSourcePC() : WordFactory.nullPointer();
-            this.ip = ip;
-            this.slotValue = stackSlot.readWord(0);
-        }
-
-        protected final Pointer stackSlot;
-        protected final CodePointer ip;
-        protected final CodePointer deoptSourcePC;
-        protected final Pointer slotValue;
     }
 
     /** A path element for a reference from the native image heap. */
     public static class BootImageHeapElement extends PathElement {
+        private final Object base;
+        private final UnsignedWord offset;
+
+        BootImageHeapElement(final Object base, final UnsignedWord offset) {
+            this.base = base;
+            this.offset = offset;
+        }
 
         @Override
         public Object getObject() {
@@ -487,18 +487,15 @@ public class PathExhibitor {
             log.string("]");
             return log;
         }
-
-        protected BootImageHeapElement(final Object base, final UnsignedWord offset) {
-            this.base = base;
-            this.offset = offset;
-        }
-
-        protected final Object base;
-        protected final UnsignedWord offset;
     }
 
     /** A path element for a cyclic reference. */
     public static class CyclicElement extends PathElement {
+        private final Object previous;
+
+        CyclicElement(final Object previous) {
+            this.previous = previous;
+        }
 
         @Override
         public Object getObject() {
@@ -513,12 +510,6 @@ public class PathExhibitor {
             log.string("]");
             return log;
         }
-
-        protected CyclicElement(final Object previous) {
-            this.previous = previous;
-        }
-
-        protected final Object previous;
     }
 
     public static final class TestingBackDoor {

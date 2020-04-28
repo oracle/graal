@@ -30,7 +30,7 @@ import org.graalvm.compiler.options.OptionType;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
-public class HeapOptions {
+public final class HeapOptions {
     @Option(help = "Print the shape of the heap before and after each collection, if +VerboseGC.")//
     public static final RuntimeOptionKey<Boolean> PrintHeapShape = new RuntimeOptionKey<>(false);
 
@@ -76,4 +76,7 @@ public class HeapOptions {
     @Option(help = "Soft references: this number of milliseconds multiplied by the free heap memory in MByte is the time span " +
                     "for which a soft reference will keep its referent alive after its last access.", type = OptionType.Expert) //
     public static final HostedOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new HostedOptionKey<>(1000);
+
+    private HeapOptions() {
+    }
 }

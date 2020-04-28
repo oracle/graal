@@ -37,7 +37,6 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 
 final class YoungGeneration extends Generation {
-
     private final Space eden;
     private final Space[] survivorFromSpaces;
     private final Space[] survivorToSpaces;
@@ -46,13 +45,8 @@ final class YoungGeneration extends Generation {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     YoungGeneration(String name) {
-        this(name, new Space("edenSpace", true, 0));
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private YoungGeneration(String name, Space space) {
         super(name);
-        this.eden = space;
+        this.eden = new Space("edenSpace", true, 0);
         this.maxSurvivorSpaces = HeapPolicy.getMaxSurvivorSpaces();
         this.survivorFromSpaces = new Space[maxSurvivorSpaces];
         this.survivorToSpaces = new Space[maxSurvivorSpaces];
@@ -65,7 +59,7 @@ final class YoungGeneration extends Generation {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public final void tearDown() {
+    void tearDown() {
         ThreadLocalAllocation.tearDown();
         eden.tearDown();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
@@ -77,7 +71,7 @@ final class YoungGeneration extends Generation {
     @Override
     public boolean walkObjects(ObjectVisitor visitor) {
         /* Flush the thread-local allocation data. */
-        ThreadLocalAllocation.disableThreadLocalAllocation();
+        ThreadLocalAllocation.disableAndFlushForAllThreads();
 
         if (!getEden().walkObjects(visitor)) {
             return false;
@@ -111,7 +105,7 @@ final class YoungGeneration extends Generation {
         return log;
     }
 
-    public final Space getEden() {
+    Space getEden() {
         return eden;
     }
 
@@ -133,16 +127,16 @@ final class YoungGeneration extends Generation {
     @Override
     protected Object promoteObject(Object original, UnsignedWord header) {
         if (ObjectHeaderImpl.isAlignedHeader(original, header)) {
-            AlignedHeapChunk.AlignedHeader originalChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
+            AlignedHeapChunk.AlignedHeader originalChunk = AlignedHeapChunk.getEnclosingChunk(original);
             Space originalSpace = originalChunk.getSpace();
-            if (originalSpace.isFrom()) {
+            if (originalSpace.isFromSpace()) {
                 return promoteAlignedObject(original, originalSpace);
             }
         } else {
             assert ObjectHeaderImpl.isUnalignedHeader(original, header);
-            UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(original);
+            UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(original);
             Space originalSpace = chunk.getSpace();
-            if (originalSpace.isFrom()) {
+            if (originalSpace.isFromSpace()) {
                 promoteUnalignedObject(chunk, originalSpace);
             }
         }
@@ -304,7 +298,7 @@ final class YoungGeneration extends Generation {
     private Object promoteAlignedObject(Object original, Space originalSpace) {
         assert ObjectHeaderImpl.isAlignedObject(original);
         assert originalSpace.isEdenSpace() || originalSpace.isSurvivorSpace() : "Should be Eden or survivor.";
-        assert originalSpace.isFrom() : "must not be called for other objects";
+        assert originalSpace.isFromSpace() : "must not be called for other objects";
 
         if (originalSpace.getAge() < maxSurvivorSpaces) {
             int age = originalSpace.getNextAgeForPromotion();
@@ -317,7 +311,7 @@ final class YoungGeneration extends Generation {
 
     @AlwaysInline("GC performance")
     private void promoteUnalignedObject(UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
-        assert originalSpace.isFrom() : "must not be called for other objects";
+        assert originalSpace.isFromSpace() : "must not be called for other objects";
 
         if (originalSpace.getAge() < maxSurvivorSpaces) {
             int age = originalSpace.getNextAgeForPromotion();

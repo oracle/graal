@@ -51,7 +51,7 @@ import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 
 @AutomaticFeature
-public class HeapFeature implements GraalFeature {
+class HeapFeature implements GraalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -74,7 +74,7 @@ public class HeapFeature implements GraalFeature {
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         // Even though I don't hold on to this instance, it is preserved because it becomes the
         // enclosing instance for the lowerings registered within it.
-        final BarrierSnippets barrierSnippets = BarrierSnippets.factory(options, factories, providers, snippetReflection);
+        final BarrierSnippets barrierSnippets = new BarrierSnippets(options, factories, providers, snippetReflection);
         barrierSnippets.registerLowerings(lowerings);
 
         GenScavengeAllocationSnippets.registerLowering(options, factories, providers, snippetReflection, lowerings);

@@ -44,7 +44,7 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
  * objects. Based on that information, it determines which parts of the code cache can be freed and
  * it makes sure that the GC visits all object references of code that may stay alive.
  */
-public class RuntimeCodeCacheWalker implements CodeInfoVisitor {
+final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
     private final RuntimeCodeCacheReachabilityAnalyzer checkForUnreachableObjectsVisitor;
     private final ObjectReferenceVisitor greyToBlackObjectVisitor;
 

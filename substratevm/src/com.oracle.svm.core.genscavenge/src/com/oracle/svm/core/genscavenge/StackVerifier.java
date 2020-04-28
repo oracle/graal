@@ -44,7 +44,6 @@ import com.oracle.svm.core.thread.VMThreads;
 
 /** Walk the stack of threads, verifying the Objects pointed to from the frames. */
 final class StackVerifier {
-
     private static final VerifyFrameReferencesVisitor verifyFrameReferencesVisitor = new VerifyFrameReferencesVisitor();
 
     private final StackFrameVerifierVisitor stackFrameVisitor = new StackFrameVerifierVisitor();
@@ -56,7 +55,7 @@ final class StackVerifier {
         final Log trace = getTraceLog();
         trace.string("[StackVerifier.verifyInAllThreads:").string(message).newline();
         // Flush thread-local allocation data.
-        ThreadLocalAllocation.disableThreadLocalAllocation();
+        ThreadLocalAllocation.disableAndFlushForAllThreads();
         trace.string("Current thread ").hex(CurrentIsolate.getCurrentThread()).string(": [").newline();
         if (!JavaStackWalker.walkCurrentThread(currentSp, stackFrameVisitor)) {
             return false;
@@ -95,7 +94,6 @@ final class StackVerifier {
     }
 
     private static class StackFrameVerifierVisitor extends StackFrameVisitor {
-
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the stack.")
         public boolean visitFrame(Pointer currentSP, CodePointer currentIP, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
@@ -116,7 +114,6 @@ final class StackVerifier {
     }
 
     private static class VerifyFrameReferencesVisitor implements ObjectReferenceVisitor {
-
         @Override
         public boolean visitObjectReference(Pointer objRef, boolean compressed) {
             Pointer objAddr = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);

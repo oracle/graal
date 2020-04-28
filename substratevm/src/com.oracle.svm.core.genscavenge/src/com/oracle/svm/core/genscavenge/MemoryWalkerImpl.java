@@ -37,10 +37,9 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.thread.JavaVMOperation;
 
 /** Walker to visit different memory regions with a {@link MemoryWalker}. */
-public class MemoryWalkerImpl extends MemoryWalker {
-
+final class MemoryWalkerImpl extends MemoryWalker {
     @Platforms(Platform.HOSTED_ONLY.class)
-    public MemoryWalkerImpl() {
+    MemoryWalkerImpl() {
     }
 
     @Override
@@ -50,12 +49,11 @@ public class MemoryWalkerImpl extends MemoryWalker {
         return op.getResult();
     }
 
-    protected static final class MemoryWalkerVMOperation extends JavaVMOperation {
-
+    static final class MemoryWalkerVMOperation extends JavaVMOperation {
         private final MemoryWalker.Visitor visitor;
         private boolean result = false;
 
-        protected MemoryWalkerVMOperation(MemoryWalker.Visitor memoryVisitor) {
+        MemoryWalkerVMOperation(MemoryWalker.Visitor memoryVisitor) {
             super("MemoryWalkerImpl.visitMemory", SystemEffect.SAFEPOINT);
             this.visitor = memoryVisitor;
         }
@@ -63,13 +61,13 @@ public class MemoryWalkerImpl extends MemoryWalker {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Allocation would change the memory being visited.")
         public void operate() {
-            ThreadLocalAllocation.disableThreadLocalAllocation();
+            ThreadLocalAllocation.disableAndFlushForAllThreads();
             result = HeapImpl.getHeapImpl().walkMemory(visitor) &&
                             CodeInfoTable.getImageCodeCache().walkImageCode(visitor) &&
                             CodeInfoTable.getRuntimeCodeCache().walkRuntimeMethods(visitor);
         }
 
-        protected boolean getResult() {
+        boolean getResult() {
             return result;
         }
     }

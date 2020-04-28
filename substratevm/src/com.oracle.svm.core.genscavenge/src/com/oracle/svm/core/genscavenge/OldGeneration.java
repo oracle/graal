@@ -39,8 +39,7 @@ import com.oracle.svm.core.log.Log;
  * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
  * for newly-allocated or promoted objects.
  */
-public class OldGeneration extends Generation {
-
+final class OldGeneration extends Generation {
     /* This Spaces are final and are flipped by transferring chunks from one to the other. */
     private final Space fromSpace;
     private final Space toSpace;
@@ -56,7 +55,7 @@ public class OldGeneration extends Generation {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public final void tearDown() {
+    void tearDown() {
         fromSpace.tearDown();
         toSpace.tearDown();
     }
@@ -71,16 +70,16 @@ public class OldGeneration extends Generation {
     @Override
     public Object promoteObject(Object original, UnsignedWord header) {
         if (ObjectHeaderImpl.isAlignedHeader(original, header)) {
-            AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
+            AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunk(original);
             Space originalSpace = chunk.getSpace();
-            if (originalSpace.isFrom()) {
+            if (originalSpace.isFromSpace()) {
                 return promoteAlignedObject(original, originalSpace);
             }
         } else {
             assert ObjectHeaderImpl.isUnalignedHeader(original, header);
-            UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(original);
+            UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(original);
             Space originalSpace = chunk.getSpace();
-            if (originalSpace.isFrom()) {
+            if (originalSpace.isFromSpace()) {
                 promoteUnalignedChunk(chunk, originalSpace);
             }
         }
@@ -108,15 +107,15 @@ public class OldGeneration extends Generation {
         }
     }
 
-    protected void walkDirtyObjects(ObjectVisitor visitor, boolean clean) {
+    void walkDirtyObjects(ObjectVisitor visitor, boolean clean) {
         getToSpace().walkDirtyObjects(visitor, clean);
     }
 
-    protected void prepareForPromotion() {
+    void prepareForPromotion() {
         toGreyObjectsWalker.setScanStart(getToSpace());
     }
 
-    protected boolean scanGreyObjects() {
+    boolean scanGreyObjects() {
         if (!toGreyObjectsWalker.haveGreyObjects()) {
             return false;
         }

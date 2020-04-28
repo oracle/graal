@@ -29,7 +29,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.log.Log;
 
 final class SpaceVerifier {
-
     private Space space;
 
     SpaceVerifier() {
@@ -44,7 +43,7 @@ final class SpaceVerifier {
         trace.string("[SpaceVerifier.verify:").string("  ").string(space.getName()).newline();
         final boolean isTLASpace = ThreadLocalAllocation.isThreadLocalAllocationSpace(space);
         if (isTLASpace) {
-            ThreadLocalAllocation.disableThreadLocalAllocation();
+            ThreadLocalAllocation.disableAndFlushForAllThreads();
         }
         boolean result = true;
         if (!verifyChunkLists()) {
@@ -149,7 +148,7 @@ final class SpaceVerifier {
         boolean result = true;
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
-            result &= AlignedHeapChunk.verifyAlignedHeapChunk(chunk);
+            result &= AlignedHeapChunk.verify(chunk);
             chunk = chunk.getNext();
         }
         trace.string("  returns: ").bool(result).string("]").newline();
@@ -161,7 +160,7 @@ final class SpaceVerifier {
         boolean result = true;
         UnalignedHeapChunk.UnalignedHeader chunk = space.getFirstUnalignedHeapChunk();
         while (chunk.isNonNull()) {
-            result &= UnalignedHeapChunk.verifyUnalignedHeapChunk(chunk);
+            result &= UnalignedHeapChunk.verify(chunk);
             chunk = chunk.getNext();
         }
         trace.string("  returns: ").bool(result).string("]").newline();
@@ -193,7 +192,7 @@ final class SpaceVerifier {
         boolean result = true;
         UnalignedHeapChunk.UnalignedHeader chunk = space.getFirstUnalignedHeapChunk();
         while (chunk.isNonNull()) {
-            result &= UnalignedHeapChunk.verifyOnlyCleanCardsInUnalignedHeapChunk(chunk);
+            result &= UnalignedHeapChunk.verifyOnlyCleanCards(chunk);
             chunk = chunk.getNext();
         }
         trace.string("  returns: ").bool(result).string("]").newline();

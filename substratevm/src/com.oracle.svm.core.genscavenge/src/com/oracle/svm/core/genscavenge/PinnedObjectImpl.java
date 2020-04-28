@@ -42,11 +42,8 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 
-/**
- * Support for pinning objects to a memory address with {@link PinnedObject}.
- */
-class PinnedObjectImpl implements PinnedObject {
-
+/** Support for pinning objects to a memory address with {@link PinnedObject}. */
+final class PinnedObjectImpl implements PinnedObject {
     static class PinnedObjectSupportImpl implements PinnedObjectSupport {
         @Override
         public PinnedObject create(Object object) {

@@ -70,7 +70,6 @@ import com.oracle.svm.core.util.VMError;
  * Many of these methods are called from allocation snippets, so they can not do anything fancy.
  */
 public final class ThreadLocalAllocation {
-
     @RawStructure
     public interface Descriptor extends PointerBase {
         /**
@@ -114,7 +113,7 @@ public final class ThreadLocalAllocation {
     public static final FastThreadLocalBytes<Descriptor> regularTLAB = FastThreadLocalFactory.createBytes(ThreadLocalAllocation::getRegularTLABSize);
 
     /** A thread-local free list of aligned chunks. */
-    protected static final FastThreadLocalWord<AlignedHeader> freeList = FastThreadLocalFactory.createWord();
+    private static final FastThreadLocalWord<AlignedHeader> freeList = FastThreadLocalFactory.createWord();
 
     private static final OutOfMemoryError arrayAllocationTooLarge = new OutOfMemoryError("Array allocation too large.");
 
@@ -290,19 +289,19 @@ public final class ThreadLocalAllocation {
         return (space == HeapImpl.getHeapImpl().getYoungGeneration().getEden());
     }
 
-    public static void disableThreadLocalAllocation() {
-        VMOperation.guaranteeInProgress("ThreadLocalAllocation.disableThreadLocalAllocation");
+    static void disableAndFlushForAllThreads() {
+        VMOperation.guaranteeInProgress("ThreadLocalAllocation.disableAndFlushForAllThreads");
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                disableThreadLocalAllocation(vmThread);
+                disableAndFlushForThread(vmThread);
             }
         } else {
-            disableThreadLocalAllocation(WordFactory.nullPointer());
+            disableAndFlushForThread(WordFactory.nullPointer());
         }
     }
 
-    public static void disableThreadLocalAllocation(IsolateThread vmThread) {
+    static void disableAndFlushForThread(IsolateThread vmThread) {
         retireToSpace(regularTLAB.getAddress(vmThread), HeapImpl.getHeapImpl().getAllocationSpace());
 
         for (AlignedHeader alignedChunk = popFromThreadLocalFreeList(); alignedChunk.isNonNull(); alignedChunk = popFromThreadLocalFreeList()) {
@@ -328,11 +327,11 @@ public final class ThreadLocalAllocation {
         HeapChunkProvider.freeUnalignedChunkList(tlab.getUnalignedChunk());
     }
 
-    public static void suspendThreadLocalAllocation() {
+    static void suspendInCurrentThread() {
         retireCurrentAllocationChunk(regularTLAB.getAddress());
     }
 
-    public static void resumeThreadLocalAllocation() {
+    static void resumeInCurrentThread() {
         resumeAllocationInCurrentChunk(regularTLAB.getAddress());
     }
 
@@ -452,8 +451,7 @@ public final class ThreadLocalAllocation {
         }
     }
 
-    public static class TestingBackdoor {
-
+    public static final class TestingBackdoor {
         public static AlignedHeader getAlignedChunkFromProvider() {
             return HeapChunkProvider.get().produceAlignedChunk();
         }
@@ -472,6 +470,9 @@ public final class ThreadLocalAllocation {
 
         public static boolean isHeadThreadLocalFreeList(AlignedHeader alignedChunk) {
             return freeList.get().equal(alignedChunk);
+        }
+
+        private TestingBackdoor() {
         }
     }
 }

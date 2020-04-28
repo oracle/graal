@@ -41,7 +41,6 @@ import com.oracle.svm.core.util.VMError;
  * much about) that AlignedChunks have a top pointer.
  */
 final class GreyObjectsWalker {
-
     /** The Space that is being captured. */
     private Space space;
 
@@ -72,7 +71,7 @@ final class GreyObjectsWalker {
 
     /** Compare the snapshot to the current state of the Space to see if there are grey Objects. */
     @AlwaysInline("GC performance")
-    protected boolean haveGreyObjects() {
+    boolean haveGreyObjects() {
         return alignedHeapChunk.notEqual(space.getLastAlignedHeapChunk()) || alignedHeapChunk.isNonNull() && alignedTop.notEqual(alignedHeapChunk.getTop()) ||
                         unalignedHeapChunk.notEqual(space.getLastUnalignedHeapChunk());
     }
@@ -88,15 +87,12 @@ final class GreyObjectsWalker {
     @AlwaysInline("GC performance")
     private void walkAlignedGreyObjects() {
         AlignedHeapChunk.AlignedHeader aChunk;
-        Pointer aOffset;
         if (alignedHeapChunk.isNull() && alignedTop.isNull()) {
             /* If the snapshot is empty, then I have to walk from the beginning of the Space. */
             aChunk = space.getFirstAlignedHeapChunk();
-            aOffset = (aChunk.isNonNull() ? AlignedHeapChunk.getAlignedHeapChunkStart(aChunk) : WordFactory.nullPointer());
         } else {
             /* Otherwise walk Objects that arrived after the snapshot. */
             aChunk = alignedHeapChunk;
-            aOffset = alignedTop;
         }
         /* Visit Objects in the AlignedChunks. */
         GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
@@ -104,11 +100,10 @@ final class GreyObjectsWalker {
             AlignedHeapChunk.AlignedHeader lastChunk;
             do {
                 lastChunk = aChunk;
-                if (!AlignedHeapChunk.walkObjectsFromInline(aChunk, aOffset, visitor)) {
+                if (!AlignedHeapChunk.walkObjectsInline(aChunk, visitor)) {
                     throw VMError.shouldNotReachHere();
                 }
                 aChunk = aChunk.getNext();
-                aOffset = (aChunk.isNonNull() ? AlignedHeapChunk.getAlignedHeapChunkStart(aChunk) : WordFactory.nullPointer());
             } while (aChunk.isNonNull());
 
             /* Move the scan point. */
@@ -131,7 +126,7 @@ final class GreyObjectsWalker {
             UnalignedHeapChunk.UnalignedHeader lastChunk;
             do {
                 lastChunk = uChunk;
-                if (!UnalignedHeapChunk.walkObjectsFromInline(uChunk, UnalignedHeapChunk.getUnalignedHeapChunkStart(uChunk), visitor)) {
+                if (!UnalignedHeapChunk.walkObjectsInline(uChunk, visitor)) {
                     throw VMError.shouldNotReachHere();
                 }
                 uChunk = uChunk.getNext();

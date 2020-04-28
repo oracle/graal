@@ -30,8 +30,7 @@ import com.oracle.svm.core.genscavenge.HeapPolicy.AlwaysCollectCompletely;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
-public class HeapPolicyOptions {
-
+public final class HeapPolicyOptions {
     @Option(help = "The maximum heap size as percent of physical memory") //
     public static final RuntimeOptionKey<Integer> MaximumHeapSizePercent = new RuntimeOptionKey<>(80);
 
@@ -71,4 +70,7 @@ public class HeapPolicyOptions {
 
     @Option(help = "Maximum number of survivor spaces.") //
     public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(0);
+
+    private HeapPolicyOptions() {
+    }
 }

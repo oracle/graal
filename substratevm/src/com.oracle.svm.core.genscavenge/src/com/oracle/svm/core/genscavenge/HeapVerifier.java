@@ -43,8 +43,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 
-public class HeapVerifier {
-
+public final class HeapVerifier {
     public enum Occasion {
         BEFORE_COLLECTION,
         DURING_COLLECTION,
@@ -130,7 +129,7 @@ public class HeapVerifier {
         return true;
     }
 
-    protected static final class VerifyVMOperation extends JavaVMOperation {
+    static final class VerifyVMOperation extends JavaVMOperation {
 
         private final String cause;
         private final HeapVerifier verifier;
@@ -173,7 +172,7 @@ public class HeapVerifier {
         trace.newline();
 
         setCurrentCause(cause);
-        ThreadLocalAllocation.disableThreadLocalAllocation();
+        ThreadLocalAllocation.disableAndFlushForAllThreads();
         boolean result = true;
         if (!verifyBootImageObjects()) {
             getWitnessLog().string("[HeapVerifier.verify:").string("  native image fails to verify").string("]").newline();
@@ -413,7 +412,7 @@ public class HeapVerifier {
     static boolean slowlyFindPointerInSpace(Space space, Pointer p) {
         AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
-            final Pointer start = AlignedHeapChunk.getAlignedHeapChunkStart(aChunk);
+            final Pointer start = AlignedHeapChunk.getObjectsStart(aChunk);
             if (start.belowOrEqual(p) && p.belowThan(aChunk.getTop())) {
                 return true;
             }
@@ -421,7 +420,7 @@ public class HeapVerifier {
         }
         UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
         while (uChunk.isNonNull()) {
-            final Pointer start = UnalignedHeapChunk.getUnalignedHeapChunkStart(uChunk);
+            final Pointer start = UnalignedHeapChunk.getObjectStart(uChunk);
             if (start.belowOrEqual(p) && p.belowThan(uChunk.getTop())) {
                 return true;
             }
