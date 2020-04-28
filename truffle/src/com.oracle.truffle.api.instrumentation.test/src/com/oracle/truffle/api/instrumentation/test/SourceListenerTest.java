@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,26 +59,34 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
-
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class SourceListenerTest extends AbstractInstrumentationTest {
 
@@ -623,4 +631,193 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         }
     }
 
+    @Test
+    public void testNoMaterializationOnSourceListener() {
+        setupEnv(Context.create(), new ProxyLanguage() {
+
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                com.oracle.truffle.api.source.Source source = request.getSource();
+                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    @Node.Child private NeverMaterializedNode child = new NeverMaterializedNode();
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        return child.execute(frame);
+                    }
+
+                    @Override
+                    public SourceSection getSourceSection() {
+                        return source.createSection(1);
+                    }
+                });
+            }
+        });
+        context.eval(Source.create(ProxyLanguage.ID, "a"));
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> {
+        }, true);
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> {
+        }, true);
+        context.eval(Source.create(ProxyLanguage.ID, "b"));
+        // Verify that it fails when materialized:
+        try {
+            instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, e -> {
+            }, true);
+            Assert.fail();
+        } catch (IllegalStateException ex) {
+            // O.K.
+        }
+    }
+
+    @GenerateWrapper
+    static class NeverMaterializedNode extends Node implements InstrumentableNode {
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+            return new NeverMaterializedNodeWrapper(this, probe);
+        }
+
+        @Override
+        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            throw new IllegalStateException("Should not be materialized.");
+        }
+
+        public Object execute(@SuppressWarnings("unused") VirtualFrame frame) {
+            return true;
+        }
+    }
+
+    @Test
+    public void testDifferentSourcesInAST() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "abcd";
+        StringBuilder loadedCode = new StringBuilder();
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        Assert.assertEquals(code + code, loadedCode.toString());
+    }
+
+    @Test
+    public void testMaterializedSourcesInAST() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "Mabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        // Not materialized yet:
+        Assert.assertEquals(code + "M", loadedCode.toString());
+        // Force materialization:
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, e -> {
+        }, true);
+        Assert.assertEquals(code + code, loadedCode.toString());
+    }
+
+    @Test
+    public void testInsertedSourcesInAST() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "Iabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        Assert.assertEquals(code + code, loadedCode.toString());
+    }
+
+    static class MultiSourceASTLanguage extends ProxyLanguage {
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            com.oracle.truffle.api.source.Source source = request.getSource();
+            return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                @Node.Child private MultiSourceBlock block = new MultiSourceBlock(source.getCharacters().toString());
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return block.execute(frame);
+                }
+
+                @Override
+                public SourceSection getSourceSection() {
+                    return source.createSection(1);
+                }
+            });
+        }
+
+        @GenerateWrapper
+        static class MultiSourceBlock extends Node implements InstrumentableNode {
+
+            @Child private MultiSourceBlock child;
+            private final boolean materialize;
+            private final boolean insert;
+            private final com.oracle.truffle.api.source.Source mineSource;
+            private final String childrenCode;
+
+            MultiSourceBlock(String code) {
+                this.materialize = code.startsWith("M");
+                this.insert = code.startsWith("I");
+                this.mineSource = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, code.substring(0, 1), "block").build();
+                this.childrenCode = code.substring(1);
+                if (!(materialize || insert) && !childrenCode.isEmpty()) {
+                    child = new MultiSourceBlock(childrenCode);
+                }
+            }
+
+            MultiSourceBlock(com.oracle.truffle.api.source.Source source, String childrenCode) {
+                this.materialize = false;
+                this.insert = false;
+                this.mineSource = source;
+                this.childrenCode = childrenCode;
+                if (!childrenCode.isEmpty()) {
+                    child = new MultiSourceBlock(childrenCode);
+                }
+            }
+
+            MultiSourceBlock(MultiSourceBlock copy) {
+                this.materialize = copy.materialize;
+                this.insert = copy.insert;
+                this.mineSource = copy.mineSource;
+                this.childrenCode = copy.childrenCode;
+            }
+
+            @Override
+            public SourceSection getSourceSection() {
+                return mineSource.createSection(1);
+            }
+
+            @Override
+            public boolean isInstrumentable() {
+                return true;
+            }
+
+            @Override
+            public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+                return new MultiSourceBlockWrapper(this, this, probe);
+            }
+
+            @Override
+            public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+                if (materialize) {
+                    return new MultiSourceBlock(mineSource, childrenCode);
+                }
+                return this;
+            }
+
+            public Object execute(VirtualFrame frame) {
+                if (insert) {
+                    CompilerDirectives.transferToInterpreter();
+                    child = insert(new MultiSourceBlock(childrenCode));
+                    notifyInserted(child);
+                }
+                if (child != null) {
+                    return child.execute(frame);
+                } else {
+                    return true;
+                }
+            }
+        }
+    }
 }

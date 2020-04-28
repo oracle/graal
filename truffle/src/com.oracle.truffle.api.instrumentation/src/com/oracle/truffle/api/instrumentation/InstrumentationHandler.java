@@ -105,9 +105,13 @@ final class InstrumentationHandler {
      */
     private final Map<Source, Void> sources = Collections.synchronizedMap(new WeakHashMap<Source, Void>());
     /* Load order needs to be preserved for sources, thats why we store sources again in a list. */
-    private final AtomicReference<SourceList> sourcesListRef = new AtomicReference<>();
-    private volatile boolean hasSourceBindings;
-    private volatile boolean collectingSources;
+    private final AtomicReference<WeakAsyncList<Source>> sourcesListRef = new AtomicReference<>();
+    /*
+     * Allows for ordering sources using the order in which they were discovered in case of nested
+     * visitors.
+     */
+    private final ThreadLocal<List<Source>> threadLocalNewSources = new ThreadLocal<>();
+
     /*
      * The contract is the following: "sourcesExecuted" and "sourcesExecutedList" can only be
      * accessed while synchronized on "sourcesExecuted". Both will only be lazily initialized from
@@ -117,9 +121,12 @@ final class InstrumentationHandler {
      */
     private final Map<Source, Void> sourcesExecuted = Collections.synchronizedMap(new WeakHashMap<Source, Void>());
     /* Load order needs to be preserved for sources, thats why we store sources again in a list. */
-    private final AtomicReference<SourceList> sourcesExecutedListRef = new AtomicReference<>();
-    private volatile boolean hasSourceExecutedBindings;
-    private volatile boolean collectingSourcesExecuted;
+    private final AtomicReference<WeakAsyncList<Source>> sourcesExecutedListRef = new AtomicReference<>();
+    /*
+     * Allows for ordering sources using the order in which they were discovered in case of nested
+     * visitors.
+     */
+    private final ThreadLocal<List<Source>> threadLocalNewSourcesExecuted = new ThreadLocal<>();
 
     final Collection<RootNode> loadedRoots = new WeakAsyncList<>(256);
     private final Collection<RootNode> executedRoots = new WeakAsyncList<>(64);
@@ -128,9 +135,7 @@ final class InstrumentationHandler {
     private final Collection<EventBinding.Source<?>> executionBindings = new EventBindingList<>(8);
     private final Collection<EventBinding.Source<?>> sourceSectionBindings = new EventBindingList<>(8);
     private final Collection<EventBinding.Source<?>> sourceBindings = new EventBindingList<>(8);
-    private final ThreadLocal<FindSourcesVisitor> findSourcesVisitor = new ThreadLocalSourcesVisitor();
     private final Collection<EventBinding.Source<?>> sourceExecutedBindings = new EventBindingList<>(8);
-    private final ThreadLocal<FindSourcesVisitor> findSourcesExecutedVisitor = new ThreadLocalExecutedSourcesVisitor();
     private final Collection<EventBinding<? extends OutputStream>> outputStdBindings = new EventBindingList<>(1);
     private final Collection<EventBinding<? extends OutputStream>> outputErrBindings = new EventBindingList<>(1);
     private final Collection<EventBinding.Allocation<? extends AllocationListener>> allocationBindings = new EventBindingList<>(2);
@@ -170,140 +175,35 @@ final class InstrumentationHandler {
             return;
         }
         assert root.getLanguageInfo() != null;
-        if (hasSourceBindings) {
-            final Source[] rootSources;
-            Lock lock = sourceBindingsLock.readLock();
-            lock.lock();
-            try {
-                if (!sourceBindings.isEmpty() || collectingSources) {
-                    // we'll add to the sourcesList, so it needs to be initialized
-                    lazyInitializeSourcesList();
 
-                    FindSourcesVisitor visitor = findSourcesVisitor.get();
-                    SourceSection sourceSection = root.getSourceSection();
-                    if (sourceSection != null) {
-                        visitor.adoptSource(sourceSection.getSource());
-                    }
-                    visitRootAndRestoreVisitorState(root, visitor, true);
-                    rootSources = visitor.getSources();
-                } else {
-                    hasSourceBindings = false;
-                    sources.clear();
-                    sourcesListRef.set(null);
-                    rootSources = null;
-                }
-                loadedRoots.add(root);
-                // Do not invoke foreign code while holding a lock to avoid deadlocks.
-                if (rootSources != null) {
-                    SourceList sourceList = sourcesListRef.get();
-                    if (sourceList == null || !sourceList.addIfIncomplete(rootSources)) {
-                        for (Source src : rootSources) {
-                            notifySourceBindingsLoaded(sourceBindings, src);
-                        }
-                    }
-                }
-            } finally {
-                lock.unlock();
-            }
-        } else {
-            loadedRoots.add(root);
-        }
-
-        // fast path no bindings attached
-        if (!sourceSectionBindings.isEmpty()) {
-            BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-            visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ALL);
-            visitRoot(root, root, visitorBuilder.buildVisitor(), false, true);
-        }
-
-    }
-
-    private void visitRootAndRestoreVisitorState(RootNode root, FindSourcesVisitor visitor, boolean firstExecution) {
-        RootNode previousRoot = visitor.root;
-        Set<Class<?>> previousProvidedTags = visitor.providedTags;
-        SourceSection previousRootSourceSection = visitor.rootSourceSection;
-        int previousRootBits = visitor.rootBits;
-        int previousComputingRootNodeBits = visitor.computingRootNodeBits;
-        boolean previousFirstExecution = visitor.firstExecution;
-        boolean previousVisitingRetiredNodes = visitor.visitingRetiredNodes;
-        boolean previousVisitingMaterialized = visitor.visitingMaterialized;
-        Set<Class<? extends Tag>> previousMaterializeTags = visitor.materializeTags;
+        Lock lock = sourceBindingsLock.readLock();
+        lock.lock();
         try {
-            visitRoot(root, root, visitor, false, firstExecution);
-        } finally {
-            visitor.root = previousRoot;
-            visitor.providedTags = previousProvidedTags;
-            visitor.rootSourceSection = previousRootSourceSection;
-            visitor.rootBits = previousRootBits;
-            visitor.computingRootNodeBits = previousComputingRootNodeBits;
-            visitor.firstExecution = previousFirstExecution;
-            visitor.visitingRetiredNodes = previousVisitingRetiredNodes;
-            visitor.visitingMaterialized = previousVisitingMaterialized;
-            visitor.materializeTags = previousMaterializeTags;
-        }
-    }
+            loadedRoots.add(root);
 
-    private static class FindSourcesVisitor extends AbstractNodeVisitor {
-
-        private final Map<Source, Void> sources;
-        private final AtomicReference<SourceList> sourcesListRef;
-        private final List<Source> rootSources = new ArrayList<>(5);
-
-        FindSourcesVisitor(Map<Source, Void> sources, AtomicReference<SourceList> sourcesListRef) {
-            super(true);
-            this.sources = sources;
-            this.sourcesListRef = sourcesListRef;
-        }
-
-        @Override
-        boolean shouldVisit() {
-            return true;
-        }
-
-        @Override
-        protected void visitInstrumentable(Node parentInstrumentable, SourceSection parentSourceSection, Node instrumentableNode, SourceSection sourceSection) {
-            if (sourceSection != null) {
-                adoptSource(sourceSection.getSource());
-            }
-        }
-
-        void adoptSource(Source source) {
-            synchronized (sources) {
-                if (!sources.containsKey(source)) {
-                    sources.put(source, null);
-                    sourcesListRef.get().add(source);
-                    rootSources.add(source);
+            Source rootSource = null;
+            if (!sourceBindings.isEmpty()) {
+                SourceSection sourceSection = root.getSourceSection();
+                if (sourceSection != null) {
+                    rootSource = sourceSection.getSource();
                 }
             }
-        }
 
-        Source[] getSources() {
-            if (rootSources.isEmpty()) {
-                return null;
+            // fast path no bindings attached
+            if (!sourceSectionBindings.isEmpty() || !sourceBindings.isEmpty()) {
+                VisitorBuilder visitorBuilder = new VisitorBuilder();
+                visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ALL);
+                visitorBuilder.addFindSourcesOperation(VisitOperation.Scope.ALL, rootSource, true);
+                Visitor visitor = visitorBuilder.buildVisitor();
+                try {
+                    visitRoot(root, root, visitor, false, true);
+                } finally {
+                    visitor.postVisit();
+                }
             }
-            Source[] sourcesArray = rootSources.toArray(new Source[rootSources.size()]);
-            rootSources.clear();
-            return sourcesArray;
+        } finally {
+            lock.unlock();
         }
-
-    }
-
-    private class ThreadLocalSourcesVisitor extends ThreadLocal<FindSourcesVisitor> {
-
-        @Override
-        protected FindSourcesVisitor initialValue() {
-            return new FindSourcesVisitor(sources, sourcesListRef);
-        }
-
-    }
-
-    private class ThreadLocalExecutedSourcesVisitor extends ThreadLocal<FindSourcesVisitor> {
-
-        @Override
-        protected FindSourcesVisitor initialValue() {
-            return new FindSourcesVisitor(sourcesExecuted, sourcesExecutedListRef);
-        }
-
     }
 
     void onFirstExecution(RootNode root) {
@@ -311,60 +211,41 @@ final class InstrumentationHandler {
             return;
         }
         assert root.getLanguageInfo() != null;
-        if (hasSourceExecutedBindings) {
-            final Source[] rootSources;
-            Lock lock = sourceExecutedBindingsLock.readLock();
-            lock.lock();
-            try {
-                if (!sourceExecutedBindings.isEmpty() || collectingSourcesExecuted) {
-                    // we'll add to the sourcesExecutedList, so it needs to be initialized
-                    lazyInitializeSourcesExecutedList();
 
-                    int rootBits = RootNodeBits.get(root);
-                    if (RootNodeBits.isNoSourceSection(rootBits)) {
-                        rootSources = null;
-                    } else {
-                        FindSourcesVisitor visitor = findSourcesExecutedVisitor.get();
-                        SourceSection sourceSection = root.getSourceSection();
-                        if (RootNodeBits.isSameSource(rootBits) && sourceSection != null) {
-                            Source source = sourceSection.getSource();
-                            visitor.adoptSource(source);
-                        } else {
-                            if (sourceSection != null) {
-                                visitor.adoptSource(sourceSection.getSource());
-                            }
-                            visitRootAndRestoreVisitorState(root, visitor, true);
-                        }
-                        rootSources = visitor.getSources();
-                    }
-                } else {
-                    hasSourceExecutedBindings = false;
-                    sourcesExecuted.clear();
-                    sourcesExecutedListRef.set(null);
-                    rootSources = null;
-                }
+        Lock lock = sourceBindingsLock.readLock();
+        Lock lock2 = sourceExecutedBindingsLock.readLock();
+        lock.lock();
+        try {
+            lock2.lock();
+            try {
                 executedRoots.add(root);
-                // Do not invoke foreign code while holding a lock to avoid deadlocks.
-                if (rootSources != null) {
-                    SourceList sourceList = sourcesExecutedListRef.get();
-                    if (sourceList == null || !sourceList.addIfIncomplete(rootSources)) {
-                        for (Source src : rootSources) {
-                            notifySourceExecutedBindings(sourceExecutedBindings, src);
-                        }
+
+                Source rootSource = null;
+                if (!sourceExecutedBindings.isEmpty()) {
+                    SourceSection sourceSection = root.getSourceSection();
+                    if (sourceSection != null) {
+                        rootSource = sourceSection.getSource();
+                    }
+                }
+
+                // fast path no bindings attached
+                if (!executionBindings.isEmpty() || !sourceBindings.isEmpty() || !sourceExecutedBindings.isEmpty()) {
+                    VisitorBuilder visitorBuilder = new VisitorBuilder();
+                    visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ALL);
+                    visitorBuilder.addFindSourcesOperation(VisitOperation.Scope.ALL, true);
+                    visitorBuilder.addFindSourcesExecutedOperation(VisitOperation.Scope.ALL, rootSource, true);
+                    Visitor visitor = visitorBuilder.buildVisitor();
+                    try {
+                        visitRoot(root, root, visitor, false, true, true);
+                    } finally {
+                        visitor.postVisit();
                     }
                 }
             } finally {
-                lock.unlock();
+                lock2.unlock();
             }
-        } else {
-            executedRoots.add(root);
-        }
-
-        // fast path no bindings attached
-        if (!executionBindings.isEmpty()) {
-            BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-            visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ALL);
-            visitRoot(root, root, visitorBuilder.buildVisitor(), false, true);
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -417,9 +298,14 @@ final class InstrumentationHandler {
         if (cleanupRequired) {
             Collection<EventBinding.Source<?>> disposedExecutionBindings = filterBindingsForInstrumenter(executionBindings, disposedInstrumenter);
             if (!disposedExecutionBindings.isEmpty()) {
-                BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
+                VisitorBuilder visitorBuilder = new VisitorBuilder();
                 visitorBuilder.addDisposeWrapperOperationForBindings(disposedExecutionBindings);
-                visitRoots(executedRoots, visitorBuilder.buildVisitor());
+                Visitor visitor = visitorBuilder.buildVisitor();
+                try {
+                    visitRoots(executedRoots, visitor);
+                } finally {
+                    visitor.postVisit();
+                }
             }
             disposeBindingsBulk(disposedExecutionBindings);
             disposeBindingsBulk(filterBindingsForInstrumenter(sourceSectionBindings, disposedInstrumenter));
@@ -456,12 +342,31 @@ final class InstrumentationHandler {
 
         this.executionBindings.add(binding);
 
-        if (!executedRoots.isEmpty()) {
-            BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-            visitorBuilder.addInsertWrapperOperationForBinding(VisitOperation.Scope.ONLY_ORIGINAL, binding);
-            visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
-            visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
-            visitRoots(executedRoots, visitorBuilder.buildVisitor());
+        Lock lock = sourceBindingsLock.readLock();
+        Lock lock2 = sourceExecutedBindingsLock.readLock();
+        lock.lock();
+        try {
+            lock2.lock();
+            try {
+                if (!executedRoots.isEmpty()) {
+                    VisitorBuilder visitorBuilder = new VisitorBuilder();
+                    visitorBuilder.addInsertWrapperOperationForBinding(VisitOperation.Scope.ONLY_ORIGINAL, binding);
+                    visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
+                    visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
+                    visitorBuilder.addFindSourcesOperation(VisitOperation.Scope.ONLY_MATERIALIZED, true);
+                    visitorBuilder.addFindSourcesExecutedOperation(VisitOperation.Scope.ONLY_MATERIALIZED, true);
+                    Visitor visitor = visitorBuilder.buildVisitor();
+                    try {
+                        visitRoots(executedRoots, visitor);
+                    } finally {
+                        visitor.postVisit();
+                    }
+                }
+            } finally {
+                lock2.unlock();
+            }
+        } finally {
+            lock.unlock();
         }
 
         if (TRACE) {
@@ -478,12 +383,32 @@ final class InstrumentationHandler {
 
         this.sourceSectionBindings.add(binding);
         if (notifyLoaded) {
-            if (!loadedRoots.isEmpty()) {
-                BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-                visitorBuilder.addNotifyLoadedOperationForBinding(VisitOperation.Scope.ONLY_ORIGINAL, binding);
-                visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
-                visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
-                visitRoots(loadedRoots, visitorBuilder.buildVisitor());
+
+            Lock lock = sourceBindingsLock.readLock();
+            Lock lock2 = sourceExecutedBindingsLock.readLock();
+            lock.lock();
+            try {
+                lock2.lock();
+                try {
+                    if (!loadedRoots.isEmpty()) {
+                        VisitorBuilder visitorBuilder = new VisitorBuilder();
+                        visitorBuilder.addNotifyLoadedOperationForBinding(VisitOperation.Scope.ONLY_ORIGINAL, binding);
+                        visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
+                        visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
+                        visitorBuilder.addFindSourcesOperation(VisitOperation.Scope.ONLY_MATERIALIZED, true);
+                        visitorBuilder.addFindSourcesExecutedOperation(VisitOperation.Scope.ONLY_MATERIALIZED, true);
+                        Visitor visitor = visitorBuilder.buildVisitor();
+                        try {
+                            visitRoots(loadedRoots, visitor);
+                        } finally {
+                            visitor.postVisit();
+                        }
+                    }
+                } finally {
+                    lock2.unlock();
+                }
+            } finally {
+                lock.unlock();
             }
         }
 
@@ -499,12 +424,31 @@ final class InstrumentationHandler {
             trace("BEGIN: Visiting loaded source sections %s, %s%n", binding.getFilter(), binding.getElement());
         }
 
-        if (!loadedRoots.isEmpty()) {
-            BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-            visitorBuilder.addNotifyLoadedOperationForBinding(VisitOperation.Scope.ALL, binding);
-            visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
-            visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
-            visitRoots(loadedRoots, visitorBuilder.buildVisitor());
+        Lock lock = sourceBindingsLock.readLock();
+        Lock lock2 = sourceExecutedBindingsLock.readLock();
+        lock.lock();
+        try {
+            lock2.lock();
+            try {
+                if (!loadedRoots.isEmpty()) {
+                    VisitorBuilder visitorBuilder = new VisitorBuilder();
+                    visitorBuilder.addNotifyLoadedOperationForBinding(VisitOperation.Scope.ALL, binding);
+                    visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
+                    visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
+                    visitorBuilder.addFindSourcesOperation(VisitOperation.Scope.ONLY_MATERIALIZED, true);
+                    visitorBuilder.addFindSourcesExecutedOperation(VisitOperation.Scope.ONLY_MATERIALIZED, true);
+                    Visitor visitor = visitorBuilder.buildVisitor();
+                    try {
+                        visitRoots(loadedRoots, visitor);
+                    } finally {
+                        visitor.postVisit();
+                    }
+                }
+            } finally {
+                lock2.unlock();
+            }
+        } finally {
+            lock.unlock();
         }
 
         if (TRACE) {
@@ -517,19 +461,13 @@ final class InstrumentationHandler {
             trace("BEGIN: Adding source binding %s, %s%n", binding.getFilter(), binding.getElement());
         }
 
-        if (notifyLoaded) {
-            this.collectingSources = true;
-            this.hasSourceBindings = true;
-            lazyInitializeSourcesList();
-        }
         Lock lock = sourceBindingsLock.writeLock();
         lock.lock();
         try {
+            lazyInitializeSourcesList();
             this.sourceBindings.add(binding);
-            this.hasSourceBindings = true;
             if (notifyLoaded) {
-                this.collectingSources = false;
-                for (Source source : sourcesListRef.get().getCompleteList()) {
+                for (Source source : sourcesListRef.get()) {
                     notifySourceBindingLoaded(binding, source);
                 }
             }
@@ -549,19 +487,13 @@ final class InstrumentationHandler {
             trace("BEGIN: Adding source execution binding %s, %s%n", binding.getFilter(), binding.getElement());
         }
 
-        if (notifyLoaded) {
-            this.collectingSourcesExecuted = true;
-            this.hasSourceExecutedBindings = true;
-            lazyInitializeSourcesExecutedList();
-        }
         Lock lock = sourceExecutedBindingsLock.writeLock();
         lock.lock();
         try {
+            lazyInitializeSourcesExecutedList();
             this.sourceExecutedBindings.add(binding);
-            this.hasSourceExecutedBindings = true;
             if (notifyLoaded) {
-                this.collectingSourcesExecuted = false;
-                for (Source source : sourcesExecutedListRef.get().getCompleteList()) {
+                for (Source source : sourcesExecutedListRef.get()) {
                     notifySourceExecutedBinding(binding, source);
                 }
             }
@@ -653,44 +585,35 @@ final class InstrumentationHandler {
     /**
      * Initializes sources and sourcesList by populating them from loadedRoots.
      */
-    private void lazyInitializeSourcesList() {
+    private <T> void lazyInitializeSourcesList() {
         if (sourcesListRef.get() == null) {
             // build the sourcesList, we need it now
-            SourceList sourceList = new SourceList();
+            WeakAsyncList<Source> sourceList = new WeakAsyncList<>(16);
             if (sourcesListRef.compareAndSet(null, sourceList)) {
-                try {
-                    for (RootNode root : loadedRoots) {
-                        int rootBits = RootNodeBits.get(root);
-                        if (RootNodeBits.isNoSourceSection(rootBits)) {
-                            continue;
-                        } else {
-                            SourceSection sourceSection = root.getSourceSection();
-                            if (RootNodeBits.isSameSource(rootBits) && sourceSection != null) {
-                                Source source = sourceSection.getSource();
-                                if (!sources.containsKey(source)) {
-                                    sources.put(source, null);
-                                    sourceList.add(source);
-                                }
-                            } else {
-                                FindSourcesVisitor visitor = findSourcesVisitor.get();
-                                if (sourceSection != null) {
-                                    visitor.adoptSource(sourceSection.getSource());
-                                }
-                                visitRootAndRestoreVisitorState(root, visitor, false);
-                                Source[] visitedSources = visitor.getSources();
-                                if (visitedSources != null) {
-                                    for (Source source : visitedSources) {
-                                        if (!sources.containsKey(source)) {
-                                            sources.put(source, null);
-                                            sourceList.add(source);
-                                        }
-                                    }
-                                }
+                for (RootNode root : loadedRoots) {
+                    int rootBits = RootNodeBits.get(root);
+                    if (RootNodeBits.isNoSourceSection(rootBits)) {
+                        continue;
+                    } else {
+                        SourceSection sourceSection = root.getSourceSection();
+                        if (sourceSection != null) {
+                            Source source = sourceSection.getSource();
+                            if (!sources.containsKey(source)) {
+                                sources.put(source, null);
+                                sourceList.add(source);
+                            }
+                        }
+                        if (!RootNodeBits.isSameSource(rootBits) || sourceSection == null) {
+                            VisitorBuilder visitorBuilder = new VisitorBuilder();
+                            visitorBuilder.addFindSourcesOperation(VisitOperation.Scope.ALL, false);
+                            Visitor visitor = visitorBuilder.buildVisitor();
+                            try {
+                                visitRoot(root, root, visitor, false, false);
+                            } finally {
+                                visitor.postVisit();
                             }
                         }
                     }
-                } finally {
-                    sourceList.notifyComplete();
                 }
             }
         }
@@ -702,49 +625,41 @@ final class InstrumentationHandler {
     private void lazyInitializeSourcesExecutedList() {
         if (sourcesExecutedListRef.get() == null) {
             // build the sourcesExecutedList, we need it now
-            SourceList sourcesExecutedList = new SourceList();
+            WeakAsyncList<Source> sourcesExecutedList = new WeakAsyncList<>(16);
             if (sourcesExecutedListRef.compareAndSet(null, sourcesExecutedList)) {
-                try {
-                    for (RootNode root : executedRoots) {
-                        int rootBits = RootNodeBits.get(root);
-                        if (RootNodeBits.isNoSourceSection(rootBits)) {
-                            continue;
-                        } else {
-                            SourceSection sourceSection = root.getSourceSection();
-                            if (RootNodeBits.isSameSource(rootBits) && sourceSection != null) {
-                                Source source = sourceSection.getSource();
-                                if (!sourcesExecuted.containsKey(source)) {
-                                    sourcesExecuted.put(source, null);
-                                    sourcesExecutedList.add(source);
-                                }
-                            } else {
-                                FindSourcesVisitor visitor = findSourcesExecutedVisitor.get();
-                                if (sourceSection != null) {
-                                    visitor.adoptSource(sourceSection.getSource());
-                                }
-                                visitRootAndRestoreVisitorState(root, visitor, false);
-                                Source[] visitedSources = visitor.getSources();
-                                if (visitedSources != null) {
-                                    for (Source source : visitedSources) {
-                                        if (!sourcesExecuted.containsKey(source)) {
-                                            sourcesExecuted.put(source, null);
-                                            sourcesExecutedList.add(source);
-                                        }
-                                    }
-                                }
+                for (RootNode root : executedRoots) {
+                    int rootBits = RootNodeBits.get(root);
+                    if (RootNodeBits.isNoSourceSection(rootBits)) {
+                        continue;
+                    } else {
+                        SourceSection sourceSection = root.getSourceSection();
+                        if (sourceSection != null) {
+                            Source source = sourceSection.getSource();
+                            if (!sourcesExecuted.containsKey(source)) {
+                                sourcesExecuted.put(source, null);
+                                sourcesExecutedList.add(source);
+                            }
+                        }
+
+                        if (!RootNodeBits.isSameSource(rootBits) || sourceSection == null) {
+                            VisitorBuilder visitorBuilder = new VisitorBuilder();
+                            visitorBuilder.addFindSourcesExecutedOperation(VisitOperation.Scope.ALL, false);
+                            Visitor visitor = visitorBuilder.buildVisitor();
+                            try {
+                                visitRoot(root, root, visitor, false, false, true);
+                            } finally {
+                                visitor.postVisit();
                             }
                         }
                     }
-                } finally {
-                    sourcesExecutedList.notifyComplete();
                 }
             }
         }
     }
 
-    private void visitRoots(Collection<RootNode> roots, AbstractNodeVisitor addBindingsVisitor) {
+    private void visitRoots(Collection<RootNode> roots, Visitor visitor) {
         for (RootNode root : roots) {
-            visitRoot(root, root, addBindingsVisitor, false, false);
+            visitRoot(root, root, visitor, false, false);
         }
     }
 
@@ -757,9 +672,14 @@ final class InstrumentationHandler {
         if (binding instanceof EventBinding.Source) {
             EventBinding.Source<?> sourceBinding = (EventBinding.Source<?>) binding;
             if (sourceBinding.isExecutionEvent()) {
-                BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
+                VisitorBuilder visitorBuilder = new VisitorBuilder();
                 visitorBuilder.addDisposeWrapperOperationForBinding(sourceBinding);
-                visitRoots(executedRoots, visitorBuilder.buildVisitor());
+                Visitor visitor = visitorBuilder.buildVisitor();
+                try {
+                    visitRoots(executedRoots, visitor);
+                } finally {
+                    visitor.postVisit();
+                }
             }
         } else if (binding instanceof EventBinding.Allocation) {
             EventBinding.Allocation<?> allocationBinding = (EventBinding.Allocation<?>) binding;
@@ -880,11 +800,30 @@ final class InstrumentationHandler {
         }
         assert parentInstrumentable != null;
 
-        if (!sourceSectionBindings.isEmpty() || !executionBindings.isEmpty()) {
-            BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
-            visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ALL);
-            visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ALL);
-            visitRoot(rootNode, parentInstrumentable, visitorBuilder.buildVisitor(), true, false);
+        Lock lock = sourceBindingsLock.readLock();
+        Lock lock2 = sourceExecutedBindingsLock.readLock();
+        lock.lock();
+        try {
+            lock2.lock();
+            try {
+                if (!sourceSectionBindings.isEmpty() || !executionBindings.isEmpty() || !sourceBindings.isEmpty() || !sourceExecutedBindings.isEmpty()) {
+                    VisitorBuilder visitorBuilder = new VisitorBuilder();
+                    visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ALL);
+                    visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ALL);
+                    visitorBuilder.addFindSourcesOperation(VisitOperation.Scope.ALL, true);
+                    visitorBuilder.addFindSourcesExecutedOperation(VisitOperation.Scope.ALL, true);
+                    Visitor visitor = visitorBuilder.buildVisitor();
+                    try {
+                        visitRoot(rootNode, parentInstrumentable, visitor, true, false);
+                    } finally {
+                        visitor.postVisit();
+                    }
+                }
+            } finally {
+                lock2.unlock();
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -1157,42 +1096,54 @@ final class InstrumentationHandler {
     }
 
     @SuppressWarnings("unchecked")
-    private void visitRoot(RootNode root, final Node node, final AbstractNodeVisitor visitor, boolean forceRootBitComputation, boolean firstExecution) {
+    private void visitRoot(RootNode root, final Node node, final Visitor visitor, boolean forceRootBitComputation, boolean firstExecution) {
+        visitRoot(root, node, visitor, forceRootBitComputation, firstExecution, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void visitRoot(RootNode root, final Node node, final Visitor visitor, boolean forceRootBitComputation, boolean firstExecution, boolean setExecutedRootNodeBit) {
         if (TRACE) {
             trace("BEGIN: Visit root %s for %s%n", root.toString(), visitor);
         }
 
-        visitor.instrumentationHandler = this;
         visitor.firstExecution = firstExecution;
         visitor.root = root;
         visitor.providedTags = getProvidedTags(root);
         visitor.materializeTags = (Set<Class<? extends Tag>>) (visitor.materializeLimitedTags == null ? visitor.providedTags : visitor.materializeLimitedTags);
         visitor.rootSourceSection = root.getSourceSection();
-        visitor.rootBits = RootNodeBits.get(visitor.root);
 
         if (visitor.shouldVisit() || forceRootBitComputation) {
-            if (forceRootBitComputation) {
-                visitor.computingRootNodeBits = RootNodeBits.isUninitialized(visitor.rootBits) ? RootNodeBits.getAll() : visitor.rootBits;
-            } else if (RootNodeBits.isUninitialized(visitor.rootBits)) {
-                visitor.computingRootNodeBits = RootNodeBits.getAll();
-            }
-
-            if (TRACE) {
-                trace("BEGIN: Traverse root %s for %s%n", root.toString(), visitor);
-            }
             Lock lock = InstrumentAccessor.nodesAccess().getLock(node);
+            lock.lock();
             try {
-                lock.lock();
+                if (TRACE) {
+                    trace("BEGIN: Traverse root %s for %s%n", root.toString(), visitor);
+                }
+                visitor.rootBits = RootNodeBits.get(visitor.root);
+                visitor.setExecutedRootNodeBit = setExecutedRootNodeBit;
+                if (forceRootBitComputation) {
+                    visitor.computingRootNodeBits = RootNodeBits.isUninitialized(visitor.rootBits) ? RootNodeBits.getAll() : visitor.rootBits;
+                } else if (RootNodeBits.isUninitialized(visitor.rootBits)) {
+                    visitor.computingRootNodeBits = RootNodeBits.getAll();
+                }
+
                 visitor.visit(node);
+
+                if (setExecutedRootNodeBit) {
+                    if (RootNodeBits.isUninitialized(visitor.computingRootNodeBits)) {
+                        assert !RootNodeBits.isUninitialized(visitor.rootBits) : "Visitor#rootBits must be initialized!";
+                        visitor.computingRootNodeBits = visitor.rootBits;
+                    }
+                    visitor.computingRootNodeBits = RootNodeBits.setExecuted(visitor.computingRootNodeBits);
+                }
+                if (!RootNodeBits.isUninitialized(visitor.computingRootNodeBits)) {
+                    RootNodeBits.set(visitor.root, visitor.computingRootNodeBits);
+                }
+                if (TRACE) {
+                    trace("END: Traverse root %s for %s%n", root.toString(), visitor);
+                }
             } finally {
                 lock.unlock();
-            }
-            if (TRACE) {
-                trace("END: Traverse root %s for %s%n", root.toString(), visitor);
-            }
-
-            if (!RootNodeBits.isUninitialized(visitor.computingRootNodeBits)) {
-                RootNodeBits.set(visitor.root, visitor.computingRootNodeBits);
             }
         }
 
@@ -1276,6 +1227,18 @@ final class InstrumentationHandler {
         return parent instanceof WrapperNode ? (WrapperNode) parent : null;
     }
 
+    private static void clearRetiredNodeReference(Node node) {
+        // There are no retired nodes the subtrees of which we need to traverse.
+        WrapperNode wrapperNode = getWrapperNode(node);
+        if (wrapperNode != null) {
+            wrapperNode.getProbeNode().clearRetiredNodeReference();
+            // At this point the probe node might already have no chain, and it
+            // also might not be updated further, and so only invalidation makes
+            // sure the wrapper gets eventually removed.
+            invalidateWrapperImpl(wrapperNode, node);
+        }
+    }
+
     private abstract static class VisitOperation {
         /**
          * Scope of the operation in the AST. {@link Scope#ALL} means all nodes, i.e. both the
@@ -1283,7 +1246,7 @@ final class InstrumentationHandler {
          * root, and the new nodes in all the materialized subtrees that were created when nodes
          * were materialized. {@link Scope#ONLY_ORIGINAL} means only the original nodes and
          * {@link Scope#ONLY_MATERIALIZED} means only the new nodes in materialized subtrees. See
-         * {@link BindingsVisitorBuilder} for an example.
+         * {@link VisitorBuilder} for an example.
          */
         enum Scope {
             ALL,
@@ -1292,36 +1255,48 @@ final class InstrumentationHandler {
         }
 
         private final Scope scope;
-        private final Collection<EventBinding.Source<?>> bindings;
-        /*
+        protected final Collection<EventBinding.Source<?>> bindings;
+        /**
          * True if this operation contains only one binding. The reason for storing this in a
          * separate field is that the bindings collection is either a singleton list or an async
          * collectionswhich does not support size(). Which one of those it is is know only at
          * construction time.
          */
         private final boolean singleBindingOperation;
-        /*
+        /**
          * If true, the operation is performed for each bindings, which, for instance, is not
          * necessary for the InsertWrapperOperation as wrapper needs to be inserted only once.
          */
         private final boolean performForEachBinding;
+        /**
+         * If true, then this operation is performed no matter the bindings.
+         */
+        private final boolean alwaysPerform;
 
         VisitOperation(Scope scope, EventBinding.Source<?> binding) {
-            this(scope, Collections.singletonList(binding), true, true);
+            this(scope, Collections.singletonList(binding), true, true, false);
         }
 
         VisitOperation(Scope scope, Collection<EventBinding.Source<?>> bindings, boolean performForEachBinding) {
-            this(scope, bindings, false, performForEachBinding);
+            this(scope, bindings, false, performForEachBinding, false);
         }
 
-        VisitOperation(Scope scope, Collection<EventBinding.Source<?>> bindings, boolean singleBindingOperation, boolean performForEachBinding) {
+        VisitOperation(Scope scope, Collection<EventBinding.Source<?>> bindings, boolean performForEachBinding, boolean alwaysPerform) {
+            this(scope, bindings, false, performForEachBinding, alwaysPerform);
+        }
+
+        VisitOperation(Scope scope, Collection<EventBinding.Source<?>> bindings, boolean singleBindingOperation, boolean performForEachBinding, boolean alwaysPerform) {
             this.scope = scope;
             this.bindings = bindings;
             this.singleBindingOperation = singleBindingOperation;
             this.performForEachBinding = performForEachBinding;
+            this.alwaysPerform = alwaysPerform;
         }
 
-        protected abstract void perform(EventBinding.Source<?> binding, Node node, SourceSection section);
+        protected abstract void perform(EventBinding.Source<?> binding, Node node, SourceSection section, boolean executedRoot);
+
+        protected void postVisit() {
+        }
     }
 
     private class InsertWrapperOperation extends VisitOperation {
@@ -1334,7 +1309,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void perform(EventBinding.Source<?> binding, Node node, SourceSection section) {
+        protected void perform(EventBinding.Source<?> binding, Node node, SourceSection section, boolean executedRoot) {
             insertWrapper(node, section);
         }
     }
@@ -1349,7 +1324,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void perform(EventBinding.Source<?> binding, Node node, SourceSection section) {
+        protected void perform(EventBinding.Source<?> binding, Node node, SourceSection section, boolean executedRoot) {
             notifySourceSectionLoaded(binding, node, section);
         }
     }
@@ -1364,21 +1339,96 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void perform(EventBinding.Source<?> binding, Node node, SourceSection section) {
+        protected void perform(EventBinding.Source<?> binding, Node node, SourceSection section, boolean executedRoot) {
             invalidateWrapper(node);
         }
     }
 
+    private static class FindSourcesOperation extends VisitOperation {
+        private final Map<Source, Void> sources;
+        private final AtomicReference<WeakAsyncList<Source>> sourcesListRef;
+        private final ThreadLocal<List<Source>> threadLocalNewSources;
+        private final List<Source> newSources;
+        private final boolean notifyBindings;
+        private final boolean performOnlyOnExecutedAST;
+
+        FindSourcesOperation(Scope scope, Collection<EventBinding.Source<?>> bindings, Map<Source, Void> sources, AtomicReference<WeakAsyncList<Source>> sourcesListRef, Source rootSource,
+                        ThreadLocal<List<Source>> threadLocalNewSources, boolean collectNewSources, boolean performOnlyOnExecutedAST) {
+            super(scope, bindings, false, true);
+            this.sources = sources;
+            this.sourcesListRef = sourcesListRef;
+            this.threadLocalNewSources = threadLocalNewSources;
+            this.performOnlyOnExecutedAST = performOnlyOnExecutedAST;
+
+            if (collectNewSources) {
+                List<Source> newSources = threadLocalNewSources.get();
+                if (newSources == null) {
+                    newSources = new ArrayList<>(5);
+                    threadLocalNewSources.set(newSources);
+                    notifyBindings = true;
+                } else {
+                    notifyBindings = false;
+                }
+                this.newSources = newSources;
+            } else {
+                this.newSources = null;
+                this.notifyBindings = false;
+            }
+
+            if (rootSource != null) {
+                adoptSource(rootSource);
+            }
+        }
+
+        @Override
+        protected void perform(EventBinding.Source<?> binding, Node node, SourceSection section, boolean executedRoot) {
+            if (!performOnlyOnExecutedAST || executedRoot) {
+                if (section != null) {
+                    adoptSource(section.getSource());
+                }
+            }
+        }
+
+        void adoptSource(Source source) {
+            synchronized (sources) {
+                if (!sources.containsKey(source)) {
+                    sources.put(source, null);
+                    sourcesListRef.get().add(source);
+                    if (newSources != null) {
+                        newSources.add(source);
+                    }
+                }
+            }
+        }
+
+        @Override
+        protected void postVisit() {
+            if (notifyBindings) {
+                try {
+                    for (Source src : newSources) {
+                        if (performOnlyOnExecutedAST) {
+                            notifySourceExecutedBindings(bindings, src);
+                        } else {
+                            notifySourceBindingsLoaded(bindings, src);
+                        }
+                    }
+                } finally {
+                    threadLocalNewSources.set(null);
+                }
+            }
+        }
+    }
+
     /**
-     * Build BindingsVisitor with specified operations.
+     * Build {@link Visitor} with specified operations.
      * <p>
      * Usage example:
      * <p>
-     * Build visitor with NotifyLoadedOperation operation for all source section bindings, scope is
-     * all nodes, used when an AST is first loaded:
+     * Build visitor with {@link NotifyLoadedOperation} operation for all source section bindings,
+     * scope is all nodes, used when an AST is first loaded:
      * 
      * <pre>
-     * BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
+     * VisitorBuilder visitorBuilder = new VisitorBuilder();
      * visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ALL);
      * visitorBuilder.buildVisitor();
      * </pre>
@@ -1392,67 +1442,105 @@ final class InstrumentationHandler {
      * materialized subtrees only. The new materialized subtrees are not instrumented at all, that
      * is why we have to apply all bindings there. For the original nodes, applying just the new
      * execution binding is sufficient, because the other bindings were applied when they were
-     * added.
+     * added. Please note that this example is siplified for better readability, in particular, it
+     * does not include find sources operations.
      *
      * <pre>
-     * BindingsVisitorBuilder visitorBuilder = new BindingsVisitorBuilder();
+     * VisitorBuilder visitorBuilder = new VisitorBuilder();
      * visitorBuilder.addInsertWrapperOperationForBinding(VisitOperation.Scope.ONLY_ORIGINAL, binding);
      * visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
      * visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ONLY_MATERIALIZED);
      * visitorBuilder.buildVisitor();
      * </pre>
      */
-    private class BindingsVisitorBuilder {
+    private class VisitorBuilder {
         List<VisitOperation> operations = new ArrayList<>();
         boolean shouldMaterializeSyntaxNodes;
 
-        BindingsVisitorBuilder addNotifyLoadedOperationForAllBindings(VisitOperation.Scope scope) {
-            operations.add(new NotifyLoadedOperation(scope, sourceSectionBindings));
-            shouldMaterializeSyntaxNodes = true;
+        private boolean hasFindSourcesOperation;
+        private boolean hasFindSourcesExecutedOperation;
+
+        VisitorBuilder addNotifyLoadedOperationForAllBindings(VisitOperation.Scope scope) {
+            if (!sourceSectionBindings.isEmpty()) {
+                operations.add(new NotifyLoadedOperation(scope, sourceSectionBindings));
+                shouldMaterializeSyntaxNodes = true;
+            }
             return this;
         }
 
-        BindingsVisitorBuilder addNotifyLoadedOperationForBinding(VisitOperation.Scope scope, EventBinding.Source<?> binding) {
+        VisitorBuilder addNotifyLoadedOperationForBinding(VisitOperation.Scope scope, EventBinding.Source<?> binding) {
             operations.add(new NotifyLoadedOperation(scope, binding));
             shouldMaterializeSyntaxNodes = true;
             return this;
         }
 
-        BindingsVisitorBuilder addInsertWrapperOperationForAllBindings(VisitOperation.Scope scope) {
-            operations.add(new InsertWrapperOperation(scope, executionBindings));
-            shouldMaterializeSyntaxNodes = true;
+        VisitorBuilder addFindSourcesOperation(VisitOperation.Scope scope, boolean collectNewSources) {
+            return addFindSourcesOperation(scope, null, collectNewSources);
+        }
+
+        VisitorBuilder addFindSourcesOperation(VisitOperation.Scope scope, Source rootSource, boolean collectNewSources) {
+            if (!sourceBindings.isEmpty()) {
+                if (hasFindSourcesOperation) {
+                    throw new IllegalStateException("Visitor can have at most one find sources operation!");
+                }
+                operations.add(new FindSourcesOperation(scope, sourceBindings, sources, sourcesListRef, rootSource, threadLocalNewSources, collectNewSources, false));
+                hasFindSourcesOperation = true;
+            }
             return this;
         }
 
-        BindingsVisitorBuilder addInsertWrapperOperationForBinding(VisitOperation.Scope scope, EventBinding.Source<?> binding) {
+        VisitorBuilder addFindSourcesExecutedOperation(VisitOperation.Scope scope, boolean collectNewSources) {
+            return addFindSourcesExecutedOperation(scope, null, collectNewSources);
+        }
+
+        VisitorBuilder addFindSourcesExecutedOperation(VisitOperation.Scope scope, Source rootSource, boolean collectNewSources) {
+            if (!sourceExecutedBindings.isEmpty()) {
+                if (hasFindSourcesExecutedOperation) {
+                    throw new IllegalStateException("Visitor can have at most one find executed sources operation!");
+                }
+                operations.add(new FindSourcesOperation(scope, sourceExecutedBindings, sourcesExecuted, sourcesExecutedListRef, rootSource, threadLocalNewSourcesExecuted, collectNewSources, true));
+                hasFindSourcesExecutedOperation = true;
+            }
+            return this;
+        }
+
+        VisitorBuilder addInsertWrapperOperationForAllBindings(VisitOperation.Scope scope) {
+            if (!executionBindings.isEmpty()) {
+                operations.add(new InsertWrapperOperation(scope, executionBindings));
+                shouldMaterializeSyntaxNodes = true;
+            }
+            return this;
+        }
+
+        VisitorBuilder addInsertWrapperOperationForBinding(VisitOperation.Scope scope, EventBinding.Source<?> binding) {
             operations.add(new InsertWrapperOperation(scope, binding));
             shouldMaterializeSyntaxNodes = true;
             return this;
         }
 
-        BindingsVisitorBuilder addDisposeWrapperOperationForBinding(EventBinding.Source<?> binding) {
+        VisitorBuilder addDisposeWrapperOperationForBinding(EventBinding.Source<?> binding) {
             operations.add(new DisposeWrapperOperation(VisitOperation.Scope.ALL, binding));
             return this;
         }
 
-        BindingsVisitorBuilder addDisposeWrapperOperationForBindings(Collection<EventBinding.Source<?>> bindings) {
+        VisitorBuilder addDisposeWrapperOperationForBindings(Collection<EventBinding.Source<?>> bindings) {
             operations.add(new DisposeWrapperOperation(VisitOperation.Scope.ALL, bindings));
             return this;
         }
 
-        BindingsVisitor buildVisitor() {
-            return new BindingsVisitor(shouldMaterializeSyntaxNodes, Collections.unmodifiableList(operations));
+        Visitor buildVisitor() {
+            return new Visitor(shouldMaterializeSyntaxNodes, Collections.unmodifiableList(operations));
         }
     }
 
-    private abstract static class AbstractNodeVisitor implements NodeVisitor {
+    private class Visitor implements NodeVisitor {
 
-        InstrumentationHandler instrumentationHandler;
         RootNode root;
         SourceSection rootSourceSection;
         Set<Class<?>> providedTags;
         Set<?> materializeLimitedTags;
         boolean firstExecution = false;
+        boolean setExecutedRootNodeBit = false;
 
         /* cached root bits read from the root node. value is reliable. */
         int rootBits;
@@ -1466,11 +1554,102 @@ final class InstrumentationHandler {
         private final boolean shouldMaterializeSyntaxNodes;
         Set<Class<? extends Tag>> materializeTags;
 
-        AbstractNodeVisitor(boolean shouldMaterializeSyntaxNodes) {
+        private final List<VisitOperation> operations;
+        private final boolean singleBindingOptimization;
+        private boolean singleBindingOptimizationInstrumentedRoot;
+        private boolean onlyAlwaysPerformOperationsActive;
+
+        Visitor(boolean shouldMaterializeSyntaxNodes, List<VisitOperation> operations) {
             this.shouldMaterializeSyntaxNodes = shouldMaterializeSyntaxNodes;
+            this.operations = operations;
+            int singleBindingOperations = 0;
+            int multiBindingOriginalTreeOperations = 0;
+            for (VisitOperation operation : operations) {
+                /*
+                 * If the operation is always performed no matter its bindings, it has no effect on
+                 * whether we can or cannot do single binding optimzation.
+                 */
+                if (!operation.alwaysPerform) {
+                    if (operation.singleBindingOperation) {
+                        singleBindingOperations++;
+                    } else if (operation.scope == VisitOperation.Scope.ALL || operation.scope == VisitOperation.Scope.ONLY_ORIGINAL) {
+                        multiBindingOriginalTreeOperations++;
+                    }
+                }
+            }
+            this.singleBindingOptimization = ((operations.size() == 1 && singleBindingOperations == 1) ||
+                            (singleBindingOperations == 1 && multiBindingOriginalTreeOperations == 0));
+
+            Set<Class<?>> compoundTags = null; // null means all provided tags by the language
+            for (VisitOperation operation : operations) {
+                /*
+                 * Operations that don't depend on their bindings do not influence materializations.
+                 */
+                if (!operation.alwaysPerform) {
+                    for (EventBinding.Source<?> sourceBinding : operation.bindings) {
+                        Set<Class<?>> limitedTags = sourceBinding.getLimitedTags();
+                        if (limitedTags == null) {
+                            compoundTags = null;
+                            break;
+                        } else {
+                            if (compoundTags == null) {
+                                compoundTags = new HashSet<>();
+                            }
+                            compoundTags.addAll(limitedTags);
+                        }
+                    }
+                }
+            }
+            this.materializeLimitedTags = compoundTags != null ? Collections.unmodifiableSet(compoundTags) : null;
         }
 
-        abstract boolean shouldVisit();
+        boolean shouldVisit() {
+            if (operations.isEmpty()) {
+                return false;
+            }
+            RootNode localRoot = root;
+            SourceSection localRootSourceSection = rootSourceSection;
+            int localRootBits = rootBits;
+
+            for (VisitOperation operation : operations) {
+                if (!operation.alwaysPerform) {
+                    /*
+                     * If singleBindingOptimization == true then there is exactly one single binding
+                     * non-always-perform operation and it is the only non-always-perform operation
+                     * that operates in the original tree, so if the tree should not be visited for
+                     * this binding, it should not be visited at all, because no new materialized
+                     * subtrees would be created and so there would be no nodes the other operations
+                     * could operate on. The exception is when there are always-perform operation
+                     * that operates in the original tree. This is checked in the subsequent loop.
+                     */
+                    if (!singleBindingOptimization || operation.singleBindingOperation) {
+                        for (EventBinding.Source<?> binding : operation.bindings) {
+                            if (binding.isInstrumentedRoot(providedTags, localRoot, localRootSourceSection, localRootBits)) {
+                                if (singleBindingOptimization) {
+                                    singleBindingOptimizationInstrumentedRoot = true;
+                                }
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            onlyAlwaysPerformOperationsActive = true;
+            for (VisitOperation operation : operations) {
+                if (operation.alwaysPerform) {
+                    /*
+                     * If the previous loop did not return true, there can be no newly materialized
+                     * nodes, so if the scope of an always-perform operation is ONLY_MATERIALIZED,
+                     * we don't have to visit the tree for this operation at all.
+                     */
+                    if (operation.scope != VisitOperation.Scope.ONLY_MATERIALIZED) {
+                        return true;
+                    }
+                }
+            }
+            onlyAlwaysPerformOperationsActive = false;
+            return false;
+        }
 
         private void computeRootBits(SourceSection sourceSection) {
             int bits = computingRootNodeBits;
@@ -1569,7 +1748,7 @@ final class InstrumentationHandler {
                  */
                 WrapperNode wrapperNode = getWrapperNode(node);
                 if (wrapperNode == null) {
-                    instrumentationHandler.insertWrapper(node, sourceSection);
+                    insertWrapper(node, sourceSection);
                 }
                 wrapperNode = getWrapperNode(node);
                 assert wrapperNode != null : "Node must have an instrumentation wrapper at this point!";
@@ -1586,18 +1765,6 @@ final class InstrumentationHandler {
                 return true;
             }
             return false;
-        }
-
-        private static void clearRetiredNodeReference(Node node) {
-            // There are no retired nodes the subtrees of which we need to traverse.
-            WrapperNode wrapperNode = getWrapperNode(node);
-            if (wrapperNode != null) {
-                wrapperNode.getProbeNode().clearRetiredNodeReference();
-                // At this point the probe node might already have no chain, and it
-                // also might not be updated further, and so only invalidation makes
-                // sure the wrapper gets eventually removed.
-                invalidateWrapperImpl(wrapperNode, node);
-            }
         }
 
         /*
@@ -1677,106 +1844,54 @@ final class InstrumentationHandler {
             return instrumentableNode;
         }
 
-        protected abstract void visitInstrumentable(Node parentInstrumentable, SourceSection parentSourceSection, Node instrumentableNode, SourceSection sourceSection);
-
-    }
-
-    private static class BindingsVisitor extends AbstractNodeVisitor {
-        private final List<VisitOperation> operations;
-        private final boolean singleBindingOptimization;
-
-        BindingsVisitor(boolean shouldMaterializeSyntaxNodes, List<VisitOperation> operations) {
-            super(shouldMaterializeSyntaxNodes);
-            this.operations = operations;
-            int singleBindingOperations = 0;
-            int multiBindingOriginalTreeOperations = 0;
+        void postVisit() {
             for (VisitOperation operation : operations) {
-                if (operation.singleBindingOperation) {
-                    singleBindingOperations++;
-                } else if (operation.scope == VisitOperation.Scope.ALL || operation.scope == VisitOperation.Scope.ONLY_ORIGINAL) {
-                    multiBindingOriginalTreeOperations++;
-                }
+                operation.postVisit();
             }
-            this.singleBindingOptimization = ((operations.size() == 1 && singleBindingOperations == 1) ||
-                            (singleBindingOperations == 1 && multiBindingOriginalTreeOperations == 0));
-
-            Set<Class<?>> compoundTags = null; // null means all provided tags by the language
-            for (VisitOperation operation : operations) {
-                for (EventBinding.Source<?> sourceBinding : operation.bindings) {
-                    Set<Class<?>> limitedTags = sourceBinding.getLimitedTags();
-                    if (limitedTags == null) {
-                        compoundTags = null;
-                        break;
-                    } else {
-                        if (compoundTags == null) {
-                            compoundTags = new HashSet<>();
-                        }
-                        compoundTags.addAll(limitedTags);
-                    }
-                }
-            }
-            this.materializeLimitedTags = compoundTags != null ? Collections.unmodifiableSet(compoundTags) : null;
-        }
-
-        @Override
-        boolean shouldVisit() {
-            if (operations.isEmpty()) {
-                return false;
-            }
-            RootNode localRoot = root;
-            SourceSection localRootSourceSection = rootSourceSection;
-            int localRootBits = rootBits;
-
-            for (VisitOperation operation : operations) {
-                /*
-                 * If singleBindingOptimization == true then there is exactly one single binding
-                 * operation and it is the only operation that operates in the original tree, so if
-                 * the tree should not be visited for this binding, it should not be visited at all,
-                 * because no new materialized subtrees would be created and so there would be no
-                 * nodes the other operations could operate on.
-                 */
-                if (!singleBindingOptimization || operation.singleBindingOperation) {
-                    for (EventBinding.Source<?> binding : operation.bindings) {
-                        if (binding.isInstrumentedRoot(providedTags, localRoot, localRootSourceSection, localRootBits)) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
         }
 
         boolean shouldPerformForBinding(VisitOperation operation, EventBinding.Source<?> binding, Node parentInstrumentable, SourceSection parentSourceSection, Node instrumentableNode,
                         SourceSection sourceSection) {
             if (singleBindingOptimization && operation.singleBindingOperation) {
-                return binding.isInstrumentedLeaf(providedTags, instrumentableNode, sourceSection) ||
-                                binding.isChildInstrumentedLeaf(providedTags, root, parentInstrumentable, parentSourceSection, instrumentableNode, sourceSection);
+                if (singleBindingOptimizationInstrumentedRoot) {
+                    return binding.isInstrumentedLeaf(providedTags, instrumentableNode, sourceSection) ||
+                                    binding.isChildInstrumentedLeaf(providedTags, root, parentInstrumentable, parentSourceSection, instrumentableNode, sourceSection);
+                } else {
+                    return false;
+                }
             } else {
                 return binding.isInstrumentedFull(providedTags, root, instrumentableNode, sourceSection) ||
                                 binding.isChildInstrumentedFull(providedTags, root, parentInstrumentable, parentSourceSection, instrumentableNode, sourceSection);
             }
         }
 
-        @Override
-        protected void visitInstrumentable(Node parentInstrumentable, SourceSection parentSourceSection, Node instrumentableNode, SourceSection sourceSection) {
+        void visitInstrumentable(Node parentInstrumentable, SourceSection parentSourceSection, Node instrumentableNode, SourceSection sourceSection) {
             for (VisitOperation operation : operations) {
                 if (operation.scope == VisitOperation.Scope.ALL ||
                                 (!visitingMaterialized && operation.scope == VisitOperation.Scope.ONLY_ORIGINAL) ||
                                 (visitingMaterialized && operation.scope == VisitOperation.Scope.ONLY_MATERIALIZED)) {
-                    for (EventBinding.Source<?> binding : operation.bindings) {
-                        if (shouldPerformForBinding(operation, binding, parentInstrumentable, parentSourceSection, instrumentableNode, sourceSection)) {
-                            if (TRACE) {
-                                traceFilterCheck("hit", instrumentableNode, sourceSection);
-                            }
-                            operation.perform(binding, instrumentableNode, sourceSection);
-                            if (!operation.performForEachBinding) {
-                                break;
-                            }
-                        } else {
-                            if (TRACE) {
-                                traceFilterCheck("miss", instrumentableNode, sourceSection);
+                    if (!operation.alwaysPerform) {
+                        for (EventBinding.Source<?> binding : operation.bindings) {
+                            if (shouldPerformForBinding(operation, binding, parentInstrumentable, parentSourceSection, instrumentableNode, sourceSection)) {
+                                assert !onlyAlwaysPerformOperationsActive : "No operation that depends on bindings should be performed here!";
+                                if (TRACE) {
+                                    traceFilterCheck("hit", instrumentableNode, sourceSection);
+                                }
+                                operation.perform(binding, instrumentableNode, sourceSection, setExecutedRootNodeBit || RootNodeBits.wasExecuted(rootBits));
+                                if (!operation.performForEachBinding) {
+                                    break;
+                                }
+                            } else {
+                                if (TRACE) {
+                                    traceFilterCheck("miss", instrumentableNode, sourceSection);
+                                }
                             }
                         }
+                    } else {
+                        if (TRACE) {
+                            traceFilterCheck("hit", instrumentableNode, sourceSection);
+                        }
+                        operation.perform(null, instrumentableNode, sourceSection, setExecutedRootNodeBit || RootNodeBits.wasExecuted(rootBits));
                     }
                 }
             }
@@ -2391,44 +2506,5 @@ final class InstrumentationHandler {
             return element.get();
         }
 
-    }
-
-    private static final class SourceList {
-
-        private final Collection<Source> list = new WeakAsyncList<>(16);
-        private boolean complete = false;
-
-        synchronized Collection<Source> getCompleteList() {
-            while (!complete) {
-                try {
-                    wait();
-                } catch (InterruptedException ex) {
-                    break;
-                }
-            }
-            return list;
-        }
-
-        void add(Source source) {
-            list.add(source);
-        }
-
-        synchronized void notifyComplete() {
-            complete = true;
-            notifyAll();
-        }
-
-        private synchronized boolean addIfIncomplete(Source[] sources) {
-            if (!complete) {
-                for (Source source : sources) {
-                    if (!list.contains(source)) {
-                        list.add(source);
-                    }
-                }
-                return true;
-            } else {
-                return false;
-            }
-        }
     }
 }
