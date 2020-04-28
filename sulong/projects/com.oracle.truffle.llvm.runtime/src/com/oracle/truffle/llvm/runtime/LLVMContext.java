@@ -717,16 +717,6 @@ public final class LLVMContext {
         localScopes.add(scope);
     }
 
-    @TruffleBoundary
-    public LLVMLocalScope getLocalScope(int id) {
-        for (LLVMLocalScope scope : localScopes) {
-            if (scope.containID(id)) {
-                return scope;
-            }
-        }
-        return null;
-    }
-
     public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {
         return symbolStorage[id];
     }

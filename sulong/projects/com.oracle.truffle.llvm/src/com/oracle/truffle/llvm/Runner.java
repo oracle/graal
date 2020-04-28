@@ -260,7 +260,7 @@ final class Runner {
             this.sulongLibrary = sulongLibrary;
             this.stackPointerSlot = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
             this.initContext = runner.context.createInitializeContextNode(rootFrame);
-            int libCount = order.sulongLibraries.size() + order.otherLibraries.size();
+            int libCount = order.getSulongLibraries().size() + order.moduleInitializationOrderLibraries.size();
             this.initSymbols = new InitializeSymbolsNode[libCount];
             this.initScopes = new InitializeScopeNode[libCount];
             this.initExternals = new InitializeExternalNode[libCount];
@@ -272,11 +272,14 @@ final class Runner {
         static LoadModulesNode create(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary, boolean lazyParsing) {
             LoadModulesNode node = new LoadModulesNode(runner, rootFrame, order, sulongLibrary);
             try {
-                createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initScopes, node.initOverwrite, node.initExternals, node.initGlobals, node.initModules, lazyParsing,
-                                true, order.originalOtherLibraries);
-                createNodes(runner, rootFrame, order.otherLibraries, order.sulongLibraries.size(), node.initSymbols, node.initScopes, node.initOverwrite, node.initExternals, node.initGlobals,
+                createNodes(runner, rootFrame, order.getSulongLibraries(), 0, node.initSymbols, node.initOverwrite, node.initExternals, node.initGlobals, node.initModules, lazyParsing,
+                                true);
+                createNodes(runner, rootFrame, order.moduleInitializationOrderLibraries, order.getSulongLibraries().size(), node.initSymbols, node.initOverwrite, node.initExternals, node.initGlobals,
                                 node.initModules,
-                                lazyParsing, false, order.originalOtherLibraries);
+                                lazyParsing, false);
+
+                InitializeScopeNodes(order.getSulongLibraries(), 0, node.initScopes);
+                InitializeScopeNodes(order.scopeInitializationOrderLibraries, order.getSulongLibraries().size(), node.initScopes);
                 return node;
             } catch (TypeOverflowException e) {
                 throw new LLVMUnsupportedException(node, UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
@@ -284,23 +287,24 @@ final class Runner {
         }
 
         private static void createNodes(Runner runner, FrameDescriptor rootFrame, List<LLVMParserResult> parserResults, int offset, InitializeSymbolsNode[] initSymbols,
-                        InitializeScopeNode[] initScopes,
                         InitializeOverwriteNode[] initOverwrite, InitializeExternalNode[] initExternals,
-                        InitializeGlobalNode[] initGlobals, InitializeModuleNode[] initModules, boolean lazyParsing, boolean isSulongLibrary, List<LLVMParserResult> originalParserResults)
+                        InitializeGlobalNode[] initGlobals, InitializeModuleNode[] initModules, boolean lazyParsing, boolean isSulongLibrary)
                         throws TypeOverflowException {
             for (int i = 0; i < parserResults.size(); i++) {
                 LLVMParserResult res = parserResults.get(i);
                 Object moduleName = res.getRuntime().getLibrary().toString();
                 initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory(), lazyParsing, isSulongLibrary, moduleName);
-                if (isSulongLibrary) {
-                    initScopes[offset + i] = new InitializeScopeNode(res, res.getRuntime().getBitcodeID());
-                } else {
-                    initScopes[offset + i] = new InitializeScopeNode(originalParserResults.get(i), res.getRuntime().getBitcodeID());
-                }
                 initExternals[offset + i] = new InitializeExternalNode(res);
                 initGlobals[offset + i] = new InitializeGlobalNode(rootFrame, res, moduleName);
                 initOverwrite[offset + i] = new InitializeOverwriteNode(res);
                 initModules[offset + i] = new InitializeModuleNode(runner, res, moduleName);
+            }
+        }
+
+        private static void InitializeScopeNodes(List<LLVMParserResult> parserResults, int offset, InitializeScopeNode[] initScopes) {
+            for (int i = 0; i < parserResults.size(); i++) {
+                LLVMParserResult res = parserResults.get(i);
+                initScopes[offset + i] = new InitializeScopeNode(res, res.getRuntime().getBitcodeID());
             }
         }
 
@@ -1403,11 +1407,8 @@ final class Runner {
 
     private static InitializationOrder computeInitializationOrder(List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
         List<ExternalLibrary> sulongExternalLibraries = Arrays.asList(defaultLibraries);
-
-        ArrayList<LLVMParserResult> sulongLibs = new ArrayList<>();
-        ArrayList<LLVMParserResult> otherLibs = new ArrayList<>();
-        ArrayList<LLVMParserResult> otherLibsInitializationOrder = new ArrayList<>();
-        EconomicMap<Object, LLVMParserResult> dependencyToParserResult = EconomicMap.create(Equivalence.IDENTITY);
+        InitializationOrder initializationOrder = new InitializationOrder();
+        EconomicMap<ExternalLibrary, LLVMParserResult> dependencyToParserResult = EconomicMap.create(Equivalence.IDENTITY);
         EconomicSet<LLVMParserResult> visited = EconomicSet.create(Equivalence.IDENTITY);
         /*
          * Split libraries into Sulong-specific ones and others, so that we can handle the
@@ -1417,24 +1418,24 @@ final class Runner {
             ExternalLibrary library = parserResult.getRuntime().getLibrary();
             dependencyToParserResult.put(library, parserResult);
             if (sulongExternalLibraries.contains(library)) {
-                sulongLibs.add(parserResult);
+                initializationOrder.addSulongLibraries(parserResult);
                 visited.add(parserResult);
             } else {
-                otherLibs.add(parserResult);
+                initializationOrder.addScopeInitializationLibraries(parserResult);
             }
         }
 
-        for (LLVMParserResult otherlib : otherLibs) {
+        for (LLVMParserResult otherlib : initializationOrder.getScopeInitializationOrderLibraries()) {
             if (!visited.contains(otherlib)) {
-                addModuleToInitializationOrder(otherlib, otherLibsInitializationOrder, dependencyToParserResult, visited);
-                assert otherLibsInitializationOrder.contains(otherlib);
+                addModuleToInitializationOrder(otherlib, initializationOrder, dependencyToParserResult, visited);
+                assert initializationOrder.getModuleInitializationOrderLibraries().contains(otherlib);
             }
         }
-        assert otherLibsInitializationOrder.containsAll(otherLibs);
-        return new InitializationOrder(sulongLibs, otherLibsInitializationOrder, otherLibs);
+        assert initializationOrder.getModuleInitializationOrderLibraries().containsAll(initializationOrder.getScopeInitializationOrderLibraries());
+        return initializationOrder;
     }
 
-    private static void addModuleToInitializationOrder(LLVMParserResult module, ArrayList<LLVMParserResult> initializationOrder, EconomicMap<Object, LLVMParserResult> dependencyToParserResult,
+    private static void addModuleToInitializationOrder(LLVMParserResult module, InitializationOrder initializationOrder, EconomicMap<ExternalLibrary, LLVMParserResult> dependencyToParserResult,
                     EconomicSet<LLVMParserResult> visited) {
         if (visited.contains(module)) {
             /*
@@ -1451,7 +1452,7 @@ final class Runner {
                 addModuleToInitializationOrder(depLib, initializationOrder, dependencyToParserResult, visited);
             }
         }
-        initializationOrder.add(module);
+        initializationOrder.addModuleInitializationLibraries(module);
     }
 
     abstract static class StaticInitsNode extends LLVMStatementNode {
@@ -1968,14 +1969,38 @@ final class Runner {
     }
 
     private static final class InitializationOrder {
-        private final List<LLVMParserResult> sulongLibraries;
-        private final List<LLVMParserResult> otherLibraries;
-        private final List<LLVMParserResult> originalOtherLibraries;
+        private final ArrayList<LLVMParserResult> sulongLibraries;
+        private final ArrayList<LLVMParserResult> moduleInitializationOrderLibraries;
+        private final ArrayList<LLVMParserResult> scopeInitializationOrderLibraries;
 
-        private InitializationOrder(List<LLVMParserResult> sulongLibraries, List<LLVMParserResult> otherLibraries, List<LLVMParserResult> originalOtherLibraries) {
-            this.sulongLibraries = sulongLibraries;
-            this.otherLibraries = otherLibraries;
-            this.originalOtherLibraries = originalOtherLibraries;
+        private InitializationOrder() {
+            this.sulongLibraries = new ArrayList<>();
+            this.moduleInitializationOrderLibraries = new ArrayList<>();
+            this.scopeInitializationOrderLibraries = new ArrayList<>();
+        }
+
+        public ArrayList<LLVMParserResult> getSulongLibraries() {
+            return sulongLibraries;
+        }
+
+        public ArrayList<LLVMParserResult> getModuleInitializationOrderLibraries() {
+            return moduleInitializationOrderLibraries;
+        }
+
+        public ArrayList<LLVMParserResult> getScopeInitializationOrderLibraries() {
+            return scopeInitializationOrderLibraries;
+        }
+
+        public void addSulongLibraries(LLVMParserResult sulongLibrary) {
+            sulongLibraries.add(sulongLibrary);
+        }
+
+        public void addModuleInitializationLibraries(LLVMParserResult moduleInitializationLibrary) {
+            moduleInitializationOrderLibraries.add(moduleInitializationLibrary);
+        }
+
+        public void addScopeInitializationLibraries(LLVMParserResult scopeInitializationLibrary) {
+            scopeInitializationOrderLibraries.add(scopeInitializationLibrary);
         }
     }
 }

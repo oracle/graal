@@ -44,7 +44,7 @@ import org.graalvm.collections.EconomicSet;
  */
 public class LLVMLocalScope extends LLVMScope {
 
-    public final EconomicSet<Integer> ids;
+    private final EconomicSet<Integer> ids;
 
     public LLVMLocalScope() {
         super();
