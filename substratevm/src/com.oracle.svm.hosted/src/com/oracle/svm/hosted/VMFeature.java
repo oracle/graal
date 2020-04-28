@@ -32,10 +32,13 @@ import java.util.stream.Collectors;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.util.VMError;
@@ -47,6 +50,7 @@ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 public class VMFeature implements Feature {
 
     private NativeLibraries nativeLibraries;
+    private static final String STATIC_BINARY_MARKER_SYMBOL_NAME = "__svm_vm_is_static_binary";
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
@@ -77,8 +81,7 @@ public class VMFeature implements Feature {
         addCGlobalDataString("Target.LibC", ImageSingletons.lookup(LibCBase.class).getClass().getName());
 
         addCGlobalDataString("Target.Libraries", String.join("|", nativeLibraries.getLibraries()));
-        addCGlobalDataString("Target.StaticLibraries", nativeLibraries.getStaticLibraries().stream()
-                        .map(Path::getFileName).map(Path::toString).collect(Collectors.joining("|")));
+        addCGlobalDataString("Target.StaticLibraries", nativeLibraries.getStaticLibraries().stream().map(Path::getFileName).map(Path::toString).collect(Collectors.joining("|")));
         if (ImageSingletons.contains(CCompilerInvoker.class)) {
             addCGlobalDataString("Target.CCompiler", ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.toString());
         }
@@ -89,6 +92,9 @@ public class VMFeature implements Feature {
             nativeLibraries.getStaticLibraries().stream().map(current::relativize).map(Path::toString).forEach(x -> System.out.println("#   " + x));
             System.out.println("# Other libraries: " + String.join(",", nativeLibraries.getLibraries()));
         }
+
+        CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(WordFactory.unsigned(SubstrateOptions.StaticExecutable.hasBeenSet() ? ~1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);
+        CGlobalDataFeature.singleton().registerAsAccessedOrGet(isStaticBinaryMarker);
     }
 
     private static void addCGlobalDataString(String infoType, String content) {
