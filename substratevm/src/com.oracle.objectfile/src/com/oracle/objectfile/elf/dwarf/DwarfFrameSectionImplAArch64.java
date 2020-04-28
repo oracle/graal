@@ -26,12 +26,16 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+
+import java.util.List;
+
 /**
  * AArch64-specific section generator for debug_frame section that knows details of AArch64
  * registers and frame layout.
  */
 public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
-    // public static final int DW_CFA_FP_IDX = 29;
+    public static final int DW_CFA_FP_IDX = 29;
     private static final int DW_CFA_LR_IDX = 30;
     private static final int DW_CFA_SP_IDX = 31;
     // private static final int DW_CFA_PC_IDX = 32;
@@ -54,7 +58,9 @@ public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
     public int writeInitialInstructions(byte[] buffer, int p) {
         int pos = p;
         /*
-         * Register rsp points at the frame base so cfa is at rsp + 0:
+         * Invariant: CFA identifies last word of caller stack.
+         *
+         * So initial cfa is at rsp + 0:
          *
          * <ul>
          *
@@ -63,6 +69,44 @@ public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
          * </ul>
          */
         pos = writeDefCFA(DW_CFA_SP_IDX, 0, buffer, pos);
+        return pos;
+    }
+
+    @Override
+    protected int writeFDEs(int frameSize, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, byte[] buffer, int pos) {
+        int currentOffset = 0;
+        for (DebugInfoProvider.DebugFrameSizeChange debugFrameSizeInfo : frameSizeInfos) {
+            int advance = debugFrameSizeInfo.getOffset() - currentOffset;
+            currentOffset += advance;
+            pos = writeAdvanceLoc(advance, buffer, pos);
+            if (debugFrameSizeInfo.getType() == DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND) {
+                /*
+                 * SP has been extended so rebase CFA using full frame.
+                 *
+                 * Invariant: CFA identifies last word of caller stack.
+                 */
+                pos = writeDefCFAOffset(frameSize, buffer, pos);
+                /*
+                 * Notify push of lr and fp to stack slots 1 and 2.
+                 *
+                 * Scaling by -8 is automatic.
+                 */
+                pos = writeOffset(DW_CFA_LR_IDX, 1, buffer, pos);
+                pos = writeOffset(DW_CFA_FP_IDX, 2, buffer, pos);
+            } else {
+                /*
+                 * SP will have been contracted so rebase CFA using empty frame.
+                 *
+                 * Invariant: CFA identifies last word of caller stack.
+                 */
+                pos = writeDefCFAOffset(0, buffer, pos);
+                /*
+                 * notify restore of fp and lr
+                 */
+                pos = writeRestore(DW_CFA_FP_IDX, buffer, pos);
+                pos = writeRestore(DW_CFA_LR_IDX, buffer, pos);
+            }
+        }
         return pos;
     }
 }

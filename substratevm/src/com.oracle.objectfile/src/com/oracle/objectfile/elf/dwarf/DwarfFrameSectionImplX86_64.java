@@ -26,6 +26,10 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+
+import java.util.List;
+
 /**
  * x86_64-specific section generator for debug_frame section that knows details of x86_64 registers
  * and frame layout.
@@ -52,6 +56,8 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
     public int writeInitialInstructions(byte[] buffer, int p) {
         int pos = p;
         /*
+         * Invariant: CFA identifies last word of caller stack.
+         *
          * Register rsp points at the word containing the saved rip so the frame base (cfa) is at
          * rsp + 8:
          *
@@ -63,8 +69,9 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
          */
         pos = writeDefCFA(DW_CFA_RSP_IDX, 8, buffer, pos);
         /*
-         * Register rip is saved at offset 8 (coded as 1 which gets scaled by dataAlignment) from
-         * cfa
+         * Register rip is saved in slot 1.
+         *
+         * Scaling by -8 is automatic.
          *
          * <ul>
          *
@@ -73,6 +80,32 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
          * </ul>
          */
         pos = writeOffset(DW_CFA_RIP_IDX, 1, buffer, pos);
+        return pos;
+    }
+
+    @Override
+    protected int writeFDEs(int frameSize, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, byte[] buffer, int pos) {
+        int currentOffset = 0;
+        for (DebugInfoProvider.DebugFrameSizeChange debugFrameSizeInfo : frameSizeInfos) {
+            int advance = debugFrameSizeInfo.getOffset() - currentOffset;
+            currentOffset += advance;
+            pos = writeAdvanceLoc(advance, buffer, pos);
+            if (debugFrameSizeInfo.getType() == DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND) {
+                /*
+                 * SP has been extended so rebase CFA using full frame.
+                 *
+                 * Invariant: CFA identifies last word of caller stack.
+                 */
+                pos = writeDefCFAOffset(frameSize, buffer, pos);
+            } else {
+                /*
+                 * SP has been contracted so rebase CFA using empty frame.
+                 *
+                 * Invariant: CFA identifies last word of caller stack.
+                 */
+                pos = writeDefCFAOffset(8, buffer, pos);
+            }
+        }
         return pos;
     }
 }
