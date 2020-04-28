@@ -318,9 +318,9 @@ public class HeapImpl extends Heap {
 
     UnsignedWord getOldUsedChunkBytes() {
         final Log trace = Log.noopLog().string("[HeapImpl.getOldUsedChunkBytes:");
-        final Space.Accounting from = getOldGeneration().getFromSpace().getAccounting();
+        final SpaceAccounting from = getOldGeneration().getFromSpace().getAccounting();
         final UnsignedWord fromBytes = from.getAlignedChunkBytes().add(from.getUnalignedChunkBytes());
-        final Space.Accounting to = getOldGeneration().getToSpace().getAccounting();
+        final SpaceAccounting to = getOldGeneration().getToSpace().getAccounting();
         final UnsignedWord toBytes = to.getAlignedChunkBytes().add(to.getUnalignedChunkBytes());
         final UnsignedWord result = fromBytes.add(toBytes);
         // @formatter:off

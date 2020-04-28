@@ -57,9 +57,9 @@ import com.oracle.svm.core.util.VMError;
  * complication is the "top" pointer has to be flushed back to the chunk to make the heap parsable.
  */
 final class Space {
-    private final Accounting accounting;
+    private final SpaceAccounting accounting;
 
-    public Accounting getAccounting() {
+    public SpaceAccounting getAccounting() {
         return accounting;
     }
 
@@ -94,7 +94,7 @@ final class Space {
     protected Space(String name, boolean isFrom, int age) {
         this.name = name;
         assert name != null : "Space name should not be null.";
-        this.accounting = new Accounting();
+        this.accounting = new SpaceAccounting();
         this.isFrom = isFrom;
         this.age = age;
     }
@@ -680,83 +680,81 @@ final class Space {
             aChunk = aChunk.getNext();
         }
     }
+}
 
-    /**
-     * Keep whatever accounting is required.
-     *
-     * Note that I can not keep track of all the objects allocated in this Space, because many of
-     * them are fast-path allocated, which bypasses all any accounting. What I can keep track of is
-     * all the chunks that are allocated in this Space, and the bytes reserved (but maybe not
-     * allocated) for objects.
-     */
-    public static class Accounting {
+/**
+ * Accounting for a {@link Space}.
+ *
+ * Note that I can not keep track of all the objects allocated in a Space, because many of them are
+ * fast-path allocated, which bypasses all any accounting. What I can keep track of is all chunks
+ * that are allocated in this Space, and the bytes reserved (but maybe not allocated) for objects.
+ */
+class SpaceAccounting {
+    private static final Log log = Log.noopLog();
 
-        private static final Log log = Log.noopLog();
+    private long alignedCount;
+    private UnsignedWord alignedChunkBytes;
+    private long unalignedCount;
+    private UnsignedWord unalignedChunkBytes;
 
-        private long alignedCount;
-        private UnsignedWord alignedChunkBytes;
-        private long unalignedCount;
-        private UnsignedWord unalignedChunkBytes;
+    SpaceAccounting() {
+        reset();
+    }
 
-        Accounting() {
-            reset();
-        }
+    public void reset() {
+        alignedCount = 0L;
+        alignedChunkBytes = WordFactory.zero();
+        unalignedCount = 0L;
+        unalignedChunkBytes = WordFactory.zero();
+    }
 
-        public void reset() {
-            alignedCount = 0L;
-            alignedChunkBytes = WordFactory.zero();
-            unalignedCount = 0L;
-            unalignedChunkBytes = WordFactory.zero();
-        }
+    long getAlignedChunkCount() {
+        return alignedCount;
+    }
 
-        long getAlignedChunkCount() {
-            return alignedCount;
-        }
+    UnsignedWord getAlignedChunkBytes() {
+        return alignedChunkBytes;
+    }
 
-        UnsignedWord getAlignedChunkBytes() {
-            return alignedChunkBytes;
-        }
+    long getUnalignedChunkCount() {
+        return unalignedCount;
+    }
 
-        long getUnalignedChunkCount() {
-            return unalignedCount;
-        }
+    UnsignedWord getUnalignedChunkBytes() {
+        return unalignedChunkBytes;
+    }
 
-        UnsignedWord getUnalignedChunkBytes() {
-            return unalignedChunkBytes;
-        }
+    public void report(Log reportLog) {
+        reportLog.string("aligned: ").unsigned(alignedChunkBytes).string("/").unsigned(alignedCount);
+        reportLog.string(" ");
+        reportLog.string("unaligned: ").unsigned(unalignedChunkBytes).string("/").unsigned(unalignedCount);
+    }
 
-        public void report(Log reportLog) {
-            reportLog.string("aligned: ").unsigned(alignedChunkBytes).string("/").unsigned(alignedCount);
-            reportLog.string(" ");
-            reportLog.string("unaligned: ").unsigned(unalignedChunkBytes).string("/").unsigned(unalignedCount);
-        }
+    void noteAlignedHeapChunk(UnsignedWord size) {
+        log.string("[Space.SpaceAccounting.NoteAlignedChunk(").string("size: ").unsigned(size).string(")");
+        alignedCount += 1;
+        alignedChunkBytes = alignedChunkBytes.add(size);
+        log.string("  alignedCount: ").unsigned(alignedCount).string("  alignedChunkBytes: ").unsigned(alignedChunkBytes).string("]").newline();
+    }
 
-        void noteAlignedHeapChunk(UnsignedWord size) {
-            log.string("[Space.Accounting.NoteAlignedChunk(").string("size: ").unsigned(size).string(")");
-            alignedCount += 1;
-            alignedChunkBytes = alignedChunkBytes.add(size);
-            log.string("  alignedCount: ").unsigned(alignedCount).string("  alignedChunkBytes: ").unsigned(alignedChunkBytes).string("]").newline();
-        }
+    void unnoteAlignedHeapChunk(UnsignedWord size) {
+        log.string("[Space.SpaceAccounting.unnoteAlignedChunk(").string("size: ").unsigned(size).string(")");
+        alignedCount -= 1;
+        alignedChunkBytes = alignedChunkBytes.subtract(size);
+        log.string("  alignedCount: ").unsigned(alignedCount).string("  alignedChunkBytes: ").unsigned(alignedChunkBytes).string("]").newline();
+    }
 
-        void unnoteAlignedHeapChunk(UnsignedWord size) {
-            log.string("[Space.Accounting.unnoteAlignedChunk(").string("size: ").unsigned(size).string(")");
-            alignedCount -= 1;
-            alignedChunkBytes = alignedChunkBytes.subtract(size);
-            log.string("  alignedCount: ").unsigned(alignedCount).string("  alignedChunkBytes: ").unsigned(alignedChunkBytes).string("]").newline();
-        }
+    void noteUnalignedHeapChunk(UnsignedWord size) {
+        log.string("[Space.SpaceAccounting.NoteUnalignedChunk(").string("size: ").unsigned(size).string(")");
+        unalignedCount += 1;
+        unalignedChunkBytes = unalignedChunkBytes.add(size);
+        log.string("  unalignedCount: ").unsigned(unalignedCount).string("  unalignedChunkBytes: ").unsigned(unalignedChunkBytes).newline();
+    }
 
-        void noteUnalignedHeapChunk(UnsignedWord size) {
-            log.string("[Space.Accounting.NoteUnalignedChunk(").string("size: ").unsigned(size).string(")");
-            unalignedCount += 1;
-            unalignedChunkBytes = unalignedChunkBytes.add(size);
-            log.string("  unalignedCount: ").unsigned(unalignedCount).string("  unalignedChunkBytes: ").unsigned(unalignedChunkBytes).newline();
-        }
-
-        void unnoteUnalignedHeapChunk(UnsignedWord size) {
-            log.string("Space.Accounting.unnoteUnalignedChunk(").string("size: ").unsigned(size).string(")");
-            unalignedCount -= 1;
-            unalignedChunkBytes = unalignedChunkBytes.subtract(size);
-            log.string("  unalignedCount: ").unsigned(unalignedCount).string("  unalignedChunkBytes: ").unsigned(unalignedChunkBytes).string("]").newline();
-        }
+    void unnoteUnalignedHeapChunk(UnsignedWord size) {
+        log.string("Space.SpaceAccounting.unnoteUnalignedChunk(").string("size: ").unsigned(size).string(")");
+        unalignedCount -= 1;
+        unalignedChunkBytes = unalignedChunkBytes.subtract(size);
+        log.string("  unalignedCount: ").unsigned(unalignedCount).string("  unalignedChunkBytes: ").unsigned(unalignedChunkBytes).string("]").newline();
     }
 }
