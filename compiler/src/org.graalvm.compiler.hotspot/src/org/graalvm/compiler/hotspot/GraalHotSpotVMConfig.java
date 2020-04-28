@@ -154,7 +154,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     private final boolean useSquareToLenIntrinsic = getFlag("UseSquareToLenIntrinsic", Boolean.class, false, isJDK8OrJDK11Plus);
     public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class, false, isJDK11Plus);
     public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class, false, JDK >= 9);
-    public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096, osArch.equals("amd64") && (JVMCI ? JDK >= 11 : JDK >= 14));
+    public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096, osArch.equals("amd64") && (JDK >= 14 || (JDK == 11 && JDK_UPDATE >= 6)));
 
     public final boolean preserveFramePointer = getFlag("PreserveFramePointer", Boolean.class);
 
