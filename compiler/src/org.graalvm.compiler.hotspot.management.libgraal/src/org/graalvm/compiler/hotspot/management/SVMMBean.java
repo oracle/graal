@@ -29,14 +29,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
 import javax.management.DynamicMBean;
 import javax.management.InstanceAlreadyExistsException;
+import javax.management.InstanceNotFoundException;
 import javax.management.InvalidAttributeValueException;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanException;
@@ -533,11 +536,11 @@ class SVMMBean implements DynamicMBean {
         private static final int POLL_INTERVAL_MS = 2000;
 
         private MBeanServer platformMBeanServer;
-        private final List<Long> todo;
+        private final Set<Long> todo;
 
         private Factory() {
             super("Libgraal MBean Registration");
-            this.todo = new ArrayList<>();
+            this.todo = new LinkedHashSet<>();
             this.setPriority(Thread.MIN_PRIORITY);
             this.setDaemon(true);
         }
@@ -578,9 +581,33 @@ class SVMMBean implements DynamicMBean {
          * Called by {@code MBeanProxy} in SVM heap to notify the factory thread about new
          * {@link DynamicMBean}s.
          */
-        synchronized void signal(long isolate) {
+        synchronized void signalRegistrationRequest(long isolate) {
             todo.add(isolate);
             notify();
+        }
+
+        /**
+         * Called by {@code MBeanProxy} in SVM heap when the isolate is closing to unregister its
+         * {@link DynamicMBean}s.
+         */
+        synchronized void unregister(long isolate, String[] objectIds) {
+            // Remove pending registration requests
+            todo.remove(isolate);
+            MBeanServer mBeanServer = findMBeanServer();
+            if (mBeanServer == null) {
+                // Nothing registered yet.
+                return;
+            }
+            for (String objectId : objectIds) {
+                try {
+                    ObjectName objectName = new ObjectName(objectId);
+                    if (mBeanServer.isRegistered(objectName)) {
+                        mBeanServer.unregisterMBean(new ObjectName(objectId));
+                    }
+                } catch (MalformedObjectNameException | MBeanRegistrationException | InstanceNotFoundException e) {
+                    e.printStackTrace(TTY.out);
+                }
+            }
         }
 
         /**
@@ -596,16 +623,26 @@ class SVMMBean implements DynamicMBean {
          */
         private boolean poll() {
             assert Thread.holdsLock(this);
+            MBeanServer mBeanServer = findMBeanServer();
+            if (mBeanServer != null) {
+                return process();
+            } else {
+                return false;
+            }
+        }
+
+        /**
+         * Returns a {@link MBeanServer} if it already exists.
+         */
+        private MBeanServer findMBeanServer() {
+            assert Thread.holdsLock(this);
             if (platformMBeanServer == null) {
                 ArrayList<MBeanServer> servers = MBeanServerFactory.findMBeanServer(null);
                 if (!servers.isEmpty()) {
                     platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
-                    return process();
                 }
-            } else {
-                return process();
             }
-            return false;
+            return platformMBeanServer;
         }
 
         /**

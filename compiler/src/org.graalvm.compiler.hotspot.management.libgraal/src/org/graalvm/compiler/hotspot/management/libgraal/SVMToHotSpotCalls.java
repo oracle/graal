@@ -52,8 +52,12 @@ final class SVMToHotSpotCalls {
                     "()Lorg/graalvm/compiler/hotspot/management/SVMMBean$Factory;"
     };
     private static final String[] METHOD_SIGNAL = {
-                    "signal",
+                    "signalRegistrationRequest",
                     "(Lorg/graalvm/compiler/hotspot/management/SVMMBean$Factory;J)V"
+    };
+    private static final String[] METHOD_UNREGISTER = {
+                    "unregister",
+                    "(Lorg/graalvm/compiler/hotspot/management/SVMMBean$Factory;J[Ljava/lang/String;)V"
     };
     private static final String[] METHOD_GET_JVMCI_CLASS_LOADER = {
                     "getJVMCIClassLoader",
@@ -83,8 +87,8 @@ final class SVMToHotSpotCalls {
                     "registerNativeMethods",
                     "(Ljdk/vm/ci/hotspot/HotSpotJVMCIRuntime;Ljava/lang/Class;)V"
     };
-    private static final String[] FIELD_NATIVE_REGISTERED = {
-                    "nativeRegistered",
+    private static final String[] FIELD_NATIVES_REGISTERED = {
+                    "nativesRegistered",
                     "Z"
     };
 
@@ -121,15 +125,21 @@ final class SVMToHotSpotCalls {
         return env.getFunctions().getCallStaticObjectMethodA().call(env, svmToHotSpotEntryPointsClass, createId, nullPointer());
     }
 
-    static void signal(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass, JNI.JObject factory) {
+    static void signalRegistrationRequest(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass, JNI.JObject factory) {
         JNI.JMethodID signalId = findMethod(env, svmToHotSpotEntryPointsClass, true, false, METHOD_SIGNAL);
         JNI.JValue params = StackValue.get(2, JNI.JValue.class);
         params.addressOf(0).setJObject(factory);
         params.addressOf(1).setLong(CurrentIsolate.getIsolate().rawValue());
         env.getFunctions().getCallStaticVoidMethodA().call(env, svmToHotSpotEntryPointsClass, signalId, params);
-        if (JNIUtil.ExceptionCheck(env)) {
-            JNIUtil.ExceptionDescribe(env);
-        }
+    }
+
+    static void unregister(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass, JNI.JObject factory, JNI.JObjectArray objectNamesHandle) {
+        JNI.JMethodID unregisterId = findMethod(env, svmToHotSpotEntryPointsClass, true, false, METHOD_UNREGISTER);
+        JNI.JValue params = StackValue.get(3, JNI.JValue.class);
+        params.addressOf(0).setJObject(factory);
+        params.addressOf(1).setLong(CurrentIsolate.getIsolate().rawValue());
+        params.addressOf(2).setJObject(objectNamesHandle);
+        env.getFunctions().getCallStaticVoidMethodA().call(env, svmToHotSpotEntryPointsClass, unregisterId, params);
     }
 
     /**
@@ -164,6 +174,15 @@ final class SVMToHotSpotCalls {
         return (JNI.JClass) env.getFunctions().getCallObjectMethodA().call(env, classLoader, findClassId, params);
     }
 
+    /**
+     * Finds a class in HotSpot using a system class loader.
+     */
+    static JNI.JClass findClass(JNI.JNIEnv env, String className) {
+        try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(className)) {
+            return JNIUtil.FindClass(env, name.get());
+        }
+    }
+
     static JNI.JObject getRuntime(JNI.JNIEnv env, JNI.JClass runtimeClass) {
         JNI.JMethodID runtimeId = findMethod(env, runtimeClass, true, false, METHOD_RUNTIME);
         return env.getFunctions().getCallStaticObjectMethodA().call(env, runtimeClass, runtimeId, nullPointer());
@@ -177,17 +196,17 @@ final class SVMToHotSpotCalls {
         env.getFunctions().getCallStaticObjectMethodA().call(env, libgraal, registerId, params);
     }
 
-    static void nativeRegistered(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
-        JNI.JFieldID nativeRegisteredId = findStaticField(env, hsToSvmCalls, FIELD_NATIVE_REGISTERED);
-        env.getFunctions().getSetStaticBooleanField().call(env, hsToSvmCalls, nativeRegisteredId, true);
+    static void notifyNativesRegistered(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
+        JNI.JFieldID nativesRegisteredId = findStaticField(env, hsToSvmCalls, FIELD_NATIVES_REGISTERED);
+        env.getFunctions().getSetStaticBooleanField().call(env, hsToSvmCalls, nativesRegisteredId, true);
     }
 
     static boolean waitForRegisterNatives(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
-        JNI.JFieldID nativeRegisteredId = findStaticField(env, hsToSvmCalls, FIELD_NATIVE_REGISTERED);
+        JNI.JFieldID nativesRegisteredId = findStaticField(env, hsToSvmCalls, FIELD_NATIVES_REGISTERED);
         JNI.GetStaticBooleanField access = env.getFunctions().getGetStaticBooleanField();
         boolean res;
         do {
-            res = access.call(env, hsToSvmCalls, nativeRegisteredId);
+            res = access.call(env, hsToSvmCalls, nativesRegisteredId);
             if (JNIUtil.ExceptionCheck(env)) {
                 return false;
             }

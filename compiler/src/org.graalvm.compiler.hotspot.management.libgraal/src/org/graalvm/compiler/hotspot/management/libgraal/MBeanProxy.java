@@ -32,6 +32,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
@@ -50,6 +51,8 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import org.graalvm.compiler.core.GraalServiceThread;
+import org.graalvm.nativeimage.CurrentIsolate;
 
 class MBeanProxy<T extends DynamicMBean> {
 
@@ -79,7 +82,7 @@ class MBeanProxy<T extends DynamicMBean> {
     private static final byte[] SVM_HS_ENTRYPOINTS_CLASS = null;
 
     /**
-     * Pending MBeans registrations on HotSpot side.
+     * Pending MBeans registrations on HotSpot side. Guarded by: {@code MBeanProxy.class}.
      */
     private static Queue<MBeanProxy<?>> registrations = new ArrayDeque<>();
 
@@ -92,6 +95,20 @@ class MBeanProxy<T extends DynamicMBean> {
     private static volatile long jniEnvOffset;
 
     private static LibGraalMemoryPoolMBean memPoolBean;
+
+    /**
+     * MBeans to un-register on HotSpot side when isolate is closed. The first add to the list
+     * registers a shutdown hook performing the un-registration. Guarded by:
+     * {@code MBeanProxy.class}.
+     */
+    private static final List<MBeanProxy<?>> mBeansToUnregisterOnIsolateClose = new LinkedList<>();
+
+    /**
+     * Lifecycle state. Guarded by: {@code MBeanProxy.class}.
+     *
+     * @see State
+     */
+    private static State state = State.ACTIVE;
 
     /**
      * The MBean instance.
@@ -125,7 +142,8 @@ class MBeanProxy<T extends DynamicMBean> {
      * Creates a new {@link MBeanProxy} initialized by given {@code mbean}.
      */
     MBeanProxy(T mbean, String strName) throws MalformedObjectNameException {
-        initialize(mbean, strName, new ObjectName(strName));
+        String nameWithIsolate = String.format("%s_%x", strName, CurrentIsolate.getIsolate().rawValue());
+        initialize(mbean, nameWithIsolate, new ObjectName(nameWithIsolate));
     }
 
     void initialize(T mbean, String strName, ObjectName objectName) {
@@ -190,7 +208,7 @@ class MBeanProxy<T extends DynamicMBean> {
                     defineClassesInHotSpot(getCurrentJNIEnv());
                     try {
                         MBeanProxy<?> memPoolMBean = new MBeanProxy<>(memPoolBean, LibGraalMemoryPoolMBean.NAME);
-                        registrations.add(memPoolMBean);
+                        enqueueForRegistration(memPoolMBean);
                     } catch (MalformedObjectNameException mon) {
                         throw new AssertionError("Invlid object name.", mon);
                     }
@@ -227,8 +245,8 @@ class MBeanProxy<T extends DynamicMBean> {
      *
      * @return the pending registrations
      */
-    static synchronized List<MBeanProxy<?>> drain() {
-        if (registrations.isEmpty()) {
+    static synchronized List<MBeanProxy<?>> drainRegistrations() {
+        if (state != State.ACTIVE || registrations.isEmpty()) {
             return Collections.emptyList();
         } else {
             List<MBeanProxy<?>> res = new ArrayList<>(registrations);
@@ -238,11 +256,33 @@ class MBeanProxy<T extends DynamicMBean> {
     }
 
     /**
-     * Registers a given {@link HotSpotGraalManagement} instance into pending registrations.
+     * Registers a given {@link HotSpotGraalManagement} instance into pending registrations and
+     * notifies the worker in HotSpot heap.
+     *
+     * @return the {@code instance} if successfully registered or {@code null} when the registration
+     *         in not accepted because the isolate is closing
      */
-    static synchronized <T extends MBeanProxy<?>> T enqueueForRegistration(T instance) {
+    static synchronized <T extends MBeanProxy<?>> T enqueueForRegistrationAndNotify(T instance) {
+        T res = enqueueForRegistration(instance);
+        signalRegistrationRequest();
+        return res;
+    }
+
+    /**
+     * Registers a given {@link HotSpotGraalManagement} instance into pending registrations.
+     *
+     * @return the {@code instance} if successfully registered or {@code null} when the registration
+     *         in not accepted because the isolate is closing
+     */
+    private static synchronized <T extends MBeanProxy<?>> T enqueueForRegistration(T instance) {
+        if (state != State.ACTIVE) {
+            return null;
+        }
         registrations.add(instance);
-        signal(getCurrentJNIEnv(), getHotSpotEntryPoints(), getFactory(getCurrentJNIEnv(), getHotSpotEntryPoints()));
+        if (mBeansToUnregisterOnIsolateClose.isEmpty()) {
+            Runtime.getRuntime().addShutdownHook(new GraalServiceThread(new OnShutDown()));
+        }
+        mBeansToUnregisterOnIsolateClose.add(instance);
         return instance;
     }
 
@@ -258,7 +298,7 @@ class MBeanProxy<T extends DynamicMBean> {
                 try {
                     registerNatives(env, classLoader, hsToSvmCalls);
                 } finally {
-                    nativeRegistered(env, hsToSvmCalls);
+                    notifyNativesRegistered(env, hsToSvmCalls);
                 }
             } else {
                 hsToSvmCalls = findClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, true);
@@ -303,7 +343,7 @@ class MBeanProxy<T extends DynamicMBean> {
                 return SVMToHotSpotCalls.findClass(env, classLoader, className);
             } else {
                 allowedException = required ? null : NoClassDefFoundError.class;
-                return findClassImpl(env, className);
+                return SVMToHotSpotCalls.findClass(env, className);
             }
         } finally {
             if (allowedException != null) {
@@ -327,7 +367,7 @@ class MBeanProxy<T extends DynamicMBean> {
                 JNI.JClass exceptionClass = JNIUtil.GetObjectClass(env, exception);
                 boolean allowed = false;
                 for (Class<? extends Throwable> allowedException : allowedExceptions) {
-                    JNI.JClass allowedExceptionClass = findClassImpl(env, getBinaryName(allowedException.getName()));
+                    JNI.JClass allowedExceptionClass = SVMToHotSpotCalls.findClass(env, getBinaryName(allowedException.getName()));
                     if (allowedExceptionClass.isNonNull() && JNIUtil.IsSameObject(env, exceptionClass, allowedExceptionClass)) {
                         allowed = true;
                         break;
@@ -343,15 +383,6 @@ class MBeanProxy<T extends DynamicMBean> {
             } finally {
                 JNIUtil.ExceptionClear(env);
             }
-        }
-    }
-
-    /**
-     * Finds a class in HotSpot using a system class loader.
-     */
-    private static JNI.JClass findClassImpl(JNI.JNIEnv env, String className) {
-        try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(className)) {
-            return JNIUtil.FindClass(env, name.get());
         }
     }
 
@@ -377,12 +408,8 @@ class MBeanProxy<T extends DynamicMBean> {
                             clazz.length);
         } finally {
             UnmanagedMemory.free(classData);
-            checkException(env, "Failed to define " + clazzName, LinkageError.class);  // LinkageError
-                                                                                       // is allowed
-                                                                                       // the class
-                                                                                       // may be
-                                                                                       // already
-                                                                                       // defined
+            // LinkageError is allowed, the class may be already defined
+            checkException(env, "Failed to define " + clazzName, LinkageError.class);
         }
     }
 
@@ -418,18 +445,40 @@ class MBeanProxy<T extends DynamicMBean> {
      * Notifies the factory thread in HotSpot heap about new management bean instances to register.
      */
     @SuppressWarnings("try")
-    private static void signal(JNI.JNIEnv env, JNI.JClass svmHsEntryPoints, JNI.JObject factory) {
-        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.NewMBean, env)) {
-            SVMToHotSpotCalls.signal(env, svmHsEntryPoints, factory);
-            checkException(env, "Failed to register MBean");
+    private static void signalRegistrationRequest() {
+        JNI.JNIEnv env = getCurrentJNIEnv();
+        JNI.JClass svmHsEntryPoints = getHotSpotEntryPoints();
+        JNI.JObject factory = getFactory(getCurrentJNIEnv(), getHotSpotEntryPoints());
+        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.NewMBeans, env)) {
+            SVMToHotSpotCalls.signalRegistrationRequest(env, svmHsEntryPoints, factory);
+            checkException(env, "Failed to register MBeans");
+        }
+    }
+
+    /**
+     * Performs MBeans unregistration in the HotSpot heap.
+     */
+    @SuppressWarnings("try")
+    private static void unregister(List<MBeanProxy<?>> toUnregister) {
+        JNI.JNIEnv env = getCurrentJNIEnv();
+        JNI.JClass svmHsEntryPoints = getHotSpotEntryPoints();
+        JNI.JObject factory = getFactory(getCurrentJNIEnv(), getHotSpotEntryPoints());
+        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.UnregisterMBeans, env)) {
+            JNI.JObjectArray objectNamesHandle = JNIUtil.NewObjectArray(env, toUnregister.size(), SVMToHotSpotCalls.findClass(env, getBinaryName(String.class.getName())), WordFactory.nullPointer());
+            for (int i = 0; i < toUnregister.size(); i++) {
+                JNI.JString objectName = JNIUtil.createHSString(env, toUnregister.get(i).getName());
+                JNIUtil.SetObjectArrayElement(env, objectNamesHandle, i, objectName);
+            }
+            SVMToHotSpotCalls.unregister(env, svmHsEntryPoints, factory, objectNamesHandle);
+            checkException(env, "Failed to unregister MBeans");
         }
     }
 
     /**
      * Unblocks the threads in other isolates waiting for native methods registration.
      */
-    private static void nativeRegistered(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
-        SVMToHotSpotCalls.nativeRegistered(env, hsToSvmCalls);
+    private static void notifyNativesRegistered(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
+        SVMToHotSpotCalls.notifyNativesRegistered(env, hsToSvmCalls);
         checkException(env, "Failed to release register natives spin lock.");
     }
 
@@ -440,5 +489,32 @@ class MBeanProxy<T extends DynamicMBean> {
     private static void waitForRegisterNatives(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
         SVMToHotSpotCalls.waitForRegisterNatives(env, hsToSvmCalls);
         checkException(env, "Failed to release register natives spin lock.");
+    }
+
+    /**
+     * Lifecycle state.
+     */
+    private enum State {
+        /**
+         * Initial state when an isolate is created.
+         */
+        ACTIVE,
+
+        /**
+         * Closed, new MBean registrations are no more accepted.
+         */
+        CLOSED
+    }
+
+    private static final class OnShutDown implements Runnable {
+
+        @Override
+        public void run() {
+            synchronized (MBeanProxy.class) {
+                state = MBeanProxy.State.CLOSED;
+                unregister(mBeansToUnregisterOnIsolateClose);
+                mBeansToUnregisterOnIsolateClose.clear();
+            }
+        }
     }
 }
