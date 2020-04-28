@@ -1968,6 +1968,15 @@ final class Runner {
         return result;
     }
 
+    /**
+     * InitializationOrder contains three set of libraries, the sulong libraries and all other
+     * libraries in two different order. The scopeInitializationOrderLibraries is the order the
+     * libraries are parsed. While the moduleInitializationOrderLibraries is the order the libraries
+     * are initialised for the modules.
+     *
+     * InitializationOrder is created in computeInitializationOrder.
+     *
+     */
     private static final class InitializationOrder {
         private final ArrayList<LLVMParserResult> sulongLibraries;
         private final ArrayList<LLVMParserResult> moduleInitializationOrderLibraries;
