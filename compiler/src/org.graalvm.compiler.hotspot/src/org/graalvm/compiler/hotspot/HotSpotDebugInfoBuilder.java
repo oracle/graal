@@ -36,6 +36,8 @@ import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
 import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -117,6 +119,9 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
                     assert topState.stackSize() >= -stackEffect : "expected at least " + (-stackEffect) + " stack depth : " + topState;
                 }
             }
+        }
+        if (node instanceof DeoptimizeNode) {
+            assert !topState.duringCall() : topState.toString(Verbosity.Debugger);
         }
         return true;
     }
