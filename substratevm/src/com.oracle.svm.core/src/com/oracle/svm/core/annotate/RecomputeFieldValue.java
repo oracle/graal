@@ -100,7 +100,8 @@ public @interface RecomputeFieldValue {
          */
         Manual,
         /**
-         * Use a {@link CustomFieldValueComputer}, which is specified as the target class.
+         * Use a {@link CustomFieldValueComputer} or {@link CustomFieldValueTransformer}, which is
+         * specified as the target class.
          */
         Custom,
     }
@@ -109,7 +110,7 @@ public @interface RecomputeFieldValue {
      * Custom recomputation of field values. A class implementing this interface must have a
      * no-argument constructor, which is used to instantiate it before invoking {@link #compute}.
      */
-    public interface CustomFieldValueComputer {
+    interface CustomFieldValueComputer {
         /**
          * Computes the new field value.
          *
@@ -121,6 +122,29 @@ public @interface RecomputeFieldValue {
          * @return The new field value.
          */
         Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver);
+    }
+
+    /**
+     * Custom recomputation of field values. A class implementing this interface must have a
+     * no-argument constructor, which is used to instantiate it before invoking {@link #transform}.
+     * 
+     * In contrast to {@link CustomFieldValueComputer}, the {@link #transform} method also has the
+     * original field value as a parameter. This is convenient if the new value depends on the
+     * original value, but also requires the original field to be present, e.g., it cannot be use
+     * for {@link Inject injected fields}.
+     */
+    interface CustomFieldValueTransformer {
+        /**
+         * Computes the new field value.
+         *
+         * @param original The original field.
+         * @param annotated The field annotated with {@link RecomputeFieldValue}.
+         * @param receiver The original object for instance fields, or {@code null} for static
+         *            fields.
+         * @param originalValue The original value of the field.
+         * @return The new field value.
+         */
+        Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue);
     }
 
     /**
