@@ -76,6 +76,12 @@ public class StringBenchmark extends BenchmarkBase {
 
     @Benchmark
     @Warmup(iterations = 5)
+    public int indexOfConstantChar(BenchState state) {
+        return state.smallLorem.indexOf(' ');
+    }
+
+    @Benchmark
+    @Warmup(iterations = 5)
     public int indexOfSingleCharString(BenchState state) {
         return state.lorem.indexOf(state.ch1string);
     }

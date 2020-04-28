@@ -270,4 +270,7 @@ public final class GraalOptions {
 
     @Option(help = "Alignment in bytes for loop header blocks.", type = OptionType.Expert)
     public static final OptionKey<Integer> LoopHeaderAlignment = new OptionKey<>(16);
+
+    @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is lower than this value.", type = OptionType.Expert)
+    public static final OptionKey<Integer> StringIndexOfLimit = new OptionKey<>(4096);
 }

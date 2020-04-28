@@ -125,4 +125,9 @@ public class ArrayDuplicationBenchmark extends BenchmarkBase {
         return (Object[]) cache.clone();
     }
 
+    @Benchmark
+    public void checkcastArrayCopy() {
+        System.arraycopy(testObjectArray[0], 0, testStringArray[0], 0, testObjectArray[0].length);
+    }
+
 }

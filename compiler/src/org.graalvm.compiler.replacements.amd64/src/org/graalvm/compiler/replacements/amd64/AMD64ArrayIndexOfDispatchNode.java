@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,20 @@ package org.graalvm.compiler.replacements.amd64;
 
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_512;
 
+import java.nio.ByteOrder;
+
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.graph.spi.Canonicalizable;
+import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -45,6 +52,8 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -52,7 +61,7 @@ import jdk.vm.ci.meta.JavaKind;
  * to a {@link AMD64ArrayIndexOfNode} or a specialized snippet.
  */
 @NodeInfo(size = SIZE_512, cycles = NodeCycles.CYCLES_UNKNOWN)
-public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements Lowerable, MemoryAccess, DeoptimizingNode.DeoptBefore {
+public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements Canonicalizable, Lowerable, MemoryAccess, DeoptimizingNode.DeoptBefore {
 
     public static final NodeClass<AMD64ArrayIndexOfDispatchNode> TYPE = NodeClass.create(AMD64ArrayIndexOfDispatchNode.class);
 
@@ -80,7 +89,6 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
         this.arrayLength = arrayLength;
         this.fromIndex = fromIndex;
         this.searchValues = new NodeInputList<>(this, searchValues);
-
     }
 
     public boolean isFindTwoConsecutive() {
@@ -158,6 +166,59 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
     @Override
     public LocationIdentity getLocationIdentity() {
         return NamedLocationIdentity.getArrayLocation(arrayKind);
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        if (!findTwoConsecutive && arrayPointer.isConstant() && ((ConstantNode) arrayPointer).getStableDimension() > 0 && fromIndex.isConstant()) {
+            ConstantReflectionProvider provider = tool.getConstantReflection();
+            JavaConstant arrayConstant = arrayPointer.asJavaConstant();
+            int length = provider.readArrayLength(arrayConstant);
+            int fromIndexConstant = fromIndex.asJavaConstant().asInt();
+
+            if (searchValues.size() == 1 && searchValues.get(0).isConstant()) {
+                int ch = searchValues.get(0).asJavaConstant().asInt();
+                assert ch < Character.MIN_SUPPLEMENTARY_CODE_POINT;
+                if (arrayKind == JavaKind.Byte) {
+                    // Java 9+
+                    if (valueKind == JavaKind.Byte && length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions())) {
+                        for (int i = fromIndexConstant; i < length; i++) {
+                            if ((provider.readArrayElement(arrayConstant, i).asInt() & 0xFF) == ch) {
+                                return ConstantNode.forInt(i);
+                            }
+                        }
+                        return ConstantNode.forInt(-1);
+                    } else if (length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions()) * 2) {
+                        assert valueKind == JavaKind.Char;
+                        length >>= 1;
+                        for (int i = fromIndexConstant; i < length; i++) {
+                            int b0 = provider.readArrayElement(arrayConstant, i * 2).asInt() & 0xFF;
+                            int b1 = provider.readArrayElement(arrayConstant, i * 2 + 1).asInt() & 0xFF;
+                            char c;
+                            if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+                                c = (char) ((b0 << 8) | b1);
+                            } else {
+                                c = (char) (b0 | (b1 << 8));
+                            }
+                            if (c == ch) {
+                                return ConstantNode.forInt(i);
+                            }
+                        }
+                        return ConstantNode.forInt(-1);
+                    }
+                } else if (arrayKind == JavaKind.Char && length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions())) {
+                    // Java 8
+                    assert valueKind == JavaKind.Char;
+                    for (int i = fromIndexConstant; i < length; i++) {
+                        if ((provider.readArrayElement(arrayConstant, i).asInt() & 0xFFFF) == ch) {
+                            return ConstantNode.forInt(i);
+                        }
+                    }
+                    return ConstantNode.forInt(-1);
+                }
+            }
+        }
+        return this;
     }
 
     @Override
