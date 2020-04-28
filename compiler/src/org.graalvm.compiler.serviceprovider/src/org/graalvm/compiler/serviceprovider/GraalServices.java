@@ -244,4 +244,13 @@ public final class GraalServices {
     public static VirtualObject createVirtualObject(ResolvedJavaType type, int id, boolean isAutoBox) {
         throw shouldNotReachHere();
     }
+
+    /**
+     * Gets the update-release counter for the current Java runtime.
+     *
+     * @see "https://download.java.net/java/GA/jdk14/docs/api/java.base/java/lang/Runtime.Version.html"
+     */
+    public static int getJavaUpdateVersion() {
+        throw shouldNotReachHere();
+    }
 }

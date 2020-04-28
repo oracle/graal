@@ -554,4 +554,8 @@ public final class GraalServices {
     public static VirtualObject createVirtualObject(ResolvedJavaType type, int id, boolean isAutoBox) {
         return VirtualObject.get(type, id, isAutoBox);
     }
+
+    public static int getJavaUpdateVersion() {
+        return Runtime.version().update();
+    }
 }
