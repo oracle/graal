@@ -252,7 +252,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
         parseOptions(options, useSystemProperties, originalEngineOptions, languagesOptions, instrumentsOptions, logLevels);
 
-        boolean useAllowExperimentalOptions = allowExperimentalOptions || Boolean.parseBoolean(EngineAccessor.ACCESSOR.getSystemProperty(PROP_ALLOW_EXPERIMENTAL_OPTIONS));
+        boolean useAllowExperimentalOptions = allowExperimentalOptions || Boolean.parseBoolean(EngineAccessor.RUNTIME.getSystemProperty(PROP_ALLOW_EXPERIMENTAL_OPTIONS));
         this.engineOptionValues.putAll(originalEngineOptions, useAllowExperimentalOptions);
         this.conservativeContextReferences = engineOptionValues.get(PolyglotEngineOptions.UseConservativeContextReferences);
 
