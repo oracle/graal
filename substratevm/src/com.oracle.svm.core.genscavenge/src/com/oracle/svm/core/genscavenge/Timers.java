@@ -48,7 +48,7 @@ class Timer implements AutoCloseable {
     }
 
     /** Get all the nanoseconds collected between open/close pairs since the last reset. */
-    long getCollectedNanos() {
+    long getMeasuredNanos() {
         return collectedNanos;
     }
 
@@ -136,8 +136,8 @@ public class Timers {
     }
 
     static void logOneTimer(final Log log, final String prefix, final Timer timer) {
-        if (timer.getCollectedNanos() > 0) {
-            log.newline().string(prefix).string(timer.getName()).string(": ").signed(timer.getCollectedNanos());
+        if (timer.getMeasuredNanos() > 0) {
+            log.newline().string(prefix).string(timer.getName()).string(": ").signed(timer.getMeasuredNanos());
         }
     }
 

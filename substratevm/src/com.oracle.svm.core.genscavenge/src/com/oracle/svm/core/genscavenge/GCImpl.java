@@ -296,7 +296,7 @@ public class GCImpl implements GC {
                 printGCLog.unsigned(sizeBefore.unsignedDivide(1024));
                 printGCLog.string("K->");
                 printGCLog.unsigned(sizeAfter.unsignedDivide(1024)).string("K, ");
-                printGCLog.rational(timers.collection.getCollectedNanos(), TimeUtils.nanosPerSecond, 7).string(" secs");
+                printGCLog.rational(timers.collection.getMeasuredNanos(), TimeUtils.nanosPerSecond, 7).string(" secs");
                 printGCLog.string("]").newline();
             }
             if (SubstrateOptions.VerboseGC.getValue()) {
@@ -316,7 +316,7 @@ public class GCImpl implements GC {
                 }
                 if (!HeapOptions.PrintGCTimes.getValue()) {
                     verboseGCLog.newline();
-                    verboseGCLog.string("  collection time: ").unsigned(timers.collection.getCollectedNanos()).string(" nanoSeconds");
+                    verboseGCLog.string("  collection time: ").unsigned(timers.collection.getMeasuredNanos()).string(" nanoSeconds");
                 } else {
                     timers.logAfterCollection(verboseGCLog);
                 }
@@ -1114,7 +1114,7 @@ public class GCImpl implements GC {
         log.string(prefix).string("CompleteGCNanos: ").signed(completeNanos).newline();
 
         final long gcNanos = incrementalNanos + completeNanos;
-        final long mutatorNanos = timers.mutator.getCollectedNanos();
+        final long mutatorNanos = timers.mutator.getMeasuredNanos();
         final long totalNanos = gcNanos + mutatorNanos;
         final long roundedGCLoad = (0 < totalNanos ? TimeUtils.roundedDivide(100 * gcNanos, totalNanos) : 0);
         log.string(prefix).string("GCNanos: ").signed(gcNanos).newline();
