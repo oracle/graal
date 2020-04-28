@@ -80,7 +80,7 @@ final class InsightException extends RuntimeException implements TruffleExceptio
 
     @TruffleBoundary
     static InsightException raise(Exception ex) throws InsightException {
-        throw new InsightException(ex.getMessage(), ex, -1);
+        throw new InsightException(ex.getMessage().replace("\n", ": "), ex, -1);
     }
 
     @TruffleBoundary
