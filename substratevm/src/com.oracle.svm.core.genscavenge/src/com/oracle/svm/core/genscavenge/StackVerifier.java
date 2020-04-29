@@ -52,7 +52,7 @@ final class StackVerifier {
     }
 
     public boolean verifyInAllThreads(Pointer currentSp, String message) {
-        final Log trace = getTraceLog();
+        Log trace = getTraceLog();
         trace.string("[StackVerifier.verifyInAllThreads:").string(message).newline();
         // Flush thread-local allocation data.
         ThreadLocalAllocation.disableAndFlushForAllThreads();
@@ -78,7 +78,7 @@ final class StackVerifier {
     }
 
     private static boolean verifyFrame(Pointer frameSP, CodePointer frameIP, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-        final Log trace = getTraceLog();
+        Log trace = getTraceLog();
         trace.string("[StackVerifier.verifyFrame:");
         trace.string("  frameSP: ").hex(frameSP);
         trace.string("  frameIP: ").hex(frameIP);
@@ -97,14 +97,14 @@ final class StackVerifier {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the stack.")
         public boolean visitFrame(Pointer currentSP, CodePointer currentIP, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-            final Log trace = getTraceLog();
+            Log trace = getTraceLog();
             long totalFrameSize = CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, currentIP));
             trace.string("  currentIP: ").hex(currentIP);
             trace.string("  currentSP: ").hex(currentSP);
             trace.string("  frameSize: ").signed(totalFrameSize).newline();
 
             if (!verifyFrame(currentSP, currentIP, codeInfo, deoptimizedFrame)) {
-                final Log witness = Log.log();
+                Log witness = Log.log();
                 witness.string("  frame fails to verify");
                 witness.string("  returns false]").newline();
                 return false;
@@ -118,11 +118,11 @@ final class StackVerifier {
         public boolean visitObjectReference(Pointer objRef, boolean compressed) {
             Pointer objAddr = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
 
-            final Log trace = StackVerifier.getTraceLog();
+            Log trace = StackVerifier.getTraceLog();
             trace.string("  objAddr: ").hex(objAddr);
             trace.newline();
             if (!objAddr.isNull() && !HeapImpl.getHeapImpl().getHeapVerifier().verifyObjectAt(objAddr)) {
-                final Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog();
+                Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog();
                 witness.string("[StackVerifier.verifyFrame:");
                 witness.string("  objAddr: ").hex(objAddr);
                 witness.string("  fails to verify");

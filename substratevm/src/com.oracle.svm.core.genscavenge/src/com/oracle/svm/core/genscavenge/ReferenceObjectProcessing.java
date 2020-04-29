@@ -219,7 +219,7 @@ final class ReferenceObjectProcessing {
     }
 
     private static Reference<?> popRememberedRef() {
-        final Reference<?> result = rememberedRefsList;
+        Reference<?> result = rememberedRefsList;
         if (result != null) {
             rememberedRefsList = ReferenceInternals.getNextDiscovered(result);
             ReferenceInternals.setNextDiscovered(result, null);
@@ -228,10 +228,10 @@ final class ReferenceObjectProcessing {
     }
 
     public static boolean verify(Reference<?> dr) {
-        final Pointer refPointer = ReferenceInternals.getReferentPointer(dr);
-        final int refClassification = HeapVerifier.classifyPointer(refPointer);
+        Pointer refPointer = ReferenceInternals.getReferentPointer(dr);
+        int refClassification = HeapVerifier.classifyPointer(refPointer);
         if (refClassification < 0) {
-            final Log witness = Log.log();
+            Log witness = Log.log();
             witness.string("[ReferenceObjectProcessing.verify:");
             witness.string("  epoch: ").unsigned(HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch());
             witness.string("  refClassification: ").signed(refClassification);
@@ -239,17 +239,17 @@ final class ReferenceObjectProcessing {
             assert (!(refClassification < 0)) : "Bad referent.";
             return false;
         }
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final YoungGeneration youngGen = heap.getYoungGeneration();
-        final OldGeneration oldGen = heap.getOldGeneration();
-        final boolean refNull = refPointer.isNull();
-        final boolean refBootImage = (!refNull) && heap.isInImageHeapSlow(refPointer);
-        final boolean refYoung = (!refNull) && youngGen.slowlyFindPointer(refPointer);
-        final boolean refOldFrom = (!refNull) && oldGen.slowlyFindPointerInFromSpace(refPointer);
-        final boolean refOldTo = (!refNull) && oldGen.slowlyFindPointerInToSpace(refPointer);
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        YoungGeneration youngGen = heap.getYoungGeneration();
+        OldGeneration oldGen = heap.getOldGeneration();
+        boolean refNull = refPointer.isNull();
+        boolean refBootImage = (!refNull) && heap.isInImageHeapSlow(refPointer);
+        boolean refYoung = (!refNull) && youngGen.slowlyFindPointer(refPointer);
+        boolean refOldFrom = (!refNull) && oldGen.slowlyFindPointerInFromSpace(refPointer);
+        boolean refOldTo = (!refNull) && oldGen.slowlyFindPointerInToSpace(refPointer);
         /* The referent might already have survived, or might not have. */
         if (!(refNull || refYoung || refBootImage || refOldFrom)) {
-            final Log witness = Log.log();
+            Log witness = Log.log();
             witness.string("[ReferenceObjectProcessing.verify:");
             witness.string("  epoch: ").unsigned(HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch());
             witness.string("  refBootImage: ").bool(refBootImage);

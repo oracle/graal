@@ -115,31 +115,31 @@ public final class UnalignedHeapChunk {
     }
 
     static UnsignedWord getChunkSizeForObject(UnsignedWord objectSize) {
-        final UnsignedWord objectStart = getObjectStartOffset();
-        final UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord objectStart = getObjectStartOffset();
+        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(objectStart.add(objectSize), alignment);
     }
 
     /** Allocate uninitialized memory within this AlignedHeapChunk. */
     @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
     public static Pointer allocateMemory(UnalignedHeader that, UnsignedWord size) {
-        final UnsignedWord available = HeapChunk.availableObjectMemory(that);
+        UnsignedWord available = HeapChunk.availableObjectMemory(that);
         Pointer result = WordFactory.nullPointer();
         if (size.belowOrEqual(available)) {
             result = that.getTop();
-            final Pointer newTop = result.add(size);
+            Pointer newTop = result.add(size);
             HeapChunk.setTopCarefully(that, newTop);
         }
         return result;
     }
 
     static UnalignedHeader getEnclosingChunk(Object obj) {
-        final Pointer objPointer = Word.objectToUntrackedPointer(obj);
+        Pointer objPointer = Word.objectToUntrackedPointer(obj);
         return getEnclosingChunkFromObjectPointer(objPointer);
     }
 
     static UnalignedHeader getEnclosingChunkFromObjectPointer(Pointer objPointer) {
-        final Pointer chunkPointer = objPointer.subtract(getObjectStartOffset());
+        Pointer chunkPointer = objPointer.subtract(getObjectStartOffset());
         return (UnalignedHeader) chunkPointer;
     }
 
@@ -153,9 +153,9 @@ public final class UnalignedHeapChunk {
     }
 
     public static void dirtyCardForObject(Object obj, boolean verifyOnly) {
-        final UnalignedHeader chunk = getEnclosingChunk(obj);
-        final Pointer cardTableStart = getCardTableStart(chunk);
-        final UnsignedWord objectIndex = getObjectIndex();
+        UnalignedHeader chunk = getEnclosingChunk(obj);
+        Pointer cardTableStart = getCardTableStart(chunk);
+        UnsignedWord objectIndex = getObjectIndex();
         if (verifyOnly) {
             AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, objectIndex), "card must be dirty", "", "");
         } else {
@@ -164,14 +164,14 @@ public final class UnalignedHeapChunk {
     }
 
     static boolean verifyOnlyCleanCards(UnalignedHeader that) {
-        final Log trace = Log.noopLog().string("[UnalignedHeapChunk.verifyOnlyCleanCards:");
+        Log trace = Log.noopLog().string("[UnalignedHeapChunk.verifyOnlyCleanCards:");
         trace.string("  that: ").hex(that);
         boolean result = true;
-        final Pointer rememberedSetStart = getCardTableStart(that);
-        final UnsignedWord objectIndex = getObjectIndex();
+        Pointer rememberedSetStart = getCardTableStart(that);
+        UnsignedWord objectIndex = getObjectIndex();
         if (CardTable.isDirtyEntryAtIndex(rememberedSetStart, objectIndex)) {
             result = false;
-            final Log witness = Log.log().string("[UnalignedHeapChunk.verifyOnlyCleanCards:");
+            Log witness = Log.log().string("[UnalignedHeapChunk.verifyOnlyCleanCards:");
             witness.string("  that: ").hex(that).string("  dirty card at index: ").unsigned(objectIndex).string("]").newline();
         }
         trace.string("  returns: ").bool(result).string("]").newline();
@@ -179,18 +179,18 @@ public final class UnalignedHeapChunk {
     }
 
     public static boolean walkDirtyObjects(UnalignedHeader that, ObjectVisitor visitor, boolean clean) {
-        final Log trace = Log.noopLog().string("[UnalignedHeapChunk.walkDirtyObjects:");
+        Log trace = Log.noopLog().string("[UnalignedHeapChunk.walkDirtyObjects:");
         trace.string("  clean: ").bool(clean).string("  that: ").hex(that).string("  ");
         boolean result = true;
-        final Pointer rememberedSetStart = getCardTableStart(that);
-        final UnsignedWord objectIndex = getObjectIndex();
+        Pointer rememberedSetStart = getCardTableStart(that);
+        UnsignedWord objectIndex = getObjectIndex();
         trace.string("  rememberedSetStart: ").hex(rememberedSetStart).string("  objectIndex: ").unsigned(objectIndex);
         if (CardTable.isDirtyEntryAtIndex(rememberedSetStart, objectIndex)) {
             if (clean) {
                 CardTable.cleanEntryAtIndex(rememberedSetStart, objectIndex);
             }
-            final Pointer objectsStart = getObjectStart(that);
-            final Object obj = objectsStart.toObject();
+            Pointer objectsStart = getObjectStart(that);
+            Object obj = objectsStart.toObject();
             trace.string("  obj: ").object(obj);
             if (!visitor.visitObjectInline(obj)) {
                 result = false;
@@ -201,44 +201,44 @@ public final class UnalignedHeapChunk {
     }
 
     static void cleanRememberedSet(UnalignedHeader that) {
-        final Log trace = Log.noopLog().string("[UnalignedHeapChunk.cleanRememberedSet:").newline();
+        Log trace = Log.noopLog().string("[UnalignedHeapChunk.cleanRememberedSet:").newline();
         trace.string("  that: ").hex(that);
         CardTable.cleanTableToPointer(getCardTableStart(that), getCardTableLimit(that));
         trace.string("]").newline();
     }
 
     static void setUpRememberedSet(UnalignedHeader that) {
-        final Object obj = getObjectStart(that).toObject();
+        Object obj = getObjectStart(that).toObject();
         ObjectHeaderImpl.setRememberedSetBit(obj);
     }
 
     @Fold
     static UnsignedWord getCardTableStartOffset() {
-        final UnsignedWord headerSize = WordFactory.unsigned(SizeOf.get(UnalignedHeader.class));
-        final UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord headerSize = WordFactory.unsigned(SizeOf.get(UnalignedHeader.class));
+        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(headerSize, alignment);
     }
 
     @Fold
     static UnsignedWord getCardTableSize() {
-        final UnsignedWord requiredSize = CardTable.tableSizeForMemorySize(WordFactory.unsigned(1));
-        final UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord requiredSize = CardTable.tableSizeForMemorySize(WordFactory.unsigned(1));
+        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(requiredSize, alignment);
     }
 
     @Fold
     static UnsignedWord getCardTableLimitOffset() {
-        final UnsignedWord tableStart = getCardTableStartOffset();
-        final UnsignedWord tableSize = getCardTableSize();
-        final UnsignedWord tableLimit = tableStart.add(tableSize);
-        final UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord tableStart = getCardTableStartOffset();
+        UnsignedWord tableSize = getCardTableSize();
+        UnsignedWord tableLimit = tableStart.add(tableSize);
+        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(tableLimit, alignment);
     }
 
     @Fold
     static UnsignedWord getObjectStartOffset() {
-        final UnsignedWord cardTableLimitOffset = getCardTableLimitOffset();
-        final UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord cardTableLimitOffset = getCardTableLimitOffset();
+        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(cardTableLimitOffset, alignment);
     }
 
@@ -256,28 +256,28 @@ public final class UnalignedHeapChunk {
 
     private static boolean verify(UnalignedHeader that, Pointer start) {
         VMOperation.guaranteeInProgress("Should only be called as a VMOperation.");
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[UnalignedHeapChunk.verify");
+        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[UnalignedHeapChunk.verify");
         trace.string("  that: ").hex(that).string("  start: ").hex(start).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd()).newline();
-        final UnsignedWord objHeader = ObjectHeaderImpl.readHeaderFromPointer(start);
+        UnsignedWord objHeader = ObjectHeaderImpl.readHeaderFromPointer(start);
         if (ObjectHeaderImpl.isForwardedHeader(objHeader)) {
-            final Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
+            Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
             witness.string("  that: ").hex(that).string("  start: ").hex(start).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd());
             witness.string("  space: ").string(that.getSpace().getName());
             witness.string("  should not be forwarded").string("]").newline();
             return false;
         }
         if (!ObjectHeaderImpl.isUnalignedHeader(start, objHeader)) {
-            final Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
+            Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
             witness.string("  that: ").hex(that).string("  start: ").hex(start).string("  end: ").hex(that.getEnd());
             witness.string("  space: ").string(that.getSpace().getName());
             witness.string("  obj: ").hex(start).string("  objHeader: ").hex(objHeader);
             witness.string("  does not have an unaligned header").string("]").newline();
             return false;
         }
-        final Object obj = start.toObject();
-        final Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
+        Object obj = start.toObject();
+        Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
         if (objEnd.notEqual(that.getTop())) {
-            final Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
+            Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
             witness.string("  that: ").hex(that).string("  start: ").hex(start).string("  end: ").hex(that.getEnd());
             witness.string("  space: ").string(that.getSpace().getName());
             witness.string("  obj: ").object(obj).string("  objEnd: ").hex(objEnd);
@@ -285,29 +285,29 @@ public final class UnalignedHeapChunk {
             return false;
         }
         if (!verifyRememberedSet(that)) {
-            final Log witnessLog = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeadChunk remembered set fails to verify");
+            Log witnessLog = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeadChunk remembered set fails to verify");
             witnessLog.string("  that: ").hex(that).string("  remembered set fails to verify.").string("]").newline();
         }
-        final boolean result = HeapChunk.verifyObjects(that, start);
+        boolean result = HeapChunk.verifyObjects(that, start);
         trace.string("  returns: ").bool(result).string("]").newline();
         return result;
     }
 
     private static boolean verifyRememberedSet(UnalignedHeader that) {
         // Only chunks in the old from space have a remembered set.
-        final OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
+        OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
         if (that.getSpace() == oldGen.getFromSpace()) {
             // Check if there are cross-generational pointers ...
-            final Pointer objStart = getObjectStart(that);
-            final Object obj = objStart.toObject();
-            final boolean containsYoungReferences = CardTable.containsReferenceToYoungSpace(obj);
+            Pointer objStart = getObjectStart(that);
+            Object obj = objStart.toObject();
+            boolean containsYoungReferences = CardTable.containsReferenceToYoungSpace(obj);
             // ... and if so, that the chunk is marked as dirty.
             if (containsYoungReferences) {
-                final Pointer rememberedSet = getCardTableStart(that);
-                final UnsignedWord objectIndex = getObjectIndex();
-                final boolean isDirty = CardTable.isDirtyEntryAtIndex(rememberedSet, objectIndex);
+                Pointer rememberedSet = getCardTableStart(that);
+                UnsignedWord objectIndex = getObjectIndex();
+                boolean isDirty = CardTable.isDirtyEntryAtIndex(rememberedSet, objectIndex);
                 if (!isDirty) {
-                    final Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
+                    Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
                     witness.string("  that: ").hex(that);
                     witness.string("  containsYoungReferences implies isDirty").string("]").newline();
                     return false;

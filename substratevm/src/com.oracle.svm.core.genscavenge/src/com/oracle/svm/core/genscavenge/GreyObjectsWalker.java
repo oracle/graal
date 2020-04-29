@@ -57,10 +57,10 @@ final class GreyObjectsWalker {
      * Take a snapshot of a Space, such that all Objects in the Space are now black, and any new
      * Objects in the Space will be grey, and can have an ObjectVisitor applied to them.
      */
-    void setScanStart(final Space s) {
-        final Log trace = Log.noopLog().string("[Space.GreyObjectsWalker.setScanStart:").string("  s: ").string(s.getName());
+    void setScanStart(Space s) {
+        Log trace = Log.noopLog().string("[Space.GreyObjectsWalker.setScanStart:").string("  s: ").string(s.getName());
         space = s;
-        final AlignedHeapChunk.AlignedHeader aChunk = s.getLastAlignedHeapChunk();
+        AlignedHeapChunk.AlignedHeader aChunk = s.getLastAlignedHeapChunk();
         alignedHeapChunk = aChunk;
         trace.string("  alignedHeapChunk: ").hex(alignedHeapChunk).string("  isNull: ").bool(aChunk.isNull());
         alignedTop = (aChunk.isNonNull() ? aChunk.getTop() : WordFactory.nullPointer());

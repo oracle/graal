@@ -98,13 +98,13 @@ public final class CardTable {
     }
 
     static boolean containsReferenceToYoungSpace(Object obj) {
-        final ReferenceToYoungObjectVisitor referenceToYoungObjectVisitor = getReferenceToYoungObjectVisitor();
+        ReferenceToYoungObjectVisitor referenceToYoungObjectVisitor = getReferenceToYoungObjectVisitor();
         return referenceToYoungObjectVisitor.containsReferenceToYoungObject(obj);
     }
 
     static Pointer cleanTableToPointer(Pointer tableStart, Pointer tableLimit) {
-        final UnsignedWord tableOffset = tableLimit.subtract(tableStart);
-        final UnsignedWord indexLimit = CardTable.tableOffsetToIndex(tableOffset);
+        UnsignedWord tableOffset = tableLimit.subtract(tableStart);
+        UnsignedWord indexLimit = CardTable.tableOffsetToIndex(tableOffset);
         return CardTable.cleanTableToIndex(tableStart, indexLimit);
     }
 
@@ -124,7 +124,7 @@ public final class CardTable {
     }
 
     static UnsignedWord tableSizeForMemorySize(UnsignedWord memorySize) {
-        final UnsignedWord maxIndex = indexLimitForMemorySize(memorySize);
+        UnsignedWord maxIndex = indexLimitForMemorySize(memorySize);
         return maxIndex.multiply(ENTRY_SIZE_BYTES);
     }
 
@@ -137,12 +137,12 @@ public final class CardTable {
      * memory address of this indexed entry, ask for the start of the *next* indexed entry.
      */
     static Pointer indexToMemoryPointer(Pointer memoryStart, UnsignedWord index) {
-        final UnsignedWord offset = index.multiply(BYTES_COVERED_BY_ENTRY);
+        UnsignedWord offset = index.multiply(BYTES_COVERED_BY_ENTRY);
         return memoryStart.add(offset);
     }
 
     static UnsignedWord indexLimitForMemorySize(UnsignedWord memorySize) {
-        final UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, WordFactory.unsigned(BYTES_COVERED_BY_ENTRY));
+        UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, WordFactory.unsigned(BYTES_COVERED_BY_ENTRY));
         return CardTable.memoryOffsetToIndex(roundedMemory);
     }
 
@@ -158,15 +158,15 @@ public final class CardTable {
      * ambiguous marked cards.
      */
     static boolean verify(Pointer ctStart, Pointer fotStart, Pointer objectsStart, Pointer objectsLimit) {
-        final Log trace = Log.noopLog().string("[CardTable.verify: ");
+        Log trace = Log.noopLog().string("[CardTable.verify: ");
         trace.string("  ctStart: ").hex(ctStart).string("  fotStart: ").hex(fotStart).string("  objectsStart: ").hex(objectsStart).string("  objectsLimit: ").hex(objectsLimit).newline();
         if (!verifyCleanCards(ctStart, fotStart, objectsStart, objectsLimit)) {
-            final Log verifyLog = Log.log().string("[CardTableTable.verify:");
+            Log verifyLog = Log.log().string("[CardTableTable.verify:");
             verifyLog.string("  fails verifyCleanCards").string("]").newline();
             return false;
         }
         if (!verifyDirtyCards(ctStart, objectsStart, objectsLimit)) {
-            final Log verifyLog = Log.log().string("[CardTable.verify:");
+            Log verifyLog = Log.log().string("[CardTable.verify:");
             verifyLog.string("  fails verifyCleanCards").string("]").newline();
             return false;
         }
@@ -208,7 +208,7 @@ public final class CardTable {
         assert memoryStart.belowOrEqual(memoryLimit) : "memoryStart.belowOrEqual(memoryLimit)";
         assert memoryStart.belowOrEqual(memoryPointer) : "memoryStart.belowOrEqual(memoryPointer)";
         assert memoryPointer.belowOrEqual(memoryLimit) : "memoryPointer.belowOrEqual(memoryLimit)";
-        final UnsignedWord offset = memoryPointer.subtract(memoryStart);
+        UnsignedWord offset = memoryPointer.subtract(memoryStart);
         return memoryOffsetToIndex(offset);
     }
 
@@ -231,25 +231,25 @@ public final class CardTable {
 
     /** Check that every clean card indicates an object with no pointers to young space. */
     private static boolean verifyCleanCards(Pointer ctStart, Pointer fotStart, Pointer objectsStart, Pointer objectsLimit) {
-        final Log trace = Log.noopLog().string("[CardTable.verifyCleanCards:");
+        Log trace = Log.noopLog().string("[CardTable.verifyCleanCards:");
         trace.string("  ctStart: ").hex(ctStart).string("  fotStart: ").hex(fotStart).string("  objectsStart: ").hex(objectsStart).string("  objectsLimit: ").hex(objectsLimit);
         /* Walk the remembered set entries. */
-        final UnsignedWord indexLimit = FirstObjectTable.getTableSizeForMemoryRange(objectsStart, objectsLimit);
+        UnsignedWord indexLimit = FirstObjectTable.getTableSizeForMemoryRange(objectsStart, objectsLimit);
         for (UnsignedWord index = WordFactory.zero(); index.belowThan(indexLimit); index = index.add(1)) {
             trace.newline().string("  index: ").unsigned(index);
             if (FirstObjectTable.isUninitializedIndex(fotStart, index)) {
-                final Log failure = Log.log().string("[CardTable.verifyCleanCards: ");
+                Log failure = Log.log().string("[CardTable.verifyCleanCards: ");
                 failure.string("  reached uninitialized first object table entry").string("]").newline();
                 return false;
             }
-            final boolean isClean = isCleanEntryAtIndex(ctStart, index);
+            boolean isClean = isCleanEntryAtIndex(ctStart, index);
             if (!isClean) {
                 continue;
             }
             /* Find the imprecise bounds represented by the card. */
-            final Pointer impreciseStart = FirstObjectTable.getImpreciseFirstObjectPointer(fotStart, objectsStart, objectsLimit, index);
-            final Pointer cardLimit = indexToMemoryPointer(objectsStart, index.add(1));
-            final Pointer walkLimit = PointerUtils.min(cardLimit, objectsLimit);
+            Pointer impreciseStart = FirstObjectTable.getImpreciseFirstObjectPointer(fotStart, objectsStart, objectsLimit, index);
+            Pointer cardLimit = indexToMemoryPointer(objectsStart, index.add(1));
+            Pointer walkLimit = PointerUtils.min(cardLimit, objectsLimit);
             trace.string("  impreciseStart: ").hex(impreciseStart).string("  cardLimit: ").hex(cardLimit).string("  walkLimit: ").hex(walkLimit);
             /*
              * Walk the objects to the end of an object, even if that is past cardLimit, because
@@ -258,24 +258,24 @@ public final class CardTable {
             Pointer ptr = impreciseStart;
             while (ptr.belowThan(walkLimit)) {
                 trace.newline().string("  ").string("  ptr: ").hex(ptr);
-                final Object obj = ptr.toObject();
+                Object obj = ptr.toObject();
                 trace.string("  obj: ").object(obj);
                 if (LayoutEncoding.isArray(obj)) {
                     trace.string("  length: ").signed(KnownIntrinsics.readArrayLength(obj));
                 }
-                final boolean containsYoung = getReferenceToYoungObjectVisitor().containsReferenceToYoungObject(obj);
+                boolean containsYoung = getReferenceToYoungObjectVisitor().containsReferenceToYoungObject(obj);
                 if (containsYoung) {
                     final boolean witnessForDebugging = true;
-                    final Log witness = (witnessForDebugging ? Log.log() : HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog());
+                    Log witness = (witnessForDebugging ? Log.log() : HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog());
                     witness.string("[CardTable.verifyCleanCards:").string("  objectsStart: ").hex(objectsStart).string("  objectsLimit: ").hex(objectsLimit).string("  indexLimit: ").unsigned(
                                     indexLimit).newline();
                     witness.string("  index: ").unsigned(index);
-                    final Pointer cardStart = indexToMemoryPointer(objectsStart, index);
+                    Pointer cardStart = indexToMemoryPointer(objectsStart, index);
                     witness.string("  cardStart: ").hex(cardStart).string("  cardLimit: ").hex(cardLimit).string("  walkLimit: ").hex(walkLimit).string("  fotEntry: ");
                     FirstObjectTable.TestingBackDoor.indexToLog(fotStart, witness, index);
                     witness.string("  isClean: ").bool(isClean).newline();
-                    final Pointer crossingOntoPointer = FirstObjectTable.getPreciseFirstObjectPointer(fotStart, objectsStart, objectsLimit, index);
-                    final Object crossingOntoObject = crossingOntoPointer.toObject();
+                    Pointer crossingOntoPointer = FirstObjectTable.getPreciseFirstObjectPointer(fotStart, objectsStart, objectsLimit, index);
+                    Object crossingOntoObject = crossingOntoPointer.toObject();
                     witness.string("  crossingOntoObject: ").object(crossingOntoObject).string("  end: ").hex(LayoutEncoding.getObjectEnd(crossingOntoObject));
                     if (LayoutEncoding.isArray(crossingOntoObject)) {
                         witness.string("  array length: ").signed(KnownIntrinsics.readArrayLength(crossingOntoObject));
@@ -304,19 +304,19 @@ public final class CardTable {
      * Check that that every object with a pointer to young space has a corresponding dirty card.
      */
     private static boolean verifyDirtyCards(Pointer ctStart, Pointer objectsStart, Pointer objectsLimit) {
-        final Log trace = Log.noopLog().string("[CardTable.verifyDirtyCards:");
+        Log trace = Log.noopLog().string("[CardTable.verifyDirtyCards:");
         trace.string("  ctStart: ").hex(ctStart).string("  objectsStart: ").hex(objectsStart).string("  objectsLimit: ").hex(objectsLimit);
         /* Walk the objects */
         Pointer ptr = objectsStart;
         while (ptr.belowThan(objectsLimit)) {
-            final Object obj = ptr.toObject();
-            final boolean containsYoung = containsReferenceToYoungSpace(obj);
+            Object obj = ptr.toObject();
+            boolean containsYoung = containsReferenceToYoungSpace(obj);
             if (containsYoung) {
-                final UnsignedWord index = memoryPointerToIndex(objectsStart, objectsLimit, ptr);
-                final boolean isClean = isCleanEntryAtIndex(ctStart, index);
+                UnsignedWord index = memoryPointerToIndex(objectsStart, objectsLimit, ptr);
+                boolean isClean = isCleanEntryAtIndex(ctStart, index);
                 if (isClean) {
                     final boolean witnessForDebugging = true;
-                    final Log witness = (witnessForDebugging ? Log.log() : HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog());
+                    Log witness = (witnessForDebugging ? Log.log() : HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog());
                     witness.string("[CardTable.verifyDirtyCards:").string("  objectsStart: ").hex(objectsStart).string("  objectsLimit: ").hex(objectsLimit).newline();
                     witness.string("  obj: ").object(obj).string("  contains young: ").bool(containsYoung).string("  but index: ").unsigned(index).string(" is clean.").string(" returns false").string(
                                     "]").newline();
@@ -338,11 +338,11 @@ public final class CardTable {
 
         @Override
         public boolean visitObject(Object obj) {
-            final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).newline();
+            Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).newline();
             visitor.reset();
             trace.string("  calling walkObject").newline();
             if (!InteriorObjRefWalker.walkObject(obj, visitor)) {
-                final Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog();
+                Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog();
                 witness.string("[[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).string("  fails InteriorObjRefWalker.walkObject").string("]").newline();
                 return false;
             }
@@ -352,7 +352,7 @@ public final class CardTable {
 
         private boolean containsReferenceToYoungObject(Object obj) {
             if (!visitObject(obj)) {
-                final Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog();
+                Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog();
                 witness.string("[[ReferenceToYoungObjectVisitor.containsReferenceToYoungObject:").string("  obj: ").object(obj).string("  fails visitObject").string("]").newline();
             }
             return visitor.found;
@@ -384,8 +384,8 @@ public final class CardTable {
 
         @Override
         public boolean visitObjectReference(Pointer objRef, boolean compressed) {
-            final Log trace = Log.noopLog().string("[ReferenceToYoungObjectReferenceVisitor.visitObjectReference: ").string("  objRef: ").hex(objRef).newline();
-            final Pointer p = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
+            Log trace = Log.noopLog().string("[ReferenceToYoungObjectReferenceVisitor.visitObjectReference: ").string("  objRef: ").hex(objRef).newline();
+            Pointer p = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
             trace.string("  p: ").hex(p);
             if (p.isNull()) {
                 trace.string("  null pointer returns true]").newline();
@@ -393,30 +393,30 @@ public final class CardTable {
             }
             final boolean paranoid = true;
             if (paranoid) {
-                final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(p);
+                UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(p);
                 if (ObjectHeaderImpl.isProducedHeapChunkZapped(header) || ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
-                    final Log paranoidLog = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
+                    Log paranoidLog = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
                     paranoidLog.string("  objRef: ").hex(objRef).string("  p: ").hex(p).string("  points to zapped header: ").hex(header).string("]").newline();
                 }
                 if (ObjectHeaderImpl.isForwardedHeader(header)) {
-                    final Log paranoidLog = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
+                    Log paranoidLog = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
                     paranoidLog.string("  objRef: ").hex(objRef).string("  p: ").hex(p).string("  points to header: ").hex(header).string("]").newline();
                 }
             }
-            final Object obj = p.toObject();
+            Object obj = p.toObject();
             trace.string("  obj: ").object(obj).string(" ").object(obj);
             if (HeapImpl.getHeapImpl().isInImageHeap(obj)) {
                 trace.string("  non-heap allocated returns true]").newline();
                 return true;
             }
-            final HeapChunk.Header<?> objChunk = HeapChunk.getEnclosingHeapChunk(obj);
+            HeapChunk.Header<?> objChunk = HeapChunk.getEnclosingHeapChunk(obj);
             trace.string("  objChunk: ").hex(objChunk);
             if (objChunk.isNull()) {
-                final Log failure = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
+                Log failure = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
                 failure.string("  objRef: ").hex(objRef).string("  has no enclosing chunk").string("]").newline();
                 return false;
             }
-            final Space chunkSpace = objChunk.getSpace();
+            Space chunkSpace = objChunk.getSpace();
             trace.string("  chunkSpace: ").object(chunkSpace).string(" ").string(chunkSpace.getName());
             if (chunkSpace.isYoungSpace()) {
                 found = true;

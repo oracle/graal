@@ -135,9 +135,9 @@ final class OldGeneration extends Generation {
     @Override
     protected boolean verify(HeapVerifier.Occasion occasion) {
         boolean result = true;
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final HeapVerifier heapVerifier = heap.getHeapVerifier();
-        final SpaceVerifier spaceVerifier = heapVerifier.getSpaceVerifier();
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        HeapVerifier heapVerifier = heap.getHeapVerifier();
+        SpaceVerifier spaceVerifier = heapVerifier.getSpaceVerifier();
         // The from space should be clean after a collection...
         spaceVerifier.initialize(heap.getOldGeneration().getFromSpace());
         if (!spaceVerifier.verify()) {

@@ -56,7 +56,7 @@ final class GreyToBlackObjectVisitor implements ObjectVisitor {
     private final GreyToBlackObjRefVisitor objRefVisitor;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    GreyToBlackObjectVisitor(final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor) {
+    GreyToBlackObjectVisitor(GreyToBlackObjRefVisitor greyToBlackObjRefVisitor) {
         this.objRefVisitor = greyToBlackObjRefVisitor;
         if (DiagnosticReporter.getHistoryLength() > 0) {
             this.diagnosticReporter = new DiagnosticReporter();
@@ -74,13 +74,13 @@ final class GreyToBlackObjectVisitor implements ObjectVisitor {
 
     @Override
     @NeverInline("Non-performance critical version")
-    public boolean visitObject(final Object o) {
+    public boolean visitObject(Object o) {
         throw VMError.shouldNotReachHere("For performance reasons, this should not be called.");
     }
 
     @Override
     @AlwaysInline("GC performance")
-    public boolean visitObjectInline(final Object o) {
+    public boolean visitObjectInline(Object o) {
         if (diagnosticReporter != null) {
             diagnosticReporter.noteObject(o);
         }
@@ -124,7 +124,7 @@ final class GreyToBlackObjectVisitor implements ObjectVisitor {
 
         /** Note a historical object. */
         public void noteObject(Object o) {
-            final int index = countToIndex(historyCount);
+            int index = countToIndex(historyCount);
             objectHistory[index] = Word.objectToUntrackedPointer(o);
             headerHistory[index] = ObjectHeaderImpl.readHeaderFromObjectCarefully(o);
             historyCount += 1;
@@ -139,31 +139,31 @@ final class GreyToBlackObjectVisitor implements ObjectVisitor {
                                 .signed(getHistoryLength()).string(" / ").signed(historyCount)
                                 .indent(true);
                 ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
-                final Pointer firstRORPointer = Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyReferenceObject);
-                final Pointer lastRORPointer = Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyReferenceObject);
+                Pointer firstRORPointer = Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyReferenceObject);
+                Pointer lastRORPointer = Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyReferenceObject);
                 /*
                  * Report the history from the next available slot in the ring buffer. The older
                  * history is more reliable, since I have already used that to visit objects. The
                  * most recent history is more suspect, because this is the first use of it.
                  */
                 for (int count = 0; count < getHistoryLength(); count += 1) {
-                    final int index = countToIndex(historyCount + count);
+                    int index = countToIndex(historyCount + count);
                     log.string("  index: ").unsigned(index, 3, Log.RIGHT_ALIGN);
-                    final Word objectEntry = objectHistory[index];
+                    Word objectEntry = objectHistory[index];
                     log.string("  objectEntry: ").hex(objectEntry);
-                    final UnsignedWord headerEntry = headerHistory[index];
-                    final UnsignedWord headerHubBits = ObjectHeaderImpl.clearBits(headerEntry);
-                    final UnsignedWord headerHeaderBits = ObjectHeaderImpl.getHeaderBitsFromHeaderCarefully(headerEntry);
+                    UnsignedWord headerEntry = headerHistory[index];
+                    UnsignedWord headerHubBits = ObjectHeaderImpl.clearBits(headerEntry);
+                    UnsignedWord headerHeaderBits = ObjectHeaderImpl.getHeaderBitsFromHeaderCarefully(headerEntry);
                     log.string("  headerEntry: ").hex(headerEntry).string(" = ").hex(headerHubBits).string(" | ").hex(headerHeaderBits).string(" / ");
-                    final boolean headerInImageHeap = ((headerHubBits.aboveOrEqual(firstRORPointer)) && headerHubBits.belowOrEqual(lastRORPointer));
+                    boolean headerInImageHeap = ((headerHubBits.aboveOrEqual(firstRORPointer)) && headerHubBits.belowOrEqual(lastRORPointer));
                     if (headerInImageHeap) {
-                        final Pointer hubBitsAsPointer = (Pointer) headerHubBits;
-                        final Object hubBitsAsObject = KnownIntrinsics.convertUnknownValue(hubBitsAsPointer.toObject(), Object.class);
-                        final DynamicHub hubBitsAsDynamicHub = (DynamicHub) hubBitsAsObject;
+                        Pointer hubBitsAsPointer = (Pointer) headerHubBits;
+                        Object hubBitsAsObject = KnownIntrinsics.convertUnknownValue(hubBitsAsPointer.toObject(), Object.class);
+                        DynamicHub hubBitsAsDynamicHub = (DynamicHub) hubBitsAsObject;
                         log.string("  class: ").string(hubBitsAsDynamicHub.getName());
-                        final Object entryAsObject = KnownIntrinsics.convertUnknownValue(objectEntry.toObject(), Object.class);
+                        Object entryAsObject = KnownIntrinsics.convertUnknownValue(objectEntry.toObject(), Object.class);
                         if (LayoutEncoding.isArray(entryAsObject)) {
-                            final int length = KnownIntrinsics.readArrayLength(entryAsObject);
+                            int length = KnownIntrinsics.readArrayLength(entryAsObject);
                             log.string("  length: ").signed(length);
                         }
                     } else {

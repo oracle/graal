@@ -64,11 +64,11 @@ public final class ImageHeapWalker {
             assert firstObject == null && lastObject == null;
             return true;
         }
-        final Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
-        final Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
+        Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
+        Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
         Pointer current = firstPointer;
         while (current.belowOrEqual(lastPointer)) {
-            final Object currentObject = KnownIntrinsics.convertUnknownValue(current.toObject(), Object.class);
+            Object currentObject = KnownIntrinsics.convertUnknownValue(current.toObject(), Object.class);
             if (!visitor.visitObject(currentObject)) {
                 return false;
             }

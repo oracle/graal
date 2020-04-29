@@ -144,13 +144,13 @@ final class HeapChunkProvider {
     }
 
     private boolean keepAlignedChunk() {
-        final Log trace = Log.noopLog().string("[HeapChunkProvider.keepAlignedChunk:");
-        final UnsignedWord minimumHeapSize = HeapPolicy.getMinimumHeapSize();
-        final UnsignedWord heapChunkBytes = HeapImpl.getHeapImpl().getUsedChunkBytes();
-        final UnsignedWord unusedChunkBytes = bytesInUnusedAlignedChunks.get();
-        final UnsignedWord bytesInUse = heapChunkBytes.add(unusedChunkBytes);
+        Log trace = Log.noopLog().string("[HeapChunkProvider.keepAlignedChunk:");
+        UnsignedWord minimumHeapSize = HeapPolicy.getMinimumHeapSize();
+        UnsignedWord heapChunkBytes = HeapImpl.getHeapImpl().getUsedChunkBytes();
+        UnsignedWord unusedChunkBytes = bytesInUnusedAlignedChunks.get();
+        UnsignedWord bytesInUse = heapChunkBytes.add(unusedChunkBytes);
 
-        final boolean result = bytesInUse.belowThan(minimumHeapSize);
+        boolean result = bytesInUse.belowThan(minimumHeapSize);
         trace
                         .string("  minimumHeapSize: ").unsigned(minimumHeapSize)
                         .string("  heapChunkBytes: ").unsigned(heapChunkBytes)
@@ -261,7 +261,7 @@ final class HeapChunkProvider {
      * list.
      */
     void consumeUnalignedChunk(UnalignedHeader chunk) {
-        final UnsignedWord chunkSize = unalignedChunkSize(chunk);
+        UnsignedWord chunkSize = unalignedChunkSize(chunk);
         log().string("[HeapChunkProvider.consumeUnalignedChunk  chunk: ").hex(chunk).string("  chunkSize: ").hex(chunkSize).newline();
 
         freeUnalignedChunk(chunk);

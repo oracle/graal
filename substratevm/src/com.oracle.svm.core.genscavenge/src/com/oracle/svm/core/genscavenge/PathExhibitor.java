@@ -94,7 +94,7 @@ public final class PathExhibitor {
         }
     }
 
-    public void toLog(final Log log) {
+    public void toLog(Log log) {
         for (PathElement element : path) {
             log.newline();
             element.toLog(log);
@@ -130,7 +130,7 @@ public final class PathExhibitor {
                 break;
             }
             if (checkForCycles(currentTargetObj)) { // seen before
-                final CyclicElement cyclic = new CyclicElement(currentTargetObj);
+                CyclicElement cyclic = new CyclicElement(currentTargetObj);
                 path.add(cyclic);
                 break;
             }
@@ -188,10 +188,10 @@ public final class PathExhibitor {
         HeapImpl.getHeapImpl().walkObjects(heapObjectVisitor);
     }
 
-    private boolean checkForCycles(final Object currentObject) {
+    private boolean checkForCycles(Object currentObject) {
         boolean result = false;
         for (PathElement seen : path) {
-            final Object seenObject = seen.getObject();
+            Object seenObject = seen.getObject();
             if (currentObject == seenObject) {
                 result = true;
                 break;
@@ -293,7 +293,7 @@ public final class PathExhibitor {
         }
 
         @Override
-        public boolean visitObjectReference(final Pointer stackSlot, boolean compressed) {
+        public boolean visitObjectReference(Pointer stackSlot, boolean compressed) {
             Log trace = Log.noopLog();
             if (stackSlot.isNull()) {
                 return true;
@@ -326,7 +326,7 @@ public final class PathExhibitor {
             }
             Object referent = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
             if (target.matches(referent)) {
-                final UnsignedWord offset = objRef.subtract(Word.objectToUntrackedPointer(container));
+                UnsignedWord offset = objRef.subtract(Word.objectToUntrackedPointer(container));
                 result.fill(new BootImageHeapElement(container, offset), new LeafElement(referent));
                 return false;
             }
@@ -339,8 +339,8 @@ public final class PathExhibitor {
         }
 
         @Override
-        public boolean visitObject(final Object containerObject) {
-            final Pointer containerPointer = Word.objectToUntrackedPointer(containerObject);
+        public boolean visitObject(Object containerObject) {
+            Pointer containerPointer = Word.objectToUntrackedPointer(containerObject);
             heapObjRefVisitor.initialize(containerPointer, target, result);
             return InteriorObjRefWalker.walkObject(containerObject, heapObjRefVisitor);
         }
@@ -384,7 +384,7 @@ public final class PathExhibitor {
     public static class LeafElement extends PathElement {
         private final Object leaf;
 
-        LeafElement(final Object leaf) {
+        LeafElement(Object leaf) {
             this.leaf = leaf;
         }
 
@@ -407,7 +407,7 @@ public final class PathExhibitor {
         private final Object base;
         private final UnsignedWord offset;
 
-        HeapElement(final Object base, final UnsignedWord offset) {
+        HeapElement(Object base, UnsignedWord offset) {
             this.base = base;
             this.offset = offset;
         }
@@ -422,9 +422,9 @@ public final class PathExhibitor {
             log.string("[heap:");
             log.string("  base: ").object(base);
             log.string("  offset: ").unsigned(offset);
-            final Pointer objPointer = Word.objectToUntrackedPointer(base);
-            final Pointer fieldObjRef = objPointer.add(offset);
-            final Pointer fieldPointer = fieldObjRef.readWord(0);
+            Pointer objPointer = Word.objectToUntrackedPointer(base);
+            Pointer fieldObjRef = objPointer.add(offset);
+            Pointer fieldPointer = fieldObjRef.readWord(0);
             log.string("  field: ").hex(fieldPointer);
             log.string("]");
             return log;
@@ -438,7 +438,7 @@ public final class PathExhibitor {
         private final CodePointer deoptSourcePC;
         private final Pointer slotValue;
 
-        StackElement(final Pointer stackSlot, final CodePointer ip, final DeoptimizedFrame deoptFrame) {
+        StackElement(Pointer stackSlot, CodePointer ip, DeoptimizedFrame deoptFrame) {
             this.stackSlot = stackSlot;
             this.deoptSourcePC = deoptFrame != null ? deoptFrame.getSourcePC() : WordFactory.nullPointer();
             this.ip = ip;
@@ -468,7 +468,7 @@ public final class PathExhibitor {
         private final Object base;
         private final UnsignedWord offset;
 
-        BootImageHeapElement(final Object base, final UnsignedWord offset) {
+        BootImageHeapElement(Object base, UnsignedWord offset) {
             this.base = base;
             this.offset = offset;
         }
@@ -493,7 +493,7 @@ public final class PathExhibitor {
     public static class CyclicElement extends PathElement {
         private final Object previous;
 
-        CyclicElement(final Object previous) {
+        CyclicElement(Object previous) {
             this.previous = previous;
         }
 

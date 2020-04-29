@@ -233,8 +233,8 @@ final class HeapChunk {
         @Override
         public String getRegion(T heapChunk) {
             /* This method knows too much about spaces, especially the "free" space. */
-            final Space space = heapChunk.getSpace();
-            final String result;
+            Space space = heapChunk.getSpace();
+            String result;
             if (space == null) {
                 result = "free";
             } else if (space.isYoungSpace()) {
@@ -248,12 +248,12 @@ final class HeapChunk {
     }
 
     static boolean verifyObjects(Header<?> that, Pointer start) {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[HeapChunk.verify:");
+        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[HeapChunk.verify:");
         trace.string("  that:  ").hex(that).string("  start: ").hex(start).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd());
         Pointer p = start;
         while (p.belowThan(that.getTop())) {
             if (!HeapImpl.getHeapImpl().getHeapVerifier().verifyObjectAt(p)) {
-                final Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[HeapChunk.verify:");
+                Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[HeapChunk.verify:");
                 witness.string("  that:  ").hex(that).string("  start: ").hex(start).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd());
                 witness.string("  space: ").string(that.getSpace().getName());
                 witness.string("  object at p: ").hex(p).string("  fails to verify").string("]").newline();
@@ -261,8 +261,8 @@ final class HeapChunk {
                 return false;
             }
             /* Step carefully over the object. */
-            final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointerCarefully(p);
-            final Object o;
+            UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointerCarefully(p);
+            Object o;
             if (ObjectHeaderImpl.isForwardedHeaderCarefully(header)) {
                 o = ObjectHeaderImpl.getForwardedObject(p);
             } else {

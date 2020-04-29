@@ -133,8 +133,8 @@ public final class ThreadLocalAllocation {
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object slowPathNewInstance(Word objectHeader) {
         DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
-        final UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
-        final Object result = slowPathNewInstanceWithoutAllocating(hub);
+        UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
+        Object result = slowPathNewInstanceWithoutAllocating(hub);
         /* If a collection happened, do follow-up tasks now that allocation, etc., is allowed. */
         HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
         runSlowPathHooks();
@@ -192,9 +192,9 @@ public final class ThreadLocalAllocation {
             throw new NegativeArraySizeException();
         }
 
-        final UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
+        UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
         DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
-        final Object result = slowPathNewArrayWithoutAllocating(hub, length);
+        Object result = slowPathNewArrayWithoutAllocating(hub, length);
         /* If a collection happened, do follow-up tasks now that allocation, etc., is allowed. */
         HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
         runSlowPathHooks();
@@ -374,7 +374,7 @@ public final class ThreadLocalAllocation {
         log().string("[ThreadLocalAllocation.pushToThreadLocalFreeList:  alignedChunk: ").hex(alignedChunk).newline();
         log().string("  before freeList: ").hex(freeList.get()).newline();
         assert alignedChunk.isNonNull() : "Should not push a null chunk on the free list.";
-        final AlignedHeader head = freeList.get();
+        AlignedHeader head = freeList.get();
         alignedChunk.setNext(head);
         freeList.set(alignedChunk);
         log().string("   after freeList: ").hex(freeList.get()).string("]").newline();
@@ -382,9 +382,9 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Pops from the free list that is drained, at a safepoint, by garbage collections.")
     private static AlignedHeader popFromThreadLocalFreeList() {
-        final AlignedHeader result = freeList.get();
+        AlignedHeader result = freeList.get();
         if (result.isNonNull()) {
-            final AlignedHeader next = result.getNext();
+            AlignedHeader next = result.getNext();
             result.setNext(WordFactory.nullPointer());
             freeList.set(next);
         }

@@ -34,14 +34,14 @@ final class SpaceVerifier {
     SpaceVerifier() {
     }
 
-    public void initialize(final Space s) {
+    public void initialize(Space s) {
         this.space = s;
     }
 
     public boolean verify() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog();
+        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog();
         trace.string("[SpaceVerifier.verify:").string("  ").string(space.getName()).newline();
-        final boolean isTLASpace = ThreadLocalAllocation.isThreadLocalAllocationSpace(space);
+        boolean isTLASpace = ThreadLocalAllocation.isThreadLocalAllocationSpace(space);
         if (isTLASpace) {
             ThreadLocalAllocation.disableAndFlushForAllThreads();
         }
@@ -59,14 +59,14 @@ final class SpaceVerifier {
     }
 
     boolean containsChunks() {
-        final AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
-        final UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
+        AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
+        UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
         return (aChunk.isNonNull() || uChunk.isNonNull());
     }
 
     /** Verify the chunk list structures, but not the chunks themselves. */
     private boolean verifyChunkLists() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog();
+        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog();
         trace.string("[SpaceVerifier.verifyChunkLists:");
         boolean result = verifyAlignedChunkList() && verifyUnalignedChunkList();
         trace.string("  returns: ").bool(result);
@@ -76,16 +76,16 @@ final class SpaceVerifier {
 
     /** Verify the AlignedChunk list, but not the chunks themselves. */
     private boolean verifyAlignedChunkList() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyAlignedChunkList:");
+        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyAlignedChunkList:");
         trace.string("  Space: ").string(space.getName()).newline();
         boolean result = true;
         AlignedHeapChunk.AlignedHeader current = space.getFirstAlignedHeapChunk();
         AlignedHeapChunk.AlignedHeader previous = WordFactory.nullPointer();
         while (current.isNonNull()) {
-            final AlignedHeapChunk.AlignedHeader previousOfCurrent = current.getPrevious();
+            AlignedHeapChunk.AlignedHeader previousOfCurrent = current.getPrevious();
             result &= previousOfCurrent.equal(previous);
             if (!result) {
-                final Log failure = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verifyAlignedChunkList:");
+                Log failure = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verifyAlignedChunkList:");
                 failure.string("  space: ").string(space.getName()).string("  doubly-linked list failure").newline();
                 failure.string("  current: ").hex(current);
                 failure.string("  current.previous: ").hex(previousOfCurrent);
@@ -98,7 +98,7 @@ final class SpaceVerifier {
         }
         result &= previous.equal(space.getLastAlignedHeapChunk());
         if (!result) {
-            final Log failure = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verifyAlignedChunkList:");
+            Log failure = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verifyAlignedChunkList:");
             failure.string("  space: ").string(space.getName()).string("  lastAlignedHeapChunk failure").string("]").newline();
             failure.string("  previous: ").hex(previous);
             failure.string("  lastAlignedHeapChunk: ").hex(space.getLastAlignedHeapChunk());
@@ -111,14 +111,14 @@ final class SpaceVerifier {
 
     /** Verify the UnalignedChunks list, but not the chunks themselves. */
     private boolean verifyUnalignedChunkList() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyUnalignedChunkList:");
+        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyUnalignedChunkList:");
         boolean result = true;
         UnalignedHeapChunk.UnalignedHeader current = space.getFirstUnalignedHeapChunk();
         UnalignedHeapChunk.UnalignedHeader previous = WordFactory.nullPointer();
         while (current.isNonNull()) {
             result &= current.getPrevious().equal(previous);
             if (!result) {
-                final Log failure = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verifyUnalignedChunkList:");
+                Log failure = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verifyUnalignedChunkList:");
                 failure.string("  space: ").string(space.getName()).string("  doubly-linked list failure").string("]").newline();
                 break;
             }
@@ -127,7 +127,7 @@ final class SpaceVerifier {
         }
         result &= previous.equal(space.getLastUnalignedHeapChunk());
         if (!result) {
-            final Log failure = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verifyUnalignedChunkList:");
+            Log failure = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[SpaceVerifier.verifyUnalignedChunkList:");
             failure.string("  space: ").string(space.getName()).string("  lastUnalignedHeapChunk failure").string("]").newline();
             result = false;
         }
@@ -137,14 +137,14 @@ final class SpaceVerifier {
 
     /** Verify the contents of the chunks. */
     private boolean verifyChunks() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyChunks:");
+        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyChunks:");
         boolean result = verifyAlignedChunks() && verifyUnalignedChunks();
         trace.string("  returns: ").bool(result).string("]").newline();
         return result;
     }
 
     private boolean verifyAlignedChunks() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyAlignedChunks:");
+        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyAlignedChunks:");
         boolean result = true;
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
@@ -156,7 +156,7 @@ final class SpaceVerifier {
     }
 
     private boolean verifyUnalignedChunks() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyUnalignedChunks:");
+        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyUnalignedChunks:");
         boolean result = true;
         UnalignedHeapChunk.UnalignedHeader chunk = space.getFirstUnalignedHeapChunk();
         while (chunk.isNonNull()) {
@@ -168,7 +168,7 @@ final class SpaceVerifier {
     }
 
     boolean verifyOnlyCleanCards() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyOnlyCleanCards:");
+        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyOnlyCleanCards:");
         trace.string("  space: ").string(space.getName()).newline();
         boolean result = verifyOnlyCleanAlignedChunks() && verifyOnlyCleanUnalignedChunks();
         trace.string("  returns: ").bool(result).string("]").newline();
@@ -176,7 +176,7 @@ final class SpaceVerifier {
     }
 
     private boolean verifyOnlyCleanAlignedChunks() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyOnlyCleanAlignedChunks:").newline();
+        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyOnlyCleanAlignedChunks:").newline();
         boolean result = true;
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
@@ -188,7 +188,7 @@ final class SpaceVerifier {
     }
 
     private boolean verifyOnlyCleanUnalignedChunks() {
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyOnlyCleanUnalignedChunks:").newline();
+        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[SpaceVerifier.verifyOnlyCleanUnalignedChunks:").newline();
         boolean result = true;
         UnalignedHeapChunk.UnalignedHeader chunk = space.getFirstUnalignedHeapChunk();
         while (chunk.isNonNull()) {

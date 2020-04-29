@@ -60,30 +60,30 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     }
 
     @Override
-    public boolean visitObjectReference(final Pointer objRef, boolean compressed) {
+    public boolean visitObjectReference(Pointer objRef, boolean compressed) {
         return visitObjectReferenceInline(objRef, 0, compressed, null);
     }
 
     @Override
     @AlwaysInline("GC performance")
-    public boolean visitObjectReferenceInline(final Pointer objRef, boolean compressed, Object holderObject) {
+    public boolean visitObjectReferenceInline(Pointer objRef, boolean compressed, Object holderObject) {
         return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
     }
 
     @Override
     @AlwaysInline("GC performance")
-    public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed) {
+    public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed) {
         return visitObjectReferenceInline(objRef, innerOffset, compressed, null);
     }
 
     @Override
     @AlwaysInline("GC performance")
-    public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed, Object holderObject) {
+    public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         assert innerOffset >= 0;
         assert !objRef.isNull();
         counters.noteObjRef();
 
-        final Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
+        Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
         assert offsetP.isNonNull() || innerOffset == 0;
 
         Pointer p = offsetP.subtract(innerOffset);
@@ -99,14 +99,14 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
         // This is the most expensive check as it accesses the heap fairly randomly, which results
         // in a lot of cache misses.
-        final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(p);
+        UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(p);
         if (GCImpl.getGCImpl().isCompleteCollection() || !ObjectHeaderImpl.hasRememberedSet(header)) {
 
             if (ObjectHeaderImpl.isForwardedHeader(header)) {
                 counters.noteForwardedReferent();
                 // Update the reference to point to the forwarded Object.
-                final Object obj = ObjectHeaderImpl.getForwardedObject(p);
-                final Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
+                Object obj = ObjectHeaderImpl.getForwardedObject(p);
+                Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
                 ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
                 HeapImpl.getHeapImpl().dirtyCardIfNecessary(holderObject, obj);
                 return true;
@@ -119,7 +119,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             if (copy != obj) {
                 // ... update the reference to point to the copy, making the reference black.
                 counters.noteCopiedReferent();
-                final Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
+                Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
                 ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
             } else {
                 counters.noteUnmodifiedReference();
@@ -233,7 +233,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
         @Override
         public void toLog() {
-            final Log log = Log.log();
+            Log log = Log.log();
             log.string("[GreyToBlackObjRefVisitor.counters:");
             log.string("  objRef: ").signed(objRef);
             log.string("  nullObjRef: ").signed(nullObjRef);

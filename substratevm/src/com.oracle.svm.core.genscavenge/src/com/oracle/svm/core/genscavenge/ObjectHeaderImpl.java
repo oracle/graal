@@ -76,7 +76,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Fold
     public static ObjectHeaderImpl getObjectHeaderImpl() {
-        final ObjectHeaderImpl oh = HeapImpl.getHeapImpl().getObjectHeaderImpl();
+        ObjectHeaderImpl oh = HeapImpl.getHeapImpl().getObjectHeaderImpl();
         assert oh != null;
         return oh;
     }
@@ -110,7 +110,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             VMError.guarantee(p.notEqual(HeapPolicy.getProducedHeapChunkZapWord()), "ObjectHeader.readHeaderFromPointerCarefully:  p: producedZapValue");
             VMError.guarantee(p.notEqual(HeapPolicy.getConsumedHeapChunkZapWord()), "ObjectHeader.readHeaderFromPointerCarefully:  p: consumedZapValue");
         }
-        final UnsignedWord header = readHeaderFromPointer(p);
+        UnsignedWord header = readHeaderFromPointer(p);
         VMError.guarantee(header.notEqual(WordFactory.zero()), "ObjectHeader.readHeaderFromPointerCarefully:  header: 0");
         VMError.guarantee(!isProducedHeapChunkZapped(header), "ObjectHeader.readHeaderFromPointerCarefully:  header: producedZapValue");
         VMError.guarantee(!isConsumedHeapChunkZapped(header), "ObjectHeader.readHeaderFromPointerCarefully:  header: consumedZapValue");
@@ -128,7 +128,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     public static UnsignedWord readHeaderFromObjectCarefully(Object o) {
         VMError.guarantee(o != null, "ObjectHeader.readHeaderFromObjectCarefully:  o: null");
-        final UnsignedWord header = readHeaderFromObject(o);
+        UnsignedWord header = readHeaderFromObject(o);
         VMError.guarantee(header.notEqual(WordFactory.zero()), "ObjectHeader.readHeaderFromObjectCarefully:  header: 0");
         VMError.guarantee(!isProducedHeapChunkZapped(header), "ObjectHeader.readHeaderFromObjectCarefully:  header: producedZapValue");
         VMError.guarantee(!isConsumedHeapChunkZapped(header), "ObjectHeader.readHeaderFromObjectCarefully:  header: consumedZapValue");
@@ -150,8 +150,8 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
-        final UnsignedWord pointerBits = clearBits(header);
-        final Object objectValue;
+        UnsignedWord pointerBits = clearBits(header);
+        Object objectValue;
         ReferenceAccess referenceAccess = ReferenceAccess.singleton();
         if (referenceAccess.haveCompressedReferences()) {
             UnsignedWord compressedBits = pointerBits.unsignedShiftRight(getCompressionShift());
@@ -306,7 +306,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     public static boolean isForwardedHeaderCarefully(UnsignedWord header) {
-        final UnsignedWord headerBits = ObjectHeaderImpl.getHeaderBitsFromHeaderCarefully(header);
+        UnsignedWord headerBits = ObjectHeaderImpl.getHeaderBitsFromHeaderCarefully(header);
         return testForwardedHeaderBit(headerBits);
     }
 

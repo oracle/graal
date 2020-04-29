@@ -142,7 +142,7 @@ public final class HeapImpl extends Heap {
 
     @Fold
     static HeapImpl getHeapImpl() {
-        final Heap heap = Heap.getHeap();
+        Heap heap = Heap.getHeap();
         assert heap instanceof HeapImpl : "VMConfiguration heap is not a HeapImpl.";
         return (HeapImpl) heap;
     }
@@ -235,7 +235,7 @@ public final class HeapImpl extends Heap {
     }
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
-    static void exitIfAllocationDisallowed(final String callSite, final String typeName) {
+    static void exitIfAllocationDisallowed(String callSite, String typeName) {
         if (HeapImpl.getHeapImpl().isAllocationDisallowed()) {
             NoAllocationVerifier.exit(callSite, typeName);
         }
@@ -247,7 +247,7 @@ public final class HeapImpl extends Heap {
 
     @AlwaysInline("GC performance")
     Object promoteObject(Object original, UnsignedWord header) {
-        final Log trace = Log.noopLog().string("[HeapImpl.promoteObject:").string("  original: ").object(original);
+        Log trace = Log.noopLog().string("[HeapImpl.promoteObject:").string("  original: ").object(original);
 
         Object result;
         if (HeapPolicy.getMaxSurvivorSpaces() > 0 && !getGCImpl().isCompleteCollection()) {
@@ -266,7 +266,7 @@ public final class HeapImpl extends Heap {
             return;
         }
 
-        final UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(holderObject);
+        UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(holderObject);
         if (ObjectHeaderImpl.hasRememberedSet(objectHeader)) {
             if (ObjectHeaderImpl.isAlignedObject(holderObject)) {
                 AlignedHeapChunk.dirtyCardForObject(holderObject, false);
@@ -298,8 +298,8 @@ public final class HeapImpl extends Heap {
      * excludes chunks that are unused.
      */
     UnsignedWord getUsedChunkBytes() {
-        final UnsignedWord youngBytes = getYoungUsedChunkBytes();
-        final UnsignedWord oldBytes = getOldUsedChunkBytes();
+        UnsignedWord youngBytes = getYoungUsedChunkBytes();
+        UnsignedWord oldBytes = getOldUsedChunkBytes();
         return youngBytes.add(oldBytes);
     }
 
@@ -308,12 +308,12 @@ public final class HeapImpl extends Heap {
     }
 
     UnsignedWord getOldUsedChunkBytes() {
-        final Log trace = Log.noopLog().string("[HeapImpl.getOldUsedChunkBytes:");
-        final SpaceAccounting from = getOldGeneration().getFromSpace().getAccounting();
-        final UnsignedWord fromBytes = from.getAlignedChunkBytes().add(from.getUnalignedChunkBytes());
-        final SpaceAccounting to = getOldGeneration().getToSpace().getAccounting();
-        final UnsignedWord toBytes = to.getAlignedChunkBytes().add(to.getUnalignedChunkBytes());
-        final UnsignedWord result = fromBytes.add(toBytes);
+        Log trace = Log.noopLog().string("[HeapImpl.getOldUsedChunkBytes:");
+        SpaceAccounting from = getOldGeneration().getFromSpace().getAccounting();
+        UnsignedWord fromBytes = from.getAlignedChunkBytes().add(from.getUnalignedChunkBytes());
+        SpaceAccounting to = getOldGeneration().getToSpace().getAccounting();
+        UnsignedWord toBytes = to.getAlignedChunkBytes().add(to.getUnalignedChunkBytes());
+        UnsignedWord result = fromBytes.add(toBytes);
         // @formatter:off
         if (trace.isEnabled()) {
             trace
@@ -332,7 +332,7 @@ public final class HeapImpl extends Heap {
     }
 
     Log report(Log log, boolean traceHeapChunks) {
-        final HeapImpl heap = HeapImpl.getHeapImpl();
+        HeapImpl heap = HeapImpl.getHeapImpl();
         log.newline().string("[Heap:").indent(true);
         heap.getYoungGeneration().report(log, traceHeapChunks).newline();
         heap.getOldGeneration().report(log, traceHeapChunks).newline();
@@ -393,16 +393,16 @@ public final class HeapImpl extends Heap {
     public List<Class<?>> getClassList() {
         if (classList == null) {
             /* Two threads might race to set classList, but they compute the same result. */
-            final List<Class<?>> list = new ArrayList<>(1024);
-            final Object firstObject = imageHeapInfo.firstReadOnlyReferenceObject;
-            final Object lastObject = imageHeapInfo.lastReadOnlyReferenceObject;
-            final Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
-            final Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
+            List<Class<?>> list = new ArrayList<>(1024);
+            Object firstObject = imageHeapInfo.firstReadOnlyReferenceObject;
+            Object lastObject = imageHeapInfo.lastReadOnlyReferenceObject;
+            Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
+            Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
             Pointer currentPointer = firstPointer;
             while (currentPointer.belowOrEqual(lastPointer)) {
-                final Object currentObject = KnownIntrinsics.convertUnknownValue(currentPointer.toObject(), Object.class);
+                Object currentObject = KnownIntrinsics.convertUnknownValue(currentPointer.toObject(), Object.class);
                 if (currentObject instanceof Class<?>) {
-                    final Class<?> asClass = (Class<?>) currentObject;
+                    Class<?> asClass = (Class<?>) currentObject;
                     list.add(asClass);
                 }
                 currentPointer = LayoutEncoding.getObjectEnd(currentObject);
@@ -456,7 +456,7 @@ public final class HeapImpl extends Heap {
 
     @NeverInline("Starting a stack walk in the caller frame")
     void verifyBeforeGC(String cause, UnsignedWord epoch) {
-        final Log trace = Log.noopLog().string("[HeapImpl.verifyBeforeGC:");
+        Log trace = Log.noopLog().string("[HeapImpl.verifyBeforeGC:");
         trace.string("  getVerifyHeapBeforeGC(): ").bool(getVerifyHeapBeforeGC()).string("  heapVerifier: ").object(heapVerifier);
         trace.string("  getVerifyStackBeforeGC(): ").bool(getVerifyStackBeforeGC()).string("  stackVerifier: ").object(stackVerifier);
         if (getVerifyHeapBeforeGC()) {
@@ -767,8 +767,8 @@ final class HeapImplMemoryMXBean implements MemoryMXBean, NotificationEmitter {
     public MemoryUsage getHeapMemoryUsage() {
         visitor.reset();
         MemoryWalker.getMemoryWalker().visitMemory(visitor);
-        final long used = visitor.getHeapUsed().rawValue();
-        final long committed = visitor.getHeapCommitted().rawValue();
+        long used = visitor.getHeapUsed().rawValue();
+        long committed = visitor.getHeapCommitted().rawValue();
         return new MemoryUsage(UNDEFINED_MEMORY_USAGE, used, committed, UNDEFINED_MEMORY_USAGE);
     }
 
@@ -776,8 +776,8 @@ final class HeapImplMemoryMXBean implements MemoryMXBean, NotificationEmitter {
     public MemoryUsage getNonHeapMemoryUsage() {
         visitor.reset();
         MemoryWalker.getMemoryWalker().visitMemory(visitor);
-        final long used = visitor.getNonHeapUsed().rawValue();
-        final long committed = visitor.getNonHeapCommitted().rawValue();
+        long used = visitor.getNonHeapUsed().rawValue();
+        long committed = visitor.getNonHeapCommitted().rawValue();
         return new MemoryUsage(UNDEFINED_MEMORY_USAGE, used, committed, UNDEFINED_MEMORY_USAGE);
     }
 
@@ -850,7 +850,7 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
 
     @Override
     public <T> boolean visitNativeImageHeapRegion(T region, NativeImageHeapRegionAccess<T> access) {
-        final UnsignedWord size = access.getSize(region);
+        UnsignedWord size = access.getSize(region);
         heapUsed = heapUsed.add(size);
         heapCommitted = heapCommitted.add(size);
         return true;
@@ -858,8 +858,8 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
 
     @Override
     public <T extends PointerBase> boolean visitHeapChunk(T heapChunk, HeapChunkAccess<T> access) {
-        final UnsignedWord used = access.getAllocationEnd(heapChunk).subtract(access.getAllocationStart(heapChunk));
-        final UnsignedWord committed = access.getSize(heapChunk);
+        UnsignedWord used = access.getAllocationEnd(heapChunk).subtract(access.getAllocationStart(heapChunk));
+        UnsignedWord committed = access.getSize(heapChunk);
         heapUsed = heapUsed.add(used);
         heapCommitted = heapCommitted.add(committed);
         return true;
@@ -867,7 +867,7 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
 
     @Override
     public <T extends CodeInfo> boolean visitCode(T codeInfo, CodeAccess<T> access) {
-        final UnsignedWord size = access.getSize(codeInfo).add(access.getMetadataSize(codeInfo));
+        UnsignedWord size = access.getSize(codeInfo).add(access.getMetadataSize(codeInfo));
         nonHeapUsed = nonHeapUsed.add(size);
         nonHeapCommitted = nonHeapCommitted.add(size);
         return true;

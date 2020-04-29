@@ -151,14 +151,14 @@ abstract class CollectionPolicy {
          * total time, then ask for a complete collection.
          */
         private static boolean collectCompletelyBasedOnTime(Log trace) {
-            final int incrementalWeight = Options.PercentTimeInIncrementalCollection.getValue();
+            int incrementalWeight = Options.PercentTimeInIncrementalCollection.getValue();
             trace.string("  incrementalWeight: ").signed(incrementalWeight).newline();
             assert ((0L <= incrementalWeight) && (incrementalWeight <= 100L)) : "ByTimePercentTimeInIncrementalCollection should be in the range [0..100].";
 
-            final long incrementalNanos = getAccounting().getIncrementalCollectionTotalNanos();
-            final long completeNanos = getAccounting().getCompleteCollectionTotalNanos();
-            final long totalNanos = incrementalNanos + completeNanos;
-            final long weightedTotalNanos = TimeUtils.weightedNanos(incrementalWeight, totalNanos);
+            long incrementalNanos = getAccounting().getIncrementalCollectionTotalNanos();
+            long completeNanos = getAccounting().getCompleteCollectionTotalNanos();
+            long totalNanos = incrementalNanos + completeNanos;
+            long weightedTotalNanos = TimeUtils.weightedNanos(incrementalWeight, totalNanos);
             trace.string("  incrementalNanos: ").unsigned(incrementalNanos)
                             .string("  completeNanos: ").unsigned(completeNanos)
                             .string("  totalNanos: ").unsigned(totalNanos)
@@ -172,10 +172,10 @@ abstract class CollectionPolicy {
          * and a complete copy of the young generation, then request a complete collection.
          */
         private static boolean collectCompletelyBasedOnSpace(Log trace) {
-            final UnsignedWord heapSize = HeapPolicy.getMaximumHeapSize();
-            final UnsignedWord youngSize = HeapPolicy.getMaximumYoungGenerationSize();
-            final UnsignedWord oldInUse = getAccounting().getOldGenerationAfterChunkBytes();
-            final UnsignedWord withFullPromotion = youngSize.add(oldInUse).add(youngSize);
+            UnsignedWord heapSize = HeapPolicy.getMaximumHeapSize();
+            UnsignedWord youngSize = HeapPolicy.getMaximumYoungGenerationSize();
+            UnsignedWord oldInUse = getAccounting().getOldGenerationAfterChunkBytes();
+            UnsignedWord withFullPromotion = youngSize.add(oldInUse).add(youngSize);
             trace.string("  withFullPromotion: ").unsigned(withFullPromotion).newline();
             return heapSize.belowThan(withFullPromotion);
         }
@@ -209,12 +209,12 @@ abstract class CollectionPolicy {
 
         /** If the heap is too full, request a complete collection. */
         private static boolean voteOnMaximumSpace(Log trace) {
-            final UnsignedWord youngSize = HeapPolicy.getMaximumYoungGenerationSize();
-            final UnsignedWord oldInUse = getAccounting().getOldGenerationAfterChunkBytes();
-            final UnsignedWord lastPromotion = getAccounting().getLastCollectionPromotedChunkBytes();
-            final UnsignedWord expectedSize = youngSize.add(oldInUse).add(lastPromotion);
-            final UnsignedWord maxHeapSize = HeapPolicy.getMaximumHeapSize();
-            final boolean vote = maxHeapSize.belowThan(expectedSize);
+            UnsignedWord youngSize = HeapPolicy.getMaximumYoungGenerationSize();
+            UnsignedWord oldInUse = getAccounting().getOldGenerationAfterChunkBytes();
+            UnsignedWord lastPromotion = getAccounting().getLastCollectionPromotedChunkBytes();
+            UnsignedWord expectedSize = youngSize.add(oldInUse).add(lastPromotion);
+            UnsignedWord maxHeapSize = HeapPolicy.getMaximumHeapSize();
+            boolean vote = maxHeapSize.belowThan(expectedSize);
             trace.string("  youngSize: ").unsigned(youngSize)
                             .string("  oldInUse: ").unsigned(oldInUse)
                             .string("  lastPromotion: ").unsigned(lastPromotion)
@@ -227,11 +227,11 @@ abstract class CollectionPolicy {
 
         /** If the heap is not yet full enough, then veto a complete collection. */
         private static boolean vetoOnMinimumSpace(Log trace) {
-            final UnsignedWord youngSize = HeapPolicy.getMaximumYoungGenerationSize();
-            final UnsignedWord oldInUse = getAccounting().getOldGenerationAfterChunkBytes();
-            final UnsignedWord heapInUse = youngSize.add(oldInUse);
-            final UnsignedWord minHeapSize = HeapPolicy.getMinimumHeapSize();
-            final boolean veto = heapInUse.belowThan(minHeapSize);
+            UnsignedWord youngSize = HeapPolicy.getMaximumYoungGenerationSize();
+            UnsignedWord oldInUse = getAccounting().getOldGenerationAfterChunkBytes();
+            UnsignedWord heapInUse = youngSize.add(oldInUse);
+            UnsignedWord minHeapSize = HeapPolicy.getMinimumHeapSize();
+            boolean veto = heapInUse.belowThan(minHeapSize);
             trace.string("  oldInUse: ").unsigned(oldInUse)
                             .string("  heapInUse: ").unsigned(heapInUse)
                             .string("  minHeapSize: ").unsigned(minHeapSize)
@@ -245,14 +245,14 @@ abstract class CollectionPolicy {
          * total time, then veto a complete collection.
          */
         private static boolean vetoOnIncrementalTime(Log trace) {
-            final int incrementalWeight = Options.PercentTimeInIncrementalCollection.getValue();
+            int incrementalWeight = Options.PercentTimeInIncrementalCollection.getValue();
             assert ((0L <= incrementalWeight) && (incrementalWeight <= 100L)) : "BySpaceAndTimePercentTimeInIncrementalCollection should be in the range [0..100].";
 
-            final long incrementalNanos = getAccounting().getIncrementalCollectionTotalNanos();
-            final long completeNanos = getAccounting().getCompleteCollectionTotalNanos();
-            final long totalNanos = incrementalNanos + completeNanos;
-            final long weightedTotalNanos = TimeUtils.weightedNanos(incrementalWeight, totalNanos);
-            final boolean veto = TimeUtils.nanoTimeLessThan(incrementalNanos, weightedTotalNanos);
+            long incrementalNanos = getAccounting().getIncrementalCollectionTotalNanos();
+            long completeNanos = getAccounting().getCompleteCollectionTotalNanos();
+            long totalNanos = incrementalNanos + completeNanos;
+            long weightedTotalNanos = TimeUtils.weightedNanos(incrementalWeight, totalNanos);
+            boolean veto = TimeUtils.nanoTimeLessThan(incrementalNanos, weightedTotalNanos);
             trace.string("  incrementalWeight: ").signed(incrementalWeight)
                             .string("  incrementalNanos: ").unsigned(incrementalNanos)
                             .string("  completeNanos: ").unsigned(completeNanos)

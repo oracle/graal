@@ -46,7 +46,7 @@ final class GCManagementFactory {
     private final List<GarbageCollectorMXBean> gcBeanList;
 
     GCManagementFactory() {
-        final List<GarbageCollectorMXBean> newList = new ArrayList<>();
+        List<GarbageCollectorMXBean> newList = new ArrayList<>();
         /* Changing the order of this list will break assumptions we take in the object replacer. */
         newList.add(new IncrementalGarbageCollectorMXBean());
         newList.add(new CompleteGarbageCollectorMXBean());
@@ -69,7 +69,7 @@ final class GCManagementFactory {
 
         @Override
         public long getCollectionTime() {
-            final long nanos = HeapImpl.getHeapImpl().getGCImpl().getAccounting().getIncrementalCollectionTotalNanos();
+            long nanos = HeapImpl.getHeapImpl().getGCImpl().getAccounting().getIncrementalCollectionTotalNanos();
             return TimeUtils.roundNanosToMillis(nanos);
         }
 
@@ -130,7 +130,7 @@ final class GCManagementFactory {
 
         @Override
         public long getCollectionTime() {
-            final long nanos = HeapImpl.getHeapImpl().getGCImpl().getAccounting().getCompleteCollectionTotalNanos();
+            long nanos = HeapImpl.getHeapImpl().getGCImpl().getAccounting().getCompleteCollectionTotalNanos();
             return TimeUtils.roundNanosToMillis(nanos);
         }
 

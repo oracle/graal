@@ -170,11 +170,11 @@ final class YoungGeneration extends Generation {
     }
 
     @Override
-    protected boolean verify(final HeapVerifier.Occasion occasion) {
+    protected boolean verify(HeapVerifier.Occasion occasion) {
         boolean result = true;
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final HeapVerifier heapVerifier = heap.getHeapVerifier();
-        final SpaceVerifier spaceVerifier = heapVerifier.getSpaceVerifier();
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        HeapVerifier heapVerifier = heap.getHeapVerifier();
+        SpaceVerifier spaceVerifier = heapVerifier.getSpaceVerifier();
 
         spaceVerifier.initialize(getEden());
         if (occasion.equals(HeapVerifier.Occasion.AFTER_COLLECTION)) {
@@ -245,7 +245,7 @@ final class YoungGeneration extends Generation {
     }
 
     boolean scanGreyObjects() {
-        final Log trace = Log.noopLog().string("[YoungGeneration.scanGreyObjects:");
+        Log trace = Log.noopLog().string("[YoungGeneration.scanGreyObjects:");
         boolean needScan = false;
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             if (getSurvivorGreyObjectsWalker(i).haveGreyObjects()) {
