@@ -113,7 +113,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public String getSystemProperty(String key) {
+    public String getSavedProperty(String key) {
         return Services.getSavedProperties().get(key);
     }
 

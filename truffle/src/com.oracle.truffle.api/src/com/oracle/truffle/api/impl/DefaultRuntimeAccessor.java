@@ -117,7 +117,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public String getSystemProperty(String key) {
+        public String getSavedProperty(String key) {
             return System.getProperty(key);
         }
 

@@ -745,7 +745,7 @@ public abstract class Accessor {
 
         public abstract OutputStream getConfiguredLogStream();
 
-        public abstract String getSystemProperty(String key);
+        public abstract String getSavedProperty(String key);
 
         public abstract void reportPolymorphicSpecialize(Node source);
 
