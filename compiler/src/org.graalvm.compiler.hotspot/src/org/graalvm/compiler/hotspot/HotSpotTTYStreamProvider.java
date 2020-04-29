@@ -26,17 +26,15 @@ package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.defaultOptions;
-import static org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider.Locker.UNLOCKED;
-import static org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider.Locker.UNLOCKED_AFTER_LOCKED;
 import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.List;
-import java.util.Random;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.TTYStreamProvider;
@@ -75,160 +73,47 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
     }
 
     /**
-     * Gets a pointer to a word that will be used to synchronize write operations to the log file.
+     * Gets a pointer to a global word initialized to 0.
      */
-    private static Pointer getLockPointer() {
+    private static Pointer getBarrierPointer() {
         // Substituted by Target_org_graalvm_compiler_hotspot_HotSpotTTYStreamProvider
         return WordFactory.nullPointer();
     }
 
     /**
-     * Provides mutual exclusion using a pointer to a lock word. Locking is implemented by spinning
-     * with a sleep in between each spin.
+     * Executes {@code action}. If {@code barrier.isNonNull()}, then {@code barrier} is used to
+     * ensure the action is executed exactly once in the process (i.e. synchronized across all
+     * threads and isolates) and that threads will block here until the action is guaranteed to have
+     * been executed. Note that each {@code barrier} is specific to a specific {@code action} and
+     * cannot be used for any other action.
      */
-    public static class Locker implements AutoCloseable {
-        /**
-         * Initial max milliseconds to sleep in each spin loop iteration while waiting for the lock
-         * to be unlocked.
-         */
-        private static final int INITIAL_SLEEP = 5;
-
-        /**
-         * Absolute max milliseconds to sleep in each spin loop iteration while waiting for the lock
-         * to be unlocked.
-         */
-        private static final int MAX_SLEEP = 2000;
-
-        /**
-         * Pointer to a word used in conjunctions with CAS operations to implement a lock. The word
-         * must have been initialized to {@link #UNLOCKED}.
-         */
-        private final Pointer lock;
-
-        /**
-         * Value for the lock word denoting that it is unlocked.
-         */
-        public static final long UNLOCKED = 0;
-
-        /**
-         * Value for the lock word denoting that it is locked.
-         */
-        static final long LOCKED = 1;
-
-        /**
-         * Value for the lock word denoting that it is unlocked after being locked.
-         */
-        public static final long UNLOCKED_AFTER_LOCKED = 2;
-
-        /**
-         * The value of the lock word prior to this object acquiring the lock.
-         */
-        long initialValue;
-
-        /**
-         * Value to set the lock word to when this object releases the lock.
-         */
-        private final long unlockValue;
-
-        /**
-         * Opens a scope which locks {@code lock}. The lock is released by {@link #close()}.
-         *
-         * @param lock pointer to lock word
-         * @param rand RNG to mitigate threads waiting for the lock from clashing with each other
-         */
-        public Locker(Pointer lock, Random rand) {
-            this(lock, rand, UNLOCKED);
+    private static boolean execute(Runnable action, Pointer barrier) {
+        if (barrier.isNull()) {
+            action.run();
+            return true;
         }
+        final long initial = 0L;
+        final long executing = 1L;
+        final long executed = 2L;
 
-        /**
-         * Opens a scope which locks {@code lock}. The lock is released by {@link #close()}.
-         *
-         * @param lock pointer to lock word
-         * @param rand RNG to mitigate threads waiting for the lock from clashing with each other
-         * @param unlockValue the value to write to the lock word to release the lock
-         */
-        public Locker(Pointer lock, Random rand, long unlockValue) {
-            this.unlockValue = unlockValue;
-            this.lock = lock;
-            int sleepLimit = INITIAL_SLEEP;
-            while (true) {
-                long value = lock.readLong(0);
-                if (value == LOCKED) {
-                    try {
-                        // Randomize sleep time to mitigate waiting threads
-                        // performing in lock-step with each other.
-                        int sleep = rand.nextInt(sleepLimit);
-                        Thread.sleep(sleep);
-                        // Exponential back-off up to MAX_SLEEP ms
-                        sleepLimit = Math.min(MAX_SLEEP, sleepLimit * 2);
-                    } catch (InterruptedException e) {
-                    }
-                    continue;
+        while (true) {
+            long value = barrier.readLong(0);
+            if (value == initial) {
+                if (barrier.compareAndSwapLong(0, value, executing, ANY_LOCATION) == value) {
+                    action.run();
+                    barrier.writeLong(0, executed);
+                    return true;
                 }
-                if (lock.compareAndSwapLong(0, value, LOCKED, ANY_LOCATION) == value) {
-                    initialValue = value;
-                    break;
+            } else {
+                if (value == executed) {
+                    return false;
                 }
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException e) {
+                }
+                value = barrier.readLong(0);
             }
-        }
-
-        @Override
-        public void close() {
-            lock.writeLong(0, unlockValue);
-        }
-    }
-
-    /**
-     * An output stream for writing to a file where each write operation is synchronized across the
-     * whole process, not just the threads within the current isolate.
-     */
-    static class ProcessSynchronizedOutputStream extends OutputStream {
-        private final Pointer lock;
-        private final String name;
-        private FileOutputStream out;
-        private final Random rand;
-
-        /**
-         * Creates a global output stream for writing the file denoted by {@code name} where each
-         * operation is serialized on {@code lock}.
-         */
-        ProcessSynchronizedOutputStream(Pointer lock, String name) {
-            this.lock = lock;
-            this.name = name;
-            this.rand = new Random();
-        }
-
-        private FileOutputStream out() throws FileNotFoundException {
-            if (out == null) {
-                out = new FileOutputStream(name, true);
-            }
-            return out;
-        }
-
-        @SuppressWarnings("try")
-        @Override
-        public void write(byte[] b, int off, int len) throws IOException {
-            try (Locker l = new Locker(lock, rand)) {
-                out().write(b, off, len);
-            }
-        }
-
-        @SuppressWarnings("try")
-        @Override
-        public void write(int b) throws IOException {
-            try (Locker l = new Locker(lock, rand)) {
-                out().write(b);
-            }
-        }
-
-        @Override
-        public void flush() throws IOException {
-            out().flush();
-        }
-
-        @Override
-        public void close() throws IOException {
-            out().close();
         }
     }
 
@@ -297,31 +182,29 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                                         lazy = System.err;
                                         break;
                                     default:
-                                        boolean isolateSpecific = nameTemplate.contains("%i") || nameTemplate.contains("%I");
-                                        Pointer lock = getLockPointer();
-                                        if (!isolateSpecific && lock.isNonNull()) {
-                                            lazy = new ProcessSynchronizedOutputStream(lock, name);
-                                        } else {
-                                            final boolean enableAutoflush = true;
-                                            FileOutputStream result = new FileOutputStream(name);
+                                        boolean executed = execute(() -> {
+                                            File file = new File(name);
+                                            if (file.exists()) {
+                                                file.delete();
+                                            }
+                                        }, getBarrierPointer());
+                                        final boolean enableAutoflush = true;
+                                        FileOutputStream result = new FileOutputStream(name, true);
+                                        if (executed) {
                                             printVMConfig(enableAutoflush, result);
-                                            lazy = result;
                                         }
+                                        lazy = result;
                                 }
                                 return lazy;
                             }
 
                             lazy = HotSpotJVMCIRuntime.runtime().getLogStream();
-                            PrintStream ps = new PrintStream(lazy);
-                            Pointer lock = getLockPointer();
-                            try (Locker l = lock.isNull() ? null : new Locker(lock, new Random(), UNLOCKED_AFTER_LOCKED)) {
-                                if (l == null || l.initialValue == UNLOCKED) {
-                                    // Use Locker to ensure the following message is printed once
-                                    // per process instead of once per isolate.
-                                    ps.printf("[Use -D%sLogFile=<path> to redirect Graal log output to a file.]%n", GRAAL_OPTION_PROPERTY_PREFIX);
-                                    ps.flush();
-                                }
-                            }
+                            execute(() -> {
+                                PrintStream ps = new PrintStream(lazy);
+                                ps.printf("[Use -D%sLogFile=<path> to redirect Graal log output to a file.]%n", GRAAL_OPTION_PROPERTY_PREFIX);
+                                ps.flush();
+
+                            }, getBarrierPointer());
                         }
                     }
                 }

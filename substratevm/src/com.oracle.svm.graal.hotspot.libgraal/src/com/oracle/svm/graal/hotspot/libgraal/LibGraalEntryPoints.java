@@ -35,7 +35,6 @@ import java.util.Map;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.hotspot.CompilationTask;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
-import org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -75,9 +74,9 @@ public final class LibGraalEntryPoints {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /**
-     * @see org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider.Locker
+     * @see org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider#execute
      */
-    static final CGlobalData<Pointer> LOG_FILE_LOCK = CGlobalDataFactory.createWord((Pointer) WordFactory.unsigned(HotSpotTTYStreamProvider.Locker.UNLOCKED));
+    static final CGlobalData<Pointer> LOG_FILE_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
 
     @SuppressWarnings("unused")
     @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_org_graalvm_libgraal_LibGraal_getCurrentIsolateThread")

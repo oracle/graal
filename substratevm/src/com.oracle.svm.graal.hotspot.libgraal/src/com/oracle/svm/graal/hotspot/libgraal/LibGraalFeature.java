@@ -593,8 +593,8 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
 final class Target_org_graalvm_compiler_hotspot_HotSpotTTYStreamProvider {
 
     @Substitute
-    private static Pointer getLockPointer() {
-        return LibGraalEntryPoints.LOG_FILE_LOCK.get();
+    private static Pointer getBarrierPointer() {
+        return LibGraalEntryPoints.LOG_FILE_BARRIER.get();
     }
 }
 
