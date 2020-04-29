@@ -25,6 +25,7 @@
 package org.graalvm.libgraal.jni;
 
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.libgraal.jni.JNI.JArray;
 import org.graalvm.libgraal.jni.JNI.JByteArray;
 import org.graalvm.libgraal.jni.JNI.JClass;
@@ -36,7 +37,6 @@ import org.graalvm.libgraal.jni.JNI.JObjectArray;
 import org.graalvm.libgraal.jni.JNI.JString;
 import org.graalvm.libgraal.jni.JNI.JThrowable;
 import org.graalvm.libgraal.jni.JNI.JValue;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
@@ -308,7 +308,7 @@ public final class JNIUtil {
         if (traceLevel() >= level) {
             HotSpotToSVMScope<?> scope = HotSpotToSVMScope.scopeOrNull();
             String indent = scope == null ? "" : new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' ');
-            String prefix = "[" + Long.toHexString(CurrentIsolate.getIsolate().rawValue()) + ":" + Thread.currentThread().getName() + "]";
+            String prefix = "[" + IsolateUtil.getIsolateID() + ":" + Thread.currentThread().getName() + "]";
             TTY.printf(prefix + indent + format + "%n", args);
         }
     }

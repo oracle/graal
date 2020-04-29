@@ -128,8 +128,14 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
     @Override
     public Closeable scope(String name, Object context) {
         CompilableTruffleAST compilable = context instanceof TruffleDebugJavaMethod ? ((TruffleDebugJavaMethod) context).getCompilable() : null;
-        SVMTruffleCompilation compilation = compilable != null ? owner.findCompilation(compilable) : null;
-        long compilationHandle = compilation != null ? compilation.handle : 0;
+        long compilationHandle;
+        if (compilable == null) {
+            compilationHandle = 0;
+        } else {
+            SVMTruffleCompilation compilation = owner.getActiveCompilation();
+            assert compilation != null : compilable;
+            compilationHandle = compilation.handle;
+        }
         long scopeHandle = HotSpotToSVMCalls.openDebugContextScope(getIsolateThread(), handle, name, compilationHandle);
         return scopeHandle == 0 ? null : new Scope(scopeHandle);
     }
