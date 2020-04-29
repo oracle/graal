@@ -351,7 +351,7 @@ public abstract class SourceCache {
         public void afterAnalysis(AfterAnalysisAccess access) {
             FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
             ImageClassLoader loader = accessImpl.getImageClassLoader();
-            for (Path entry : loader.getClasspath()) {
+            for (Path entry : loader.classpath()) {
                 addClassPathEntry(entry);
             }
             // also add any necessary source path entries

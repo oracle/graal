@@ -150,7 +150,7 @@ public final class ImageClassLoader {
         }
 
         Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ImageClassLoader::toRealPath));
-        uniquePaths.addAll(getClasspath());
+        uniquePaths.addAll(classpath());
         uniquePaths.parallelStream().forEach(path -> loadClassesFromPath(executor, path));
 
         boolean completed = executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
@@ -455,7 +455,17 @@ public final class ImageClassLoader {
         return Class.forName(name, false, classLoader);
     }
 
-    public List<Path> getClasspath() {
+    /**
+     * Deprecated. Use {@link ImageClassLoader#classpath()} instead.
+     *
+     * @return image classpath as a list of strings.
+     */
+    @Deprecated
+    public List<String> getClasspath() {
+        return classpath().stream().map(Path::toString).collect(Collectors.toList());
+    }
+
+    public List<Path> classpath() {
         return Stream.concat(classLoader.buildcp.stream(), classLoader.imagecp.stream()).collect(Collectors.toList());
     }
 
