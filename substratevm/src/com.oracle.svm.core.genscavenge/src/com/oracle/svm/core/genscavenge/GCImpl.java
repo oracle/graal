@@ -77,10 +77,7 @@ import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.heap.AllocationFreeList;
-import com.oracle.svm.core.heap.AllocationFreeList.PreviouslyRegisteredElementException;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
-import com.oracle.svm.core.heap.CollectionWatcher;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
@@ -130,7 +127,6 @@ public class GCImpl implements GC {
 
     private final OutOfMemoryError oldGenerationSizeExceeded;
 
-    private final AllocationFreeList<CollectionWatcher> collectionWatcherList;
     private final NoAllocationVerifier noAllocationVerifier;
 
     private final GarbageCollectorManagementFactory gcManagementFactory;
@@ -150,7 +146,6 @@ public class GCImpl implements GC {
         this.collectOperation = new CollectionVMOperation();
 
         this.collectionEpoch = WordFactory.zero();
-        this.collectionWatcherList = AllocationFreeList.factory();
         this.noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
         this.completeCollection = false;
         this.sizeBefore = WordFactory.zero();
@@ -245,16 +240,10 @@ public class GCImpl implements GC {
         ThreadLocalAllocation.disableThreadLocalAllocation();
         /* Report the heap before the collection. */
         printGCBefore(cause.getName());
-        /* Scrub the lists I maintain, before the collection. */
-        scrubLists();
-        /* Run any collection watchers before the collection. */
-        visitWatchersBefore();
 
         /* Collect. */
         boolean outOfMemory = collectImpl(cause.getName());
 
-        /* Run any collection watchers after the collection. */
-        visitWatchersAfter();
         /* Reset for the next collection. */
         HeapPolicy.youngUsedBytes.set(getAccounting().getYoungChunkBytesAfter());
         /* Print the heap after the collection. */
@@ -1049,8 +1038,6 @@ public class GCImpl implements GC {
             logOneTimer(Log.log(), "[GC epilogue reference processing: ", refsTimer);
             Log.log().string("]");
         }
-
-        visitWatchersReport();
     }
 
     /* Collection counting. */
@@ -1058,88 +1045,12 @@ public class GCImpl implements GC {
     /** A counter for collections. */
     private UnsignedWord collectionEpoch;
 
-    UnsignedWord getCollectionEpoch() {
+    public UnsignedWord getCollectionEpoch() {
         return collectionEpoch;
     }
 
     private void incrementCollectionEpoch() {
         collectionEpoch = collectionEpoch.add(1);
-    }
-
-    /*
-     * CollectionWatcher methods.
-     */
-    @Override
-    public void registerCollectionWatcher(CollectionWatcher watcher) throws PreviouslyRegisteredElementException {
-        /* Give a reasonable error message for trying to reuse a CollectionWatcher. */
-        if (watcher.getHasBeenOnList()) {
-            throw new PreviouslyRegisteredElementException("Attempting to reuse a previously-registered CollectionWatcher.");
-        }
-        collectionWatcherList.prepend(watcher);
-    }
-
-    @Override
-    public void unregisterCollectionWatcher(final CollectionWatcher watcher) {
-        watcher.removeElement();
-    }
-
-    @SuppressWarnings("try")
-    private void visitWatchersBefore() {
-        final Log trace = Log.noopLog().string("[GCImpl.visitWatchersBefore:").newline();
-        trace.string("  Watchers before: ");
-        try (Timer wbt = watchersBeforeTimer.open()) {
-            for (CollectionWatcher watcher = collectionWatcherList.getFirst(); watcher != null; watcher = watcher.getNextElement()) {
-                try {
-                    watcher.beforeCollection();
-                } catch (Throwable t) {
-                    trace.string("[GCImpl.visitWatchersBefore: Caught: ").string(t.getClass().getName()).string("]").newline();
-                }
-            }
-        }
-        trace.string("]").newline();
-    }
-
-    @SuppressWarnings("try")
-    private void visitWatchersAfter() {
-        final Log trace = Log.noopLog().string("[GCImpl.visitWatchersAfter:").newline();
-        trace.string("  Watchers after: ");
-        try (Timer wat = watchersAfterTimer.open()) {
-            /* Run the registered collection watchers. */
-            for (CollectionWatcher watcher = collectionWatcherList.getFirst(); watcher != null; watcher = watcher.getNextElement()) {
-                try {
-                    watcher.afterCollection();
-                } catch (Throwable t) {
-                    trace.string("[GCImpl.visitWatchersAfter: Caught: ").string(t.getClass().getName()).string("]").newline();
-                }
-            }
-        }
-        trace.string("]").newline();
-    }
-
-    private void visitWatchersReport() {
-        final Log trace = Log.noopLog().string("[GCImpl.visitWatchersReport:").newline();
-        /*
-         * Run single-threaded (but not at a safepoint) so as not be bothered by concurrent
-         * scrubbing of the list due to random garbage collections. There is still window if someone
-         * has unregistered a watcher and then there is another collection, because that will scrub
-         * the list I am walking, even though I am in a VMOperation. I consider that a small-enough
-         * possibility.
-         */
-        JavaVMOperation.enqueueBlockingNoSafepoint("GCImpl.visitWatchersReport", () -> {
-            for (CollectionWatcher watcher = collectionWatcherList.getFirst(); watcher != null; watcher = watcher.getNextElement()) {
-                try {
-                    watcher.report();
-                } catch (Throwable t) {
-                    trace.string("[GCImpl.visitWatchersReport: Caught: ").string(t.getClass().getName()).string("]").newline();
-                }
-            }
-        });
-        trace.string("]").newline();
-    }
-
-    /** Scrub the allocation-free lists I maintain. */
-    private void scrubLists() {
-        collectionWatcherList.scrub();
     }
 
     /*
