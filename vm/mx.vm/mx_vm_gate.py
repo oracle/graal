@@ -120,9 +120,10 @@ def gate_body(args, tasks):
                     unittest_args = unittest_args + ["--enable-timing", "--verbose"]
                     compiler_log_file = "graal-compiler.log"
                     mx_unittest.unittest(unittest_args + extra_vm_arguments + [
-                        "-Dgraal.TruffleCompileImmediately=true",
-                        "-Dgraal.TruffleBackgroundCompilation=false",
-                        "-Dgraal.TraceTruffleCompilation=true",
+                        "-Dpolyglot.engine.AllowExperimentalOptions=true",
+                        "-Dpolyglot.engine.CompileImmediately=true",
+                        "-Dpolyglot.engine.BackgroundCompilation=false",
+                        "-Dpolyglot.engine.TraceCompilation=true",
                         "-Dgraalvm.locatorDisabled=true",
                         "-Dgraal.PrintCompilation=true",
                         "-Dgraal.LogFile={0}".format(compiler_log_file),

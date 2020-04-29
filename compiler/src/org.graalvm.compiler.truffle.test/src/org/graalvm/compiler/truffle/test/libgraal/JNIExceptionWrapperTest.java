@@ -70,7 +70,9 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
     }
 
     private static List<String> getVmArgs() {
-        List<String> vmArgs = SubprocessUtil.getVMCommandLine();
+        // Filter out the LogFile option to prevent overriding of the unit tests log file by a
+        // sub-process.
+        List<String> vmArgs = SubprocessUtil.getVMCommandLine().stream().filter((vmArg) -> !vmArg.contains("LogFile")).collect(Collectors.toList());
         vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
         return vmArgs;
     }
