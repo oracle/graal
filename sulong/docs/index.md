@@ -1,7 +1,0 @@
-# Documentation
-
-* [Source-Level debugging with Sulong](DEBUGGING.md)
-* [FAQ](FAQ.md)
-* [Truffle language interoperability and Sulong](INTEROP.md)
-* [Sulong-related publications](PUBLICATIONS.md)
-* [Sulong's test cases](TESTS.md)

@@ -1,4 +1,4 @@
-# Interoperability
+# Cross-Language Interoperability
 
 The GraalVM LLVM runtime supports standard Polyglot interop messages. This document
 explains what it does when it receives them, how to get it to explicitly send them,

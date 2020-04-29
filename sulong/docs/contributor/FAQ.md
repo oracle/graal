@@ -1,3 +1,5 @@
+# FAQ
+
 ## General
 
 ### How can I get started understanding Sulong?
@@ -12,6 +14,37 @@ read the papers [Self-optimizing AST interpreters](http://dl.acm.org/citation.cf
 and [One VM to rule them all](http://dl.acm.org/citation.cfm?id=2509581).
 A heavily documented Truffle language sample implementation is
 [SimpleLanguage](https://github.com/graalvm/simplelanguage).
+
+### From where does the project name originate?
+
+Sulong is the romanization of the Chinese term "速龙" (Velocisaurus).
+The first character translates as fast, rapid or quick, while the second
+character means dragon. A literal translation of the name giving Chinese
+term is thus "fast dragon". The name relates to the
+[LLVM logo](http://llvm.org/Logo.html) which is a dragon (more
+specifically a wyvern), and is also in line with the LLVM Dragonegg
+project.
+
+### What is Truffle?
+
+[Truffle](https://github.com/oracle/graal/tree/master/truffle) is a language
+implementation framework written in Java. It allows language designers
+to implement a (guest) language as an Abstract Syntax Tree (AST)
+interpreter. Additionally, Truffle provides many language independent
+facilities to the host language such as profiling, debugging, and
+language interoperability. When a Truffle AST is executed often and then
+dynamically compiled with Graal, Graal can exploit its knowledge about the
+Truffle framework and produce efficient machine code.
+
+### What is LLVM?
+
+LLVM is an umbrella project for a modular and reusable compiler
+infrastructure written in C++. It includes a compiler frontend `clang`
+for compiling C, C++, Objective C and Objective C++ to LLVM bitcode IR.
+Many of the other tools such as the optimizer `opt`, assembler,
+linker, and back-ends then operate on the LLVM bitcode, to finally produce
+machine code. LLVM envisions that transformations and analyses can be
+applied during compile-time, link-time, runtime, and offline.
 
 ## Mx
 

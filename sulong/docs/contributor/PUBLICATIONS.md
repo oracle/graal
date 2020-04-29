@@ -1,4 +1,4 @@
-## Publications
+# Publications
 
 * Rigger, M.; Grimmer, M.; Wimmer, C.; Würthinger, T.; Mössenböck, H.:<br>
 [Bringing Low-Level Languages to the JVM: Efficient Execution of LLVM IR on Truffle](http://conf.researchr.org/event/vmil2016/vmil2016-bringing-low-level-languages-to-the-jvm-efficient-execution-of-llvm-ir-on-truffle)<br>

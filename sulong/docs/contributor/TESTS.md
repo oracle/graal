@@ -27,7 +27,7 @@ Please note that this command aborts as soon as one testsuite has failed.
 | type        | -                               | Test floating point arithmetic          |
 
 The test cases consist of LLVM IR, C, C++, and Fortran files. While
-Sulong's Truffle LLVM IR interpreter can directly execute the LLVM IR
+Sulong's Truffle LLVM IR runtime can directly execute the LLVM IR
 files it uses Clang and/or GCC to compile the other source files to LLVM IR
 before executing them.
 
