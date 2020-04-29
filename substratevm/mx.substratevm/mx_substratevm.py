@@ -800,7 +800,11 @@ def gen_fallbacks():
         if svm_java8():
             staticlib_wildcard[0:0] = ['jre']
         staticlib_wildcard_path = join(mx_compiler.jdk.home, *staticlib_wildcard)
-        for staticlib_path in glob(staticlib_wildcard_path):
+        staticlibs = glob(staticlib_wildcard_path)
+        if not staticlibs:
+            mx.abort('Please use a JDK that contains static JDK libraries.\n'
+                    + 'See: https://github.com/oracle/graal/tree/master/substratevm#quick-start')
+        for staticlib_path in staticlibs:
             mx.logv('Collect from : ' + staticlib_path)
             mx.run(symbol_dump_command.split() + [staticlib_path], out=collect_symbols_fn('JVM_'))
 
