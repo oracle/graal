@@ -278,8 +278,8 @@ final class Runner {
                                 node.initModules,
                                 lazyParsing, false);
 
-                InitializeScopeNodes(order.getSulongLibraries(), 0, node.initScopes);
-                InitializeScopeNodes(order.scopeInitializationOrderLibraries, order.getSulongLibraries().size(), node.initScopes);
+                initializeScopeNodes(order.getSulongLibraries(), 0, node.initScopes);
+                initializeScopeNodes(order.scopeInitializationOrderLibraries, order.getSulongLibraries().size(), node.initScopes);
                 return node;
             } catch (TypeOverflowException e) {
                 throw new LLVMUnsupportedException(node, UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
@@ -301,7 +301,7 @@ final class Runner {
             }
         }
 
-        private static void InitializeScopeNodes(List<LLVMParserResult> parserResults, int offset, InitializeScopeNode[] initScopes) {
+        private static void initializeScopeNodes(List<LLVMParserResult> parserResults, int offset, InitializeScopeNode[] initScopes) {
             for (int i = 0; i < parserResults.size(); i++) {
                 LLVMParserResult res = parserResults.get(i);
                 initScopes[offset + i] = new InitializeScopeNode(res, res.getRuntime().getBitcodeID());
@@ -336,7 +336,6 @@ final class Runner {
                 doInitExternal(ctx, shouldInit, localScope);
                 doInitGlobals(frame, shouldInit, roSections);
                 doInitOverwrite(ctx, shouldInit, localScope);
-
                 initContext.execute(frame);
                 doInitModules(frame, ctx, shouldInit);
                 return sulongLibrary;
@@ -1877,9 +1876,7 @@ final class Runner {
         } else {
             LLVMScope scope = combineScopes(parserResults);
             SulongLibrary lib = new SulongLibrary(name, scope, mainFunctionCallTarget, context);
-
             FrameDescriptor rootFrame = StackManager.createRootFrame();
-
             // check if the functions should be resolved eagerly or lazyly.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
             LoadModulesNode loadModules = LoadModulesNode.create(this, rootFrame, initializationOrder, lib, lazyParsing);
