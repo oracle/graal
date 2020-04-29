@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import com.oracle.svm.core.c.libc.GLibc;
+import com.oracle.svm.core.c.libc.Libc;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -97,6 +99,7 @@ public class Dlfcn {
     @Platforms(Platform.LINUX.class)
     @CContext(PosixDirectives.class)
     @CLibrary("dl")
+    @Libc(GLibc.class)
     public static class GNUExtensions {
 
         public interface Lmid_t extends SignedWord {

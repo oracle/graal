@@ -307,6 +307,9 @@ public final class NativeLibraries {
             libraryPaths.add(staticLibsDir.toString());
         } else {
             if (!NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
+                if (SubstrateOptions.UseMuslC.hasBeenSet()) {
+                    throw UserError.abort("Your version of the JDK does not support statically linking against musl.");
+                }
                 /* Fail if we will statically link JDK libraries but do not have them available */
                 UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
                                 "Building images for %s requires static JDK libraries.%nUse JDK from %s or %s%s",
