@@ -125,6 +125,10 @@ public class GraphEncoder {
      */
     public static final int FIRST_NODE_ORDER_ID = 2;
 
+    public static final int MAX_1_BYTE_INDEX = 1 << 8;
+    public static final int MAX_2_BYTES_INDEX = 1 << 16;
+    public static final int MAX_4_BYTES_INDEX = (1 << 31) - 1;
+
     /**
      * The known offset between the orderId of a {@link AbstractBeginNode} and its
      * {@link AbstractBeginNode#next() successor}.
@@ -435,7 +439,15 @@ public class GraphEncoder {
     }
 
     protected void writeOrderId(Node node, NodeOrder nodeOrder) {
-        writer.putUV(node == null ? NULL_ORDER_ID : nodeOrder.orderIds.get(node));
+        int id = node == null ? NULL_ORDER_ID : nodeOrder.orderIds.get(node);
+        if (nodeOrder.nextOrderId < 1 << 8) {
+            writer.putU1(id);
+        } else if (nodeOrder.nextOrderId < 1 << 16) {
+            writer.putU2(id);
+        } else {
+            assert nodeOrder.nextOrderId < (1 << 31) - 1;
+            writer.putS4(id);
+        }
     }
 
     protected void writeObjectId(Object object) {

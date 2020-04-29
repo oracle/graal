@@ -98,6 +98,11 @@ public class GraphDecoder {
         public final EncodedGraph encodedGraph;
         /** The highest node order id that a fixed node has in the EncodedGraph. */
         public final int maxFixedNodeOrderId;
+        /**
+         * Number of bytes needed to encode an order id (order ids have a per-encoded-graph fixed
+         * size).
+         */
+        public final int orderIdWidth;
         /** Access to the encoded graph. */
         public final TypeReader reader;
         /** The kind of loop explosion to be performed during decoding. */
@@ -125,8 +130,8 @@ public class GraphDecoder {
             if (encodedGraph != null) {
                 reader = UnsafeArrayTypeReader.create(encodedGraph.getEncoding(), encodedGraph.getStartOffset(), architecture.supportsUnalignedMemoryAccess());
                 maxFixedNodeOrderId = reader.getUVInt();
+                int nodeCount = reader.getUVInt();
                 if (encodedGraph.nodeStartOffsets == null) {
-                    int nodeCount = reader.getUVInt();
                     int[] nodeStartOffsets = new int[nodeCount];
                     for (int i = 0; i < nodeCount; i++) {
                         nodeStartOffsets[i] = encodedGraph.getStartOffset() - reader.getUVInt();
@@ -134,9 +139,19 @@ public class GraphDecoder {
                     encodedGraph.nodeStartOffsets = nodeStartOffsets;
                     graph.setGuardsStage((StructuredGraph.GuardsStage) readObject(this));
                 }
+
+                if (nodeCount < GraphEncoder.MAX_1_BYTE_INDEX) {
+                    orderIdWidth = 1;
+                } else if (nodeCount < GraphEncoder.MAX_2_BYTES_INDEX) {
+                    orderIdWidth = 2;
+                } else {
+                    assert nodeCount < GraphEncoder.MAX_4_BYTES_INDEX : "out of range node count: " + nodeCount;
+                    orderIdWidth = 4;
+                }
             } else {
                 reader = null;
                 maxFixedNodeOrderId = 0;
+                orderIdWidth = 0;
             }
 
             if (loopExplosion.useExplosion()) {
@@ -644,30 +659,29 @@ public class GraphDecoder {
         makeFixedNodeInputs(methodScope, loopScope, node);
         readProperties(methodScope, node);
 
+        /* Special cases for early canonicalization of split nodes. */
         if (node instanceof IntegerSwitchNode && ((IntegerSwitchNode) node).value().isConstant()) {
+            /*
+             * Avoid spawning all successors for trivially canonicalizable switches, this ensures
+             * that bytecode interpreters with huge switches do not allocate nodes that are removed
+             * straight away during PE.
+             */
             IntegerSwitchNode switchNode = (IntegerSwitchNode) node;
             int value = switchNode.value().asJavaConstant().asInt();
             int survivingIndex = switchNode.successorIndexAtKey(value);
-            AbstractBeginNode survivingSuccessor = null;
-            Edges edges = node.getNodeClass().getSuccessorEdges();
 
-            // TODO: encode the graph so that we can directly skip to survivingIndex.
-            for (int index = 0; index < edges.getDirectCount(); index++) {
-                readOrderId(methodScope);
-            }
-            for (int index = edges.getDirectCount(); index < edges.getCount(); index++) {
-                int size = methodScope.reader.getSVInt();
-                if (size != -1) {
-                    NodeList<Node> nodeList = new NodeSuccessorList<>(node, size);
-                    edges.initializeList(node, index, nodeList);
-                    for (int idx = 0; idx < size; idx++) {
-                        int orderId = readOrderId(methodScope);
-                        if (survivingIndex == idx) {
-                            survivingSuccessor = (AbstractBeginNode) makeStubNode(methodScope, loopScope, orderId);
-                        }
-                    }
-                }
-            }
+            /* Check that the node has the expected encoding. */
+            Edges edges = switchNode.getNodeClass().getSuccessorEdges();
+            assert edges.getDirectCount() == 0 : "IntegerSwitchNode expected to have 0 direct successor";
+            assert edges.getCount() == 1 : "IntegerSwitchNode expected to have 1 indirect successor";
+
+            int size = methodScope.reader.getSVInt();
+            long successorsByteIndex = methodScope.reader.getByteIndex();
+
+            methodScope.reader.setByteIndex(successorsByteIndex + survivingIndex * methodScope.orderIdWidth);
+            int orderId = readOrderId(methodScope);
+            AbstractBeginNode survivingSuccessor = (AbstractBeginNode) makeStubNode(methodScope, loopScope, orderId);
+            methodScope.reader.setByteIndex(successorsByteIndex + size * methodScope.orderIdWidth);
 
             graph.removeSplit(switchNode, survivingSuccessor);
             return loopScope;
@@ -1554,7 +1568,15 @@ public class GraphDecoder {
     }
 
     protected int readOrderId(MethodScope methodScope) {
-        return methodScope.reader.getUVInt();
+        switch (methodScope.orderIdWidth) {
+            case 1:
+                return methodScope.reader.getU1();
+            case 2:
+                return methodScope.reader.getU2();
+            case 4:
+                return methodScope.reader.getS4();
+        }
+        throw new RuntimeException("Invalid orderIdWidth: " + methodScope.orderIdWidth);
     }
 
     protected Object readObject(MethodScope methodScope) {
