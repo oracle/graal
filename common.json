@@ -13,10 +13,13 @@
     "deps": {
       "linux": {
         "packages": {
-          "cmake": "==3.6.1"
+          "cmake": "==3.15.2"
         }
       },
       "darwin": {
+        "packages": {
+          "cmake": "==3.15.2"
+        }
       }
     }
   }
