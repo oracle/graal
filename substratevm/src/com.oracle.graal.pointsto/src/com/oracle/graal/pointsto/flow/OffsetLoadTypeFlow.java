@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.flow;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
-import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.UnsafePartitionKind;
@@ -320,7 +319,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
     public static class AtomicReadTypeFlow extends AbstractUnsafeLoadTypeFlow {
 
-        public AtomicReadTypeFlow(AtomicReadAndWriteNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, MethodTypeFlow methodFlow) {
+        public AtomicReadTypeFlow(ValueNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, MethodTypeFlow methodFlow) {
             super(node, objectType, componentType, objectFlow, methodFlow);
         }
 
