@@ -42,6 +42,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallNodes;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetKnownCallSiteCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallTargetForCallNode;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetClassName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCompilableCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCompilableName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetConstantFieldInfo;
@@ -481,6 +482,11 @@ final class SVMToHotSpotEntryPoints {
     @SVMToHotSpot(GetThrowableMessage)
     static String getThrowableMessage(Throwable t) {
         return t.getMessage();
+    }
+
+    @SVMToHotSpot(GetClassName)
+    static String getClassName(Class<?> clz) {
+        return clz.getName();
     }
 
     @SVMToHotSpot(CancelInstalledTask)
