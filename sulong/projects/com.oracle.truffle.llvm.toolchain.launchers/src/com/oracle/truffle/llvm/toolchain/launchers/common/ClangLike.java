@@ -29,112 +29,9 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers.common;
 
-import com.oracle.truffle.llvm.toolchain.launchers.darwin.DarwinLinker;
-import com.oracle.truffle.llvm.toolchain.launchers.linux.LinuxLinker;
-
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
-public class ClangLike extends Driver {
-
-    public static final String NATIVE_PLATFORM = "native";
-    public static final String XCRUN = "/usr/bin/xcrun";
-    /**
-     * Detects whether we are attempting a linker invocation. If not we can omit flags which would
-     * cause warnings with clang. This should be conservative and return {@code true} if in doubt.
-     */
-    protected final boolean needLinkerFlags;
-    protected final boolean needCompilerFlags;
-    protected final boolean verbose;
-    protected final boolean help;
-    protected final boolean cxx;
-    protected final boolean earlyExit;
-    protected final OS os;
-    protected final String[] args;
-    protected final String platform;
-    protected final int outputFlagPos;
-    protected final boolean nostdincxx;
-
-    protected ClangLike(String[] args, boolean cxx, OS os, String platform) {
-        super(cxx ? "clang++" : "clang");
-        this.cxx = cxx;
-        this.os = os;
-        this.platform = platform;
-        boolean mayHaveInputFiles = false;
-        boolean mayBeLinkerInvocation = true;
-        boolean isVerbose = false;
-        boolean showHelp = false;
-        boolean shouldExitEarly = false;
-        boolean keepArgs = true;
-        boolean noStdIncxx = false;
-        int outputFlagIdx = -1;
-        for (int i = 0; i < args.length; i++) {
-            String arg = args[i];
-            if (!mayHaveInputFiles && !arg.startsWith("-")) {
-                // argument starts with "-" -> assume that it is an input file
-                mayHaveInputFiles = true;
-            }
-            if (stageSelectionFlag(arg)) {
-                mayBeLinkerInvocation = false;
-                continue;
-            }
-            switch (arg) {
-                case "-o":
-                    outputFlagIdx = i;
-                    break;
-                case "-v":
-                    isVerbose = true;
-                    break;
-                case "--help":
-                    showHelp = true;
-                    break;
-                case "-fembed-bitcode":
-                    System.err.println("Using `-fembed-bitcode` is not supported.");
-                    System.err.println("Try calling the the wrapped tool directly: " + exe);
-                    System.exit(1);
-                    break;
-                case "--graalvm-help":
-                    showHelp = true;
-                    shouldExitEarly = true;
-                    break;
-                case "--graalvm-print-cmd":
-                    isVerbose = true;
-                    shouldExitEarly = true;
-                    break;
-                case "-nostdinc++":
-                    noStdIncxx = true;
-                    break;
-                case "-Wl,--gc-sections":
-                case "-Wa,--noexecstack":
-                    keepArgs = false;
-                    args[i] = null;
-                    break;
-            }
-        }
-        this.args = keepArgs ? args : Arrays.stream(args).filter(Objects::nonNull).toArray(String[]::new);
-        this.needLinkerFlags = mayBeLinkerInvocation & mayHaveInputFiles;
-        this.needCompilerFlags = mayHaveInputFiles;
-        this.verbose = isVerbose;
-        this.help = showHelp;
-        this.earlyExit = shouldExitEarly;
-        this.outputFlagPos = outputFlagIdx;
-        this.nostdincxx = noStdIncxx;
-    }
-
-    private static boolean stageSelectionFlag(String s) {
-        switch (s) {
-            case "-E": // preprocessor
-            case "-fsyntax-only": // parser and type checker
-            case "-S": // assembly generator
-            case "-c": // object file generator
-                return true;
-        }
-        return false;
-    }
+public class ClangLike extends ClangLikeBase {
 
     public static void runClangXX(String[] args) {
         new ClangLike(args, true, OS.getCurrent(), NATIVE_PLATFORM).run();
@@ -144,41 +41,27 @@ public class ClangLike extends Driver {
         new ClangLike(args, false, OS.getCurrent(), NATIVE_PLATFORM).run();
     }
 
-    protected final void run() {
-        List<String> sulongArgs = getArgs();
-        runDriver(sulongArgs, Arrays.asList(args), verbose, help, earlyExit);
+    protected ClangLike(String[] args, boolean cxx, OS os, String platform) {
+        super(args, cxx, os, platform);
     }
 
-    protected List<String> getArgs() {
-        List<String> sulongArgs = new ArrayList<>();
-        if (os == OS.DARWIN && Files.isExecutable(Paths.get(XCRUN)) && Files.isExecutable(Paths.get(exe))) {
-            sulongArgs.add(XCRUN);
-            sulongArgs.add("--sdk");
-            sulongArgs.add("macosx");
-        }
-        sulongArgs.add(exe);
-
-        // compiler flags
-        if (needCompilerFlags) {
-            sulongArgs.addAll(Arrays.asList("-flto=full", "-g", "-O1", "-I" + getSulongHome().resolve("include")));
-            // c++ specific flags
-            if (cxx) {
-                // avoid "warning: argument unused during compilation: '-stdlib=libc++'"
-                if (needLinkerFlags || !nostdincxx) {
-                    sulongArgs.add("-stdlib=libc++");
-                }
+    @Override
+    protected void getCompilerArgs(List<String> sulongArgs) {
+        sulongArgs.add("-I" + getSulongHome().resolve(platform).resolve("include"));
+        sulongArgs.add("-I" + getSulongHome().resolve("include"));
+        // c++ specific flags
+        if (cxx) {
+            // avoid "warning: argument unused during compilation: '-stdlib=libc++'"
+            if (needLinkerFlags || !nostdincxx) {
+                sulongArgs.add("-stdlib=libc++");
             }
         }
-        // linker flags
-        if (needLinkerFlags) {
-            sulongArgs.add("-L" + getSulongHome().resolve(platform).resolve("lib"));
-            if (os == OS.LINUX) {
-                sulongArgs.addAll(Arrays.asList("-fuse-ld=" + getLLVMExecutable(LinuxLinker.LLD), "-Wl," + String.join(",", LinuxLinker.getLinkerFlags())));
-            } else if (os == OS.DARWIN) {
-                sulongArgs.add("-fuse-ld=" + DarwinLinker.LD);
-            }
-        }
-        return sulongArgs;
+        super.getCompilerArgs(sulongArgs);
     }
 
+    @Override
+    protected void getLinkerArgs(List<String> sulongArgs) {
+        sulongArgs.add("-L" + getSulongHome().resolve(platform).resolve("lib"));
+        super.getLinkerArgs(sulongArgs);
+    }
 }
