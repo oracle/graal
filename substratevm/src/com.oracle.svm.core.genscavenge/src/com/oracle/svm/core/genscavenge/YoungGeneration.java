@@ -290,6 +290,7 @@ final class YoungGeneration extends Generation {
         return getEden().getObjectBytes().add(getSurvivorObjectBytes());
     }
 
+    @SuppressWarnings("static-method")
     boolean contains(Object object) {
         return HeapChunk.getEnclosingHeapChunk(object).getSpace().isYoungSpace();
     }

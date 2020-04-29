@@ -40,7 +40,7 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
  * {@link Object}.
  */
 final class ThreadLocalMTWalker {
-    boolean walk(ObjectReferenceVisitor referenceVisitor) {
+    static boolean walk(ObjectReferenceVisitor referenceVisitor) {
         VMThreadLocalMTSupport threadLocals = ImageSingletons.lookup(VMThreadLocalMTSupport.class);
         for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
             if (!InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) vmThread, NonmovableArrays.fromImageHeap(threadLocals.vmThreadReferenceMapEncoding),

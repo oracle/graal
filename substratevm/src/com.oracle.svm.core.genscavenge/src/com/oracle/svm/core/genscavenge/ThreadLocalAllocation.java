@@ -230,7 +230,7 @@ public final class ThreadLocalAllocation {
                 if (size.aboveOrEqual(HeapPolicy.getMaximumHeapSize())) {
                     throw arrayAllocationTooLarge;
                 }
-                UnalignedHeapChunk.UnalignedHeader uChunk = HeapChunkProvider.get().produceUnalignedChunk(size);
+                UnalignedHeapChunk.UnalignedHeader uChunk = HeapImpl.getChunkProvider().produceUnalignedChunk(size);
                 result = allocateLargeArray(hub, length, size, uChunk, tlab, rememberedSet);
             } else {
                 /* Small arrays go into the regular aligned chunk. */
@@ -305,7 +305,7 @@ public final class ThreadLocalAllocation {
         retireToSpace(regularTLAB.getAddress(vmThread), HeapImpl.getHeapImpl().getAllocationSpace());
 
         for (AlignedHeader alignedChunk = popFromThreadLocalFreeList(); alignedChunk.isNonNull(); alignedChunk = popFromThreadLocalFreeList()) {
-            HeapChunkProvider.get().consumeAlignedChunk(alignedChunk);
+            HeapImpl.getChunkProvider().consumeAlignedChunk(alignedChunk);
         }
     }
 
@@ -400,7 +400,7 @@ public final class ThreadLocalAllocation {
 
         AlignedHeader newChunk = popFromThreadLocalFreeList();
         if (newChunk.isNull()) {
-            newChunk = HeapChunkProvider.get().produceAlignedChunk();
+            newChunk = HeapImpl.getChunkProvider().produceAlignedChunk();
         }
         return newChunk;
     }
@@ -453,7 +453,7 @@ public final class ThreadLocalAllocation {
 
     public static final class TestingBackdoor {
         public static AlignedHeader getAlignedChunkFromProvider() {
-            return HeapChunkProvider.get().produceAlignedChunk();
+            return HeapImpl.getChunkProvider().produceAlignedChunk();
         }
 
         public static AlignedHeader popFromThreadLocalFreeList() {

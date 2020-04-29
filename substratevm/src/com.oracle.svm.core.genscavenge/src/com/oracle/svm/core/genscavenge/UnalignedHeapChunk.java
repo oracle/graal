@@ -256,7 +256,7 @@ public final class UnalignedHeapChunk {
 
     private static boolean verify(UnalignedHeader that, Pointer start) {
         VMOperation.guaranteeInProgress("Should only be called as a VMOperation.");
-        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[UnalignedHeapChunk.verify");
+        Log trace = HeapVerifier.getTraceLog().string("[UnalignedHeapChunk.verify");
         trace.string("  that: ").hex(that).string("  start: ").hex(start).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd()).newline();
         UnsignedWord objHeader = ObjectHeaderImpl.readHeaderFromPointer(start);
         if (ObjectHeaderImpl.isForwardedHeader(objHeader)) {

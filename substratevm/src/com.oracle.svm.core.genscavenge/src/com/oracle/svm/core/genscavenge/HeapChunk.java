@@ -248,7 +248,7 @@ final class HeapChunk {
     }
 
     static boolean verifyObjects(Header<?> that, Pointer start) {
-        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[HeapChunk.verify:");
+        Log trace = HeapVerifier.getTraceLog().string("[HeapChunk.verify:");
         trace.string("  that:  ").hex(that).string("  start: ").hex(start).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd());
         Pointer p = start;
         while (p.belowThan(that.getTop())) {

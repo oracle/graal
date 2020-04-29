@@ -138,14 +138,14 @@ public final class PathExhibitor {
         }
     }
 
-    private void findPathToTarget(TargetMatcher target, PathEdge edge, Pointer currentThreadWalkStackPointer) {
+    private static void findPathToTarget(TargetMatcher target, PathEdge edge, Pointer currentThreadWalkStackPointer) {
         assert target != null && !edge.isFilled();
         findPathInHeap(target, edge);
-        findPathInBootImageHeap(target, edge);
+        findPathInImageHeap(target, edge);
         findPathInStack(target, edge, currentThreadWalkStackPointer);
     }
 
-    private void findPathInStack(TargetMatcher target, PathEdge edge, Pointer currentThreadWalkStackPointer) {
+    private static void findPathInStack(TargetMatcher target, PathEdge edge, Pointer currentThreadWalkStackPointer) {
         if (edge.isFilled()) {
             return;
         }
@@ -167,7 +167,7 @@ public final class PathExhibitor {
         }
     }
 
-    private void findPathInBootImageHeap(TargetMatcher target, PathEdge result) {
+    private static void findPathInImageHeap(TargetMatcher target, PathEdge result) {
         Heap.getHeap().walkImageHeapObjects(new ObjectVisitor() {
             @Override
             public boolean visitObject(Object obj) {
@@ -180,7 +180,7 @@ public final class PathExhibitor {
         });
     }
 
-    private void findPathInHeap(TargetMatcher target, PathEdge result) {
+    private static void findPathInHeap(TargetMatcher target, PathEdge result) {
         if (result.isFilled()) {
             return;
         }

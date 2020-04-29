@@ -266,7 +266,7 @@ public final class CardTable {
                 boolean containsYoung = getReferenceToYoungObjectVisitor().containsReferenceToYoungObject(obj);
                 if (containsYoung) {
                     final boolean witnessForDebugging = true;
-                    Log witness = (witnessForDebugging ? Log.log() : HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog());
+                    Log witness = (witnessForDebugging ? Log.log() : HeapVerifier.getTraceLog());
                     witness.string("[CardTable.verifyCleanCards:").string("  objectsStart: ").hex(objectsStart).string("  objectsLimit: ").hex(objectsLimit).string("  indexLimit: ").unsigned(
                                     indexLimit).newline();
                     witness.string("  index: ").unsigned(index);
@@ -316,7 +316,7 @@ public final class CardTable {
                 boolean isClean = isCleanEntryAtIndex(ctStart, index);
                 if (isClean) {
                     final boolean witnessForDebugging = true;
-                    Log witness = (witnessForDebugging ? Log.log() : HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog());
+                    Log witness = (witnessForDebugging ? Log.log() : HeapVerifier.getTraceLog());
                     witness.string("[CardTable.verifyDirtyCards:").string("  objectsStart: ").hex(objectsStart).string("  objectsLimit: ").hex(objectsLimit).newline();
                     witness.string("  obj: ").object(obj).string("  contains young: ").bool(containsYoung).string("  but index: ").unsigned(index).string(" is clean.").string(" returns false").string(
                                     "]").newline();
@@ -338,7 +338,7 @@ public final class CardTable {
 
         @Override
         public boolean visitObject(Object obj) {
-            Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).newline();
+            Log trace = HeapVerifier.getTraceLog().string("[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).newline();
             visitor.reset();
             trace.string("  calling walkObject").newline();
             if (!InteriorObjRefWalker.walkObject(obj, visitor)) {

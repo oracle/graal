@@ -731,7 +731,7 @@ public final class GCImpl implements GC {
         if (threadLocalsWalker != null) {
             try (Timer wrm = timers.walkThreadLocals.open()) {
                 trace.string("[ThreadLocalsWalker:").newline();
-                threadLocalsWalker.walk(greyToBlackObjRefVisitor);
+                ThreadLocalMTWalker.walk(greyToBlackObjRefVisitor);
                 trace.string("]").newline();
             }
         }
@@ -867,6 +867,7 @@ public final class GCImpl implements GC {
         trace.string("]").newline();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isCollectionInProgress() {
         return collectionInProgress;
     }

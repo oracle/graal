@@ -75,8 +75,8 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     public static void registerLowering(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         GenScavengeAllocationSnippets snippetReceiver = new GenScavengeAllocationSnippets();
-        GenScavengeAllocationSnippets.Templates allocationSnippets = new GenScavengeAllocationSnippets.Templates(snippetReceiver, options, factories, SnippetCounter.Group.NullFactory, providers,
-                        snippetReflection);
+        GenScavengeAllocationSnippets.Templates allocationSnippets = new GenScavengeAllocationSnippets.Templates(
+                        snippetReceiver, options, factories, SnippetCounter.Group.NullFactory, providers, snippetReflection);
         allocationSnippets.registerLowerings(lowerings);
     }
 
@@ -97,8 +97,8 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
-        return formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, getArrayZeroingStartOffset(), emitMemoryBarrier, false, supportsBulkZeroing,
-                        snippetCounters);
+        return formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, getArrayZeroingStartOffset(),
+                        emitMemoryBarrier, false, supportsBulkZeroing, snippetCounters);
     }
 
     private static Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
@@ -154,8 +154,8 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
         private final SnippetInfo formatObject;
         private final SnippetInfo formatArray;
 
-        Templates(GenScavengeAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory groupFactory, Providers providers,
-                  SnippetReflectionProvider snippetReflection) {
+        Templates(GenScavengeAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories,
+                        SnippetCounter.Group.Factory groupFactory, Providers providers, SnippetReflectionProvider snippetReflection) {
             super(receiver, options, factories, groupFactory, providers, snippetReflection);
 
             formatObject = snippet(GenScavengeAllocationSnippets.class, "formatObjectSnippet", null, receiver);

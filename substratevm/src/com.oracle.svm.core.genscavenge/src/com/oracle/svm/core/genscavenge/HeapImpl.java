@@ -99,7 +99,7 @@ public final class HeapImpl extends Heap {
     // Singleton instances, created during image generation.
     private final YoungGeneration youngGeneration = new YoungGeneration("YoungGeneration");
     private final OldGeneration oldGeneration = new OldGeneration("OldGeneration");
-    final HeapChunkProvider chunkProvider = new HeapChunkProvider();
+    private final HeapChunkProvider chunkProvider = new HeapChunkProvider();
     private final ObjectHeaderImpl objectHeaderImpl = new ObjectHeaderImpl();
     private final GCImpl gcImpl;
     private final HeapPolicy heapPolicy;
@@ -152,6 +152,11 @@ public final class HeapImpl extends Heap {
         return getHeapImpl().imageHeapInfo;
     }
 
+    @Fold
+    static HeapChunkProvider getChunkProvider() {
+        return getHeapImpl().chunkProvider;
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public boolean isInImageHeap(Object obj) {
@@ -196,7 +201,7 @@ public final class HeapImpl extends Heap {
     /** Walk the regions of the heap. */
     boolean walkMemory(MemoryWalker.Visitor visitor) {
         VMOperation.guaranteeInProgressAtSafepoint("must only be executed at a safepoint");
-        return walkNativeImageHeapRegions(visitor) && getYoungGeneration().walkHeapChunks(visitor) && getOldGeneration().walkHeapChunks(visitor) && HeapChunkProvider.get().walkHeapChunks(visitor);
+        return walkNativeImageHeapRegions(visitor) && getYoungGeneration().walkHeapChunks(visitor) && getOldGeneration().walkHeapChunks(visitor) && getChunkProvider().walkHeapChunks(visitor);
     }
 
     /** Tear down the heap and release its memory. */
@@ -205,7 +210,7 @@ public final class HeapImpl extends Heap {
     public boolean tearDown() {
         youngGeneration.tearDown();
         oldGeneration.tearDown();
-        HeapChunkProvider.get().tearDown();
+        getChunkProvider().tearDown();
         return true;
     }
 
@@ -278,7 +283,7 @@ public final class HeapImpl extends Heap {
     }
 
     HeapPolicy getHeapPolicy() {
-        return getHeapImpl().heapPolicy;
+        return heapPolicy;
     }
 
     YoungGeneration getYoungGeneration() {
@@ -332,11 +337,10 @@ public final class HeapImpl extends Heap {
     }
 
     Log report(Log log, boolean traceHeapChunks) {
-        HeapImpl heap = HeapImpl.getHeapImpl();
         log.newline().string("[Heap:").indent(true);
-        heap.getYoungGeneration().report(log, traceHeapChunks).newline();
-        heap.getOldGeneration().report(log, traceHeapChunks).newline();
-        HeapChunkProvider.get().report(log, traceHeapChunks);
+        getYoungGeneration().report(log, traceHeapChunks).newline();
+        getOldGeneration().report(log, traceHeapChunks).newline();
+        getChunkProvider().report(log, traceHeapChunks);
         log.redent(false).string("]");
         return log;
     }
@@ -349,7 +353,7 @@ public final class HeapImpl extends Heap {
     }
 
     /** Log the zap values to make it easier to search for them. */
-    Log zapValuesToLog(Log log) {
+    static Log zapValuesToLog(Log log) {
         if (HeapPolicy.getZapProducedHeapChunks() || HeapPolicy.getZapConsumedHeapChunks()) {
             log.string("[Heap Chunk zap values: ").indent(true);
             /* Padded with spaces so the columns line up between the int and word variants. */
@@ -476,7 +480,7 @@ public final class HeapImpl extends Heap {
         if (getVerifyDirtyCardBeforeGC()) {
             assert heapVerifier != null : "No heap verifier!";
             Log.log().string("[Verify dirtyCard before GC: ");
-            heapVerifier.verifyDirtyCard(false);
+            HeapVerifier.verifyDirtyCard(false);
         }
         trace.string("]").newline();
     }
@@ -500,7 +504,7 @@ public final class HeapImpl extends Heap {
         if (getVerifyDirtyCardAfterGC()) {
             assert heapVerifier != null : "No heap verifier!";
             Log.log().string("[Verify dirtyCard after GC: ");
-            heapVerifier.verifyDirtyCard(true);
+            HeapVerifier.verifyDirtyCard(true);
         }
     }
 
@@ -529,6 +533,7 @@ public final class HeapImpl extends Heap {
      * @return the maximum amount of memory that the virtual machine will attempt to use, measured
      *         in bytes
      */
+    @SuppressWarnings("static-method")
     UnsignedWord maxMemory() {
         /* Get physical memory size, so it gets set correctly instead of being estimated. */
         PhysicalMemory.size();
@@ -875,7 +880,7 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
 }
 
 @TargetClass(value = java.lang.Runtime.class, onlyWith = UseCardRememberedSetHeap.class)
-@SuppressWarnings({"static-method"})
+@SuppressWarnings("static-method")
 final class Target_java_lang_Runtime {
     @Substitute
     private long freeMemory() {

@@ -174,7 +174,6 @@ public final class HeapPolicy {
         return result;
     }
 
-    @SuppressWarnings("try")
     public static UnsignedWord getMaximumHeapSize() {
         if (maximumHeapSize.aboveThan(WordFactory.zero())) {
             return maximumHeapSize;

@@ -325,7 +325,7 @@ public final class FirstObjectTable {
 
     /** Walk the table checking I can find the start of each object that crosses onto an entry. */
     static boolean verify(Pointer tableStart, Pointer memoryStart, Pointer memoryLimit) {
-        Log trace = HeapImpl.getHeapImpl().getHeapVerifier().getTraceLog().string("[FirstObjectTable.verify:");
+        Log trace = HeapVerifier.getTraceLog().string("[FirstObjectTable.verify:");
         trace.string("  tableStart: ").hex(tableStart).string("  memoryStart: ").hex(memoryStart).string("  memoryLimit: ").hex(memoryLimit);
         UnsignedWord indexLimit = getTableSizeForMemoryRange(memoryStart, memoryLimit);
         for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {

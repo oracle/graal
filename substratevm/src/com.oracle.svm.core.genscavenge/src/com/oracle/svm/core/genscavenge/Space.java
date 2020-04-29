@@ -472,7 +472,7 @@ final class Space {
 
     private void releaseAlignedHeapChunks() {
         for (AlignedHeapChunk.AlignedHeader chunk = popAlignedHeapChunk(); chunk.isNonNull(); chunk = popAlignedHeapChunk()) {
-            HeapChunkProvider.get().consumeAlignedChunk(chunk);
+            HeapImpl.getChunkProvider().consumeAlignedChunk(chunk);
         }
         assert getFirstAlignedHeapChunk().isNull() : "Failed to remove first AlignedHeapChunk.";
         assert getLastAlignedHeapChunk().isNull() : "Failed to remove last AlignedHeapChunk.";
@@ -480,7 +480,7 @@ final class Space {
 
     private void releaseUnalignedHeapChunks() {
         for (UnalignedHeapChunk.UnalignedHeader chunk = popUnalignedHeapChunk(); chunk.isNonNull(); chunk = popUnalignedHeapChunk()) {
-            HeapChunkProvider.get().consumeUnalignedChunk(chunk);
+            HeapChunkProvider.consumeUnalignedChunk(chunk);
         }
         assert getFirstUnalignedHeapChunk().isNull() : "Failed to remove first UnalignedHeapChunk";
         assert getLastUnalignedHeapChunk().isNull() : "Failed to remove last UnalignedHeapChunk";
@@ -577,7 +577,7 @@ final class Space {
     private AlignedHeapChunk.AlignedHeader requestAlignedHeapChunk() {
         assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
         Log trace = Log.noopLog().string("[Space.requestAlignedHeapChunk:").string("  space: ").string(getName()).newline();
-        AlignedHeapChunk.AlignedHeader aChunk = HeapChunkProvider.get().produceAlignedChunk();
+        AlignedHeapChunk.AlignedHeader aChunk = HeapImpl.getChunkProvider().produceAlignedChunk();
         trace.string("  aChunk: ").hex(aChunk);
         if (aChunk.isNonNull()) {
             appendAlignedHeapChunk(aChunk);
