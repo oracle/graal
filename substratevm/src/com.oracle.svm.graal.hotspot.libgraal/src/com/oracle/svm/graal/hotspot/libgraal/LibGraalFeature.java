@@ -673,7 +673,7 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
     @Substitute
     @SuppressWarnings("static-method")
     void afterRun() {
-        LibGraal.detachCurrentThread(HotSpotJVMCIRuntime.runtime());
+        LibGraal.detachCurrentThread(HotSpotJVMCIRuntime.runtime(), false);
     }
 }
 

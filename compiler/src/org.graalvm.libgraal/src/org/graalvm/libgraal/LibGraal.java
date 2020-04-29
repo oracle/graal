@@ -155,9 +155,14 @@ public class LibGraal {
 
     /**
      * Detaches the current thread from the peer runtime.
+     *
+     * @param release if {@code true} and the VM supports releasing the {@code JavaVM} associated
+     *            with libgraal runtimes and this is the last thread attached to a libgraal runtime,
+     *            then this call destroys the associated {@code JavaVM} instance, releasing its
+     *            resources
      */
     @SuppressWarnings("unused")
-    public static void detachCurrentThread(HotSpotJVMCIRuntime runtime) {
+    public static void detachCurrentThread(HotSpotJVMCIRuntime runtime, boolean release) {
         throw shouldNotReachHere();
     }
 

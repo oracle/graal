@@ -24,8 +24,10 @@
  */
 package org.graalvm.libgraal;
 
+import static org.graalvm.libgraal.LibGraalScope.method;
+import static org.graalvm.libgraal.LibGraalScope.sig;
+
 import java.lang.reflect.Method;
-import java.util.Arrays;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
@@ -36,34 +38,8 @@ import jdk.vm.ci.services.Services;
  */
 public class LibGraal {
 
-    static final Method runtimeAttachCurrentThread;
-
-    static {
-        Method attachCurrentThread = null;
-
-        Class<?> runtimeClass = HotSpotJVMCIRuntime.class;
-        for (Method m : runtimeClass.getDeclaredMethods()) {
-            if (m.getName().equals("attachCurrentThread")) {
-                if (attachCurrentThread != null) {
-                    throw new InternalError(String.format("Expected single method named attachCurrentThread, found %s and %s",
-                                    attachCurrentThread, m));
-                }
-                attachCurrentThread = m;
-            }
-        }
-        if (attachCurrentThread == null) {
-            throw new InternalError("Cannot find attachCurrentThread in " + runtimeClass);
-        }
-        runtimeAttachCurrentThread = attachCurrentThread;
-
-        Class<?>[] v1 = {Boolean.TYPE};
-        Class<?>[] v2 = {Boolean.TYPE, long[].class};
-        Class<?>[] parameterTypes = attachCurrentThread.getParameterTypes();
-        if (!Arrays.equals(parameterTypes, v1) && !Arrays.equals(parameterTypes, v2)) {
-            throw new InternalError(String.format("Unexpected signature for attachCurrentThread: %s",
-                            Arrays.toString(parameterTypes)));
-        }
-    }
+    static final Method attachCurrentThread = method(HotSpotJVMCIRuntime.class, "attachCurrentThread", sig(Boolean.TYPE), sig(Boolean.TYPE, long[].class));
+    static final Method detachCurrentThread = method(HotSpotJVMCIRuntime.class, "detachCurrentThread", sig(), sig(Boolean.TYPE));
 
     public static boolean isAvailable() {
         return inLibGraal() || available;
@@ -127,9 +103,9 @@ public class LibGraal {
 
     public static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime, boolean isDaemon, long[] isolate) {
         try {
-            if (runtimeAttachCurrentThread.getParameterCount() == 2) {
+            if (attachCurrentThread.getParameterCount() == 2) {
                 long[] javaVMInfo = isolate != null ? new long[4] : null;
-                boolean res = (boolean) runtimeAttachCurrentThread.invoke(runtime, isDaemon, javaVMInfo);
+                boolean res = (boolean) attachCurrentThread.invoke(runtime, isDaemon, javaVMInfo);
                 if (isolate != null) {
                     isolate[0] = javaVMInfo[1];
                 }
@@ -138,15 +114,23 @@ public class LibGraal {
                 if (isolate != null) {
                     isolate[0] = initialIsolate;
                 }
-                return (boolean) runtimeAttachCurrentThread.invoke(runtime, isDaemon);
+                return (boolean) attachCurrentThread.invoke(runtime, isDaemon);
             }
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
     }
 
-    public static void detachCurrentThread(HotSpotJVMCIRuntime runtime) {
-        runtime.detachCurrentThread();
+    public static void detachCurrentThread(HotSpotJVMCIRuntime runtime, boolean release) {
+        try {
+            if (detachCurrentThread.getParameterCount() == 1) {
+                detachCurrentThread.invoke(runtime, release);
+            } else {
+                detachCurrentThread.invoke(runtime);
+            }
+        } catch (Throwable throwable) {
+            throw new InternalError(throwable);
+        }
     }
 
     static native long getCurrentIsolateThread(long iso);
