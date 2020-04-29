@@ -1112,14 +1112,15 @@ final class InstrumentationHandler {
         visitor.materializeTags = (Set<Class<? extends Tag>>) (visitor.materializeLimitedTags == null ? visitor.providedTags : visitor.materializeLimitedTags);
         visitor.rootSourceSection = root.getSourceSection();
 
-        if (visitor.shouldVisit() || forceRootBitComputation) {
-            Lock lock = InstrumentAccessor.nodesAccess().getLock(node);
-            lock.lock();
-            try {
+        Lock lock = InstrumentAccessor.nodesAccess().getLock(node);
+        lock.lock();
+        try {
+            visitor.rootBits = RootNodeBits.get(visitor.root);
+
+            if (visitor.shouldVisit() || forceRootBitComputation) {
                 if (TRACE) {
                     trace("BEGIN: Traverse root %s for %s%n", root.toString(), visitor);
                 }
-                visitor.rootBits = RootNodeBits.get(visitor.root);
                 visitor.setExecutedRootNodeBit = setExecutedRootNodeBit;
                 if (forceRootBitComputation) {
                     visitor.computingRootNodeBits = RootNodeBits.isUninitialized(visitor.rootBits) ? RootNodeBits.getAll() : visitor.rootBits;
@@ -1142,9 +1143,9 @@ final class InstrumentationHandler {
                 if (TRACE) {
                     trace("END: Traverse root %s for %s%n", root.toString(), visitor);
                 }
-            } finally {
-                lock.unlock();
             }
+        } finally {
+            lock.unlock();
         }
 
         if (TRACE) {
