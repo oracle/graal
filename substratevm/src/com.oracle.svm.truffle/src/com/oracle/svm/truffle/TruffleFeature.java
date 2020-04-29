@@ -247,6 +247,11 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
             return (CompilableTruffleAST) KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(OptimizedCallTarget.class, constant), Object.class);
         }
+
+        @SuppressWarnings("unused")
+        public boolean tryLog(SubstrateTruffleRuntime runtime, CompilableTruffleAST compilable, String message) {
+            return false;
+        }
     }
 
     private Support support;
