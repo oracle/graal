@@ -206,7 +206,7 @@ public abstract class PartialEvaluator {
         throw new NoSuchMethodError(declaringClass.toJavaName() + "." + name + descriptor);
     }
 
-    static InlineInvokePlugin.InlineInfo asInlineInfo(ResolvedJavaMethod method) {
+    public static InlineInvokePlugin.InlineInfo asInlineInfo(ResolvedJavaMethod method) {
         final TruffleCompilerRuntime.InlineKind inlineKind = TruffleCompilerRuntime.getRuntime().getInlineKind(method, true);
         switch (inlineKind) {
             case DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION:
@@ -261,6 +261,14 @@ public abstract class PartialEvaluator {
 
     public ResolvedJavaMethod[] getNeverInlineMethods() {
         return new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, inlinedPERoot};
+    }
+
+    public ResolvedJavaMethod getCallDirect() {
+        return callDirectMethod;
+    }
+
+    public ResolvedJavaMethod getCallInlined() {
+        return callInlined;
     }
 
     public final class Request {
@@ -410,7 +418,7 @@ public abstract class PartialEvaluator {
      * @param compilable the Truffle AST being compiled.
      */
     public ResolvedJavaMethod inlineRootForCallTarget(CompilableTruffleAST compilable) {
-        return inlinedPERoot;
+        return callInlined;
     }
 
     private class InterceptReceiverPlugin implements ParameterPlugin {
