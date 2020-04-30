@@ -37,9 +37,9 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.compiler.PEAgnosticInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 
 final class GraphManager {
 
@@ -60,7 +60,7 @@ final class GraphManager {
             final PartialEvaluator.Request request = newRequest(truffleAST);
             request.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
             partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
-            entry = new Entry(request.graph, plugin.getTruffleCallNodeToInvoke(), plugin.getIndirectInvokes());
+            entry = new Entry(request.graph, plugin.getInvokeToTruffleCallNode(), plugin.getIndirectInvokes());
             irCache.put(truffleAST, entry);
         }
         return entry;
@@ -82,10 +82,10 @@ final class GraphManager {
         return new PEAgnosticInlineInvokePlugin(rootRequest.inliningPlan, partialEvaluator);
     }
 
-    EconomicMap<TruffleCallNode, Invoke> peRoot() {
+    EconomicMap<Invoke, TruffleCallNode> peRoot() {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
         partialEvaluator.doGraphPE(rootRequest, plugin, graphCacheForInlining);
-        return plugin.getTruffleCallNodeToInvoke();
+        return plugin.getInvokeToTruffleCallNode();
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
@@ -95,12 +95,12 @@ final class GraphManager {
 
     static class Entry {
         final StructuredGraph graph;
-        final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke;
+        final EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode;
         final List<Invoke> indirectInvokes;
 
-        Entry(StructuredGraph graph, EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke, List<Invoke> indirectInvokes) {
+        Entry(StructuredGraph graph, EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode, List<Invoke> indirectInvokes) {
             this.graph = graph;
-            this.truffleCallNodeToInvoke = truffleCallNodeToInvoke;
+            this.invokeToTruffleCallNode = invokeToTruffleCallNode;
             this.indirectInvokes = indirectInvokes;
         }
     }

@@ -57,6 +57,12 @@ gateTestCompileImmediately : ${gateTest} {
   }
 }
 
+gateLanguageAgnoistcInlining : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-Dpolyglot.engine.AllowExperimentalOptions=true -Dpolyglot.engine.LanguageAgnosticInlining=true"
+  }
+}
+
 gateTestCTW : {
   environment : {
     EXTRA_VM_ARGS : ""

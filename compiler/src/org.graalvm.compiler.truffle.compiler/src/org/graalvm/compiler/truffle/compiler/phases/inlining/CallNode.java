@@ -100,15 +100,28 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         callTree.add(root);
         root.ir = request.graph;
         root.policyData = callTree.getPolicy().newCallNodeData(root);
-        root.addChildren();
-        EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = callTree.getGraphManager().peRoot();
-        for (CallNode child : root.children) {
-            Invoke invoke = truffleCallNodeToInvoke.get(child.getTruffleCaller());
-            child.setInvokeOrRemove(invoke);
-        }
+        EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = callTree.getGraphManager().peRoot();
+        addChildren(root, invokeToTruffleCallNode);
         root.state = State.Inlined;
         callTree.getPolicy().afterExpand(root);
         return root;
+    }
+
+    private static void addChildren(CallNode node, EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode) {
+        for (Invoke invoke : invokeToTruffleCallNode.getKeys()) {
+            if (!invoke.isAlive()) {
+                continue;
+            }
+            final TruffleCallNode childCallNode = invokeToTruffleCallNode.get(invoke);
+            double relativeFrequency = calculateFrequency(node.truffleAST, childCallNode);
+            double childFrequency = relativeFrequency * node.rootRelativeFrequency;
+            CallNode callNode = new CallNode(childCallNode, childCallNode.getCurrentCallTarget(), childFrequency, node.depth + 1, node.getCallTree().nextId());
+            node.getCallTree().add(callNode);
+            node.children.add(callNode);
+            callNode.policyData = node.getPolicy().newCallNodeData(callNode);
+            callNode.setInvokeOrRemove(invoke);
+        }
+        node.getPolicy().afterAddChildren(node);
     }
 
     private static double calculateFrequency(CompilableTruffleAST target, TruffleCallNode callNode) {
@@ -177,19 +190,6 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
     }
 
-    private void addChildren() {
-        // In the current implementation, this may be called only once.
-        for (TruffleCallNode childCallNode : truffleCallees) {
-            double relativeFrequency = calculateFrequency(truffleAST, childCallNode);
-            double childFrequency = relativeFrequency * rootRelativeFrequency;
-            CallNode callNode = new CallNode(childCallNode, childCallNode.getCurrentCallTarget(), childFrequency, depth + 1, getCallTree().nextId());
-            getCallTree().add(callNode);
-            children.add(callNode);
-            callNode.policyData = getPolicy().newCallNodeData(callNode);
-        }
-        getPolicy().afterAddChildren(this);
-    }
-
     public int getDepth() {
         return depth;
     }
@@ -228,31 +228,27 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         assert getParent() != null;
         state = State.Expanded;
         getCallTree().expanded++;
-        addChildren();
         assert state == State.Expanded;
         assert ir == null;
         // TODO: GR-22688 - This could potentially bail out, we shouldn't bailout entirely.
         GraphManager.Entry entry = getCallTree().getGraphManager().pe(truffleAST);
-        ir = copyGraphAndUpdateInvokes(entry);
+        ir = copyGraphAndAddChildren(entry);
         addIndirectChildren(entry);
         getPolicy().afterExpand(this);
     }
 
-    private StructuredGraph copyGraphAndUpdateInvokes(GraphManager.Entry entry) {
+    private StructuredGraph copyGraphAndAddChildren(GraphManager.Entry entry) {
         StructuredGraph graph = entry.graph;
         return (StructuredGraph) graph.copy(new Consumer<UnmodifiableEconomicMap<Node, Node>>() {
             @Override
             public void accept(UnmodifiableEconomicMap<Node, Node> duplicates) {
-                for (CallNode child : children) {
-                    TruffleCallNode childTruffleCallNode = child.getTruffleCaller();
-                    Invoke original = entry.truffleCallNodeToInvoke.get(childTruffleCallNode);
-                    if (original == null || !original.isAlive()) {
-                        child.remove();
-                    } else {
-                        Invoke replacement = (Invoke) duplicates.get((Node) original);
-                        child.setInvokeOrRemove(replacement);
-                    }
+                final EconomicMap<Invoke, TruffleCallNode> replacements = EconomicMap.create();
+                for (Invoke original : entry.invokeToTruffleCallNode.getKeys()) {
+                    final TruffleCallNode truffleCallNode = entry.invokeToTruffleCallNode.get(original);
+                    Invoke replacement = (Invoke) duplicates.get((Node) original);
+                    replacements.put(replacement, truffleCallNode);
                 }
+                addChildren(CallNode.this, replacements);
             }
         }, graph.getDebug());
     }
@@ -333,10 +329,6 @@ public final class CallNode extends Node implements Comparable<CallNode> {
 
     public CallTree getCallTree() {
         return (CallTree) graph();
-    }
-
-    private TruffleCallNode getTruffleCaller() {
-        return truffleCaller;
     }
 
     @Override
