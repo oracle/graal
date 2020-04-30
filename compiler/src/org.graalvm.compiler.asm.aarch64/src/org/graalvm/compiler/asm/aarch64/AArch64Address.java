@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -141,6 +141,26 @@ public final class AArch64Address extends AbstractAddress {
      */
     public static AArch64Address createUnscaledImmediateAddress(Register base, int imm9) {
         return new AArch64Address(base, zr, imm9, false, null, AddressingMode.IMMEDIATE_UNSCALED);
+    }
+
+    /**
+     * Generates a new address for the given base + imm. Ideally this uses the "base plus offset"
+     * mode. However, if offset is too large, then imm is loaded into a scratch register and the
+     * "base register only" addressing mode is used.
+     *
+     * @param base may not be null or the zero-register.
+     * @param imm Signed immediate value.
+     * @return an address specifying for base + imm
+     */
+    public static AArch64Address createWrappedUnscaledImmediateAddress(AArch64MacroAssembler masm, Register base, int imm, Register scratch) {
+        AArch64Address address = null;
+        if (NumUtil.isSignedNbit(9, imm)) {
+            address = AArch64Address.createUnscaledImmediateAddress(base, imm);
+        } else {
+            masm.mov(scratch, imm);
+            address = AArch64Address.createRegisterOffsetAddress(base, scratch, false);
+        }
+        return address;
     }
 
     /**

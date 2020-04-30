@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,14 +56,16 @@ public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         assert SubstrateOptions.MultiThreaded.getValue();
         SubstrateRegisterConfig threadRegister = (SubstrateRegisterConfig) crb.codeCache.getRegisterConfig();
-        AArch64Address safepointAddress = AArch64Address.createUnscaledImmediateAddress(threadRegister.getThreadRegister(), Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset()));
         int safepointSize = AArch64Kind.QWORD.getSizeInBytes() * 8;
-        try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
-            Register scratch = scratchRegister.getRegister();
-            masm.ldr(safepointSize, scratch, safepointAddress);
-            masm.subs(safepointSize, scratch, scratch, 1);
+        try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
+            Register scratchRegister = scratch1.getRegister();
+            Register overflowRegister = scratch2.getRegister();
+            int offset = Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset());
+            AArch64Address safepointAddress = AArch64Address.createWrappedUnscaledImmediateAddress(masm, threadRegister.getThreadRegister(), offset, overflowRegister);
+            masm.ldr(safepointSize, scratchRegister, safepointAddress);
+            masm.subs(safepointSize, scratchRegister, scratchRegister, 1);
             if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
-                masm.str(safepointSize, scratch, safepointAddress);
+                masm.str(safepointSize, scratchRegister, safepointAddress);
             }
         }
     }

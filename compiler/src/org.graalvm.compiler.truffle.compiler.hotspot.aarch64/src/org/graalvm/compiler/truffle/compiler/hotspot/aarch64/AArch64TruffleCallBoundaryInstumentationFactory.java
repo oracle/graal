@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,19 +70,20 @@ public class AArch64TruffleCallBoundaryInstumentationFactory extends TruffleCall
                         AArch64MacroAssembler masm = (AArch64MacroAssembler) this.asm;
                         AArch64HotSpotBackend.emitInvalidatePlaceholder(this, masm);
 
-                        try (ScratchRegister scratch = masm.getScratchRegister()) {
+                        try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
                             Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, Object).get(0);
-                            Register spillRegister = scratch.getRegister();
+                            Register spillRegister = scratch1.getRegister();
+                            Register overflowRegister = scratch2.getRegister();
                             Label doProlog = new Label();
                             if (config.useCompressedOops) {
                                 CompressEncoding encoding = config.getOopEncoding();
-                                masm.ldr(32, spillRegister, AArch64Address.createPairUnscaledImmediateAddress(thisRegister, installedCodeOffset));
+                                masm.ldr(32, spillRegister, AArch64Address.createWrappedUnscaledImmediateAddress(masm, thisRegister, installedCodeOffset, overflowRegister));
                                 Register base = encoding.hasBase() ? registers.getHeapBaseRegister() : null;
                                 AArch64HotSpotMove.UncompressPointer.emitUncompressCode(masm, spillRegister, spillRegister, base, encoding.getShift(), true);
                             } else {
-                                masm.ldr(64, spillRegister, AArch64Address.createPairUnscaledImmediateAddress(thisRegister, installedCodeOffset));
+                                masm.ldr(64, spillRegister, AArch64Address.createWrappedUnscaledImmediateAddress(masm, thisRegister, installedCodeOffset, overflowRegister));
                             }
-                            masm.ldr(64, spillRegister, AArch64Address.createPairUnscaledImmediateAddress(spillRegister, entryPointOffset));
+                            masm.ldr(64, spillRegister, AArch64Address.createWrappedUnscaledImmediateAddress(masm, spillRegister, entryPointOffset, overflowRegister));
                             masm.cbz(64, spillRegister, doProlog);
                             masm.jmp(spillRegister);
                             masm.nop();

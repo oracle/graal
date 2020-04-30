@@ -235,24 +235,26 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
          * metadata is registered for the end of the instruction just works.
          */
         int startPos = masm.position();
-        try (ScratchRegister scratch = masm.getScratchRegister()) {
-            Register tempRegister = scratch.getRegister();
+        try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
+            Register tempRegister = scratch1.getRegister();
+            Register overflowRegister = scratch2.getRegister();
             // Save PC
             masm.adr(tempRegister, 4); // Read PC + 4
             crb.recordIndirectCall(startPos, masm.position(), null, state);
-            masm.str(64, tempRegister, AArch64Address.createPairUnscaledImmediateAddress(anchor, runtimeConfiguration.getJavaFrameAnchorLastIPOffset()));
+            masm.str(64, tempRegister, AArch64Address.createWrappedUnscaledImmediateAddress(masm, anchor, runtimeConfiguration.getJavaFrameAnchorLastIPOffset(), overflowRegister));
             // Save SP
             masm.mov(64, tempRegister, sp);
-            masm.str(64, tempRegister, AArch64Address.createPairUnscaledImmediateAddress(anchor, runtimeConfiguration.getJavaFrameAnchorLastSPOffset()));
+            masm.str(64, tempRegister, AArch64Address.createWrappedUnscaledImmediateAddress(masm, anchor, runtimeConfiguration.getJavaFrameAnchorLastSPOffset(), overflowRegister));
         }
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             /* Change the VMThread status from Java to Native. */
-            try (ScratchRegister scratch = masm.getScratchRegister()) {
-                Register tempRegister = scratch.getRegister();
+            try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
+                Register tempRegister = scratch1.getRegister();
+                Register overflowRegister = scratch2.getRegister();
                 masm.mov(tempRegister, newThreadStatus);
                 masm.str(32, tempRegister,
-                                AArch64Address.createPairUnscaledImmediateAddress(runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset()));
+                                AArch64Address.createWrappedUnscaledImmediateAddress(masm, runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset(), overflowRegister));
             }
         }
     }
@@ -594,8 +596,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             asm.ldr(64, r1, AArch64Address.createUnscaledImmediateAddress(sp, 0));
 
             // Store the original return value registers
-            int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
-            asm.str(64, r0, AArch64Address.createUnscaledImmediateAddress(r1, scratchOffset));
+            try (ScratchRegister scratch = asm.getScratchRegister()) {
+                Register overflowRegister = scratch.getRegister();
+                int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
+                asm.str(64, r0, AArch64Address.createWrappedUnscaledImmediateAddress(asm, r1, scratchOffset, overflowRegister));
+            }
 
             // Move DeoptimizedFrame into the first argument register (static method)
             asm.mov(64, r0, r1);
@@ -626,8 +631,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             super.leave(tasm);
 
             // Restore the return value registers (the DeoptimizedFrame is in r1).
-            int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
-            asm.ldr(64, r0, AArch64Address.createUnscaledImmediateAddress(r0, scratchOffset));
+            try (ScratchRegister scratch = asm.getScratchRegister()) {
+                Register overflowRegister = scratch.getRegister();
+                int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
+                asm.ldr(64, r0, AArch64Address.createWrappedUnscaledImmediateAddress(asm, r0, scratchOffset, overflowRegister));
+            }
         }
     }
 
@@ -853,14 +861,15 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         CompilationResult result = new CompilationResult(identifier);
         AArch64MacroAssembler asm = new AArch64MacroAssembler(getTarget());
-        try (ScratchRegister scratch = asm.getScratchRegister()) {
-            Register scratchRegister = scratch.getRegister();
+        try (ScratchRegister scratch1 = asm.getScratchRegister(); ScratchRegister scratch2 = asm.getScratchRegister()) {
+            Register scratchRegister = scratch1.getRegister();
+            Register overflowRegister = scratch2.getRegister();
             if (SubstrateOptions.SpawnIsolates.getValue()) { // method id is offset from heap base
-                asm.ldr(64, scratchRegister, AArch64Address.createUnscaledImmediateAddress(threadArg.getRegister(), threadIsolateOffset));
+                asm.ldr(64, scratchRegister, AArch64Address.createWrappedUnscaledImmediateAddress(asm, threadArg.getRegister(), threadIsolateOffset, overflowRegister));
                 asm.add(64, scratchRegister, scratchRegister, methodIdArg.getRegister());
-                asm.ldr(64, scratchRegister, AArch64Address.createUnscaledImmediateAddress(scratchRegister, methodObjEntryPointOffset));
+                asm.ldr(64, scratchRegister, AArch64Address.createWrappedUnscaledImmediateAddress(asm, scratchRegister, methodObjEntryPointOffset, overflowRegister));
             } else { // method id is address of method object
-                asm.ldr(64, scratchRegister, AArch64Address.createUnscaledImmediateAddress(methodIdArg.getRegister(), methodObjEntryPointOffset));
+                asm.ldr(64, scratchRegister, AArch64Address.createWrappedUnscaledImmediateAddress(asm, methodIdArg.getRegister(), methodObjEntryPointOffset, overflowRegister));
             }
             asm.jmp(scratchRegister);
         }
