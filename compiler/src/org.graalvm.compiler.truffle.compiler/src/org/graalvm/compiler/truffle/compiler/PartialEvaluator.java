@@ -87,8 +87,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
@@ -222,15 +220,6 @@ public abstract class PartialEvaluator {
                 return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(method);
             default:
                 throw new IllegalArgumentException(String.valueOf(inlineKind));
-        }
-    }
-
-    private static void removeInlineTokenNodes(StructuredGraph graph) {
-        for (InlineDecisionNode node : graph.getNodes(InlineDecisionNode.TYPE)) {
-            node.notInlined();
-        }
-        for (InlineDecisionInjectNode node : graph.getNodes(InlineDecisionInjectNode.TYPE)) {
-            node.resolve();
         }
     }
 
@@ -574,7 +563,6 @@ public abstract class PartialEvaluator {
                 final PEInliningPlanInvokePlugin plugin = new PEInliningPlanInvokePlugin(this, request.options, request.compilable, request.inliningPlan, request.graph);
                 doGraphPE(request, plugin, EconomicMap.create());
             }
-            removeInlineTokenNodes(request.graph);
         }
         request.debug.dump(DebugContext.BASIC_LEVEL, request.graph, "After Partial Evaluation");
         request.graph.maybeCompress();

@@ -370,26 +370,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         try {
             try {
                 Object result;
-                final boolean isInlined = InlineDecision.get();
-                if (isInlined) {
-                    /*
-                     * Language agnostic inlining depends on this call to callBoundary to inline.
-                     * This call to callBoundary will be replaced with #inlinedPERoot during
-                     * compilation. We don't simply call #inlinedPERoot at this point as a truffle
-                     * call boundary is a known point to end partial evaluation. This might change
-                     * (GR-22220).
-                     *
-                     * The isInlined value is passed in to create a data dependency needed by the
-                     * compiler and despite being "always true" should not be replaced with true (or
-                     * anything else).
-                     */
-                    result = callBoundary(InlineDecision.inject(args, isInlined));
-                } else {
-                    profileArguments(args);
-                    result = doInvoke(args);
-                    if (CompilerDirectives.inCompiledCode()) {
-                        result = injectReturnValueProfile(result);
-                    }
+                profileArguments(args);
+                result = doInvoke(args);
+                if (CompilerDirectives.inCompiledCode()) {
+                    result = injectReturnValueProfile(result);
                 }
                 return result;
             } catch (Throwable t) {

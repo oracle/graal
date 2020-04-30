@@ -43,12 +43,9 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 
 @NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class CallNode extends Node implements Comparable<CallNode> {
@@ -126,22 +123,6 @@ public final class CallNode extends Node implements Comparable<CallNode> {
 
     private static double calculateFrequency(CompilableTruffleAST target, TruffleCallNode callNode) {
         return (double) Math.max(1, callNode.getCallCount()) / (double) Math.max(1, target.getCallCount());
-    }
-
-    private static void handleInlineDecisionNode(Invoke invoke) {
-        NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
-        ValueNode argument = arguments.get(1);
-        if (!(argument instanceof InlineDecisionInjectNode)) {
-            GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
-        }
-        InlineDecisionInjectNode injectNode = (InlineDecisionInjectNode) argument;
-        ValueNode maybeDecision = injectNode.getDecision();
-        if (!(maybeDecision instanceof InlineDecisionNode)) {
-            GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
-        }
-        InlineDecisionNode inlineDecisionNode = (InlineDecisionNode) maybeDecision;
-        inlineDecisionNode.inlined();
-        injectNode.resolve();
     }
 
     public CompilableTruffleAST getTruffleAST() {
@@ -260,7 +241,6 @@ public final class CallNode extends Node implements Comparable<CallNode> {
             remove();
             return;
         }
-        handleInlineDecisionNode(invoke);
         UnmodifiableEconomicMap<Node, Node> replacements = getCallTree().getGraphManager().doInline(invoke, ir, truffleAST);
         updateChildInvokes(replacements);
         state = State.Inlined;
