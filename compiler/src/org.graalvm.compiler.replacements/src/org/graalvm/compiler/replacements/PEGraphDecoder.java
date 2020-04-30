@@ -657,6 +657,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     public void decode(ResolvedJavaMethod method, boolean isSubstitution, boolean trackNodeSourcePosition) {
         try (DebugContext.Scope scope = debug.scope("PEGraphDecode", graph)) {
             EncodedGraph encodedGraph = lookupEncodedGraph(method, null, null, isSubstitution, trackNodeSourcePosition);
+            recordInlinedMethods(encodedGraph);
             PEMethodScope methodScope = new PEMethodScope(graph, null, null, encodedGraph, method, null, 0, loopExplosionPlugin, null);
             decode(createInitialLoopScope(methodScope, null));
             cleanupGraph(methodScope);
@@ -672,6 +673,15 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             assert CFGVerifier.verify(ControlFlowGraph.compute(graph, true, true, true, true));
         } catch (Throwable ex) {
             throw GraalError.shouldNotReachHere("Control flow graph not valid after partial evaluation");
+        }
+    }
+
+    private void recordInlinedMethods(EncodedGraph encodedGraph) {
+        List<ResolvedJavaMethod> inlinedMethods = encodedGraph.getInlinedMethods();
+        if (inlinedMethods != null) {
+            for (ResolvedJavaMethod other : inlinedMethods) {
+                graph.recordMethod(other);
+            }
         }
     }
 
@@ -989,12 +999,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         // Copy inlined methods from inlinee to caller
-        List<ResolvedJavaMethod> inlinedMethods = graphToInline.getInlinedMethods();
-        if (inlinedMethods != null) {
-            for (ResolvedJavaMethod other : inlinedMethods) {
-                graph.recordMethod(other);
-            }
-        }
+        recordInlinedMethods(graphToInline);
 
         if (graphToInline.getFields() != null) {
             for (ResolvedJavaField field : graphToInline.getFields()) {
