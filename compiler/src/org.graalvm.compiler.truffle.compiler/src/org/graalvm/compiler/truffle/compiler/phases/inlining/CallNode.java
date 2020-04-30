@@ -32,10 +32,8 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeSuccessorList;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -356,6 +354,21 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     @Override
     public int compareTo(CallNode o) {
         return Integer.compare(id, o.id);
+    }
+
+    public void finalizeGraph() {
+        if (state == State.Inlined) {
+            for (CallNode child : children) {
+                child.finalizeGraph();
+            }
+        }
+        if (state == State.Cutoff || state == State.Expanded) {
+            if (invoke.isAlive()) {
+                getCallTree().getGraphManager().finalizeGraph(invoke, truffleAST);
+            } else {
+                state = State.Removed;
+            }
+        }
     }
 
     public enum State {
