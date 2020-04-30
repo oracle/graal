@@ -141,7 +141,7 @@ public final class HeapImpl extends Heap {
     }
 
     @Fold
-    static HeapImpl getHeapImpl() {
+    public static HeapImpl getHeapImpl() {
         Heap heap = Heap.getHeap();
         assert heap instanceof HeapImpl : "VMConfiguration heap is not a HeapImpl.";
         return (HeapImpl) heap;

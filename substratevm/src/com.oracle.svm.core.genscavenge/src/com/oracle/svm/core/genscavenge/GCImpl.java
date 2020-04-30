@@ -102,7 +102,6 @@ public final class GCImpl implements GC {
     private final GreyToBlackObjectVisitor greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
     private final CollectionPolicy collectOnlyCompletelyPolicy = new CollectionPolicy.OnlyCompletely();
     private final BlackenImageHeapRootsVisitor blackenImageHeapRootsVisitor = new BlackenImageHeapRootsVisitor();
-    private final ThreadLocalMTWalker threadLocalsWalker = createThreadLocalsWalker();
     private final RuntimeCodeCacheWalker runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
     private final RuntimeCodeCacheCleaner runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
 
@@ -125,13 +124,6 @@ public final class GCImpl implements GC {
     GCImpl(FeatureAccess access) {
         this.policy = CollectionPolicy.getInitialPolicy(access);
         RuntimeSupport.getRuntimeSupport().addShutdownHook(this::printGCSummary);
-    }
-
-    private static ThreadLocalMTWalker createThreadLocalsWalker() {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            return new ThreadLocalMTWalker();
-        }
-        return null;
     }
 
     @Override
@@ -728,7 +720,7 @@ public final class GCImpl implements GC {
     @SuppressWarnings("try")
     private void walkThreadLocals() {
         Log trace = Log.noopLog().string("[walkRegisteredObjectReferences").string(":").newline();
-        if (threadLocalsWalker != null) {
+        if (SubstrateOptions.MultiThreaded.getValue()) {
             try (Timer wrm = timers.walkThreadLocals.open()) {
                 trace.string("[ThreadLocalsWalker:").newline();
                 ThreadLocalMTWalker.walk(greyToBlackObjRefVisitor);

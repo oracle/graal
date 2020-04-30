@@ -213,16 +213,13 @@ public final class CardTable {
     }
 
     private static boolean visitCards(Pointer table, UnsignedWord indexLimit, CardTable.Visitor visitor) {
-        if (!visitor.prologue(table, indexLimit)) {
-            return false;
-        }
         for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
             int entry = readEntryAtIndex(table, index);
             if (!visitor.visitEntry(table, index, entry)) {
                 return false;
             }
         }
-        return visitor.epilogue(table, indexLimit);
+        return true;
     }
 
     private static ReferenceToYoungObjectVisitor getReferenceToYoungObjectVisitor() {
@@ -438,17 +435,6 @@ public final class CardTable {
 
     /** An interface for visitors to a card remembered set table. */
     public interface Visitor {
-
-        /**
-         * Called before any visiting.
-         *
-         * @return true if visiting should continue, false otherwise.
-         */
-        @SuppressWarnings("unused")
-        default boolean prologue(Pointer table, UnsignedWord maxIndex) {
-            return true;
-        }
-
         /**
          * Called for each entry.
          *
@@ -458,16 +444,6 @@ public final class CardTable {
          * @return true if visiting should continue, false otherwise.
          */
         boolean visitEntry(Pointer table, UnsignedWord index, int entry);
-
-        /**
-         * Called after all visiting.
-         *
-         * @return true if the epilogue completed successfully, false otherwise.
-         */
-        @SuppressWarnings("unused")
-        default boolean epilogue(Pointer table, UnsignedWord maxIndex) {
-            return true;
-        }
     }
 
     public static final class TestingBackDoor {
