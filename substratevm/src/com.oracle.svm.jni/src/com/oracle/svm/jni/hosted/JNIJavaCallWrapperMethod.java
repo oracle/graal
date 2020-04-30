@@ -340,7 +340,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             for (int i = 0; i < count; i++) {
                 ResolvedJavaType type = (ResolvedJavaType) invokeSignature.getParameterType(i, null);
                 JavaKind readKind = type.getJavaKind();
-                if (callVariant == CallVariant.VARARGS && readKind == JavaKind.Float) {
+                if (readKind == JavaKind.Float && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) {
                     readKind = JavaKind.Double;
                 }
                 StructFieldInfo fieldInfo = getJNIValueOffsetOf(elementType, readKind);
@@ -354,7 +354,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 Stamp readStamp = getNarrowStamp(providers, readKind);
                 ValueNode value = kit.append(new CInterfaceReadNode(address, locationIdentity, readStamp, BarrierType.NONE, "args[" + i + "]"));
                 JavaKind stackKind = readKind.getStackKind();
-                if (callVariant == CallVariant.VARARGS && type.getJavaKind() == JavaKind.Float) {
+                if (type.getJavaKind() == JavaKind.Float && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) {
                     value = kit.unique(new FloatConvertNode(FloatConvert.D2F, value));
                 } else if (readKind != stackKind) {
                     assert stackKind.getBitCount() > readKind.getBitCount() : "read kind must be narrower than stack kind";
