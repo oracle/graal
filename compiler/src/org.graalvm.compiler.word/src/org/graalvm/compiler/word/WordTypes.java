@@ -183,10 +183,17 @@ public class WordTypes {
                     if (fieldValue instanceof AbstractObjectStamp) {
                         AbstractObjectStamp os = (AbstractObjectStamp) fieldValue;
                         assert !isWord(os.type()) : "Stamp Field " + f.getName(i) + " of node " + n + " is a word type and not rewritten after graph building, this is invalid";
-                    } else if (fieldValue instanceof ResolvedJavaType) {
-                        ResolvedJavaType type = (ResolvedJavaType) fieldValue;
-                        assert !isWord(type) : "ResolvedJavaType Field " + f.getName(i) + " of node " + n + " is a word type and not rewritten after graph building, this is invalid";
                     }
+                    // else if (fieldValue instanceof ResolvedJavaType)
+                    /*
+                     * Naturally, we would also like to verify ResolvedJavaType fields, however, we
+                     * unfortunately cannot have this invariant right now. It is invalidated by
+                     * arrays since the component type can be a word type. We would like to model
+                     * word-type-arrays as "primitive long arrays". However, we cannot since for
+                     * HotSpot we represent metaspace pointers as word types and for arrays of
+                     * metaspace pointers we need to preserve the meta space stamps until the
+                     * backend.
+                     */
                 }
             }
         }
