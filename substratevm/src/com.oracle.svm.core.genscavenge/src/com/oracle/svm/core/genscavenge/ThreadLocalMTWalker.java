@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
@@ -40,14 +41,12 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
  * {@link Object}.
  */
 final class ThreadLocalMTWalker {
-    static boolean walk(ObjectReferenceVisitor referenceVisitor) {
+    static void walk(ObjectReferenceVisitor referenceVisitor) {
         VMThreadLocalMTSupport threadLocals = ImageSingletons.lookup(VMThreadLocalMTSupport.class);
+        NonmovableArray<Byte> threadRefMapEncoding = NonmovableArrays.fromImageHeap(threadLocals.vmThreadReferenceMapEncoding);
         for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-            if (!InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) vmThread, NonmovableArrays.fromImageHeap(threadLocals.vmThreadReferenceMapEncoding),
-                            threadLocals.vmThreadReferenceMapIndex, referenceVisitor, null)) {
-                return false;
-            }
+            InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) vmThread, threadRefMapEncoding,
+                            threadLocals.vmThreadReferenceMapIndex, referenceVisitor, null);
         }
-        return true;
     }
 }

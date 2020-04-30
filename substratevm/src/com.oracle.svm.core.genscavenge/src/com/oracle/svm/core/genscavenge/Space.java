@@ -720,35 +720,35 @@ final class SpaceAccounting {
         return unalignedChunkBytes;
     }
 
-    public void report(Log reportLog) {
+    void report(Log reportLog) {
         reportLog.string("aligned: ").unsigned(alignedChunkBytes).string("/").unsigned(alignedCount);
         reportLog.string(" ");
         reportLog.string("unaligned: ").unsigned(unalignedChunkBytes).string("/").unsigned(unalignedCount);
     }
 
     void noteAlignedHeapChunk(UnsignedWord size) {
-        log.string("[Space.SpaceAccounting.NoteAlignedChunk(").string("size: ").unsigned(size).string(")");
+        log.string("[SpaceAccounting.NoteAlignedChunk(").string("size: ").unsigned(size).string(")");
         alignedCount += 1;
         alignedChunkBytes = alignedChunkBytes.add(size);
         log.string("  alignedCount: ").unsigned(alignedCount).string("  alignedChunkBytes: ").unsigned(alignedChunkBytes).string("]").newline();
     }
 
     void unnoteAlignedHeapChunk(UnsignedWord size) {
-        log.string("[Space.SpaceAccounting.unnoteAlignedChunk(").string("size: ").unsigned(size).string(")");
+        log.string("[SpaceAccounting.unnoteAlignedChunk(").string("size: ").unsigned(size).string(")");
         alignedCount -= 1;
         alignedChunkBytes = alignedChunkBytes.subtract(size);
         log.string("  alignedCount: ").unsigned(alignedCount).string("  alignedChunkBytes: ").unsigned(alignedChunkBytes).string("]").newline();
     }
 
     void noteUnalignedHeapChunk(UnsignedWord size) {
-        log.string("[Space.SpaceAccounting.NoteUnalignedChunk(").string("size: ").unsigned(size).string(")");
+        log.string("[SpaceAccounting.NoteUnalignedChunk(").string("size: ").unsigned(size).string(")");
         unalignedCount += 1;
         unalignedChunkBytes = unalignedChunkBytes.add(size);
         log.string("  unalignedCount: ").unsigned(unalignedCount).string("  unalignedChunkBytes: ").unsigned(unalignedChunkBytes).newline();
     }
 
     void unnoteUnalignedHeapChunk(UnsignedWord size) {
-        log.string("Space.SpaceAccounting.unnoteUnalignedChunk(").string("size: ").unsigned(size).string(")");
+        log.string("SpaceAccounting.unnoteUnalignedChunk(").string("size: ").unsigned(size).string(")");
         unalignedCount -= 1;
         unalignedChunkBytes = unalignedChunkBytes.subtract(size);
         log.string("  unalignedCount: ").unsigned(unalignedCount).string("  unalignedChunkBytes: ").unsigned(unalignedChunkBytes).string("]").newline();
