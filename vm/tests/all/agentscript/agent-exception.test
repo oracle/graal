@@ -47,3 +47,6 @@ Error loading of source log.js.*
 >[7] js --experimental-options --insight=agent-error4.js -f log.js
 Error loading of source log.js.*
 .*at <js>.*agent-error4.js:.*
+>[7] js --experimental-options --insight=agent-error5.js -f log.js
+insight: Unclosed group near index.*: .unclosed
+.*at <js> :anonymous.*
