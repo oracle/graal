@@ -37,10 +37,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
@@ -65,10 +66,10 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         return (LLVMFunctionDescriptor) pointer.getObject();
     }
 
-    // XYZ
-    @Specialization(guards = {"isForeignFunction(pointer.getObject())", "pointer.getOffset() == 0"})
-    protected LLVMTypedForeignObject doForeign(LLVMManagedPointer pointer) {
-        return (LLVMTypedForeignObject) pointer.getObject();
+    @Specialization(guards = {"foreigns.isForeign(pointer.getObject())", "pointer.getOffset() == 0"})
+    protected Object doForeign(LLVMManagedPointer pointer,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
+        return pointer.getObject();
     }
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)", "cachedDescriptor != null"})
@@ -100,21 +101,15 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         }
     }
 
-    // XYZ
     @Specialization(guards = "isAutoDerefHandle(pointer.asNative())")
-    protected LLVMTypedForeignObject doDerefHandle(LLVMNativePointer pointer,
+    protected Object doDerefHandle(LLVMNativePointer pointer,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver) {
         LLVMManagedPointer foreignFunction = getReceiver.execute(pointer);
-        return doForeign(foreignFunction);
+        return foreignFunction.getObject();
     }
 
     protected LLVMFunctionDescriptor lookupFunction(ContextReference<LLVMContext> ctxRef, LLVMNativePointer function) {
         return ctxRef.get().getFunctionDescriptor(function);
-    }
-
-    // XYZ
-    protected static boolean isForeignFunction(Object object) {
-        return object instanceof LLVMTypedForeignObject;
     }
 
     protected boolean isAutoDerefHandle(long addr) {

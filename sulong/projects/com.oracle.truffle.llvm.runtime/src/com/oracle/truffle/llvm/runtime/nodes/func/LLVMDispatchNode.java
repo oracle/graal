@@ -99,7 +99,6 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return signature;
     }
 
-    // XYZ
     /**
      * {@code function} is expected to be either {@link LLVMFunctionDescriptor},
      * {@link LLVMTypedForeignObject} or {@link LLVMNativePointer}, and it needs to be resolved
@@ -233,7 +232,24 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return LLVMNativeConvertNode.createFromNative(type.getReturnType());
     }
 
-    // XYZ
+    /**
+     *
+     * There is a discrepancy between {@code LLVMTypedForeignObject.getType()} and the exported
+     * message {@code getNativeType}. While the former returns the attached type, the latter first
+     * asks the wrapped foreign object for its native type using {@code NativeTypeLibrary}. As in
+     * some cases (in GraalPython tests) the returned types differ, it is impossible to simply
+     * replace {@code LLVMTypedForeignObject.getType()} by {@code natives.getNativeType(receiver)}.
+     *
+     * <pre>
+     * &#64;Specialization(guards = {"foreigns.isForeign(receiver)", "natives.hasNativeType(receiver)"})
+     * protected Object doForeign(Object receiver, Object[] arguments,
+     *                 &#64;CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+     *                 &#64;CachedLibrary(limit = "3") NativeTypeLibrary natives, @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
+     *     return lookupDispatchForeignNode.execute(foreigns.asForeign(receiver),
+     *                     natives.getNativeType(receiver), arguments);
+     * }
+     * </pre>
+     */
     @Specialization
     protected Object doForeign(LLVMTypedForeignObject foreign, Object[] arguments,
                     @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
@@ -260,13 +276,13 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     }
 
     abstract static class LLVMLookupDispatchForeignNode extends LLVMNode {
-        private final FunctionType type;
+        final FunctionType type;
 
         LLVMLookupDispatchForeignNode(FunctionType type) {
             this.type = type;
         }
 
-        abstract Object execute(Object function, LLVMInteropType.Structured interopType, Object[] arguments);
+        abstract Object execute(Object function, Object interopType, Object[] arguments);
 
         @Specialization(guards = "functionType == cachedType", limit = "5")
         protected Object doCachedType(TruffleObject function, @SuppressWarnings("unused") LLVMInteropType.Function functionType, Object[] arguments,
@@ -306,7 +322,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         }
 
         @Specialization(guards = "functionType == null", limit = "5")
-        protected Object doUnknownType(TruffleObject function, @SuppressWarnings("unused") LLVMInteropType.Structured functionType, Object[] arguments,
+        protected Object doUnknownType(TruffleObject function, @SuppressWarnings("unused") Object functionType, Object[] arguments,
                         @CachedLibrary("function") InteropLibrary crossLanguageCall,
                         @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
                         @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode) {
