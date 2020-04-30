@@ -62,7 +62,7 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
                     EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         TruffleConstantFieldProvider compilationLocalConstantProvider = new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess());
         return new SubstratePEGraphDecoder(architecture, request.graph, providers.copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
-                        parameterPlugin, nodePlugins, callInlined, inlinedPERoot, sourceLanguagePositionProvider);
+                        parameterPlugin, nodePlugins, callInlined, inlinedExecRootNode, sourceLanguagePositionProvider);
     }
 
     @Override

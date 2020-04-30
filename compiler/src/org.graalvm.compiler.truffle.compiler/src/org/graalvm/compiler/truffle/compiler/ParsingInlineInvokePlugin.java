@@ -78,7 +78,7 @@ final class ParsingInlineInvokePlugin implements InlineInvokePlugin {
         if (!inlineInfo.allowsInlining()) {
             return inlineInfo;
         }
-        if (original.equals(partialEvaluator.callIndirectMethod) || original.equals(partialEvaluator.inlinedPERoot) || original.equals(partialEvaluator.callDirectMethod)) {
+        if (original.equals(partialEvaluator.callIndirectMethod) || original.equals(partialEvaluator.inlinedExecRootNode) || original.equals(partialEvaluator.callDirectMethod)) {
             return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
         }
         if (hasMethodHandleArgument(arguments)) {
