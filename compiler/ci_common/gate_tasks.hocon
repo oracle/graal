@@ -31,6 +31,7 @@ builds += [
 
   ${gateTest}          ${labsjdk-ee-11}    ${gateLinuxAMD64AVX3}   {name: "post-merge-compiler-test-labsjdk-ee-11-linux-amd64-avx3", targets: [post-merge]}
   ${gateTestCompileImmediately}     ${oraclejdk8}     ${gateLinuxAMD64}   {name: "gate-compiler-test-compile-immediately-8-linux-amd64"}
+  ${gateLanguageAgnoistcInlining}     ${oraclejdk8}     ${gateLinuxAMD64}   {name: "gate-compiler-test-agnostic-inlining-8-linux-amd64"}
   ${gateMathStubsListener}                                                {name: "daily-hotspot-mathstubs-listener"}
 
   # Solaris SPARC
