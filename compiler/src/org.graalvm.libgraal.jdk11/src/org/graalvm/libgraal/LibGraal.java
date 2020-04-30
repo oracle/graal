@@ -24,14 +24,13 @@
  */
 package org.graalvm.libgraal;
 
-import static org.graalvm.libgraal.LibGraalScope.method;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.libgraal.LibGraalScope.methodIf;
 import static org.graalvm.libgraal.LibGraalScope.methodOrNull;
 import static org.graalvm.libgraal.LibGraalScope.sig;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
@@ -47,14 +46,13 @@ public class LibGraal {
         Services.initializeJVMCI();
     }
 
-    private static final Class<?> r = HotSpotJVMCIRuntime.class;
-    static final Method unhand = methodOrNull(r, "unhand", sig(Class.class, Long.TYPE));
-    static final Method translate = methodIf(unhand, r, "translate", sig(Object.class));
-    static final Method registerNativeMethods = methodIf(unhand, r, "registerNativeMethods", sig(Class.class));
-    static final Method isCurrentThreadAttached = methodIf(unhand, r, "isCurrentThreadAttached");
-    static final Method attachCurrentThread = methodIf(unhand, r, "attachCurrentThread", sig(Boolean.TYPE, long[].class), sig(Boolean.TYPE));
-    static final Method detachCurrentThread = methodIf(unhand, r, "detachCurrentThread", sig(Boolean.TYPE), sig());
-    static final Method getFailedSpeculationsAddress = methodIf(unhand, HotSpotSpeculationLog.class, "getFailedSpeculationsAddress");
+    private static final Method unhand = methodOrNull(HotSpotJVMCIRuntime.class, "unhand", sig(Class.class, Long.TYPE));
+    private static final Method translate = methodIf(unhand, HotSpotJVMCIRuntime.class, "translate", sig(Object.class));
+    private static final Method registerNativeMethods = methodIf(unhand, HotSpotJVMCIRuntime.class, "registerNativeMethods", sig(Class.class));
+    private static final Method isCurrentThreadAttached = methodIf(unhand, HotSpotJVMCIRuntime.class, "isCurrentThreadAttached");
+    private static final Method attachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "attachCurrentThread", sig(Boolean.TYPE, long[].class), sig(Boolean.TYPE));
+    private static final Method detachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "detachCurrentThread", sig(Boolean.TYPE), sig());
+    private static final Method getFailedSpeculationsAddress = methodIf(unhand, HotSpotSpeculationLog.class, "getFailedSpeculationsAddress");
 
     public static boolean isAvailable() {
         return inLibGraal() || available;
@@ -68,7 +66,7 @@ public class LibGraal {
         return Services.IS_IN_NATIVE_IMAGE;
     }
 
-    public static void registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
+    public static void registerNativeMethods(Class<?> clazz) {
         if (clazz.isPrimitive()) {
             throw new IllegalArgumentException();
         }
@@ -76,7 +74,7 @@ public class LibGraal {
             throw new IllegalStateException();
         }
         try {
-            registerNativeMethods.invoke(runtime, clazz);
+            registerNativeMethods.invoke(runtime(), clazz);
         } catch (Error e) {
             throw e;
         } catch (Throwable throwable) {
@@ -84,7 +82,7 @@ public class LibGraal {
         }
     }
 
-    public static long translate(HotSpotJVMCIRuntime runtime, Object obj) {
+    public static long translate(Object obj) {
         if (!isAvailable()) {
             throw new IllegalStateException();
         }
@@ -92,14 +90,14 @@ public class LibGraal {
             throw new IllegalStateException("Not within a " + LibGraalScope.class.getName());
         }
         try {
-            return (long) translate.invoke(runtime, obj);
+            return (long) translate.invoke(runtime(), obj);
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T unhand(HotSpotJVMCIRuntime runtime, Class<T> type, long handle) {
+    public static <T> T unhand(Class<T> type, long handle) {
         if (!isAvailable()) {
             throw new IllegalStateException();
         }
@@ -107,7 +105,7 @@ public class LibGraal {
             throw new IllegalStateException("Not within a " + LibGraalScope.class.getName());
         }
         try {
-            return (T) unhand.invoke(runtime, type, handle);
+            return (T) unhand.invoke(runtime(), type, handle);
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
@@ -118,9 +116,7 @@ public class LibGraal {
             return 0L;
         }
         try {
-            HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
-
-            long[] javaVMInfo = (long[]) registerNativeMethods.invoke(runtime, LibGraal.class);
+            long[] javaVMInfo = (long[]) registerNativeMethods.invoke(runtime(), LibGraal.class);
             long isolate = javaVMInfo[1];
             return isolate;
         } catch (InvocationTargetException e) {
@@ -136,19 +132,19 @@ public class LibGraal {
     static final long initialIsolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
     static final boolean available = initialIsolate != 0L;
 
-    static boolean isCurrentThreadAttached(HotSpotJVMCIRuntime runtime) {
+    static boolean isCurrentThreadAttached() {
         try {
-            return (boolean) isCurrentThreadAttached.invoke(runtime);
+            return (boolean) isCurrentThreadAttached.invoke(runtime());
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
     }
 
-    public static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime, boolean isDaemon, long[] isolate) {
+    public static boolean attachCurrentThread(boolean isDaemon, long[] isolate) {
         try {
             if (attachCurrentThread.getParameterCount() == 2) {
                 long[] javaVMInfo = isolate != null ? new long[4] : null;
-                boolean res = (boolean) attachCurrentThread.invoke(runtime, isDaemon, javaVMInfo);
+                boolean res = (boolean) attachCurrentThread.invoke(runtime(), isDaemon, javaVMInfo);
                 if (isolate != null) {
                     isolate[0] = javaVMInfo[1];
                 }
@@ -157,21 +153,28 @@ public class LibGraal {
                 if (isolate != null) {
                     isolate[0] = initialIsolate;
                 }
-                return (boolean) attachCurrentThread.invoke(runtime, isDaemon);
+                return (boolean) attachCurrentThread.invoke(runtime(), isDaemon);
             }
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
     }
 
-    public static void detachCurrentThread(HotSpotJVMCIRuntime runtime) {
+    public static boolean detachCurrentThread(boolean release) {
         try {
-            detachCurrentThread.invoke(runtime);
+            if (detachCurrentThread.getParameterCount() == 1) {
+                return (Boolean) detachCurrentThread.invoke(runtime(), release);
+            } else {
+                detachCurrentThread.invoke(runtime());
+                return false;
+            }
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
     }
 
+    // Implementation:
+    // com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.getCurrentIsolateThread
     static native long getCurrentIsolateThread(long iso);
 
     public static long getFailedSpeculationsAddress(HotSpotSpeculationLog log) {

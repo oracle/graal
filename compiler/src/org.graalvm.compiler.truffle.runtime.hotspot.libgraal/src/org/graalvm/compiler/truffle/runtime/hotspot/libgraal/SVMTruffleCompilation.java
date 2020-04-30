@@ -28,9 +28,10 @@ import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
+import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 
-final class SVMTruffleCompilation extends SVMObject implements TruffleCompilation {
+final class SVMTruffleCompilation extends LibGraalObject implements TruffleCompilation {
 
     private final SVMHotSpotTruffleCompiler owner;
     private volatile CompilableTruffleAST cachedCompilableTruffleAST;
@@ -47,7 +48,7 @@ final class SVMTruffleCompilation extends SVMObject implements TruffleCompilatio
     public CompilableTruffleAST getCompilable() {
         CompilableTruffleAST compilable = cachedCompilableTruffleAST;
         if (compilable == null) {
-            compilable = HotSpotToSVMCalls.getTruffleCompilationTruffleAST(getIsolateThread(), handle);
+            compilable = HotSpotToSVMCalls.getTruffleCompilationTruffleAST(getIsolateThread(), getHandle());
             cachedCompilableTruffleAST = compilable;
         }
         return compilable;
@@ -59,7 +60,7 @@ final class SVMTruffleCompilation extends SVMObject implements TruffleCompilatio
             owner.closeCompilation(this);
             cachedCompilableTruffleAST = null;
         } finally {
-            HotSpotToSVMCalls.closeCompilation(getIsolateThread(), handle);
+            HotSpotToSVMCalls.closeCompilation(getIsolateThread(), getHandle());
             scope.close();
         }
     }
@@ -67,7 +68,7 @@ final class SVMTruffleCompilation extends SVMObject implements TruffleCompilatio
     String getId() {
         String id = cachedId;
         if (id == null) {
-            id = HotSpotToSVMCalls.getTruffleCompilationId(getIsolateThread(), handle);
+            id = HotSpotToSVMCalls.getTruffleCompilationId(getIsolateThread(), getHandle());
             cachedId = id;
         }
         return id;

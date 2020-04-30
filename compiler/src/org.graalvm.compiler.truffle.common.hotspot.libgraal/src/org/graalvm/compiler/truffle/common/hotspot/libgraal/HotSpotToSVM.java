@@ -79,7 +79,6 @@ public @interface HotSpotToSVM {
         OpenDebugContext,
         OpenDebugContextScope,
         PendingTransferToInterpreterOffset,
-        ReleaseHandle,
         Shutdown,
         TtyWriteByte,
         TtyWriteBytes;

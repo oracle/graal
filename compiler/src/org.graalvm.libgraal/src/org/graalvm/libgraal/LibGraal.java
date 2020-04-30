@@ -45,8 +45,8 @@ import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
  * <ul>
  * <li>{@link #isAvailable()}</li>
  * <li>{@link #inLibGraal()}</li>
- * <li>{@link #translate(HotSpotJVMCIRuntime, Object)}</li>
- * <li>{@link #unhand(HotSpotJVMCIRuntime, Class, long)}</li>
+ * <li>{@link #translate(Object)}</li>
+ * <li>{@link #unhand(Class, long)}</li>
  * </ul>
  *
  * The typical usage of this class is to {@linkplain #registerNativeMethods link} and call
@@ -97,7 +97,7 @@ public class LibGraal {
      *             address)
      */
     @SuppressWarnings("unused")
-    public static void registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
+    public static void registerNativeMethods(Class<?> clazz) {
         throw shouldNotReachHere();
     }
 
@@ -113,7 +113,7 @@ public class LibGraal {
      * @throws IllegalArgumentException if {@code obj} is not of a translatable type
      */
     @SuppressWarnings("unused")
-    public static long translate(HotSpotJVMCIRuntime runtime, Object obj) {
+    public static long translate(Object obj) {
         throw shouldNotReachHere();
     }
 
@@ -127,7 +127,7 @@ public class LibGraal {
      * @throws ClassCastException if the returned object cannot be cast to {@code type}
      */
     @SuppressWarnings("unused")
-    public static <T> T unhand(HotSpotJVMCIRuntime runtime, Class<T> type, long handle) {
+    public static <T> T unhand(Class<T> type, long handle) {
         throw shouldNotReachHere();
     }
 
@@ -149,7 +149,7 @@ public class LibGraal {
      *         thread was already attached
      */
     @SuppressWarnings("unused")
-    public static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime, boolean isDaemon, long[] isolate) {
+    public static boolean attachCurrentThread(boolean isDaemon, long[] isolate) {
         throw shouldNotReachHere();
     }
 
@@ -160,9 +160,11 @@ public class LibGraal {
      *            with libgraal runtimes and this is the last thread attached to a libgraal runtime,
      *            then this call destroys the associated {@code JavaVM} instance, releasing its
      *            resources
+     * @return {@code true} if the {@code JavaVM} associated with the libgraal runtime was destroyed
+     *         as a result of this call
      */
     @SuppressWarnings("unused")
-    public static void detachCurrentThread(HotSpotJVMCIRuntime runtime, boolean release) {
+    public static boolean detachCurrentThread(boolean release) {
         throw shouldNotReachHere();
     }
 

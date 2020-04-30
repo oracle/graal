@@ -27,12 +27,10 @@ package org.graalvm.libgraal;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-
 /**
- * Scope for calling CEntryPoints in libgraal. {@linkplain #LibGraalScope(HotSpotJVMCIRuntime)
- * Opening} a scope attaches the current thread to libgraal and {@linkplain #close() closing} it
- * detaches the current thread.
+ * Scope for calling CEntryPoints in libgraal. {@linkplain #LibGraalScope() Opening} a scope
+ * attaches the current thread to libgraal and {@linkplain #close() closing} it detaches the current
+ * thread.
  */
 public final class LibGraalScope implements AutoCloseable {
 
@@ -40,15 +38,13 @@ public final class LibGraalScope implements AutoCloseable {
 
     static class Shared {
         final CloseAction closeAction;
-        final HotSpotJVMCIRuntime runtime;
-        final long isolateAddress;
+        final LibGraalIsolate isolate;
         final long isolateThread;
         final boolean detacher;
 
-        Shared(CloseAction closeAction, HotSpotJVMCIRuntime runtime, long isolateAddress, long isolateThread, boolean detacher) {
+        Shared(CloseAction closeAction, LibGraalIsolate isolate, long isolateThread, boolean detacher) {
             this.closeAction = closeAction;
-            this.runtime = runtime;
-            this.isolateAddress = isolateAddress;
+            this.isolate = isolate;
             this.isolateThread = isolateThread;
             this.detacher = detacher;
         }
@@ -58,26 +54,36 @@ public final class LibGraalScope implements AutoCloseable {
     private final Shared shared;
 
     /**
+     * Gets the current scope.
+     *
+     * @throws IllegalStateException if the current thread is not in an {@linkplain #LibGraalScope()
+     *             opened} scope
+     */
+    public static LibGraalScope current() {
+        LibGraalScope scope = currentScope.get();
+        if (scope == null) {
+            throw new IllegalStateException("Not in an " + LibGraalScope.class.getSimpleName());
+        }
+        return scope;
+    }
+
+    /**
      * Gets the isolate thread associated with the current thread. The current thread must be in an
-     * {@linkplain #LibGraalScope(HotSpotJVMCIRuntime) opened} scope.
+     * {@linkplain #LibGraalScope() opened} scope.
      *
      * @returns a value that can be used for the IsolateThreadContext argument of a {@code native}
      *          method {@link LibGraal#registerNativeMethods linked} to a CEntryPoint function in
      *          libgraal
-     * @throws IllegalStateException if not the current thread is not attached to libgraal
+     * @throws IllegalStateException if the current thread is not attached to libgraal
      */
     public static long getIsolateThread() {
-        LibGraalScope scope = currentScope.get();
-        if (scope == null) {
-            throw new IllegalStateException("Cannot get isolate thread outside of a " + LibGraalScope.class.getSimpleName());
-        }
-        return scope.shared.isolateThread;
+        return current().shared.isolateThread;
     }
 
     /**
      * Denotes the action to perform when closing a {@link LibGraalScope}.
      */
-    enum CloseAction {
+    public enum CloseAction {
         /**
          * Detach the thread from the libgraal runtime.
          */
@@ -103,8 +109,8 @@ public final class LibGraalScope implements AutoCloseable {
      * @throws IllegalStateException if libgraal is {@linkplain LibGraal#isAvailable() unavailable}
      *             or {@link LibGraal#inLibGraal()} returns true
      */
-    public LibGraalScope(HotSpotJVMCIRuntime runtime) {
-        this(runtime, CloseAction.DETACH);
+    public LibGraalScope() {
+        this(CloseAction.DETACH);
     }
 
     /**
@@ -118,20 +124,22 @@ public final class LibGraalScope implements AutoCloseable {
      *
      * @param closeAction specifies what do to when this scope is closed if it is the outer most
      *            scope for the current thread
+     *
      * @throws IllegalStateException if libgraal is {@linkplain LibGraal#isAvailable() unavailable}
      *             or {@link LibGraal#inLibGraal()} returns true
      */
-    public LibGraalScope(HotSpotJVMCIRuntime runtime, CloseAction closeAction) {
+    public LibGraalScope(CloseAction closeAction) {
         if (LibGraal.inLibGraal() || !LibGraal.isAvailable()) {
             throw new IllegalStateException();
         }
         parent = currentScope.get();
         if (parent == null) {
             long[] isolateBox = {0};
-            boolean detacher = LibGraal.attachCurrentThread(runtime, false, isolateBox);
+            boolean detacher = LibGraal.attachCurrentThread(false, isolateBox);
             long isolateAddress = isolateBox[0];
+            LibGraalIsolate isolate = LibGraalIsolate.forAddress(isolateAddress);
             long isolateThread = LibGraal.getCurrentIsolateThread(isolateAddress);
-            shared = new Shared(closeAction, runtime, isolateAddress, isolateThread, detacher);
+            shared = new Shared(closeAction, isolate, isolateThread, detacher);
         } else {
             shared = parent.shared;
         }
@@ -139,16 +147,26 @@ public final class LibGraalScope implements AutoCloseable {
     }
 
     /**
-     * Gets the address of the isolate associated with this scope.
+     * Gets the isolate associated with this scope.
      */
-    public long getIsolateAddress() {
-        return shared.isolateAddress;
+    public LibGraalIsolate getIsolate() {
+        return shared.isolate;
+    }
+
+    /**
+     * Gets the address of the isolate thread associated with this scope.
+     */
+    public long getIsolateThreadAddress() {
+        return shared.isolateThread;
     }
 
     @Override
     public void close() {
         if (parent == null && shared.detacher) {
-            LibGraal.detachCurrentThread(shared.runtime, shared.closeAction == CloseAction.DETACH_AND_RELEASE);
+            boolean isolateDestroyed = LibGraal.detachCurrentThread(shared.closeAction == CloseAction.DETACH_AND_RELEASE);
+            if (isolateDestroyed) {
+                LibGraalIsolate.remove(shared.isolate);
+            }
         }
         currentScope.set(parent);
     }

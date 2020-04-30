@@ -43,11 +43,10 @@ import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Builtin;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.util.OptionsEncoder;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -108,17 +107,16 @@ public final class LibGraalEntryPoints {
     }
 
     @SuppressWarnings({"unused"})
-    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraal_setCurrentThreadName")
-    @CEntryPointOptions(include = LibGraalFeature.IsEnabled.class)
-    private static void setCurrentThreadName(PointerBase jniEnv,
+    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalObject_releaseHandle")
+    public static boolean releaseHandle(PointerBase jniEnv,
                     PointerBase jclass,
-                    @CEntryPoint.IsolateThreadContext long isolateThread,
-                    CCharPointer nameCString) {
+                    @CEntryPoint.IsolateThreadContext long isolateThreadId,
+                    long handle) {
         try {
-            String name = CTypeConversion.toJavaString(nameCString);
-            Thread.currentThread().setName(name);
+            ObjectHandles.getGlobal().destroy(WordFactory.pointer(handle));
+            return true;
         } catch (Throwable t) {
-            t.printStackTrace();
+            return false;
         }
     }
 
@@ -167,7 +165,7 @@ public final class LibGraalEntryPoints {
                     int stackTraceCapacity) {
         try {
             HotSpotJVMCIRuntime runtime = runtime();
-            HotSpotResolvedJavaMethod method = LibGraal.unhand(runtime, HotSpotResolvedJavaMethod.class, methodHandle);
+            HotSpotResolvedJavaMethod method = LibGraal.unhand(HotSpotResolvedJavaMethod.class, methodHandle);
 
             int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
@@ -176,7 +174,7 @@ public final class LibGraalEntryPoints {
             CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, installAsDefault);
             task.runCompilation(options);
             HotSpotInstalledCode installedCode = task.getInstalledCode();
-            return LibGraal.translate(runtime, installedCode);
+            return LibGraal.translate(installedCode);
         } catch (Throwable t) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             t.printStackTrace(new PrintStream(baos));

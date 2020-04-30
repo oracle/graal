@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseDebugContext;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseDebugContextScope;
@@ -58,7 +57,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenDebugContext;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenDebugContextScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.PendingTransferToInterpreterOffset;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.ReleaseHandle;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.Shutdown;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.TtyWriteByte;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.TtyWriteBytes;
@@ -149,7 +147,7 @@ final class HotSpotToSVMEntryPoints {
     public static long initializeRuntime(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId,
                     JObject truffleRuntime, long classLoaderDelegateId) {
         try (HotSpotToSVMScope<HotSpotToSVM.Id> s = new HotSpotToSVMScope<>(InitializeRuntime, env)) {
-            ResolvedJavaType classLoaderDelegate = LibGraal.unhand(runtime(), ResolvedJavaType.class, classLoaderDelegateId);
+            ResolvedJavaType classLoaderDelegate = LibGraal.unhand(ResolvedJavaType.class, classLoaderDelegateId);
             HSTruffleCompilerRuntime hsTruffleRuntime = new HSTruffleCompilerRuntime(env, truffleRuntime, classLoaderDelegate, HotSpotGraalOptionValues.defaultOptions());
             TruffleCompilerRuntimeInstance.initialize(hsTruffleRuntime);
             long truffleRuntimeHandle = SVMObjectHandles.create(hsTruffleRuntime);
@@ -181,17 +179,6 @@ final class HotSpotToSVMEntryPoints {
             HotSpotTruffleCompilerImpl compiler = SVMObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
             Map<String, Object> options = decodeOptions(env, hsOptions);
             compiler.initialize(options);
-        } catch (Throwable t) {
-            JNIExceptionWrapper.throwInHotSpot(env, t);
-        }
-    }
-
-    @HotSpotToSVM(ReleaseHandle)
-    @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_releaseHandle")
-    public static void releaseHandle(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long handle) {
-        try (HotSpotToSVMScope<HotSpotToSVM.Id> s = new HotSpotToSVMScope<>(ReleaseHandle, env)) {
-            SVMObjectHandles.remove(handle);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }

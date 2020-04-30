@@ -564,7 +564,8 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
 
     // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = InjectedManagementComputer.class, isFinal = true) private static Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT;
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = InjectedManagementComputer.class, isFinal = true)//
+    private static Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT;
     // Checkstyle: resume
 
     private static final class InjectedManagementComputer implements RecomputeFieldValue.CustomFieldValueComputer {
@@ -665,7 +666,7 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
     @Substitute()
     void beforeRun() {
         GraalServiceThread thread = KnownIntrinsics.convertUnknownValue(this, GraalServiceThread.class);
-        if (!LibGraal.attachCurrentThread(HotSpotJVMCIRuntime.runtime(), thread.isDaemon(), null)) {
+        if (!LibGraal.attachCurrentThread(thread.isDaemon(), null)) {
             throw new InternalError("Couldn't attach to HotSpot runtime");
         }
     }
@@ -673,7 +674,7 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
     @Substitute
     @SuppressWarnings("static-method")
     void afterRun() {
-        LibGraal.detachCurrentThread(HotSpotJVMCIRuntime.runtime(), false);
+        LibGraal.detachCurrentThread(false);
     }
 }
 
