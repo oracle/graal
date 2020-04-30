@@ -67,15 +67,17 @@ public final class AccessAdvisor {
         return internalCallerFilter.copy();
     }
 
+    public static RuleNode copyBuiltinAccessFilterTree() {
+        RuleNode root = RuleNode.createRoot();
+        root.addOrGetChildren("**", RuleNode.Inclusion.Include);
+        return root;
+    }
+
     private RuleNode callerFilter = internalCallerFilter;
+    private RuleNode accessFilter = null;
     private boolean heuristicsEnabled = true;
     private boolean isInLivePhase = false;
     private int launchPhase = 0;
-
-    private boolean filterExcludesCaller(String qualifiedClass) {
-        assert qualifiedClass == null || qualifiedClass.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
-        return qualifiedClass != null && !callerFilter.treeIncludes(qualifiedClass);
-    }
 
     public void setHeuristicsEnabled(boolean enable) {
         heuristicsEnabled = enable;
@@ -83,6 +85,10 @@ public final class AccessAdvisor {
 
     public void setCallerFilterTree(RuleNode rootNode) {
         callerFilter = rootNode;
+    }
+
+    public void setAccessFilterTree(RuleNode rootNode) {
+        accessFilter = rootNode;
     }
 
     public void setInLivePhase(boolean live) {
@@ -93,13 +99,16 @@ public final class AccessAdvisor {
         if (heuristicsEnabled && !isInLivePhase) {
             return true;
         }
-        if (filterExcludesCaller(callerClass.get())) {
+        String qualifiedCaller = callerClass.get();
+        assert qualifiedCaller == null || qualifiedCaller.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
+        if (qualifiedCaller != null && !callerFilter.treeIncludes(qualifiedCaller)) {
             return true;
         }
-        if (callerClass.get() == null) {
-            return !accessWithoutCallerFilter.treeIncludes(queriedClass.get());
+        // NOTE: queriedClass can be null for non-class accesses like resources
+        if (callerClass.get() == null && queriedClass.get() != null && !accessWithoutCallerFilter.treeIncludes(queriedClass.get())) {
+            return true;
         }
-        return false;
+        return accessFilter != null && queriedClass.get() != null && !accessFilter.treeIncludes(queriedClass.get());
     }
 
     public boolean shouldIgnoreJniMethodLookup(LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass) {
