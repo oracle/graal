@@ -103,7 +103,7 @@ final class GraphManager {
             public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
                 return PartialEvaluator.asInlineInfo(method);
             }
-        }, EconomicMap.create());
+        }, graphCacheForInlining);
         InliningUtil.inline(invoke, request.graph, true, partialEvaluator.getCallInlined(), "finalization", AgnosticInliningPhase.class.toString());
     }
 
