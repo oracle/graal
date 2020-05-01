@@ -39,7 +39,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
 public class ShenandoahPreWriteBarrier extends ObjectWriteBarrier implements DeoptimizingNode.DeoptBefore {
 
-    public static final NodeClass<G1PreWriteBarrier> TYPE = NodeClass.create(G1PreWriteBarrier.class);
+    public static final NodeClass<ShenandoahPreWriteBarrier> TYPE = NodeClass.create(ShenandoahPreWriteBarrier.class);
 
     @OptionalInput(InputType.State) private FrameState stateBefore;
     private final boolean nullCheck;

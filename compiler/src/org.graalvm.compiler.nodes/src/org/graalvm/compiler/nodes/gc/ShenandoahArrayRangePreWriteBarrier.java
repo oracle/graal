@@ -35,7 +35,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
 public class ShenandoahArrayRangePreWriteBarrier extends ArrayRangeWriteBarrier {
-    public static final NodeClass<G1ArrayRangePreWriteBarrier> TYPE = NodeClass.create(G1ArrayRangePreWriteBarrier.class);
+    public static final NodeClass<ShenandoahArrayRangePreWriteBarrier> TYPE = NodeClass.create(ShenandoahArrayRangePreWriteBarrier.class);
 
     public ShenandoahArrayRangePreWriteBarrier(AddressNode address, ValueNode length, int elementStride) {
         super(TYPE, address, length, elementStride);

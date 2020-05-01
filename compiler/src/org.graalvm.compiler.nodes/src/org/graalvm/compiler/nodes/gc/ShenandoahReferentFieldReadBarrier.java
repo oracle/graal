@@ -35,7 +35,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
 public class ShenandoahReferentFieldReadBarrier extends ObjectWriteBarrier {
-    public static final NodeClass<G1ReferentFieldReadBarrier> TYPE = NodeClass.create(G1ReferentFieldReadBarrier.class);
+    public static final NodeClass<ShenandoahReferentFieldReadBarrier> TYPE = NodeClass.create(ShenandoahReferentFieldReadBarrier.class);
 
     private final boolean dynamicCheck;
 
