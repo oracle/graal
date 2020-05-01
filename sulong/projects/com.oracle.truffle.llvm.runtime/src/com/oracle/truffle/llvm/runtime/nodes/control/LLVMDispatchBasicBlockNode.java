@@ -81,7 +81,7 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     public Object doDispatch(VirtualFrame frame) {
         Object returnValue = null;
 
-        CompilerAsserts.compilationConstant(bodyNodes.length);
+        CompilerAsserts.partialEvaluationConstant(bodyNodes.length);
         int basicBlockIndex = 0;
         int backEdgeCounter = 0;
         outer: while (basicBlockIndex != LLVMBasicBlockNode.RETURN_FROM_FUNCTION) {
