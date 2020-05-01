@@ -11,15 +11,10 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
-import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotCompressionNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.gc.G1ArrayRangePostWriteBarrier;
-import org.graalvm.compiler.nodes.gc.G1ArrayRangePreWriteBarrier;
-import org.graalvm.compiler.nodes.gc.G1PostWriteBarrier;
-import org.graalvm.compiler.nodes.gc.G1PreWriteBarrier;
-import org.graalvm.compiler.nodes.gc.G1ReferentFieldReadBarrier;
 import org.graalvm.compiler.nodes.gc.ShenandoahArrayRangePreWriteBarrier;
+import org.graalvm.compiler.nodes.gc.ShenandoahLoadReferenceBarrier;
 import org.graalvm.compiler.nodes.gc.ShenandoahPreWriteBarrier;
 import org.graalvm.compiler.nodes.gc.ShenandoahReferentFieldReadBarrier;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -27,16 +22,15 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.gc.G1WriteBarrierSnippets;
 import org.graalvm.compiler.replacements.gc.ShenandoahBarrierSnippets;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.word.WordFactory;
 
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_METAACCESS;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 
 public final class HotSpotShenandoahBarrierSnippets extends ShenandoahBarrierSnippets {
     public static final ForeignCallDescriptor SHENANDOAHWBPRECALL = new ForeignCallDescriptor("shenandoah_concmark_barrier", void.class, Object.class);
+    public static final ForeignCallDescriptor SHENANDOAHLRBCALL = new ForeignCallDescriptor("shenandoah_load_reference_barrier", Object.class, Object.class);
     public static final ForeignCallDescriptor VALIDATE_OBJECT = new ForeignCallDescriptor("validate_object", boolean.class, Word.class, Word.class);
 
     private final GraalHotSpotVMConfig config;
@@ -78,8 +72,18 @@ public final class HotSpotShenandoahBarrierSnippets extends ShenandoahBarrierSni
     }
 
     @Override
+    protected int gcStateOffset() {
+        return HotSpotReplacementsUtil.shenandoahGCStateOffset(INJECTED_VMCONFIG);
+    }
+
+    @Override
     protected ForeignCallDescriptor preWriteBarrierCallDescriptor() {
         return SHENANDOAHWBPRECALL;
+    }
+
+    @Override
+    protected ForeignCallDescriptor loadReferenceBarrierCallDescriptor() {
+        return SHENANDOAHLRBCALL;
     }
 
     @Override
@@ -126,6 +130,7 @@ public final class HotSpotShenandoahBarrierSnippets extends ShenandoahBarrierSni
         private final SnippetTemplate.SnippetInfo shenandoahPreWriteBarrier;
         private final SnippetTemplate.SnippetInfo shenandoahReferentReadBarrier;
         private final SnippetTemplate.SnippetInfo shenandoahArrayRangePreWriteBarrier;
+        private final SnippetTemplate.SnippetInfo shenandoahLoadReferenceBarrier;
 
         private final ShenandoahBarrierLowerer lowerer;
 
@@ -140,6 +145,7 @@ public final class HotSpotShenandoahBarrierSnippets extends ShenandoahBarrierSni
                     SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION);
             shenandoahArrayRangePreWriteBarrier = snippet(ShenandoahBarrierSnippets.class, "shenandoahArrayRangePreWriteBarrier", null, receiver, GC_INDEX_LOCATION, GC_LOG_LOCATION, SATB_QUEUE_MARKING_LOCATION,
                     SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION);
+            shenandoahLoadReferenceBarrier = snippet(ShenandoahBarrierSnippets.class, "shenandoahLoadReferenceBarrier", null, receiver, GC_STATE_LOCATION);
         }
 
         public void lower(ShenandoahPreWriteBarrier barrier, LoweringTool tool) {
@@ -152,6 +158,10 @@ public final class HotSpotShenandoahBarrierSnippets extends ShenandoahBarrierSni
 
         public void lower(ShenandoahArrayRangePreWriteBarrier barrier, LoweringTool tool) {
             lowerer.lower(this, shenandoahArrayRangePreWriteBarrier, barrier, tool);
+        }
+
+        public void lower(ShenandoahLoadReferenceBarrier barrier, LoweringTool tool) {
+            lowerer.lower(this, shenandoahLoadReferenceBarrier, barrier, tool);
         }
     }
 

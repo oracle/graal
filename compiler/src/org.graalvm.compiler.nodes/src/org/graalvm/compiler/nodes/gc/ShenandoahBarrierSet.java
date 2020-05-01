@@ -30,6 +30,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.iterators.NodePredicate;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -53,11 +55,6 @@ public class ShenandoahBarrierSet implements BarrierSet {
     public ShenandoahBarrierSet(GraalHotSpotVMConfig config, ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
         this.objectArrayType = objectArrayType;
         this.referentField = referentField;
-
-        if (!config.getFlag("ShenandoahGCMode", String.class).equals("passive")) {
-            System.err.println("ShenandoahGCMode other than passive not supported yet");
-            System.exit(-1);
-        }
     }
 
     @Override
@@ -81,11 +78,19 @@ public class ShenandoahBarrierSet implements BarrierSet {
     }
 
     private static void addReadNodeBarriers(ReadNode node) {
-        if (node.getBarrierType() == BarrierType.WEAK_FIELD || node.getBarrierType() == BarrierType.MAYBE_WEAK_FIELD) {
+        ValueNode value = node;
+        if (node.getBarrierType() != BarrierType.NONE) {
             StructuredGraph graph = node.graph();
-            ShenandoahReferentFieldReadBarrier barrier = graph.add(new ShenandoahReferentFieldReadBarrier(node.getAddress(), node, node.getBarrierType() == BarrierType.MAYBE_WEAK_FIELD));
-            graph.addAfterFixed(node, barrier);
+            ShenandoahLoadReferenceBarrier lrb = graph.add(new ShenandoahLoadReferenceBarrier(node));
+            value = lrb;
+            node.graph().addAfterFixed(node, lrb);
+            node.replaceAtMatchingUsages(lrb, n -> n != lrb);
         }
+//        if (node.getBarrierType() == BarrierType.WEAK_FIELD || node.getBarrierType() == BarrierType.MAYBE_WEAK_FIELD) {
+//            StructuredGraph graph = node.graph();
+//            ShenandoahReferentFieldReadBarrier barrier = graph.add(new ShenandoahReferentFieldReadBarrier(node.getAddress(), value, node.getBarrierType() == BarrierType.MAYBE_WEAK_FIELD));
+//            graph.addAfterFixed(node, barrier);
+//        }
     }
 
     private void addWriteBarriers(FixedAccessNode node, ValueNode writtenValue, ValueNode expectedValue, boolean doLoad, boolean nullCheck) {
@@ -138,8 +143,12 @@ public class ShenandoahBarrierSet implements BarrierSet {
 
     @Override
     public BarrierType fieldLoadBarrierType(ResolvedJavaField field, JavaKind storageKind) {
-        if (field.getJavaKind() == JavaKind.Object && field.equals(referentField)) {
-            return BarrierType.WEAK_FIELD;
+        if (field.getJavaKind() == JavaKind.Object) {
+            if (field.equals(referentField)) {
+                return BarrierType.WEAK_FIELD;
+            } else {
+                return BarrierType.FIELD;
+            }
         }
         return BarrierType.NONE;
     }
@@ -159,7 +168,7 @@ public class ShenandoahBarrierSet implements BarrierSet {
 
             if (load.offset().isJavaConstant() && referentOffset != load.offset().asJavaConstant().asLong()) {
                 // Reading at a constant offset which is different than the referent field.
-                return BarrierType.NONE;
+                return BarrierType.FIELD;
             }
             ResolvedJavaType referenceType = referentField.getDeclaringClass();
             ResolvedJavaType type = StampTool.typeOrNull(load.object());

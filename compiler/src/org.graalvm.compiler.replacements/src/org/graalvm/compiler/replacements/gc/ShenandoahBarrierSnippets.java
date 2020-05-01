@@ -13,6 +13,7 @@ import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.NullCheckNode;
 import org.graalvm.compiler.nodes.gc.ShenandoahArrayRangePreWriteBarrier;
+import org.graalvm.compiler.nodes.gc.ShenandoahLoadReferenceBarrier;
 import org.graalvm.compiler.nodes.gc.ShenandoahPreWriteBarrier;
 import org.graalvm.compiler.nodes.gc.ShenandoahReferentFieldReadBarrier;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
@@ -37,11 +38,14 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probabil
 
 public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets implements Snippets {
 
-    public static final LocationIdentity GC_LOG_LOCATION = NamedLocationIdentity.mutable("GC-Log");
-    public static final LocationIdentity GC_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Index");
-    public static final LocationIdentity SATB_QUEUE_MARKING_LOCATION = NamedLocationIdentity.mutable("GC-Queue-Marking");
-    public static final LocationIdentity SATB_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Queue-Index");
-    public static final LocationIdentity SATB_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-Queue-Buffer");
+    public static final byte HAS_FORWORDED = 1 << 0;
+
+    public static final LocationIdentity GC_LOG_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-Log");
+    public static final LocationIdentity GC_INDEX_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-Index");
+    public static final LocationIdentity SATB_QUEUE_MARKING_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-Queue-Marking");
+    public static final LocationIdentity SATB_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-Queue-Index");
+    public static final LocationIdentity SATB_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GShenandoah-C-Queue-Buffer");
+    public static final LocationIdentity GC_STATE_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-State");
 
     public static class Counters {
         Counters(SnippetCounter.Group.Factory factory) {
@@ -161,6 +165,17 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
         }
     }
 
+    @Snippet
+    public Object shenandoahLoadReferenceBarrier(Object value) {
+        Word thread = getThread();
+        verifyOop(value);
+        byte gcStateValue = thread.readByte(gcStateOffset(), GC_STATE_LOCATION);
+        if (probability(NOT_FREQUENT_PROBABILITY, (gcStateValue & HAS_FORWORDED) != (byte) 0)) {
+            return shenandoahLoadReferenceBarrierStub(value);
+        }
+        return value;
+    }
+
     protected abstract Word getThread();
 
     protected abstract int wordSize();
@@ -173,7 +188,11 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
 
     protected abstract int satbQueueIndexOffset();
 
+    protected abstract int gcStateOffset();
+
     protected abstract ForeignCallDescriptor preWriteBarrierCallDescriptor();
+
+    protected abstract ForeignCallDescriptor loadReferenceBarrierCallDescriptor();
 
     // the data below is only needed for the verification logic
     protected abstract boolean verifyOops();
@@ -227,6 +246,10 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
         shenandoahPreBarrierStub(preWriteBarrierCallDescriptor(), previousObject);
     }
 
+    private Object shenandoahLoadReferenceBarrierStub(Object value) {
+        return shenandoahLoadReferenceBarrierStub(loadReferenceBarrierCallDescriptor(), value);
+    }
+
     @Node.NodeIntrinsic(ForeignCallNode.class)
     private static native Object verifyOopStub(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
 
@@ -235,6 +258,9 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
 
     @Node.NodeIntrinsic(ForeignCallNode.class)
     private static native void shenandoahPreBarrierStub(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
+
+    @Node.NodeIntrinsic(ForeignCallNode.class)
+    private static native Object shenandoahLoadReferenceBarrierStub(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, Object value);
 
     @Node.NodeIntrinsic(ForeignCallNode.class)
     private static native void printf(@Node.ConstantNodeParameter ForeignCallDescriptor logPrintf, Word format, long v1, long v2, long v3);
@@ -299,6 +325,13 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
 
             templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
+
+        public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, ShenandoahLoadReferenceBarrier barrier, LoweringTool tool) {
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
+            args.add("value", barrier.getValue());
+            templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+        }
+
 
         private static int traceStartCycle(StructuredGraph graph) {
             return GraalOptions.GCDebugStartCycle.getValue(graph.getOptions());

@@ -139,6 +139,7 @@ import org.graalvm.compiler.nodes.gc.G1ReferentFieldReadBarrier;
 import org.graalvm.compiler.nodes.gc.SerialArrayRangeWriteBarrier;
 import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
 import org.graalvm.compiler.nodes.gc.ShenandoahArrayRangePreWriteBarrier;
+import org.graalvm.compiler.nodes.gc.ShenandoahLoadReferenceBarrier;
 import org.graalvm.compiler.nodes.gc.ShenandoahPreWriteBarrier;
 import org.graalvm.compiler.nodes.gc.ShenandoahReferentFieldReadBarrier;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
@@ -373,6 +374,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 shenandoahBarrierSnippets.lower((ShenandoahPreWriteBarrier) n, tool);
             } else if (n instanceof ShenandoahReferentFieldReadBarrier) {
                 shenandoahBarrierSnippets.lower((ShenandoahReferentFieldReadBarrier) n, tool);
+            } else if (n instanceof ShenandoahLoadReferenceBarrier) {
+                shenandoahBarrierSnippets.lower((ShenandoahLoadReferenceBarrier) n, tool);
             } else if (n instanceof SerialWriteBarrier) {
                 serialWriteBarrierSnippets.lower((SerialWriteBarrier) n, tool);
             } else if (n instanceof SerialArrayRangeWriteBarrier) {
