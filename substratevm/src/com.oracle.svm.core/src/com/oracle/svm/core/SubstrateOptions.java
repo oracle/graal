@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.None;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 import static org.graalvm.compiler.options.OptionType.User;
@@ -51,8 +52,6 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
-
-import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 
 public class SubstrateOptions {
 
@@ -192,6 +191,10 @@ public class SubstrateOptions {
             }
         }
     };
+
+    /* Same option name and specification as the Java HotSpot VM. */
+    @Option(help = "Maximum total size of NIO direct-buffer allocations")//
+    public static final RuntimeOptionKey<Long> MaxDirectMemorySize = new RuntimeOptionKey<>(0L);
 
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
