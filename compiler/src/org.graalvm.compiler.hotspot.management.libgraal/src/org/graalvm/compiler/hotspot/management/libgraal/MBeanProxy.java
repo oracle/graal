@@ -41,8 +41,8 @@ import javax.management.DynamicMBean;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
-import org.graalvm.compiler.core.GraalServiceThread;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
@@ -197,7 +197,7 @@ class MBeanProxy<T extends DynamicMBean> {
         return objName;
     }
 
-    static boolean initializeJNI(GraalHotSpotVMConfig config) {
+    static boolean initializeJNI(GraalHotSpotVMConfig config, HotSpotGraalRuntime runtime) {
         if (getCurrentJavaThreadMethod == null) {
             return false;
         }
@@ -213,7 +213,7 @@ class MBeanProxy<T extends DynamicMBean> {
                     defineClassesInHotSpot(getCurrentJNIEnv());
                     try {
                         MBeanProxy<?> memPoolMBean = new MBeanProxy<>(memPoolBean, LibGraalMemoryPoolMBean.NAME);
-                        enqueueForRegistration(memPoolMBean);
+                        enqueueForRegistration(memPoolMBean, runtime);
                     } catch (MalformedObjectNameException mon) {
                         throw new AssertionError("Invlid object name.", mon);
                     }
@@ -267,8 +267,8 @@ class MBeanProxy<T extends DynamicMBean> {
      * @return the {@code instance} if successfully registered or {@code null} when the registration
      *         in not accepted because the isolate is closing
      */
-    static synchronized <T extends MBeanProxy<?>> T enqueueForRegistrationAndNotify(T instance) {
-        T res = enqueueForRegistration(instance);
+    static synchronized <T extends MBeanProxy<?>> T enqueueForRegistrationAndNotify(T instance, HotSpotGraalRuntime runtime) {
+        T res = enqueueForRegistration(instance, runtime);
         signalRegistrationRequest();
         return res;
     }
@@ -279,13 +279,13 @@ class MBeanProxy<T extends DynamicMBean> {
      * @return the {@code instance} if successfully registered or {@code null} when the registration
      *         in not accepted because the isolate is closing
      */
-    private static synchronized <T extends MBeanProxy<?>> T enqueueForRegistration(T instance) {
+    private static synchronized <T extends MBeanProxy<?>> T enqueueForRegistration(T instance, HotSpotGraalRuntime runtime) {
         if (state != State.ACTIVE) {
             return null;
         }
         registrations.add(instance);
         if (mBeansToUnregisterOnIsolateClose.isEmpty()) {
-            Runtime.getRuntime().addShutdownHook(new GraalServiceThread(new OnShutDown()));
+            runtime.addShutdownHook(new OnShutDown());
         }
         mBeansToUnregisterOnIsolateClose.add(instance);
         return instance;

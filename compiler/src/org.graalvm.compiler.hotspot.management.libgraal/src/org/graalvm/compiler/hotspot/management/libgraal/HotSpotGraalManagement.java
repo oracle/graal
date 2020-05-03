@@ -38,9 +38,9 @@ import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 
 /**
- * Dynamically registers a {@link HotSpotGraalRuntimeMBean}s created in SVM heap into
- * {@link MBeanServer} in HotSpot heap. The instance is created by {@link HotSpotGraalRuntime} using
- * factory injected by {@code LibGraalFeature}.
+ * Dynamically registers a {@link HotSpotGraalRuntimeMBean}s created in an SVM heap with an
+ * {@link MBeanServer} in the HotSpot heap. The instance is created by {@link HotSpotGraalRuntime}
+ * using a factory injected by {@code LibGraalFeature}.
  */
 public final class HotSpotGraalManagement extends MBeanProxy<HotSpotGraalRuntimeMBean> implements HotSpotGraalManagementRegistration {
 
@@ -48,17 +48,17 @@ public final class HotSpotGraalManagement extends MBeanProxy<HotSpotGraalRuntime
     }
 
     /**
-     * Creates a {@link HotSpotGraalRuntimeMBean} for given {@link HotSpotGraalRuntime}. It firstly
-     * defines the required classes in the HotSpot heap and starts the factory thread. Then it
-     * creates a {@link HotSpotGraalRuntimeMBean} for given {@link HotSpotGraalRuntime} and notifies
-     * the factory thread about a new pending registration.
+     * Creates a {@link HotSpotGraalRuntimeMBean} for given {@code runtime}. It first defines the
+     * required classes in the HotSpot heap and starts the factory thread. Then it creates a
+     * {@link HotSpotGraalRuntimeMBean} for given {@code runtime} and notifies the factory thread
+     * about a new pending registration.
      *
      * @param runtime the runtime to create {@link HotSpotGraalRuntimeMBean} for
      * @param config the configuration used to obtain the {@code _jni_environment} offset
      */
     @Override
     public void initialize(HotSpotGraalRuntime runtime, GraalHotSpotVMConfig config) {
-        if (!initializeJNI(config)) {
+        if (!initializeJNI(config, runtime)) {
             return;
         }
         HotSpotGraalRuntimeMBean mbean = getBean();
@@ -75,7 +75,7 @@ public final class HotSpotGraalManagement extends MBeanProxy<HotSpotGraalRuntime
                 ObjectName objectName = new ObjectName(beanName);
                 mbean = new HotSpotGraalRuntimeMBean(objectName, runtime);
                 initialize(mbean, beanName, objectName);
-                enqueueForRegistrationAndNotify(this);
+                enqueueForRegistrationAndNotify(this, runtime);
             } catch (MalformedObjectNameException err) {
                 err.printStackTrace(TTY.out);
             }
