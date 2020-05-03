@@ -36,6 +36,7 @@ import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntim
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
+import org.graalvm.libgraal.LibGraalScope.CloseAction;
 import org.graalvm.util.OptionsEncoder;
 
 import com.oracle.truffle.api.TruffleRuntime;
@@ -89,6 +90,17 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         }
     }
 
+    @Override
+    protected AutoCloseable openCompilerThreadScope() {
+        return new LibGraalScope(CloseAction.DETACH_AND_RELEASE);
+    }
+
+    @Override
+    protected long getCompilerIdleDelay() {
+        // TODO: introduce a polyglot option (GR-23129)
+        return 1000L;
+    }
+
     @SuppressWarnings("try")
     @Override
     protected Map<String, Object> createInitialOptions() {
@@ -131,7 +143,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         @Override
         public void write(byte[] b, int off, int len) {
             HotSpotToSVMCalls.ttyWriteBytes(isolateThread(), b, off, len);
-            }
+        }
 
         @Override
         public void close() throws IOException {
