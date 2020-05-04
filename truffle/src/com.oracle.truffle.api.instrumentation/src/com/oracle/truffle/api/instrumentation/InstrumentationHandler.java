@@ -778,7 +778,7 @@ final class InstrumentationHandler {
                     visitRoot(rootNode, parentInstrumentable, visitorBuilder.buildVisitor(), true, false);
                 }
             } finally {
-                lock2.lock();
+                lock2.unlock();
             }
         } finally {
             lock.unlock();
