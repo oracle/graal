@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
@@ -13,6 +13,7 @@ import * as utils from './utils';
 import * as net from 'net';
 import { pathToFileURL } from 'url';
 import { LanguageClient, LanguageClientOptions, StreamInfo } from 'vscode-languageclient';
+import { toggleCodeCoverage, activeTextEditorChaged } from './graalVMCoverage';
 import { installGraalVM, installGraalVMComponent, selectInstalledGraalVM } from './graalVMInstall';
 import { addNativeImageToPOM } from './graalVMNativeImage';
 
@@ -39,6 +40,14 @@ export function activate(context: vscode.ExtensionContext) {
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.addNativeImageToPOM', () => {
 		addNativeImageToPOM();
+	}));
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.toggleCodeCoverage', () => {
+		toggleCodeCoverage(context);
+	}));
+	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(e => {
+		if (e) {
+			activeTextEditorChaged(e);
+		}
 	}));
 	const configurationProvider = new GraalVMConfigurationProvider();
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('graalvm', configurationProvider));

@@ -77,8 +77,21 @@
 				"command": "extension.graalvm.addNativeImageToPOM",
 				"title": "Add Maven Native Image Plugin",
 				"category": "GraalVM"
+			},
+			{
+				"command": "extension.graalvm.toggleCodeCoverage",
+				"title": "Toggle Code Coverage",
+				"category": "GraalVM"
 			}
 		],
+		"menus": {
+			"editor/context": [
+				{
+					"command": "extension.graalvm.toggleCodeCoverage",
+					"group": "4_coverage"
+				}
+			]
+		},
 		"languages": [
 			{
 				"id": "sl",
