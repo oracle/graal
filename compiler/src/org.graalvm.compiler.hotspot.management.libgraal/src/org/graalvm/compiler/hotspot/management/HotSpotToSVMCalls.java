@@ -43,10 +43,6 @@ final class HotSpotToSVMCalls {
     private HotSpotToSVMCalls() {
     }
 
-    static native long attachThread(long isolateId);
-
-    static native void detachThread(long isolateThreadId);
-
     static native long[] pollRegistrations(long isolateThreadId);
 
     static native void finishRegistration(long isolateThreadId, long[] svmRegistrations);

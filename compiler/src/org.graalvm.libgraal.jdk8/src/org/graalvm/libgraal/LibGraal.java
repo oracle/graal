@@ -86,7 +86,7 @@ public class LibGraal {
 
     private static long initializeLibgraal() {
         try {
-            long[] javaVMInfo = runtime().registerNativeMethods(LibGraal.class);
+            long[] javaVMInfo = runtime().registerNativeMethods(LibGraalScope.class);
             long isolate = javaVMInfo[1];
             return isolate;
         } catch (UnsupportedOperationException e) {
@@ -133,10 +133,6 @@ public class LibGraal {
             throw new InternalError(throwable);
         }
     }
-
-    // Implementation:
-    // com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.getCurrentIsolateThread
-    static native long getCurrentIsolateThread(long iso);
 
     public static long getFailedSpeculationsAddress(HotSpotSpeculationLog log) {
         return log.getFailedSpeculationsAddress();

@@ -41,6 +41,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.libgraal.LibGraal;
+import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandles;
@@ -65,7 +66,7 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 import sun.misc.Unsafe;
 
 /**
- * Entry points in libgraal corresponding to native methods in {@link LibGraal} and
+ * Entry points in libgraal corresponding to native methods in {@link LibGraalScope} and
  * {@code CompileTheWorld}.
  */
 public final class LibGraalEntryPoints {
@@ -77,9 +78,14 @@ public final class LibGraalEntryPoints {
      */
     static final CGlobalData<Pointer> LOG_FILE_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
 
-    @SuppressWarnings("unused")
-    @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_org_graalvm_libgraal_LibGraal_getCurrentIsolateThread")
-    private static native IsolateThread getCurrentIsolateThread(PointerBase env, PointerBase hsClazz, @IsolateContext Isolate isolate);
+    @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_org_graalvm_libgraal_LibGraalScope_getIsolateThreadIn")
+    private static native IsolateThread getIsolateThreadIn(PointerBase env, PointerBase hsClazz, @IsolateContext Isolate isolate);
+
+    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalScope_attachThreadTo", builtin = CEntryPoint.Builtin.ATTACH_THREAD)
+    static native long attachThreadTo(PointerBase env, PointerBase hsClazz, @CEntryPoint.IsolateContext long isolate);
+
+    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalScope_detachThreadFrom", builtin = CEntryPoint.Builtin.DETACH_THREAD)
+    static native void detachThreadFrom(PointerBase env, PointerBase hsClazz, @CEntryPoint.IsolateThreadContext long isolateThread);
 
     private static long cachedOptionsHash;
     private static OptionValues cachedOptions;

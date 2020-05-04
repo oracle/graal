@@ -711,16 +711,6 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy {
     private static byte[] HS_BEAN_FACTORY_CLASS;
 
     @Alias
-    @ClassData("org.graalvm.compiler.hotspot.management.SVMMBean$IsolateThreadScope")
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassNameComputer.class, isFinal = true)
-    private static String HS_ISOLATE_THREAD_SCOPE_CLASS_NAME;
-
-    @Alias
-    @ClassData("org.graalvm.compiler.hotspot.management.SVMMBean$IsolateThreadScope")
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassDataComputer.class, isFinal = true)
-    private static byte[] HS_ISOLATE_THREAD_SCOPE_CLASS;
-
-    @Alias
     @ClassData("org.graalvm.compiler.hotspot.management.SVMMBean$PushBackIterator")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy.ClassNameComputer.class, isFinal = true)
     private static String HS_PUSHBACK_ITER_CLASS_NAME;
@@ -761,7 +751,7 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy {
             }
             URL url = Thread.currentThread().getContextClassLoader().getResource(classData.value().replace('.', '/') + ".class");
             if (url == null) {
-                throw UserError.abort("Cannot find SVMMBean class");
+                throw UserError.abort("Cannot find %s class", classData.value());
             }
             try (InputStream in = url.openStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 byte[] buffer = new byte[4096];
@@ -771,7 +761,7 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy {
                 }
                 return out.toByteArray();
             } catch (IOException ioe) {
-                throw UserError.abort("Cannot load SVMMBean class due to: " + ioe.getMessage());
+                throw UserError.abort("Cannot load %s class due to: %s", classData.value(), ioe.getMessage());
             }
         }
     }

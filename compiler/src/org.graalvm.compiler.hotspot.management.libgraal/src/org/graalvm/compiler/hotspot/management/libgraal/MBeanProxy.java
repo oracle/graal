@@ -76,8 +76,6 @@ class MBeanProxy<T extends DynamicMBean> {
     private static final byte[] HS_SVM_CALLS_CLASS = null;
     private static final String HS_PUSHBACK_ITER_CLASS_NAME = null;
     private static final byte[] HS_PUSHBACK_ITER_CLASS = null;
-    private static final String HS_ISOLATE_THREAD_SCOPE_CLASS_NAME = null;
-    private static final byte[] HS_ISOLATE_THREAD_SCOPE_CLASS = null;
     private static final String SVM_HS_ENTRYPOINTS_CLASS_NAME = null;
     private static final byte[] SVM_HS_ENTRYPOINTS_CLASS = null;
 
@@ -312,7 +310,6 @@ class MBeanProxy<T extends DynamicMBean> {
             JNI.JClass svmHsEntryPoints = findOrDefineClassInHotSpot(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME, SVM_HS_ENTRYPOINTS_CLASS);
             findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS);
             findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS);
-            findOrDefineClassInHotSpot(env, classLoader, HS_ISOLATE_THREAD_SCOPE_CLASS_NAME, HS_ISOLATE_THREAD_SCOPE_CLASS);
             findOrDefineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull();
             svmToHotSpotEntryPoints = JNIUtil.NewGlobalRef(env, svmHsEntryPoints, "Class<" + SVM_HS_ENTRYPOINTS_CLASS_NAME + ">");
         }

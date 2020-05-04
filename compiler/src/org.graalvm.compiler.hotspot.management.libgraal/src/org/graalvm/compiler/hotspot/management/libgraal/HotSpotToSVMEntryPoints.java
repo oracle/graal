@@ -27,6 +27,7 @@ package org.graalvm.compiler.hotspot.management.libgraal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.DynamicMBean;
@@ -58,12 +59,6 @@ final class HotSpotToSVMEntryPoints {
 
     private HotSpotToSVMEntryPoints() {
     }
-
-    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_HotSpotToSVMCalls_attachThread", builtin = CEntryPoint.Builtin.ATTACH_THREAD)
-    static native long attachThread(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateContext long isolateId);
-
-    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_HotSpotToSVMCalls_detachThread", builtin = CEntryPoint.Builtin.DETACH_THREAD)
-    static native void detachThread(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId);
 
     /**
      * Returns the pending {@link DynamicMBean} registrations.

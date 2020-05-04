@@ -31,8 +31,8 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 
 /**
- * Access to libgraal, a shared library containing an AOT compiled version of Graal produced by SVM.
- * The libgraal library is only available if:
+ * Access to libgraal, a shared library containing an AOT compiled version of Graal produced by
+ * GraalVM Native Image. The libgraal library is only available if:
  * <ul>
  * <li>the {@linkplain #inLibGraal() current runtime} is libgraal, or</li>
  * <li>the HotSpot {@code UseJVMCINativeLibrary} flag is true and the current runtime includes the
@@ -165,14 +165,6 @@ public class LibGraal {
      */
     @SuppressWarnings("unused")
     public static boolean detachCurrentThread(boolean release) {
-        throw shouldNotReachHere();
-    }
-
-    /**
-     * Gets the isolate thread for the current thread (which must be attached to libgraal).
-     */
-    @SuppressWarnings("unused")
-    static long getCurrentIsolateThread(long iso) {
         throw shouldNotReachHere();
     }
 
