@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * An assertion that succeeds when encountered at the beginning or at the end of the string we are
@@ -135,7 +135,7 @@ public class PositionAssertion extends Term {
             case DOLLAR:
                 return "$";
         }
-        throw new IllegalStateException();
+        throw Exceptions.shouldNotReachHere();
     }
 
     @TruffleBoundary

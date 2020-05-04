@@ -41,11 +41,13 @@
 
 package com.oracle.truffle.regex.tregex.util.json;
 
-import com.oracle.truffle.api.TruffleFile;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.StandardOpenOption;
+
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public abstract class JsonValue implements JsonConvertible {
 
@@ -54,6 +56,7 @@ public abstract class JsonValue implements JsonConvertible {
         return this;
     }
 
+    @TruffleBoundary
     public void dump(TruffleFile path) {
         try (PrintWriter writer = new PrintWriter(path.newBufferedWriter(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING))) {
             dump(writer, 0);

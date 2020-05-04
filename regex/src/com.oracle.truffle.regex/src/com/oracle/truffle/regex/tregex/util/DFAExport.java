@@ -40,7 +40,14 @@
  */
 package com.oracle.truffle.regex.tregex.util;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.StandardOpenOption;
+import java.util.Map;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.dfa.DFAStateNodeBuilder;
@@ -54,16 +61,9 @@ import com.oracle.truffle.regex.tregex.matchers.SingleRangeMatcher;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.SimpleMatchers;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.nio.file.StandardOpenOption;
-import java.util.Map;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
-
 public class DFAExport {
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static void exportDot(DFAGenerator dfaGenerator, TruffleFile path, boolean shortLabels) {
         DFAStateNodeBuilder[] entryStates = dfaGenerator.getEntryStates();
         Map<DFAStateNodeBuilder, DFAStateNodeBuilder> stateMap = dfaGenerator.getStateMap();
@@ -120,7 +120,7 @@ public class DFAExport {
         return "S" + (shortLabels ? state.getId() : state.stateSetToString());
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static void exportUnitTest(DFAStateNode entry, DFAStateNode[] states) {
         System.out.printf("int initialState = %d;\n", entry.getId());
         System.out.printf("DFAStateNode[] states = createStates(%d);\n", states.length);

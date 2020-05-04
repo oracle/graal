@@ -65,6 +65,7 @@ import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 /**
  * This regex executor uses a backtracking algorithm on the NFA. It is used for all expressions that
@@ -539,8 +540,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             case PureNFAState.KIND_EMPTY_MATCH:
                 return true;
             default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 
@@ -610,8 +610,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             case PureNFAState.KIND_EMPTY_MATCH:
                 return index;
             default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 

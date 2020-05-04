@@ -54,6 +54,7 @@ import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -220,7 +221,7 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
     @Override
     public DFAStateTransitionBuilder[] getPredecessors() {
         if (super.getPredecessors() == NODE_SPLIT_TAINTED) {
-            throw new IllegalStateException(NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG);
+            throw Exceptions.shouldNotReachHere(NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG);
         }
         return super.getPredecessors();
     }
@@ -370,6 +371,7 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
         }
     }
 
+    @TruffleBoundary
     @Override
     protected boolean hasTransitionToUnAnchoredFinalState(boolean forward) {
         throw new UnsupportedOperationException();

@@ -552,6 +552,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return matchers[i] != null && matchers[i].execute(c, compactString);
     }
 
+    /**
+     * TODO: move code that is executed after finding the successor into separate states of
+     * {@link TRegexDFAExecutorNode#execute(TRegexExecutorLocals, boolean)}, for code deduplication.
+     */
     private boolean checkMatchSuccessorFoundHook(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean loopMode, int preLoopIndex, int i) {
         CompilerAsserts.partialEvaluationConstant(i);
         locals.setSuccessorIndex(i);

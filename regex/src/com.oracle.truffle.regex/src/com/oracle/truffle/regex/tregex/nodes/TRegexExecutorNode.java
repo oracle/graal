@@ -48,6 +48,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 public abstract class TRegexExecutorNode extends Node {
 
@@ -139,7 +140,7 @@ public abstract class TRegexExecutorNode extends Node {
             }
             return c;
         } else {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnsupportedOperationException();
         }
     }
@@ -196,8 +197,7 @@ public abstract class TRegexExecutorNode extends Node {
                 inputIncRaw(locals, forward);
             }
         } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new UnsupportedOperationException();
+            throw Exceptions.shouldNotReachHere();
         }
     }
 
@@ -241,8 +241,7 @@ public abstract class TRegexExecutorNode extends Node {
                         index++;
                     }
                 } else {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new UnsupportedOperationException();
+                    throw Exceptions.shouldNotReachHere();
                 }
                 i++;
             }
@@ -266,7 +265,7 @@ public abstract class TRegexExecutorNode extends Node {
                         locals.setIndex(locals.getIndex() - 1);
                     }
                 } else {
-                    CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw new UnsupportedOperationException();
                 }
                 i++;

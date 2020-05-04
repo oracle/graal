@@ -60,6 +60,7 @@ import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
@@ -396,7 +397,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             case Bytes:
                 return inPattern.charAt(position);
             default:
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 
@@ -1020,7 +1021,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                             escapeLength = 8;
                             break;
                         default:
-                            throw new IllegalStateException();
+                            throw Exceptions.shouldNotReachHere();
                     }
                     String code = getUpTo(escapeLength, PythonFlavorProcessor::isHexDigit);
                     if (code.length() < escapeLength) {

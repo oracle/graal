@@ -40,15 +40,14 @@
  */
 package com.oracle.truffle.regex.tregex.util;
 
-import com.oracle.truffle.regex.charset.Constants;
-import com.oracle.truffle.regex.charset.SortedListOfRanges;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.charset.Constants;
+import com.oracle.truffle.regex.charset.SortedListOfRanges;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 public class DebugUtil {
 
@@ -158,5 +157,4 @@ public class DebugUtil {
             return String.format("%fms", elapsed / 1e6);
         }
     }
-
 }

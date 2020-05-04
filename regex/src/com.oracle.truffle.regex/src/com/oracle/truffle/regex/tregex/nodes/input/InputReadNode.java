@@ -41,7 +41,6 @@
 package com.oracle.truffle.regex.tregex.nodes.input;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -53,6 +52,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.runtime.nodes.ToCharNode;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 @GenerateUncached
 public abstract class InputReadNode extends Node {
@@ -80,9 +80,7 @@ public abstract class InputReadNode extends Node {
         try {
             return toCharNode.execute(inputs.readArrayElement(input, index));
         } catch (UnsupportedMessageException | InvalidArrayIndexException | UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            // should never be reached
-            throw new RuntimeException(e);
+            throw Exceptions.shouldNotReachHere();
         }
     }
 

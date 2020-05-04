@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.regex;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.parser.RegexFeatureSet;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
-
-import java.util.Arrays;
 
 public final class RegexOptions {
 

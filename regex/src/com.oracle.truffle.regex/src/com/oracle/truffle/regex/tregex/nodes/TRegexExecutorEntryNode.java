@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.nodes;
 
 import java.lang.reflect.Field;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -79,6 +80,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
             }
             coderField = field;
             if (coderField == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new RuntimeException("failed to get coder field offset");
             }
             coderFieldOffset = UNSAFE.objectFieldOffset(coderField);
@@ -94,6 +96,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
                 theUnsafeInstance.setAccessible(true);
                 return (Unsafe) theUnsafeInstance.get(Unsafe.class);
             } catch (Exception e2) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
             }
         }

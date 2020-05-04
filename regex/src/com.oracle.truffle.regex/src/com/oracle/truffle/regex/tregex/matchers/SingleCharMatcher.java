@@ -40,8 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 

@@ -54,6 +54,7 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 public final class RegexLexer {
@@ -579,7 +580,7 @@ public final class RegexLexer {
         } else if (flags.isUnicode() && (c == 'p' || c == 'P')) {
             return parseUnicodeCharacterProperty(c == 'P');
         } else {
-            throw new IllegalStateException();
+            throw Exceptions.shouldNotReachHere();
         }
     }
 
@@ -616,7 +617,7 @@ public final class RegexLexer {
                     return Constants.NON_WORD_CHARS;
                 }
             default:
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 

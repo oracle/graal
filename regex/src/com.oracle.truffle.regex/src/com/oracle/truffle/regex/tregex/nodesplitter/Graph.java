@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.nodesplitter;
 
-import com.oracle.truffle.regex.tregex.automaton.StateIndex;
-
 import java.util.ArrayList;
+
+import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 
 /**
  * An abstract graph wrapper used by {@link DFANodeSplit}.

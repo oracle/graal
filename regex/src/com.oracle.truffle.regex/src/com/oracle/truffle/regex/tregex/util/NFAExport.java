@@ -144,7 +144,7 @@ public final class NFAExport {
             case REGULAR:
                 return "circle";
             default:
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 
@@ -317,7 +317,7 @@ public final class NFAExport {
             case REGULAR:
                 return "state";
             default:
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 

@@ -41,7 +41,7 @@
 
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -81,9 +81,9 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNod
         return false;
     }
 
+    @TruffleBoundary
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }
 

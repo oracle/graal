@@ -48,6 +48,7 @@ import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
@@ -122,7 +123,7 @@ public final class PureNFAMap {
                     acc.addSet(target.getCharSet());
                     break;
                 default:
-                    throw new IllegalStateException();
+                    throw Exceptions.shouldNotReachHere();
             }
         }
         return true;
