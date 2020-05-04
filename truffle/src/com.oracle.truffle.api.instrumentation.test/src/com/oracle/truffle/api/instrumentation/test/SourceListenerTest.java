@@ -703,6 +703,54 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     }
 
     @Test
+    public void testPreLoadedSourcesReported() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code1 = "abcd";
+        String code2 = "efgh";
+        StringBuilder loadedCode = new StringBuilder();
+        context.eval(Source.create(ProxyLanguage.ID, code1));
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        context.eval(Source.create(ProxyLanguage.ID, code2));
+        Assert.assertEquals(code1 + code1 + code2 + code2, loadedCode.toString());
+    }
+
+    @Test
+    public void testPreExecutedSourcesReported() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code1 = "abcd";
+        String code2 = "efgh";
+        StringBuilder loadedCode = new StringBuilder();
+        context.eval(Source.create(ProxyLanguage.ID, code1));
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        context.eval(Source.create(ProxyLanguage.ID, code2));
+        Assert.assertEquals(code1 + code1 + code2 + code2, loadedCode.toString());
+    }
+
+    @Test
+    public void testPreLoadedSourcesNotReported() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code1 = "abcd";
+        String code2 = "efgh";
+        StringBuilder loadedCode = new StringBuilder();
+        context.eval(Source.create(ProxyLanguage.ID, code1));
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), false);
+        context.eval(Source.create(ProxyLanguage.ID, code2));
+        Assert.assertEquals(code2 + code2, loadedCode.toString());
+    }
+
+    @Test
+    public void testPreExecutedSourcesNotReported() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code1 = "abcd";
+        String code2 = "efgh";
+        StringBuilder loadedCode = new StringBuilder();
+        context.eval(Source.create(ProxyLanguage.ID, code1));
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), false);
+        context.eval(Source.create(ProxyLanguage.ID, code2));
+        Assert.assertEquals(code2 + code2, loadedCode.toString());
+    }
+
+    @Test
     public void testMaterializedSourcesInAST() {
         setupEnv(Context.create(), new MultiSourceASTLanguage());
         String code = "Mabcd";
