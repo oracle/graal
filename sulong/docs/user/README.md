@@ -1,9 +1,9 @@
 # GraalVM LLVM Runtime
 
-The GraalVM LLVM runtime can execute C/C++, Fortran, and other programming languages
-that can be transformed to LLVM bitcode on GraalVM. To execute a program,
-you have to compile the program to LLVM bitcode by a LLVM front end such
-as `clang`.
+The GraalVM LLVM runtime can execute programming languages that can be transformed
+to LLVM bitcode on GraalVM. This includes languages like C/C++, Fortran, and others.
+To execute a program, you have to compile the program to LLVM bitcode with an LLVM
+front end such as `clang`.
 
 ## Running LLVM bitcode programs on GraalVM
 
@@ -12,7 +12,7 @@ $GRAALVM_HOME/bin/lli [options] <bitcode file> [program args]
 ```
 
 Where `<bitcode file>` is a compiled program with embedded LLVM bitcode.
-Note: LLVM bitcode is platform dependent. The program must be compiled on the
+Note: LLVM bitcode is platform dependent. The program must be compiled for
 the appropriate platform.
 
 ## Compiling to LLVM bitcode format
@@ -22,7 +22,7 @@ LLVM bitcode. For that, GraalVM needs the binaries to be compiled with embedded
 bitcode.
 
 GraalVM comes with a pre-built LLVM toolchain for producing binaries with embedded
-bitcode. This can be installed with:
+bitcode from C/C++ code. This can be installed with:
 
 ```
 $GRAALVM_HOME/bin/gu install llvm-toolchain

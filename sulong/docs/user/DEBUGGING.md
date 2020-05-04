@@ -18,8 +18,8 @@ a link to the console. Pasting this link into Chrome's address bar will open the
 
 Breakpoints can only be set in functions that have already been parsed. GraalVM defaults to parsing
 functions in LLVM bitcode files only when they are first being executed. To instead parse functions
-eagerly and be able to set breakpoints also in functions not yet executed you can launch `lli`
-with the option `--llvm.lazyParsing=false`.
+eagerly and be able to set breakpoints also in functions not yet executed you can use the option
+`lli --llvm.lazyParsing=false`.
 
 ## Program-defined breakpoints using `__builtin_debugtrap()`
 
@@ -30,7 +30,7 @@ code you are actually trying to debug without having to first find and set a bre
 launching your application. You can also instruct Chrome Inspector not to suspend your program at the first
 source-level statement being executed. When doing so, GraalVM will instead execute your program until it
 reaches a call to `__builtin_debugtrap()` before invoking the debugger. To enable this behaviour you need
-pass the arguments `--inspect.Suspend=false` and `--inspect.WaitAttached=true`.
+pass the arguments `lli --inspect.Suspend=false --inspect.WaitAttached=true`.
 
 ## FAQ
 
@@ -38,13 +38,13 @@ pass the arguments `--inspect.Suspend=false` and `--inspect.WaitAttached=true`.
 
 In general, debug information in LLVM bitcode files contains absolute search paths to identify the
 location of source code. Alternatively, a search path for source files can be specified using
-the `--inspect.SourcePath=<path>` option.
+the `--inspect.SourcePath=<path>` option (multiple paths can be specified separated by `:`).
 
 ### Can I also debug my program on LLVM-IR level?
 
 GraalVM also contains preliminary support for debugging program on the level of LLVM IR.
-This feature is only in the early stages and may contain bugs. To use it, you need to
-replace add the option `--llvm.llDebug`.
+This feature is only in the early stages and may be incomplete. To use it, you need to
+replace add the option `--experimental-options --llvm.llDebug`.
 
 Also, to debug on LLVM-IR level you need to use `llvm-dis` to disassemble the bitcode
 that you want to execute. GraalVM expects a file with the same name as the bitcode module but
@@ -62,15 +62,5 @@ itself can only be specified once, you can pass it an arbitrary number of path m
 ### How can I generate a trace of how GraalVM executes my program?
 
 GraalVM can produce an LLVM IR-level trace of its program execution. You can enable
-this feature by passing the `--llvm.traceIR=<...>` option to `lli`. This option takes a
-single argument denoting the target for the trace output.
-
-* `stdout` or `out`: prints the trace to `stdout`
-
-* `stderr` or `err`: prints the trace to `stderr`
-
-* `file://<path>`: prints the trace to the file denoted by `path`
-
-Please note that in order to use this feature you also need to enable IR-level
-debugging as described above by passing the `--llvm.llDebug` option and
-ensuring that sulong can find `.ll` files for the bitcode files it executes.
+this feature by passing the `--experimental-options --llvm.traceIR=<...>` option to `lli`.
+See `lli --help:languages --help:expert` for more information.

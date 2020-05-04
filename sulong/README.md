@@ -6,8 +6,8 @@ Sulong is a high-performance LLVM bitcode runtime built on the
 Sulong is written in Java and uses the Truffle language implementation
 framework and Graal as a dynamic compiler.
 
-With Sulong you can execute C/C++, Fortran, and other programming languages
-that can be transformed to LLVM bitcode on GraalVM.
+With Sulong you can execute programming languages that can be transformed
+to LLVM bitcode on GraalVM. This includes languages like C/C++, Fortran, and others.
 
 
 # User Documentation
@@ -29,7 +29,7 @@ resources:
 * [The GraalVM LLVM Toolchain](docs/contributor/TOOLCHAIN.md)
 * [Cross-Language Interoperability](docs/contributor/INTEROP.md)
 * [Publications](docs/contributor/PUBLICATIONS.md)
-* [Sulog test cases](docs/contributor/TESTS.md)
+* [Sulong test cases](docs/contributor/TESTS.md)
 * [FAQ](docs/contributor/FAQ.md)
 
 

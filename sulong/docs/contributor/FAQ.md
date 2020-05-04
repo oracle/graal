@@ -27,24 +27,24 @@ project.
 
 ### What is Truffle?
 
-[Truffle](https://github.com/oracle/graal/tree/master/truffle) is a language
-implementation framework written in Java. It allows language designers
-to implement a (guest) language as an Abstract Syntax Tree (AST)
-interpreter. Additionally, Truffle provides many language independent
-facilities to the host language such as profiling, debugging, and
-language interoperability. When a Truffle AST is executed often and then
-dynamically compiled with Graal, Graal can exploit its knowledge about the
-Truffle framework and produce efficient machine code.
+[Truffle](../../../truffle) is a language implementation framework written
+in Java. It allows language designers to implement a (guest) language as
+an Abstract Syntax Tree (AST) interpreter. Additionally, Truffle provides
+many language independent services to the host language such as a profiler,
+a debugger, and language interoperability. If a Truffle AST is executed often,
+it will be dynamically compiled by the [GraalVM compiler](../../../compiler).
+The GraalVM compiler can exploit its knowledge about the Truffle framework and
+produce efficient machine code.
 
 ### What is LLVM?
 
 LLVM is an umbrella project for a modular and reusable compiler
 infrastructure written in C++. It includes a compiler frontend `clang`
-for compiling C, C++, Objective C and Objective C++ to LLVM bitcode IR.
-Many of the other tools such as the optimizer `opt`, assembler,
-linker, and back-ends then operate on the LLVM bitcode, to finally produce
-machine code. LLVM envisions that transformations and analyses can be
-applied during compile-time, link-time, runtime, and offline.
+for compiling C, C++, Objective C and Objective C++ to LLVM bitcode IR,
+other tools such as the optimizer `opt`, assembler, linker, and back-ends
+that operate on the LLVM bitcode to finally produce machine code. LLVM
+envisions that transformations and analyses can be applied during
+compile-time, link-time, runtime, and offline.
 
 ## Mx
 

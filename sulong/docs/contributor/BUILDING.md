@@ -78,7 +78,7 @@ nothing else.
 The resulting GraalVM can be found in `graal/sdk/latest_graalvm_home`. That symlink
 will always point to the latest built GraalVM.
 
-Note that a GraalVM built like that only contains the bare minimum, that is, it does
+Note that a GraalVM built like this will only contain the bare minimum, that is, it does
 not contain a compiler or a debugger. To add additional components, use the `--dynamicimport`
 flag for mx. For example, to include tools (e.g. the debugger) and the compiler:
 
@@ -143,4 +143,4 @@ mx ideinit
 
 That will generate IDE files for Eclipse, IntelliJ and Netbeans. You can also
 use `mx eclipseinit`, `mx netbeansinit` or `mx intellijinit` to generate
-only one of those.
+the IDE file of your choice.

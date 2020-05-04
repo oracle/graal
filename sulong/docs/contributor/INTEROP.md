@@ -1,12 +1,15 @@
 # Cross-Language Interoperability
 
-The GraalVM LLVM runtime supports standard Polyglot interop messages. This document
-explains what it does when it receives them, how to get it to explicitly send them,
-and what messages it sends for normal LLVM operations on foreign objects.
+The GraalVM LLVM runtime supports standard Polyglot interop messages. For a general
+documentation of Polyglot interop, see
+[InteropLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html).
+This document explains what the various interop messages mean in the context of the
+GraalVM LLVM runtime.
 
-Detailed reference documentation of Polyglot interop support can be found in
-`polyglot.h` (in `mxbuild/<platform>-<arch>/SULONG_HOME/include/polyglot.h` when
-building from source).
+Detailed reference documentation of Polyglot interop support in the GraalVM LLVM
+runtime can be found in `polyglot.h` (in `mxbuild/<platform>-<arch>/SULONG_HOME/include/polyglot.h`
+when building from source, or in `$GRAALVM_HOME/jre/languages/llvm/include/polyglot.h`
+in the GraalVM distribution).
 
 ## How the LLVM runtime responds to messages from other languages
 
