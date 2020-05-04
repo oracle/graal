@@ -152,6 +152,8 @@ svm-common: ${mx} {
   }
   logs: [
     "../.native-image/*/*/*/*.log"
+    "../*/*/*.log"
+    "*/*.log"
     "*/svmbuild/*.log"
     "*/svmbuild/images/*.log"
     "*/*/stripped/*.map"
