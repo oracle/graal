@@ -251,18 +251,25 @@ final class HostClassDesc {
 
         private static Object methodInfo(Method m) {
             class MethodInfo {
+                private final boolean isStatic = Modifier.isStatic(m.getModifiers());
                 private final String name = m.getName();
                 private final Class<?>[] parameterTypes = m.getParameterTypes();
 
                 @Override
                 public boolean equals(Object obj) {
-                    return obj instanceof MethodInfo && name.equals(((MethodInfo) obj).name) && Arrays.equals(parameterTypes, ((MethodInfo) obj).parameterTypes);
+                    if (obj instanceof MethodInfo) {
+                        MethodInfo other = (MethodInfo) obj;
+                        return isStatic == other.isStatic && name.equals(other.name) && Arrays.equals(parameterTypes, other.parameterTypes);
+                    } else {
+                        return false;
+                    }
                 }
 
                 @Override
                 public int hashCode() {
                     final int prime = 31;
                     int result = 1;
+                    result = prime * result + (isStatic ? 1 : 0);
                     result = prime * result + name.hashCode();
                     result = prime * result + Arrays.hashCode(parameterTypes);
                     return result;
