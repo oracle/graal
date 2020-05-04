@@ -26,7 +26,6 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
@@ -67,10 +66,10 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.truffle.api.Truffle;
 
 public final class ImageClassLoader {
 
@@ -94,19 +93,17 @@ public final class ImageClassLoader {
 
     final Platform platform;
     private final NativeImageClassLoader classLoader;
-    private final String[] classpath;
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    private ImageClassLoader(Platform platform, String[] classpath, NativeImageClassLoader classLoader) {
+    private ImageClassLoader(Platform platform, NativeImageClassLoader classLoader) {
         this.platform = platform;
-        this.classpath = classpath;
         this.classLoader = classLoader;
     }
 
-    public static ImageClassLoader create(Platform platform, String[] classpathAll, NativeImageClassLoader classLoader) {
+    public static ImageClassLoader create(Platform platform, NativeImageClassLoader classLoader) {
         /*
          * Iterating all classes can already trigger class initialization: We need annotation
          * information, which triggers class initialization of annotation classes and enum classes
@@ -115,20 +112,7 @@ public final class ImageClassLoader {
          */
         NativeImageGenerator.setSystemPropertiesForImageEarly();
 
-        ArrayList<String> classpathFiltered = new ArrayList<>(classpathAll.length);
-        classpathFiltered.addAll(Arrays.asList(classpathAll));
-
-        /* If the GraalVM SDK is on the boot class path, and it contains annotated types. */
-        final String sunBootClassPath = System.getProperty("sun.boot.class.path");
-        if (sunBootClassPath != null) {
-            for (String s : sunBootClassPath.split(File.pathSeparator)) {
-                if (s.contains("graal-sdk")) {
-                    classpathFiltered.add(s);
-                }
-            }
-        }
-
-        ImageClassLoader result = new ImageClassLoader(platform, classpathFiltered.toArray(new String[classpathFiltered.size()]), classLoader);
+        ImageClassLoader result = new ImageClassLoader(platform, classLoader);
         result.initAllClasses();
         return result;
     }
@@ -159,6 +143,10 @@ public final class ImageClassLoader {
                     throw shouldNotReachHere(e);
                 }
             }
+            if (!"com.oracle.svm.truffle.api.SubstrateTruffleRuntime".equals(System.getProperty("truffle.TruffleRuntime"))) {
+                /* Only load Truffle with NativeImageClassLoader if building Truffle images */
+                modules.remove(ModuleSupport.getModuleName(Truffle.class));
+            }
             for (String moduleResource : ModuleSupport.getModuleResources(modules)) {
                 if (moduleResource.endsWith(CLASS_EXTENSION)) {
                     executor.execute(() -> handleClassFileName(moduleResource, '/'));
@@ -167,10 +155,7 @@ public final class ImageClassLoader {
         }
 
         Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ImageClassLoader::toRealPath));
-        uniquePaths.addAll(
-                        Arrays.stream(classpath)
-                                        .flatMap(ImageClassLoader::toClassPathEntries)
-                                        .collect(Collectors.toList()));
+        uniquePaths.addAll(classpath());
         uniquePaths.parallelStream().forEach(path -> loadClassesFromPath(executor, path));
 
         boolean completed = executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
@@ -178,21 +163,6 @@ public final class ImageClassLoader {
             throw shouldNotReachHere("timed out while initializing classes");
         }
         executor.shutdownNow();
-    }
-
-    static Stream<Path> toClassPathEntries(String classPathEntry) {
-        Path entry = ClasspathUtils.stringToClasspath(classPathEntry);
-        if (entry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
-            try {
-                return Files.list(entry.getParent()).filter(ClasspathUtils::isJar);
-            } catch (IOException e) {
-                return Stream.empty();
-            }
-        }
-        if (Files.isReadable(entry)) {
-            return Stream.of(entry);
-        }
-        return Stream.empty();
     }
 
     private static Set<Path> excludeDirectories = getExcludeDirectories();
@@ -490,8 +460,18 @@ public final class ImageClassLoader {
         return Class.forName(name, false, classLoader);
     }
 
+    /**
+     * Deprecated. Use {@link ImageClassLoader#classpath()} instead.
+     *
+     * @return image classpath as a list of strings.
+     */
+    @Deprecated
     public List<String> getClasspath() {
-        return Collections.unmodifiableList(Arrays.asList(classpath));
+        return classpath().stream().map(Path::toString).collect(Collectors.toList());
+    }
+
+    public List<Path> classpath() {
+        return Stream.concat(classLoader.buildcp.stream(), classLoader.imagecp.stream()).collect(Collectors.toList());
     }
 
     public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass, boolean includeHostedOnly) {
