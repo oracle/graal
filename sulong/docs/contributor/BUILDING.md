@@ -27,28 +27,6 @@ A version for MacOS can be downloaded from the [cmake homepage](https://cmake.or
 Make sure to put `cmake` on the PATH as well, this is not done automatically by
 the installer.
 
-On recent MacOS versions, you may run into a build error like this:
-
-```
-Building com.oracle.truffle.llvm.libraries.bitcode with GNU Make... [rebuild needed by GNU Make]
-../graal/sulong/projects/com.oracle.truffle.llvm.libraries.bitcode/src/abort.c:30:10: fatal error: 'stdio.h' file not found
-#include <stdio.h>
-         ^~~~~~~~~
-1 error generated.
-make: *** [bin/abort.noopt.bc] Error 1
-
-Building com.oracle.truffle.llvm.libraries.bitcode with GNU Make failed
-1 build tasks failed
-```
-
-This is due to the non-standard location of the SDK headers in newer Xcode
-versions. In this case, please set the `SDKROOT` environment variable to the
-correct location:
-
-```bash
-SDKROOT=`xcrun --show-sdk-path`
-```
-
 ## Runtime Dependencies
 
 LLVM is only needed for compiling the bitcode files. For running compiled
