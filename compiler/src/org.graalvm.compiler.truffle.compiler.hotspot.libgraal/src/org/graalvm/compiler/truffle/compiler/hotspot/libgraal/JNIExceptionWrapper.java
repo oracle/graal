@@ -24,15 +24,15 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateException;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTrace;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetClassName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementClassName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementFileName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementLineNumber;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementMethodName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetThrowableMessage;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.UpdateStackTrace;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateException;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetClassName;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTrace;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementClassName;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementFileName;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementLineNumber;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementMethodName;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetThrowableMessage;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.UpdateStackTrace;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callCreateException;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetClassName;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetStackTrace;
@@ -42,7 +42,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptio
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetStackTraceElementMethodName;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetThrowableMessage;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callUpdateStackTrace;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.SVMToHotSpotUtil.isHotSpotCall;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleFromLibGraalUtil.isHotSpotCall;
 import static org.graalvm.libgraal.jni.JNIUtil.ExceptionCheck;
 import static org.graalvm.libgraal.jni.JNIUtil.ExceptionClear;
 import static org.graalvm.libgraal.jni.JNIUtil.ExceptionDescribe;
@@ -57,8 +57,6 @@ import static org.graalvm.libgraal.jni.JNIUtil.createHSString;
 import static org.graalvm.libgraal.jni.JNIUtil.createString;
 
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
 import org.graalvm.libgraal.jni.JNI.JClass;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
 import org.graalvm.libgraal.jni.JNI.JObject;
@@ -67,10 +65,12 @@ import org.graalvm.libgraal.jni.JNI.JString;
 import org.graalvm.libgraal.jni.JNI.JThrowable;
 import org.graalvm.libgraal.jni.JNIUtil;
 import org.graalvm.word.WordFactory;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 
 /**
  * Wraps an exception thrown by a JNI call into HotSpot. If the exception propagates up to an
- * {@link HotSpotToSVM} entry point, the exception is re-thrown in HotSpot.
+ * {@link TruffleToLibGraal} entry point, the exception is re-thrown in HotSpot.
  */
 final class JNIExceptionWrapper extends RuntimeException {
 
@@ -86,9 +86,9 @@ final class JNIExceptionWrapper extends RuntimeException {
     }
 
     /**
-     * Re-throws this JNI exception in HotSpot after updating the stack trace to include the SVM
-     * frames between the SVM call entry point and the call back to HotSpot that threw the original
-     * JNI exception.
+     * Re-throws this JNI exception in HotSpot after updating the stack trace to include the
+     * libgraal frames between the libgraal call entry point and the call back to HotSpot that threw
+     * the original JNI exception.
      */
     private void throwInHotSpot(JNIEnv env) {
         JThrowable toThrow;
@@ -101,8 +101,8 @@ final class JNIExceptionWrapper extends RuntimeException {
     }
 
     /**
-     * Creates a merged SVM and HotSpot stack trace and updates this {@link JNIExceptionWrapper}
-     * stack trace to it.
+     * Creates a merged libgraal and HotSpot stack trace and updates this
+     * {@link JNIExceptionWrapper} stack trace to it.
      *
      * @return true if the stack trace needed a merge
      */
@@ -114,8 +114,8 @@ final class JNIExceptionWrapper extends RuntimeException {
             mergedStack = hsStack;
             res = false;
         } else {
-            StackTraceElement[] svmStack = getStackTrace();
-            mergedStack = mergeStackTraces(hsStack, svmStack, 0, getIndexOfPropagateJNIExceptionFrame(svmStack), true);
+            StackTraceElement[] libGraalStack = getStackTrace();
+            mergedStack = mergeStackTraces(hsStack, libGraalStack, 0, getIndexOfPropagateJNIExceptionFrame(libGraalStack), true);
             res = true;
         }
         setStackTrace(mergedStack);
@@ -152,7 +152,7 @@ final class JNIExceptionWrapper extends RuntimeException {
      * @param env the {@link JNIEnv}
      * @param original an exception to be thrown in HotSpot
      */
-    @SVMToHotSpot(CreateException)
+    @TruffleFromLibGraal(CreateException)
     static void throwInHotSpot(JNIEnv env, Throwable original) {
         if (JNIUtil.tracingAt(1)) {
             original.printStackTrace(TTY.out);
@@ -164,35 +164,35 @@ final class JNIExceptionWrapper extends RuntimeException {
             JString hsMessage = createHSString(env, message);
             JThrowable hsThrowable = callCreateException(env, hsMessage);
             StackTraceElement[] hsStack = getJNIExceptionStackTrace(env, hsThrowable);
-            StackTraceElement[] svmStack = original.getStackTrace();
-            String[] merged = encode(mergeStackTraces(hsStack, svmStack, 1, 0, false));
+            StackTraceElement[] libGraalStack = original.getStackTrace();
+            String[] merged = encode(mergeStackTraces(hsStack, libGraalStack, 1, 0, false));
             Throw(env, updateStackTrace(env, hsThrowable, merged));
         }
     }
 
     /**
-     * Merges {@code hotSpotStackTrace} with {@code svmStackTrace}.
+     * Merges {@code hotSpotStackTrace} with {@code libGraalStackTrace}.
      *
      * @param hotSpotStackTrace
-     * @param svmStackTrace
+     * @param libGraalStackTrace
      * @param hotSpotStackStartIndex
-     * @param svmStackStartIndex
+     * @param libGraalStackStartIndex
      * @param originatedInHotSpot
      */
     private static StackTraceElement[] mergeStackTraces(
                     StackTraceElement[] hotSpotStackTrace,
-                    StackTraceElement[] svmStackTrace,
+                    StackTraceElement[] libGraalStackTrace,
                     int hotSpotStackStartIndex,
-                    int svmStackStartIndex,
+                    int libGraalStackStartIndex,
                     boolean originatedInHotSpot) {
         int targetIndex = 0;
-        StackTraceElement[] merged = new StackTraceElement[hotSpotStackTrace.length - hotSpotStackStartIndex + svmStackTrace.length - svmStackStartIndex];
+        StackTraceElement[] merged = new StackTraceElement[hotSpotStackTrace.length - hotSpotStackStartIndex + libGraalStackTrace.length - libGraalStackStartIndex];
         boolean startingHotSpotFrame = true;
-        boolean startingSvmFrame = true;
+        boolean startingLibGraalFrame = true;
         boolean useHotSpotStack = originatedInHotSpot;
         int hotSpotStackIndex = hotSpotStackStartIndex;
-        int svmStackIndex = svmStackStartIndex;
-        while (hotSpotStackIndex < hotSpotStackTrace.length || svmStackIndex < svmStackTrace.length) {
+        int libGraalStackIndex = libGraalStackStartIndex;
+        while (hotSpotStackIndex < hotSpotStackTrace.length || libGraalStackIndex < libGraalStackTrace.length) {
             if (useHotSpotStack) {
                 while (hotSpotStackIndex < hotSpotStackTrace.length && (startingHotSpotFrame || !hotSpotStackTrace[hotSpotStackIndex].isNativeMethod())) {
                     startingHotSpotFrame = false;
@@ -202,11 +202,11 @@ final class JNIExceptionWrapper extends RuntimeException {
             } else {
                 useHotSpotStack = true;
             }
-            while (svmStackIndex < svmStackTrace.length && (startingSvmFrame || !isHotSpotCall(svmStackTrace[svmStackIndex]))) {
-                startingSvmFrame = false;
-                merged[targetIndex++] = svmStackTrace[svmStackIndex++];
+            while (libGraalStackIndex < libGraalStackTrace.length && (startingLibGraalFrame || !isHotSpotCall(libGraalStackTrace[libGraalStackIndex]))) {
+                startingLibGraalFrame = false;
+                merged[targetIndex++] = libGraalStackTrace[libGraalStackIndex++];
             }
-            startingSvmFrame = true;
+            startingLibGraalFrame = true;
         }
         return merged;
     }
@@ -241,11 +241,11 @@ final class JNIExceptionWrapper extends RuntimeException {
      * @param throwableHandle the JNI exception to get the stack trace from
      * @return the stack trace
      */
-    @SVMToHotSpot(GetStackTrace)
-    @SVMToHotSpot(GetStackTraceElementClassName)
-    @SVMToHotSpot(GetStackTraceElementMethodName)
-    @SVMToHotSpot(GetStackTraceElementFileName)
-    @SVMToHotSpot(GetStackTraceElementLineNumber)
+    @TruffleFromLibGraal(GetStackTrace)
+    @TruffleFromLibGraal(GetStackTraceElementClassName)
+    @TruffleFromLibGraal(GetStackTraceElementMethodName)
+    @TruffleFromLibGraal(GetStackTraceElementFileName)
+    @TruffleFromLibGraal(GetStackTraceElementLineNumber)
     private static StackTraceElement[] getJNIExceptionStackTrace(JNIEnv env, JObject throwableHandle) {
         JObjectArray elements = callGetStackTrace(env, throwableHandle);
         int len = GetArrayLength(env, elements);
@@ -266,16 +266,16 @@ final class JNIExceptionWrapper extends RuntimeException {
      */
     private static boolean containsHotSpotCall(StackTraceElement[] stackTrace) {
         for (StackTraceElement e : stackTrace) {
-            if (SVMToHotSpotUtil.isHotSpotCall(e)) {
+            if (TruffleFromLibGraalUtil.isHotSpotCall(e)) {
                 return true;
             }
         }
         return false;
     }
 
-    @SVMToHotSpot(UpdateStackTrace)
+    @TruffleFromLibGraal(UpdateStackTrace)
     private static JThrowable updateStackTrace(JNIEnv env, JThrowable throwableHandle, String[] encodedStackTrace) {
-        SVMToHotSpotUtil.JNIClass string = SVMToHotSpotUtil.getJNIClass(env, String.class);
+        TruffleFromLibGraalUtil.JNIClass string = TruffleFromLibGraalUtil.getJNIClass(env, String.class);
         JObjectArray stackTraceHandle = NewObjectArray(env, encodedStackTrace.length, string.jclass, WordFactory.nullPointer());
         for (int i = 0; i < encodedStackTrace.length; i++) {
             JString element = createHSString(env, encodedStackTrace[i]);
@@ -284,7 +284,7 @@ final class JNIExceptionWrapper extends RuntimeException {
         return callUpdateStackTrace(env, throwableHandle, stackTraceHandle);
     }
 
-    @SVMToHotSpot(GetThrowableMessage)
+    @TruffleFromLibGraal(GetThrowableMessage)
     private static String getMessage(JNIEnv env, JThrowable throwableHandle) {
         JString message = callGetThrowableMessage(env, throwableHandle);
         return createString(env, message);

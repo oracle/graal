@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
+package org.graalvm.compiler.hotspot.management;
 
-import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
-
-import java.util.function.Supplier;
-
-import org.graalvm.libgraal.LibGraalObject;
+import org.graalvm.compiler.hotspot.management.LibGraalMBean.Factory;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
- * Encapsulates a handle to a {@link Supplier} object in the SVM heap.
+ * Entry points in HotSpot for calls from SVM.
  */
-final class SVMStringSupplier extends LibGraalObject implements Supplier<String> {
+@Platforms(Platform.HOSTED_ONLY.class)
+public final class JMXFromLibGraalEntryPoints {
 
-    SVMStringSupplier(long handle) {
-        super(handle);
+    private JMXFromLibGraalEntryPoints() {
     }
 
-    @Override
-    public String get() {
-        return HotSpotToSVMCalls.getSuppliedString(getIsolateThread(), getHandle());
+    /**
+     * @see LibGraalMBean#getFactory()
+     */
+    static Factory getFactory() {
+        Factory factory = LibGraalMBean.getFactory();
+        return factory;
+    }
+
+    /**
+     * @see Factory#signalRegistrationRequest(long)
+     */
+    static void signalRegistrationRequest(Factory factory, long isolate) {
+        factory.signalRegistrationRequest(isolate);
+    }
+
+    /**
+     * @see Factory#unregister(long, java.lang.String[])
+     */
+    static void unregister(Factory factory, long isolate, String[] objectIds) {
+        factory.unregister(isolate, objectIds);
     }
 }

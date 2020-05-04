@@ -306,7 +306,7 @@ public final class JNIUtil {
      */
     public static void trace(int level, String format, Object... args) {
         if (traceLevel() >= level) {
-            HotSpotToSVMScope<?> scope = HotSpotToSVMScope.scopeOrNull();
+            ToLibGraalScope<?> scope = ToLibGraalScope.scopeOrNull();
             String indent = scope == null ? "" : new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' ');
             String prefix = "[" + IsolateUtil.getIsolateID() + ":" + Thread.currentThread().getName() + "]";
             TTY.printf(prefix + indent + format + "%n", args);

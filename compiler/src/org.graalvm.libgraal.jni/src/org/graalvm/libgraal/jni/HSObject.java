@@ -39,7 +39,7 @@ import org.graalvm.libgraal.jni.JNI.JObject;
 
 /**
  * Encapsulates a JNI handle to an object in the HotSpot heap. Depending on which constructor is
- * used, the handle is either local to a {@link HotSpotToSVMScope} and thus invalid once the scope
+ * used, the handle is either local to a {@link ToLibGraalScope} and thus invalid once the scope
  * exits or a global JNI handle that is only released sometime after the {@link HSObject} dies.
  */
 public abstract class HSObject {
@@ -56,9 +56,9 @@ public abstract class HSObject {
 
     /**
      * Link to next the next scope local object. The head of the list is in
-     * {@link HotSpotToSVMScope#locals}. The handle of a scope local object is only valid for the
-     * lifetime of a {@link HotSpotToSVMScope}. A self-reference (i.e. {@code this.next == this})
-     * denotes an object whose {@link HotSpotToSVMScope} has closed.
+     * {@link ToLibGraalScope#locals}. The handle of a scope local object is only valid for the
+     * lifetime of a {@link ToLibGraalScope}. A self-reference (i.e. {@code this.next == this})
+     * denotes an object whose {@link ToLibGraalScope} has closed.
      *
      * This field is {@code null} for a non-scope local object.
      */
@@ -83,7 +83,7 @@ public abstract class HSObject {
      * Once {@code scope.close()} is called, any attempt to {@linkplain #getHandle() use} the handle
      * will result in an {@link IllegalArgumentException}.
      */
-    protected <T extends Enum<T>> HSObject(HotSpotToSVMScope<T> scope, JObject handle) {
+    protected <T extends Enum<T>> HSObject(ToLibGraalScope<T> scope, JObject handle) {
         this.handle = handle;
         next = scope.locals;
         scope.locals = this;

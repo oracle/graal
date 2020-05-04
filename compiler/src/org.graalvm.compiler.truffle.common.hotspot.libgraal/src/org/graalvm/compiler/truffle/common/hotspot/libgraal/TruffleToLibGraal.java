@@ -30,19 +30,19 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotates methods associated with both ends of a HotSpot to SVM call. This annotation simplifies
- * navigating between these methods in an IDE.
+ * Annotates methods associated with both ends of a HotSpot to libgraal call. This annotation
+ * simplifies navigating between these methods in an IDE.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface HotSpotToSVM {
+public @interface TruffleToLibGraal {
     /**
-     * Gets the token identifying a call from HotSpot to SVM.
+     * Gets the token identifying a call from HotSpot to libgraal.
      */
     Id value();
 
     /**
-     * Identifier for a call from HotSpot to SVM.
+     * Identifier for a call from HotSpot to libgraal.
      */
     // Please keep sorted
     enum Id {

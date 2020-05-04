@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,25 +26,21 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+import java.util.function.Supplier;
+
+import org.graalvm.libgraal.LibGraalObject;
 
 /**
- * Encapsulates a handle to a {@link GraphInfo} object in the SVM heap.
+ * Encapsulates a handle to a {@link Supplier} object in the libgraal heap.
  */
-final class SVMGraphInfo extends SVMScopedHandle implements TruffleCompilerListener.GraphInfo {
+final class LibGraalStringSupplier extends LibGraalObject implements Supplier<String> {
 
-    SVMGraphInfo(long handle) {
-        super(handle, SVMGraphInfo.class);
+    LibGraalStringSupplier(long handle) {
+        super(handle);
     }
 
     @Override
-    public int getNodeCount() {
-        return HotSpotToSVMCalls.getNodeCount(getIsolateThread(), getHandle());
-    }
-
-    @Override
-    public String[] getNodeTypes(boolean simpleNames) {
-        return HotSpotToSVMCalls.getNodeTypes(getIsolateThread(), getHandle(), simpleNames);
+    public String get() {
+        return TruffleToLibGraalCalls.getSuppliedString(getIsolateThread(), getHandle());
     }
 }

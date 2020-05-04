@@ -45,24 +45,24 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
 import org.graalvm.libgraal.jni.JNI.JClass;
 import org.graalvm.libgraal.jni.JNI.JMethodID;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
 import org.graalvm.libgraal.jni.JNI.JObject;
 import org.graalvm.libgraal.jni.JNI.JValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 
 /**
- * Helpers for calling methods in {@value #HOTSPOT_ENTRY_POINTS_CLASS_NAME} via JNI.
+ * Helpers for calling methods in {@value #FROM_LIBGRAAL_ENTRY_POINTS_CLASS_NAME} via JNI.
  */
-final class SVMToHotSpotUtil {
+final class TruffleFromLibGraalUtil {
 
     /**
      * Name of the class in the HotSpot heap to which the calls are made via JNI.
      */
-    private static final String HOTSPOT_ENTRY_POINTS_CLASS_NAME = "org.graalvm.compiler.truffle.runtime.hotspot.libgraal.SVMToHotSpotEntryPoints";
+    private static final String FROM_LIBGRAAL_ENTRY_POINTS_CLASS_NAME = "org.graalvm.compiler.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints";
 
     /**
      * Describes a class and holds a reference to its {@linkplain #jclass JNI value}.
@@ -78,13 +78,13 @@ final class SVMToHotSpotUtil {
     }
 
     /**
-     * Describes a method in {@link SVMToHotSpotUtil#HOTSPOT_ENTRY_POINTS_CLASS_NAME}.
+     * Describes a method in {@link TruffleFromLibGraalUtil#FROM_LIBGRAAL_ENTRY_POINTS_CLASS_NAME}.
      */
     static final class JNIMethod {
-        final SVMToHotSpot.Id hcId;
+        final TruffleFromLibGraal.Id hcId;
         final JMethodID jniId;
 
-        JNIMethod(SVMToHotSpot.Id hcId, JMethodID jniId) {
+        JNIMethod(TruffleFromLibGraal.Id hcId, JMethodID jniId) {
             this.hcId = hcId;
             this.jniId = jniId;
         }
@@ -96,7 +96,7 @@ final class SVMToHotSpotUtil {
     }
 
     @HotSpotCall
-    static void callVoid(JNIEnv env, SVMToHotSpot.Id id, JValue args) {
+    static void callVoid(JNIEnv env, TruffleFromLibGraal.Id id, JValue args) {
         JNIMethod method = getJNIMethod(env, id, void.class);
         traceCall(id);
         env.getFunctions().getCallStaticVoidMethodA().call(env, peer(env).jclass, method.jniId, args);
@@ -104,7 +104,7 @@ final class SVMToHotSpotUtil {
     }
 
     @HotSpotCall
-    static boolean callBoolean(JNIEnv env, SVMToHotSpot.Id id, JValue args) {
+    static boolean callBoolean(JNIEnv env, TruffleFromLibGraal.Id id, JValue args) {
         JNIMethod method = getJNIMethod(env, id, boolean.class);
         traceCall(id);
         boolean res = env.getFunctions().getCallStaticBooleanMethodA().call(env, peer(env).jclass, method.jniId, args);
@@ -113,7 +113,7 @@ final class SVMToHotSpotUtil {
     }
 
     @HotSpotCall
-    static long callLong(JNIEnv env, SVMToHotSpot.Id id, JValue args) {
+    static long callLong(JNIEnv env, TruffleFromLibGraal.Id id, JValue args) {
         JNIMethod method = getJNIMethod(env, id, long.class);
         traceCall(id);
         long res = env.getFunctions().getCallStaticLongMethodA().call(env, peer(env).jclass, method.jniId, args);
@@ -122,7 +122,7 @@ final class SVMToHotSpotUtil {
     }
 
     @HotSpotCall
-    static int callInt(JNIEnv env, SVMToHotSpot.Id id, JValue args) {
+    static int callInt(JNIEnv env, TruffleFromLibGraal.Id id, JValue args) {
         JNIMethod method = getJNIMethod(env, id, int.class);
         traceCall(id);
         int res = env.getFunctions().getCallStaticIntMethodA().call(env, peer(env).jclass, method.jniId, args);
@@ -132,7 +132,7 @@ final class SVMToHotSpotUtil {
 
     @SuppressWarnings("unchecked")
     @HotSpotCall
-    static <T extends JObject> T callJObject(JNIEnv env, SVMToHotSpot.Id id, JValue args) {
+    static <T extends JObject> T callJObject(JNIEnv env, TruffleFromLibGraal.Id id, JValue args) {
         JNIMethod method = getJNIMethod(env, id, Object.class);
         traceCall(id);
         JObject res = env.getFunctions().getCallStaticObjectMethodA().call(env, peer(env).jclass, method.jniId, args);
@@ -140,7 +140,7 @@ final class SVMToHotSpotUtil {
         return (T) res;
     }
 
-    private static final EnumMap<SVMToHotSpot.Id, JNIMethod> methods = new EnumMap<>(SVMToHotSpot.Id.class);
+    private static final EnumMap<TruffleFromLibGraal.Id, JNIMethod> methods = new EnumMap<>(TruffleFromLibGraal.Id.class);
     private static final Map<String, JNIClass> classes = new ConcurrentHashMap<>();
     /**
      * Prevents recursion when an exception happens in {@link #getJNIClass} or {@link #getJNIMethod}
@@ -148,8 +148,8 @@ final class SVMToHotSpotUtil {
      */
     private static final ThreadLocal<Boolean> inExceptionHandler = new ThreadLocal<>();
 
-    private static void traceCall(SVMToHotSpot.Id id) {
-        trace(1, "SVM->HS: %s", id);
+    private static void traceCall(TruffleFromLibGraal.Id id) {
+        trace(1, "LIBGRAAL->HS: %s", id);
     }
 
     static JNIClass getJNIClass(JNIEnv env, Class<?> clazz) {
@@ -186,19 +186,19 @@ final class SVMToHotSpotUtil {
         }
     }
 
-    private static JNIClass hsvmPeer;
+    private static JNIClass fromLibGraalEntryPointsPeer;
 
     private static JNIClass peer(JNIEnv env) {
-        if (hsvmPeer == null) {
-            hsvmPeer = getJNIClass(env, HOTSPOT_ENTRY_POINTS_CLASS_NAME);
+        if (fromLibGraalEntryPointsPeer == null) {
+            fromLibGraalEntryPointsPeer = getJNIClass(env, FROM_LIBGRAAL_ENTRY_POINTS_CLASS_NAME);
         }
-        return hsvmPeer;
+        return fromLibGraalEntryPointsPeer;
     }
 
-    private static JNIMethod getJNIMethod(JNIEnv env, SVMToHotSpot.Id hcId, Class<?> expectedReturnType) {
+    private static JNIMethod getJNIMethod(JNIEnv env, TruffleFromLibGraal.Id hcId, Class<?> expectedReturnType) {
         assert hcId.getReturnType() == expectedReturnType || expectedReturnType.isAssignableFrom(hcId.getReturnType());
         try {
-            return methods.computeIfAbsent(hcId, new Function<SVMToHotSpot.Id, JNIMethod>() {
+            return methods.computeIfAbsent(hcId, new Function<TruffleFromLibGraal.Id, JNIMethod>() {
                 @Override
                 public JNIMethod apply(Id id) {
                     JNIClass c = peer(env);
@@ -229,7 +229,7 @@ final class SVMToHotSpotUtil {
      * Determines if {@code frame} is for a method denoting a call into HotSpot.
      */
     static boolean isHotSpotCall(StackTraceElement frame) {
-        if (!SVMToHotSpotUtil.class.getName().equals(frame.getClassName())) {
+        if (!TruffleFromLibGraalUtil.class.getName().equals(frame.getClassName())) {
             return false;
         }
         return HotSpotCallNames.contains(frame.getMethodName());
@@ -251,7 +251,7 @@ final class SVMToHotSpotUtil {
         Map<String, Method> entryPoints = new HashMap<>();
         Map<String, Method> others = new HashMap<>();
 
-        for (Method m : SVMToHotSpotUtil.class.getDeclaredMethods()) {
+        for (Method m : TruffleFromLibGraalUtil.class.getDeclaredMethods()) {
             if (m.getAnnotation(HotSpotCall.class) != null) {
                 Method existing = entryPoints.put(m.getName(), m);
                 if (existing != null) {

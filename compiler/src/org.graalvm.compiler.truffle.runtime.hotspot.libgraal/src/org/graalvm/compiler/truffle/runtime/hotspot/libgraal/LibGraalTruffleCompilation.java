@@ -31,14 +31,15 @@ import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 
-final class SVMTruffleCompilation extends LibGraalObject implements TruffleCompilation {
 
-    private final SVMHotSpotTruffleCompiler owner;
+final class LibGraalTruffleCompilation extends LibGraalObject implements TruffleCompilation {
+
+    private final LibGraalHotSpotTruffleCompiler owner;
     private volatile CompilableTruffleAST cachedCompilableTruffleAST;
     private volatile String cachedId;
     private final LibGraalScope scope;
 
-    SVMTruffleCompilation(SVMHotSpotTruffleCompiler owner, long handle, LibGraalScope scope) {
+    LibGraalTruffleCompilation(LibGraalHotSpotTruffleCompiler owner, long handle, LibGraalScope scope) {
         super(handle);
         this.owner = owner;
         this.scope = scope;
@@ -48,7 +49,7 @@ final class SVMTruffleCompilation extends LibGraalObject implements TruffleCompi
     public CompilableTruffleAST getCompilable() {
         CompilableTruffleAST compilable = cachedCompilableTruffleAST;
         if (compilable == null) {
-            compilable = HotSpotToSVMCalls.getTruffleCompilationTruffleAST(getIsolateThread(), getHandle());
+            compilable = TruffleToLibGraalCalls.getTruffleCompilationTruffleAST(getIsolateThread(), getHandle());
             cachedCompilableTruffleAST = compilable;
         }
         return compilable;
@@ -60,7 +61,7 @@ final class SVMTruffleCompilation extends LibGraalObject implements TruffleCompi
             owner.closeCompilation(this);
             cachedCompilableTruffleAST = null;
         } finally {
-            HotSpotToSVMCalls.closeCompilation(getIsolateThread(), getHandle());
+            TruffleToLibGraalCalls.closeCompilation(getIsolateThread(), getHandle());
             scope.close();
         }
     }
@@ -68,7 +69,7 @@ final class SVMTruffleCompilation extends LibGraalObject implements TruffleCompi
     String getId() {
         String id = cachedId;
         if (id == null) {
-            id = HotSpotToSVMCalls.getTruffleCompilationId(getIsolateThread(), getHandle());
+            id = TruffleToLibGraalCalls.getTruffleCompilationId(getIsolateThread(), getHandle());
             cachedId = id;
         }
         return id;

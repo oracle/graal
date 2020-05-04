@@ -27,66 +27,67 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.AsCompilableTruffleAST;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.AsJavaConstant;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CallNodeHashCode;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CancelInstalledTask;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CompilableToString;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.ConsumeOptimizedAssumptionDependency;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateException;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateInliningPlan;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateStringSupplier;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.FindCallNode;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.FindDecision;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallNodes;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallTargetForCallNode;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetClassName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCompilableCallCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCompilableName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetConstantFieldInfo;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCurrentCallTarget;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetDescription;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetFailedSpeculationsAddress;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetFrameSlotKindTagForJavaKind;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetInlineKind;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetKnownCallSiteCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetLanguage;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetLineNumber;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetLoopExplosionKind;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetNodeRewritingAssumption;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetNodeRewritingAssumptionConstant;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetNonTrivialNodeCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetOffsetEnd;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetOffsetStart;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetPosition;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTrace;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementClassName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementFileName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementLineNumber;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementMethodName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetSuppliedString;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetTargetName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetThrowableMessage;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetTruffleCallBoundaryMethods;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetURI;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsCancelled;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsInliningForced;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsLastTier;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsSameOrSplit;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsTargetStable;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsTruffleBoundary;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsValueType;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.Log;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnCodeInstallation;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnCompilationFailed;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnFailure;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnGraalTierFinished;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnSuccess;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnTruffleTierFinished;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.RegisterOptimizedAssumptionDependency;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.ShouldInline;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.UpdateStackTrace;
+
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AsCompilableTruffleAST;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AsJavaConstant;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CallNodeHashCode;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CancelInstalledTask;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ConsumeOptimizedAssumptionDependency;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateException;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateInliningPlan;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindCallNode;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindDecision;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallCount;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallNodes;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetClassName;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetKnownCallSiteCount;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallTargetForCallNode;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableCallCount;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableName;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetConstantFieldInfo;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCurrentCallTarget;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetDescription;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetFailedSpeculationsAddress;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetFrameSlotKindTagForJavaKind;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetInlineKind;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetLanguage;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetLineNumber;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetLoopExplosionKind;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeRewritingAssumption;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeRewritingAssumptionConstant;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetNonTrivialNodeCount;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetEnd;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTrace;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementClassName;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementFileName;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementLineNumber;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementMethodName;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetSuppliedString;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetTargetName;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetThrowableMessage;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetTruffleCallBoundaryMethods;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsInliningForced;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsLastTier;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSameOrSplit;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTargetStable;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTruffleBoundary;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsValueType;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.Log;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnCodeInstallation;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationFailed;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnFailure;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnGraalTierFinished;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnSuccess;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnTruffleTierFinished;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.RegisterOptimizedAssumptionDependency;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ShouldInline;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.UpdateStackTrace;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -114,8 +115,8 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan.Decision;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.libgraal.LibGraal;
 
@@ -128,9 +129,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Entry points in HotSpot for {@linkplain SVMToHotSpot calls} from SVM.
+ * Entry points in HotSpot for {@link TruffleFromLibGraal calls} from libgraal.
  */
-final class SVMToHotSpotEntryPoints {
+final class TruffleFromLibGraalEntryPoints {
 
     private static final Map<Integer, JavaKind> JAVA_KINDS;
     static {
@@ -143,45 +144,45 @@ final class SVMToHotSpotEntryPoints {
         assert checkHotSpotCalls();
     }
 
-    @SVMToHotSpot(ConsumeOptimizedAssumptionDependency)
+    @TruffleFromLibGraal(ConsumeOptimizedAssumptionDependency)
     static void consumeOptimizedAssumptionDependency(Consumer<OptimizedAssumptionDependency> consumer, OptimizedAssumptionDependency dep) {
         consumer.accept(dep);
     }
 
-    @SVMToHotSpot(GetCallTargetForCallNode)
+    @TruffleFromLibGraal(GetCallTargetForCallNode)
     static long getCallTargetForCallNode(HotSpotTruffleCompilerRuntime truffleRuntime, long callNodeHandle) {
         JavaConstant callNode = LibGraal.unhand(JavaConstant.class, callNodeHandle);
         JavaConstant callTarget = truffleRuntime.getCallTargetForCallNode(callNode);
         return LibGraal.translate(callTarget);
     }
 
-    @SVMToHotSpot(IsTruffleBoundary)
+    @TruffleFromLibGraal(IsTruffleBoundary)
     static boolean isTruffleBoundary(HotSpotTruffleCompilerRuntime truffleRuntime, long methodHandle) {
         ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         return truffleRuntime.isTruffleBoundary(method);
     }
 
-    @SVMToHotSpot(IsValueType)
+    @TruffleFromLibGraal(IsValueType)
     static boolean isValueType(HotSpotTruffleCompilerRuntime truffleRuntime, long typeHandle) {
         ResolvedJavaType type = LibGraal.unhand(ResolvedJavaType.class, typeHandle);
         return truffleRuntime.isValueType(type);
     }
 
-    @SVMToHotSpot(GetInlineKind)
+    @TruffleFromLibGraal(GetInlineKind)
     static int getInlineKind(HotSpotTruffleCompilerRuntime truffleRuntime, long methodHandle, boolean duringPartialEvaluation) {
         ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         TruffleCompilerRuntime.InlineKind inlineKind = truffleRuntime.getInlineKind(method, duringPartialEvaluation);
         return inlineKind.ordinal();
     }
 
-    @SVMToHotSpot(GetLoopExplosionKind)
+    @TruffleFromLibGraal(GetLoopExplosionKind)
     static int getLoopExplosionKind(HotSpotTruffleCompilerRuntime truffleRuntime, long methodHandle) {
         ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         TruffleCompilerRuntime.LoopExplosionKind loopExplosionKind = truffleRuntime.getLoopExplosionKind(method);
         return loopExplosionKind.ordinal();
     }
 
-    @SVMToHotSpot(GetConstantFieldInfo)
+    @TruffleFromLibGraal(GetConstantFieldInfo)
     static int getConstantFieldInfo(HotSpotTruffleCompilerRuntime truffleRuntime, long typeHandle, boolean isStatic, int fieldIndex) {
         ResolvedJavaType enclosing = LibGraal.unhand(ResolvedJavaType.class, typeHandle);
         ResolvedJavaField[] declaredFields = isStatic ? enclosing.getStaticFields() : enclosing.getInstanceFields(false);
@@ -199,18 +200,18 @@ final class SVMToHotSpotEntryPoints {
         }
     }
 
-    @SVMToHotSpot(Id.GetJavaKindForFrameSlotKind)
+    @TruffleFromLibGraal(Id.GetJavaKindForFrameSlotKind)
     static int getJavaKindForFrameSlotKind(HotSpotTruffleCompilerRuntime truffleRuntime, int frameSlotKindTag) {
         JavaKind kind = truffleRuntime.getJavaKindForFrameSlotKind(frameSlotKindTag);
         return kind.getBasicType();
     }
 
-    @SVMToHotSpot(Id.GetFrameSlotKindTagsCount)
+    @TruffleFromLibGraal(Id.GetFrameSlotKindTagsCount)
     static int getFrameSlotKindTagsCount(HotSpotTruffleCompilerRuntime truffleRuntime) {
         return truffleRuntime.getFrameSlotKindTagsCount();
     }
 
-    @SVMToHotSpot(GetTruffleCallBoundaryMethods)
+    @TruffleFromLibGraal(GetTruffleCallBoundaryMethods)
     static long[] getTruffleCallBoundaryMethods(HotSpotTruffleCompilerRuntime truffleRuntime) {
         Collection<ResolvedJavaMethod> source;
         Iterable<ResolvedJavaMethod> iterable = truffleRuntime.getTruffleCallBoundaryMethods();
@@ -230,77 +231,77 @@ final class SVMToHotSpotEntryPoints {
         return res;
     }
 
-    @SVMToHotSpot(GetFrameSlotKindTagForJavaKind)
+    @TruffleFromLibGraal(GetFrameSlotKindTagForJavaKind)
     static int getFrameSlotKindTagForJavaKind(HotSpotTruffleCompilerRuntime truffleRuntime, int basicType) {
         JavaKind kind = getJavaKind(basicType);
         return truffleRuntime.getFrameSlotKindTagForJavaKind(kind);
     }
 
-    @SVMToHotSpot(Log)
+    @TruffleFromLibGraal(Log)
     static void log(HotSpotTruffleCompilerRuntime truffleRuntime, CompilableTruffleAST compilable, String message) {
         truffleRuntime.log(compilable, message);
     }
 
-    @SVMToHotSpot(CreateInliningPlan)
+    @TruffleFromLibGraal(CreateInliningPlan)
     static TruffleInliningPlan createInliningPlan(HotSpotTruffleCompilerRuntime truffleRuntime, CompilableTruffleAST compilable, TruffleCompilationTask task) {
         return truffleRuntime.createInliningPlan(compilable, task);
     }
 
-    @SVMToHotSpot(RegisterOptimizedAssumptionDependency)
+    @TruffleFromLibGraal(RegisterOptimizedAssumptionDependency)
     static Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(HotSpotTruffleCompilerRuntime truffleRuntime, long optimizedAssumptionHandle) {
         JavaConstant optimizedAssumption = LibGraal.unhand(JavaConstant.class, optimizedAssumptionHandle);
         return truffleRuntime.registerOptimizedAssumptionDependency(optimizedAssumption);
     }
 
-    @SVMToHotSpot(AsCompilableTruffleAST)
+    @TruffleFromLibGraal(AsCompilableTruffleAST)
     static CompilableTruffleAST asCompilableTruffleAST(HotSpotTruffleCompilerRuntime truffleRuntime, long constantHandle) {
         JavaConstant constant = LibGraal.unhand(JavaConstant.class, constantHandle);
         return truffleRuntime.asCompilableTruffleAST(constant);
     }
 
-    @SVMToHotSpot(FindDecision)
+    @TruffleFromLibGraal(FindDecision)
     static TruffleInliningPlan.Decision findDecision(TruffleInliningPlan inliningPlan, long callNodeHandle) {
         JavaConstant callNode = LibGraal.unhand(JavaConstant.class, callNodeHandle);
         return inliningPlan.findDecision(callNode);
     }
 
-    @SVMToHotSpot(GetPosition)
+    @TruffleFromLibGraal(GetPosition)
     static TruffleSourceLanguagePosition getPosition(TruffleInliningPlan inliningPlan, long callNodeHandle) {
         JavaConstant callNode = LibGraal.unhand(JavaConstant.class, callNodeHandle);
         return inliningPlan.getPosition(callNode);
     }
 
-    @SVMToHotSpot(GetNodeRewritingAssumption)
+    @TruffleFromLibGraal(GetNodeRewritingAssumption)
     static long getNodeRewritingAssumption(TruffleInliningPlan.Decision decision) {
         JavaConstant assumption = decision.getNodeRewritingAssumption();
         return LibGraal.translate(assumption);
     }
 
-    @SVMToHotSpot(GetNodeRewritingAssumptionConstant)
+    @TruffleFromLibGraal(GetNodeRewritingAssumptionConstant)
     static long getNodeRewritingAssumptionConstant(CompilableTruffleAST compilable) {
         JavaConstant assumption = compilable.getNodeRewritingAssumptionConstant();
         return LibGraal.translate(assumption);
     }
 
-    @SVMToHotSpot(GetURI)
+    @TruffleFromLibGraal(GetURI)
     static String getURI(TruffleSourceLanguagePosition position) {
         URI uri = position.getURI();
         return uri == null ? null : uri.toString();
     }
 
-    @SVMToHotSpot(AsJavaConstant)
+    @TruffleFromLibGraal(AsJavaConstant)
     static long asJavaConstant(CompilableTruffleAST compilable) {
         JavaConstant constant = compilable.asJavaConstant();
         return LibGraal.translate(constant);
     }
 
-    @SVMToHotSpot(OnCodeInstallation)
+    @TruffleFromLibGraal(OnCodeInstallation)
     static void onCodeInstallation(HotSpotTruffleCompilerRuntime truffleRuntime, CompilableTruffleAST compilable, long installedCodeHandle) {
         InstalledCode installedCode = LibGraal.unhand(InstalledCode.class, installedCodeHandle);
         truffleRuntime.onCodeInstallation(compilable, installedCode);
     }
 
-    @SVMToHotSpot(GetFailedSpeculationsAddress)
+    @TruffleFromLibGraal(GetFailedSpeculationsAddress)
     static long getFailedSpeculationsAddress(CompilableTruffleAST compilable) {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) compilable;
         HotSpotSpeculationLog log = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
@@ -308,7 +309,7 @@ final class SVMToHotSpotEntryPoints {
     }
 
     /**
-     * Updates an exception stack trace by decoding a stack trace from SVM.
+     * Updates an exception stack trace by decoding a stack trace from libgraal.
      *
      * @param target the {@link Throwable} to update
      * @param rawElements the stringified stack trace elements. Each element has a form
@@ -316,7 +317,7 @@ final class SVMToHotSpotEntryPoints {
      *            encoded as an empty string.
      * @return the updated {@link Throwable}
      */
-    @SVMToHotSpot(UpdateStackTrace)
+    @TruffleFromLibGraal(UpdateStackTrace)
     static Throwable updateStackTrace(Throwable target, String[] rawElements) {
         StackTraceElement[] elements = new StackTraceElement[rawElements.length];
         for (int i = 0; i < rawElements.length; i++) {
@@ -337,7 +338,7 @@ final class SVMToHotSpotEntryPoints {
      * @param message the exception message
      * @return exception
      */
-    @SVMToHotSpot(CreateException)
+    @TruffleFromLibGraal(CreateException)
     static Throwable createException(String message) {
         return new RuntimeException(message);
     }
@@ -350,194 +351,195 @@ final class SVMToHotSpotEntryPoints {
         return javaKind;
     }
 
-    @SVMToHotSpot(CreateStringSupplier)
+    @TruffleFromLibGraal(CreateStringSupplier)
     static Supplier<String> createStringSupplier(long handle) {
-        return new SVMStringSupplier(handle);
+        return new LibGraalStringSupplier(handle);
     }
 
-    @SVMToHotSpot(GetSuppliedString)
+    @TruffleFromLibGraal(GetSuppliedString)
     static String getSuppliedString(Supplier<String> supplier) {
         return supplier.get();
     }
 
-    @SVMToHotSpot(IsCancelled)
+    @TruffleFromLibGraal(IsCancelled)
     static boolean isCancelled(TruffleCompilationTask task) {
         return task.isCancelled();
     }
 
-    @SVMToHotSpot(IsLastTier)
+    @TruffleFromLibGraal(IsLastTier)
     static boolean isLastTier(TruffleCompilationTask task) {
         return task.isLastTier();
     }
 
-    @SVMToHotSpot(CompilableToString)
+    @TruffleFromLibGraal(CompilableToString)
     static String compilableToString(CompilableTruffleAST compilable) {
         return compilable.toString();
     }
 
-    @SVMToHotSpot(GetCompilableName)
+    @TruffleFromLibGraal(GetCompilableName)
     static String getCompilableName(CompilableTruffleAST compilable) {
         return compilable.getName();
     }
 
-    @SVMToHotSpot(GetDescription)
+    @TruffleFromLibGraal(GetDescription)
     static String getDescription(TruffleSourceLanguagePosition pos) {
         return pos.getDescription();
     }
 
-    @SVMToHotSpot(GetLanguage)
+    @TruffleFromLibGraal(GetLanguage)
     static String getLanguage(TruffleSourceLanguagePosition pos) {
         return pos.getLanguage();
     }
 
-    @SVMToHotSpot(GetLineNumber)
+    @TruffleFromLibGraal(GetLineNumber)
     static int getLineNumber(TruffleSourceLanguagePosition pos) {
         return pos.getLineNumber();
     }
 
-    @SVMToHotSpot(GetOffsetEnd)
+    @TruffleFromLibGraal(GetOffsetEnd)
     static int getOffsetEnd(TruffleSourceLanguagePosition pos) {
         return pos.getOffsetEnd();
     }
 
-    @SVMToHotSpot(GetOffsetStart)
+    @TruffleFromLibGraal(GetOffsetStart)
     static int getOffsetStart(TruffleSourceLanguagePosition pos) {
         return pos.getOffsetStart();
     }
 
-    @SVMToHotSpot(GetStackTrace)
+    @TruffleFromLibGraal(GetStackTrace)
     static StackTraceElement[] getStackTrace(Throwable throwable) {
         return throwable.getStackTrace();
     }
 
-    @SVMToHotSpot(GetStackTraceElementClassName)
+    @TruffleFromLibGraal(GetStackTraceElementClassName)
     static String getStackTraceElementClassName(StackTraceElement element) {
         return element.getClassName();
     }
 
-    @SVMToHotSpot(GetStackTraceElementFileName)
+    @TruffleFromLibGraal(GetStackTraceElementFileName)
     static String getStackTraceElementFileName(StackTraceElement element) {
         return element.getFileName();
     }
 
-    @SVMToHotSpot(GetStackTraceElementLineNumber)
+    @TruffleFromLibGraal(GetStackTraceElementLineNumber)
     static int getStackTraceElementLineNumber(StackTraceElement element) {
         return element.getLineNumber();
     }
 
-    @SVMToHotSpot(GetStackTraceElementMethodName)
+    @TruffleFromLibGraal(GetStackTraceElementMethodName)
     static String getStackTraceElementMethodName(StackTraceElement element) {
         return element.getMethodName();
     }
 
-    @SVMToHotSpot(GetTargetName)
+    @TruffleFromLibGraal(GetTargetName)
     static String getTargetName(Decision decision) {
         return decision.getTargetName();
     }
 
-    @SVMToHotSpot(IsTargetStable)
+    @TruffleFromLibGraal(IsTargetStable)
     static boolean isTargetStable(Decision decision) {
         return decision.isTargetStable();
     }
 
-    @SVMToHotSpot(OnCompilationFailed)
+    @TruffleFromLibGraal(OnCompilationFailed)
     static void onCompilationFailed(CompilableTruffleAST compilable, Supplier<String> serializedException, boolean bailout, boolean permanentBailout) {
         compilable.onCompilationFailed(serializedException, bailout, permanentBailout);
     }
 
-    @SVMToHotSpot(OnSuccess)
+    @TruffleFromLibGraal(OnSuccess)
     static void onSuccess(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleInliningPlan plan, long graphInfoHandle, long compilationResultInfoHandle) {
-        try (SVMGraphInfo graphInfo = new SVMGraphInfo(graphInfoHandle); SVMCompilationResultInfo compilationResultInfo = new SVMCompilationResultInfo(compilationResultInfoHandle)) {
+        try (LibGraalGraphInfo graphInfo = new LibGraalGraphInfo(graphInfoHandle);
+                        LibGraalCompilationResultInfo compilationResultInfo = new LibGraalCompilationResultInfo(compilationResultInfoHandle)) {
             listener.onSuccess(compilable, plan, graphInfo, compilationResultInfo);
         }
     }
 
-    @SVMToHotSpot(OnFailure)
+    @TruffleFromLibGraal(OnFailure)
     static void onFailure(TruffleCompilerListener listener, CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout) {
         listener.onFailure(compilable, reason, bailout, permanentBailout);
     }
 
-    @SVMToHotSpot(OnGraalTierFinished)
+    @TruffleFromLibGraal(OnGraalTierFinished)
     static void onGraalTierFinished(TruffleCompilerListener listener, CompilableTruffleAST compilable, long graphInfoHandle) {
-        try (SVMGraphInfo graphInfo = new SVMGraphInfo(graphInfoHandle)) {
+        try (LibGraalGraphInfo graphInfo = new LibGraalGraphInfo(graphInfoHandle)) {
             listener.onGraalTierFinished(compilable, graphInfo);
         }
     }
 
-    @SVMToHotSpot(OnTruffleTierFinished)
+    @TruffleFromLibGraal(OnTruffleTierFinished)
     static void onTruffleTierFinished(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleInliningPlan plan, long graphInfoHandle) {
-        try (SVMGraphInfo graphInfo = new SVMGraphInfo(graphInfoHandle)) {
+        try (LibGraalGraphInfo graphInfo = new LibGraalGraphInfo(graphInfoHandle)) {
             listener.onTruffleTierFinished(compilable, plan, graphInfo);
         }
     }
 
-    @SVMToHotSpot(ShouldInline)
+    @TruffleFromLibGraal(ShouldInline)
     static boolean shouldInline(Decision decision) {
         return decision.shouldInline();
     }
 
-    @SVMToHotSpot(GetThrowableMessage)
+    @TruffleFromLibGraal(GetThrowableMessage)
     static String getThrowableMessage(Throwable t) {
         return t.getMessage();
     }
 
-    @SVMToHotSpot(GetClassName)
+    @TruffleFromLibGraal(GetClassName)
     static String getClassName(Class<?> clz) {
         return clz.getName();
     }
 
-    @SVMToHotSpot(CancelInstalledTask)
+    @TruffleFromLibGraal(CancelInstalledTask)
     static void cancelInstalledTask(CompilableTruffleAST compilableTruffleAST) {
         compilableTruffleAST.cancelInstalledTask();
     }
 
-    @SVMToHotSpot(FindCallNode)
+    @TruffleFromLibGraal(FindCallNode)
     static TruffleCallNode findCallNode(TruffleMetaAccessProvider provider, long callNodeHandle) {
         JavaConstant callNode = LibGraal.unhand(JavaConstant.class, callNodeHandle);
         return provider.findCallNode(callNode);
     }
 
-    @SVMToHotSpot(GetCallCount)
+    @TruffleFromLibGraal(GetCallCount)
     static int getCallCount(TruffleCallNode callNode) {
         return callNode.getCallCount();
     }
 
-    @SVMToHotSpot(GetCurrentCallTarget)
+    @TruffleFromLibGraal(GetCurrentCallTarget)
     static CompilableTruffleAST getCurrentCallTarget(TruffleCallNode truffleCallNode) {
         return truffleCallNode.getCurrentCallTarget();
     }
 
-    @SVMToHotSpot(IsInliningForced)
+    @TruffleFromLibGraal(IsInliningForced)
     static boolean isInliningForced(TruffleCallNode truffleCallNode) {
         return truffleCallNode.isInliningForced();
     }
 
-    @SVMToHotSpot(CallNodeHashCode)
+    @TruffleFromLibGraal(CallNodeHashCode)
     static int callNodeHashCode(TruffleCallNode truffleCallNode) {
         return truffleCallNode.hashCode();
     }
 
-    @SVMToHotSpot(GetCompilableCallCount)
+    @TruffleFromLibGraal(GetCompilableCallCount)
     static int getCompilableCallCount(CompilableTruffleAST compilableTruffleAST) {
         return compilableTruffleAST.getCallCount();
     }
 
-    @SVMToHotSpot(GetCallNodes)
+    @TruffleFromLibGraal(GetCallNodes)
     static TruffleCallNode[] getCallNodes(CompilableTruffleAST compilableTruffleAST) {
         return compilableTruffleAST.getCallNodes();
     }
 
-    @SVMToHotSpot(GetKnownCallSiteCount)
+    @TruffleFromLibGraal(GetKnownCallSiteCount)
     static int getKnownCallSiteCount(CompilableTruffleAST compilableTruffleAST) {
         return compilableTruffleAST.getKnownCallSiteCount();
     }
 
-    @SVMToHotSpot(IsSameOrSplit)
+    @TruffleFromLibGraal(IsSameOrSplit)
     static boolean isSameOrSplit(CompilableTruffleAST compilableTruffleAST1, CompilableTruffleAST compilableTruffleAST2) {
         return compilableTruffleAST1.isSameOrSplit(compilableTruffleAST2);
     }
 
-    @SVMToHotSpot(GetNonTrivialNodeCount)
+    @TruffleFromLibGraal(GetNonTrivialNodeCount)
     static int getNonTrivialNodeCount(CompilableTruffleAST compilableTruffleAST) {
         return compilableTruffleAST.getNonTrivialNodeCount();
     }
@@ -545,14 +547,14 @@ final class SVMToHotSpotEntryPoints {
     /*----------------------*/
 
     /**
-     * Checks that all {@link SVMToHotSpot}s are implemented and that their signatures match the
-     * {@linkplain Id#getSignature() ID signatures}.
+     * Checks that all {@link TruffleFromLibGraal}s are implemented and that their signatures match
+     * the {@linkplain Id#getSignature() ID signatures}.
      */
     private static boolean checkHotSpotCalls() {
         Set<Id> unimplemented = EnumSet.allOf(Id.class);
-        for (Method method : SVMToHotSpotEntryPoints.class.getDeclaredMethods()) {
+        for (Method method : TruffleFromLibGraalEntryPoints.class.getDeclaredMethods()) {
             if (Modifier.isStatic(method.getModifiers())) {
-                SVMToHotSpot a = method.getAnnotation(SVMToHotSpot.class);
+                TruffleFromLibGraal a = method.getAnnotation(TruffleFromLibGraal.class);
                 if (a != null) {
                     Id id = a.value();
                     unimplemented.remove(id);
@@ -562,7 +564,7 @@ final class SVMToHotSpotEntryPoints {
                 }
             }
         }
-        check(null, unimplemented.isEmpty(), "Missing implementations:%n%s", unimplemented.stream().map(SVMToHotSpotEntryPoints::missingImpl).sorted().collect(joining(lineSeparator())));
+        check(null, unimplemented.isEmpty(), "Missing implementations:%n%s", unimplemented.stream().map(TruffleFromLibGraalEntryPoints::missingImpl).sorted().collect(joining(lineSeparator())));
         return true;
     }
 
@@ -576,7 +578,7 @@ final class SVMToHotSpotEntryPoints {
 
     private static String missingImpl(Id id) {
         Formatter buf = new Formatter();
-        buf.format("    @%s(%s)%n", SVMToHotSpot.class.getSimpleName(), id.name());
+        buf.format("    @%s(%s)%n", TruffleFromLibGraal.class.getSimpleName(), id.name());
         buf.format("    static %s %s(%s) {%n    }%n", id.getReturnType().getSimpleName(), id.getMethodName(), Stream.of(id.getParameterTypes()).map(c -> c.getSimpleName()).collect(joining(", ")));
         return buf.toString();
     }
@@ -585,9 +587,9 @@ final class SVMToHotSpotEntryPoints {
         if (!condition) {
             String msg = format(format, args);
             if (id != null) {
-                System.err.printf("ERROR: %s.%s: %s%n", SVMToHotSpotEntryPoints.class.getName(), id, msg);
+                System.err.printf("ERROR: %s.%s: %s%n", TruffleFromLibGraalEntryPoints.class.getName(), id, msg);
             } else {
-                System.err.printf("ERROR: %s: %s%n", SVMToHotSpotEntryPoints.class.getName(), msg);
+                System.err.printf("ERROR: %s: %s%n", TruffleFromLibGraalEntryPoints.class.getName(), msg);
             }
             System.exit(99);
         }

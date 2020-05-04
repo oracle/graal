@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management;
-
-import org.graalvm.compiler.hotspot.management.SVMMBean.Factory;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 /**
- * Entry points in HotSpot for calls from SVM.
+ * Encapsulates a handle to an object in the libgraal heap where the handle is only valid within the
+ * scope of a {@link TruffleFromLibGraalEntryPoints} method.
  */
-@Platforms(Platform.HOSTED_ONLY.class)
-final class SVMToHotSpotEntryPoints {
-
-    private SVMToHotSpotEntryPoints() {
-    }
+class LibGraalScopedHandle implements AutoCloseable {
 
     /**
-     * @see SVMMBean#getFactory()
+     * Handle to a libgraal object.
      */
-    static Factory getFactory() {
-        Factory factory = SVMMBean.getFactory();
-        return factory;
-    }
+    private long handle;
+
+    private final Class<?> handleType;
 
     /**
-     * @see Factory#signalRegistrationRequest(long)
+     * Creates a new {@link LibGraalScopedHandle}.
+     *
+     * @param handle handle to a libgraal object
      */
-    static void signalRegistrationRequest(Factory factory, long isolate) {
-        factory.signalRegistrationRequest(isolate);
+    LibGraalScopedHandle(long handle, Class<?> handleType) {
+        this.handle = handle;
+        this.handleType = handleType;
     }
 
-    /**
-     * @see Factory#unregister(long, java.lang.String[])
-     */
-    static void unregister(Factory factory, long isolate, String[] objectIds) {
-        factory.unregister(isolate, objectIds);
+    long getHandle() {
+        if (handle == 0L) {
+            throw new IllegalStateException("Using invalid handle to " + handleType.getName() + " object in libgraal heap");
+        }
+        return handle;
+    }
+
+    @Override
+    public void close() {
+        handle = 0L;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s@0x%x", handleType.getName(), handle);
     }
 }

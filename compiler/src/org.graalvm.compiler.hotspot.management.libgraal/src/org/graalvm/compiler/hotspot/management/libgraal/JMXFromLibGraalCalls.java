@@ -43,18 +43,18 @@ import org.graalvm.word.WordFactory;
 /**
  * Calls from SVM to HotSpot.
  */
-final class SVMToHotSpotCalls {
+final class JMXFromLibGraalCalls {
 
     private static final String CLASS_SERVICES = "jdk/vm/ci/services/Services";
     static final String CLASS_LIBGRAAL = "org/graalvm/libgraal/LibGraal";
 
     private static final String[] METHOD_GET_FACTORY = {
                     "getFactory",
-                    "()Lorg/graalvm/compiler/hotspot/management/SVMMBean$Factory;"
+                    "()Lorg/graalvm/compiler/hotspot/management/LibGraalMBean$Factory;"
     };
     private static final String[] METHOD_SIGNAL = {
                     "signalRegistrationRequest",
-                    "(Lorg/graalvm/compiler/hotspot/management/SVMMBean$Factory;J)V"
+                    "(Lorg/graalvm/compiler/hotspot/management/LibGraalMBean$Factory;J)V"
     };
     private static final String[] METHOD_UNREGISTER = {
                     "unregister",
@@ -93,7 +93,7 @@ final class SVMToHotSpotCalls {
                     "Z"
     };
 
-    private SVMToHotSpotCalls() {
+    private JMXFromLibGraalCalls() {
     }
 
     static JNI.JObject getJVMCIClassLoader(JNI.JNIEnv env) {
@@ -121,17 +121,17 @@ final class SVMToHotSpotCalls {
         return WordFactory.nullPointer();
     }
 
-    static JNI.JObject getFactory(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass) {
-        JNI.JMethodID createId = findMethod(env, svmToHotSpotEntryPointsClass, true, false, METHOD_GET_FACTORY);
-        return env.getFunctions().getCallStaticObjectMethodA().call(env, svmToHotSpotEntryPointsClass, createId, nullPointer());
+    static JNI.JObject getFactory(JNI.JNIEnv env, JNI.JClass fromLibGraalEntryPointsClass) {
+        JNI.JMethodID createId = findMethod(env, fromLibGraalEntryPointsClass, true, false, METHOD_GET_FACTORY);
+        return env.getFunctions().getCallStaticObjectMethodA().call(env, fromLibGraalEntryPointsClass, createId, nullPointer());
     }
 
-    static void signalRegistrationRequest(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass, JNI.JObject factory) {
-        JNI.JMethodID signalId = findMethod(env, svmToHotSpotEntryPointsClass, true, false, METHOD_SIGNAL);
+    static void signalRegistrationRequest(JNI.JNIEnv env, JNI.JClass fromLibGraalEntryPointsClass, JNI.JObject factory) {
+        JNI.JMethodID signalId = findMethod(env, fromLibGraalEntryPointsClass, true, false, METHOD_SIGNAL);
         JNI.JValue params = StackValue.get(2, JNI.JValue.class);
         params.addressOf(0).setJObject(factory);
         params.addressOf(1).setLong(CurrentIsolate.getIsolate().rawValue());
-        env.getFunctions().getCallStaticVoidMethodA().call(env, svmToHotSpotEntryPointsClass, signalId, params);
+        env.getFunctions().getCallStaticVoidMethodA().call(env, fromLibGraalEntryPointsClass, signalId, params);
     }
 
     static void unregister(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass, JNI.JObject factory, JNI.JObjectArray objectNamesHandle) {

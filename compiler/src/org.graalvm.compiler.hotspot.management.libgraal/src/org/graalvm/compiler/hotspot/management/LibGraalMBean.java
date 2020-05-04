@@ -72,7 +72,7 @@ import org.graalvm.util.OptionsEncoder;
  * {@link DynamicMBean} by delegating all operations to an object in the SVM heap.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-class SVMMBean implements DynamicMBean {
+public class LibGraalMBean implements DynamicMBean {
 
     private static final String COMPOSITE_TAG = ".composite";
     private static final Map<Class<?>, OpenType<?>> PRIMITIVE_TO_OPENTYPE;
@@ -95,7 +95,7 @@ class SVMMBean implements DynamicMBean {
     private final long isolate;
     private final long handle;
 
-    SVMMBean(long isolate, long handle) {
+    LibGraalMBean(long isolate, long handle) {
         this.isolate = isolate;
         this.handle = handle;
     }
@@ -135,7 +135,7 @@ class SVMMBean implements DynamicMBean {
     @Override
     public AttributeList getAttributes(String[] attributes) {
         try (LibGraalScope scope = new LibGraalScope(isolate)) {
-            byte[] rawData = HotSpotToSVMCalls.getAttributes(scope.getIsolateThreadAddress(), handle, attributes);
+            byte[] rawData = JMXToLibGraalCalls.getAttributes(scope.getIsolateThreadAddress(), handle, attributes);
             return rawToAttributeList(rawData);
         }
     }
@@ -156,7 +156,7 @@ class SVMMBean implements DynamicMBean {
                 map.put(attribute.getName(), attribute.getValue());
             }
             byte[] rawData = OptionsEncoder.encode(map);
-            rawData = HotSpotToSVMCalls.setAttributes(scope.getIsolateThreadAddress(), handle, rawData);
+            rawData = JMXToLibGraalCalls.setAttributes(scope.getIsolateThreadAddress(), handle, rawData);
             return rawToAttributeList(rawData);
         }
     }
@@ -270,7 +270,7 @@ class SVMMBean implements DynamicMBean {
                 }
             }
             byte[] rawData = OptionsEncoder.encode(paramsMap);
-            rawData = HotSpotToSVMCalls.invoke(scope.getIsolateThreadAddress(), handle, actionName, rawData, signature);
+            rawData = JMXToLibGraalCalls.invoke(scope.getIsolateThreadAddress(), handle, actionName, rawData, signature);
             if (rawData == null) {
                 throw new MBeanException(null);
             }
@@ -287,7 +287,7 @@ class SVMMBean implements DynamicMBean {
     @Override
     public MBeanInfo getMBeanInfo() {
         try (LibGraalScope scope = new LibGraalScope(isolate)) {
-            byte[] rawData = HotSpotToSVMCalls.getMBeanInfo(scope.getIsolateThreadAddress(), handle);
+            byte[] rawData = JMXToLibGraalCalls.getMBeanInfo(scope.getIsolateThreadAddress(), handle);
             Map<String, Object> map = OptionsEncoder.decode(rawData);
             String className = null;
             String description = null;
@@ -325,13 +325,13 @@ class SVMMBean implements DynamicMBean {
     }
 
     /**
-     * Returns a factory for registering the {@link SVMMBean} instances into {@link MBeanServer}. If
+     * Returns a factory for registering the {@link LibGraalMBean} instances into {@link MBeanServer}. If
      * the factory does not exist it is created and its registration thread is started.
      */
     static Factory getFactory() {
         Factory res = factory;
         if (res == null) {
-            synchronized (SVMMBean.class) {
+            synchronized (LibGraalMBean.class) {
                 res = factory;
                 if (res == null) {
                     res = new Factory();
@@ -493,7 +493,7 @@ class SVMMBean implements DynamicMBean {
      * An iterator allowing pushing back a single look ahead item.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static final class PushBackIterator<T> implements Iterator<T> {
+    public static final class PushBackIterator<T> implements Iterator<T> {
 
         private final Iterator<T> delegate;
         private T pushBack;
@@ -527,11 +527,11 @@ class SVMMBean implements DynamicMBean {
     }
 
     /**
-     * A factory thread creating the {@link SVMMBean} instances for {@link DynamicMBean}s in SVM
-     * heap and registering them to {@link MBeanServer}.
+     * A factory thread creating the {@link LibGraalMBean} instances for {@link DynamicMBean}s in
+     * SVM heap and registering them to {@link MBeanServer}.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    static final class Factory extends Thread {
+    public static final class Factory extends Thread {
 
         private static final int POLL_INTERVAL_MS = 2000;
 
@@ -552,7 +552,7 @@ class SVMMBean implements DynamicMBean {
         /**
          * Main loop waiting for {@link DynamicMBean} creation in SVM heap. When a new
          * {@link DynamicMBean} is created in the SVM heap this thread creates a new
-         * {@link SVMMBean} encapsulating the {@link DynamicMBean} and registers it to
+         * {@link LibGraalMBean} encapsulating the {@link DynamicMBean} and registers it to
          * {@link MBeanServer}.
          */
         @Override
@@ -591,7 +591,7 @@ class SVMMBean implements DynamicMBean {
         }
 
         /**
-         * Called by {@code MBeanProxy} in SVM heap when the isolate is closing to unregister its
+         * Called by {@code MBeanProxy} in libgraal heap when the isolate is closing to unregister its
          * {@link DynamicMBean}s.
          */
         synchronized void unregister(long isolate, String[] objectIds) {
@@ -615,11 +615,11 @@ class SVMMBean implements DynamicMBean {
         }
 
         /**
-         * In case of successful {@link MBeanServer} initialization creates {@link SVMMBean}s for
+         * In case of successful {@link MBeanServer} initialization creates {@link LibGraalMBean}s for
          * pending libgraal {@link DynamicMBean}s and registers them.
          *
-         * @return {@code true} if {@link SVMMBean}s were successfuly registered, {@code false} when
-         *         {@link MBeanServer} is not yet available and {@code poll} should be retried.
+         * @return {@code true} if {@link LibGraalMBean}s were successfuly registered, {@code false}
+         *         when {@link MBeanServer} is not yet available and {@code poll} should be retried.
          * @throws SecurityException can be thrown by {@link MBeanServer}
          * @throws UnsatisfiedLinkError can be thrown by {@link MBeanServer}
          * @throws NoClassDefFoundError can be thrown by {@link MBeanServer}
@@ -650,8 +650,8 @@ class SVMMBean implements DynamicMBean {
         }
 
         /**
-         * Creates {@link SVMMBean}s for pending libgraal {@link DynamicMBean}s and registers them
-         * {@link MBeanServer}.
+         * Creates {@link LibGraalMBean}s for pending libgraal {@link DynamicMBean}s and registers
+         * them {@link MBeanServer}.
          *
          * @return {@code true}
          * @throws SecurityException can be thrown by {@link MBeanServer}
@@ -665,18 +665,18 @@ class SVMMBean implements DynamicMBean {
                 iter.remove();
                 try (LibGraalScope scope = new LibGraalScope(isolate)) {
                     long isolateThread = scope.getIsolateThreadAddress();
-                    long[] svmRegistrations = HotSpotToSVMCalls.pollRegistrations(isolateThread);
+                    long[] svmRegistrations =  JMXToLibGraalCalls.pollRegistrations(isolateThread);
                     if (svmRegistrations.length > 0) {
                         for (long svmRegistration : svmRegistrations) {
-                            SVMMBean bean = new SVMMBean(isolate, svmRegistration);
-                            String name = HotSpotToSVMCalls.getObjectName(isolateThread, svmRegistration);
+                            LibGraalMBean bean = new LibGraalMBean(isolate, svmRegistration);
+                            String name = JMXToLibGraalCalls.getObjectName(isolateThread, svmRegistration);
                             try {
                                 platformMBeanServer.registerMBean(bean, new ObjectName(name));
                             } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
                                 e.printStackTrace(TTY.out);
                             }
                         }
-                        HotSpotToSVMCalls.finishRegistration(isolateThread, svmRegistrations);
+                        JMXToLibGraalCalls.finishRegistration(isolateThread, svmRegistrations);
                     }
                 }
             }

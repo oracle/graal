@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platforms;
  * Native methods linked to SVM entry points.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-final class HotSpotToSVMCalls {
+public final class JMXToLibGraalCalls {
 
     /**
      * Used to synchronize libgraal isolates waiting for registration of the native methods in this
@@ -40,7 +40,7 @@ final class HotSpotToSVMCalls {
      */
     private static volatile boolean nativesRegistered;
 
-    private HotSpotToSVMCalls() {
+    private JMXToLibGraalCalls() {
     }
 
     static native long[] pollRegistrations(long isolateThreadId);

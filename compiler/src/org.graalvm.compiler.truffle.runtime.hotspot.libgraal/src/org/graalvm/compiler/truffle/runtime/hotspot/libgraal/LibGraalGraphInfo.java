@@ -22,18 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.common.hotspot.libgraal;
+package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
+
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 
 /**
- * Container for repeated {@link SVMToHotSpot} annotations.
+ * Encapsulates a handle to a {@link GraphInfo} object in the libgraal heap.
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface SVMToHotSpotRepeated {
-    SVMToHotSpot[] value();
+final class LibGraalGraphInfo extends LibGraalScopedHandle implements TruffleCompilerListener.GraphInfo {
+
+    LibGraalGraphInfo(long handle) {
+        super(handle, LibGraalGraphInfo.class);
+    }
+
+    @Override
+    public int getNodeCount() {
+        return TruffleToLibGraalCalls.getNodeCount(getIsolateThread(), getHandle());
+    }
+
+    @Override
+    public String[] getNodeTypes(boolean simpleNames) {
+        return TruffleToLibGraalCalls.getNodeTypes(getIsolateThread(), getHandle(), simpleNames);
+    }
 }

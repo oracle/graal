@@ -42,9 +42,9 @@ import org.graalvm.compiler.serviceprovider.IsolateUtil;
  * {@link MBeanServer} in the HotSpot heap. The instance is created by {@link HotSpotGraalRuntime}
  * using a factory injected by {@code LibGraalFeature}.
  */
-public final class HotSpotGraalManagement extends MBeanProxy<HotSpotGraalRuntimeMBean> implements HotSpotGraalManagementRegistration {
+public final class LibGraalHotSpotGraalManagement extends MBeanProxy<HotSpotGraalRuntimeMBean> implements HotSpotGraalManagementRegistration {
 
-    public HotSpotGraalManagement() {
+    public LibGraalHotSpotGraalManagement() {
     }
 
     /**
@@ -90,7 +90,7 @@ public final class HotSpotGraalManagement extends MBeanProxy<HotSpotGraalRuntime
     }
 
     /**
-     * Factory for {@link HotSpotGraalManagement}.
+     * Factory for {@link LibGraalHotSpotGraalManagement}.
      */
     static final class Factory implements Supplier<HotSpotGraalManagementRegistration> {
 
@@ -98,11 +98,11 @@ public final class HotSpotGraalManagement extends MBeanProxy<HotSpotGraalRuntime
         }
 
         /**
-         * Creates a new {@link HotSpotGraalManagement} instance.
+         * Creates a new {@link LibGraalHotSpotGraalManagement} instance.
          */
         @Override
         public HotSpotGraalManagementRegistration get() {
-            return new HotSpotGraalManagement();
+            return new LibGraalHotSpotGraalManagement();
         }
     }
 }

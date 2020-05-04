@@ -49,24 +49,24 @@ import javax.lang.model.element.VariableElement;
 import javax.tools.JavaFileObject;
 
 import org.graalvm.compiler.processor.AbstractProcessor;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpotRepeated;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraalRepeated;
 
 /**
- * Processor for the {@value #SVM_TO_HOTSPOT_CLASS_NAME} annotation that generates code to push JNI
+ * Processor for the {@value #FROM_LIBGRAAL_CLASS_NAME} annotation that generates code to push JNI
  * arguments to the stack and make a JNI call corresponding to a
- * {@link org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id}. This helps mitigate
- * bugs where incorrect arguments are pushed for a JNI call. Given the low level nature of
+ * {@link org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id}. This helps
+ * mitigate bugs where incorrect arguments are pushed for a JNI call. Given the low level nature of
  * {@code org.graalvm.nativeimage.StackValue}, it's very hard to use runtime assertion checking.
  */
 @SupportedAnnotationTypes({
-                "org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot",
-                "org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpotRepeated"})
-public class SVMToHotSpotProcessor extends AbstractProcessor {
+                "org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal",
+                "org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraalRepeated"})
+public class TruffleFromLibGraalProcessor extends AbstractProcessor {
 
-    private static final String SVM_TO_HOTSPOT_CLASS_NAME = SVMToHotSpot.class.getName();
-    private static final String SVM_TO_HOTSPOT_REPEATED_CLASS_NAME = SVMToHotSpotRepeated.class.getName();
+    static final String FROM_LIBGRAAL_CLASS_NAME = TruffleFromLibGraal.class.getName();
+    static final String FROM_LIBGRAAL_REPEATED_CLASS_NAME = TruffleFromLibGraalRepeated.class.getName();
 
     @Override
     public SourceVersion getSupportedSourceVersion() {
@@ -120,11 +120,11 @@ public class SVMToHotSpotProcessor extends AbstractProcessor {
         processed.add(hsCall);
 
         List<AnnotationMirror> annotations;
-        AnnotationMirror annotation = getAnnotation(hsCall, getType(SVM_TO_HOTSPOT_REPEATED_CLASS_NAME));
+        AnnotationMirror annotation = getAnnotation(hsCall, getType(FROM_LIBGRAAL_REPEATED_CLASS_NAME));
         if (annotation != null) {
             annotations = getAnnotationValueList(annotation, "value", AnnotationMirror.class);
         } else {
-            annotation = getAnnotation(hsCall, getType(SVM_TO_HOTSPOT_CLASS_NAME));
+            annotation = getAnnotation(hsCall, getType(FROM_LIBGRAAL_CLASS_NAME));
             if (annotation != null) {
                 annotations = Collections.singletonList(annotation);
             } else {
@@ -134,7 +134,7 @@ public class SVMToHotSpotProcessor extends AbstractProcessor {
         for (AnnotationMirror a : annotations) {
             VariableElement annotationValue = getAnnotationValue(a, "value", VariableElement.class);
             String idName = annotationValue.getSimpleName().toString();
-            SVMToHotSpot.Id id = Id.valueOf(idName);
+            TruffleFromLibGraal.Id id = Id.valueOf(idName);
             info.ids.add(id);
         }
     }
@@ -189,7 +189,7 @@ public class SVMToHotSpotProcessor extends AbstractProcessor {
                 }
                 String call = "call" + toJNIType(returnType, true);
                 if (importedCalls.add(call)) {
-                    out.printf("import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.SVMToHotSpotUtil.%s;%n", call);
+                    out.printf("import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleFromLibGraalUtil.%s;%n", call);
                 }
             }
             out.println("");
@@ -259,10 +259,10 @@ public class SVMToHotSpotProcessor extends AbstractProcessor {
         }
 
         Map<Element, CallsInfo> calls = new HashMap<>();
-        for (Element element : roundEnv.getElementsAnnotatedWith(getTypeElement(SVM_TO_HOTSPOT_CLASS_NAME))) {
+        for (Element element : roundEnv.getElementsAnnotatedWith(getTypeElement(FROM_LIBGRAAL_CLASS_NAME))) {
             processElement((ExecutableElement) element, calls);
         }
-        for (Element element : roundEnv.getElementsAnnotatedWith(getTypeElement(SVM_TO_HOTSPOT_REPEATED_CLASS_NAME))) {
+        for (Element element : roundEnv.getElementsAnnotatedWith(getTypeElement(FROM_LIBGRAAL_REPEATED_CLASS_NAME))) {
             processElement((ExecutableElement) element, calls);
         }
 

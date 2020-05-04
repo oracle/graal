@@ -28,11 +28,11 @@ import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.word.WordFactory;
 
 /**
- * Manages handles to SVM objects whose lifetime is controlled by
- * {@code org.graalvm.compiler.truffle.runtime.hotspot.libgraal.SVMObject} instances in the HotSpot
- * heap.
+ * Manages handles to libgraal objects whose lifetime is controlled by
+ * {@code org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalObject} instances in the
+ * HotSpot heap.
  */
-final class SVMObjectHandles {
+final class LibGraalObjectHandles {
 
     /**
      * Creates a handle to {@code object}. The object is kept alive at least until

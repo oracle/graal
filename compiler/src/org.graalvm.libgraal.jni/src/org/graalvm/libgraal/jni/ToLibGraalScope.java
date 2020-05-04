@@ -39,13 +39,13 @@ import org.graalvm.libgraal.jni.JNI.JObject;
  * {@linkplain #getObjectResult() retrieved} and returned outside the try-with-resources statement.
  * This is necessary to support use of JNI local frames.
  */
-public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
+public class ToLibGraalScope<T extends Enum<T>> implements AutoCloseable {
 
-    private static final ThreadLocal<HotSpotToSVMScope<?>> topScope = new ThreadLocal<>();
+    private static final ThreadLocal<ToLibGraalScope<?>> topScope = new ThreadLocal<>();
 
     private final JNIEnv env;
-    private final HotSpotToSVMScope<?> parent;
-    private HotSpotToSVMScope<?> leaf;
+    private final ToLibGraalScope<?> parent;
+    private ToLibGraalScope<?> leaf;
 
     /**
      * List of scope local {@link HSObject}s that created within this scope. These are
@@ -70,10 +70,10 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
     }
 
     /**
-     * Gets the inner most {@link HotSpotToSVMScope} value for the current thread.
+     * Gets the inner most {@link ToLibGraalScope} value for the current thread.
      */
-    public static HotSpotToSVMScope<?> scopeOrNull() {
-        HotSpotToSVMScope<?> scope = topScope.get();
+    public static ToLibGraalScope<?> scopeOrNull() {
+        ToLibGraalScope<?> scope = topScope.get();
         if (scope == null) {
             return null;
         }
@@ -81,10 +81,10 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
     }
 
     /**
-     * Gets the inner most {@link HotSpotToSVMScope} value for the current thread.
+     * Gets the inner most {@link ToLibGraalScope} value for the current thread.
      */
-    public static HotSpotToSVMScope<?> scope() {
-        HotSpotToSVMScope<?> scope = topScope.get();
+    public static ToLibGraalScope<?> scope() {
+        ToLibGraalScope<?> scope = topScope.get();
         if (scope == null) {
             throw new IllegalStateException("Not in the scope of an SVM call");
         }
@@ -92,28 +92,28 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
     }
 
     /**
-     * Casts this {@link HotSpotToSVMScope} to scope of given scope id type.
+     * Casts this {@link ToLibGraalScope} to scope of given scope id type.
      *
      * @param scopeIdType the requested scope id type
-     * @throws ClassCastException if this {@link HotSpotToSVMScope}'s id is not an instance of given
+     * @throws ClassCastException if this {@link ToLibGraalScope}'s id is not an instance of given
      *             {@code scopeIdType}
      */
     @SuppressWarnings("unchecked")
-    public <P extends Enum<P>> HotSpotToSVMScope<P> narrow(Class<P> scopeIdType) {
+    public <P extends Enum<P>> ToLibGraalScope<P> narrow(Class<P> scopeIdType) {
         if (id.getClass() != scopeIdType) {
-            throw new ClassCastException("Expected HotSpotToSVMScope type is " + scopeIdType + " but actual type is " + id.getClass());
+            throw new ClassCastException("Expected ToLibGraalScope type is " + scopeIdType + " but actual type is " + id.getClass());
         }
-        return (HotSpotToSVMScope<P>) this;
+        return (ToLibGraalScope<P>) this;
     }
 
     /**
      * Enters the scope of an SVM call.
      */
     @SuppressWarnings("unchecked")
-    public HotSpotToSVMScope(Enum<T> id, JNIEnv env) {
+    public ToLibGraalScope(Enum<T> id, JNIEnv env) {
         JNIUtil.trace(1, "HS->SVM[enter]: %s", id);
         this.id = id;
-        HotSpotToSVMScope<?> top = topScope.get();
+        ToLibGraalScope<?> top = topScope.get();
         this.env = env;
         if (top == null) {
             // Only push a JNI frame for the top level SVM call.
@@ -155,7 +155,7 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
             topScope.set(null);
             objResult = PopLocalFrame(env, objResult);
         } else {
-            HotSpotToSVMScope<?> top = parent;
+            ToLibGraalScope<?> top = parent;
             while (top.parent != null) {
                 top = top.parent;
             }
@@ -166,7 +166,7 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
 
     int depth() {
         int depth = 0;
-        HotSpotToSVMScope<?> ancestor = parent;
+        ToLibGraalScope<?> ancestor = parent;
         while (ancestor != null) {
             depth++;
             ancestor = ancestor.parent;

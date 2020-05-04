@@ -44,23 +44,23 @@ import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 
 /**
- * Annotates methods associated with both ends of a SVM to HotSpot call. This annotation simplifies
- * navigating between these methods in an IDE.
+ * Annotates methods associated with both ends of a libgraal to HotSpot call. This annotation
+ * simplifies navigating between these methods in an IDE.
  *
  * The {@code org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor.HotSpotCallProcessor}
  * processor will produce a helper method for marshaling arguments and making the JNI call.
  */
-@Repeatable(SVMToHotSpotRepeated.class)
+@Repeatable(TruffleFromLibGraalRepeated.class)
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface SVMToHotSpot {
+public @interface TruffleFromLibGraal {
     /**
-     * Gets the token identifying a call to HotSpot from SVM.
+     * Gets the token identifying a call to HotSpot from libgraal.
      */
     Id value();
 
     /**
-     * Identifier for a call to HotSpot from SVM.
+     * Identifier for a call to HotSpot from libgraal.
      */
     // Please keep sorted
     enum Id {

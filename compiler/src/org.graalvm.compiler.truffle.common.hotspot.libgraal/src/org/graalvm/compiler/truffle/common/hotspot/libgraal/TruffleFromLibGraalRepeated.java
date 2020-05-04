@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,45 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
+package org.graalvm.compiler.truffle.common.hotspot.libgraal;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * Encapsulates a handle to an object in the SVM heap where the handle is only valid within the
- * scope of a {@link SVMToHotSpotEntryPoints} method.
+ * Container for repeated {@link TruffleFromLibGraal} annotations.
  */
-class SVMScopedHandle implements AutoCloseable {
-
-    /**
-     * Handle to an SVM object.
-     */
-    private long handle;
-
-    private final Class<?> handleType;
-
-    /**
-     * Creates a new {@link SVMScopedHandle}.
-     *
-     * @param handle handle to an SVM object
-     */
-    SVMScopedHandle(long handle, Class<?> handleType) {
-        this.handle = handle;
-        this.handleType = handleType;
-    }
-
-    long getHandle() {
-        if (handle == 0L) {
-            throw new IllegalStateException("Using invalid handle to " + handleType.getName() + " object in SVM heap");
-        }
-        return handle;
-    }
-
-    @Override
-    public void close() {
-        handle = 0L;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("%s@0x%x", handleType.getName(), handle);
-    }
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface TruffleFromLibGraalRepeated {
+    TruffleFromLibGraal[] value();
 }
