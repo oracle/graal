@@ -69,37 +69,13 @@ echo JAVA_HOME=... >> graal/sulong/mx.sulong/env
 Sulong can be built with this command:
 
 ```
-cd graal/sulong && mx build
-```
-
-This will build a minimal GraalVM that contains just Sulong and its dependencies,
-nothing else.
-
-The resulting GraalVM can be found in `graal/sdk/latest_graalvm_home`. That symlink
-will always point to the latest built GraalVM.
-
-Note that a GraalVM built like this will only contain the bare minimum, that is, it does
-not contain a compiler or a debugger. To add additional components, use the `--dynamicimport`
-flag for mx. For example, to include tools (e.g. the debugger) and the compiler:
-
-```
-mx --dynamicimport /tools,/compiler build
-```
-
-Alternatively, a full GraalVM can be built from the `graal/vm` directory. For example,
-to build a GraalVM with Sulong, SubstrateVM and tools, run:
-
-```
-cd graal/vm && mx --dynamicimport /sulong,/substratevm,/tools build
+cd graal/sulong
+mx build
 ```
 
 ## Running Sulong
 
-The built GraalVM in `graal/sdk/latest_graalvm_home` is a regular GraalVM, containing
-the `lli` launcher. See the [user documentation](../user/README.md) for more information.
-
-Alternatively, the `lli` launcher can also be started using `mx` from the source
-directory:
+The `lli` launcher can also be started using `mx` from the source directory:
 
 ```
 mx lli testprogram
@@ -108,7 +84,7 @@ mx lli testprogram
 The `mx lli` command accepts the same options as the standard `lli` launcher in a GraalVM.
 
 Note that this by default runs without the compiler enabled. To enable the compiler, use
-this command instead:
+this command to build and run Sulong:
 
 ```
 mx --dynamicimport /compiler build
@@ -130,6 +106,31 @@ Listening for transport dt_socket at address: 8000
 ```
 
 Now you can attach a Java debugger to that process.
+
+
+## Building a GraalVM including Sulong
+
+The regular `mx build` command in the sulong directory will already build a minimal
+GraalVM containing just Sulong and its dependencies. The resulting GraalVM can be found
+in `graal/sdk/latest_graalvm_home`. That symlink will always point to the latest built GraalVM.
+
+Note that a GraalVM built like this will only contain the bare minimum, that is, it does
+not contain a compiler or a debugger. To add additional components, use the `--dynamicimport`
+flag for mx. For example, to include tools (e.g. the debugger) and the compiler:
+
+```
+mx --dynamicimport /tools,/compiler build
+```
+
+Alternatively, a full GraalVM can be built from the `graal/vm` directory. For example,
+to build a GraalVM with Sulong, SubstrateVM and tools, run:
+
+```
+cd graal/vm && mx --dynamicimport /sulong,/substratevm,/tools build
+```
+
+The built GraalVM in `graal/sdk/latest_graalvm_home` is a regular GraalVM, containing
+the `lli` launcher. See the [user documentation](../user/README.md) for more how to use it.
 
 
 ## IDE Setup
