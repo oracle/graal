@@ -198,9 +198,11 @@ class GraalVmComponent(object):
         :param installable: Produce a distribution installable via `gu`
         :param post_install_msg: Post-installation message to be printed
         :param list[str] dependencies: a list of component names
+        :param list[str | (str, str)] provided_executables: executables to be placed in the appropriate `bin` directory.
+            In the list, strings represent a path inside the component (e.g., inside a support distribution).
+            Tuples `(dist, exec)` represent an executable to be copied found in `dist`, at path `exec` (the same basename will be used).
         :type license_files: list[str]
         :type third_party_license_files: list[str]
-        :type provided_executables: list[str]
         :type polyglot_lib_build_args: list[str]
         :type polyglot_lib_jar_dependencies: list[str]
         :type polyglot_lib_build_dependencies: list[str]
