@@ -79,6 +79,7 @@ public @interface SVMToHotSpot {
         GetCallCount(int.class, TruffleCallNode.class),
         GetCallNodes(TruffleCallNode[].class, CompilableTruffleAST.class),
         GetCallTargetForCallNode(long.class, HotSpotTruffleCompilerRuntime.class, long.class),
+        GetClassName(String.class, Class.class),
         GetCompilableCallCount(int.class, CompilableTruffleAST.class),
         GetCompilableName(String.class, CompilableTruffleAST.class),
         GetConstantFieldInfo(int.class, HotSpotTruffleCompilerRuntime.class, long.class, boolean.class, int.class),
