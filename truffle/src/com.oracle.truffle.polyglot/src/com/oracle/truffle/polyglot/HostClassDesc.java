@@ -115,7 +115,8 @@ final class HostClassDesc {
 
             collectPublicMethods(hostAccess, type, methodMap, staticMethodMap);
 
-            if (Modifier.isPublic(type.getModifiers())) {
+            boolean isPublicType = isClassAccessible(type, hostAccess);
+            if (isPublicType) {
                 boolean inheritedPublicInstanceFields = false;
                 boolean inheritedPublicInaccessibleFields = false;
                 for (Field f : type.getFields()) {
@@ -126,7 +127,7 @@ final class HostClassDesc {
                                 fieldMap.put(f.getName(), HostFieldDesc.unreflect(f));
                             }
                         } else {
-                            if (Modifier.isPublic(f.getDeclaringClass().getModifiers())) {
+                            if (isClassAccessible(f.getDeclaringClass(), hostAccess)) {
                                 inheritedPublicInstanceFields = true;
                             } else {
                                 inheritedPublicInaccessibleFields = true;
@@ -148,7 +149,7 @@ final class HostClassDesc {
                 }
             }
 
-            if (Modifier.isPublic(type.getModifiers())) {
+            if (isPublicType) {
                 for (Constructor<?> c : type.getConstructors()) {
                     if (!hostAccess.allowsAccess(c)) {
                         continue;
@@ -173,13 +174,17 @@ final class HostClassDesc {
             this.functionalMethod = functionalInterfaceMethod;
         }
 
+        private static boolean isClassAccessible(Class<?> declaringClass, HostClassCache hostAccess) {
+            return Modifier.isPublic(declaringClass.getModifiers()) && EngineAccessor.JDKSERVICES.verifyModuleVisibility(hostAccess.getUnnamedModule(), declaringClass);
+        }
+
         private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap) {
             collectPublicMethods(hostAccess, type, methodMap, staticMethodMap, new HashSet<>(), type);
         }
 
         private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, Set<Object> visited,
                         Class<?> startType) {
-            boolean isPublicType = Modifier.isPublic(type.getModifiers()) && !Proxy.isProxyClass(type);
+            boolean isPublicType = isClassAccessible(type, hostAccess) && !Proxy.isProxyClass(type);
             boolean allMethodsPublic = true;
             List<Method> bridgeMethods = null;
             if (isPublicType) {
@@ -188,7 +193,7 @@ final class HostClassDesc {
                     if (Modifier.isStatic(m.getModifiers()) && (declaringClass != startType && Modifier.isInterface(declaringClass.getModifiers()))) {
                         // do not inherit static interface methods
                         continue;
-                    } else if (!Modifier.isPublic(declaringClass.getModifiers()) || !EngineAccessor.JDKSERVICES.verifyModuleVisibility(hostAccess.getUnnamedModule(), declaringClass)) {
+                    } else if (!isClassAccessible(declaringClass, hostAccess)) {
                         /*
                          * If a public method is declared in a non-public superclass, there should
                          * be a public bridge method in this class that provides access to it.
@@ -305,7 +310,7 @@ final class HostClassDesc {
                     if (mayHaveInaccessibleFields && !fieldNames.add(f.getName())) {
                         continue;
                     }
-                    if (Modifier.isPublic(f.getDeclaringClass().getModifiers())) {
+                    if (isClassAccessible(f.getDeclaringClass(), hostAccess)) {
                         if (hostAccess.allowsAccess(f)) {
                             fieldMap.putIfAbsent(f.getName(), HostFieldDesc.unreflect(f));
                         }
