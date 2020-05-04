@@ -157,6 +157,6 @@ mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'nfi', 'sdk', 'tfl',
 mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm'], _suite, env_file='native-ce')
 mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm'], _suite, env_file='native-ee')
 
-# Register Espresso as a (guest) JVM for running `mx benchmark`.
-mx_benchmark.java_vm_registry.add_vm(mx_espresso_benchmarks.EspressoVm('default', []), _suite)
+# Register soon-to-become-default configurations.
 mx_benchmark.java_vm_registry.add_vm(mx_espresso_benchmarks.EspressoVm('la-inline', ['--experimental-options', '--engine.LanguageAgnosticInlining']), _suite)
+mx_benchmark.java_vm_registry.add_vm(mx_espresso_benchmarks.EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)
