@@ -1,5 +1,7 @@
 # Publications
 
+## Papers
+
 * Rigger, M.; Grimmer, M.; Wimmer, C.; Würthinger, T.; Mössenböck, H.:<br>
 [Bringing Low-Level Languages to the JVM: Efficient Execution of LLVM IR on Truffle](http://conf.researchr.org/event/vmil2016/vmil2016-bringing-low-level-languages-to-the-jvm-efficient-execution-of-llvm-ir-on-truffle)<br>
 Workshop on Virtual Machines and Intermediate Languages (VMIL'16),
@@ -22,10 +24,19 @@ July 18, 2016, Rome, Italy, (accepted for publication)<br>
 15th International Conference on Managed Languages & Runtimes (ManLang'18), September 12-14, 2018, Linz, Austria<br>
 [Download paper](http://ssw.jku.at/General/Staff/Kreindl/papers/ManLang_2018_SulongDebugging.pdf)
 
-There is also a list of [Graal papers](https://github.com/graalvm/graal-core/blob/master/docs/Publications.md)
-and [Graal and Truffle papers](https://wiki.openjdk.java.net/display/Graal/Publications+and+Presentations).
+There is also a [list of general](../../../docs/Publications.md) about GraalVM and Truffle in general.
 
 ## Presentations
+
+* [Sulong: An experience report of using the "other end" of LLVM in GraalVM.](http://llvm.org/devmtg/2019-04/talks.html#Talk_13)<br>
+EuroLLVM'19, April 8-9, 2019, Brussels, Belgium<br>
+[Download slides](http://llvm.org/devmtg/2019-04/slides/TechTalk-Schatz-Sulong_an_experience_report.pdf)<br>
+[Watch video](https://youtu.be/zvsR90T_4ME)
+
+* [LLVM IR in GraalVM: Multi-Level, Polyglot Debugging with Sulong](http://llvm.org/devmtg/2019-04/talks.html#Talk_11)<br>
+EuroLLVM'19, April 8-9, 2019, Brussels, Belgium<br>
+[Download slides](http://llvm.org/devmtg/2019-04/slides/TechTalk-Kreindl-LLVM_IR_in_GraalVM.pdf)<br>
+[Watch video](https://www.youtube.com/watch?v=YIGoNVQctOU)
 
 * [Using LLVM and Sulong for Language C Extensions](http://chrisseaton.com/rubytruffle/llvm-cauldron-16/llvm-cauldron-sulong.pdf)<br>
 LLVM Cauldron 2016, September 8, 2016, Hebden Bridge, The United Kingdom<br>
