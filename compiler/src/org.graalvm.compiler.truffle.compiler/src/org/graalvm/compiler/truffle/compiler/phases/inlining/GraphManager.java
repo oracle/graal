@@ -93,7 +93,7 @@ final class GraphManager {
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
         return InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTarget(truffleAST),
-                        "cost-benefit analysis", AgnosticInliningPhase.class.toString());
+                        "cost-benefit analysis", AgnosticInliningPhase.class.getName());
     }
 
     void finalizeGraph(Invoke invoke, CompilableTruffleAST truffleAST) {
@@ -104,7 +104,7 @@ final class GraphManager {
                 return PartialEvaluator.asInlineInfo(method);
             }
         }, graphCacheForInlining);
-        InliningUtil.inline(invoke, request.graph, true, partialEvaluator.getCallInlined(), "finalization", AgnosticInliningPhase.class.toString());
+        InliningUtil.inline(invoke, request.graph, true, partialEvaluator.getCallInlined(), "finalization", AgnosticInliningPhase.class.getName());
     }
 
     static class Entry {
