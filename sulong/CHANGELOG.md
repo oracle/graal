@@ -40,7 +40,7 @@ Changes:
   ELF/Mach-O file instead of looking at imported symbols. Consequently, the order
   plain bitcode files are initialized might change since they do not allow recording
   dependencies. If the initialization order is important, the suggested approach to
-  use ELF/Mach-O files. The [Toolchain](docs/TOOLCHAIN.md) can help creating those.
+  use ELF/Mach-O files. The [Toolchain](docs/contributor/TOOLCHAIN.md) can help creating those.
 
 * Cover more cases when calling functions that receive structs by value across interop
   boundaries.
@@ -52,19 +52,19 @@ Changes:
 
 Changes:
 
-* The [Toolchain](docs/TOOLCHAIN.md) is now based on LLVM 9.0.0.
+* The [Toolchain](docs/contributor/TOOLCHAIN.md) is now based on LLVM 9.0.0.
 
 New features:
 
 * Support accessing `llvm-ar`, `llvm-nm`, `llvm-objcopy`,
   `llvm-objdump`, `llvm-ranlib`, `llvm-readelf`, `llvm-readobj` and
-  `llvm-strip` via the [toolchain](docs/TOOLCHAIN.md).
+  `llvm-strip` via the [toolchain](docs/contributor/TOOLCHAIN.md).
 
 # Version 19.3.0
 
 Changes:
 
-* The [Toolchain](docs/TOOLCHAIN.md) is no longer experimental.
+* The [Toolchain](docs/contributor/TOOLCHAIN.md) is no longer experimental.
 
 New features:
 
@@ -92,7 +92,7 @@ Improvements:
 
 * Clang and other LLVM tools are no longer required to be installed for building
   the GraalVM LLVM runtime. Instead, the LLVM distribution bundled with the
-  [Toolchain](docs/TOOLCHAIN.md) is used.
+  [Toolchain](docs/contributor/TOOLCHAIN.md) is used.
 
 # Version 19.2.0
 
@@ -100,7 +100,7 @@ New features:
 
 * Support locating dynamic libraries relatively using (`rpath`).
 * Preliminary support for compiling to bitcode using the LLVM toolchain.
-  See [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) for more details.
+  See [docs/contributor/TOOLCHAIN.md](docs/contributor/TOOLCHAIN.md) for more details.
   *WARNING*: The toolchain is experimental. Functionality may be added,
   changed or removed without prior notice.
 * Support for simple pointer arithmetics with foreign objects.

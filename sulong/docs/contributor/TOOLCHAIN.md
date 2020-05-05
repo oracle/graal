@@ -1,4 +1,4 @@
-# Toolchain
+# The GraalVM LLVM Toolchain
 
 The *toolchain* is a set of tools and APIs for compiling native projects, such as C and C++,
 to bitcode that can be executed with the GraalVM LLVM runtime.
