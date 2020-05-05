@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -124,10 +124,14 @@ public class GraphEncoder {
      * The orderId of the first actual node after the {@link StructuredGraph#start() start node}.
      */
     public static final int FIRST_NODE_ORDER_ID = 2;
-
-    public static final int MAX_1_BYTE_INDEX = 1 << 8;
-    public static final int MAX_2_BYTES_INDEX = 1 << 16;
-    public static final int MAX_4_BYTES_INDEX = (1 << 31) - 1;
+    /**
+     * Maximum unsigned integer fitting on 1 byte.
+     */
+    public static final int MAX_INDEX_1_BYTE = 1 << 8 - 1;
+    /**
+     * Maximum unsigned integer fitting on 2 bytes.
+     */
+    public static final int MAX_INDEX_2_BYTES = 1 << 16 - 1;
 
     /**
      * The known offset between the orderId of a {@link AbstractBeginNode} and its
@@ -440,12 +444,11 @@ public class GraphEncoder {
 
     protected void writeOrderId(Node node, NodeOrder nodeOrder) {
         int id = node == null ? NULL_ORDER_ID : nodeOrder.orderIds.get(node);
-        if (nodeOrder.nextOrderId < 1 << 8) {
+        if (nodeOrder.nextOrderId <= MAX_INDEX_1_BYTE) {
             writer.putU1(id);
-        } else if (nodeOrder.nextOrderId < 1 << 16) {
+        } else if (nodeOrder.nextOrderId <= MAX_INDEX_2_BYTES) {
             writer.putU2(id);
         } else {
-            assert nodeOrder.nextOrderId < (1 << 31) - 1;
             writer.putS4(id);
         }
     }

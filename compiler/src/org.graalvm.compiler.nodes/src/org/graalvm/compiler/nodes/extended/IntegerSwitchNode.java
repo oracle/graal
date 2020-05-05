@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,7 +69,11 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     public static final NodeClass<IntegerSwitchNode> TYPE = NodeClass.create(IntegerSwitchNode.class);
 
     protected final int[] keys;
-    // True if keys = [0, 1, 2, ..., n]
+    /**
+     * True if keys are contiguous ([n, n+1, n+2, n+3, ..., n+k]).
+     *
+     * When this is the case, we can lookup successor index in O(1).
+     */
     protected final boolean areKeysContiguous;
 
     public IntegerSwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {

@@ -65,6 +65,7 @@ import org.graalvm.compiler.nodes.GraphDecoder.MethodScope;
 import org.graalvm.compiler.nodes.GraphDecoder.ProxyPlaceholder;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
+import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -140,12 +141,11 @@ public class GraphDecoder {
                     graph.setGuardsStage((StructuredGraph.GuardsStage) readObject(this));
                 }
 
-                if (nodeCount < GraphEncoder.MAX_1_BYTE_INDEX) {
+                if (nodeCount <= GraphEncoder.MAX_INDEX_1_BYTE) {
                     orderIdWidth = 1;
-                } else if (nodeCount < GraphEncoder.MAX_2_BYTES_INDEX) {
+                } else if (nodeCount <= GraphEncoder.MAX_INDEX_2_BYTES) {
                     orderIdWidth = 2;
                 } else {
-                    assert nodeCount < GraphEncoder.MAX_4_BYTES_INDEX : "out of range node count: " + nodeCount;
                     orderIdWidth = 4;
                 }
             } else {
@@ -659,31 +659,7 @@ public class GraphDecoder {
         makeFixedNodeInputs(methodScope, loopScope, node);
         readProperties(methodScope, node);
 
-        /* Special cases for early canonicalization of split nodes. */
-        if (node instanceof IntegerSwitchNode && ((IntegerSwitchNode) node).value().isConstant()) {
-            /*
-             * Avoid spawning all successors for trivially canonicalizable switches, this ensures
-             * that bytecode interpreters with huge switches do not allocate nodes that are removed
-             * straight away during PE.
-             */
-            IntegerSwitchNode switchNode = (IntegerSwitchNode) node;
-            int value = switchNode.value().asJavaConstant().asInt();
-            int survivingIndex = switchNode.successorIndexAtKey(value);
-
-            /* Check that the node has the expected encoding. */
-            Edges edges = switchNode.getNodeClass().getSuccessorEdges();
-            assert edges.getDirectCount() == 0 : "IntegerSwitchNode expected to have 0 direct successor";
-            assert edges.getCount() == 1 : "IntegerSwitchNode expected to have 1 indirect successor";
-
-            int size = methodScope.reader.getSVInt();
-            long successorsByteIndex = methodScope.reader.getByteIndex();
-
-            methodScope.reader.setByteIndex(successorsByteIndex + survivingIndex * methodScope.orderIdWidth);
-            int orderId = readOrderId(methodScope);
-            AbstractBeginNode survivingSuccessor = (AbstractBeginNode) makeStubNode(methodScope, loopScope, orderId);
-            methodScope.reader.setByteIndex(successorsByteIndex + size * methodScope.orderIdWidth);
-
-            graph.removeSplit(switchNode, survivingSuccessor);
+        if (earlyCanonicalization(methodScope, successorAddScope, nodeOrderId, node)) {
             return loopScope;
         }
 
@@ -1019,6 +995,23 @@ public class GraphDecoder {
      * @param node The node to be simplified.
      */
     protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
+    }
+
+    /**
+     * Hook for subclasses for early canonicalization of IfNodes and IntegerSwitchNodes.
+     *
+     * "Early" means that this is called before successor stubs creation. Therefore, all successors
+     * are null a this point, and calling any method using them without prior manual initialization
+     * will fail.
+     *
+     * @param methodScope The current method.
+     * @param loopScope The current loop.
+     * @param nodeOrderId The orderId of the node.
+     * @param node The node to be simplified.
+     * @return true if canonicalization happened, false otherwise.
+     */
+    protected boolean earlyCanonicalization(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
+        return false;
     }
 
     protected void handleProxyNodes(MethodScope methodScope, LoopScope loopScope, LoopExitNode loopExit) {
@@ -1496,8 +1489,7 @@ public class GraphDecoder {
                 edges.initializeList(node, index, nodeList);
                 for (int idx = 0; idx < size; idx++) {
                     int orderId = readOrderId(methodScope);
-                    Node value = null;
-                    value = makeStubNode(methodScope, loopScope, orderId);
+                    Node value = makeStubNode(methodScope, loopScope, orderId);
                     nodeList.initialize(idx, value);
                     if (updatePredecessors && value != null) {
                         edges.update(node, null, value);
@@ -1576,7 +1568,7 @@ public class GraphDecoder {
             case 4:
                 return methodScope.reader.getS4();
         }
-        throw new RuntimeException("Invalid orderIdWidth: " + methodScope.orderIdWidth);
+        throw GraalError.shouldNotReachHere("Invalid orderIdWidth: " + methodScope.orderIdWidth);
     }
 
     protected Object readObject(MethodScope methodScope) {
