@@ -91,6 +91,9 @@ import java.util.stream.Collectors;
 
 public final class LLVMContext {
 
+    public static final String SULONG_INIT_CONTEXT = "__sulong_init_context";
+    public static final String SULONG_DISPOSE_CONTEXT = "__sulong_dispose_context";
+
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
     private final Toolchain toolchain;
@@ -336,7 +339,7 @@ public final class LLVMContext {
         // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
         // do it in a delayed way.
         if (sulongInitContext == null) {
-            throw new IllegalStateException("Context cannot be initialized: _sulong_init_context was not found");
+            throw new IllegalStateException("Context cannot be initialized:" + SULONG_INIT_CONTEXT + " was not found");
         }
         return InitializeContextNodeGen.create(createFunctionDescriptor(sulongInitContext), rootFrame);
     }
@@ -417,7 +420,7 @@ public final class LLVMContext {
         if (cleanupNecessary) {
             try {
                 if (sulongDisposeContext == null) {
-                    throw new IllegalStateException("Context cannot be disposed: __sulong_dispose_context was not found");
+                    throw new IllegalStateException("Context cannot be disposed: " + SULONG_DISPOSE_CONTEXT + " was not found");
                 }
                 AssumedValue<LLVMPointer>[] functions = findSymbolTable(sulongDisposeContext.getBitcodeID(false));
                 int index = sulongDisposeContext.getSymbolIndex(false);
@@ -429,7 +432,7 @@ public final class LLVMContext {
                         disposeContext.call(stackPointer);
                     }
                 } else {
-                    throw new IllegalStateException("Context cannot be disposed: _sulong_dispose_context is not a function or enclosed inside a LLVMManagedPointer");
+                    throw new IllegalStateException("Context cannot be disposed: " + SULONG_DISPOSE_CONTEXT + " is not a function or enclosed inside a LLVMManagedPointer");
                 }
             } catch (ControlFlowException e) {
                 // nothing needs to be done as the behavior is not defined

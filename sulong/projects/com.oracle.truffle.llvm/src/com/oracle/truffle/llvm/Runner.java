@@ -172,9 +172,6 @@ final class Runner {
 
     private static final String MAIN_METHOD_NAME = "main";
     private static final String START_METHOD_NAME = "_start";
-    private static final String SULONG_INIT_CONTEXT = "__sulong_init_context";
-    private static final String SULONG_DISPOSE_CONTEXT = "__sulong_dispose_context";
-
     private static final int LEAST_CONSTRUCTOR_PRIORITY = 65535;
 
     private static final Comparator<Pair<Integer, ?>> ASCENDING_PRIORITY = (p1, p2) -> p1.getFirst() - p2.getFirst();
@@ -476,28 +473,29 @@ final class Runner {
 
     /**
      * The structure for allocating symbols to the symbol table is as follows:
-     * AllocExternalSymbolNode is the top level node, with the execute method.
-     * AllocExistingLocalSymbolsNode implements the case when the symbol exists in the local scope,
-     * and it extends AllocExternalSymbolNode. AllocExistingGlobalSymbolsNode implements the case
-     * when the symbol exists in the global scope, and it extends AllocExistingLocalSymbolsNode.
-     * AllocExternalGlobalNode is for allocating a native global symbol to the symbol take and
-     * AllocExternalFunctionNode is for allocating an instrinsic or a native function into the
-     * symbol table, and they both extend AllocExistingGlobalSymbolsNode.
+     * {@link AllocExternalSymbolNode} is the top level node, with the execute method.
+     * {@link AllocExistingLocalSymbolsNode} implements the case when the symbol exists in the local
+     * scope, and it extends {@link AllocExternalSymbolNode}. {@link AllocExistingGlobalSymbolsNode}
+     * implements the case when the symbol exists in the global scope, and it extends
+     * {@link AllocExistingLocalSymbolsNode}. {@link AllocExternalGlobalNode} is for allocating a
+     * native global symbol to the symbol take and {@link AllocExternalFunctionNode} is for
+     * allocating an instrinsic or a native function into the symbol table, and they both extend
+     * {@link AllocExistingGlobalSymbolsNode}.
      *
-     * AllocExternalFunctionNode is created for allocating external functions
+     * {@link AllocExternalFunctionNode} is created for allocating external functions
      * {@link InitializeExternalNode}, which has four cases (the first two is covered by the
-     * superclasses AllocExistingGlobalSymbolsNode and AllocExistingLocalSymbolsNode): 1) If the
-     * function is defined in the local scope. 2) If the function is defined in the global scope. 3)
-     * if the function is an instrinsic function. 4) And finally, if the function is a native
-     * function.
+     * superclasses {@link AllocExistingGlobalSymbolsNode} and {@link AllocExistingLocalSymbolsNode}
+     * ): 1) If the function is defined in the local scope. 2) If the function is defined in the
+     * global scope. 3) if the function is an instrinsic function. 4) And finally, if the function
+     * is a native function.
      *
-     * Similarly, AllocExternalGlobalNode is created for allocating external globals
+     * Similarly, {@link AllocExternalGlobalNode} is created for allocating external globals
      * {@link InitializeExternalNode}.
      *
      * For overriding defined functions for symbol resolution {@link InitializeOverwriteNode},
-     * AllocExistingGlobalSymbolsNode is created for overwriting global symbols as they can be taken
-     * from the global and local scope, meanwhile AllocExistingLocalSymbolsNode is created for
-     * ovewriting functions, as they can only be taken from the local scopes.
+     * {@link AllocExistingGlobalSymbolsNode} is created for overwriting global symbols as they can
+     * be taken from the global and local scope, meanwhile {@link AllocExistingLocalSymbolsNode} is
+     * created for ovewriting functions, as they can only be taken from the local scopes.
      *
      */
     abstract static class AllocExternalSymbolNode extends LLVMNode {
@@ -650,9 +648,9 @@ final class Runner {
         /*
          * Currently native functions/globals that are not in the nfi context are not written into
          * the symbol table. For function, another lookup will happen when something tries to call
-         * the function. (see doCachedNative in LLVMDispatchNode) The function will be taken from
-         * the filescope directly. Ideally the filescope and symbol table is in sync, and any lazy
-         * look up will resolve from the function code in the symbol table.
+         * the function. (see {@link LLVMDispatchNode#doCachedNative}) The function will be taken
+         * from the filescope directly. Ideally the filescope and symbol table is in sync, and any
+         * lazy look up will resolve from the function code in the symbol table.
          */
         @TruffleBoundary
         @Specialization(guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) == null",
@@ -1933,23 +1931,23 @@ final class Runner {
                 }
             }
             if (initContext == null) {
-                LLVMSymbol tmpInitContext = fileScope.get(SULONG_INIT_CONTEXT);
+                LLVMSymbol tmpInitContext = fileScope.get(LLVMContext.SULONG_INIT_CONTEXT);
                 if (tmpInitContext != null && tmpInitContext.isDefined() && tmpInitContext.isFunction()) {
                     initContext = tmpInitContext;
                 }
             }
             if (disposeContext == null) {
-                LLVMSymbol tmpDisposeContext = fileScope.get(SULONG_DISPOSE_CONTEXT);
+                LLVMSymbol tmpDisposeContext = fileScope.get(LLVMContext.SULONG_DISPOSE_CONTEXT);
                 if (tmpDisposeContext != null && tmpDisposeContext.isDefined() && tmpDisposeContext.isFunction()) {
                     disposeContext = tmpDisposeContext;
                 }
             }
         }
         if (initContext == null) {
-            throw new IllegalStateException("Context cannot be initialized: __sulong_init_context was not found in sulong libraries");
+            throw new IllegalStateException("Context cannot be initialized: " + LLVMContext.SULONG_INIT_CONTEXT + " was not found in sulong libraries");
         }
         if (disposeContext == null) {
-            throw new IllegalStateException("Context cannot be initialized: __sulong_dispose_context was not found in sulong libraries");
+            throw new IllegalStateException("Context cannot be initialized: " + LLVMContext.SULONG_DISPOSE_CONTEXT + " was not found in sulong libraries");
         }
         context.setSulongInitContext(initContext.asFunction());
         context.setSulongDisposeContext(disposeContext.asFunction());
