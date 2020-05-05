@@ -2,6 +2,16 @@
 
 Changes:
 
+New features:
+
+* The [Java API of the Toolchain](projects/com.oracle.truffle.llvm.api/src/com/oracle/truffle/llvm/api/Toolchain.java)
+  now supports requesting locations via the `#getPaths()` method. For example
+  the location of the toolchain executables or libraries. See the JavaDoc for
+  more details.
+
+* Added `llvm/api/toolchain.h` header for accessing the [Toolchain](docs/TOOLCHAIN.md)
+  from C code.
+
 Removed:
 
 * Removed the `--llvm.sourcePath` option (deprecated since 19.0), use

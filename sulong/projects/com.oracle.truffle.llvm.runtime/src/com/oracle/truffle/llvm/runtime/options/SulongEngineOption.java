@@ -157,11 +157,6 @@ public final class SulongEngineOption {
             help = "Prints a C stack trace when abort() is called.")
     public static final OptionKey<Boolean> STACKTRACE_ON_ABORT = new OptionKey<>(false);
 
-    @Option(name = "llvm.printToolchainPath",
-            category = OptionCategory.INTERNAL,
-            help = "Enables the intrinisc for printing the toolchain path.")
-    public static final OptionKey<Boolean> PRINT_TOOLCHAIN_PATH = new OptionKey<>(false);
-
     @Option(name = "llvm.traceIR",
             category = OptionCategory.EXPERT,
             help = "Prints a trace of the executed bitcode. Requires \'--llvm.llDebug=true\'. " +
