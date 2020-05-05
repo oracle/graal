@@ -59,7 +59,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 
-public final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
+final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     private static final SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewInstance", true);
     private static final SubstrateForeignCallDescriptor SLOW_NEW_ARRAY = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewArray", true);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{SLOW_NEW_INSTANCE, SLOW_NEW_ARRAY};
@@ -75,8 +75,8 @@ public final class GenScavengeAllocationSnippets extends SubstrateAllocationSnip
     public static void registerLowering(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         GenScavengeAllocationSnippets snippetReceiver = new GenScavengeAllocationSnippets();
-        GenScavengeAllocationSnippets.Templates allocationSnippets = new GenScavengeAllocationSnippets.Templates(snippetReceiver, options, factories, SnippetCounter.Group.NullFactory, providers,
-                        snippetReflection);
+        GenScavengeAllocationSnippets.Templates allocationSnippets = new GenScavengeAllocationSnippets.Templates(
+                        snippetReceiver, options, factories, SnippetCounter.Group.NullFactory, providers, snippetReflection);
         allocationSnippets.registerLowerings(lowerings);
     }
 
@@ -97,8 +97,8 @@ public final class GenScavengeAllocationSnippets extends SubstrateAllocationSnip
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
-        return formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, getArrayZeroingStartOffset(), emitMemoryBarrier, false, supportsBulkZeroing,
-                        snippetCounters);
+        return formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, getArrayZeroingStartOffset(),
+                        emitMemoryBarrier, false, supportsBulkZeroing, snippetCounters);
     }
 
     private static Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
@@ -154,8 +154,8 @@ public final class GenScavengeAllocationSnippets extends SubstrateAllocationSnip
         private final SnippetInfo formatObject;
         private final SnippetInfo formatArray;
 
-        public Templates(GenScavengeAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory groupFactory, Providers providers,
-                        SnippetReflectionProvider snippetReflection) {
+        Templates(GenScavengeAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories,
+                        SnippetCounter.Group.Factory groupFactory, Providers providers, SnippetReflectionProvider snippetReflection) {
             super(receiver, options, factories, groupFactory, providers, snippetReflection);
 
             formatObject = snippet(GenScavengeAllocationSnippets.class, "formatObjectSnippet", null, receiver);

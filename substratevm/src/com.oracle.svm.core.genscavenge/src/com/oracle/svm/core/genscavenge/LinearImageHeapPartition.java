@@ -37,9 +37,6 @@ public class LinearImageHeapPartition extends AbstractImageHeapPartition {
 
     LinearImageHeapPartition(String name, boolean writable) {
         super(name, writable);
-        this.size = 0L;
-        this.firstObject = null;
-        this.lastObject = null;
     }
 
     @Override

@@ -32,7 +32,7 @@ import com.oracle.svm.core.image.ImageHeapPartition;
 
 public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearImageHeapPartition> {
     private final ImageHeapInfo heapInfo;
-    private boolean compressedNullPadding;
+    private final boolean compressedNullPadding;
 
     public LinearImageHeapLayouter(ImageHeapInfo heapInfo, boolean compressedNullPadding) {
         this.heapInfo = heapInfo;
