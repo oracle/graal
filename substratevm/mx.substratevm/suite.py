@@ -492,6 +492,9 @@ suite = {
                     },
                 },
             },
+            "dependencies": [
+                "svm-jvmfuncs-fallback-builder",
+            ],
         },
 
         "com.oracle.svm.native.jvm.windows": {
@@ -511,6 +514,13 @@ suite = {
                     },
                 },
             },
+            "dependencies": [
+                "svm-jvmfuncs-fallback-builder",
+            ],
+        },
+
+        "svm-jvmfuncs-fallback-builder": {
+            "class" : "SubstrateJvmFuncsFallbacksBuilder",
         },
 
         "com.oracle.svm.jni": {
@@ -545,6 +555,13 @@ suite = {
             ],
             "javaCompliance": "8+",
             "spotbugs": "false",
+        },
+
+        "svm-compiler-flags-builder": {
+            "class" : "SubstrateCompilerFlagsBuilder",
+            "dependencies" : [
+                "SVM",
+            ],
         },
 
         "com.oracle.svm.junit": {
@@ -1033,6 +1050,7 @@ suite = {
             "mainClass": "com.oracle.svm.driver.NativeImage",
             "dependencies": [
                 "com.oracle.svm.driver",
+                "svm-compiler-flags-builder",
             ],
             "distDependencies": [
                 "LIBRARY_SUPPORT",
