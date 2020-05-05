@@ -24,6 +24,17 @@
  */
 package org.graalvm.compiler.hotspot.management;
 
+import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.AttachThread;
+import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.DetachThread;
+import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.FinishRegistration;
+import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.GetAttributes;
+import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.GetMBeanInfo;
+import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.GetObjectName;
+import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.Invoke;
+import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.PollRegistrations;
+import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.SetAttributes;
+
+import org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -43,17 +54,24 @@ public final class JMXToLibGraalCalls {
     private JMXToLibGraalCalls() {
     }
 
+    @JMXToLibGraal(PollRegistrations)
     static native long[] pollRegistrations(long isolateThreadId);
 
+    @JMXToLibGraal(FinishRegistration)
     static native void finishRegistration(long isolateThreadId, long[] svmRegistrations);
 
+    @JMXToLibGraal(GetObjectName)
     static native String getObjectName(long isolateThreadId, long svmRegistration);
 
+    @JMXToLibGraal(GetMBeanInfo)
     static native byte[] getMBeanInfo(long isolateThreadId, long svmRegistration);
 
+    @JMXToLibGraal(GetAttributes)
     static native byte[] getAttributes(long isolateThreadId, long handle, String[] attributes);
 
+    @JMXToLibGraal(SetAttributes)
     static native byte[] setAttributes(long isolateThreadId, long handle, byte[] rawData);
 
+    @JMXToLibGraal(Invoke)
     static native byte[] invoke(long isolateThreadId, long handle, String actionName, byte[] rawData, String[] signature);
 }

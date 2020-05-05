@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
+import static org.graalvm.compiler.hotspot.management.libgraal.JMXFromLibGraal.Id.GetFactory;
+import static org.graalvm.compiler.hotspot.management.libgraal.JMXFromLibGraal.Id.NewMBean;
 import static org.graalvm.libgraal.jni.JNIUtil.GetMethodID;
 import static org.graalvm.libgraal.jni.JNIUtil.GetStaticFieldID;
 import static org.graalvm.libgraal.jni.JNIUtil.GetStaticMethodID;
@@ -121,11 +123,13 @@ final class JMXFromLibGraalCalls {
         return WordFactory.nullPointer();
     }
 
+    @JMXFromLibGraal(GetFactory)
     static JNI.JObject getFactory(JNI.JNIEnv env, JNI.JClass fromLibGraalEntryPointsClass) {
         JNI.JMethodID createId = findMethod(env, fromLibGraalEntryPointsClass, true, false, METHOD_GET_FACTORY);
         return env.getFunctions().getCallStaticObjectMethodA().call(env, fromLibGraalEntryPointsClass, createId, nullPointer());
     }
 
+    @JMXFromLibGraal(NewMBean)
     static void signalRegistrationRequest(JNI.JNIEnv env, JNI.JClass fromLibGraalEntryPointsClass, JNI.JObject factory) {
         JNI.JMethodID signalId = findMethod(env, fromLibGraalEntryPointsClass, true, false, METHOD_SIGNAL);
         JNI.JValue params = StackValue.get(2, JNI.JValue.class);

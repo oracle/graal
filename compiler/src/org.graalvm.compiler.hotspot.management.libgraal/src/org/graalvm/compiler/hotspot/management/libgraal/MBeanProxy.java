@@ -196,6 +196,7 @@ class MBeanProxy<T extends DynamicMBean> {
         return objName;
     }
 
+    @JMXToLibGraal(JMXToLibGraal.Id.Init)
     static boolean initializeJNI(GraalHotSpotVMConfig config, HotSpotGraalRuntime runtime) {
         if (getCurrentJavaThreadMethod == null) {
             return false;
@@ -209,12 +210,14 @@ class MBeanProxy<T extends DynamicMBean> {
                     }
                     memPoolBean = new LibGraalMemoryPoolMBean();
                     jniEnvOffset = config.jniEnvironmentOffset;
-                    defineClassesInHotSpot(getCurrentJNIEnv());
-                    try {
-                        MBeanProxy<?> memPoolMBean = new MBeanProxy<>(memPoolBean, LibGraalMemoryPoolMBean.NAME);
-                        enqueueForRegistration(memPoolMBean, runtime);
-                    } catch (MalformedObjectNameException mon) {
-                        throw new AssertionError("Invlid object name.", mon);
+                    try (ToLibGraalScope<JMXToLibGraal.Id> s = new ToLibGraalScope<>(JMXToLibGraal.Id.Init, getCurrentJNIEnv())) {
+                        defineClassesInHotSpot(getCurrentJNIEnv());
+                        try {
+                            MBeanProxy<?> memPoolMBean = new MBeanProxy<>(memPoolBean, LibGraalMemoryPoolMBean.NAME);
+                            enqueueForRegistration(memPoolMBean, runtime);
+                        } catch (MalformedObjectNameException mon) {
+                            throw new AssertionError("Invlid object name.", mon);
+                        }
                     }
                 }
             }
@@ -295,27 +298,24 @@ class MBeanProxy<T extends DynamicMBean> {
     /**
      * Uses JNI to define the classes in HotSpot heap.
      */
-    @SuppressWarnings("try")
     private static void defineClassesInHotSpot(JNI.JNIEnv env) {
-        try (ToLibGraalScope<Id> s = new ToLibGraalScope<>(Id.DefineClasses, env)) {
-            JNI.JObject classLoader = JMXFromLibGraalCalls.getJVMCIClassLoader(env);
-            JNI.JClass hsToSvmCalls = defineClassInHotSpot(env, classLoader, HS_CALLS_CLASS);
-            if (hsToSvmCalls.isNonNull()) {
-                try {
-                    registerNatives(env, classLoader, hsToSvmCalls);
-                } finally {
-                    notifyNativesRegistered(env, hsToSvmCalls);
-                }
-            } else {
-                hsToSvmCalls = findClassInHotSpot(env, classLoader, HS_CALLS_CLASS.binaryName, true);
-                waitForRegisterNatives(env, hsToSvmCalls);
+        JNI.JObject classLoader = JMXFromLibGraalCalls.getJVMCIClassLoader(env);
+        JNI.JClass hsToSvmCalls = defineClassInHotSpot(env, classLoader, HS_CALLS_CLASS);
+        if (hsToSvmCalls.isNonNull()) {
+            try {
+                registerNatives(env, classLoader, hsToSvmCalls);
+            } finally {
+                notifyNativesRegistered(env, hsToSvmCalls);
             }
-            JNI.JClass svmHsEntryPoints = findOrDefineClassInHotSpot(env, classLoader, HS_ENTRYPOINTS_CLASS);
-            findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_CLASS);
-            findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS);
-            findOrDefineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS);
-            fromLibGraalEntryPoints = JNIUtil.NewGlobalRef(env, svmHsEntryPoints, "Class<" + HS_ENTRYPOINTS_CLASS.binaryName + ">");
+        } else {
+            hsToSvmCalls = findClassInHotSpot(env, classLoader, HS_CALLS_CLASS.binaryName, true);
+            waitForRegisterNatives(env, hsToSvmCalls);
         }
+        JNI.JClass svmHsEntryPoints = findOrDefineClassInHotSpot(env, classLoader, HS_ENTRYPOINTS_CLASS);
+        findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_CLASS);
+        findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS);
+        findOrDefineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS);
+        fromLibGraalEntryPoints = JNIUtil.NewGlobalRef(env, svmHsEntryPoints, "Class<" + HS_ENTRYPOINTS_CLASS.binaryName + ">");
     }
 
     private static JNI.JClass findOrDefineClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, ClassData classData) {
@@ -418,28 +418,20 @@ class MBeanProxy<T extends DynamicMBean> {
         }
     }
 
-    @SuppressWarnings("try")
     private static void registerNatives(JNI.JNIEnv env, JNI.JObject classLoader, JNI.JClass target) {
-        try (ToLibGraalScope<Id> s = new ToLibGraalScope<>(Id.RegisterNatives, env)) {
-            JNI.JClass libgraalClass = findClassInHotSpot(env, classLoader, JMXFromLibGraalCalls.CLASS_LIBGRAAL, true);
-            JMXFromLibGraalCalls.registerNatives(env, libgraalClass, target);
-            checkException(env, "Failed to register natives");
-        }
+        JNI.JClass libgraalClass = findClassInHotSpot(env, classLoader, JMXFromLibGraalCalls.CLASS_LIBGRAAL, true);
+        JMXFromLibGraalCalls.registerNatives(env, libgraalClass, target);
+        checkException(env, "Failed to register natives");
     }
 
     /**
      * Gets a reference to factory thread running in HotSpot heap.
      */
-    @SuppressWarnings("try")
     private static JNI.JObject getFactory(JNI.JNIEnv env, JNI.JClass svmHsEntryPoints) {
-        ToLibGraalScope<Id> scope = new ToLibGraalScope<>(Id.GetFactory, env);
-        try (ToLibGraalScope<Id> s = scope) {
-            JNI.JObject factory = JMXFromLibGraalCalls.getFactory(env, svmHsEntryPoints);
-            checkException(env, "Failed to instantiate MBean factory on HotSpot side");
-            assert factory.isNonNull() : "Factory cannot be null.";
-            scope.setObjectResult(factory);
-        }
-        return scope.getObjectResult();
+        JNI.JObject factory = JMXFromLibGraalCalls.getFactory(env, svmHsEntryPoints);
+        checkException(env, "Failed to instantiate MBean factory on HotSpot side");
+        assert factory.isNonNull() : "Factory cannot be null.";
+        return factory;
     }
 
     /**
@@ -449,30 +441,25 @@ class MBeanProxy<T extends DynamicMBean> {
     private static void signalRegistrationRequest() {
         JNI.JNIEnv env = getCurrentJNIEnv();
         JNI.JClass svmHsEntryPoints = getHotSpotEntryPoints();
-        JNI.JObject factory = getFactory(getCurrentJNIEnv(), getHotSpotEntryPoints());
-        try (ToLibGraalScope<Id> s = new ToLibGraalScope<>(Id.NewMBeans, env)) {
-            JMXFromLibGraalCalls.signalRegistrationRequest(env, svmHsEntryPoints, factory);
-            checkException(env, "Failed to register MBeans");
-        }
+        JNI.JObject factory = getFactory(env, svmHsEntryPoints);
+        JMXFromLibGraalCalls.signalRegistrationRequest(env, svmHsEntryPoints, factory);
+        checkException(env, "Failed to register MBeans");
     }
 
     /**
      * Performs MBeans unregistration in the HotSpot heap.
      */
-    @SuppressWarnings("try")
     private static void unregister(List<MBeanProxy<?>> toUnregister) {
         JNI.JNIEnv env = getCurrentJNIEnv();
         JNI.JClass svmHsEntryPoints = getHotSpotEntryPoints();
-        JNI.JObject factory = getFactory(getCurrentJNIEnv(), svmHsEntryPoints);
-        try (ToLibGraalScope<Id> s = new ToLibGraalScope<>(Id.UnregisterMBeans, env)) {
-            JNI.JObjectArray objectNamesHandle = JNIUtil.NewObjectArray(env, toUnregister.size(), JMXFromLibGraalCalls.findClass(env, getBinaryName(String.class.getName())), WordFactory.nullPointer());
-            for (int i = 0; i < toUnregister.size(); i++) {
-                JNI.JString objectName = JNIUtil.createHSString(env, toUnregister.get(i).getName());
-                JNIUtil.SetObjectArrayElement(env, objectNamesHandle, i, objectName);
-            }
-            JMXFromLibGraalCalls.unregister(env, svmHsEntryPoints, factory, objectNamesHandle);
-            checkException(env, "Failed to unregister MBeans");
+        JNI.JObject factory = getFactory(env, svmHsEntryPoints);
+        JNI.JObjectArray objectNamesHandle = JNIUtil.NewObjectArray(env, toUnregister.size(), JMXFromLibGraalCalls.findClass(env, getBinaryName(String.class.getName())), WordFactory.nullPointer());
+        for (int i = 0; i < toUnregister.size(); i++) {
+            JNI.JString objectName = JNIUtil.createHSString(env, toUnregister.get(i).getName());
+            JNIUtil.SetObjectArrayElement(env, objectNamesHandle, i, objectName);
         }
+        JMXFromLibGraalCalls.unregister(env, svmHsEntryPoints, factory, objectNamesHandle);
+        checkException(env, "Failed to unregister MBeans");
     }
 
     /**
