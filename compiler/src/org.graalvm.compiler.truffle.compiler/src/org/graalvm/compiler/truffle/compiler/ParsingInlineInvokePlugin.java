@@ -24,15 +24,16 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 final class ParsingInlineInvokePlugin implements InlineInvokePlugin {
 
@@ -78,8 +79,10 @@ final class ParsingInlineInvokePlugin implements InlineInvokePlugin {
         if (!inlineInfo.allowsInlining()) {
             return inlineInfo;
         }
-        if (original.equals(partialEvaluator.callIndirectMethod) || original.equals(partialEvaluator.inlinedExecRootNode) || original.equals(partialEvaluator.callDirectMethod)) {
-            return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+        for (ResolvedJavaMethod neverInlineMethod : partialEvaluator.getNeverInlineMethods()) {
+            if (original.equals(neverInlineMethod)) {
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+            }
         }
         if (hasMethodHandleArgument(arguments)) {
             /*

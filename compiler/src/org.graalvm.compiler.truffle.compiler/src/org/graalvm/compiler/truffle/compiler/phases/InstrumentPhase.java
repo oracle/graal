@@ -25,10 +25,10 @@
 package org.graalvm.compiler.truffle.compiler.phases;
 
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBranches;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBranchesPerInlineSite;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBoundaries;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBoundariesPerInlineSite;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBranches;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBranchesPerInlineSite;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentationTableSize;
 
 import java.lang.reflect.Method;
@@ -88,7 +88,6 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
     private static final String[] OMITTED_STACK_PATTERNS = new String[]{
                     asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "executeRootNode"),
                     asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "profiledPERoot"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "inlinedExecRootNode"),
                     asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "callDirect"),
                     asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode", "call"),
     };

@@ -79,22 +79,22 @@ import jdk.vm.ci.meta.SpeculationLog;
  * the root node} depending on the type of call.
  *
  * <pre>
- *                    OptimizedCallProfiled#call                             OptimizedCallInlined#call
- *                                |                                                      |
- *                                |                                                      |
- *  PUBLIC   call -> callIndirect | callOSR   callDirect <================> callInlined  |
- *                           |  +-+    |           |             ^                |      |
- *                           |  |  +---+           |     substituted by the       |      |
- *                           V  V  V               |     compiler if inlined      |      |
- *  PROTECTED               doInvoke <-------------+                              |      |
- *                             |                                                  |      |
- *                             | <= Jump to installed code                        |      |
- *                             V                                                  |      |
- *  PROTECTED              callBoundary                                           |      |
- *                             |                                                  |      |
- *                             | <= Tail jump to installed code in Int.           |      |
- *                             V                                                  V      V
- *  PROTECTED           profiledPERoot                                        inlinedExecRootNode
+ *              GraalRuntimeSupport#callProfiled                    GraalRuntimeSupport#callInlined
+ *                                |                                               |
+ *                                |                                               V
+ *  PUBLIC   call -> callIndirect | callOSR   callDirect <================> callInlined
+ *                           |  +-+    |           |             ^                |
+ *                           |  |  +---+           |     substituted by the       |
+ *                           V  V  V               |     compiler if inlined      |
+ *  PROTECTED               doInvoke <-------------+                              |
+ *                             |                                                  |
+ *                             | <= Jump to installed code                        |
+ *                             V                                                  |
+ *  PROTECTED              callBoundary                                           |
+ *                             |                                                  |
+ *                             | <= Tail jump to installed code in Int.           |
+ *                             V                                                  |
+ *  PROTECTED           profiledPERoot                                            |
  *                             |                                                  |
  *  PRIVATE                    +----------> executeRootNode <---------------------+
  *                                                 |
@@ -396,7 +396,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callInlined(Node location, Object... arguments) {
         try {
-            return inlinedExecRootNode(arguments);
+            ensureInitialized();
+            return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments));
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert keepAlive(location);
@@ -460,12 +461,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         Object result = executeRootNode(createFrame(getRootNode().getFrameDescriptor(), args));
         profileReturnValue(result);
         return result;
-    }
-
-    // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    final Object inlinedExecRootNode(Object... arguments) {
-        ensureInitialized();
-        return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments));
     }
 
     // This should be private but can't be. GR-19397
