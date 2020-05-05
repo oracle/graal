@@ -290,7 +290,7 @@ final class JNIExceptionWrapper extends RuntimeException {
         return createString(env, message);
     }
 
-    @SVMToHotSpot(GetClassName)
+    @TruffleFromLibGraal(GetClassName)
     private static String getClassName(JNIEnv env, JThrowable throwableHandle) {
         JClass classHandle = GetObjectClass(env, throwableHandle);
         JString className = callGetClassName(env, classHandle);
