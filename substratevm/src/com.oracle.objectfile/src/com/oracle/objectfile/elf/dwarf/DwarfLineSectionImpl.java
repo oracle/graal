@@ -320,7 +320,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * 4 ubyte prologue length includes rest of header and dir + file table section.
          */
-        int prologueSize = classEntry.getLinePrologueSize() - 6;
+        int prologueSize = classEntry.getLinePrologueSize() - (4 + 2 + 4);
         pos = putInt(prologueSize, buffer, pos);
         /*
          * 1 ubyte min instruction length is always 1.
