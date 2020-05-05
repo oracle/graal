@@ -69,6 +69,7 @@ import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -88,13 +89,11 @@ import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.hosted.AbstractNativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
-import com.oracle.svm.util.ModuleSupport;
 
 public class NativeImage {
 
-    private static final String DEFAULT_GENERATOR_CLASS_NAME = "com.oracle.svm.hosted.NativeImageGeneratorRunner";
-    private static final String DEFAULT_GENERATOR_9PLUS_SUFFIX = "$JDK9Plus";
-    private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getCanonicalName();
+    private static final String nativeImageSystemClassLoaderName = NativeImageSystemClassLoader.class.getName();
+    private static final String nativeImageGeneratorRunnerName = NativeImageGeneratorRunner.class.getName();
 
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
@@ -222,17 +221,6 @@ public class NativeImage {
     public static final String nativeImageMetaInf = "META-INF/native-image";
 
     public interface BuildConfiguration {
-        /**
-         * @return the name of the image generator main class.
-         */
-        default String getGeneratorMainClass() {
-            String generatorClassName = DEFAULT_GENERATOR_CLASS_NAME;
-            if (useJavaModules()) {
-                generatorClassName += DEFAULT_GENERATOR_9PLUS_SUFFIX;
-            }
-            return generatorClassName;
-        }
-
         /**
          * @return relative path usage get resolved against this path (also default path for image
          *         building)
@@ -488,10 +476,9 @@ public class NativeImage {
         @Override
         public List<Path> getBuilderClasspath() {
             List<Path> result = new ArrayList<>();
-            if (useJavaModules()) {
-                result.addAll(getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-sdk", "graal", "enterprise-graal"));
+            if (!useJavaModules()) {
+                result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
             }
-            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
             return result;
         }
 
@@ -534,8 +521,10 @@ public class NativeImage {
         @Override
         public List<Path> getBuilderModulePath() {
             List<Path> result = new ArrayList<>();
-            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-sdk", "enterprise-graal"));
+            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-sdk", "graal", "enterprise-graal"));
             result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api"));
+            //result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder")))); // TODO also support svm-llvm as module
+            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder")), "pointsto", "objectfile", "svm", "svm-enterprise"));
             return result;
         }
 
@@ -727,7 +716,7 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
-        addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
+        addImageBuilderJavaArgs("-Djava.system.class.loader=" + nativeImageSystemClassLoaderName);
         /*
          * The presence of CDS and custom system class loaders disables the use of archived
          * non-system class and and triggers a warning.
@@ -1206,8 +1195,10 @@ public class NativeImage {
             command.add(bcp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator, "-Xbootclasspath/a:", "")));
         }
 
-        command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
-        command.add(config.getGeneratorMainClass());
+        if (!cp.isEmpty()) {
+            command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
+        }
+        command.add(nativeImageGeneratorRunnerName);
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected

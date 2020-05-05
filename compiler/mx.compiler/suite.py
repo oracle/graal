@@ -2319,6 +2319,7 @@ suite = {
           "org.graalvm.compiler.nodes.graphbuilderconf to jdk.aot,jdk.aot,jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver",
           "org.graalvm.compiler.options                to jdk.aot,jdk.internal.vm.compiler.management,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.driver",
           "org.graalvm.compiler.phases                 to jdk.aot",
+          "org.graalvm.compiler.phases.util            to org.graalvm.nativeimage.pointsto",
           "org.graalvm.compiler.phases.common.jmx      to jdk.internal.vm.compiler.management",
           "org.graalvm.compiler.phases.tiers           to jdk.aot",
           "org.graalvm.compiler.printer                to jdk.aot",

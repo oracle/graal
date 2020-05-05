@@ -518,29 +518,4 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             generatorInstance.interruptBuild();
         }
     }
-
-    /**
-     * Command line entry point when running on JDK9+. This is required to dynamically export Graal
-     * to SVM and it requires {@code --add-exports=java.base/jdk.internal.module=ALL-UNNAMED} to be
-     * on the VM command line.
-     *
-     * Note: This is a workaround until GR-16855 is resolved.
-     */
-    public static class JDK9Plus {
-
-        public static void main(String[] args) {
-            ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle", false);
-            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.ci", false);
-            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
-            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler.management", true);
-            ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
-            ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.loader", false);
-            if (JavaVersionUtil.JAVA_SPEC >= 15) {
-                ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.misc", false);
-            }
-            ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.text.spi", false);
-            ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.org.objectweb.asm", false);
-            NativeImageGeneratorRunner.main(args);
-        }
-    }
 }
