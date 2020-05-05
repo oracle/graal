@@ -590,6 +590,7 @@ final class InstrumentationHandler {
     private void initializeSourcesList(VisitorBuilder visitorBuilder, Collection<RootNode> rootNodes, Map<Source, Void> sources, WeakAsyncList<Source> sourcesList, boolean setExecutedRootNodeBit) {
         for (RootNode root : rootNodes) {
             int rootBits = RootNodeBits.get(root);
+            boolean visitRootCalled = false;
             if (!RootNodeBits.isNoSourceSection(rootBits)) {
                 SourceSection sourceSection = root.getSourceSection();
                 if (sourceSection != null) {
@@ -601,7 +602,12 @@ final class InstrumentationHandler {
                 }
                 if (!RootNodeBits.isSameSource(rootBits) || sourceSection == null) {
                     visitRoot(root, root, visitorBuilder.buildVisitor(), false, false, setExecutedRootNodeBit);
+                    visitRootCalled = true;
                 }
+            }
+            if (setExecutedRootNodeBit && !visitRootCalled && RootNodeBits.wasNotExecuted(rootBits)) {
+                rootBits = RootNodeBits.setExecuted(rootBits);
+                RootNodeBits.set(root, rootBits);
             }
         }
     }

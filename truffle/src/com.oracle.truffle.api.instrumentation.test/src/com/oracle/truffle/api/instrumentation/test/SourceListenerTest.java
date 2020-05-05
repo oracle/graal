@@ -766,6 +766,23 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     }
 
     @Test
+    public void testMaterializedSourcesExecutedInAST() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "MRabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> {
+        }, true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        // Not materialized yet:
+        Assert.assertEquals(code, loadedCode.toString());
+        // Force materialization:
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, e -> {
+        }, true);
+        Assert.assertEquals(code + code.substring(2), loadedCode.toString());
+    }
+
+    @Test
     public void testInsertedSourcesInAST() {
         setupEnv(Context.create(), new MultiSourceASTLanguage());
         String code = "Iabcd";
@@ -775,13 +792,25 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         Assert.assertEquals(code + code, loadedCode.toString());
     }
 
+    @Test
+    public void testInsertedSourcesExecutedInAST() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "Ia";
+        StringBuilder loadedCode = new StringBuilder();
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> {
+        }, true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        Assert.assertEquals(code + code, loadedCode.toString());
+    }
+
     static class MultiSourceASTLanguage extends ProxyLanguage {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             com.oracle.truffle.api.source.Source source = request.getSource();
             return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
-                @Node.Child private MultiSourceBlock block = new MultiSourceBlock(source.getCharacters().toString());
+                @Node.Child private MultiSourceBlock block = new MultiSourceBlock(source, source.getCharacters().toString());
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -800,32 +829,40 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
 
             @Child private MultiSourceBlock child;
             private final boolean materialize;
+            private final boolean materializeUnderSameSourceRoot;
             private final boolean insert;
+            private final com.oracle.truffle.api.source.Source rootSource;
             private final com.oracle.truffle.api.source.Source mineSource;
             private final String childrenCode;
 
-            MultiSourceBlock(String code) {
+            MultiSourceBlock(com.oracle.truffle.api.source.Source rootSource, String code) {
+                this.rootSource = rootSource;
                 this.materialize = code.startsWith("M");
+                this.materializeUnderSameSourceRoot = code.startsWith("MR");
                 this.insert = code.startsWith("I");
-                this.mineSource = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, code.substring(0, 1), "block").build();
-                this.childrenCode = code.substring(1);
+                this.mineSource = materializeUnderSameSourceRoot ? rootSource : com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, code.substring(0, 1), "block").build();
+                this.childrenCode = code.substring(materializeUnderSameSourceRoot ? 2 : 1);
                 if (!(materialize || insert) && !childrenCode.isEmpty()) {
-                    child = new MultiSourceBlock(childrenCode);
+                    child = new MultiSourceBlock(rootSource, childrenCode);
                 }
             }
 
-            MultiSourceBlock(com.oracle.truffle.api.source.Source source, String childrenCode) {
+            MultiSourceBlock(com.oracle.truffle.api.source.Source rootSource, com.oracle.truffle.api.source.Source source, String childrenCode) {
+                this.rootSource = rootSource;
                 this.materialize = false;
+                this.materializeUnderSameSourceRoot = false;
                 this.insert = false;
                 this.mineSource = source;
                 this.childrenCode = childrenCode;
                 if (!childrenCode.isEmpty()) {
-                    child = new MultiSourceBlock(childrenCode);
+                    child = new MultiSourceBlock(rootSource, childrenCode);
                 }
             }
 
             MultiSourceBlock(MultiSourceBlock copy) {
+                this.rootSource = copy.rootSource;
                 this.materialize = copy.materialize;
+                this.materializeUnderSameSourceRoot = copy.materializeUnderSameSourceRoot;
                 this.insert = copy.insert;
                 this.mineSource = copy.mineSource;
                 this.childrenCode = copy.childrenCode;
@@ -849,7 +886,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
             @Override
             public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
                 if (materialize) {
-                    return new MultiSourceBlock(mineSource, childrenCode);
+                    return new MultiSourceBlock(rootSource, mineSource, childrenCode);
                 }
                 return this;
             }
@@ -857,7 +894,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
             public Object execute(VirtualFrame frame) {
                 if (insert) {
                     CompilerDirectives.transferToInterpreter();
-                    child = insert(new MultiSourceBlock(childrenCode));
+                    child = insert(new MultiSourceBlock(rootSource, childrenCode));
                     notifyInserted(child);
                 }
                 if (child != null) {
