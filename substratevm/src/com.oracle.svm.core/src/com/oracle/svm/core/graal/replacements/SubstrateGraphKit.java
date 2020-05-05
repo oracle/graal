@@ -263,6 +263,7 @@ public class SubstrateGraphKit extends GraphKit {
 
         mergeUnwinds();
         assert graph.verify();
+        assert wordTypes.ensureGraphContainsNoWordTypeReferences(graph);
         return graph;
     }
 

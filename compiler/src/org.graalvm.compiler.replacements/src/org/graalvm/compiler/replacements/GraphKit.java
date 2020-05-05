@@ -34,6 +34,7 @@ import java.util.List;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -187,6 +188,15 @@ public class GraphKit implements GraphBuilderTool {
         return node;
     }
 
+    public Stamp wordStamp(ResolvedJavaType type) {
+        assert wordTypes != null && wordTypes.isWord(type);
+        return wordTypes.getWordStamp(type);
+    }
+
+    public final JavaKind asKind(JavaType type) {
+        return wordTypes != null ? wordTypes.asKind(type) : type.getJavaKind();
+    }
+
     @Override
     public <T extends ValueNode> T append(T node) {
         T result = graph.addOrUniqueWithInputs(changeToWord(node));
@@ -305,10 +315,6 @@ public class GraphKit implements GraphBuilderTool {
 
     protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, @SuppressWarnings("unused") int bci) {
         return new MethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null);
-    }
-
-    protected final JavaKind asKind(JavaType type) {
-        return wordTypes != null ? wordTypes.asKind(type) : type.getJavaKind();
     }
 
     /**
