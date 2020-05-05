@@ -61,8 +61,8 @@ import static org.graalvm.libgraal.jni.JNIUtil.GetArrayLength;
 import static org.graalvm.libgraal.jni.JNIUtil.GetLongArrayElements;
 import static org.graalvm.libgraal.jni.JNIUtil.ReleaseLongArrayElements;
 import static org.graalvm.libgraal.jni.JNIUtil.getInternalName;
-import static org.graalvm.libgraal.jni.ToLibGraalScope.env;
-import static org.graalvm.libgraal.jni.ToLibGraalScope.scope;
+import static org.graalvm.libgraal.jni.JNILibGraalScope.env;
+import static org.graalvm.libgraal.jni.JNILibGraalScope.scope;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -88,7 +88,7 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.HSObject;
-import org.graalvm.libgraal.jni.ToLibGraalScope;
+import org.graalvm.libgraal.jni.JNILibGraalScope;
 import org.graalvm.libgraal.jni.JNI.JArray;
 import org.graalvm.libgraal.jni.JNI.JLongArray;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
@@ -136,7 +136,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     @TruffleFromLibGraal(CreateInliningPlan)
     @Override
     public TruffleInliningPlan createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
-        ToLibGraalScope<?> scope = ToLibGraalScope.scopeOrNull();
+        JNILibGraalScope<?> scope = JNILibGraalScope.scopeOrNull();
         if (scope == null) {
             return null;
         }
@@ -149,7 +149,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     @TruffleFromLibGraal(AsCompilableTruffleAST)
     @Override
     public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
-        ToLibGraalScope<?> scope = ToLibGraalScope.scopeOrNull();
+        JNILibGraalScope<?> scope = JNILibGraalScope.scopeOrNull();
         if (scope == null) {
             return null;
         }
@@ -356,7 +356,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     private static class HSConsumer extends HSObject implements Consumer<OptimizedAssumptionDependency> {
 
-        HSConsumer(ToLibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
+        HSConsumer(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
             super(scope, handle);
         }
 

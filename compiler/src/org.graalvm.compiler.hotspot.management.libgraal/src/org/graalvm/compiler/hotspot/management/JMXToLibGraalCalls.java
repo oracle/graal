@@ -39,7 +39,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * Native methods linked to SVM entry points.
+ * Native methods linked to libgraal entry points.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class JMXToLibGraalCalls {
@@ -58,13 +58,13 @@ public final class JMXToLibGraalCalls {
     static native long[] pollRegistrations(long isolateThreadId);
 
     @JMXToLibGraal(FinishRegistration)
-    static native void finishRegistration(long isolateThreadId, long[] svmRegistrations);
+    static native void finishRegistration(long isolateThreadId, long[] handles);
 
     @JMXToLibGraal(GetObjectName)
-    static native String getObjectName(long isolateThreadId, long svmRegistration);
+    static native String getObjectName(long isolateThreadId, long handle);
 
     @JMXToLibGraal(GetMBeanInfo)
-    static native byte[] getMBeanInfo(long isolateThreadId, long svmRegistration);
+    static native byte[] getMBeanInfo(long isolateThreadId, long handle);
 
     @JMXToLibGraal(GetAttributes)
     static native byte[] getAttributes(long isolateThreadId, long handle, String[] attributes);

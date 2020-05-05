@@ -68,8 +68,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.util.OptionsEncoder;
 
 /**
- * Encapsulates a handle to a {@link DynamicMBean} object in the SVM heap. Implements the
- * {@link DynamicMBean} by delegating all operations to an object in the SVM heap.
+ * Encapsulates a handle to a {@link DynamicMBean} object in the libgraal heap. Implements the
+ * {@link DynamicMBean} by delegating all operations to an object in the libgraal heap.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public class LibGraalMBean implements DynamicMBean {
@@ -102,7 +102,7 @@ public class LibGraalMBean implements DynamicMBean {
 
     /**
      * Obtain the value of a specific attribute of the Dynamic MBean by delegating to
-     * {@link DynamicMBean} instance in the SVM heap.
+     * {@link DynamicMBean} instance in the libgraal heap.
      *
      * @param attribute the name of the attribute to be retrieved
      */
@@ -114,7 +114,7 @@ public class LibGraalMBean implements DynamicMBean {
 
     /**
      * Set the value of a specific attribute of the Dynamic MBean by delegating to
-     * {@link DynamicMBean} instance in the SVM heap.
+     * {@link DynamicMBean} instance in the libgraal heap.
      *
      * @param attribute the identification of the attribute to be set and the value it is to be set
      *            to
@@ -128,7 +128,7 @@ public class LibGraalMBean implements DynamicMBean {
 
     /**
      * Get the values of several attributes of the Dynamic MBean by delegating to
-     * {@link DynamicMBean} instance in the SVM heap.
+     * {@link DynamicMBean} instance in the libgraal heap.
      *
      * @param attributes a list of the attributes to be retrieved
      */
@@ -142,7 +142,7 @@ public class LibGraalMBean implements DynamicMBean {
 
     /**
      * Sets the values of several attributes of the Dynamic MBean by delegating to
-     * {@link DynamicMBean} instance in the SVM heap.
+     * {@link DynamicMBean} instance in the libgraal heap.
      *
      * @param attributes a list of attributes: The identification of the attributes to be set and
      *            the values they are to be set to.
@@ -248,7 +248,7 @@ public class LibGraalMBean implements DynamicMBean {
 
     /**
      * Invokes an action on the Dynamic MBean by delegating to {@link DynamicMBean} instance in the
-     * SVM heap.
+     * libgraal heap.
      *
      * @param actionName the name of the action to be invoked
      * @param params an array containing the parameters to be set when the action is invoked
@@ -281,7 +281,7 @@ public class LibGraalMBean implements DynamicMBean {
 
     /**
      * Provides the attributes and actions of the Dynamic MBean by delegating to
-     * {@link DynamicMBean} instance in the SVM heap.
+     * {@link DynamicMBean} instance in the libgraal heap.
      *
      */
     @Override
@@ -528,7 +528,7 @@ public class LibGraalMBean implements DynamicMBean {
 
     /**
      * A factory thread creating the {@link LibGraalMBean} instances for {@link DynamicMBean}s in
-     * SVM heap and registering them to {@link MBeanServer}.
+     * libgraal heap and registering them to {@link MBeanServer}.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static final class Factory extends Thread {
@@ -550,8 +550,8 @@ public class LibGraalMBean implements DynamicMBean {
         }
 
         /**
-         * Main loop waiting for {@link DynamicMBean} creation in SVM heap. When a new
-         * {@link DynamicMBean} is created in the SVM heap this thread creates a new
+         * Main loop waiting for {@link DynamicMBean} creation in libgraal heap. When a new
+         * {@link DynamicMBean} is created in the libgraal heap this thread creates a new
          * {@link LibGraalMBean} encapsulating the {@link DynamicMBean} and registers it to
          * {@link MBeanServer}.
          */
@@ -582,7 +582,7 @@ public class LibGraalMBean implements DynamicMBean {
         }
 
         /**
-         * Called by {@code MBeanProxy} in SVM heap to notify this factory of an isolate with
+         * Called by {@code MBeanProxy} in libgraal heap to notify this factory of an isolate with
          * {@link DynamicMBean}s that needs registration.
          */
         synchronized void signalRegistrationRequest(long isolate) {
@@ -665,18 +665,17 @@ public class LibGraalMBean implements DynamicMBean {
                 iter.remove();
                 try (LibGraalScope scope = new LibGraalScope(isolate)) {
                     long isolateThread = scope.getIsolateThreadAddress();
-                    long[] svmRegistrations =  JMXToLibGraalCalls.pollRegistrations(isolateThread);
-                    if (svmRegistrations.length > 0) {
-                        for (long svmRegistration : svmRegistrations) {
-                            LibGraalMBean bean = new LibGraalMBean(isolate, svmRegistration);
-                            String name = JMXToLibGraalCalls.getObjectName(isolateThread, svmRegistration);
+                    long[] handles =  JMXToLibGraalCalls.pollRegistrations(isolateThread);
+                    if (handles.length > 0) {
+                        for (long handle : handles) {
+                            LibGraalMBean bean = new LibGraalMBean(isolate, handle);
+                            String name = JMXToLibGraalCalls.getObjectName(isolateThread, handle);
                             try {
                                 platformMBeanServer.registerMBean(bean, new ObjectName(name));
                             } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
                                 e.printStackTrace(TTY.out);
                             }
                         }
-                        JMXToLibGraalCalls.finishRegistration(isolateThread, svmRegistrations);
                     }
                 }
             }

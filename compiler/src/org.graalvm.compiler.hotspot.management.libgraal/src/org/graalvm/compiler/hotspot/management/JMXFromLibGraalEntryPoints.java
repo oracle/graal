@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * Entry points in HotSpot for calls from SVM.
+ * Entry points in HotSpot for calls from libgraal.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class JMXFromLibGraalEntryPoints {

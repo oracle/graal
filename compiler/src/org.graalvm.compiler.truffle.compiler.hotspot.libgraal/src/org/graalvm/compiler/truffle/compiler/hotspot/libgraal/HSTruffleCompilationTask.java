@@ -29,10 +29,10 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsLastTier;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callIsCancelled;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callIsLastTier;
-import static org.graalvm.libgraal.jni.ToLibGraalScope.env;
+import static org.graalvm.libgraal.jni.JNILibGraalScope.env;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.libgraal.jni.ToLibGraalScope;
+import org.graalvm.libgraal.jni.JNILibGraalScope;
 import org.graalvm.libgraal.jni.JNI.JObject;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
@@ -42,7 +42,7 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
  */
 final class HSTruffleCompilationTask extends HSObject implements TruffleCompilationTask {
 
-    HSTruffleCompilationTask(ToLibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
+    HSTruffleCompilationTask(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
         super(scope, handle);
     }
 

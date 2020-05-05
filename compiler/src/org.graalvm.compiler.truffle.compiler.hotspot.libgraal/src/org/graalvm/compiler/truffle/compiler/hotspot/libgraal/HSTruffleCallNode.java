@@ -33,12 +33,12 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCa
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callGetCallCount;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callGetCurrentCallTarget;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callIsInliningForced;
-import static org.graalvm.libgraal.jni.ToLibGraalScope.env;
+import static org.graalvm.libgraal.jni.JNILibGraalScope.env;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.libgraal.jni.HSObject;
-import org.graalvm.libgraal.jni.ToLibGraalScope;
+import org.graalvm.libgraal.jni.JNILibGraalScope;
 import org.graalvm.libgraal.jni.JNI.JObject;
 import org.graalvm.libgraal.jni.JNIUtil;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
@@ -46,14 +46,14 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 
 final class HSTruffleCallNode extends HSObject implements TruffleCallNode {
 
-    HSTruffleCallNode(ToLibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
+    HSTruffleCallNode(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
         super(scope, handle);
     }
 
     @TruffleFromLibGraal(GetCurrentCallTarget)
     @Override
     public CompilableTruffleAST getCurrentCallTarget() {
-        ToLibGraalScope<TruffleToLibGraal.Id> scope = ToLibGraalScope.scope().narrow(TruffleToLibGraal.Id.class);
+        JNILibGraalScope<TruffleToLibGraal.Id> scope = JNILibGraalScope.scope().narrow(TruffleToLibGraal.Id.class);
         JObject hsCompilable = callGetCurrentCallTarget(scope.getEnv(), getHandle());
         if (hsCompilable.isNull()) {
             return null;

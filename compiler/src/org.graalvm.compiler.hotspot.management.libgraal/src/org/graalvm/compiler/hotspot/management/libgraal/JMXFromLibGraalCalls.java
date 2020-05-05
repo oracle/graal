@@ -43,7 +43,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.WordFactory;
 
 /**
- * Calls from SVM to HotSpot.
+ * Calls from libgraal to HotSpot.
  */
 final class JMXFromLibGraalCalls {
 

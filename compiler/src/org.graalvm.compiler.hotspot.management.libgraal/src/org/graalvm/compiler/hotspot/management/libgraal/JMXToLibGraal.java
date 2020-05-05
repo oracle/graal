@@ -33,7 +33,7 @@ import java.lang.annotation.Target;
  * Annotates methods associated with both ends of a HotSpot to libgraal call. This annotation
  * simplifies navigating between these methods in an IDE.
  */
-@Retention(RetentionPolicy.SOURCE)
+@Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface JMXToLibGraal {
     /**
@@ -52,11 +52,6 @@ public @interface JMXToLibGraal {
         GetAttributes,
         GetMBeanInfo,
         GetObjectName,
-        /**
-         * A special {@code Init} id which has no corresponding HotSpot end as it does not originate
-         * by a JNI call.
-         */
-        Init,
         Invoke,
         PollRegistrations,
         SetAttributes

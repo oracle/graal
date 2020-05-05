@@ -38,7 +38,7 @@ import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 
 /**
- * Dynamically registers a {@link HotSpotGraalRuntimeMBean}s created in an SVM heap with an
+ * Dynamically registers a {@link HotSpotGraalRuntimeMBean}s created in libgraal heap with an
  * {@link MBeanServer} in the HotSpot heap. The instance is created by {@link HotSpotGraalRuntime}
  * using a factory injected by {@code LibGraalFeature}.
  */

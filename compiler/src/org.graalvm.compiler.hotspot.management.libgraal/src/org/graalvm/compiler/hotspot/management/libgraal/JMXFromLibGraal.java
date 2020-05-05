@@ -47,7 +47,6 @@ public @interface JMXFromLibGraal {
     // Please keep sorted
     enum Id {
         GetFactory,
-        NewMBean,
-        RegisterNatives,
+        NewMBean
     }
 }

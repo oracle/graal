@@ -24,6 +24,12 @@
  */
 package org.graalvm.libgraal.jni;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
+import java.util.EnumSet;
+import java.util.Set;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.libgraal.jni.JNI.JArray;
@@ -37,7 +43,10 @@ import org.graalvm.libgraal.jni.JNI.JObjectArray;
 import org.graalvm.libgraal.jni.JNI.JString;
 import org.graalvm.libgraal.jni.JNI.JThrowable;
 import org.graalvm.libgraal.jni.JNI.JValue;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
@@ -209,7 +218,7 @@ public final class JNIUtil {
     // Checkstyle: resume
 
     private static void traceJNI(String function) {
-        trace(2, "SVM->JNI: %s", function);
+        trace(2, "LIBGRAAL->JNI: %s", function);
     }
 
     private JNIUtil() {
@@ -306,10 +315,99 @@ public final class JNIUtil {
      */
     public static void trace(int level, String format, Object... args) {
         if (traceLevel() >= level) {
-            ToLibGraalScope<?> scope = ToLibGraalScope.scopeOrNull();
+            JNILibGraalScope<?> scope = JNILibGraalScope.scopeOrNull();
             String indent = scope == null ? "" : new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' ');
             String prefix = "[" + IsolateUtil.getIsolateID() + ":" + Thread.currentThread().getName() + "]";
             TTY.printf(prefix + indent + format + "%n", args);
         }
+    }
+
+    /*----------------- CHECKING ------------------*/
+
+    /**
+     * Checks that all {@code ToLibGraal}s are implemented and their HotSpot/libgraal ends points
+     * match.
+     */
+    @Platforms(HOSTED_ONLY.class)
+    public static void checkToLibGraalCalls(Class<?> toLibGraalEntryPointsClass, Class<?> toLibGraalCallsClass, Class<? extends Annotation> annotationClass) throws InternalError {
+        try {
+            Method valueMethod = annotationClass.getDeclaredMethod("value");
+            Type t = valueMethod.getGenericReturnType();
+            check(t instanceof Class<?> && ((Class<?>) t).isEnum(), "Annotation value must be enum.");
+            @SuppressWarnings("unchecked")
+            Set<? extends Enum<?>> unimplemented = EnumSet.allOf(((Class<?>) t).asSubclass(Enum.class));
+            for (Method libGraalMethod : toLibGraalEntryPointsClass.getDeclaredMethods()) {
+                Annotation call = libGraalMethod.getAnnotation(annotationClass);
+                if (call != null) {
+                    check(Modifier.isStatic(libGraalMethod.getModifiers()), "Method annotated by %s must be static: %s", annotationClass, libGraalMethod);
+                    CEntryPoint ep = libGraalMethod.getAnnotation(CEntryPoint.class);
+                    check(ep != null, "Method annotated by %s must also be annotated by %s: %s", annotationClass, CEntryPoint.class, libGraalMethod);
+                    String name = ep.name();
+                    String prefix = "Java_" + toLibGraalCallsClass.getName().replace('.', '_') + '_';
+                    check(name.startsWith(prefix), "Method must be a JNI entry point for a method in %s: %s", toLibGraalCallsClass, libGraalMethod);
+                    name = name.substring(prefix.length());
+                    Method hsMethod = findHSMethod(toLibGraalCallsClass, name, annotationClass);
+                    Class<?>[] libGraalParameters = libGraalMethod.getParameterTypes();
+                    Class<?>[] hsParameters = hsMethod.getParameterTypes();
+                    check(hsParameters.length + 2 == libGraalParameters.length, "%s should have 2 more parameters than %s", libGraalMethod, hsMethod);
+                    check(libGraalParameters.length >= 3, "Expect at least 3 parameters: %s", libGraalMethod);
+                    check(libGraalParameters[0] == JNIEnv.class, "Parameter 0 must be of type %s: %s", JNIEnv.class, libGraalMethod);
+                    check(libGraalParameters[1] == JClass.class, "Parameter 1 must be of type %s: %s", JClass.class, libGraalMethod);
+                    check(libGraalParameters[2] == long.class, "Parameter 2 must be of type long: %s", libGraalMethod);
+
+                    check(hsParameters[0] == long.class, "Parameter 0 must be of type long: %s", hsMethod);
+
+                    for (int i = 3, j = 1; i < libGraalParameters.length; i++, j++) {
+                        Class<?> libgraal = libGraalParameters[i];
+                        Class<?> hs = hsParameters[j];
+                        Class<?> hsExpect;
+                        if (hs.isPrimitive()) {
+                            hsExpect = libgraal;
+                        } else {
+                            if (libgraal == JString.class) {
+                                hsExpect = String.class;
+                            } else if (libgraal == JByteArray.class) {
+                                hsExpect = byte[].class;
+                            } else if (libgraal == JLongArray.class) {
+                                hsExpect = long[].class;
+                            } else if (libgraal == JObjectArray.class) {
+                                hsExpect = Object[].class;
+                            } else {
+                                check(libgraal == JObject.class, "must be");
+                                hsExpect = Object.class;
+                            }
+                        }
+                        check(hsExpect.isAssignableFrom(hs), "HotSpot parameter %d (%s) incompatible with libgraal parameter %d (%s): %s", j, hs.getName(), i, libgraal.getName(), hsMethod);
+                    }
+                    unimplemented.remove(valueMethod.invoke(call));
+                }
+            }
+            check(unimplemented.isEmpty(), "Unimplemented libgraal calls: %s", unimplemented);
+        } catch (ReflectiveOperationException e) {
+            throw new InternalError(e);
+        }
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    private static void check(boolean condition, String format, Object... args) {
+        if (!condition) {
+            throw new InternalError(String.format(format, args));
+        }
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    private static Method findHSMethod(Class<?> hsClass, String name, Class<? extends Annotation> annotationClass) {
+        Method res = null;
+        for (Method m : hsClass.getDeclaredMethods()) {
+            if (m.getName().equals(name)) {
+                check(res == null, "More than one method named \"%s\" in %s", name, hsClass);
+                Annotation call = m.getAnnotation(annotationClass);
+                check(call != null, "Method must be annotated by %s: %s", annotationClass, m);
+                check(Modifier.isStatic(m.getModifiers()) && Modifier.isNative(m.getModifiers()), "Method must be static and native: %s", m);
+                res = m;
+            }
+        }
+        check(res != null, "Could not find method named \"%s\" in %s", name, hsClass);
+        return res;
     }
 }

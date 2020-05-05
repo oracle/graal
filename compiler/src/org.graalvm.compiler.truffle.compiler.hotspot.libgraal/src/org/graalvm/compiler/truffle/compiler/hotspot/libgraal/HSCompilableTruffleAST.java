@@ -50,8 +50,8 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilabl
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetNonTrivialNodeCount;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callIsSameOrSplit;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callOnCompilationFailed;
-import static org.graalvm.libgraal.jni.ToLibGraalScope.env;
-import static org.graalvm.libgraal.jni.ToLibGraalScope.scope;
+import static org.graalvm.libgraal.jni.JNILibGraalScope.env;
+import static org.graalvm.libgraal.jni.JNILibGraalScope.scope;
 import static org.graalvm.libgraal.jni.JNIUtil.createString;
 
 import java.util.function.Supplier;
@@ -61,7 +61,7 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.libgraal.jni.HSObject;
-import org.graalvm.libgraal.jni.ToLibGraalScope;
+import org.graalvm.libgraal.jni.JNILibGraalScope;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
 import org.graalvm.libgraal.jni.JNI.JObject;
 import org.graalvm.libgraal.jni.JNI.JObjectArray;
@@ -104,7 +104,7 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
      * @param scope the owning scope
      * @param handle the JNI object reference
      */
-    HSCompilableTruffleAST(ToLibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
+    HSCompilableTruffleAST(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
         super(scope, handle);
     }
 
@@ -155,7 +155,7 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
     public String getName() {
         String res = cachedName;
         if (res == null) {
-            JNIEnv env = ToLibGraalScope.env();
+            JNIEnv env = JNILibGraalScope.env();
             JString name = callGetCompilableName(env, getHandle());
             res = createString(env, name);
             cachedName = res;
@@ -172,7 +172,7 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
     @TruffleFromLibGraal(GetCallNodes)
     @Override
     public TruffleCallNode[] getCallNodes() {
-        ToLibGraalScope<TruffleToLibGraal.Id> scope = scope().narrow(TruffleToLibGraal.Id.class);
+        JNILibGraalScope<TruffleToLibGraal.Id> scope = scope().narrow(TruffleToLibGraal.Id.class);
         JNIEnv env = scope.getEnv();
         JObjectArray peerArr = callGetCallNodes(env, getHandle());
         int len = JNIUtil.GetArrayLength(env, peerArr);
@@ -197,7 +197,7 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
     public String toString() {
         String res = cachedString;
         if (res == null) {
-            JNIEnv env = ToLibGraalScope.env();
+            JNIEnv env = JNILibGraalScope.env();
             JString value = callCompilableToString(env, getHandle());
             res = createString(env, value);
             cachedString = res;
