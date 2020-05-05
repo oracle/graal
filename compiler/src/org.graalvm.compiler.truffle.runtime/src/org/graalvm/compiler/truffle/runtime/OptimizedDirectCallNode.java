@@ -65,7 +65,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
             target = onInterpreterCall(target);
         }
         try {
-            return target.callDirectOrInlined(this, arguments);
+            return target.callDirect(this, arguments);
         } catch (Throwable t) {
             Throwable profiledT = profileExceptionType(t);
             GraalRuntimeAccessor.LANGUAGE.onThrowable(this, null, profiledT, null);
