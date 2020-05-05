@@ -44,6 +44,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
@@ -415,9 +416,8 @@ public final class NativeLibraries {
     private Map<Path, Path> getAllStaticLibs() {
         Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
         for (String libraryPath : getLibraryPaths()) {
-            try {
-                Files.list(Paths.get(libraryPath))
-                                .filter(Files::isRegularFile)
+            try (Stream<Path> paths = Files.list(Paths.get(libraryPath))) {
+                paths.filter(Files::isRegularFile)
                                 .filter(path -> path.getFileName().toString().endsWith(libSuffix))
                                 .forEachOrdered(candidate -> allStaticLibs.put(candidate.getFileName(), candidate));
             } catch (IOException e) {
