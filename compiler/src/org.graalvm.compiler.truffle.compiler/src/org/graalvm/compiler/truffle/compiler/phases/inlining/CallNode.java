@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import jdk.vm.ci.code.BailoutException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.graph.Node;
@@ -210,8 +211,13 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         getCallTree().expanded++;
         assert state == State.Expanded;
         assert ir == null;
-        // TODO: GR-22688 - This could potentially bail out, we shouldn't bailout entirely.
-        GraphManager.Entry entry = getCallTree().getGraphManager().pe(truffleAST);
+        GraphManager.Entry entry;
+        try {
+            entry = getCallTree().getGraphManager().pe(truffleAST);
+        } catch (BailoutException e) {
+            state = State.BailedOut;
+            return;
+        }
         ir = copyGraphAndAddChildren(entry);
         addIndirectChildren(entry);
         getPolicy().afterExpand(this);
@@ -352,7 +358,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
                 child.finalizeGraph();
             }
         }
-        if (state == State.Cutoff || state == State.Expanded) {
+        if (state == State.Cutoff || state == State.Expanded || state == State.BailedOut) {
             if (invoke.isAlive()) {
                 getCallTree().getGraphManager().finalizeGraph(invoke, truffleAST);
             } else {
@@ -377,6 +383,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         Expanded,
         Inlined,
         Removed,
+        BailedOut,
         Indirect
     }
 }

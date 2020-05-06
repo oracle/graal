@@ -35,6 +35,7 @@ import java.util.List;
 public interface TruffleMetaAccessProvider {
 
     List<CompilableTruffleAST> targets = new ArrayList<>();
+
     /**
      * Gets the runtime representation of the call node constant.
      */
