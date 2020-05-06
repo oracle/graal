@@ -69,7 +69,6 @@ import static org.graalvm.libgraal.jni.JNIUtil.ReleaseByteArrayElements;
 import static org.graalvm.libgraal.jni.JNIUtil.SetObjectArrayElement;
 import static org.graalvm.libgraal.jni.JNIUtil.createHSString;
 import static org.graalvm.libgraal.jni.JNIUtil.createString;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleFromLibGraalUtil.getJNIClass;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -413,7 +412,7 @@ final class TruffleToLibGraalEntryPoints {
         try (JNILibGraalScope<TruffleToLibGraal.Id> s = scope) {
             GraphInfo orig = LibGraalObjectHandles.resolve(handle, GraphInfo.class);
             String[] nodeTypes = orig.getNodeTypes(simpleNames);
-            JClass componentType = getJNIClass(env, String.class).jclass;
+            JClass componentType = TruffleFromLibGraalUtil.INSTANCE.getJNIClass(env, String.class);
             JObjectArray res = NewObjectArray(env, nodeTypes.length, componentType, WordFactory.nullPointer());
             for (int i = 0; i < nodeTypes.length; i++) {
                 SetObjectArrayElement(env, res, i, JNIUtil.createHSString(env, nodeTypes[i]));
@@ -481,7 +480,7 @@ final class TruffleToLibGraalEntryPoints {
         JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(GetInfopoints, env);
         try (JNILibGraalScope<TruffleToLibGraal.Id> s = scope) {
             String[] infoPoints = LibGraalObjectHandles.resolve(handle, CompilationResultInfo.class).getInfopoints();
-            JClass componentType = getJNIClass(env, String.class).jclass;
+            JClass componentType = TruffleFromLibGraalUtil.INSTANCE.getJNIClass(env, String.class);
             JObjectArray res = NewObjectArray(env, infoPoints.length, componentType, WordFactory.nullPointer());
             for (int i = 0; i < infoPoints.length; i++) {
                 SetObjectArrayElement(env, res, i, createHSString(env, infoPoints[i]));

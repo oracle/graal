@@ -24,17 +24,17 @@
  */
 package org.graalvm.compiler.hotspot.management;
 
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.AttachThread;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.DetachThread;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.FinishRegistration;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.GetAttributes;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.GetMBeanInfo;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.GetObjectName;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.Invoke;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.PollRegistrations;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.SetAttributes;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.AttachThread;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.DetachThread;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.FinishRegistration;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.GetAttributes;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.GetMBeanInfo;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.GetObjectName;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.Invoke;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.PollRegistrations;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.SetAttributes;
 
-import org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal;
+import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

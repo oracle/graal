@@ -22,38 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management.libgraal;
+package org.graalvm.libgraal.jni;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+public interface FromLibGraalId {
 
-/**
- * Annotates methods associated with both ends of a HotSpot to libgraal call. This annotation
- * simplifies navigating between these methods in an IDE.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface JMXToLibGraal {
-    /**
-     * Gets the token identifying a call from HotSpot to libgraal.
-     */
-    Id value();
+    String getName();
 
-    /**
-     * Identifier for a call from HotSpot to libgraal.
-     */
-    // Please keep sorted
-    enum Id {
-        AttachThread,
-        DetachThread,
-        FinishRegistration,
-        GetAttributes,
-        GetMBeanInfo,
-        GetObjectName,
-        Invoke,
-        PollRegistrations,
-        SetAttributes
-    }
+    String getSignature();
+
+    String getMethodName();
+
+    Class<?>[] getParameterTypes();
+
+    Class<?> getReturnType();
 }

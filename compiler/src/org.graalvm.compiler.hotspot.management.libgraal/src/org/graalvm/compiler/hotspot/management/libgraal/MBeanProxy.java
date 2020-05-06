@@ -24,12 +24,16 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal.Id.GetFactory;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal.Id.Signal;
+import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callGetFactory;
+import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callSignal;
 import static org.graalvm.libgraal.jni.JNIUtil.createString;
 import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
 
-import java.lang.reflect.Method;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -48,6 +52,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.management.JMXToLibGraalCalls;
 import org.graalvm.compiler.hotspot.management.LibGraalMBean;
 import org.graalvm.compiler.hotspot.management.JMXFromLibGraalEntryPoints;
+import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -295,7 +300,7 @@ class MBeanProxy<T extends DynamicMBean> {
      * Uses JNI to define the classes in HotSpot heap.
      */
     private static void defineClassesInHotSpot(JNI.JNIEnv env) {
-        JNI.JObject classLoader = JMXFromLibGraalCalls.getJVMCIClassLoader(env);
+        JNI.JObject classLoader = DefineClassSupport.getJVMCIClassLoader(env);
         JNI.JClass toLibGraalCalls = defineClassInHotSpot(env, classLoader, HS_CALLS_CLASS);
         if (toLibGraalCalls.isNonNull()) {
             try {
@@ -341,10 +346,10 @@ class MBeanProxy<T extends DynamicMBean> {
         try {
             if (classLoader.isNonNull()) {
                 allowedException = required ? null : ClassNotFoundException.class;
-                return JMXFromLibGraalCalls.findClass(env, classLoader, className);
+                return DefineClassSupport.findClass(env, classLoader, className);
             } else {
                 allowedException = required ? null : NoClassDefFoundError.class;
-                return JMXFromLibGraalCalls.findClass(env, className);
+                return DefineClassSupport.findClass(env, className);
             }
         } finally {
             if (allowedException != null) {
@@ -377,8 +382,8 @@ class MBeanProxy<T extends DynamicMBean> {
                 if (!allowed) {
                     InternalError error = new InternalError(String.format("%s due to %s:%s.",
                                     message,
-                                    createString(env, JMXFromLibGraalCalls.getClassName(env, exceptionClass)),
-                                    createString(env, JMXFromLibGraalCalls.getExceptionMessage(env, exception))));
+                                    createString(env, DefineClassSupport.getClassName(env, exceptionClass)),
+                                    createString(env, DefineClassSupport.getExceptionMessage(env, exception))));
                     throw error;
                 }
             } finally {
@@ -415,31 +420,28 @@ class MBeanProxy<T extends DynamicMBean> {
     }
 
     private static void registerNatives(JNI.JNIEnv env, JNI.JObject classLoader, JNI.JClass target) {
-        JNI.JClass libgraalClass = findClassInHotSpot(env, classLoader, JMXFromLibGraalCalls.CLASS_LIBGRAAL, true);
-        JMXFromLibGraalCalls.registerNatives(env, libgraalClass, target);
+        JNI.JClass libgraalClass = findClassInHotSpot(env, classLoader, DefineClassSupport.CLASS_LIBGRAAL, true);
+        DefineClassSupport.registerNatives(env, libgraalClass, target);
         checkException(env, "Failed to register natives");
     }
 
     /**
      * Gets a reference to factory thread running in HotSpot heap.
      */
-    private static JNI.JObject getFactory(JNI.JNIEnv env, JNI.JClass entryPoints) {
-        JNI.JObject factory = JMXFromLibGraalCalls.getFactory(env, entryPoints);
-        checkException(env, "Failed to instantiate MBean factory on HotSpot side");
-        assert factory.isNonNull() : "Factory cannot be null.";
-        return factory;
+    @JMXFromLibGraal(GetFactory)
+    private static JNI.JObject getFactory(JNI.JNIEnv env) {
+        return callGetFactory(env);
     }
 
     /**
      * Notifies the factory thread in HotSpot heap of new management bean instances to register.
      */
+    @JMXFromLibGraal(Signal)
     @SuppressWarnings("try")
     private static void signalRegistrationRequest() {
         JNI.JNIEnv env = getCurrentJNIEnv();
-        JNI.JClass entryPoints = getHotSpotEntryPoints();
-        JNI.JObject factory = getFactory(env, entryPoints);
-        JMXFromLibGraalCalls.signalRegistrationRequest(env, entryPoints, factory);
-        checkException(env, "Failed to register MBeans");
+        JNI.JObject factory = getFactory(env);
+        callSignal(env, factory, CurrentIsolate.getIsolate().rawValue());
     }
 
     /**
@@ -462,7 +464,7 @@ class MBeanProxy<T extends DynamicMBean> {
      * Unblocks the threads in other isolates waiting for native methods registration.
      */
     private static void notifyNativesRegistered(JNI.JNIEnv env, JNI.JClass toLibGraalCalls) {
-        JMXFromLibGraalCalls.notifyNativesRegistered(env, toLibGraalCalls);
+        DefineClassSupport.notifyNativesRegistered(env, toLibGraalCalls);
         checkException(env, "Failed to release register natives spin lock.");
     }
 
@@ -471,7 +473,7 @@ class MBeanProxy<T extends DynamicMBean> {
      * {@code HotSpotToSVMEntryPoints} class.
      */
     private static void waitForRegisterNatives(JNI.JNIEnv env, JNI.JClass toLibGraalCalls) {
-        JMXFromLibGraalCalls.waitForRegisterNatives(env, toLibGraalCalls);
+        DefineClassSupport.waitForRegisterNatives(env, toLibGraalCalls);
         checkException(env, "Failed to release register natives spin lock.");
     }
 

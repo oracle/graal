@@ -24,11 +24,11 @@
  */
 package org.graalvm.compiler.hotspot.management;
 
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXFromLibGraal.Id.GetFactory;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXFromLibGraal.Id.NewMBean;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal.Id.GetFactory;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal.Id.Signal;
 
 import org.graalvm.compiler.hotspot.management.LibGraalMBean.Factory;
-import org.graalvm.compiler.hotspot.management.libgraal.JMXFromLibGraal;
+import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -45,7 +45,7 @@ public final class JMXFromLibGraalEntryPoints {
      * @see LibGraalMBean#getFactory()
      */
     @JMXFromLibGraal(GetFactory)
-    static Factory getFactory() {
+    static Object getFactory() {
         Factory factory = LibGraalMBean.getFactory();
         return factory;
     }
@@ -53,9 +53,9 @@ public final class JMXFromLibGraalEntryPoints {
     /**
      * @see Factory#signalRegistrationRequest(long)
      */
-    @JMXFromLibGraal(NewMBean)
-    static void signalRegistrationRequest(Factory factory, long isolate) {
-        factory.signalRegistrationRequest(isolate);
+    @JMXFromLibGraal(Signal)
+    static void signalRegistrationRequest(Object factory, long isolate) {
+        ((Factory) factory).signalRegistrationRequest(isolate);
     }
 
     /**

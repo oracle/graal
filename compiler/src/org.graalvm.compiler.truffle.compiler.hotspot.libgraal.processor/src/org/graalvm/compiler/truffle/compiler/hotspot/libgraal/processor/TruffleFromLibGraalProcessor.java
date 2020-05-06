@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,37 +24,15 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import javax.annotation.processing.Filer;
-import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
-import javax.lang.model.SourceVersion;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Name;
-import javax.lang.model.element.PackageElement;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import javax.tools.JavaFileObject;
 
-import org.graalvm.compiler.processor.AbstractProcessor;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraalRepeated;
+import org.graalvm.libgraal.jni.FromLibGraalId;
+import org.graalvm.libgraal.jni.processor.AbstractFromLibGraalProcessor;
 
 /**
- * Processor for the {@value #FROM_LIBGRAAL_CLASS_NAME} annotation that generates code to push JNI
+ * Processor for the {@link TruffleFromLibGraal} annotation that generates code to push JNI
  * arguments to the stack and make a JNI call corresponding to a
  * {@link org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id}. This helps
  * mitigate bugs where incorrect arguments are pushed for a JNI call. Given the low level nature of
@@ -63,212 +41,15 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraalR
 @SupportedAnnotationTypes({
                 "org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal",
                 "org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraalRepeated"})
-public class TruffleFromLibGraalProcessor extends AbstractProcessor {
-
-    static final String FROM_LIBGRAAL_CLASS_NAME = TruffleFromLibGraal.class.getName();
-    static final String FROM_LIBGRAAL_REPEATED_CLASS_NAME = TruffleFromLibGraalRepeated.class.getName();
+public class TruffleFromLibGraalProcessor extends AbstractFromLibGraalProcessor {
 
     @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
-
-    private final Set<ExecutableElement> processed = new HashSet<>();
-
-    /**
-     * The calls made in a single Java source file.
-     */
-    static class CallsInfo {
-
-        /**
-         * The top level type declared in the source file.
-         */
-        final Element topDeclaringType;
-
-        /**
-         * The identifiers for the calls made in the source file.
-         */
-        final List<Id> ids = new ArrayList<>();
-        final Set<Element> originatingElements = new HashSet<>();
-
-        CallsInfo(Element topDeclaringType) {
-            this.topDeclaringType = topDeclaringType;
-        }
-    }
-
-    private static Element topDeclaringType(Element element) {
-        Element enclosing = element.getEnclosingElement();
-        if (enclosing == null || enclosing.getKind() == ElementKind.PACKAGE) {
-            assert element.getKind() == ElementKind.CLASS || element.getKind() == ElementKind.INTERFACE;
-            return element;
-        }
-        return topDeclaringType(enclosing);
-    }
-
-    private void processElement(ExecutableElement hsCall, Map<Element, CallsInfo> calls) {
-        if (processed.contains(hsCall)) {
-            return;
-        }
-
-        Element topDeclaringType = topDeclaringType(hsCall);
-        CallsInfo info = calls.get(topDeclaringType);
-        if (info == null) {
-            info = new CallsInfo(topDeclaringType);
-            calls.put(topDeclaringType, info);
-        }
-
-        processed.add(hsCall);
-
-        List<AnnotationMirror> annotations;
-        AnnotationMirror annotation = getAnnotation(hsCall, getType(FROM_LIBGRAAL_REPEATED_CLASS_NAME));
-        if (annotation != null) {
-            annotations = getAnnotationValueList(annotation, "value", AnnotationMirror.class);
-        } else {
-            annotation = getAnnotation(hsCall, getType(FROM_LIBGRAAL_CLASS_NAME));
-            if (annotation != null) {
-                annotations = Collections.singletonList(annotation);
-            } else {
-                return;
-            }
-        }
-        for (AnnotationMirror a : annotations) {
-            VariableElement annotationValue = getAnnotationValue(a, "value", VariableElement.class);
-            String idName = annotationValue.getSimpleName().toString();
-            TruffleFromLibGraal.Id id = Id.valueOf(idName);
-            info.ids.add(id);
-        }
-    }
-
-    private void createFiles(CallsInfo info) {
-        String pkg = ((PackageElement) info.topDeclaringType.getEnclosingElement()).getQualifiedName().toString();
-        Name topDeclaringClass = info.topDeclaringType.getSimpleName();
-        Element[] originatingElements = info.originatingElements.toArray(new Element[info.originatingElements.size()]);
-
-        createGenSource(info, pkg, topDeclaringClass, originatingElements);
-    }
-
-    private static String uppercaseFirst(String s) {
-        return s.substring(0, 1).toUpperCase() + s.substring(1);
-    }
-
-    private static String toJNIType(Class<?> t, boolean uppercasePrimitive) {
-        if (t.isPrimitive()) {
-            if (!uppercasePrimitive) {
-                return t.getName();
-            }
-            return uppercaseFirst(t.getName());
-        }
-        return "JObject";
-    }
-
-    private void createGenSource(CallsInfo info, String pkg, Name topDeclaringClass, Element[] originatingElements) {
-        String genClassName = topDeclaringClass + "Gen";
-
-        Filer filer = processingEnv.getFiler();
-        try (PrintWriter out = createSourceFile(pkg, genClassName, filer, originatingElements)) {
-
-            out.println("// CheckStyle: stop header check");
-            out.println("// CheckStyle: stop line length check");
-            out.println("// GENERATED CONTENT - DO NOT EDIT");
-            out.printf("// Source: %s.java%n", topDeclaringClass);
-            out.printf("// Generated-by: %s%n", getClass().getName());
-            out.println("package " + pkg + ";");
-            out.println("");
-            Set<String> importedCalls = new HashSet<>();
-            boolean usesJObject = false;
-            for (Id id : info.ids) {
-                out.printf("import static %s.%s;%n", id.getClass().getName().replace('$', '.'), id.name());
-                Class<?> returnType = id.getReturnType();
-                if (!returnType.isPrimitive()) {
-                    usesJObject = true;
-                }
-                for (Class<?> t : id.getParameterTypes()) {
-                    if (!t.isPrimitive()) {
-                        usesJObject = true;
-                    }
-                }
-                String call = "call" + toJNIType(returnType, true);
-                if (importedCalls.add(call)) {
-                    out.printf("import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleFromLibGraalUtil.%s;%n", call);
-                }
-            }
-            out.println("");
-            out.println("import org.graalvm.nativeimage.StackValue;");
-            out.println("import org.graalvm.libgraal.jni.JNI.JNIEnv;");
-            out.println("import org.graalvm.libgraal.jni.JNI.JValue;");
-            if (usesJObject) {
-                out.println("import org.graalvm.libgraal.jni.JNI.JObject;");
-            }
-            out.println("");
-            out.printf("final class %s {%n", genClassName);
-            for (Id id : info.ids) {
-                int p = 0;
-                Class<?> rt = id.getReturnType();
-                out.println("");
-                if (!rt.isPrimitive()) {
-                    out.println("    @SuppressWarnings(\"unchecked\")");
-                    out.printf("    static <T extends JObject> T call%s(JNIEnv env", id.name());
-                } else {
-                    out.printf("    static %s call%s(JNIEnv env", toJNIType(rt, false), id.name());
-                }
-                for (Class<?> t : id.getParameterTypes()) {
-                    out.printf(", %s p%d", (t.isPrimitive() ? t.getName() : "JObject"), p);
-                    p++;
-                }
-                out.println(") {");
-                out.printf("        JValue args = StackValue.get(%d, JValue.class);%n", id.getParameterTypes().length);
-                p = 0;
-                for (Class<?> t : id.getParameterTypes()) {
-                    out.printf("        args.addressOf(%d).set%s(p%d);%n", p, toJNIType(t, true), p);
-                    p++;
-                }
-                String returnPrefix;
-                if (!rt.isPrimitive()) {
-                    returnPrefix = "return (T) ";
-                } else if (rt == void.class) {
-                    returnPrefix = "";
-                } else {
-                    returnPrefix = "return ";
-                }
-                out.printf("        %scall%s(env, %s, args);%n", returnPrefix, toJNIType(rt, true), id.name());
-                out.println("    }");
-            }
-            out.println("}");
-        }
-    }
-
-    protected PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {
-        try {
-            // Ensure Unix line endings to comply with code style guide checked by Checkstyle
-            JavaFileObject sourceFile = filer.createSourceFile(pkg + "." + relativeName, originatingElements);
-            return new PrintWriter(sourceFile.openWriter()) {
-                @Override
-                public void println() {
-                    print("\n");
-                }
-            };
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    protected FromLibGraalId resolveId(String idName) {
+        return Id.valueOf(idName);
     }
 
     @Override
-    public boolean doProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        if (roundEnv.processingOver()) {
-            return true;
-        }
-
-        Map<Element, CallsInfo> calls = new HashMap<>();
-        for (Element element : roundEnv.getElementsAnnotatedWith(getTypeElement(FROM_LIBGRAAL_CLASS_NAME))) {
-            processElement((ExecutableElement) element, calls);
-        }
-        for (Element element : roundEnv.getElementsAnnotatedWith(getTypeElement(FROM_LIBGRAAL_REPEATED_CLASS_NAME))) {
-            processElement((ExecutableElement) element, calls);
-        }
-
-        for (CallsInfo info : calls.values()) {
-            createFiles(info);
-        }
-        return true;
+    protected String getFromLibGraalUtilInstanceAccess() {
+        return "TruffleFromLibGraalUtil.INSTANCE";
     }
 }

@@ -24,29 +24,30 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.graalvm.compiler.hotspot.management.LibGraalMBean;
+import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal.Id;
+import org.graalvm.libgraal.jni.JNI.JNIEnv;
+import org.graalvm.libgraal.jni.FromLibGraalUtil;
+import org.graalvm.libgraal.jni.JNI;
 
 /**
- * Annotates methods associated with both ends of a libgraal to HotSpot call. This annotation
- * simplifies navigating between these methods in an IDE.
+ * Helpers for calling methods in {@link LibGraalMBean} via JNI.
  */
-@Retention(RetentionPolicy.SOURCE)
-@Target(ElementType.METHOD)
-public @interface JMXFromLibGraal {
-    /**
-     * Gets the token identifying a call to HotSpot from libgraal.
-     */
-    Id value();
+final class JMXFromLibGraalUtil extends FromLibGraalUtil<Id> {
 
-    /**
-     * Identifier for a call to HotSpot from libgraal.
-     */
-    // Please keep sorted
-    enum Id {
-        GetFactory,
-        NewMBean
+    static final JMXFromLibGraalUtil INSTANCE = new JMXFromLibGraalUtil();
+
+    private JMXFromLibGraalUtil() {
+        super(Id.class);
+    }
+
+    @Override
+    protected JNI.JClass peer(JNIEnv env) {
+        return MBeanProxy.getHotSpotEntryPoints();
+    }
+
+    @Override
+    protected void handlePendingJNIException(JNIEnv env) {
+        MBeanProxy.checkException(env, "JNI call failed");
     }
 }

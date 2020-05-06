@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXFromLibGraal.Id.GetFactory;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXFromLibGraal.Id.NewMBean;
 import static org.graalvm.libgraal.jni.JNIUtil.GetMethodID;
 import static org.graalvm.libgraal.jni.JNIUtil.GetStaticFieldID;
 import static org.graalvm.libgraal.jni.JNIUtil.GetStaticMethodID;
@@ -36,32 +34,19 @@ import java.util.Random;
 
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.WordFactory;
 
 /**
- * Calls from libgraal to HotSpot.
+ * Support calls for defining classes in a HotSpot class loader.
  */
-final class JMXFromLibGraalCalls {
+final class DefineClassSupport {
 
     private static final String CLASS_SERVICES = "jdk/vm/ci/services/Services";
     static final String CLASS_LIBGRAAL = "org/graalvm/libgraal/LibGraal";
 
-    private static final String[] METHOD_GET_FACTORY = {
-                    "getFactory",
-                    "()Lorg/graalvm/compiler/hotspot/management/LibGraalMBean$Factory;"
-    };
-    private static final String[] METHOD_SIGNAL = {
-                    "signalRegistrationRequest",
-                    "(Lorg/graalvm/compiler/hotspot/management/LibGraalMBean$Factory;J)V"
-    };
-    private static final String[] METHOD_UNREGISTER = {
-                    "unregister",
-                    "(Lorg/graalvm/compiler/hotspot/management/SVMMBean$Factory;J[Ljava/lang/String;)V"
-    };
     private static final String[] METHOD_GET_JVMCI_CLASS_LOADER = {
                     "getJVMCIClassLoader",
                     "()Ljava/lang/ClassLoader;"
@@ -95,7 +80,7 @@ final class JMXFromLibGraalCalls {
                     "Z"
     };
 
-    private JMXFromLibGraalCalls() {
+    private DefineClassSupport() {
     }
 
     static JNI.JObject getJVMCIClassLoader(JNI.JNIEnv env) {
@@ -121,30 +106,6 @@ final class JMXFromLibGraalCalls {
             return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
         }
         return WordFactory.nullPointer();
-    }
-
-    @JMXFromLibGraal(GetFactory)
-    static JNI.JObject getFactory(JNI.JNIEnv env, JNI.JClass fromLibGraalEntryPointsClass) {
-        JNI.JMethodID createId = findMethod(env, fromLibGraalEntryPointsClass, true, false, METHOD_GET_FACTORY);
-        return env.getFunctions().getCallStaticObjectMethodA().call(env, fromLibGraalEntryPointsClass, createId, nullPointer());
-    }
-
-    @JMXFromLibGraal(NewMBean)
-    static void signalRegistrationRequest(JNI.JNIEnv env, JNI.JClass fromLibGraalEntryPointsClass, JNI.JObject factory) {
-        JNI.JMethodID signalId = findMethod(env, fromLibGraalEntryPointsClass, true, false, METHOD_SIGNAL);
-        JNI.JValue params = StackValue.get(2, JNI.JValue.class);
-        params.addressOf(0).setJObject(factory);
-        params.addressOf(1).setLong(CurrentIsolate.getIsolate().rawValue());
-        env.getFunctions().getCallStaticVoidMethodA().call(env, fromLibGraalEntryPointsClass, signalId, params);
-    }
-
-    static void unregister(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass, JNI.JObject factory, JNI.JObjectArray objectNamesHandle) {
-        JNI.JMethodID unregisterId = findMethod(env, svmToHotSpotEntryPointsClass, true, false, METHOD_UNREGISTER);
-        JNI.JValue params = StackValue.get(3, JNI.JValue.class);
-        params.addressOf(0).setJObject(factory);
-        params.addressOf(1).setLong(CurrentIsolate.getIsolate().rawValue());
-        params.addressOf(2).setJObject(objectNamesHandle);
-        env.getFunctions().getCallStaticVoidMethodA().call(env, svmToHotSpotEntryPointsClass, unregisterId, params);
     }
 
     /**

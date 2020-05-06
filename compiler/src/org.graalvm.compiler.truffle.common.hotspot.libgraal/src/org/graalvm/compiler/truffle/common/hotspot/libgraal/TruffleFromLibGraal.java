@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.common.hotspot.libgraal;
 
+import static org.graalvm.libgraal.jni.JNIUtil.encodeMethodSignature;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
@@ -42,12 +44,14 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan.Decision;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
+import org.graalvm.libgraal.jni.FromLibGraalId;
 
 /**
  * Annotates methods associated with both ends of a libgraal to HotSpot call. This annotation
  * simplifies navigating between these methods in an IDE.
  *
- * The {@code org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor.HotSpotCallProcessor}
+ * The
+ * {@code org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor.TruffleFromLibGraalProcessor}
  * processor will produce a helper method for marshaling arguments and making the JNI call.
  */
 @Repeatable(TruffleFromLibGraalRepeated.class)
@@ -63,7 +67,7 @@ public @interface TruffleFromLibGraal {
      * Identifier for a call to HotSpot from libgraal.
      */
     // Please keep sorted
-    enum Id {
+    enum Id implements FromLibGraalId {
         // @formatter:off
         AsCompilableTruffleAST(CompilableTruffleAST.class, HotSpotTruffleCompilerRuntime.class, long.class),
         AsJavaConstant(long.class, CompilableTruffleAST.class),
@@ -134,18 +138,27 @@ public @interface TruffleFromLibGraal {
         private final Class<?> returnType;
         private final Class<?>[] parameterTypes;
 
+        @Override
+        public String getName() {
+            return name();
+        }
+
+        @Override
         public String getSignature() {
             return signature;
         }
 
+        @Override
         public String getMethodName() {
             return methodName;
         }
 
+        @Override
         public Class<?>[] getParameterTypes() {
             return parameterTypes;
         }
 
+        @Override
         public Class<?> getReturnType() {
             return returnType;
         }
@@ -158,44 +171,8 @@ public @interface TruffleFromLibGraal {
         Id(Class<?> returnType, Class<?>... parameterTypes) {
             this.returnType = returnType;
             this.parameterTypes = parameterTypes;
-            StringBuilder builder = new StringBuilder("(");
-            for (Class<?> type : parameterTypes) {
-                encodeType(type, builder);
-            }
-            builder.append(")");
-            encodeType(returnType, builder);
-            signature = builder.toString();
+            signature = encodeMethodSignature(returnType, parameterTypes);
             methodName = Character.toLowerCase(name().charAt(0)) + name().substring(1);
-        }
-
-        private static void encodeType(Class<?> type, StringBuilder buf) {
-            String desc;
-            if (type == boolean.class) {
-                desc = "Z";
-            } else if (type == byte.class) {
-                desc = "B";
-            } else if (type == char.class) {
-                desc = "C";
-            } else if (type == short.class) {
-                desc = "S";
-            } else if (type == int.class) {
-                desc = "I";
-            } else if (type == long.class) {
-                desc = "J";
-            } else if (type == float.class) {
-                desc = "F";
-            } else if (type == double.class) {
-                desc = "D";
-            } else if (type == void.class) {
-                desc = "V";
-            } else if (type.isArray()) {
-                buf.append('[');
-                encodeType(type.getComponentType(), buf);
-                return;
-            } else {
-                desc = "L" + type.getName().replace('.', '/') + ";";
-            }
-            buf.append(desc);
         }
     }
 }

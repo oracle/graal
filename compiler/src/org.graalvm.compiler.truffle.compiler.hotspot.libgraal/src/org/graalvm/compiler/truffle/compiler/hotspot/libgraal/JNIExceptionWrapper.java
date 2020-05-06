@@ -275,8 +275,8 @@ final class JNIExceptionWrapper extends RuntimeException {
 
     @TruffleFromLibGraal(UpdateStackTrace)
     private static JThrowable updateStackTrace(JNIEnv env, JThrowable throwableHandle, String[] encodedStackTrace) {
-        TruffleFromLibGraalUtil.JNIClass string = TruffleFromLibGraalUtil.getJNIClass(env, String.class);
-        JObjectArray stackTraceHandle = NewObjectArray(env, encodedStackTrace.length, string.jclass, WordFactory.nullPointer());
+        JClass string = TruffleFromLibGraalUtil.INSTANCE.getJNIClass(env, String.class);
+        JObjectArray stackTraceHandle = NewObjectArray(env, encodedStackTrace.length, string, WordFactory.nullPointer());
         for (int i = 0; i < encodedStackTrace.length; i++) {
             JString element = createHSString(env, encodedStackTrace[i]);
             SetObjectArrayElement(env, stackTraceHandle, i, element);
@@ -313,11 +313,14 @@ final class JNIExceptionWrapper extends RuntimeException {
      */
     private static int getIndexOfPropagateJNIExceptionFrame(StackTraceElement[] stackTrace) {
         for (int i = 0; i < stackTrace.length; i++) {
-            if (JNIExceptionWrapper.class.getName().equals(stackTrace[i].getClassName()) &&
-                            "wrapAndThrowPendingJNIException".equals(stackTrace[i].getMethodName())) {
+            if (isStackFrame(stackTrace[i], TruffleFromLibGraalUtil.class, "handlePendingJNIException")) {
                 return i + 1;
             }
         }
         return 0;
+    }
+
+    private static boolean isStackFrame(StackTraceElement stackTraceElement, Class<?> clazz, String methodName) {
+        return clazz.getName().equals(stackTraceElement.getClassName()) && methodName.equals(stackTraceElement.getMethodName());
     }
 }

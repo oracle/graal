@@ -24,13 +24,13 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.FinishRegistration;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.GetAttributes;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.GetMBeanInfo;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.GetObjectName;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.Invoke;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.PollRegistrations;
-import static org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id.SetAttributes;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.FinishRegistration;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.GetAttributes;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.GetMBeanInfo;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.GetObjectName;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.Invoke;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.PollRegistrations;
+import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.SetAttributes;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,7 +49,8 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.hotspot.management.JMXToLibGraalCalls;
-import org.graalvm.compiler.hotspot.management.libgraal.JMXToLibGraal.Id;
+import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal;
+import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id;
 import org.graalvm.libgraal.jni.JNILibGraalScope;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
