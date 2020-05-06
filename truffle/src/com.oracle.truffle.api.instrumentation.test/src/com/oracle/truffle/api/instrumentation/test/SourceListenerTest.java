@@ -804,6 +804,38 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         Assert.assertEquals(code + code, loadedCode.toString());
     }
 
+    @Test
+    public void testInstallSourceLoadedListenerFromSourceSectionNotification() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "abcd";
+        StringBuilder loadedCode = new StringBuilder();
+        boolean[] sourceListenerInstalled = new boolean[1];
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, loadSourceSectionEvent -> {
+            if (!sourceListenerInstalled[0]) {
+                instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+                sourceListenerInstalled[0] = true;
+            }
+        }, true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        Assert.assertEquals(code + code, loadedCode.toString());
+    }
+
+    @Test
+    public void testInstallSourceExecutedListenerFromSourceSectionNotification() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "abcd";
+        StringBuilder loadedCode = new StringBuilder();
+        boolean[] sourceListenerInstalled = new boolean[1];
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, loadSourceSectionEvent -> {
+            if (!sourceListenerInstalled[0]) {
+                instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+                sourceListenerInstalled[0] = true;
+            }
+        }, true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        Assert.assertEquals(code + code, loadedCode.toString());
+    }
+
     static class MultiSourceASTLanguage extends ProxyLanguage {
 
         @Override
