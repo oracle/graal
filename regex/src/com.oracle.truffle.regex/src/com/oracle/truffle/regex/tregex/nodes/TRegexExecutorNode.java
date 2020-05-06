@@ -188,7 +188,22 @@ public abstract class TRegexExecutorNode extends Node {
     }
 
     private void inputSkipIntl(TRegexExecutorLocals locals, boolean forward) {
-        if (getEncoding() == Encodings.UTF_16_RAW) {
+        if (getEncoding() == Encodings.UTF_8) {
+            if (forward) {
+                int c = inputReadRaw(locals, true);
+                if (getInputProfile().profile(c < 128)) {
+                    inputIncRaw(locals, true);
+                } else {
+                    inputIncRaw(locals, Integer.numberOfLeadingZeros(~(c << 24)), true);
+                }
+            } else {
+                int c;
+                do {
+                    c = inputReadRaw(locals, false);
+                    inputIncRaw(locals, false);
+                } while (inputHasNext(locals, false) && (c >> 6) == 2);
+            }
+        } else if (getEncoding() == Encodings.UTF_16_RAW) {
             inputIncRaw(locals, forward);
         } else if (getEncoding() == Encodings.UTF_16) {
             int c = inputReadRaw(locals, forward);
@@ -221,9 +236,21 @@ public abstract class TRegexExecutorNode extends Node {
         return inputIncRaw(index, 1, isForward());
     }
 
+    public static int inputIncRaw(int index, boolean forward) {
+        return inputIncRaw(index, 1, forward);
+    }
+
     public static int inputIncRaw(int index, int offset, boolean forward) {
         assert offset > 0;
         return forward ? index + offset : index - offset;
+    }
+
+    public void inputIncNextIndexRaw(TRegexExecutorLocals locals) {
+        inputIncNextIndexRaw(locals, 1);
+    }
+
+    public void inputIncNextIndexRaw(TRegexExecutorLocals locals, int offset) {
+        locals.setNextIndex(inputIncRaw(locals.getIndex(), offset, isForward()));
     }
 
     public int countUpTo(TRegexExecutorLocals locals, int max, int nCodePoints) {
@@ -232,19 +259,11 @@ public abstract class TRegexExecutorNode extends Node {
             assert isForward();
             int i = 0;
             int index = locals.getIndex();
-            while (index < max && i < nCodePoints) {
-                if (getEncoding() == Encodings.UTF_16_RAW) {
-                    index++;
-                } else if (getEncoding() == Encodings.UTF_16) {
-                    int c = inputReadRaw(locals, index++);
-                    if (UTF16.isHighSurrogate(c) && index < max && UTF16.isLowSurrogate(inputReadRaw(locals, index))) {
-                        index++;
-                    }
-                } else {
-                    throw Exceptions.shouldNotReachHere();
-                }
+            while (locals.getIndex() < max && i < nCodePoints) {
+                inputSkipIntl(locals, true);
                 i++;
             }
+            locals.setIndex(index);
             return i;
         }
         return 0;
@@ -256,18 +275,7 @@ public abstract class TRegexExecutorNode extends Node {
             assert isForward();
             int i = 0;
             while (locals.getIndex() > min && i < nCodePoints) {
-                if (getEncoding() == Encodings.UTF_16_RAW) {
-                    locals.setIndex(locals.getIndex() - 1);
-                } else if (getEncoding() == Encodings.UTF_16) {
-                    locals.setIndex(locals.getIndex() - 1);
-                    int c = inputReadRaw(locals);
-                    if (UTF16.isLowSurrogate(c) && locals.getIndex() > min && UTF16.isHighSurrogate(inputReadRaw(locals, locals.getIndex() - 1))) {
-                        locals.setIndex(locals.getIndex() - 1);
-                    }
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw new UnsupportedOperationException();
-                }
+                inputSkipIntl(locals, false);
                 i++;
             }
             return i;

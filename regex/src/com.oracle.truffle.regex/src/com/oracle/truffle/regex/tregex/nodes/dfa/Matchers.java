@@ -71,7 +71,7 @@ public abstract class Matchers extends Node {
      */
     public abstract int size();
 
-    private static int size(CharMatcher[]... matchersArr) {
+    static int size(CharMatcher[]... matchersArr) {
         for (CharMatcher[] matchers : matchersArr) {
             if (matchers != null) {
                 return matchers.length;
@@ -103,12 +103,12 @@ public abstract class Matchers extends Node {
      */
     public abstract String toString(int i);
 
-    private static boolean match(CharMatcher[] matchers, int i, int c, boolean compactString) {
+    static boolean match(CharMatcher[] matchers, int i, int c, boolean compactString) {
         return matchers != null && matchers[i] != null && matchers[i].execute(c, compactString);
     }
 
     @TruffleBoundary
-    private static String toString(CharMatcher[] matchers, int i) {
+    static String toString(CharMatcher[] matchers, int i) {
         return matchers == null ? "" : Objects.toString(matchers[i]);
     }
 
@@ -314,6 +314,7 @@ public abstract class Matchers extends Node {
             for (int j = 0; j < splitRanges.length; j++) {
                 CodePointSet intersection = splitRanges[j].createIntersection(cps, compilationBuffer);
                 if (intersection.matchesSomething()) {
+                    assert i < buffers[j].length();
                     buffers[j].set(i, CharMatchers.createMatcher(intersection, compilationBuffer));
                 }
             }
