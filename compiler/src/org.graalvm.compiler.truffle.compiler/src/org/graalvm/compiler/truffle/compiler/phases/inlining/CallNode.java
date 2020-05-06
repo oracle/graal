@@ -43,6 +43,7 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
 @NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
@@ -259,17 +260,6 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
     }
 
-    /**
-     * A large number of call targets seem to have a single known callsite in most code. However,
-     * some targets have many callsites, and it is usually important to compile them separately even
-     * though they are inlined into one of their callsites.
-     */
-    void cancelCompilationIfSingleCallsite() {
-        if (truffleAST != getCallTree().getRoot().truffleAST && truffleAST.getKnownCallSiteCount() == 1) {
-            truffleAST.cancelInstalledTask();
-        }
-    }
-
     public boolean isForced() {
         return truffleCaller.isInliningForced();
     }
@@ -367,6 +357,17 @@ public final class CallNode extends Node implements Comparable<CallNode> {
                 getCallTree().getGraphManager().finalizeGraph(invoke, truffleAST);
             } else {
                 state = State.Removed;
+            }
+        }
+    }
+
+    void collectTargetsToDequeue(TruffleMetaAccessProvider provider) {
+        if (state == State.Inlined) {
+            if (truffleAST != getCallTree().getRoot().truffleAST && truffleAST.getKnownCallSiteCount() == 1) {
+                provider.addTargetToDequeue(truffleAST);
+            }
+            for (CallNode child : children) {
+                child.collectTargetsToDequeue(provider);
             }
         }
     }
