@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.nodes;
+package org.graalvm.compiler.replacements.arraycopy;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -199,12 +199,28 @@ public interface ArrayCopy extends Virtualizable, SingleMemoryKill, MemoryAccess
 
     @Override
     default boolean hasSideEffect() {
-        return true;
+        return !getKilledLocationIdentity().isInit();
     }
 
     @Override
     default void computeStateDuring(FrameState currentStateAfter) {
         FrameState newStateDuring = currentStateAfter.duplicateModifiedDuringCall(getBci(), asNode().getStackKind());
         setStateDuring(newStateDuring);
+    }
+
+    static JavaKind selectComponentKind(ArrayCopy arraycopy) {
+        ResolvedJavaType srcType = StampTool.typeOrNull(arraycopy.getSource().stamp(NodeView.DEFAULT));
+        ResolvedJavaType destType = StampTool.typeOrNull(arraycopy.getDestination().stamp(NodeView.DEFAULT));
+
+        if (srcType == null || !srcType.isArray() || destType == null || !destType.isArray()) {
+            return null;
+        }
+        if (!destType.getComponentType().isAssignableFrom(srcType.getComponentType())) {
+            return null;
+        }
+        if (!arraycopy.isExact()) {
+            return null;
+        }
+        return srcType.getComponentType().getJavaKind();
     }
 }

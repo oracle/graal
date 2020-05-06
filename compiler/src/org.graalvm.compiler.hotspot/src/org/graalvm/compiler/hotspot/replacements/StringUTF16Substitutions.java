@@ -57,8 +57,7 @@ public class StringUTF16Substitutions {
         }
         byte[] val = (byte[]) NewArrayNode.newUninitializedArray(Byte.TYPE, length << 1);
         // the intrinsic does not perform bounds/type checks, so it can be used here.
-        // Using KillsAny variant since we are reading and writing 2 different types.
-        ArrayCopyCallNode.disjointArraycopyKillsAny(value, srcBegin, val, 0, length, JavaKind.Char, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        ArrayCopyCallNode.disjointArraycopyKillsInit(value, srcBegin, val, 0, length, JavaKind.Char, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
         return val;
     }
 

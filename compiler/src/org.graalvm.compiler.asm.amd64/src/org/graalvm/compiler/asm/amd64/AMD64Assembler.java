@@ -2279,6 +2279,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitModRM(dst, src);
     }
 
+    public final void movb(Register dst, AMD64Address src) {
+        prefixb(src, dst);
+        emitByte(0x8A);
+        emitOperandHelper(dst, src, 0);
+    }
+
     public final void movb(AMD64Address dst, int imm8) {
         prefix(dst);
         emitByte(0xC6);

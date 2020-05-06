@@ -114,7 +114,6 @@ public final class ArrayCopyCallNode extends FixedWithNextNode implements Lowera
         this.foreignCalls = foreignCalls;
         this.wordJavaKind = wordTypes.getWordKind();
         this.heapWordSize = heapWordSize;
-
     }
 
     public ValueNode getSource() {
@@ -213,8 +212,17 @@ public final class ArrayCopyCallNode extends FixedWithNextNode implements Lowera
         arraycopy(src, srcPos, dest, destPos, length, elementKind, false, true, false, heapWordSize);
     }
 
+    public static void disjointArraycopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter JavaKind elementKind,
+                    @ConstantNodeParameter LocationIdentity locationIdentity, @ConstantNodeParameter int heapWordSize) {
+        arraycopy(src, srcPos, dest, destPos, length, elementKind, locationIdentity, false, true, false, heapWordSize);
+    }
+
     public static void disjointArraycopyKillsAny(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter JavaKind elementKind, @ConstantNodeParameter int heapWordSize) {
         arraycopy(src, srcPos, dest, destPos, length, elementKind, LocationIdentity.any(), false, true, false, heapWordSize);
+    }
+
+    public static void disjointArraycopyKillsInit(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter JavaKind elementKind, @ConstantNodeParameter int heapWordSize) {
+        arraycopy(src, srcPos, dest, destPos, length, elementKind, LocationIdentity.init(), false, true, false, heapWordSize);
     }
 
     public static void disjointUninitializedArraycopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter JavaKind elementKind,
