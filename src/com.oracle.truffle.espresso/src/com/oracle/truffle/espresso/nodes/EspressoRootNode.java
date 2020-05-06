@@ -93,7 +93,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     @Override
-    public SourceSection getEncapsulatingSourceSection() {
+    public final SourceSection getEncapsulatingSourceSection() {
         return getMethodNode().getEncapsulatingSourceSection();
     }
 
@@ -127,15 +127,15 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
     }
 
-    public int readBCI(Frame frame) {
+    public final int readBCI(Frame frame) {
         return ((BytecodeNode) getMethodNode()).readBCI(frame);
     }
 
-    public void setFrameId(Frame frame, long frameId) {
+    public final void setFrameId(Frame frame, long frameId) {
         frame.setLong(frameIdSlot, frameId);
     }
 
-    public long readFrameIdOrZero(Frame frame) {
+    public final long readFrameIdOrZero(Frame frame) {
         try {
             return frame.isLong(frameIdSlot) ? frame.getLong(frameIdSlot) : 0L;
         } catch (FrameSlotTypeException e) {
@@ -147,20 +147,20 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return monitorSlot != null;
     }
 
-    void initMonitorStack(VirtualFrame frame) {
+    final void initMonitorStack(VirtualFrame frame) {
         frame.setObject(monitorSlot, new MonitorStack());
     }
 
-    void monitorExit(VirtualFrame frame, StaticObject monitor) {
+    final void monitorExit(VirtualFrame frame, StaticObject monitor) {
         InterpreterToVM.monitorExit(monitor);
         unregisterMonitor(frame, monitor);
     }
 
-    void unregisterMonitor(VirtualFrame frame, StaticObject monitor) {
+    final void unregisterMonitor(VirtualFrame frame, StaticObject monitor) {
         getMonitorStack(frame).exit(monitor, this);
     }
 
-    void monitorEnter(VirtualFrame frame, StaticObject monitor) {
+    final void monitorEnter(VirtualFrame frame, StaticObject monitor) {
         InterpreterToVM.monitorEnter(monitor);
         registerMonitor(frame, monitor);
     }
@@ -175,12 +175,12 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return (MonitorStack) frameResult;
     }
 
-    public StaticObject[] getMonitorsOnFrame(Frame frame) {
+    public final StaticObject[] getMonitorsOnFrame(Frame frame) {
         MonitorStack monitorStack = getMonitorStack(frame);
         return monitorStack != null ? monitorStack.getMonitors() : StaticObject.EMPTY_ARRAY;
     }
 
-    public void abortMonitor(VirtualFrame frame) {
+    public final void abortMonitor(VirtualFrame frame) {
         if (usesMonitors()) {
             getMonitorStack(frame).abort();
         }

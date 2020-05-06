@@ -46,6 +46,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
     private final ArrayList<String> mainClassArgs = new ArrayList<>();
     private String mainClassName = null;
+    private boolean pauseOnExit = false;
     private VersionAction versionAction = VersionAction.None;
     private final Map<String, String> espressoOptions = new HashMap<>();
 
@@ -102,6 +103,10 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-d64":
                 case "-Xdebug": // only for backward compatibility
                     // ignore
+                    break;
+
+                case "-XX:+PauseOnExit":
+                    pauseOnExit = true;
                     break;
 
                 default:
@@ -291,6 +296,14 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                                 .invokeMember("checkAndLoadMain", true, LaunchMode.LM_CLASS.ordinal(), mainClassName) //
                                 .getMember("static");
                 mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
+                if (pauseOnExit) {
+                    getError().print("Press any key to continue...");
+                    try {
+                        System.in.read();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
                 rc = 0;
             } catch (PolyglotException e) {
                 if (!e.isExit()) {
