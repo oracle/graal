@@ -37,6 +37,7 @@ builds += [
   }
   ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
     name: "gate-svm-style-fullbuild"
+    timelimit: "45:00"
     environment : {
       MAVEN_REPO_LOCAL : "$BUILD_DIR/.m2"
     }
