@@ -47,7 +47,8 @@ run-main.out-lli \
 print-help \
 print-graalvm-help \
 print-graalvm-cmd \
-fembed-bitcode
+fembed-bitcode \
+fuse-ld
 else
 TARGETS=
 endif
@@ -178,7 +179,15 @@ print-graalvm-cmd:
 # not supported
 fembed-bitcode:
 	$(PRINT_TEST)
-	$(QUIETLY) $(CLANG) -fembed-bitcode bla.c $(QUIETLY_REDIR_ERR) ; test $$? -eq 1
+	$(QUIETLY) $(CLANG) -fembed-bitcode bla.c 2> $@.err ; test $$? -eq 1
+	$(QUIETLY) cat $@.err $(QUIETLY_REDIR)
+	$(QUIETLY) grep "Using \`-fembed-bitcode\` is not supported." $@.err $(QUIETLY_REDIR)
+
+fuse-ld:
+	$(PRINT_TEST)
+	$(QUIETLY) $(CLANG) -fuse-ld=ld bla.c 2> $@.err ; test $$? -eq 1
+	$(QUIETLY) cat $@.err $(QUIETLY_REDIR)
+	$(QUIETLY) grep "Using \`-fuse-ld\` is not supported." $@.err $(QUIETLY_REDIR)
 
 clean:
-	$(QUIETLY) rm -rf *.out obj
+	$(QUIETLY) rm -rf *.out obj *.err
