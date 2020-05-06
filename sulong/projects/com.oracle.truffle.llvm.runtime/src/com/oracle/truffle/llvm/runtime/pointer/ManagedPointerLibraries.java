@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -38,7 +36,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 
@@ -104,39 +101,18 @@ abstract class ManagedPointerLibraries extends CommonPointerLibraries {
     }
 
     @ExportMessage
-    static class IsForeign {
-
-        @Specialization(guards = {"isForeignTest(receiver, foreigns)"})
-        static boolean isForeignObject(@SuppressWarnings("unused") LLVMPointerImpl receiver,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
-            return true;
-        }
-
-        @Specialization(guards = {"!isForeignTest(receiver, foreigns)"})
-        static boolean doFallback(LLVMPointerImpl receiver,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
-                        @CachedLibrary(limit = "3") LLVMNativeLibrary natives) {
-            return !(receiver.object instanceof LLVMInternalTruffleObject) && !LLVMPointer.isInstance(receiver.object) && !natives.isInternalObject(receiver.object);
-        }
+    static boolean isForeign(LLVMPointerImpl receiver,
+                    @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
+        return isForeignTest(receiver, foreigns);
     }
 
     @ExportMessage
-    static class AsForeign {
-
-        @Specialization(guards = {"isForeignTest(receiver, foreigns)"})
-        static Object isForeignObject(LLVMPointerImpl receiver,
-                        @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
-            return foreigns.asForeign(receiver.object);
-        }
-
-        @Fallback
-        static Object doFallback(LLVMPointerImpl receiver) {
-            return receiver.object;
-        }
+    static Object asForeign(LLVMPointerImpl receiver,
+                    @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
+        return foreigns.asForeign(receiver.object);
     }
 
     static boolean isForeignTest(LLVMPointerImpl receiver, LLVMAsForeignLibrary foreigns) {
         return receiver.getOffset() == 0 && foreigns.isForeign(receiver.object);
     }
-
 }

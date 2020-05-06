@@ -32,16 +32,26 @@ package com.oracle.truffle.llvm.runtime.library.internal;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
-@ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = Object.class)
 public class LLVMAsForeignLibraryDefaults {
 
-    @ExportMessage
-    static boolean isForeign(@SuppressWarnings("unused") Object receiver) {
-        return false;
+    @ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = Object.class)
+    static class DefaultAsForeignLibrary {
+
+        @ExportMessage
+        static boolean isForeign(@SuppressWarnings("unused") Object receiver) {
+            return true;
+        }
+
+        @ExportMessage
+        static Object asForeign(@SuppressWarnings("unused") Object receiver) {
+            return receiver;
+        }
+
     }
 
-    @ExportMessage
-    static Object asForeign(@SuppressWarnings("unused") Object receiver) {
-        return null;
+    @ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = int[].class)
+    static class ArrayAsForeignLibrary {
+        // the inherited isForeign returns false
     }
+
 }
