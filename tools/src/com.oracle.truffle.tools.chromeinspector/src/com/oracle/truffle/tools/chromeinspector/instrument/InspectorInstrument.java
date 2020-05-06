@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,6 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -493,22 +492,18 @@ public final class InspectorInstrument extends TruffleInstrument {
             }
         }
 
-        private static String generateSecureToken() throws IOException {
+        private static String generateSecureToken() {
             final byte[] tokenRaw = generateSecureRawToken();
             // base64url (see https://tools.ietf.org/html/rfc4648 ) without padding
             // For a fixed-length token, there is no ambiguity in paddingless
             return Base64.getEncoder().withoutPadding().encodeToString(tokenRaw).replace('/', '_').replace('+', '-');
         }
 
-        private static byte[] generateSecureRawToken() throws IOException {
-            try {
-                // 256 bits of entropy ought to be enough for everybody
-                final byte[] tokenRaw = new byte[32];
-                SecureRandom.getInstanceStrong().nextBytes(tokenRaw);
-                return tokenRaw;
-            } catch (NoSuchAlgorithmException e) {
-                throw new IOException(e);
-            }
+        private static byte[] generateSecureRawToken() {
+            // 256 bits of entropy ought to be enough for everybody
+            final byte[] tokenRaw = new byte[32];
+            new SecureRandom().nextBytes(tokenRaw);
+            return tokenRaw;
         }
 
         private static final String DEV_TOOLS_PREFIX = "chrome-devtools://devtools/bundled/js_app.html?";
