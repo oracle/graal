@@ -67,6 +67,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -80,7 +81,6 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.test.ModuleSupport;
 import org.graalvm.compiler.bytecode.Bytecodes;
-import org.graalvm.compiler.core.CompilerThreadFactory;
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.test.ReflectionOptionDescriptors;
 import org.graalvm.compiler.debug.GlobalMetrics;
@@ -667,6 +667,40 @@ public final class CompileTheWorld {
         }
     }
 
+    static final class CTWThread extends Thread {
+        private final LibGraalParams libgraal;
+
+        CTWThread(Runnable r, LibGraalParams libgraal) {
+            super(r);
+            this.libgraal = libgraal;
+            setName("CTWThread-" + getId());
+            setPriority(Thread.MAX_PRIORITY);
+            setDaemon(true);
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public void run() {
+            setContextClassLoader(getClass().getClassLoader());
+            try (LibGraalScope scope = libgraal == null ? null : new LibGraalScope()) {
+                super.run();
+            }
+        }
+    }
+
+    static final class CTWThreadFactory implements ThreadFactory {
+        private final LibGraalParams libgraal;
+
+        CTWThreadFactory(LibGraalParams libgraal) {
+            this.libgraal = libgraal;
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            return new CTWThread(r, libgraal);
+        }
+    }
+
     /**
      * Compiles all methods in all classes in a given class path.
      *
@@ -709,7 +743,7 @@ public final class CompileTheWorld {
             running = true;
         }
 
-        threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new CompilerThreadFactory("CompileTheWorld"));
+        threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new CTWThreadFactory(libgraal));
 
         int compileStartAt = startAt;
         int compileStopAt = stopAt;
@@ -972,32 +1006,30 @@ public final class CompileTheWorld {
             boolean installAsDefault = false;
             HotSpotInstalledCode installedCode;
             if (libgraal != null) {
-                try (LibGraalScope scope = new LibGraalScope()) {
-                    long methodHandle = LibGraal.translate(method);
-                    long isolateThread = LibGraalScope.getIsolateThread();
+                long methodHandle = LibGraal.translate(method);
+                long isolateThread = LibGraalScope.getIsolateThread();
 
-                    StackTraceBuffer stackTraceBuffer = libgraal.getStackTraceBuffer();
+                StackTraceBuffer stackTraceBuffer = libgraal.getStackTraceBuffer();
 
-                    long stackTraceBufferAddress = stackTraceBuffer.getAddress();
-                    long installedCodeHandle = compileMethodInLibgraal(isolateThread,
-                                    methodHandle,
-                                    useProfilingInfo,
-                                    installAsDefault,
-                                    libgraal.options.getAddress(),
-                                    libgraal.options.size,
-                                    libgraal.options.hash,
-                                    stackTraceBufferAddress,
-                                    stackTraceBuffer.size);
+                long stackTraceBufferAddress = stackTraceBuffer.getAddress();
+                long installedCodeHandle = compileMethodInLibgraal(isolateThread,
+                                methodHandle,
+                                useProfilingInfo,
+                                installAsDefault,
+                                libgraal.options.getAddress(),
+                                libgraal.options.size,
+                                libgraal.options.hash,
+                                stackTraceBufferAddress,
+                                stackTraceBuffer.size);
 
-                    installedCode = LibGraal.unhand(HotSpotInstalledCode.class, installedCodeHandle);
-                    if (installedCode == null) {
-                        int length = UNSAFE.getInt(stackTraceBufferAddress);
-                        byte[] data = new byte[length];
-                        UNSAFE.copyMemory(null, stackTraceBufferAddress + Integer.BYTES, data, ARRAY_BYTE_BASE_OFFSET, length);
-                        String stackTrace = new String(data).trim();
-                        println(true, String.format("CompileTheWorld (%d) : Error compiling method: %s", counter, method.format("%H.%n(%p):%r")));
-                        println(true, stackTrace);
-                    }
+                installedCode = LibGraal.unhand(HotSpotInstalledCode.class, installedCodeHandle);
+                if (installedCode == null) {
+                    int length = UNSAFE.getInt(stackTraceBufferAddress);
+                    byte[] data = new byte[length];
+                    UNSAFE.copyMemory(null, stackTraceBufferAddress + Integer.BYTES, data, ARRAY_BYTE_BASE_OFFSET, length);
+                    String stackTrace = new String(data).trim();
+                    println(true, String.format("CompileTheWorld (%d) : Error compiling method: %s", counter, method.format("%H.%n(%p):%r")));
+                    println(true, stackTrace);
                 }
             } else {
                 int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
