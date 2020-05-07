@@ -44,6 +44,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
@@ -66,6 +69,7 @@ import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.Cancellable;
+import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
@@ -188,6 +192,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public static final TimerKey PartialEvaluationTime = DebugContext.timer("PartialEvaluationTime");
     public static final TimerKey CompilationTime = DebugContext.timer("CompilationTime");
     public static final TimerKey CodeInstallationTime = DebugContext.timer("CodeInstallation");
+    public static final TimerKey EncodedGraphCacheEvictionTime = DebugContext.timer("EncodedGraphCacheEvictionTime");
 
     public static final MemUseTrackerKey PartialEvaluationMemUse = DebugContext.memUseTracker("TrufflePartialEvaluationMemUse");
     public static final MemUseTrackerKey CompilationMemUse = DebugContext.memUseTracker("TruffleCompilationMemUse");
@@ -466,6 +471,44 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             // compilation time and memory usage reported by printer
             printer.finish(compilationResult);
         } catch (Throwable t) {
+            // Catch non-permanent bailouts due to "failed dependencies" aka "invalid assumptions" during code installation.
+            // Since there's no specific exception for such cases, it's assumed that non-permanent, non-cancellation bailouts are due to
+            // "invalid dependencies" during code installation.
+            if (t instanceof BailoutException && !(t instanceof CancellationBailoutException)) {
+                BailoutException bailout = (BailoutException) t;
+
+                // Evict only the methods that could have caused the invalidation e.g. methods with assumptions.
+                if (!bailout.isPermanent() && graph != null && !graph.getAssumptions().isEmpty()) {
+                    try (DebugCloseable dummy = EncodedGraphCacheEvictionTime.start(debug)) {
+                        assert graph.method() != null;
+                        EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = partialEvaluator.getOrCreateEncodedGraphCache();
+
+                        // At this point, the cache containing invalid graphs may be already purged/dropped, but
+                        // there's no way to know in which cache the invalid method is/was present, so all encoded graphs,
+                        // including the root and all inlined methods must be evicted.
+                        // These bailouts (invalid dependencies) are very rare, the over-evicting impact is negligible.
+                        if (!graphCache.isEmpty()) {
+                            debug.log(DebugContext.VERBOSE_LEVEL, "Evict root %s", graph.method());
+                            graphCache.removeKey(graph.method());
+
+                            // Bailout may have been caused by an assumption on some inlined method.
+                            for (ResolvedJavaMethod method : graph.getMethods()) {
+                                EncodedGraph encodedGraph = graphCache.get(method);
+                                if (encodedGraph == null) {
+                                    continue;
+                                }
+
+                                Assumptions assumptions = encodedGraph.getAssumptions();
+                                if (assumptions != null && !assumptions.isEmpty()) {
+                                    debug.log(DebugContext.VERBOSE_LEVEL, "\tEvict inlined %s", method);
+                                    graphCache.removeKey(method);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Note: If the compiler cancels the compilation with a bailout exception, then the
             // graph is null
             if (listener != null) {
