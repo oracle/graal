@@ -103,6 +103,24 @@ public final class Resources {
         list.add(res);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerDirectoryResource(String dir, String content) {
+        /*
+         * A directory content represents the names of all files and subdirectories located in the
+         * specified directory, separated with new line delimiter and joined into one string which
+         * is later converted into a byte array and placed into the resources map.
+         */
+        ResourcesSupport support = ImageSingletons.lookup(ResourcesSupport.class);
+
+        byte[] arr = content.getBytes();
+        List<byte[]> list = support.resources.get(dir);
+        if (list == null) {
+            list = new ArrayList<>();
+            support.resources.put(dir, list);
+        }
+        list.add(arr);
+    }
+
     public static List<byte[]> get(String name) {
         return ImageSingletons.lookup(ResourcesSupport.class).resources.get(name);
     }
