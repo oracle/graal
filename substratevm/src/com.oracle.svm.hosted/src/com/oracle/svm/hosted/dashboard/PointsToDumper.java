@@ -120,6 +120,8 @@ class PointsToDumper {
             names.put(OffsetStoreTypeFlow.StoreIndexedTypeFlow.class.getSimpleName(), "storeIndexed");
             names.put(OffsetLoadTypeFlow.UnsafeLoadTypeFlow.class.getSimpleName(), "unsafeLoad");
             names.put(OffsetStoreTypeFlow.UnsafeStoreTypeFlow.class.getSimpleName(), "unsafeStore");
+            names.put(OffsetLoadTypeFlow.UnsafePartitionLoadTypeFlow.class.getSimpleName(), "unsafeLoad");
+            names.put(OffsetStoreTypeFlow.UnsafePartitionStoreTypeFlow.class.getSimpleName(), "unsafeStore");
             names.put(AllInstantiatedTypeFlow.class.getSimpleName(), "allInstantiated");
             names.put(AllSynchronizedTypeFlow.class.getSimpleName(), "allSynchronized");
             names.put(ArrayElementsTypeFlow.class.getSimpleName(), "arrayElements");
