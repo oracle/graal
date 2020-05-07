@@ -37,6 +37,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.core.util.VMError;
 
 class LinuxPhysicalMemory extends PhysicalMemory {
 
@@ -56,9 +57,12 @@ class LinuxPhysicalMemory extends PhysicalMemory {
 
         /** Set the size of physical memory from the kernel sysconf parameters. */
         private static UnsignedWord sizeFromSysconf() {
-            UnsignedWord numberOfPhysicalMemoryPages = WordFactory.unsigned(Unistd.sysconf(Unistd._SC_PHYS_PAGES()));
-            UnsignedWord sizeOfAPhysicalMemoryPage = WordFactory.unsigned(Unistd.sysconf(Unistd._SC_PAGESIZE()));
-            return numberOfPhysicalMemoryPages.multiply(sizeOfAPhysicalMemoryPage);
+            long numberOfPhysicalMemoryPages = Unistd.sysconf(Unistd._SC_PHYS_PAGES());
+            long sizeOfAPhysicalMemoryPage = Unistd.sysconf(Unistd._SC_PAGESIZE());
+            if (numberOfPhysicalMemoryPages == -1 || sizeOfAPhysicalMemoryPage == -1) {
+                throw VMError.shouldNotReachHere("Physical memory size (number of pages or page size) not available");
+            }
+            return WordFactory.unsigned(numberOfPhysicalMemoryPages).multiply(WordFactory.unsigned(sizeOfAPhysicalMemoryPage));
         }
 
         /**
