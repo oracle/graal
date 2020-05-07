@@ -116,36 +116,30 @@ public final class AllTransitionsInOneTreeMatcher {
         this.leafMatchers = leafMatchers;
     }
 
-    public int checkMatchTree(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, DFAStateNode stateNode, int c) {
+    public int checkMatchTree(int c) {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(stateNode);
-        return checkMatchTree(locals, executor, stateNode, 0, ranges.length - 1, c);
+        return checkMatchTree(0, ranges.length - 1, c);
     }
 
     /**
      * Recursive binary-search through {@code ranges}.
      */
-    private int checkMatchTree(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, DFAStateNode stateNode, int fromIndex, int toIndex, int c) {
-        CompilerAsserts.partialEvaluationConstant(stateNode);
+    private int checkMatchTree(int fromIndex, int toIndex, int c) {
         CompilerAsserts.partialEvaluationConstant(fromIndex);
         CompilerAsserts.partialEvaluationConstant(toIndex);
         if (fromIndex > toIndex) {
             final short successor = successors[fromIndex];
-            if (successor == -1) {
-                return successor;
-            } else if (successor < -1) {
-                return checkMatchLeaf((successor * -1) - 2, locals, executor, stateNode, c);
-            } else {
-                stateNode.successorFound(locals, executor, successor);
+            if (successor < -1) {
+                return checkMatchLeaf((successor * -1) - 2, c);
             }
             return successor;
         }
         final int mid = (fromIndex + toIndex) >>> 1;
         CompilerAsserts.partialEvaluationConstant(mid);
         if (c < ranges[mid]) {
-            return checkMatchTree(locals, executor, stateNode, fromIndex, mid - 1, c);
+            return checkMatchTree(fromIndex, mid - 1, c);
         } else {
-            return checkMatchTree(locals, executor, stateNode, mid + 1, toIndex, c);
+            return checkMatchTree(mid + 1, toIndex, c);
         }
     }
 
@@ -155,7 +149,7 @@ public final class AllTransitionsInOneTreeMatcher {
      * converted to bit sets.
      */
     @ExplodeLoop
-    private int checkMatchLeaf(int iLeaf, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, DFAStateNode stateNode, int c) {
+    private int checkMatchLeaf(int iLeaf, int c) {
         CompilerAsserts.partialEvaluationConstant(iLeaf);
         AllTransitionsInOneTreeLeafMatcher leafMatcher = leafMatchers[iLeaf];
         int lowByte = BitSets.lowByte(c);
@@ -164,19 +158,17 @@ public final class AllTransitionsInOneTreeMatcher {
             if (BitSets.get(leafMatcher.bitSets[i], lowByte)) {
                 final short successor = leafMatcher.successors[i];
                 CompilerAsserts.partialEvaluationConstant(successor);
-                stateNode.successorFound(locals, executor, successor);
                 return successor;
             }
         }
-        return checkMatchLeafSubTree(locals, executor, stateNode, leafMatcher, 0, leafMatcher.ranges.length - 1, c);
+        return checkMatchLeafSubTree(leafMatcher, 0, leafMatcher.ranges.length - 1, c);
     }
 
     /**
      * Recursive binary-search through {@code ranges} of a {@link AllTransitionsInOneTreeLeafMatcher
      * leaf matcher}.
      */
-    private static int checkMatchLeafSubTree(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, DFAStateNode stateNode,
-                    AllTransitionsInOneTreeLeafMatcher leafMatcher, int fromIndex, int toIndex, int c) {
+    private static int checkMatchLeafSubTree(AllTransitionsInOneTreeLeafMatcher leafMatcher, int fromIndex, int toIndex, int c) {
         CompilerAsserts.partialEvaluationConstant(leafMatcher);
         CompilerAsserts.partialEvaluationConstant(fromIndex);
         CompilerAsserts.partialEvaluationConstant(toIndex);
@@ -191,16 +183,15 @@ public final class AllTransitionsInOneTreeMatcher {
                 // TODO: move bitset matches here. requires PE intrinsic.
                 return successor;
             } else {
-                stateNode.successorFound(locals, executor, successor);
                 return successor;
             }
         }
         final int mid = (fromIndex + toIndex) >>> 1;
         CompilerAsserts.partialEvaluationConstant(mid);
         if (c < leafMatcher.ranges[mid]) {
-            return checkMatchLeafSubTree(locals, executor, stateNode, leafMatcher, fromIndex, mid - 1, c);
+            return checkMatchLeafSubTree(leafMatcher, fromIndex, mid - 1, c);
         } else {
-            return checkMatchLeafSubTree(locals, executor, stateNode, leafMatcher, mid + 1, toIndex, c);
+            return checkMatchLeafSubTree(leafMatcher, mid + 1, toIndex, c);
         }
     }
 

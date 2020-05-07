@@ -56,23 +56,8 @@ public class BackwardDFAStateNode extends DFAStateNode {
         return new BackwardDFAStateNode(this, copyID);
     }
 
-    private int getBackwardPrefixStateIndex() {
+    int getBackwardPrefixStateIndex() {
         assert hasBackwardPrefixState();
         return getSuccessors().length - 1;
-    }
-
-    @Override
-    int atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        super.atEnd(locals, executor);
-        if (hasBackwardPrefixState() && locals.getIndex() > 0) {
-            assert locals.getIndex() == locals.getFromIndex();
-            /*
-             * We have reached the starting index of the forward matcher, so we have to switch to
-             * backward-prefix-states. These states will match look-behind assertions only.
-             */
-            locals.setCurMinIndex(0);
-            return getBackwardPrefixStateIndex();
-        }
-        return FS_RESULT_NO_SUCCESSOR;
     }
 }
