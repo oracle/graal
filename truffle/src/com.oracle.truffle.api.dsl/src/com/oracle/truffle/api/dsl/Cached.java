@@ -301,6 +301,17 @@ public @interface Cached {
     String[] parameters() default {};
 
     /**
+     * If enabled weak references will be used to refer to this cached value in the generated node.
+     * Intended to be used with runtime values and not with node types. If not guarded by method
+     * guard, the cached parameter may become <code>null</code> when it gets collected by the GC. It
+     * is recommended to always check for <code>null</code> prior using weak cached values. Cannot
+     * be used with primitive values.
+     *
+     * @since 20.2
+     */
+    boolean weak() default false;
+
+    /**
      * Allows sharing between multiple Cached parameters between multiple specializations or
      * exported library messages. If no sharing is desired then the {@link Cached cached} parameter
      * can be annotated with {@link Exclusive exclusive}. The DSL will indicate sharing

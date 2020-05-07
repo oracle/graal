@@ -70,6 +70,7 @@ public final class CacheExpression extends MessageContainer {
     private boolean requiresBoundary;
     private String sharedGroup;
     private boolean mergedLibrary;
+    private boolean weak;
 
     private TypeMirror languageType;
     private TypeMirror referenceType;
@@ -287,6 +288,14 @@ public final class CacheExpression extends MessageContainer {
         String libraryName = ElementUtils.getSimpleName(getParameter().getType());
 
         return b.toString() + libraryName + "_";
+    }
+
+    public boolean isWeak() {
+        return weak;
+    }
+
+    public void setWeak(boolean weak) {
+        this.weak = weak;
     }
 
 }

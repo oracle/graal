@@ -2378,6 +2378,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         List<String> expressionParameters = getAnnotationValueList(String.class, cachedAnnotation, "parameters");
+
         String initializer = getAnnotationValue(String.class, cachedAnnotation, "value");
         String uncached = getAnnotationValue(String.class, cachedAnnotation, "uncached");
 
@@ -2445,9 +2446,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         cache.getMessages().clear();
                     }
                 }
-
             }
-
         }
 
         if (requireUncached && cache.getUncachedExpression() == null && cache.getDefaultExpression() != null) {
@@ -2456,7 +2455,13 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
         }
 
-        return;
+        boolean weakReference = getAnnotationValue(Boolean.class, cachedAnnotation, "weak");
+        if (weakReference) {
+            if (ElementUtils.isPrimitive(cache.getParameter().getType())) {
+                cache.addError("Cached parameters with primitive types cannot be weak. Set weak to false to resolve this.");
+            }
+            cache.setWeak(true);
+        }
     }
 
     private DSLExpression resolveCachedExpression(DSLExpressionResolver resolver, CacheExpression cache, TypeMirror targetType, DSLExpression expression, String originalString) {

@@ -68,6 +68,7 @@ import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -718,7 +719,7 @@ public class FlatNodeGenFactory {
                         builder.staticReference(createLibraryConstant(libraryConstants, cache.getParameter().getType()));
                         builder.startCall(".getUncached").end();
                     } else {
-                        builder.tree(createCacheReference(frameState, specialization, cache));
+                        builder.tree(createCacheReference(frameState, specialization, cache, false));
                     }
                     builder.end();
                 }
@@ -781,6 +782,10 @@ public class FlatNodeGenFactory {
                 TypeMirror type = parameter.getType();
                 Modifier visibility = Modifier.PRIVATE;
 
+                if (cache.isWeak()) {
+                    type = new DeclaredCodeTypeMirror(context.getTypeElement(WeakReference.class), Arrays.asList(type));
+                }
+
                 CodeVariableElement cachedField;
                 if (isAssignable(type, types.NodeInterface)) {
                     cachedField = createNodeField(visibility, type, fieldName, types.Node_Child);
@@ -824,6 +829,9 @@ public class FlatNodeGenFactory {
                 Parameter parameter = cache.getParameter();
                 String fieldName = createFieldName(specialization, parameter);
                 TypeMirror type = parameter.getType();
+                if (cache.isWeak()) {
+                    type = new DeclaredCodeTypeMirror(context.getTypeElement(WeakReference.class), Arrays.asList(type));
+                }
                 Modifier visibility = useSpecializationClass ? null : Modifier.PRIVATE;
                 CodeVariableElement cachedField;
                 if (isAssignable(type, types.NodeInterface)) {
@@ -2623,7 +2631,7 @@ public class FlatNodeGenFactory {
                     if (var != null) {
                         bindings[i] = var.createReference();
                     } else {
-                        bindings[i] = createCacheReference(frameState, specialization, specialization.findCache(parameter));
+                        bindings[i] = createCacheReference(frameState, specialization, specialization.findCache(parameter), false);
                     }
                 } else {
                     LocalVariable variable = bindExpressionVariable(frameState, specialization, parameter);
@@ -3928,7 +3936,10 @@ public class FlatNodeGenFactory {
                     innerTriples.addAll(initializeSpecializationClass(innerFrameState, group.getSpecialization()));
                     innerTriples.addAll(persistSpecializationClass(innerFrameState, group.getSpecialization()));
                 }
-                innerTriples.addAll(initializeCaches(innerFrameState, mode, group, group.getSpecialization().getBoundCaches(guard.getExpression(), true), !guardStateBit, guardStateBit));
+                boolean store = !guardStateBit;
+
+                Set<CacheExpression> boundCaches = group.getSpecialization().getBoundCaches(guard.getExpression(), true);
+                innerTriples.addAll(initializeCaches(innerFrameState, mode, group, boundCaches, store, guardStateBit));
                 innerTriples.addAll(initializeCasts(innerFrameState, group, guard.getExpression(), mode));
 
                 IfTriple.materialize(builder, innerTriples, true);
@@ -3959,7 +3970,6 @@ public class FlatNodeGenFactory {
             } else if (mode.isFastPath() && !cache.isAlwaysInitialized()) {
                 continue;
             }
-
             triples.addAll(initializeCasts(frameState, group, cache.getDefaultExpression(), mode));
             triples.addAll(persistAndInitializeCache(frameState, group.getSpecialization(), cache, store, forcePersist));
 
@@ -4061,7 +4071,17 @@ public class FlatNodeGenFactory {
                 }
             }
 
-            CodeTree cacheReference = createCacheReference(frameState, specialization, cache);
+            if (!frameState.getMode().isUncached() && !frameState.getMode().isFastPath() && cache.isWeak()) {
+                CodeTreeBuilder valueBuilder = CodeTreeBuilder.createBuilder();
+                // we can be sure that this type is imported elsewhere for the field
+                // so we can just use the simple name here
+                valueBuilder.startNew(WeakReference.class.getSimpleName() + "<>");
+                valueBuilder.tree(value);
+                valueBuilder.end();
+                value = valueBuilder.build();
+            }
+
+            CodeTree cacheReference = createCacheReference(frameState, specialization, cache, true);
             if (!cache.isEagerInitialize() && sharedCaches.containsKey(cache) && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
                 builder.startIf().tree(cacheReference).string(" == null").end().startBlock();
                 builder.startStatement().tree(cacheReference).string(" = ").tree(value).end();
@@ -4124,7 +4144,9 @@ public class FlatNodeGenFactory {
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
         String refName = name + "_";
         CodeTree useValue;
-        if ((ElementUtils.isAssignable(type, types.Node) || ElementUtils.isAssignable(type, new ArrayCodeTypeMirror(types.Node))) &&
+        if (cache.isWeak()) {
+            useValue = CodeTreeBuilder.createBuilder().startCall(value, "get").end().build();
+        } else if ((ElementUtils.isAssignable(type, types.Node) || ElementUtils.isAssignable(type, new ArrayCodeTypeMirror(types.Node))) &&
                         (!cache.isAlwaysInitialized())) {
             useValue = builder.create().startCall("super.insert").tree(value).end().build();
         } else {
@@ -4140,7 +4162,7 @@ public class FlatNodeGenFactory {
 
     private CodeTree initializeCache(FrameState frameState, SpecializationData specialization, CacheExpression cache) {
         String name = createFieldName(specialization, cache.getParameter());
-        if (frameState.get(name) != null && !cache.isAlwaysInitialized()) {
+        if (frameState.get(name) != null) {
             // already initialized
             return null;
         }
@@ -4273,7 +4295,7 @@ public class FlatNodeGenFactory {
             CodeTree ref;
             if (localVariable == null) {
                 CacheExpression cache = specialization.findCache(resolvedParameter);
-                ref = createCacheReference(frameState, specialization, cache);
+                ref = createCacheReference(frameState, specialization, cache, false);
             } else {
                 ref = localVariable.createReference();
             }
@@ -4310,7 +4332,7 @@ public class FlatNodeGenFactory {
         return builder.build();
     }
 
-    private CodeTree createCacheReference(FrameState frameState, SpecializationData specialization, CacheExpression cache) {
+    private CodeTree createCacheReference(FrameState frameState, SpecializationData specialization, CacheExpression cache, boolean assignment) {
         if (cache == null) {
             return CodeTreeBuilder.singleString("null /* cache not resolved */");
         }
@@ -4321,12 +4343,17 @@ public class FlatNodeGenFactory {
                 return initializeCache(frameState, specialization, cache);
             } else {
                 String sharedName = sharedCaches.get(cache);
+                CodeTree ref;
                 if (sharedName != null) {
-                    return CodeTreeBuilder.createBuilder().string("this.").string(sharedName).build();
+                    ref = CodeTreeBuilder.createBuilder().string("this.").string(sharedName).build();
                 } else {
                     String cacheFieldName = createFieldName(specialization, cache.getParameter());
-                    return createSpecializationFieldReference(frameState, specialization, cacheFieldName);
+                    ref = createSpecializationFieldReference(frameState, specialization, cacheFieldName);
                 }
+                if (cache.isWeak() && !assignment) {
+                    ref = CodeTreeBuilder.createBuilder().startCall(ref, "get").end().build();
+                }
+                return ref;
             }
         }
     }
