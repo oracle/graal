@@ -69,9 +69,10 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ModuleSupport;
-import com.oracle.truffle.api.Truffle;
 
 public final class ImageClassLoader {
+
+    public static final String PROPERTY_IMAGEINCLUDEBUILTINMODULES = "substratevm.ImageIncludeBuiltinModules";
 
     private static final String CLASS_EXTENSION = ".class";
     private static final int CLASS_EXTENSION_LENGTH = CLASS_EXTENSION.length();
@@ -125,28 +126,28 @@ public final class ImageClassLoader {
         }
     }
 
+    private static void addOptionalModule(Set<String> modules, String name) {
+        if (ModuleSupport.hasSystemModule(name)) {
+            modules.add(name);
+        }
+    }
+
     private void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             Set<String> modules = new HashSet<>();
             modules.add("jdk.internal.vm.ci");
-            Path javaHome = Paths.get(System.getProperty("java.home"));
-            if (!Files.exists(javaHome)) {
-                throw new AssertionError("Java home is not reachable.");
+
+            addOptionalModule(modules, "org.graalvm.sdk");
+            addOptionalModule(modules, "jdk.internal.vm.compiler");
+            addOptionalModule(modules, "com.oracle.graal.graal_enterprise");
+
+            String includeModulesStr = System.getProperty(PROPERTY_IMAGEINCLUDEBUILTINMODULES);
+            if (includeModulesStr != null) {
+                modules.addAll(Arrays.asList(includeModulesStr.split(",")));
             }
-            Path list = javaHome.resolve(Paths.get("lib", "native-image-modules.list"));
-            if (Files.exists(list)) {
-                try {
-                    Files.readAllLines(list).stream().map(s -> s.trim()).filter(s -> !s.isEmpty() && !s.startsWith("#")).forEach(modules::add);
-                } catch (IOException e) {
-                    throw shouldNotReachHere(e);
-                }
-            }
-            if (!"com.oracle.svm.truffle.api.SubstrateTruffleRuntime".equals(System.getProperty("truffle.TruffleRuntime"))) {
-                /* Only load Truffle with NativeImageClassLoader if building Truffle images */
-                modules.remove(ModuleSupport.getModuleName(Truffle.class));
-            }
+
             for (String moduleResource : ModuleSupport.getModuleResources(modules)) {
                 if (moduleResource.endsWith(CLASS_EXTENSION)) {
                     executor.execute(() -> handleClassFileName(moduleResource, '/'));

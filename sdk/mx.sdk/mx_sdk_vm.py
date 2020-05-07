@@ -726,13 +726,6 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
                 if isfile(lib_path):
                     shutil.copy2(lib_path, dst_lib_directory)
 
-        # Build the list of modules whose classes might have annotations
-        # to be processed by native-image (GR-15192).
-        with open(join(dst_jdk_dir, 'lib', 'native-image-modules.list'), 'w') as fp:
-            print('# Modules whose classes might have annotations processed by native-image', file=fp)
-            for m in modules:
-                print(m.name, file=fp)
-
     finally:
         if not mx.get_opts().verbose:
             # Preserve build directory so that javac command can be re-executed
