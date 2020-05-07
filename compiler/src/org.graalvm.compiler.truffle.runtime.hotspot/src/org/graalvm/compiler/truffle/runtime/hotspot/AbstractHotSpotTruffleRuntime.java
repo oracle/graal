@@ -134,9 +134,9 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                     lazy = new Lazy(this, new Runnable() {
                         @Override
                         public void run() {
-                            TruffleCompiler truffleCompiler = AbstractHotSpotTruffleRuntime.this.truffleCompiler;
-                            if (truffleCompiler instanceof HotSpotTruffleCompiler) {
-                                ((HotSpotTruffleCompiler) truffleCompiler).purgeCaches();
+                            TruffleCompiler compiler = AbstractHotSpotTruffleRuntime.this.truffleCompiler;
+                            if (compiler instanceof HotSpotTruffleCompiler) {
+                                ((HotSpotTruffleCompiler) compiler).purgeCaches();
                             }
                         }
                     });
