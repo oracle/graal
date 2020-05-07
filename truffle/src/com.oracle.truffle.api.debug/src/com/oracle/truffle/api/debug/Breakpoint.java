@@ -1230,7 +1230,7 @@ public class Breakpoint {
                 if (sessions == null) {
                     return;
                 }
-                BreakpointExceptionFilter.Match matched = getBreakpoint().exceptionFilter.matchException(this, exception);
+                BreakpointExceptionFilter.Match matched = getBreakpoint().exceptionFilter.matchException(getContext().getInstrumentedNode(), exception);
                 if (matched.isMatched) {
                     BreakpointConditionFailure conditionError = null;
                     try {
