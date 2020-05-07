@@ -41,6 +41,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.collections.EconomicMap;
@@ -177,7 +178,13 @@ public abstract class PartialEvaluator {
     }
 
     private Map<ResolvedJavaMethod, EncodedGraph> createEncodedGraphMap() {
-        assert encodedGraphCacheCapacity > 0;
+        if (encodedGraphCacheCapacity < 0) {
+            // Unbounded cache. 
+            return new ConcurrentHashMap<>();
+        }
+
+        // Access-based LRU bounded cache. The overhead of the synchronized map is negligible
+	// compared to the cost of re-parsing the graphs.
         return Collections.synchronizedMap(
                         new LinkedHashMap<ResolvedJavaMethod, EncodedGraph>(16, 0.75f, true) {
                             @Override
