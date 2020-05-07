@@ -57,7 +57,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     public boolean isAArch64() {
-        return dwarfSections.getELFMachine() == ELFMachine.AArch64;
+        return dwarfSections.elfMachine == ELFMachine.AArch64;
     }
 
     /**
