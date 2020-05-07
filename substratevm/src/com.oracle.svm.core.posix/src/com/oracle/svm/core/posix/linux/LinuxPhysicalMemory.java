@@ -33,64 +33,14 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 class LinuxPhysicalMemory extends PhysicalMemory {
 
     static class PhysicalMemorySupportImpl implements PhysicalMemorySupport {
-
-        /** A sentinel unset value. */
-        static final long UNSET_SENTINEL = Long.MIN_VALUE;
-        /** Prevent recursive invocation of size() from initializeSize(). */
-        static AtomicInteger initializeSize = new AtomicInteger(0);
-
-        /** The cached size of physical memory, or an unset value. */
-        long cachedSize = UNSET_SENTINEL;
-
-        /** Get the size of physical memory. */
-        @Override
-        public UnsignedWord size() {
-            /* If I have a cached a size, use that. */
-            if (hasSize()) {
-                return getSize();
-            }
-            /*
-             * The size initialization code below requires synchronized and therefore must not run
-             * inside a VMOperation. Also if we can't allocate we have to prevent it from running.
-             */
-            if (Heap.getHeap().isAllocationDisallowed() || VMOperation.isInProgress() || !JavaThreads.currentJavaThreadInitialized() || !initializeSize.compareAndSet(0, 1)) {
-                return UnsignedUtils.MAX_VALUE;
-            }
-            /* Compute and cache the physical memory size. Races are idempotent. */
-            initializeSize();
-            initializeSize.set(0);
-            return getSize();
-        }
-
-        /** Has the size of physical memory been computed? */
-        @Override
-        public boolean hasSize() {
-            return (cachedSize != UNSET_SENTINEL);
-        }
-
-        /** Update the cached size. */
-        void setSize(long value) {
-            cachedSize = value;
-        }
-
-        /** Get the cached size. */
-        UnsignedWord getSize() {
-            assert hasSize() : "LinuxPhysicalMemory.PhysicalMemorySupportImpl.geSize: cachedSize has no value.";
-            return WordFactory.unsigned(cachedSize);
-        }
 
         /**
          * Initialize the physical memory size to the minimum of
@@ -99,21 +49,16 @@ class LinuxPhysicalMemory extends PhysicalMemory {
          * <li>The size from the kernel sysconf configuration, which must exist.</li>
          * </ul>
          */
-        void initializeSize() {
-            final long cgroupSize = sizeFromCGroup();
-            final long sysconfSize = sizeFromSysconf();
-            /* Use the minimum size. */
-            final long minSize = Math.min(cgroupSize, sysconfSize);
-            /* Races are idempotent. */
-            setSize(minSize);
+        @Override
+        public UnsignedWord size() {
+            return UnsignedUtils.min(sizeFromCGroup(), sizeFromSysconf());
         }
 
         /** Set the size of physical memory from the kernel sysconf parameters. */
-        long sizeFromSysconf() {
-            final long numberOfPhysicalMemoryPages = Unistd.sysconf(Unistd._SC_PHYS_PAGES());
-            final long sizeOfAPhysicalMemoryPage = Unistd.sysconf(Unistd._SC_PAGESIZE());
-            final long result = (numberOfPhysicalMemoryPages * sizeOfAPhysicalMemoryPage);
-            return result;
+        private static UnsignedWord sizeFromSysconf() {
+            UnsignedWord numberOfPhysicalMemoryPages = WordFactory.unsigned(Unistd.sysconf(Unistd._SC_PHYS_PAGES()));
+            UnsignedWord sizeOfAPhysicalMemoryPage = WordFactory.unsigned(Unistd.sysconf(Unistd._SC_PAGESIZE()));
+            return numberOfPhysicalMemoryPages.multiply(sizeOfAPhysicalMemoryPage);
         }
 
         /**
@@ -128,10 +73,8 @@ class LinuxPhysicalMemory extends PhysicalMemory {
         private static final String cgroupMemoryFileName = "/sys/fs/cgroup/memory/memory.limit_in_bytes";
 
         /** Read the size of physical memory from a Docker cgroup file, if it exists. */
-        @RestrictHeapAccess(access = Access.UNRESTRICTED, overridesCallers = true, reason = "Only called if allocation is allowed.")
-        long sizeFromCGroup() {
+        private static UnsignedWord sizeFromCGroup() {
             assert !Heap.getHeap().isAllocationDisallowed() : "LinuxPhysicalMemory.PhysicalMemorySupportImpl.sizeFromCGroup: Allocation disallowed.";
-            long result = Long.MAX_VALUE;
             /* Read digits out of the file and convert them a long. */
             try (FileInputStream stream = new FileInputStream(cgroupMemoryFileName)) {
                 StringBuilder sb = new StringBuilder(32);
@@ -140,11 +83,11 @@ class LinuxPhysicalMemory extends PhysicalMemory {
                     sb.append((char) read);
                     read = stream.read();
                 }
-                result = Long.parseLong(sb.toString());
+                return WordFactory.unsigned(Long.parseLong(sb.toString()));
             } catch (IOException | NumberFormatException e) {
                 /* Ignore exceptions. */
+                return UnsignedUtils.MAX_VALUE;
             }
-            return result;
         }
     }
 
