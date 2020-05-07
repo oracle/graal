@@ -33,13 +33,17 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Utsname;
-import com.oracle.svm.core.posix.headers.linux.LinuxPaths;
 
 public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
     protected String tmpdirValue() {
-        return LinuxPaths._PATH_VARTMP();
+        /*
+         * The initial value of `java.io.tmpdir` is hard coded in libjava when building the JDK. So
+         * to be completely correct, we would have to use the value from libjava, but since it is
+         * normally initialized to `/tmp` via `P_tmpdir`, this should be fine for now.
+         */
+        return "/tmp";
     }
 
     @Override
