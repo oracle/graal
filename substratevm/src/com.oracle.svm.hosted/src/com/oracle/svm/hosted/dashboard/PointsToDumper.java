@@ -486,7 +486,7 @@ class PointsToDumper {
         private static String serializeTypeFlowName(TypeFlow<?> flow) {
             String name = DashboardTypeFlowNames.get(flow);
             if (name == null) {
-                throw new IllegalArgumentException("Unknown flow type: " + flow.getClass().getSimpleName());
+                return "unhandled";
             }
             return name;
         }
