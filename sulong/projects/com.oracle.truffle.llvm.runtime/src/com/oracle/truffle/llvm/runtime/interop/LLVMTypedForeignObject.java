@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropReadNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropWriteNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
@@ -68,6 +69,7 @@ import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 @ExportLibrary(LLVMManagedWriteLibrary.class)
 @ExportLibrary(ReferenceLibrary.class)
 @ExportLibrary(NativeTypeLibrary.class)
+@ExportLibrary(LLVMAsForeignLibrary.class)
 public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject {
 
     final Object foreign;
@@ -837,4 +839,16 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject {
             return false;
         }
     }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public boolean isForeign() {
+        return true;
+    }
+
+    @ExportMessage
+    public Object asForeign() {
+        return foreign;
+    }
+
 }

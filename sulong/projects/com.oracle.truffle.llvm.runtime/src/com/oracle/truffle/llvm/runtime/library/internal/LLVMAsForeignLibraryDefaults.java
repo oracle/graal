@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,39 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.interop;
+package com.oracle.truffle.llvm.runtime.library.internal;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 
-/**
- * Base class to mark {@link TruffleObject} implementors that are not considered foreign.
- */
-@ExportLibrary(InteropLibrary.class)
-@ExportLibrary(LLVMAsForeignLibrary.class)
-public abstract class LLVMInternalTruffleObject implements TruffleObject {
+public class LLVMAsForeignLibraryDefaults {
 
-    @ExportMessage
-    @SuppressWarnings({"unused", "static-method"})
-    public final boolean hasLanguage() {
-        return true;
+    @ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = Object.class)
+    static class DefaultAsForeignLibrary {
+
+        @ExportMessage
+        static boolean isForeign(@SuppressWarnings("unused") Object receiver) {
+            return true;
+        }
+
+        @ExportMessage
+        static Object asForeign(@SuppressWarnings("unused") Object receiver) {
+            return receiver;
+        }
+
     }
 
-    @ExportMessage
-    @SuppressWarnings({"static-method"})
-    public final Class<? extends TruffleLanguage<?>> getLanguage() {
-        return LLVMLanguage.class;
+    @ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = int[].class)
+    static class ArrayAsForeignLibrary {
+        // the inherited isForeign returns false
     }
 
-    @ExportMessage
-    @TruffleBoundary
-    public final String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return toString();
-    }
 }

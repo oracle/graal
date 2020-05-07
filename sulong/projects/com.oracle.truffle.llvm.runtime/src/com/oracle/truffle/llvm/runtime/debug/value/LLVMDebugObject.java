@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 /**
@@ -647,7 +647,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
         private boolean isPointerToForeign() {
             if (value.isManagedPointer()) {
                 Object base = value.getManagedPointerBase();
-                return base instanceof LLVMTypedForeignObject;
+                return LLVMAsForeignLibrary.getFactory().getUncached().isForeign(base);
             } else {
                 return false;
             }
@@ -668,8 +668,8 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
         public Object getMemberSafe(String identifier) {
             if (FOREIGN_KEYS[0].equals(identifier)) {
                 Object base = value.getManagedPointerBase();
-                if (base instanceof LLVMTypedForeignObject) {
-                    return ((LLVMTypedForeignObject) base).getForeign();
+                if (LLVMAsForeignLibrary.getFactory().getUncached().isForeign(base)) {
+                    return LLVMAsForeignLibrary.getFactory().getUncached().asForeign(base);
                 } else {
                     return "Cannot get foreign base pointer!";
                 }
@@ -792,8 +792,9 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
             }
 
             Object obj = value.asInteropValue();
-            if (obj instanceof LLVMTypedForeignObject) {
-                obj = ((LLVMTypedForeignObject) obj).getForeign();
+
+            if (LLVMAsForeignLibrary.getFactory().getUncached().isForeign(obj)) {
+                obj = LLVMAsForeignLibrary.getFactory().getUncached().asForeign(obj);
             }
             return obj;
         }

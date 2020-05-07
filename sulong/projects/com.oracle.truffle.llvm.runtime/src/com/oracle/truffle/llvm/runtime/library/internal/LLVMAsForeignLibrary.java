@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,39 +27,39 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.interop;
+package com.oracle.truffle.llvm.runtime.library.internal;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.llvm.runtime.except.LLVMException;
 
-/**
- * Base class to mark {@link TruffleObject} implementors that are not considered foreign.
- */
-@ExportLibrary(InteropLibrary.class)
-@ExportLibrary(LLVMAsForeignLibrary.class)
-public abstract class LLVMInternalTruffleObject implements TruffleObject {
+@GenerateLibrary
+@DefaultExport(LLVMAsForeignLibraryDefaults.ArrayAsForeignLibrary.class)
+@DefaultExport(LLVMAsForeignLibraryDefaults.DefaultAsForeignLibrary.class)
+public abstract class LLVMAsForeignLibrary extends Library {
 
-    @ExportMessage
-    @SuppressWarnings({"unused", "static-method"})
-    public final boolean hasLanguage() {
-        return true;
+    static final LibraryFactory<LLVMAsForeignLibrary> FACTORY = LibraryFactory.resolve(LLVMAsForeignLibrary.class);
+
+    public static LibraryFactory<LLVMAsForeignLibrary> getFactory() {
+        return FACTORY;
     }
 
-    @ExportMessage
-    @SuppressWarnings({"static-method"})
-    public final Class<? extends TruffleLanguage<?>> getLanguage() {
-        return LLVMLanguage.class;
+    public boolean isForeign(@SuppressWarnings("unused") Object receiver) {
+        return false;
     }
 
-    @ExportMessage
-    @TruffleBoundary
-    public final String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return toString();
+    public Object asForeign(@SuppressWarnings("unused") Object receiver) {
+        throw new NotForeignObjectException();
     }
+
+    public class NotForeignObjectException extends LLVMException {
+        private static final long serialVersionUID = 3841115158039517295L;
+
+        public NotForeignObjectException() {
+            super(null);
+        }
+    }
+
 }
