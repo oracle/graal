@@ -616,7 +616,7 @@ public abstract class PartialEvaluator {
                 agnosticInlining.apply(request.graph, providers);
             } else {
                 final PEInliningPlanInvokePlugin plugin = new PEInliningPlanInvokePlugin(this, request.options, request.compilable, request.inliningPlan, request.graph);
-                doGraphPE(request, plugin, EconomicMap.create());
+                doGraphPE(request, plugin, getOrCreateEncodedGraphCache());
             }
         }
         request.debug.dump(DebugContext.BASIC_LEVEL, request.graph, "After Partial Evaluation");
