@@ -57,7 +57,7 @@ class DarwinPhysicalMemory extends PhysicalMemory {
             final int sysctlResult = Sysctl.sysctl(namePointer, 2, physicalMemoryPointer, physicalMemorySizePointer, WordFactory.nullPointer(), 0);
             if (sysctlResult != 0) {
                 Log.log().string("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(CErrorNumber.getCErrorNumber()).newline();
-                VMError.shouldNotReachHere("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size() failed.");
+                throw VMError.shouldNotReachHere("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size() failed.");
             }
             return physicalMemoryPointer.read();
         }
