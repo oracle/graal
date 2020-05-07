@@ -22,27 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management.libgraal;
+package org.graalvm.libgraal.jni.annotation;
 
-import org.graalvm.compiler.hotspot.management.LibGraalMBean;
-import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal.Id;
-import org.graalvm.libgraal.jni.JNI.JNIEnv;
-import org.graalvm.libgraal.jni.FromLibGraalUtil;
-import org.graalvm.libgraal.jni.JNI;
+final class Utilities {
 
-/**
- * Helpers for calling methods in {@link LibGraalMBean} via JNI.
- */
-final class JMXFromLibGraalUtil extends FromLibGraalUtil<Id> {
-
-    static final JMXFromLibGraalUtil INSTANCE = new JMXFromLibGraalUtil();
-
-    private JMXFromLibGraalUtil() {
-        super(Id.class);
+    private Utilities() {
     }
 
-    @Override
-    protected JNI.JClass peer(JNIEnv env) {
-        return MBeanProxy.getHotSpotEntryPoints();
+    static void encodeType(Class<?> type, StringBuilder buf) {
+        String desc;
+        if (type == boolean.class) {
+            desc = "Z";
+        } else if (type == byte.class) {
+            desc = "B";
+        } else if (type == char.class) {
+            desc = "C";
+        } else if (type == short.class) {
+            desc = "S";
+        } else if (type == int.class) {
+            desc = "I";
+        } else if (type == long.class) {
+            desc = "J";
+        } else if (type == float.class) {
+            desc = "F";
+        } else if (type == double.class) {
+            desc = "D";
+        } else if (type == void.class) {
+            desc = "V";
+        } else if (type.isArray()) {
+            buf.append('[');
+            encodeType(type.getComponentType(), buf);
+            return;
+        } else {
+            desc = "L" + type.getName().replace('.', '/') + ";";
+        }
+        buf.append(desc);
     }
 }

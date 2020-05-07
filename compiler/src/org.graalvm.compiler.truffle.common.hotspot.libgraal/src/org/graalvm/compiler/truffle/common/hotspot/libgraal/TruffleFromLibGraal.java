@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.common.hotspot.libgraal;
 
-import static org.graalvm.libgraal.jni.JNIUtil.encodeMethodSignature;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
@@ -44,7 +42,7 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan.Decision;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
-import org.graalvm.libgraal.jni.FromLibGraalId;
+import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 
 /**
  * Annotates methods associated with both ends of a libgraal to HotSpot call. This annotation
@@ -75,7 +73,6 @@ public @interface TruffleFromLibGraal {
         CancelInstalledTask(void.class, CompilableTruffleAST.class),
         CompilableToString(String.class, CompilableTruffleAST.class),
         ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, OptimizedAssumptionDependency.class),
-        CreateException(Throwable.class, String.class),
         CreateInliningPlan(TruffleInliningPlan.class, HotSpotTruffleCompilerRuntime.class, CompilableTruffleAST.class, TruffleCompilationTask.class),
         CreateStringSupplier(Supplier.class, long.class),
         FindCallNode(TruffleCallNode.class, TruffleMetaAccessProvider.class, long.class),
@@ -83,7 +80,6 @@ public @interface TruffleFromLibGraal {
         GetCallCount(int.class, TruffleCallNode.class),
         GetCallNodes(TruffleCallNode[].class, CompilableTruffleAST.class),
         GetCallTargetForCallNode(long.class, HotSpotTruffleCompilerRuntime.class, long.class),
-        GetClassName(String.class, Class.class),
         GetCompilableCallCount(int.class, CompilableTruffleAST.class),
         GetCompilableName(String.class, CompilableTruffleAST.class),
         GetConstantFieldInfo(int.class, HotSpotTruffleCompilerRuntime.class, long.class, boolean.class, int.class),
@@ -104,14 +100,8 @@ public @interface TruffleFromLibGraal {
         GetOffsetEnd(int.class, TruffleSourceLanguagePosition.class),
         GetOffsetStart(int.class, TruffleSourceLanguagePosition.class),
         GetPosition(TruffleSourceLanguagePosition.class, TruffleInliningPlan.class, long.class),
-        GetStackTrace(StackTraceElement[].class, Throwable.class),
-        GetStackTraceElementClassName(String.class, StackTraceElement.class),
-        GetStackTraceElementFileName(String.class, StackTraceElement.class),
-        GetStackTraceElementLineNumber(int.class, StackTraceElement.class),
-        GetStackTraceElementMethodName(String.class, StackTraceElement.class),
         GetSuppliedString(String.class, Supplier.class),
         GetTargetName(String.class, Decision.class),
-        GetThrowableMessage(String.class, Throwable.class),
         GetTruffleCallBoundaryMethods(long[].class, HotSpotTruffleCompilerRuntime.class),
         GetURI(String.class, TruffleSourceLanguagePosition.class),
         IsCancelled(boolean.class, TruffleCompilationTask.class),
@@ -129,8 +119,7 @@ public @interface TruffleFromLibGraal {
         OnSuccess(void.class, TruffleCompilerListener.class, CompilableTruffleAST.class, TruffleInliningPlan.class, long.class, long.class),
         OnTruffleTierFinished(void.class, TruffleCompilerListener.class, CompilableTruffleAST.class, TruffleInliningPlan.class, long.class),
         RegisterOptimizedAssumptionDependency(Consumer.class, HotSpotTruffleCompilerRuntime.class, long.class),
-        ShouldInline(boolean.class, Decision.class),
-        UpdateStackTrace(Throwable.class, Throwable.class, String[].class);
+        ShouldInline(boolean.class, Decision.class);
         // @formatter:on
 
         private final String signature;
@@ -171,7 +160,7 @@ public @interface TruffleFromLibGraal {
         Id(Class<?> returnType, Class<?>... parameterTypes) {
             this.returnType = returnType;
             this.parameterTypes = parameterTypes;
-            signature = encodeMethodSignature(returnType, parameterTypes);
+            signature = FromLibGraalId.encodeMethodSignature(returnType, parameterTypes);
             methodName = Character.toLowerCase(name().charAt(0)) + name().substring(1);
         }
     }

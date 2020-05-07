@@ -34,14 +34,12 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CancelInstalledTask;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ConsumeOptimizedAssumptionDependency;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateException;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateInliningPlan;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindDecision;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallNodes;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetClassName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetKnownCallSiteCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallTargetForCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableCallCount;
@@ -61,14 +59,8 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetEnd;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTrace;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementClassName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementFileName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementLineNumber;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementMethodName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetSuppliedString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetTargetName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetThrowableMessage;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
@@ -87,7 +79,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnTruffleTierFinished;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.RegisterOptimizedAssumptionDependency;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ShouldInline;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.UpdateStackTrace;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -308,41 +299,6 @@ final class TruffleFromLibGraalEntryPoints {
         return LibGraal.getFailedSpeculationsAddress(log);
     }
 
-    /**
-     * Updates an exception stack trace by decoding a stack trace from libgraal.
-     *
-     * @param target the {@link Throwable} to update
-     * @param rawElements the stringified stack trace elements. Each element has a form
-     *            {@code className|methodName|fileName|lineNumber}. If the fileName is missing it's
-     *            encoded as an empty string.
-     * @return the updated {@link Throwable}
-     */
-    @TruffleFromLibGraal(UpdateStackTrace)
-    static Throwable updateStackTrace(Throwable target, String[] rawElements) {
-        StackTraceElement[] elements = new StackTraceElement[rawElements.length];
-        for (int i = 0; i < rawElements.length; i++) {
-            String[] parts = rawElements[i].split("\\|");
-            String className = parts[0];
-            String methodName = parts[1];
-            String fileName = parts[2];
-            int lineNumber = Integer.parseInt(parts[3]);
-            elements[i] = new StackTraceElement(className, methodName, fileName.isEmpty() ? null : fileName, lineNumber);
-        }
-        target.setStackTrace(elements);
-        return target;
-    }
-
-    /**
-     * Creates an exception used to throw native exception into Java code.
-     *
-     * @param message the exception message
-     * @return exception
-     */
-    @TruffleFromLibGraal(CreateException)
-    static Throwable createException(String message) {
-        return new RuntimeException(message);
-    }
-
     private static JavaKind getJavaKind(int basicType) {
         JavaKind javaKind = JAVA_KINDS.get(basicType);
         if (javaKind == null) {
@@ -406,31 +362,6 @@ final class TruffleFromLibGraalEntryPoints {
         return pos.getOffsetStart();
     }
 
-    @TruffleFromLibGraal(GetStackTrace)
-    static StackTraceElement[] getStackTrace(Throwable throwable) {
-        return throwable.getStackTrace();
-    }
-
-    @TruffleFromLibGraal(GetStackTraceElementClassName)
-    static String getStackTraceElementClassName(StackTraceElement element) {
-        return element.getClassName();
-    }
-
-    @TruffleFromLibGraal(GetStackTraceElementFileName)
-    static String getStackTraceElementFileName(StackTraceElement element) {
-        return element.getFileName();
-    }
-
-    @TruffleFromLibGraal(GetStackTraceElementLineNumber)
-    static int getStackTraceElementLineNumber(StackTraceElement element) {
-        return element.getLineNumber();
-    }
-
-    @TruffleFromLibGraal(GetStackTraceElementMethodName)
-    static String getStackTraceElementMethodName(StackTraceElement element) {
-        return element.getMethodName();
-    }
-
     @TruffleFromLibGraal(GetTargetName)
     static String getTargetName(Decision decision) {
         return decision.getTargetName();
@@ -476,16 +407,6 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(ShouldInline)
     static boolean shouldInline(Decision decision) {
         return decision.shouldInline();
-    }
-
-    @TruffleFromLibGraal(GetThrowableMessage)
-    static String getThrowableMessage(Throwable t) {
-        return t.getMessage();
-    }
-
-    @TruffleFromLibGraal(GetClassName)
-    static String getClassName(Class<?> clz) {
-        return clz.getName();
     }
 
     @TruffleFromLibGraal(CancelInstalledTask)

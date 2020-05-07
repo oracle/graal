@@ -22,14 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management.libgraal.annotation;
+package org.graalvm.libgraal.jni.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 
 /**
  * Annotates methods associated with both ends of a libgraal to HotSpot call. This annotation
@@ -37,10 +36,10 @@ import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
  * {@code org.graalvm.compiler.hotspot.management.libgraal.processor.JMXFromLibGraalProcessor}
  * processor will produce a helper method for marshaling arguments and making the JNI call.
  */
-@Repeatable(JMXFromLibGraalRepeated.class)
+@Repeatable(JNIFromLibGraalRepeated.class)
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.METHOD)
-public @interface JMXFromLibGraal {
+public @interface JNIFromLibGraal {
     /**
      * Gets the token identifying a call to HotSpot from libgraal.
      */
@@ -51,8 +50,15 @@ public @interface JMXFromLibGraal {
      */
     // Please keep sorted
     enum Id implements FromLibGraalId {
-        GetFactory(Object.class),
-        Signal(void.class, Object.class, long.class);
+        CreateException(Throwable.class, String.class),
+        GetClassName(String.class, Class.class),
+        GetStackTrace(StackTraceElement[].class, Throwable.class),
+        GetStackTraceElementClassName(String.class, StackTraceElement.class),
+        GetStackTraceElementFileName(String.class, StackTraceElement.class),
+        GetStackTraceElementLineNumber(int.class, StackTraceElement.class),
+        GetStackTraceElementMethodName(String.class, StackTraceElement.class),
+        GetThrowableMessage(String.class, Throwable.class),
+        UpdateStackTrace(Throwable.class, Throwable.class, String[].class);
 
         private final String signature;
         private final String methodName;

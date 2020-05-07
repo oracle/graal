@@ -28,7 +28,6 @@ import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFro
 import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal.Id.Signal;
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callGetFactory;
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callSignal;
-import static org.graalvm.libgraal.jni.JNIUtil.createString;
 import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
 
 import java.io.DataInputStream;
@@ -54,6 +53,7 @@ import org.graalvm.compiler.hotspot.management.LibGraalMBean;
 import org.graalvm.compiler.hotspot.management.JMXFromLibGraalEntryPoints;
 import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal;
 import org.graalvm.libgraal.jni.JNI;
+import org.graalvm.libgraal.jni.JNIExceptionWrapper;
 import org.graalvm.libgraal.jni.JNIUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -349,45 +349,13 @@ class MBeanProxy<T extends DynamicMBean> {
                 return DefineClassSupport.findClass(env, classLoader, className);
             } else {
                 allowedException = required ? null : NoClassDefFoundError.class;
-                return DefineClassSupport.findClass(env, className);
+                return JNIUtil.findClass(env, className);
             }
         } finally {
             if (allowedException != null) {
-                checkException(env, "Failed to load " + className, allowedException);
+                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, allowedException);
             } else {
-                checkException(env, "Failed to load " + className);
-            }
-        }
-    }
-
-    /**
-     * Checks and clears JNI pending exception. If the pending exception type is not allowed by
-     * {@code allowedExceptions} it throws an {@link InternalError}.
-     */
-    @SafeVarargs
-    static void checkException(JNI.JNIEnv env, String message, Class<? extends Throwable>... allowedExceptions) {
-        if (JNIUtil.ExceptionCheck(env)) {
-            try {
-                JNI.JThrowable exception = JNIUtil.ExceptionOccurred(env);
-                JNIUtil.ExceptionClear(env);
-                JNI.JClass exceptionClass = JNIUtil.GetObjectClass(env, exception);
-                boolean allowed = false;
-                for (Class<? extends Throwable> allowedException : allowedExceptions) {
-                    JNI.JClass allowedExceptionClass = JMXFromLibGraalCalls.findClass(env, getBinaryName(allowedException.getName()));
-                    if (allowedExceptionClass.isNonNull() && JNIUtil.IsSameObject(env, exceptionClass, allowedExceptionClass)) {
-                        allowed = true;
-                        break;
-                    }
-                }
-                if (!allowed) {
-                    InternalError error = new InternalError(String.format("%s due to %s:%s.",
-                                    message,
-                                    createString(env, DefineClassSupport.getClassName(env, exceptionClass)),
-                                    createString(env, DefineClassSupport.getExceptionMessage(env, exception))));
-                    throw error;
-                }
-            } finally {
-                JNIUtil.ExceptionClear(env);
+                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
             }
         }
     }
@@ -415,14 +383,15 @@ class MBeanProxy<T extends DynamicMBean> {
         } finally {
             UnmanagedMemory.free(classDataPointer);
             // LinkageError is allowed, the class may be already defined
-            checkException(env, "Failed to define " + classData.binaryName, LinkageError.class);
+            JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, LinkageError.class);
         }
     }
 
     private static void registerNatives(JNI.JNIEnv env, JNI.JObject classLoader, JNI.JClass target) {
+
         JNI.JClass libgraalClass = findClassInHotSpot(env, classLoader, DefineClassSupport.CLASS_LIBGRAAL, true);
         DefineClassSupport.registerNatives(env, libgraalClass, target);
-        checkException(env, "Failed to register natives");
+        JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
     }
 
     /**

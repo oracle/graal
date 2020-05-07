@@ -22,27 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management.libgraal;
+package org.graalvm.libgraal.jni.annotation;
 
-import org.graalvm.compiler.hotspot.management.LibGraalMBean;
-import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal.Id;
-import org.graalvm.libgraal.jni.JNI.JNIEnv;
-import org.graalvm.libgraal.jni.FromLibGraalUtil;
-import org.graalvm.libgraal.jni.JNI;
+public interface FromLibGraalId {
 
-/**
- * Helpers for calling methods in {@link LibGraalMBean} via JNI.
- */
-final class JMXFromLibGraalUtil extends FromLibGraalUtil<Id> {
+    String getName();
 
-    static final JMXFromLibGraalUtil INSTANCE = new JMXFromLibGraalUtil();
+    String getSignature();
 
-    private JMXFromLibGraalUtil() {
-        super(Id.class);
-    }
+    String getMethodName();
 
-    @Override
-    protected JNI.JClass peer(JNIEnv env) {
-        return MBeanProxy.getHotSpotEntryPoints();
+    Class<?>[] getParameterTypes();
+
+    Class<?> getReturnType();
+
+    /**
+     * Creates a JVM method signature as specified in the Sections 4.3.3 of the JVM Specification.
+     */
+    static String encodeMethodSignature(Class<?> returnType, Class<?>... parameterTypes) {
+        StringBuilder builder = new StringBuilder("(");
+        for (Class<?> type : parameterTypes) {
+            Utilities.encodeType(type, builder);
+        }
+        builder.append(")");
+        Utilities.encodeType(returnType, builder);
+        return builder.toString();
     }
 }

@@ -32,7 +32,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
 
-import org.graalvm.libgraal.jni.FromLibGraalId;
+import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 import org.graalvm.libgraal.jni.processor.AbstractFromLibGraalProcessor;
 
 /**

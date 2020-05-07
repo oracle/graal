@@ -51,8 +51,7 @@ import javax.lang.model.util.ElementFilter;
 import javax.tools.JavaFileObject;
 
 import org.graalvm.compiler.processor.AbstractProcessor;
-import org.graalvm.libgraal.jni.FromLibGraalId;
-import org.graalvm.libgraal.jni.FromLibGraalUtil;
+import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 
 /**
  * Base class for an annotation processor that generates code to push JNI arguments to the stack and
@@ -68,7 +67,7 @@ public abstract class AbstractFromLibGraalProcessor extends AbstractProcessor {
     protected abstract FromLibGraalId resolveId(String idName);
 
     /**
-     * Returns a code snippet to access a {@link FromLibGraalUtil} instance.
+     * Returns a code snippet to access a {@code FromLibGraalUtil} instance.
      */
     protected abstract String getFromLibGraalUtilInstanceAccess();
 

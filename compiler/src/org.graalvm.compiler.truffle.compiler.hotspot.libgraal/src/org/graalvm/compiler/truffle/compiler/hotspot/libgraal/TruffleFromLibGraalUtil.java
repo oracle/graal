@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
-
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
 import org.graalvm.libgraal.jni.FromLibGraalUtil;
@@ -55,10 +53,5 @@ final class TruffleFromLibGraalUtil extends FromLibGraalUtil<Id> {
             fromLibGraalEntryPointsPeer = getJNIClass(env, FROM_LIBGRAAL_ENTRY_POINTS_CLASS_NAME);
         }
         return fromLibGraalEntryPointsPeer;
-    }
-
-    @Override
-    protected void handlePendingJNIException(JNIEnv env) {
-        wrapAndThrowPendingJNIException(env);
     }
 }

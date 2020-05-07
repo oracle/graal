@@ -24,7 +24,9 @@
  */
 package org.graalvm.libgraal.jni;
 
-import static org.graalvm.libgraal.jni.JNIUtil.FindClass;
+import static org.graalvm.libgraal.jni.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
+
+import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 import static org.graalvm.libgraal.jni.JNIUtil.GetStaticMethodID;
 import static org.graalvm.libgraal.jni.JNIUtil.NewGlobalRef;
 import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
@@ -49,6 +51,7 @@ import org.graalvm.libgraal.jni.JNI.JMethodID;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
 import org.graalvm.libgraal.jni.JNI.JObject;
 import org.graalvm.libgraal.jni.JNI.JValue;
+import org.graalvm.libgraal.jni.annotation.JNIFromLibGraal;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
 /**
@@ -59,7 +62,8 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
     private static final Map<String, JNIClass> classes = new ConcurrentHashMap<>();
     /**
      * Prevents recursion when an exception happens in {@link #getJNIClass} or {@link #getJNIMethod}
-     * called from {@link #handlePendingJNIException(org.graalvm.libgraal.jni.JNI.JNIEnv) }.
+     * called from
+     * {@link JNIExceptionWrapper#wrapAndThrowPendingJNIException(org.graalvm.libgraal.jni.JNI.JNIEnv, java.lang.Class...)}.
      */
     private static final ThreadLocal<Boolean> inExceptionHandler = new ThreadLocal<>();
 
@@ -70,8 +74,6 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
     }
 
     protected abstract JClass peer(JNIEnv env);
-
-    protected abstract void handlePendingJNIException(JNIEnv env);
 
     /**
      * Describes a class and holds a reference to its {@linkplain #jclass JNI value}.
@@ -109,7 +111,7 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
         JNIMethod<T> method = getJNIMethod(env, id, void.class);
         traceCall(id);
         env.getFunctions().getCallStaticVoidMethodA().call(env, peer(env), method.jniId, args);
-        handlePendingJNIException(env);
+        wrapAndThrowPendingJNIException(env);
     }
 
     @HotSpotCall
@@ -117,7 +119,7 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
         JNIMethod<T> method = getJNIMethod(env, id, boolean.class);
         traceCall(id);
         boolean res = env.getFunctions().getCallStaticBooleanMethodA().call(env, peer(env), method.jniId, args);
-        handlePendingJNIException(env);
+        wrapAndThrowPendingJNIException(env);
         return res;
     }
 
@@ -126,7 +128,7 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
         JNIMethod<T> method = getJNIMethod(env, id, long.class);
         traceCall(id);
         long res = env.getFunctions().getCallStaticLongMethodA().call(env, peer(env), method.jniId, args);
-        handlePendingJNIException(env);
+        wrapAndThrowPendingJNIException(env);
         return res;
     }
 
@@ -135,7 +137,7 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
         JNIMethod<T> method = getJNIMethod(env, id, int.class);
         traceCall(id);
         int res = env.getFunctions().getCallStaticIntMethodA().call(env, peer(env), method.jniId, args);
-        handlePendingJNIException(env);
+        wrapAndThrowPendingJNIException(env);
         return res;
     }
 
@@ -145,18 +147,18 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
         JNIMethod<T> method = getJNIMethod(env, id, Object.class);
         traceCall(id);
         JObject res = env.getFunctions().getCallStaticObjectMethodA().call(env, peer(env), method.jniId, args);
-        handlePendingJNIException(env);
+        wrapAndThrowPendingJNIException(env);
         return (R) res;
     }
 
-    public final JClass getJNIClass(JNIEnv env, Class<?> clazz) {
+    public static JClass getJNIClass(JNIEnv env, Class<?> clazz) {
         if (clazz.isArray()) {
             throw new UnsupportedOperationException("Array classes are not supported");
         }
         return getJNIClassImpl(env, clazz.getName()).jclass;
     }
 
-    public final JClass getJNIClass(JNIEnv env, String className) {
+    public static JClass getJNIClass(JNIEnv env, String className) {
         return getJNIClassImpl(env, className).jclass;
     }
 
@@ -164,25 +166,23 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
         trace(1, "LIBGRAAL->HS: %s", id);
     }
 
-    private JNIClass getJNIClassImpl(JNIEnv env, String className) {
+    private static JNIClass getJNIClassImpl(JNIEnv env, String className) {
         try {
             return classes.computeIfAbsent(className, new Function<String, JNIClass>() {
                 @Override
                 public JNIClass apply(String name) {
-                    try (CCharPointerHolder cName = toCString(getBinaryName(name))) {
-                        JClass clazz = FindClass(env, cName.get());
-                        if (clazz.isNull()) {
-                            throw new InternalError("Cannot load class: " + name);
-                        }
-                        return new JNIClass(name, NewGlobalRef(env, clazz, "Class<" + name + ">"));
+                    JClass clazz = JNIUtil.findClass(env, getBinaryName(name));
+                    if (clazz.isNull()) {
+                        throw new InternalError("Cannot load class: " + name);
                     }
+                    return new JNIClass(name, NewGlobalRef(env, clazz, "Class<" + name + ">"));
                 }
             });
         } catch (InternalError ie) {
             if (inExceptionHandler.get() != Boolean.TRUE) {
                 inExceptionHandler.set(true);
                 try {
-                    handlePendingJNIException(env);
+                    wrapAndThrowPendingJNIException(env);
                 } finally {
                     inExceptionHandler.remove();
                 }
@@ -212,7 +212,7 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
             if (inExceptionHandler.get() != Boolean.TRUE) {
                 inExceptionHandler.set(true);
                 try {
-                    handlePendingJNIException(env);
+                    wrapAndThrowPendingJNIException(env);
                 } finally {
                     inExceptionHandler.remove();
                 }
@@ -272,4 +272,22 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
         }
         HotSpotCallNames = Collections.unmodifiableSet(entryPoints.keySet());
     }
+
+    static final FromLibGraalUtil<JNIFromLibGraal.Id> INSTANCE = new FromLibGraalUtil<JNIFromLibGraal.Id>(JNIFromLibGraal.Id.class) {
+
+        /**
+         * Name of the class in the HotSpot heap to which the calls are made via JNI.
+         */
+        private static final String FROM_LIBGRAAL_ENTRY_POINTS_CLASS_NAME = "org.graalvm.libgraal.jni.FromLibGraalEntryPoints";
+
+        private volatile JNI.JClass fromLibGraalEntryPointsPeer;
+
+        @Override
+        protected JClass peer(JNIEnv env) {
+            if (fromLibGraalEntryPointsPeer.isNull()) {
+                fromLibGraalEntryPointsPeer = getJNIClass(env, FROM_LIBGRAAL_ENTRY_POINTS_CLASS_NAME);
+            }
+            return fromLibGraalEntryPointsPeer;
+        }
+    };
 }

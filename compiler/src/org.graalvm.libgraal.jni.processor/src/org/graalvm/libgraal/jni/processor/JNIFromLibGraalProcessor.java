@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor;
+package org.graalvm.libgraal.jni.processor;
 
+import org.graalvm.libgraal.jni.annotation.JNIFromLibGraal;
+import org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id;
 import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
-import org.graalvm.libgraal.jni.processor.AbstractFromLibGraalProcessor;
 
 /**
- * Processor for the {@link TruffleFromLibGraal} annotation that generates code to push JNI
- * arguments to the stack and make a JNI call corresponding to a
- * {@link org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id}. This helps
- * mitigate bugs where incorrect arguments are pushed for a JNI call. Given the low level nature of
+ * Processor for the {@link JNIFromLibGraal} annotation that generates code to push JNI arguments to
+ * the stack and make a JNI call corresponding to a {@link Id}. This helps mitigate bugs where
+ * incorrect arguments are pushed for a JNI call. Given the low level nature of
  * {@code org.graalvm.nativeimage.StackValue}, it's very hard to use runtime assertion checking.
  */
-@SupportedAnnotationTypes({
-                "org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal",
-                "org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraalRepeated"})
-public class TruffleFromLibGraalProcessor extends AbstractFromLibGraalProcessor {
+@SupportedAnnotationTypes({"org.graalvm.libgraal.jni.annotation.JNIFromLibGraal",
+                "org.graalvm.libgraal.jni.annotation.JNIFromLibGraalRepeated"})
+public class JNIFromLibGraalProcessor extends AbstractFromLibGraalProcessor {
 
     @Override
     protected FromLibGraalId resolveId(String idName) {
-        return Id.valueOf(idName);
+        return JNIFromLibGraal.Id.valueOf(idName);
     }
 
     @Override
     protected String getFromLibGraalUtilInstanceAccess() {
-        return "TruffleFromLibGraalUtil.INSTANCE";
+        return "FromLibGraalUtil.INSTANCE";
+    }
+
+    @Override
+    protected boolean accept(ExecutableElement annotatedElement) {
+        Element owner = annotatedElement.getEnclosingElement();
+        return owner != null && !((TypeElement) owner).getQualifiedName().contentEquals("org.graalvm.libgraal.jni.FromLibGraalEntryPoints");
     }
 }

@@ -22,17 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.libgraal.jni;
+package org.graalvm.libgraal.jni.annotation;
 
-public interface FromLibGraalId {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    String getName();
-
-    String getSignature();
-
-    String getMethodName();
-
-    Class<?>[] getParameterTypes();
-
-    Class<?> getReturnType();
+/**
+ * Container for repeated {@link JNIFromLibGraal} annotations.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface JNIFromLibGraalRepeated {
+    JNIFromLibGraal[] value();
 }

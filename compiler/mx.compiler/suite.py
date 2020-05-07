@@ -440,11 +440,24 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.debug",
+        "org.graalvm.libgraal.jni.annotation",
         "sdk:GRAAL_SDK",
+      ],
+      "annotationProcessors" : [
+        "GRAAL_LIBGRAAL_PROCESSOR",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,11+",
       "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.libgraal.jni.annotation" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8,11+",
+      "workingSets" : "Graal",
     },
 
     "org.graalvm.libgraal.jni.processor" : {
@@ -452,7 +465,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.processor",
-        "org.graalvm.libgraal.jni",
+        "org.graalvm.libgraal.jni.annotation",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,11+",
@@ -679,7 +692,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.libgraal.jni",
+        "org.graalvm.libgraal.jni.annotation",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,11+",
@@ -2261,10 +2274,16 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_LIBGRAAL_ANNOTATION" : {
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.libgraal.jni.annotation"],
+      "maven": False,
+    },
+
     "GRAAL_LIBGRAAL_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.libgraal.jni.processor"],
-      "distDependencies" : ["GRAAL_PROCESSOR", "GRAAL"],
+      "distDependencies" : ["GRAAL_PROCESSOR", "GRAAL_LIBGRAAL_ANNOTATION"],
       "maven": False,
     },
 
@@ -2278,7 +2297,7 @@ suite = {
     "GRAAL_MANAGEMENT_LIBGRAAL_ANNOTATION" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.hotspot.management.libgraal.annotation"],
-      "distDependencies" : ["GRAAL"],
+      "distDependencies" : ["GRAAL_LIBGRAAL_ANNOTATION"],
       "maven": False,
     },
 

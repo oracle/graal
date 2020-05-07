@@ -22,27 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
+package org.graalvm.libgraal.jni;
 
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateException;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetClassName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTrace;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementClassName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementFileName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementLineNumber;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetStackTraceElementMethodName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetThrowableMessage;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.UpdateStackTrace;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callCreateException;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetClassName;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetStackTrace;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetStackTraceElementClassName;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetStackTraceElementFileName;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetStackTraceElementLineNumber;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetStackTraceElementMethodName;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetThrowableMessage;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callUpdateStackTrace;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleFromLibGraalUtil.isHotSpotCall;
+import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.CreateException;
+import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetClassName;
+import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetStackTrace;
+import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetStackTraceElementClassName;
+import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetStackTraceElementFileName;
+import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetStackTraceElementLineNumber;
+import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetStackTraceElementMethodName;
+import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetThrowableMessage;
+import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.UpdateStackTrace;
+import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callCreateException;
+import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callGetClassName;
+import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callGetStackTrace;
+import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callGetStackTraceElementClassName;
+import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callGetStackTraceElementFileName;
+import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callGetStackTraceElementLineNumber;
+import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callGetStackTraceElementMethodName;
+import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callGetThrowableMessage;
+import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callUpdateStackTrace;
+import static org.graalvm.libgraal.jni.FromLibGraalUtil.isHotSpotCall;
 import static org.graalvm.libgraal.jni.JNIUtil.ExceptionCheck;
 import static org.graalvm.libgraal.jni.JNIUtil.ExceptionClear;
 import static org.graalvm.libgraal.jni.JNIUtil.ExceptionDescribe;
@@ -55,6 +55,8 @@ import static org.graalvm.libgraal.jni.JNIUtil.SetObjectArrayElement;
 import static org.graalvm.libgraal.jni.JNIUtil.Throw;
 import static org.graalvm.libgraal.jni.JNIUtil.createHSString;
 import static org.graalvm.libgraal.jni.JNIUtil.createString;
+import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
+import static org.graalvm.libgraal.jni.JNIUtil.findClass;
 
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.libgraal.jni.JNI.JClass;
@@ -63,16 +65,14 @@ import org.graalvm.libgraal.jni.JNI.JObject;
 import org.graalvm.libgraal.jni.JNI.JObjectArray;
 import org.graalvm.libgraal.jni.JNI.JString;
 import org.graalvm.libgraal.jni.JNI.JThrowable;
-import org.graalvm.libgraal.jni.JNIUtil;
 import org.graalvm.word.WordFactory;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
+import org.graalvm.libgraal.jni.annotation.JNIFromLibGraal;
 
 /**
  * Wraps an exception thrown by a JNI call into HotSpot. If the exception propagates up to an
- * {@link TruffleToLibGraal} entry point, the exception is re-thrown in HotSpot.
+ * libgraal entry point, the exception is re-thrown in HotSpot.
  */
-final class JNIExceptionWrapper extends RuntimeException {
+public final class JNIExceptionWrapper extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
@@ -128,14 +128,26 @@ final class JNIExceptionWrapper extends RuntimeException {
      * {@link JNIExceptionWrapper} message is composed of the JNI exception class name and the JNI
      * exception message
      */
-    static void wrapAndThrowPendingJNIException(JNIEnv env) {
+    @SafeVarargs
+    public static void wrapAndThrowPendingJNIException(JNIEnv env, Class<? extends Throwable>... allowedExceptions) {
         if (ExceptionCheck(env)) {
             JThrowable exception = ExceptionOccurred(env);
             if (JNIUtil.tracingAt(1) && exception.isNonNull()) {
                 ExceptionDescribe(env);
             }
             ExceptionClear(env);
-            throw new JNIExceptionWrapper(env, exception);
+            JNI.JClass exceptionClass = JNIUtil.GetObjectClass(env, exception);
+            boolean allowed = false;
+            for (Class<? extends Throwable> allowedException : allowedExceptions) {
+                JNI.JClass allowedExceptionClass = findClass(env, getBinaryName(allowedException.getName()));
+                if (allowedExceptionClass.isNonNull() && JNIUtil.IsSameObject(env, exceptionClass, allowedExceptionClass)) {
+                    allowed = true;
+                    break;
+                }
+            }
+            if (!allowed) {
+                throw new JNIExceptionWrapper(env, exception);
+            }
         }
     }
 
@@ -152,8 +164,8 @@ final class JNIExceptionWrapper extends RuntimeException {
      * @param env the {@link JNIEnv}
      * @param original an exception to be thrown in HotSpot
      */
-    @TruffleFromLibGraal(CreateException)
-    static void throwInHotSpot(JNIEnv env, Throwable original) {
+    @JNIFromLibGraal(CreateException)
+    public static void throwInHotSpot(JNIEnv env, Throwable original) {
         if (JNIUtil.tracingAt(1)) {
             original.printStackTrace(TTY.out);
         }
@@ -241,11 +253,11 @@ final class JNIExceptionWrapper extends RuntimeException {
      * @param throwableHandle the JNI exception to get the stack trace from
      * @return the stack trace
      */
-    @TruffleFromLibGraal(GetStackTrace)
-    @TruffleFromLibGraal(GetStackTraceElementClassName)
-    @TruffleFromLibGraal(GetStackTraceElementMethodName)
-    @TruffleFromLibGraal(GetStackTraceElementFileName)
-    @TruffleFromLibGraal(GetStackTraceElementLineNumber)
+    @JNIFromLibGraal(GetStackTrace)
+    @JNIFromLibGraal(GetStackTraceElementClassName)
+    @JNIFromLibGraal(GetStackTraceElementMethodName)
+    @JNIFromLibGraal(GetStackTraceElementFileName)
+    @JNIFromLibGraal(GetStackTraceElementLineNumber)
     private static StackTraceElement[] getJNIExceptionStackTrace(JNIEnv env, JObject throwableHandle) {
         JObjectArray elements = callGetStackTrace(env, throwableHandle);
         int len = GetArrayLength(env, elements);
@@ -266,16 +278,16 @@ final class JNIExceptionWrapper extends RuntimeException {
      */
     private static boolean containsHotSpotCall(StackTraceElement[] stackTrace) {
         for (StackTraceElement e : stackTrace) {
-            if (TruffleFromLibGraalUtil.isHotSpotCall(e)) {
+            if (FromLibGraalUtil.isHotSpotCall(e)) {
                 return true;
             }
         }
         return false;
     }
 
-    @TruffleFromLibGraal(UpdateStackTrace)
+    @JNIFromLibGraal(UpdateStackTrace)
     private static JThrowable updateStackTrace(JNIEnv env, JThrowable throwableHandle, String[] encodedStackTrace) {
-        JClass string = TruffleFromLibGraalUtil.INSTANCE.getJNIClass(env, String.class);
+        JClass string = FromLibGraalUtil.getJNIClass(env, String.class);
         JObjectArray stackTraceHandle = NewObjectArray(env, encodedStackTrace.length, string, WordFactory.nullPointer());
         for (int i = 0; i < encodedStackTrace.length; i++) {
             JString element = createHSString(env, encodedStackTrace[i]);
@@ -284,13 +296,13 @@ final class JNIExceptionWrapper extends RuntimeException {
         return callUpdateStackTrace(env, throwableHandle, stackTraceHandle);
     }
 
-    @TruffleFromLibGraal(GetThrowableMessage)
+    @JNIFromLibGraal(GetThrowableMessage)
     private static String getMessage(JNIEnv env, JThrowable throwableHandle) {
         JString message = callGetThrowableMessage(env, throwableHandle);
         return createString(env, message);
     }
 
-    @TruffleFromLibGraal(GetClassName)
+    @JNIFromLibGraal(GetClassName)
     private static String getClassName(JNIEnv env, JThrowable throwableHandle) {
         JClass classHandle = GetObjectClass(env, throwableHandle);
         JString className = callGetClassName(env, classHandle);
@@ -307,13 +319,14 @@ final class JNIExceptionWrapper extends RuntimeException {
 
     /**
      * Gets the index of the first frame denoting the caller of
-     * {@link #wrapAndThrowPendingJNIException(JNIEnv)} in {@code stackTrace}.
+     * {@link #wrapAndThrowPendingJNIException(org.graalvm.libgraal.jni.JNI.JNIEnv, java.lang.Class...)}
+     * in {@code stackTrace}.
      *
      * @returns {@code 0} if no caller found
      */
     private static int getIndexOfPropagateJNIExceptionFrame(StackTraceElement[] stackTrace) {
         for (int i = 0; i < stackTrace.length; i++) {
-            if (isStackFrame(stackTrace[i], TruffleFromLibGraalUtil.class, "handlePendingJNIException")) {
+            if (isStackFrame(stackTrace[i], JNIExceptionWrapper.class, "wrapAndThrowPendingJNIException")) {
                 return i + 1;
             }
         }
