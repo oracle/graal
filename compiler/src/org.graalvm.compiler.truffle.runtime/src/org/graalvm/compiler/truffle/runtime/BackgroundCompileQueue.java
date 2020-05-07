@@ -105,8 +105,8 @@ public class BackgroundCompileQueue {
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
             BlockingQueue<Runnable> queue = onIdleDelayed != null
-                    ? new IdlingPriorityBlockingQueue<>()
-                    : new PriorityBlockingQueue<>();
+                            ? new IdlingPriorityBlockingQueue<>()
+                            : new PriorityBlockingQueue<>();
 
             ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
@@ -274,21 +274,20 @@ public class BackgroundCompileQueue {
         }
     }
 
-
-    @SuppressWarnings("rawtypes")
-    private static final AtomicLongFieldUpdater<IdlingPriorityBlockingQueue> LATEST_EVENT_MILLIS_UPDATER =
-            AtomicLongFieldUpdater.newUpdater(IdlingPriorityBlockingQueue.class, "latestEventMillis");
+    @SuppressWarnings("rawtypes") private static final AtomicLongFieldUpdater<IdlingPriorityBlockingQueue> LATEST_EVENT_MILLIS_UPDATER = AtomicLongFieldUpdater.newUpdater(
+                    IdlingPriorityBlockingQueue.class, "latestEventMillis");
 
     /**
      * {@link PriorityBlockingQueue} with (delayed) idling notification.
      *
      * <p>
-     * The idling notification is triggered when a compiler thread remains idle more than {@code delayMillis}.
-     * Exactly one notification will be triggered, periodically, every {@code delayMillis} if there are idle threads.
+     * The idling notification is triggered when a compiler thread remains idle more than
+     * {@code delayMillis}. Exactly one notification will be triggered, periodically, every
+     * {@code delayMillis} if there are idle threads.
      *
-     * There are no guarantees on which thread will run the {@code onIdleDelayed} hook.
-     * Note that, starved threads can also trigger the notification, even if the compile queue is not idle during the
-     * delay period, the idling criteria thread-based, not queue-based.
+     * There are no guarantees on which thread will run the {@code onIdleDelayed} hook. Note that,
+     * starved threads can also trigger the notification, even if the compile queue is not idle
+     * during the delay period, the idling criteria thread-based, not queue-based.
      */
     private final class IdlingPriorityBlockingQueue<E> extends PriorityBlockingQueue<E> {
 
@@ -301,8 +300,7 @@ public class BackgroundCompileQueue {
 
             assert onIdleDelayed != null;
             assert compilationExecutorService instanceof ThreadPoolExecutor &&
-                    !((ThreadPoolExecutor) compilationExecutorService).allowsCoreThreadTimeOut()
-                    : "idling notification does not support dynamically sized thread pools";
+                            !((ThreadPoolExecutor) compilationExecutorService).allowsCoreThreadTimeOut() : "idling notification does not support dynamically sized thread pools";
 
             while (true) {
                 E elem = poll(delayMillis, TimeUnit.MILLISECONDS);

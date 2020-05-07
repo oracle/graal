@@ -179,12 +179,12 @@ public abstract class PartialEvaluator {
 
     private Map<ResolvedJavaMethod, EncodedGraph> createEncodedGraphMap() {
         if (encodedGraphCacheCapacity < 0) {
-            // Unbounded cache. 
+            // Unbounded cache.
             return new ConcurrentHashMap<>();
         }
 
         // Access-based LRU bounded cache. The overhead of the synchronized map is negligible
-	// compared to the cost of re-parsing the graphs.
+        // compared to the cost of re-parsing the graphs.
         return Collections.synchronizedMap(
                         new LinkedHashMap<ResolvedJavaMethod, EncodedGraph>(16, 0.75f, true) {
                             @Override
