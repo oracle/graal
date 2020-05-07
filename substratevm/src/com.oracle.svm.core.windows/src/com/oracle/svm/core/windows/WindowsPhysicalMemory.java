@@ -40,11 +40,6 @@ class WindowsPhysicalMemory extends PhysicalMemory {
     static class WindowsPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
         @Override
-        public boolean hasSize() {
-            return true;
-        }
-
-        @Override
         public UnsignedWord size() {
             SysinfoAPI.MEMORYSTATUSEX memStatusEx = StackValue.get(SysinfoAPI.MEMORYSTATUSEX.class);
             memStatusEx.set_dwLength(SizeOf.get(SysinfoAPI.MEMORYSTATUSEX.class));

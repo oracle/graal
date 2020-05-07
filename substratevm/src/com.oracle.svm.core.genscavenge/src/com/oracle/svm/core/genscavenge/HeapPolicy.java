@@ -191,8 +191,8 @@ public final class HeapPolicy {
          * If the physical size is known yet, the maximum size of the heap is a fraction of the size
          * of the physical memory.
          */
-        if (PhysicalMemory.hasSize()) {
-            UnsignedWord physicalMemorySize = PhysicalMemory.size();
+        if (PhysicalMemory.isInitialized()) {
+            UnsignedWord physicalMemorySize = PhysicalMemory.getCachedSize();
             int maximumHeapSizePercent = getMaximumHeapSizePercent();
             /* Do not cache because `-Xmx` option parsing may not have happened yet. */
             return physicalMemorySize.unsignedDivide(100).multiply(maximumHeapSizePercent);
@@ -386,7 +386,7 @@ public final class HeapPolicy {
     static void samplePhysicalMemorySize() {
         if (HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch().equal(WordFactory.zero()) &&
                         getYoungUsedBytes().aboveThan(getAllocationBeforePhysicalMemorySize())) {
-            PhysicalMemory.size();
+            PhysicalMemory.tryInitialize();
         }
     }
 }

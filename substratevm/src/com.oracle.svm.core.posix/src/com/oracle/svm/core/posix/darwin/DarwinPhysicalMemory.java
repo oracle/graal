@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
@@ -46,48 +45,21 @@ class DarwinPhysicalMemory extends PhysicalMemory {
 
     static class PhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
-        /** A sentinel unset value. */
-        static final long UNSET_SENTINEL = Long.MIN_VALUE;
-
-        /** The cached size of physical memory, or an unset value. */
-        long cachedSize = UNSET_SENTINEL;
-
         @Override
         public UnsignedWord size() {
-            if (hasSize()) {
-                return getSize();
-            }
-            final CIntPointer namePointer = StackValue.get(2, CIntPointer.class);
+            CIntPointer namePointer = StackValue.get(2, CIntPointer.class);
             namePointer.write(0, DarwinSysctl.CTL_HW());
             namePointer.write(1, DarwinSysctl.HW_MEMSIZE());
-            final CLongPointer physicalMemoryPointer = StackValue.get(CLongPointer.class);
-            final CLongPointer physicalMemorySizePointer = StackValue.get(CLongPointer.class);
-            physicalMemorySizePointer.write(SizeOf.get(CLongPointer.class));
-            final int sysctlResult = Sysctl.sysctl(namePointer, 2, physicalMemoryPointer, (WordPointer) physicalMemorySizePointer, WordFactory.nullPointer(), 0);
+
+            WordPointer physicalMemoryPointer = StackValue.get(WordPointer.class);
+            WordPointer physicalMemorySizePointer = StackValue.get(WordPointer.class);
+            physicalMemorySizePointer.write(SizeOf.unsigned(WordPointer.class));
+            final int sysctlResult = Sysctl.sysctl(namePointer, 2, physicalMemoryPointer, physicalMemorySizePointer, WordFactory.nullPointer(), 0);
             if (sysctlResult != 0) {
                 Log.log().string("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(CErrorNumber.getCErrorNumber()).newline();
                 VMError.shouldNotReachHere("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size() failed.");
             }
-            /* Cache the value, races are idempotent. */
-            setSize(physicalMemoryPointer.read());
-            return getSize();
-        }
-
-        /** Check if the cache has a value. */
-        @Override
-        public boolean hasSize() {
-            return (cachedSize != UNSET_SENTINEL);
-        }
-
-        /** Update the cached size. */
-        void setSize(long value) {
-            cachedSize = value;
-        }
-
-        /** Get the cached size. */
-        UnsignedWord getSize() {
-            assert hasSize() : "DarwinPhysicalMemory.PhysicalMemorySupportImpl.getValue(): cachedSize has no value.";
-            return WordFactory.unsigned(cachedSize);
+            return physicalMemoryPointer.read();
         }
     }
 
