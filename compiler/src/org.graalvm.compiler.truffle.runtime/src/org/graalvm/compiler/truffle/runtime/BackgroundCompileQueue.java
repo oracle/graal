@@ -80,6 +80,11 @@ public class BackgroundCompileQueue {
             }
 
             // NOTE: The value from the first Engine compiling wins for now
+            int capacity = callTarget.getOptionValue(PolyglotCompilerOptions.EncodedGraphCacheCapacity);
+            if (capacity == 0) {
+                // Shared cache across compilations is disabled.
+                onIdleDelayed = null;
+            }
             int delaySeconds = callTarget.getOptionValue(PolyglotCompilerOptions.EncodedGraphCachePurgeDelay);
             this.delayMillis = TimeUnit.SECONDS.toMillis(delaySeconds);
 

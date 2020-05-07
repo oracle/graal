@@ -357,4 +357,9 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             this.compilable = compilable;
         }
     }
+
+    @Override
+    public void purgeCaches() {
+        partialEvaluator.purgeEncodedGraphCache();
+    }
 }

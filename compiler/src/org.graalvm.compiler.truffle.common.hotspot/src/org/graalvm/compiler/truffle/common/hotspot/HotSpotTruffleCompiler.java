@@ -37,4 +37,9 @@ public interface HotSpotTruffleCompiler extends TruffleCompiler {
     void installTruffleCallBoundaryMethods();
 
     int pendingTransferToInterpreterOffset();
+
+    /**
+     * Release caches used to speed PE/compilation.
+     */
+    void purgeCaches();
 }
