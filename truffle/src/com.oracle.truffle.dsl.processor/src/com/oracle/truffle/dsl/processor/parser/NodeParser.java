@@ -176,12 +176,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     public static List<TypeMirror> getCachedAnnotations() {
-        ProcessorContext localContext = ProcessorContext.getInstance();
-        TypeMirror cacheAnnotation = localContext.getTypes().Cached;
-        TypeMirror cachedLibraryAnnotation = localContext.getTypes().CachedLibrary;
-        TypeMirror cachedContextAnnotation = localContext.getTypes().CachedContext;
-        TypeMirror cachedLanguageAnnotation = localContext.getTypes().CachedLanguage;
-        return Arrays.asList(cacheAnnotation, cachedLibraryAnnotation, cachedContextAnnotation, cachedLanguageAnnotation);
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
+        return Arrays.asList(types.Cached, types.CachedLibrary, types.CachedContext, types.CachedLanguage, types.Extract);
     }
 
     public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
@@ -2129,6 +2125,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cache.setLanguageType(languageType);
                 cache.setDefaultExpression(resolveCachedExpression(resolver, cache, null, accessReference, null));
                 cache.setUncachedExpression(resolveCachedExpression(resolver, cache, null, accessReference, null));
+                cache.setAlwaysInitialized(true);
+            } else if (cache.isExtract()) {
+                AnnotationMirror dynamic = cache.getMessageAnnotation();
+                String expression = ElementUtils.getAnnotationValue(String.class, dynamic, "value", false);
+
+                DSLExpression parsedExpression = parseCachedExpression(resolver, cache, parameter.getType(), expression);
+                cache.setDefaultExpression(parsedExpression);
+                cache.setUncachedExpression(parsedExpression);
                 cache.setAlwaysInitialized(true);
             }
         }

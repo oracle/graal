@@ -64,8 +64,8 @@ public final class CacheExpression extends MessageContainer {
     private int dimensions = -1;
     private DSLExpression defaultExpression;
     private DSLExpression uncachedExpression;
-    private boolean alwaysInitialized = false;
-    private boolean eagerInitialize = false;
+    private boolean alwaysInitialized;
+    private boolean eagerInitialize;
     private Message uncachedExpressionError;
     private boolean requiresBoundary;
     private String sharedGroup;
@@ -187,6 +187,10 @@ public final class CacheExpression extends MessageContainer {
 
     public boolean isCached() {
         return isType(types.Cached);
+    }
+
+    public boolean isExtract() {
+        return isType(types.Extract);
     }
 
     public boolean isCachedLibrary() {
