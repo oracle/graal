@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import java.lang.ref.WeakReference;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.FutureTask;
@@ -35,6 +36,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
@@ -55,8 +57,13 @@ public class BackgroundCompileQueue {
     private boolean shutdown = false;
     protected final GraalTruffleRuntime runtime;
 
-    public BackgroundCompileQueue(GraalTruffleRuntime runtime) {
+
+    private Runnable onIdleDelayed;
+    private long delayMillis;
+
+    public BackgroundCompileQueue(GraalTruffleRuntime runtime, Runnable onIdleDelayed) {
         this.runtime = runtime;
+        this.onIdleDelayed = onIdleDelayed;
         this.idCounter = new AtomicLong();
     }
 
@@ -71,6 +78,10 @@ public class BackgroundCompileQueue {
             if (shutdown) {
                 throw new RejectedExecutionException("The BackgroundCompileQueue is shutdown");
             }
+
+            // NOTE: The value from the first Engine compiling wins for now
+            int delaySeconds = callTarget.getOptionValue(PolyglotCompilerOptions.EncodedGraphCachePurgeDelay);
+            this.delayMillis = TimeUnit.SECONDS.toMillis(delaySeconds);
 
             // NOTE: the value from the first Engine compiling wins for now
             int threads = callTarget.getOptionValue(PolyglotCompilerOptions.CompilerThreads);
@@ -87,6 +98,11 @@ public class BackgroundCompileQueue {
 
             long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
+
+            BlockingQueue<Runnable> queue = onIdleDelayed != null
+                    ? new IdlingPriorityBlockingQueue<>()
+                    : new PriorityBlockingQueue<>();
+
             ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
                             new PriorityBlockingQueue<>(), factory) {
@@ -250,6 +266,52 @@ public class BackgroundCompileQueue {
             t.setPriority(Thread.MAX_PRIORITY);
             t.setDaemon(true);
             return t;
+        }
+    }
+
+
+    @SuppressWarnings("rawtypes")
+    private static final AtomicLongFieldUpdater<IdlingPriorityBlockingQueue> LATEST_EVENT_MILLIS_UPDATER =
+            AtomicLongFieldUpdater.newUpdater(IdlingPriorityBlockingQueue.class, "latestEventMillis");
+
+    /**
+     * {@link PriorityBlockingQueue} with (delayed) idling notification.
+     *
+     * <p>
+     * The idling notification is triggered when a compiler thread remains idle more than {@code delayMillis}.
+     * Exactly one notification will be triggered, periodically, every {@code delayMillis} if there are idle threads.
+     *
+     * There are no guarantees on which thread will run the {@code onIdleDelayed} hook.
+     * Note that, starved threads can also trigger the notification, even if the compile queue is not idle during the
+     * delay period, the idling criteria thread-based, not queue-based.
+     */
+    private final class IdlingPriorityBlockingQueue<E> extends PriorityBlockingQueue<E> {
+
+        volatile long latestEventMillis;
+
+        @Override
+        public E take() throws InterruptedException {
+
+            assert onIdleDelayed != null;
+            assert compilationExecutorService instanceof ThreadPoolExecutor &&
+                    !((ThreadPoolExecutor) compilationExecutorService).allowsCoreThreadTimeOut()
+                    : "idling notification does not support dynamically sized thread pools";
+
+            while (true) {
+                E elem = poll(delayMillis, TimeUnit.MILLISECONDS);
+                if (elem == null) {
+                    // Compiler thread has been idle for >= delayMillis.
+                    long latestMillis = LATEST_EVENT_MILLIS_UPDATER.get(this);
+                    long nowMillis = System.currentTimeMillis();
+                    if (nowMillis - latestMillis >= delayMillis) {
+                        if (LATEST_EVENT_MILLIS_UPDATER.compareAndSet(this, latestMillis, nowMillis)) {
+                            onIdleDelayed.run();
+                        }
+                    }
+                } else {
+                    return elem;
+                }
+            }
         }
     }
 
