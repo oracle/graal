@@ -46,34 +46,16 @@ class WarmupEstimatorNode extends ExecutionEventNode {
         this.epsilon = epsilon;
     }
 
+    Results getResults() {
+        return new Results(samples, epsilon);
+    }
     void printSimpleResults(PrintStream out) {
-        final long peak = peak();
-        out.printf(LONG_FORMAT, "Peak", peak);
-        final int peakStart = peakStart(peak, epsilon);
-        out.printf(LONG_FORMAT, "Peak Start", peakStart);
-        out.printf(DOUBLE_FORMAT, "Warmup", warmup(peakStart, peak));
-        out.printf(LONG_FORMAT, "Iterations", samples.size());
-    }
-
-    private double warmup(int peakIter, long peak) {
-        double warmup = 0;
-        for (int i = 0; i < peakIter; i++) {
-            warmup += samples.get(i) - peak;
-        }
-        return warmup / peak;
-    }
-
-    private int peakStart(long peak, double epsilon) {
-        for (int i = 0; i < samples.size(); i++) {
-            if (samples.get(i) < peak * (1 + epsilon)) {
-                return i;
-            }
-        }
-        throw new AssertionError("Should not reach here.");
-    }
-
-    private Long peak() {
-        return samples.stream().min(Long::compareTo).get();
+        final Results results = getResults();
+        out.printf(LONG_FORMAT, "Peak", results.peak);
+        out.printf(LONG_FORMAT, "Peak Start", results.peakStart);
+        out.printf(LONG_FORMAT, "Warmup time", results.warmupTime);
+        out.printf(DOUBLE_FORMAT, "Warmup cost", results.warmupCost);
+        out.printf(LONG_FORMAT, "Iterations", results.samples.size());
     }
 
     @Override
@@ -88,15 +70,56 @@ class WarmupEstimatorNode extends ExecutionEventNode {
     }
 
     void printJsonResults(PrintStream printStream) {
+        final Results results = getResults();
         JSONObject result = new JSONObject();
-        final long peak = peak();
-        result.put("peak", peak);
-        final int peakStart = peakStart(peak, epsilon);
-        result.put("peak_start", peakStart);
-        result.put("warmup", warmup(peakStart, peak));
+        result.put("peak", results.peak);
+        result.put("peak_start", results.peakStart);
+        result.put("warmup_time", results.warmupTime);
+        result.put("warmup_cost", results.warmupCost);
         result.put("iterations", samples.size());
         result.put("samples", new JSONArray(samples));
-        result.put("normalized_samples", new JSONArray(samples.stream().map(each -> (double) each / peak).collect(Collectors.toList())));
+        result.put("normalized_samples", new JSONArray(samples.stream().map(each -> (double) each / results.peak).collect(Collectors.toList())));
         printStream.print(result.toString(2));
+    }
+
+    class Results {
+
+        private final List<Long> samples;
+        private final long peak;
+        private final double epsilon;
+        private final int peakStart;
+        private final long warmupTime;
+        private final double warmupCost;
+
+        Results(List<Long> samples, double epsilon) {
+            this.samples = samples;
+            this.epsilon = epsilon;
+            peak = peak();
+            peakStart = peakStart();
+            warmupTime = warmupTime();
+            warmupCost = (double) warmupTime / peak;
+
+        }
+
+        private Long peak() {
+            return samples.stream().min(Long::compareTo).get();
+        }
+
+        private int peakStart() {
+            for (int i = 0; i < samples.size(); i++) {
+                if (samples.get(i) < peak * (1 + epsilon)) {
+                    return i;
+                }
+            }
+            throw new AssertionError("Should not reach here.");
+        }
+
+        private long warmupTime() {
+            long warmup = 0;
+            for (int i = 0; i < peakStart; i++) {
+                warmup += samples.get(i) - peak;
+            }
+            return warmup;
+        }
     }
 }
