@@ -12,6 +12,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `InteropLibrary.getUncached()` and `InteropLibrary.getUncached(Object)` short-cut methods for convenience.
 
 * Added `ConditionProfile#create()` as an alias of `createBinaryProfile()` so it can be used like `@Cached ConditionProfile myProfile`. 
+* Improved `AssumedValue` utility class: Code that reads the value but can not constant fold it does not need to deopt when the value changes.
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.
