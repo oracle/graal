@@ -43,6 +43,7 @@ import mx
 import mx_substratevm
 import mx_graal_benchmark
 import mx_benchmark
+import mx_compiler
 
 _suite = mx.suite("substratevm")
 
@@ -312,12 +313,11 @@ def run_js(vmArgs, jsArgs, nonZeroIsFatal, out, err, cwd):
 def extract_archive(path, extracted_name):
     extracted_archive = mx.join(mx.dirname(path), extracted_name)
     if not mx.exists(extracted_archive):
-        os.makedirs(extracted_archive)
-        arc = zipfile.ZipFile(path, 'r')
-        arc.extractall(extracted_archive)
-        arc.close()
+        # There can be multiple processes doing this so be atomic about it
+        with mx_compiler.SafeDirectoryUpdater(extracted_archive, create=True) as sdu:
+            with zipfile.ZipFile(path, 'r') as zf:
+                zf.extractall(sdu.directory)
     return extracted_archive
-
 
 def list_jars(path):
     jars = []
