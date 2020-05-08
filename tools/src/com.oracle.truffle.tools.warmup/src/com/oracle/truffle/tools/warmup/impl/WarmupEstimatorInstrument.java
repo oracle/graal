@@ -84,7 +84,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         final String outputPath = OUTPUT_FILE.getValue(env.getOptions());
-        final Results results = node.getResults(env.getOptions().get(EPSILON));
+        final Results results = node.getResults();
         ResultsPrinter printer = new ResultsPrinter(results);
         if ("".equals(outputPath)) {
             printer.printSimpleResults(new PrintStream(env.out()));

@@ -34,15 +34,34 @@ class Results {
     final long peakStartT;
     final long warmupTime;
     final double warmupCost;
+    final double epsilon;
 
-    Results(List<Long> samples, double epsilon) {
+    Results(List<Long> samples) {
         this.samples = samples;
         peak = peak(samples);
+        epsilon = epsilon(samples, peak);
         peakStartI = peakStartI(samples, peak, epsilon);
         peakStartT = peakStartT(samples, peakStartI);
         warmupTime = warmupTime(samples, peakStartI, peak);
         warmupCost = (double) warmupTime / peak;
 
+    }
+
+    private static double epsilon(List<Long> samples, long peak) {
+        int peakIndex = 0;
+        for (int i = 0; i < samples.size(); i++) {
+            final Long sample = samples.get(i);
+            if (sample == peak) {
+                peakIndex = i;
+            }
+        }
+        long sampleSum = 0;
+        for (int i = peakIndex; i < samples.size(); i++) {
+            sampleSum += samples.get(i);
+        }
+        final double avg = (double) sampleSum / (samples.size() - peakIndex);
+        final double epsilon = (avg / peak) - 1;
+        return epsilon;
     }
 
     private static long peakStartT(List<Long> samples, int peakStartI) {

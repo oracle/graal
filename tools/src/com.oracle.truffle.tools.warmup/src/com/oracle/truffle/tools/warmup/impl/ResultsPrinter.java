@@ -42,6 +42,7 @@ class ResultsPrinter {
 
     void printSimpleResults(PrintStream out) {
         out.printf(LONG_FORMAT, "Peak", results.peak);
+        out.printf(DOUBLE_FORMAT, "Epsilon", results.epsilon);
         out.printf(LONG_FORMAT, "Peak Start Iter", results.peakStartI);
         out.printf(LONG_FORMAT, "Peak Start Time", results.peakStartT);
         out.printf(LONG_FORMAT, "Warmup time", results.warmupTime);
@@ -56,6 +57,7 @@ class ResultsPrinter {
         result.put("peak_start_time", results.peakStartT);
         result.put("warmup_time", results.warmupTime);
         result.put("warmup_cost", results.warmupCost);
+        result.put("epsilon", results.epsilon);
         result.put("iterations", results.samples.size());
         result.put("samples", new JSONArray(results.samples));
         result.put("normalized_samples", new JSONArray(results.samples.stream().map(each -> (double) each / results.peak).collect(Collectors.toList())));
