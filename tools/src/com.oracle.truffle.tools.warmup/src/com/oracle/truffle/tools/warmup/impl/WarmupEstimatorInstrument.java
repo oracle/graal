@@ -73,7 +73,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
             final SourceSectionFilter filter = SourceSectionFilter.newBuilder().includeInternal(false).tagIs(StandardTags.RootTag.class).rootNameIs(rootName::equals).build();
             env.getInstrumenter().attachExecutionEventFactory(filter, context -> {
                 if (node == null) {
-                    node = new WarmupEstimatorNode();
+                    node = new WarmupEstimatorNode(env.getOptions().get(EPSILON));
                     return node;
                 }
                  throw new IllegalStateException("Cannot estimate warmup for multiple roots.");
@@ -83,22 +83,20 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
 
     @Override
     protected void onDispose(Env env) {
-        PrintStream out = null;
         final String outputPath = OUTPUT_FILE.getValue(env.getOptions());
         if ("".equals(outputPath)) {
-           out = new PrintStream(env.out());
+            node.printSimpleResults(new PrintStream(env.out()));
         } else {
             final File file = new File(outputPath);
             if (file.exists()) {
                 throw new IllegalArgumentException("Cannot redirect output to an existing file!");
             }
             try {
-                out = new PrintStream(new FileOutputStream(file));
+                node.printJsonResults(new PrintStream(new FileOutputStream(file)));
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
         }
-        node.printResults(out, EPSILON.getValue(env.getOptions()));
         super.onDispose(env);
     }
 

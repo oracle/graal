@@ -30,17 +30,24 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 class WarmupEstimatorNode extends ExecutionEventNode {
 
+    private final double epsilon;
     private long start;
     private List<Long> samples = new ArrayList<>();
     private static final String DOUBLE_FORMAT = "%-15s: %d\n";
 
-    void printResults(PrintStream out, double epsilon) {
+    WarmupEstimatorNode(double epsilon) {
+        this.epsilon = epsilon;
+    }
+
+    void printSimpleResults(PrintStream out) {
         final long peak = peak();
         out.printf(DOUBLE_FORMAT, "Peak", peak);
-        final int peakStart = peakIter(peak, epsilon);
+        final int peakStart = peakStart(peak, epsilon);
         out.printf(DOUBLE_FORMAT, "Peak Start", peakStart);
         out.printf(DOUBLE_FORMAT, "Warmup", warmup(peakStart, peak));
         out.printf(DOUBLE_FORMAT, "Iterations", samples.size());
@@ -54,7 +61,7 @@ class WarmupEstimatorNode extends ExecutionEventNode {
         return warmup;
     }
 
-    private int peakIter(long peak, double epsilon) {
+    private int peakStart(long peak, double epsilon) {
         for (int i = 0; i < samples.size(); i++) {
             if (samples.get(i) < peak * (1 + epsilon)) {
                 return i;
@@ -76,5 +83,17 @@ class WarmupEstimatorNode extends ExecutionEventNode {
     protected void onReturnValue(VirtualFrame frame, Object result) {
         final long duration = System.nanoTime() - start;
         samples.add(duration);
+    }
+
+    void printJsonResults(PrintStream printStream) {
+        JSONObject result = new JSONObject();
+        final long peak = peak();
+        result.put("peak", peak);
+        final int peakStart = peakStart(peak, epsilon);
+        result.put("peak_start", peakStart);
+        result.put("warmup", warmup(peakStart, peak));
+        result.put("iterations", samples.size());
+        result.put("samples", new JSONArray(samples));
+        printStream.print(result.toString(2));
     }
 }
