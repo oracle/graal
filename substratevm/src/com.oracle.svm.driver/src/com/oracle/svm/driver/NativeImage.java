@@ -67,10 +67,13 @@ import java.util.function.Supplier;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -95,6 +98,8 @@ public class NativeImage {
     private static final String DEFAULT_GENERATOR_CLASS_NAME = "com.oracle.svm.hosted.NativeImageGeneratorRunner";
     private static final String DEFAULT_GENERATOR_9PLUS_SUFFIX = "$JDK9Plus";
     private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getCanonicalName();
+
+    private static final int WINDOWS_MAX_COMMAND_LENGTH = 32768;
 
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
@@ -1226,8 +1231,7 @@ public class NativeImage {
 
     protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         /* Construct ProcessBuilder command from final arguments */
-        ProcessBuilder pb = new ProcessBuilder();
-        List<String> command = pb.command();
+        List<String> command = new ArrayList<>();
         command.add(canonicalize(config.getJavaExecutable()).toString());
         command.addAll(javaArgs);
         if (!bcp.isEmpty()) {
@@ -1255,12 +1259,34 @@ public class NativeImage {
 
         int exitStatus = 1;
         try {
+            if (Platform.includedIn(Platform.WINDOWS.class)) {
+                int totalLength = command.stream().mapToInt(s -> s.length() + 1).sum();
+                if (totalLength >= WINDOWS_MAX_COMMAND_LENGTH) {
+                    Path argsFile = Files.createTempFile("native-image", "args");
+                    argsFile.toFile().deleteOnExit();
+                    Files.write(argsFile, (Iterable<String>) command.stream().skip(1).map(NativeImage::quoteFileArg)::iterator);
+                    List<String> atCommand = new ArrayList<>();
+                    atCommand.add(command.get(0));
+                    atCommand.add("@" + argsFile);
+                    command = atCommand;
+                }
+            }
+            ProcessBuilder pb = new ProcessBuilder();
+            pb.command(command);
             Process p = pb.inheritIO().start();
             exitStatus = p.waitFor();
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
         }
         return exitStatus;
+    }
+
+    private static String quoteFileArg(String arg) {
+        String result = arg.replaceAll(Pattern.quote("\\"), Matcher.quoteReplacement("\\\\"));
+        if (result.contains(" ")) {
+            result = "\"" + result + "\"";
+        }
+        return result;
     }
 
     private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> IS_AOT ? NativeImageServer.create(config) : new NativeImage(config);
