@@ -607,7 +607,7 @@ _daCapo_iterations = {
 }
 
 _daCapo_exclude_lib = {
-    'h2'          : ['derbytools.jar', 'derbyTesting.jar', 'derbyclient.jar', 'derbynet.jar']  # multiple derby classes occurrences on the classpath can cause a security error
+    'h2'          : ['derbytools.jar', 'derbyclient.jar', 'derbynet.jar']  # multiple derby classes occurrences on the classpath can cause a security error
 }
 
 class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors
@@ -658,7 +658,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite, B
 
     def create_classpath(self, benchmark):
         dacapo_extracted, dacapo_dat_resources, dacapo_nested_resources = self.create_dacapo_classpath(self.daCapoPath(), benchmark)
-        dacapo_jars = super(DaCapoNativeImageBenchmarkSuite, self).collect_unique_dependencies(os.path.join(dacapo_extracted, 'jar'), benchmark, _scala_daCapo_exclude_lib)
+        dacapo_jars = super(DaCapoNativeImageBenchmarkSuite, self).collect_unique_dependencies(os.path.join(dacapo_extracted, 'jar'), benchmark, _daCapo_exclude_lib)
         cp = ':'.join([dacapo_extracted] + dacapo_jars + dacapo_dat_resources + dacapo_nested_resources)
         return cp
 
@@ -704,7 +704,8 @@ _SCALA_DACAPO_EXTRA_VM_ARGS = {
                        '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.builder.HtmlDocumentBuilder$ElementInfo',
                        '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.DocumentBuilder$SpanType',
                        '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.DocumentBuilder',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.ImageAttributes$Align']
+                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.ImageAttributes$Align'],
+    'tmt'           : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath']
 }
 
 _scala_daCapo_exclude_lib = {
