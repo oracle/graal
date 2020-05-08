@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.warmup.impl;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -94,6 +95,7 @@ class WarmupEstimatorNode extends ExecutionEventNode {
         result.put("warmup", warmup(peakStart, peak));
         result.put("iterations", samples.size());
         result.put("samples", new JSONArray(samples));
+        result.put("normalized_samples", new JSONArray(samples.stream().map(each -> each / peak).collect(Collectors.toList())));
         printStream.print(result.toString(2));
     }
 }
