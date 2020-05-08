@@ -41,7 +41,8 @@ class ResultsPrinter {
     }
 
     void printSimpleResults(PrintStream out) {
-        out.printf(LONG_FORMAT, "Peak", results.peak);
+        out.printf(LONG_FORMAT, "Best time", results.bestT);
+        out.printf(LONG_FORMAT, "Best iter", results.bestI);
         out.printf(DOUBLE_FORMAT, "Epsilon", results.epsilon);
         out.printf(LONG_FORMAT, "Peak Start Iter", results.peakStartI);
         out.printf(LONG_FORMAT, "Peak Start Time", results.peakStartT);
@@ -52,7 +53,8 @@ class ResultsPrinter {
 
     void printJsonResults(PrintStream printStream) {
         JSONObject result = new JSONObject();
-        result.put("peak", results.peak);
+        result.put("best_time", results.bestT);
+        result.put("best_iteration", results.bestI);
         result.put("peak_start_iteration", results.peakStartI);
         result.put("peak_start_time", results.peakStartT);
         result.put("warmup_time", results.warmupTime);
@@ -60,7 +62,7 @@ class ResultsPrinter {
         result.put("epsilon", results.epsilon);
         result.put("iterations", results.samples.size());
         result.put("samples", new JSONArray(results.samples));
-        result.put("normalized_samples", new JSONArray(results.samples.stream().map(each -> (double) each / results.peak).collect(Collectors.toList())));
+        result.put("normalized_samples", new JSONArray(results.samples.stream().map(each -> (double) each / results.bestT).collect(Collectors.toList())));
         printStream.print(result.toString(2));
     }
 }

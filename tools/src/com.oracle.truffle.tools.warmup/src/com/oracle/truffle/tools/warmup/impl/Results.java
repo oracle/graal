@@ -1,5 +1,3 @@
-package com.oracle.truffle.tools.warmup.impl;
-
 /*
  * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -24,44 +22,50 @@ package com.oracle.truffle.tools.warmup.impl;
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.tools.warmup.impl;
+
 import java.util.List;
 
 class Results {
 
     final List<Long> samples;
-    final long peak;
+    final double epsilon;
+    final double warmupCost;
+    final int bestI;
     final int peakStartI;
+    final long bestT;
     final long peakStartT;
     final long warmupTime;
-    final double warmupCost;
-    final double epsilon;
 
     Results(List<Long> samples) {
         this.samples = samples;
-        peak = peak(samples);
-        epsilon = epsilon(samples, peak);
-        peakStartI = peakStartI(samples, peak, epsilon);
+        bestT = bestTime(samples);
+        bestI = bestIteration(samples, bestT);
+        epsilon = epsilon(samples, bestT, bestI);
+        peakStartI = peakStartI(samples, bestT, epsilon);
         peakStartT = peakStartT(samples, peakStartI);
-        warmupTime = warmupTime(samples, peakStartI, peak);
-        warmupCost = (double) warmupTime / peak;
+        warmupTime = warmupTime(samples, peakStartI, bestT);
+        warmupCost = (double) warmupTime / bestT;
 
     }
 
-    private static double epsilon(List<Long> samples, long peak) {
-        int peakIndex = 0;
+    private static double epsilon(List<Long> samples, long peak, int bestIteration) {
+        long sampleSum = 0;
+        for (int i = bestIteration; i < samples.size(); i++) {
+            sampleSum += samples.get(i);
+        }
+        final double avg = (double) sampleSum / (samples.size() - bestIteration);
+        return (avg / peak);
+    }
+
+    private static int bestIteration(List<Long> samples, long peak) {
         for (int i = 0; i < samples.size(); i++) {
             final Long sample = samples.get(i);
             if (sample == peak) {
-                peakIndex = i;
+                return i;
             }
         }
-        long sampleSum = 0;
-        for (int i = peakIndex; i < samples.size(); i++) {
-            sampleSum += samples.get(i);
-        }
-        final double avg = (double) sampleSum / (samples.size() - peakIndex);
-        final double epsilon = (avg / peak) - 1;
-        return epsilon;
+        throw new AssertionError("Should not reach here.");
     }
 
     private static long peakStartT(List<Long> samples, int peakStartI) {
@@ -72,13 +76,13 @@ class Results {
         return peak;
     }
 
-    private static Long peak(List<Long> samples) {
+    private static Long bestTime(List<Long> samples) {
         return samples.stream().min(Long::compareTo).get();
     }
 
     private static int peakStartI(List<Long> samples, long peak, double epsilon) {
         for (int i = 0; i < samples.size(); i++) {
-            if (samples.get(i) < peak * (1 + epsilon)) {
+            if (samples.get(i) < peak * epsilon) {
                 return i;
             }
         }
