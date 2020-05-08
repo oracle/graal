@@ -33,16 +33,17 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 
 class WarmupEstimatorNode extends ExecutionEventNode {
 
-    long start;
-    List<Long> samples = new ArrayList<>();
+    private long start;
+    private List<Long> samples = new ArrayList<>();
+    private static final String DOUBLE_FORMAT = "%-15s: %d\n";
 
-    void printResults(PrintStream out, int epsilon) {
+    void printResults(PrintStream out, double epsilon) {
         final long peak = peak();
-        out.println("PEAK:      " + peak);
+        out.printf(DOUBLE_FORMAT, "Peak", peak);
         final int peakStart = peakIter(peak, epsilon);
-        out.println("PEAK START: " + peakStart);
-        out.println("WARMUP:    " + warmup(peakStart, peak));
-        out.println("# SAMPLES: " + samples.size());
+        out.printf(DOUBLE_FORMAT, "Peak Start", peakStart);
+        out.printf(DOUBLE_FORMAT, "Warmup", warmup(peakStart, peak));
+        out.printf(DOUBLE_FORMAT, "Iterations", samples.size());
     }
 
     private long warmup(int peakIter, long peak) {
@@ -53,9 +54,9 @@ class WarmupEstimatorNode extends ExecutionEventNode {
         return warmup;
     }
 
-    private int peakIter(long peak, int epsilon) {
+    private int peakIter(long peak, double epsilon) {
         for (int i = 0; i < samples.size(); i++) {
-            if (samples.get(i) < peak * (1 + (double) epsilon / 100)) {
+            if (samples.get(i) < peak * (1 + epsilon)) {
                 return i;
             }
         }

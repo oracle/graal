@@ -52,7 +52,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
     @Option(name = "Epsilon", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
-    static final OptionKey<Integer> EPSILON = new OptionKey<>(5);
+    static final OptionKey<Double> EPSILON = new OptionKey<>(0.05);
 
     private boolean enabled;
     private WarmupEstimatorNode node;
