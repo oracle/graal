@@ -596,7 +596,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        initializeDynamicObjectLayouts(access);
         if (firstAnalysisRun) {
             firstAnalysisRun = false;
             Object keep = invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotContextImpl", "resetSingleContextState", Collections.singleton(boolean.class), false);
@@ -623,42 +622,22 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 }
             }
         }
+
+        initializeDynamicObjectLayouts(access);
     }
 
     private final Set<Class<?>> dynamicObjectClasses = new HashSet<>();
 
     private void initializeDynamicObjectLayouts(DuringAnalysisAccess access) {
         DuringAnalysisAccessImpl config = (DuringAnalysisAccessImpl) access;
-        Class<? extends Annotation> dynamicFieldClass = null;
         for (AnalysisType type : config.getUniverse().getTypes()) {
             if (!type.isInstantiated()) {
                 continue;
             }
             Class<?> javaClass = type.getJavaClass();
             if (DynamicObject.class.isAssignableFrom(javaClass) && dynamicObjectClasses.add(javaClass)) {
-                if (dynamicFieldClass == null) {
-                    dynamicFieldClass = access.findClassByName(DynamicObject.class.getName().concat("$DynamicField")).asSubclass(Annotation.class);
-                    if (dynamicFieldClass == null) {
-                        throw VMError.shouldNotReachHere("DynamicObject.DynamicField annotation not found.");
-                    }
-                }
-                AnalysisField[] instanceFields = type.getInstanceFields(true);
-                boolean found = false;
-                for (AnalysisField field : instanceFields) {
-                    if (field.isAnnotationPresent(dynamicFieldClass)) {
-                        System.out.println("Found dynamic field: " + field);
-                        config.registerAsUnsafeAccessed(field);
-                        found = true;
-                    }
-                }
-                if (found) {
-                    if (DynamicObject.class.isAssignableFrom(javaClass)) {
-                        // Force layout initialization.
-                        System.out.println("Registering layout: " + javaClass);
-                        Layout.newLayout().type(javaClass.asSubclass(DynamicObject.class)).build();
-                    }
-                    access.requireAnalysisIteration();
-                }
+                // Force layout initialization.
+                Layout.newLayout().type(javaClass.asSubclass(DynamicObject.class)).build();
             }
         }
     }
@@ -686,7 +665,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             throw VMError.shouldNotReachHere("DynamicObject.DynamicField annotation not found.");
         }
         for (Field field : config.findAnnotatedFields(dynamicFieldClass.asSubclass(Annotation.class))) {
-            System.out.println("Registering dynamic field: " + field);
             config.registerAsUnsafeAccessed(field);
         }
     }
@@ -1061,12 +1039,4 @@ final class Target_com_oracle_truffle_object_CoreLocations_DynamicLongFieldLocat
     private long offsetLower;
     @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset)//
     private long offsetUpper;
-}
-
-@TargetClass(className = "com.oracle.truffle.api.object.Layout", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_object_Layout {
-    @Substitute
-    private static boolean closed() {
-        return true;
-    }
 }

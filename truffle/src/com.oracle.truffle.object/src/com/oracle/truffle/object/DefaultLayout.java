@@ -51,6 +51,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.graalvm.nativeimage.ImageInfo;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -200,17 +202,7 @@ class DefaultLayout extends LayoutImpl {
                 return layoutInfo;
             }
 
-            if (closed()) {
-                /*
-                 * Try to find a registered superclass. Only classes that declare dynamic fields are
-                 * registered ahead-of-time.
-                 */
-                for (Class<? extends DynamicObject> superclass = dynamicObjectClass; superclass != DynamicObject.class; superclass = superclass.getSuperclass().asSubclass(DynamicObject.class)) {
-                    layoutInfo = LAYOUT_INFO_MAP.get(superclass);
-                    if (layoutInfo != null) {
-                        return layoutInfo;
-                    }
-                }
+            if (ImageInfo.inImageRuntimeCode()) {
                 throw new IllegalStateException("Layout not initialized ahead-of-time: " + dynamicObjectClass);
             }
 

@@ -305,11 +305,6 @@ public abstract class Layout {
         return builder.dynamicObjectClass;
     }
 
-    /** @since 20.1.0 */
-    protected static boolean closed() {
-        return false;
-    }
-
     /**
      * Internal package access helper.
      *
