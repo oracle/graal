@@ -27,6 +27,7 @@ package com.oracle.svm.agent;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.jvmtiagentbase.Support.callObjectMethod;
+import static com.oracle.svm.jvmtiagentbase.Support.callObjectMethodL;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
@@ -50,6 +51,7 @@ import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_PREPARE;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_NATIVE_METHOD_BIND;
+import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_FILE_LOAD_HOOK;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.nio.ByteBuffer;
@@ -63,6 +65,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.svm.core.util.JavaClassUtil;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -126,7 +129,7 @@ final class BreakpointInterceptor {
     private static NativeImageAgent agent;
 
     private static Map<Long, Breakpoint> installedBreakpoints;
-
+    private static List<String> unsupportedExceptions = new ArrayList<>();
     /**
      * A map from {@link JNIMethodId} to entry point addresses for bound Java {@code native}
      * methods, NOT considering our intercepting functions, i.e., these are the original entry
@@ -1085,6 +1088,52 @@ final class BreakpointInterceptor {
         }
     }
 
+    @CEntryPoint
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
+    private static void onClassFileLoadHook(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni,
+                    @SuppressWarnings("unused") JNIObjectHandle classBeingRedefined, JNIObjectHandle loader, CCharPointer name, @SuppressWarnings("unused") JNIObjectHandle protectionDomain,
+                    int classDataLen,
+                    CCharPointer classData, @SuppressWarnings("unused") CIntPointer newClassDataLen, @SuppressWarnings("unused") CCharPointerPointer newClassData) {
+        boolean nameIsNull = name.isNull();
+        if (isDynamicallyGenerated(jni, loader, nameIsNull, nameIsNull ? "" : fromCString(name))) {
+            byte[] contents = new byte[classDataLen];
+            CTypeConversion.asByteBuffer(classData, classDataLen).get(contents);
+            String definedClassName = nameIsNull ? JavaClassUtil.getClassName(contents) : fromCString(name);
+            ClassLoaderDefineClassSupport.trace(traceWriter, contents, definedClassName, true);
+        }
+    }
+
+    private static boolean isDynamicallyGenerated(JNIEnvironment jni, JNIObjectHandle classLoader, boolean inputNameIsNull, String definedClassName) {
+        boolean isDynamicallyGenerated;
+        // 1. Classloader is null, it's a system class.
+        // The class is not dynamically generated.
+        if (classLoader.equal(nullHandle())) {
+            isDynamicallyGenerated = false;
+        } else {
+            // 2. Don't have a name for class before defining.
+            // The class is dynamically generated.
+            if (inputNameIsNull) {
+                isDynamicallyGenerated = true;
+            } else {
+                // 3. A dynamically defined class always return null
+                // when call java.lang.ClassLoader.getResource(classname)
+                // This is the accurate but slow way.
+                String asResourceName = definedClassName.replace('.', '/') + ".class";
+                try (CCharPointerHolder resourceNameHolder = toCString(asResourceName);) {
+                    JNIObjectHandle resourceNameJString = jniFunctions().getNewStringUTF().invoke(jni, resourceNameHolder.get());
+                    if (agent.handles() == null) {
+                        // agent's handles is created at onVMStart.
+                        isDynamicallyGenerated = false;
+                    } else {
+                        JNIObjectHandle returnValue = callObjectMethodL(jni, classLoader, agent.handles().javaLangClassLoaderGetResource, resourceNameJString);
+                        isDynamicallyGenerated = returnValue.equal(nullHandle());
+                    }
+                }
+            }
+        }
+        return isDynamicallyGenerated;
+    }
+
     private static final CEntryPointLiteral<CFunctionPointer> onBreakpointLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onBreakpoint",
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIMethodId.class, long.class);
 
@@ -1093,6 +1142,10 @@ final class BreakpointInterceptor {
 
     private static final CEntryPointLiteral<CFunctionPointer> onClassPrepareLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onClassPrepare",
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class);
+
+    private static final CEntryPointLiteral<CFunctionPointer> onClassFileLoadHookLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onClassFileLoadHook",
+                    JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class, CCharPointer.class, JNIObjectHandle.class, int.class, CCharPointer.class, CIntPointer.class,
+                    CCharPointerPointer.class);
 
     public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, TraceWriter writer, NativeImageAgent nativeImageTracingAgent,
                     boolean exptlClassLoaderSupport) {
@@ -1106,6 +1159,7 @@ final class BreakpointInterceptor {
         capabilities.setCanGenerateBreakpointEvents(1);
         capabilities.setCanAccessLocalVariables(1);
         capabilities.setCanGenerateNativeMethodBindEvents(1);
+        capabilities.setCanGenerateAllClassHookEvents(1);
         if (exptlClassLoaderSupport) {
             capabilities.setCanGetBytecodes(1);
             capabilities.setCanGetConstantPool(1);
@@ -1125,6 +1179,9 @@ final class BreakpointInterceptor {
 
         BreakpointInterceptor.boundNativeMethods = new HashMap<>();
         Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_NATIVE_METHOD_BIND, nullHandle()));
+
+        callbacks.setClassFileLoadHook(onClassFileLoadHookLiteral.getFunctionPointer());
+        Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullHandle()));
     }
 
     public static void onVMInit(JvmtiEnv jvmti, JNIEnvironment jni) {
@@ -1266,6 +1323,19 @@ final class BreakpointInterceptor {
             } finally {
                 recursive.set(false);
             }
+        }
+    }
+
+    public static void reportExceptions() {
+        if (!unsupportedExceptions.isEmpty()) {
+            System.err.println(unsupportedExceptions.size() + " unsupported features are detected ");
+            StringBuilder errorMsg = new StringBuilder();
+            for (int i = 0; i < unsupportedExceptions.size(); i++) {
+                errorMsg.append(unsupportedExceptions.get(i)).append("\n");
+            }
+            throw new UnsupportedOperationException(errorMsg.toString());
+        } else {
+            unsupportedExceptions = null;
         }
     }
 

@@ -39,17 +39,15 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIObjectHandle javaLangClass;
     final JNIMethodId javaLangClassForName3;
     final JNIMethodId javaUtilEnumerationNextElement;
+    final JNIMethodId javaLangReflectMemberGetName;
+    final JNIMethodId javaLangReflectMemberGetDeclaringClass;
+    final JNIMethodId javaUtilEnumerationHasMoreElements;
+    final JNIMethodId javaLangClassLoaderGetResource;
+    final JNIObjectHandle javaLangClassLoader;
     final JNIMethodId javaLangClassGetDeclaredMethod;
     final JNIMethodId javaLangClassGetDeclaredConstructor;
     final JNIMethodId javaLangClassGetDeclaredField;
     final JNIMethodId javaLangClassGetName;
-
-    final JNIMethodId javaLangReflectMemberGetName;
-    final JNIMethodId javaLangReflectMemberGetDeclaringClass;
-
-    final JNIMethodId javaUtilEnumerationHasMoreElements;
-
-    final JNIObjectHandle javaLangClassLoader;
 
     final JNIMethodId javaLangObjectGetClass;
 
@@ -78,6 +76,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangClassGetDeclaredField = getMethodId(env, javaLangClass, "getDeclaredField", "(Ljava/lang/String;)Ljava/lang/reflect/Field;", false);
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
 
+        javaLangClassLoaderGetResource = getMethodId(env, findClass(env, "java/lang/ClassLoader"), "getResource", "(Ljava/lang/String;)Ljava/net/URL;", false);
         JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);
         javaLangReflectMemberGetDeclaringClass = getMethodId(env, javaLangReflectMember, "getDeclaringClass", "()Ljava/lang/Class;", false);

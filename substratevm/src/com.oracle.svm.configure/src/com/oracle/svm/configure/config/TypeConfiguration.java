@@ -66,6 +66,7 @@ public class TypeConfiguration implements JsonPrintable {
             } else {
                 throw new IllegalArgumentException();
             }
+
             for (int i = 0; i < n; i++) {
                 sb.append("[]");
             }

@@ -195,6 +195,12 @@ public class ConfigurationTool {
                     set.getSerializationConfigPaths().add(requirePathUri(current, value));
                     break;
 
+                case "--dynamic-classes-input":
+                    set = inputSet; // fall through
+                case "--dynamic-classes-output":
+                    set.getDynamicClassesConfigPaths().add(requirePathUri(current, value));
+                    break;
+
                 case "--trace-input":
                     traceInputs.add(requirePathUri(current, value));
                     break;
@@ -256,7 +262,8 @@ public class ConfigurationTool {
         try {
             p = new TraceProcessor(advisor, inputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
                             inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            inputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
+                            inputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
+                            inputSet.loadDynamicClassesConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {
@@ -297,6 +304,11 @@ public class ConfigurationTool {
         for (URI uri : outputSet.getSerializationConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
                 p.getSerializationConfiguration().printJson(writer);
+            }
+        }
+        for (URI uri : outputSet.getDynamicClassesConfigPaths()) {
+            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
+                p.getDynamicClassesConfiguration().printJson(writer);
             }
         }
     }

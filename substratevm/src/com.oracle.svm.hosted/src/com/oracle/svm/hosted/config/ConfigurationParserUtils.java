@@ -42,6 +42,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.configure.DynamicClassesConfigurationParser;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -76,8 +77,7 @@ public final class ConfigurationParserUtils {
 
         int parsedCount = 0;
 
-        Stream<Path> files = Stream.concat(OptionUtils.flatten(",", configFilesOption.getValue()).stream().map(Paths::get),
-                        ConfigurationFiles.findConfigurationFiles(directoryFileName).stream());
+        Stream<Path> files = Stream.concat(OptionUtils.flatten(",", configFilesOption.getValue()).stream().map(Paths::get), ConfigurationFiles.findConfigurationFiles(directoryFileName).stream());
         parsedCount += files.map(Path::toAbsolutePath).mapToInt(path -> {
             if (!Files.exists(path)) {
                 throw UserError.abort("The %s configuration file \"%s\" does not exist.", featureName, path);
@@ -124,12 +124,18 @@ public final class ConfigurationParserUtils {
                 throw UserError.abort("Could not open %s: %s", url, e.getMessage());
             }
         }).sum();
-
         return parsedCount;
     }
 
     private static void doParseAndRegister(ConfigurationParser parser, Reader reader, String featureName, Object location, HostedOptionKey<LocatableMultiOptionValue.Strings> option) {
         try {
+            /**
+             * DynamicClassesConfigurationParser needs to know the configuration file location
+             * because the dumped class files are stored in the same directory
+             */
+            if (parser instanceof DynamicClassesConfigurationParser) {
+                ((DynamicClassesConfigurationParser) parser).setConfigurationFileLocation(location);
+            }
             parser.parseAndRegister(reader);
         } catch (IOException | JSONParserException e) {
             String errorMessage = e.getMessage();

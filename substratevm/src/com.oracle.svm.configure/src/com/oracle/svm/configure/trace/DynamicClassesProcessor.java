@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2021, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -25,22 +25,20 @@
  */
 package com.oracle.svm.configure.trace;
 
+import com.oracle.svm.configure.config.DynamicClassesConfiguration;
+
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.configure.config.SerializationConfiguration;
+public class DynamicClassesProcessor extends AbstractProcessor {
+    private final DynamicClassesConfiguration dynamicClassesConfiguration;
 
-public class SerializationProcessor extends AbstractProcessor {
-    private final AccessAdvisor advisor;
-    private final SerializationConfiguration serializationConfiguration;
-
-    public SerializationProcessor(AccessAdvisor advisor, SerializationConfiguration serializationConfiguration) {
-        this.advisor = advisor;
-        this.serializationConfiguration = serializationConfiguration;
+    public DynamicClassesProcessor(DynamicClassesConfiguration dynamicClassesConfiguration) {
+        this.dynamicClassesConfiguration = dynamicClassesConfiguration;
     }
 
-    public SerializationConfiguration getSerializationConfiguration() {
-        return serializationConfiguration;
+    public DynamicClassesConfiguration getDynamicClassesConfiguration() {
+        return dynamicClassesConfiguration;
     }
 
     @Override
@@ -49,16 +47,11 @@ public class SerializationProcessor extends AbstractProcessor {
         if (invalidResult) {
             return;
         }
-        String function = (String) entry.get("function");
-        List<?> args = (List<?>) entry.get("args");
-        if ("ObjectStreamClass.<init>".equals(function)) {
-            expectSize(args, 2);
 
-            if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null))) {
-                return;
-            }
-
-            serializationConfiguration.add((String) args.get(0), (String) args.get(1));
+        if ("onClassFileLoadHook".equals(entry.get("function"))) {
+            List<?> args = (List<?>) entry.get("args");
+            expectSize(args, 3);
+            dynamicClassesConfiguration.add((String) args.get(0), (byte[]) args.get(2), (String) args.get(1));
         }
     }
 }

@@ -41,10 +41,18 @@ public final class ClassForNameSupport {
 
     /** The map used to collect registered classes. */
     private final EconomicMap<String, Class<?>> knownClasses = ImageHeapMap.create();
+    /** Store class name and checksum byte array as key-value pair. */
+    private final EconomicMap<String, byte[]> dynamicGeneratedClasses = ImageHeapMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(Class<?> clazz) {
         singleton().knownClasses.put(clazz.getName(), clazz);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerDynamicGeneratedClass(Class<?> generatedClazz, String definedClassName, String checksum) {
+        registerClass(generatedClazz);
+        ImageSingletons.lookup(ClassForNameSupport.class).dynamicGeneratedClasses.put(definedClassName, checksum.getBytes());
     }
 
     public static Class<?> forNameOrNull(String className, boolean initialize) {
@@ -64,6 +72,14 @@ public final class ClassForNameSupport {
             throw new ClassNotFoundException(className);
         }
         return result;
+    }
+
+    public static String getDynamicClassChecksum(String className) throws ClassNotFoundException {
+        byte[] storedValue = ImageSingletons.lookup(ClassForNameSupport.class).dynamicGeneratedClasses.get(className);
+        if (storedValue == null) {
+            throw new ClassNotFoundException(className);
+        }
+        return new String(storedValue);
     }
 }
 

@@ -46,6 +46,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -216,7 +217,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 // They should use the same filter sets, however.
                 AccessAdvisor advisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
                 TraceProcessor processor = new TraceProcessor(advisor, mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
-                                mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler));
+                                mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler),
+                                mergeConfigs.loadDynamicClassesConfig(handler));
                 traceWriter = new TraceProcessorWriterAdapter(processor);
             } catch (Throwable t) {
                 return error(2, t.toString());
@@ -425,6 +427,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             allConfigFiles.put(ConfigurationFiles.DYNAMIC_PROXY_NAME, p.getProxyConfiguration());
             allConfigFiles.put(ConfigurationFiles.RESOURCES_NAME, p.getResourceConfiguration());
             allConfigFiles.put(ConfigurationFiles.SERIALIZATION_NAME, p.getSerializationConfiguration());
+            allConfigFiles.put(ConfigurationFiles.DYNAMIC_CLASSES_NAME, p.getDynamicClassesConfiguration());
 
             for (Map.Entry<String, JsonPrintable> configFile : allConfigFiles.entrySet()) {
                 Path tempPath = tempDirectory.resolve(configFile.getKey());
@@ -437,6 +440,18 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 Path source = tempDirectory.resolve(configFile.getKey());
                 Path target = configOutputDirPath.resolve(configFile.getKey());
                 tryAtomicMove(source, target);
+            }
+
+            Path dumpedClassSrc = tempDirectory.resolve(ConfigurationFiles.DUMP_CLASSES_DIR);
+            Path dumpedClassTarget = configOutputDirPath.resolve(ConfigurationFiles.DUMP_CLASSES_DIR);
+            // Move the entire directory if the target directory does not exist
+            if (Files.notExists(dumpedClassTarget)) {
+                tryAtomicMove(dumpedClassSrc, dumpedClassTarget);
+            } else {
+                // Move each file inside the source directory if the target directory exists
+                for (Path filePath : Files.list(dumpedClassSrc).collect(Collectors.toList())) {
+                    tryAtomicMove(filePath, dumpedClassTarget.resolve(filePath.getFileName()));
+                }
             }
 
             compulsoryDelete(tempDirectory);
@@ -509,7 +524,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
          * (unless another JVM is launched in this process).
          */
         // cleanupOnUnload(vm);
-
+        BreakpointInterceptor.reportExceptions();
         /*
          * The epilogue of this method does not tear down our VM: we don't seem to observe all
          * threads that end and therefore can't detach them, so we would wait forever for them.

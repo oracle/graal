@@ -38,8 +38,11 @@ public class JsonWriter implements AutoCloseable {
 
     private int indentation = 0;
 
+    private Path path;
+
     public JsonWriter(Path path, OpenOption... options) throws IOException {
         this(Files.newBufferedWriter(path, StandardCharsets.UTF_8, options));
+        this.path = path;
     }
 
     public JsonWriter(Writer writer) {
@@ -118,4 +121,9 @@ public class JsonWriter implements AutoCloseable {
     public void close() throws IOException {
         writer.close();
     }
+
+    public Path getPath() {
+        return path;
+    }
+
 }

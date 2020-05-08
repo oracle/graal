@@ -33,6 +33,7 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallBooleanMethodAFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallIntMethodAFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallIntMethodFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallLongMethodAFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethodAFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallStaticLongMethodAFunctionPointer;
@@ -49,6 +50,7 @@ import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.FromReflectedMethodF
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetArrayLengthFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetBooleanFieldFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetByteArrayElementsFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetDirectBufferAddress;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetFieldIDFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetMethodIDFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetObjectArrayElementFunctionPointer;
@@ -271,7 +273,7 @@ public interface JNINativeInterface extends PointerBase {
     void setGetMethodID(GetMethodIDFunctionPointer p);
 
     @CField
-    CFunctionPointer getCallObjectMethod();
+    <T extends CFunctionPointer> T getCallObjectMethod();
 
     @CField
     void setCallObjectMethod(CFunctionPointer p);
@@ -361,10 +363,10 @@ public interface JNINativeInterface extends PointerBase {
     void setCallShortMethodA(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getCallIntMethod();
+    <T extends CallIntMethodFunctionPointer> T getCallIntMethod();
 
     @CField
-    void setCallIntMethod(CFunctionPointer p);
+    void setCallIntMethod(CallIntMethodFunctionPointer p);
 
     @CField
     CFunctionPointer getCallIntMethodV();
@@ -1447,7 +1449,7 @@ public interface JNINativeInterface extends PointerBase {
     void setNewDirectByteBuffer(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getGetDirectBufferAddress();
+    GetDirectBufferAddress getGetDirectBufferAddress();
 
     @CField
     void setGetDirectBufferAddress(CFunctionPointer p);
