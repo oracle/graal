@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -37,6 +36,7 @@ import org.graalvm.options.OptionStability;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
 @TruffleInstrument.Registration(id = WarmupEstimatorInstrument.ID, name = "Warmup Estimator", version = WarmupEstimatorInstrument.VERSION)
@@ -73,10 +73,10 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
             final SourceSectionFilter filter = SourceSectionFilter.newBuilder().includeInternal(false).tagIs(StandardTags.RootTag.class).rootNameIs(rootName::equals).build();
             env.getInstrumenter().attachExecutionEventFactory(filter, context -> {
                 if (node == null) {
-                    node = new WarmupEstimatorNode(env.getOptions().get(EPSILON));
+                    node = new WarmupEstimatorNode();
                     return node;
                 }
-                 throw new IllegalStateException("Cannot estimate warmup for multiple roots.");
+                throw new IllegalStateException("Cannot estimate warmup for multiple roots.");
             });
         }
     }
@@ -84,15 +84,17 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         final String outputPath = OUTPUT_FILE.getValue(env.getOptions());
+        final Results results = node.getResults(env.getOptions().get(EPSILON));
+        ResultsPrinter printer = new ResultsPrinter(results);
         if ("".equals(outputPath)) {
-            node.printSimpleResults(new PrintStream(env.out()));
+            printer.printSimpleResults(new PrintStream(env.out()));
         } else {
             final File file = new File(outputPath);
             if (file.exists()) {
                 throw new IllegalArgumentException("Cannot redirect output to an existing file!");
             }
             try {
-                node.printJsonResults(new PrintStream(new FileOutputStream(file)));
+                printer.printJsonResults(new PrintStream(new FileOutputStream(file)));
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
