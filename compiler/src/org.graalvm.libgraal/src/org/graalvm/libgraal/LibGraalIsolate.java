@@ -71,7 +71,12 @@ public final class LibGraalIsolate {
      */
     @SuppressWarnings("unchecked")
     public synchronized <T> T getSingleton(Class<T> key, Supplier<T> supplier) {
-        return (T) singletons.computeIfAbsent(key, k -> supplier.get());
+        // Cannot use HahsMap.computeIfAbsent as it will throw a ConcurrentModificationException
+        // if supplier recurses here to compute another singleton.
+        if (!singletons.containsKey(key)) {
+            singletons.put(key, supplier.get());
+        }
+        return (T) singletons.get(key);
     }
 
     private final Map<Class<?>, Object> singletons = new HashMap<>();
