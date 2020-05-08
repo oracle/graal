@@ -28,13 +28,15 @@
 
 from __future__ import print_function
 
-import os, shutil, re
+import os
+import shutil
+import re
+import sys
 from os.path import join, exists
 from argparse import ArgumentParser, REMAINDER
 
 import mx
-
-import sys
+from mx_urlrewrites import rewriteurl
 
 if sys.version_info[0] < 3:
     _long = long # pylint: disable=undefined-variable
@@ -132,7 +134,7 @@ def hsdis(args, copyToDir=None):
     path = join(_suite.get_output_root(), lib)
     if not exists(path):
         sha1path = path + '.sha1'
-        mx.download_file_with_sha1('hsdis', path, ['https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis/' + lib.replace(os.sep, '/')], sha1, sha1path, True, True, sources=False)
+        mx.download_file_with_sha1('hsdis', path, [rewriteurl('https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis/' + lib.replace(os.sep, '/'))], sha1, sha1path, True, True, sources=False)
 
     overwrite = True
     if copyToDir is None:
