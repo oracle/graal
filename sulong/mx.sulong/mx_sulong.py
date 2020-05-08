@@ -34,7 +34,11 @@ import pipes
 import tempfile
 from os.path import join, exists, basename
 import shutil
+import datetime
+import time
 import subprocess
+import filecmp
+from random import Random
 from argparse import ArgumentParser
 
 import mx
@@ -672,11 +676,11 @@ def findBundledLLVMProgram(llvm_program):
     dep = mx.dependency(llvm_dist, fatalIfMissing=True)
     return os.path.join(dep.get_output(), 'bin', llvm_program)
 
-def llvm_tool(args=None, out=None):
+def llvm_tool(args=None, nonZeroIsFatal=True, out=None, err=None):
     if len(args) < 1:
         mx.abort("usage: mx llvm-tool <llvm-tool> [args...]")
     llvm_program = findBundledLLVMProgram(args[0])
-    mx.run([llvm_program] + args[1:], out=out)
+    mx.run([llvm_program] + args[1:], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
@@ -704,13 +708,13 @@ def update_sulong_home(new_home):
 mx_subst.path_substitutions.register_no_arg('sulong_home', get_sulong_home)
 
 
-def runLLVM(args=None, out=None, get_classpath_options=getClasspathOptions):
+def runLLVM(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, get_classpath_options=getClasspathOptions):
     """uses Sulong to execute a LLVM IR file"""
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
     dists = []
     if "tools" in (s.name for s in mx.suites()):
         dists.append('CHROMEINSPECTOR')
-    return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, out=out)
+    return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
 
 def extract_bitcode(args=None, out=None):
@@ -754,6 +758,121 @@ def llvm_dis(args=None, out=None):
         if tmp_dir:
             shutil.rmtree(tmp_dir)
 
+def fuzz(args=None, out=None):
+    parser = ArgumentParser(prog='mx fuzz', description='')
+    parser.add_argument('--seed', help='Seed used for randomness.', metavar='<seed>', type=int, default=int(time.time()))
+    parser.add_argument('--nrtestcases', help='Number of testcases to be generated.', metavar='<nrtestcases>', type=int, default=10)
+    parser.add_argument('outdir', help='The output directory.', metavar='<outdir>')
+    parsed_args = parser.parse_args(args)
+
+    tmp_dir = None
+    try:        
+        tmp_dir = tempfile.mkdtemp()
+        tmp_ll = os.path.join(tmp_dir, 'tmp.ll')
+        tmp_out = os.path.join(tmp_dir, 'tmp.out')
+        tmp_sulong_out = os.path.join(tmp_dir, 'tmp_sulong_out.txt')
+        tmp_bin_out = os.path.join(tmp_dir, 'tmp_bin_out.txt')
+        tmp_sulong_err = os.path.join(tmp_dir, 'tmp_sulong_err.txt')
+        tmp_bin_err = os.path.join(tmp_dir, 'tmp_bin_err.txt')
+        rand = Random(parsed_args.seed)
+
+        passed = 0
+        invalid = 0
+	for _ in range(parsed_args.nrtestcases):
+            #TODO add llvm-stress to toolchain
+            llvm_tool(["llvm-stress", "-o", tmp_ll, "-seed", str(rand.randint(0, 10000000)), "-size", str(300)]) # 15 if loops enabled            
+            #TODO add recipe for fuzzmain in Makefile
+            #TODO don't use sulong bootstrap clang
+            llvm_tool(["clang-sulong-bootstrap", "-O0", "-o", tmp_out, tmp_ll, os.path.join(get_sulong_home(), "fuzzmain.c")])
+            timeout = 10000
+            with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
+                runLLVM(['--llvm.llDebug', '--llvm.traceIR', '--experimental-options', tmp_out], timeout=timeout, nonZeroIsFatal=False, out=o, err=e)                
+            with open(tmp_bin_out, 'w') as o, open(tmp_bin_err, 'w') as e:
+                try:
+                    mx.run([tmp_out], timeout=timeout, out=o, err=e)
+                except SystemExit:
+                    invalid += 1
+                    continue
+            
+            if all(filecmp.cmp(sulong_f, bin_f, shallow=False) for sulong_f, bin_f in ((tmp_sulong_out, tmp_bin_out), (tmp_sulong_err, tmp_bin_err))):
+                passed += 1
+            else:
+                now = str(datetime.datetime.now())
+                now = now.replace(":","_")
+                current_out_dir = os.path.join(parsed_args.outdir, now)
+                os.mkdir(current_out_dir)
+                gen = [
+                    (tmp_ll, 'autogen.ll'),
+                    (tmp_out, 'autogen'),
+                    (tmp_sulong_out, 'sulong_out.txt'),
+                    (tmp_bin_out, 'bin_out.txt'),
+                    (tmp_sulong_err, 'sulong_err.txt'),
+                    (tmp_bin_err, 'bin_err.txt'),
+                ]
+                for tmp_f, gen_f_name in gen:
+                    shutil.copy(tmp_f, os.path.join(current_out_dir, gen_f_name))
+    finally:
+        if tmp_dir:
+            shutil.rmtree(tmp_dir)
+    print("Test report:")
+    print("tests passed: %i/%i invalid tests: %i seed: %i" % (passed, parsed_args.nrtestcases-invalid, invalid, parsed_args.seed))
+
+def ll_reduce(args=None, out=None):
+    parser = ArgumentParser(prog='mx ll-reduce', description='')
+    parser.add_argument('--seed', help='Seed used for randomness.', metavar='<seed>', type=int, default=int(time.time()))
+    parser.add_argument('--timeout', help='Time in seconds until no new reduction operations are permitted to start.', metavar='<timeout>', type=int, default=None)
+    parser.add_argument('--timeout-stabilized', help='Time in seconds that should pass since no successful minimal reduction operation has been performed until no new reduction operations are permitted to start.', metavar='<timeout-stabilized>', type=int, default=10)
+    parser.add_argument('--clang-input', help='Additional input files that should be forwarded to clang. No reductions will be performed on these files. Mx path substitutions are enabled.', metavar='<clanginputs>', nargs='*')
+    parser.add_argument('--output', help='The output file. If omitted, <input>.reduced.ll is used.', metavar='<output>', default=None)
+    parser.add_argument('input', help='The input file.', metavar='<input>')
+    parsed_args = parser.parse_args(args)
+
+    tmp_dir = None
+    nrmutations = 4
+    starttime = time.time()
+    starttime_stabilized = None
+    try:        
+        tmp_dir = tempfile.mkdtemp()
+        tmp_bc = os.path.join(tmp_dir, 'tmp.bc')
+        tmp_ll = os.path.join(tmp_dir, 'tmp1.ll')
+        tmp_ll_reduced = os.path.join(tmp_dir, 'tmp2.ll')
+        tmp_out = os.path.join(tmp_dir, 'tmp.out')
+        tmp_sulong_out_original = os.path.join(tmp_dir, 'tmp_sulong_out_original.txt')
+        tmp_sulong_err_original = os.path.join(tmp_dir, 'tmp_sulong_err_original.txt')
+        tmp_sulong_out = os.path.join(tmp_dir, 'tmp_sulong_out.txt')
+        tmp_sulong_err = os.path.join(tmp_dir, 'tmp_sulong_err.txt')
+        rand = Random(parsed_args.seed)
+        lli_timeout = 10000
+        devnull = open(os.devnull, 'w')  
+
+        def run_lli(input_f, out_f, err_f):
+             additional_clang_input = [mx_subst.path_substitutions.substitute(ci) for ci in parsed_args.clang_input or []]
+             llvm_tool(["clang-sulong-bootstrap", "-O0", "-Wno-everything", "-o", tmp_out, input_f] + additional_clang_input)
+             with open(out_f, 'w') as o, open(err_f, 'w') as e:
+                runLLVM([tmp_out], timeout=lli_timeout, nonZeroIsFatal=False, out=o, err=e)
+        
+        shutil.copy(parsed_args.input, tmp_ll)
+        run_lli(tmp_ll, tmp_sulong_out_original, tmp_sulong_err_original)
+	while (not parsed_args.timeout or time.time()-starttime < parsed_args.timeout) and \
+                 (not starttime_stabilized or time.time()-starttime_stabilized < parsed_args.timeout_stabilized):
+            print("nrmutations: %d filesize: %d bytes" % (nrmutations, os.path.getsize(tmp_ll)))
+            llvm_tool(["llvm-as", "-o", tmp_bc, tmp_ll])
+            llvm_tool(["llvm-reduce", tmp_bc, "-ignore_remaining_args=1", "-mtriple", "x86_64-unknown-linux-gnu", "-nrmutations", str(nrmutations), "-seed", str(rand.randint(0, 10000000)), "-o", tmp_ll_reduced], out=devnull, err=devnull)                     
+            run_lli(tmp_ll_reduced, tmp_sulong_out, tmp_sulong_err)                     
+            if all(filecmp.cmp(sulong_f, original_f, shallow=False) for sulong_f, original_f in ((tmp_sulong_out, tmp_sulong_out_original), (tmp_sulong_err, tmp_sulong_err_original))):
+                tmp_ll, tmp_ll_reduced = tmp_ll_reduced, tmp_ll
+                nrmutations *= 2
+                starttime_stabilized = None
+            else:
+                if nrmutations > 1:
+                  nrmutations //= 2
+                  if not starttime_stabilized:
+                     starttime_stabilized = time.time()
+    finally:
+        if tmp_ll and os.path.isfile(tmp_ll):
+            shutil.copy(tmp_ll, parsed_args.output or (os.path.splitext(parsed_args.input)[0] + ".reduced.ll"))
+        if tmp_dir:
+            shutil.rmtree(tmp_dir)
 
 _env_flags = []
 if 'CPPFLAGS' in os.environ:
@@ -1046,4 +1165,6 @@ mx.update_commands(_suite, {
     'extract-bitcode' : [extract_bitcode, 'Extract embedded LLVM bitcode from object files'],
     'llvm-tool' : [llvm_tool, 'Run a tool from the LLVM.ORG distribution'],
     'llvm-dis' : [llvm_dis, 'Disassemble (embedded) LLVM bitcode to LLVM assembly'],
+    'fuzz' : [fuzz, ''],
+    'll-reduce' : [ll_reduce, '']
 })
