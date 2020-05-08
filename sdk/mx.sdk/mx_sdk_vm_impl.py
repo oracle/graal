@@ -2698,8 +2698,8 @@ def _parse_cmd_arg(arg_name, env_var_name=None, separator=',', parse_bool=True, 
 
     env_var_name = arg_name.upper() if env_var_name is None else env_var_name
 
-    value = getattr(mx.get_opts(), arg_name, None)
-    value_from_env = value is None
+    value = getattr(mx.get_opts(), arg_name)
+    value_from_env = value in (None, [])
     if value_from_env:
         value = mx.get_env(env_var_name, default_value)
 
