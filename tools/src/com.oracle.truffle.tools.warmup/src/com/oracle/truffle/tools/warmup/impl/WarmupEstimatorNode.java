@@ -58,7 +58,7 @@ class WarmupEstimatorNode extends ExecutionEventNode {
         for (int i = 0; i < peakIter; i++) {
             warmup += samples.get(i) - peak;
         }
-        return warmup;
+        return warmup / peak;
     }
 
     private int peakStart(long peak, double epsilon) {
