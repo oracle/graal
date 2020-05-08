@@ -1185,7 +1185,11 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 '-H:+AllowFoldMethods',
                 '-H:+ReportExceptionStackTraces',
                 '-Djdk.vm.ci.services.aot=true',
-                '-Dtruffle.TruffleRuntime='
+                '-Dtruffle.TruffleRuntime=',
+
+                # These 2 arguments provide walkable call stacks for a crash in libgraal
+                '-H:+PreserveFramePointer',
+                '-H:-DeleteLocalSymbols',
             ],
         ),
     ],
