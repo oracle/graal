@@ -778,22 +778,22 @@ def fuzz(args=None, out=None):
 
         passed = 0
         invalid = 0
-	for _ in range(parsed_args.nrtestcases):
+        for _ in range(parsed_args.nrtestcases):
             #TODO add llvm-stress to toolchain
-            llvm_tool(["llvm-stress", "-o", tmp_ll, "-seed", str(rand.randint(0, 10000000)), "-size", str(300)]) # 15 if loops enabled            
+            llvm_tool(["llvm-stress", "-o", tmp_ll, "-seed", str(rand.randint(0, 10000000)), "-size", str(300)])
             #TODO add recipe for fuzzmain in Makefile
             #TODO don't use sulong bootstrap clang
             llvm_tool(["clang-sulong-bootstrap", "-O0", "-o", tmp_out, tmp_ll, os.path.join(get_sulong_home(), "fuzzmain.c")])
             timeout = 10000
             with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
-                runLLVM(['--llvm.llDebug', '--llvm.traceIR', '--experimental-options', tmp_out], timeout=timeout, nonZeroIsFatal=False, out=o, err=e)                
+                runLLVM(['--llvm.llDebug', '--llvm.traceIR', '--experimental-options', tmp_out], timeout=timeout, nonZeroIsFatal=False, out=o, err=e)
             with open(tmp_bin_out, 'w') as o, open(tmp_bin_err, 'w') as e:
                 try:
                     mx.run([tmp_out], timeout=timeout, out=o, err=e)
                 except SystemExit:
                     invalid += 1
                     continue
-            
+
             if all(filecmp.cmp(sulong_f, bin_f, shallow=False) for sulong_f, bin_f in ((tmp_sulong_out, tmp_bin_out), (tmp_sulong_err, tmp_bin_err))):
                 passed += 1
             else:
@@ -831,7 +831,7 @@ def ll_reduce(args=None, out=None):
     nrmutations = 4
     starttime = time.time()
     starttime_stabilized = None
-    try:        
+    try:
         tmp_dir = tempfile.mkdtemp()
         tmp_bc = os.path.join(tmp_dir, 'tmp.bc')
         tmp_ll = os.path.join(tmp_dir, 'tmp1.ll')
@@ -843,31 +843,31 @@ def ll_reduce(args=None, out=None):
         tmp_sulong_err = os.path.join(tmp_dir, 'tmp_sulong_err.txt')
         rand = Random(parsed_args.seed)
         lli_timeout = 10000
-        devnull = open(os.devnull, 'w')  
+        devnull = open(os.devnull, 'w')
 
         def run_lli(input_f, out_f, err_f):
-             additional_clang_input = [mx_subst.path_substitutions.substitute(ci) for ci in parsed_args.clang_input or []]
-             llvm_tool(["clang-sulong-bootstrap", "-O0", "-Wno-everything", "-o", tmp_out, input_f] + additional_clang_input)
-             with open(out_f, 'w') as o, open(err_f, 'w') as e:
+            additional_clang_input = [mx_subst.path_substitutions.substitute(ci) for ci in parsed_args.clang_input or []]
+            llvm_tool(["clang-sulong-bootstrap", "-O0", "-Wno-everything", "-o", tmp_out, input_f] + additional_clang_input)
+            with open(out_f, 'w') as o, open(err_f, 'w') as e:
                 runLLVM([tmp_out], timeout=lli_timeout, nonZeroIsFatal=False, out=o, err=e)
-        
+
         shutil.copy(parsed_args.input, tmp_ll)
         run_lli(tmp_ll, tmp_sulong_out_original, tmp_sulong_err_original)
 	while (not parsed_args.timeout or time.time()-starttime < parsed_args.timeout) and \
                  (not starttime_stabilized or time.time()-starttime_stabilized < parsed_args.timeout_stabilized):
             print("nrmutations: %d filesize: %d bytes" % (nrmutations, os.path.getsize(tmp_ll)))
             llvm_tool(["llvm-as", "-o", tmp_bc, tmp_ll])
-            llvm_tool(["llvm-reduce", tmp_bc, "-ignore_remaining_args=1", "-mtriple", "x86_64-unknown-linux-gnu", "-nrmutations", str(nrmutations), "-seed", str(rand.randint(0, 10000000)), "-o", tmp_ll_reduced], out=devnull, err=devnull)                     
-            run_lli(tmp_ll_reduced, tmp_sulong_out, tmp_sulong_err)                     
+            llvm_tool(["llvm-reduce", tmp_bc, "-ignore_remaining_args=1", "-mtriple", "x86_64-unknown-linux-gnu", "-nrmutations", str(nrmutations), "-seed", str(rand.randint(0, 10000000)), "-o", tmp_ll_reduced], out=devnull, err=devnull)
+            run_lli(tmp_ll_reduced, tmp_sulong_out, tmp_sulong_err)
             if all(filecmp.cmp(sulong_f, original_f, shallow=False) for sulong_f, original_f in ((tmp_sulong_out, tmp_sulong_out_original), (tmp_sulong_err, tmp_sulong_err_original))):
                 tmp_ll, tmp_ll_reduced = tmp_ll_reduced, tmp_ll
                 nrmutations *= 2
                 starttime_stabilized = None
             else:
                 if nrmutations > 1:
-                  nrmutations //= 2
-                  if not starttime_stabilized:
-                     starttime_stabilized = time.time()
+                    nrmutations //= 2
+                    if not starttime_stabilized:
+                        starttime_stabilized = time.time()
     finally:
         if tmp_ll and os.path.isfile(tmp_ll):
             shutil.copy(tmp_ll, parsed_args.output or (os.path.splitext(parsed_args.input)[0] + ".reduced.ll"))
