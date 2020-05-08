@@ -42,6 +42,7 @@ import java.util.zip.ZipOutputStream;
 
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 
 /**
  * Manages a directory into which diagnostics such crash reports and dumps should be written. The
@@ -107,7 +108,7 @@ public class DiagnosticsOutputDirectory {
             // directory specified by the DumpPath option.
             baseDir = Paths.get(".");
         }
-        return baseDir.resolve("graal_diagnostics_" + GraalServices.getExecutionID()).toAbsolutePath().toString();
+        return baseDir.resolve("graal_diagnostics_" + GraalServices.getExecutionID() + '@' + IsolateUtil.getIsolateID()).toAbsolutePath().toString();
     }
 
     /**

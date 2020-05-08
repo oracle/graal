@@ -29,14 +29,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
 import javax.management.DynamicMBean;
 import javax.management.InstanceAlreadyExistsException;
+import javax.management.InstanceNotFoundException;
 import javax.management.InvalidAttributeValueException;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanException;
@@ -56,7 +60,9 @@ import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
+
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.util.OptionsEncoder;
@@ -128,9 +134,9 @@ class SVMMBean implements DynamicMBean {
      */
     @Override
     public AttributeList getAttributes(String[] attributes) {
-        try (IsolateThreadScope scope = IsolateThreadScope.open(isolate)) {
-            byte[] rawData = HotSpotToSVMCalls.getAttributes(scope.getIsolateThread(), handle, attributes);
-            return rawToAttributeList(scope, rawData);
+        try (LibGraalScope scope = new LibGraalScope(isolate)) {
+            byte[] rawData = HotSpotToSVMCalls.getAttributes(scope.getIsolateThreadAddress(), handle, attributes);
+            return rawToAttributeList(rawData);
         }
     }
 
@@ -143,25 +149,24 @@ class SVMMBean implements DynamicMBean {
      */
     @Override
     public AttributeList setAttributes(AttributeList attributes) {
-        try (IsolateThreadScope scope = IsolateThreadScope.open(isolate)) {
+        try (LibGraalScope scope = new LibGraalScope(isolate)) {
             Map<String, Object> map = new LinkedHashMap<>();
             for (Object item : attributes) {
                 Attribute attribute = (Attribute) item;
                 map.put(attribute.getName(), attribute.getValue());
             }
             byte[] rawData = OptionsEncoder.encode(map);
-            rawData = HotSpotToSVMCalls.setAttributes(scope.getIsolateThread(), handle, rawData);
-            return rawToAttributeList(scope, rawData);
+            rawData = HotSpotToSVMCalls.setAttributes(scope.getIsolateThreadAddress(), handle, rawData);
+            return rawToAttributeList(rawData);
         }
     }
 
     /**
      * Decodes an {@link AttributeList} encoded to {@code byte} array using {@link OptionsEncoder}.
      *
-     * @param scope current isolate thread
      * @param rawData the encoded attribute list.
      */
-    private static AttributeList rawToAttributeList(IsolateThreadScope scope, byte[] rawData) {
+    private static AttributeList rawToAttributeList(byte[] rawData) {
         AttributeList res = new AttributeList();
         Map<String, Object> map = OptionsEncoder.decode(rawData);
         for (PushBackIterator<Map.Entry<String, Object>> it = new PushBackIterator<>(map.entrySet().iterator()); it.hasNext();) {
@@ -257,7 +262,7 @@ class SVMMBean implements DynamicMBean {
      */
     @Override
     public Object invoke(String actionName, Object[] params, String[] signature) throws MBeanException, ReflectionException {
-        try (IsolateThreadScope scope = IsolateThreadScope.open(isolate)) {
+        try (LibGraalScope scope = new LibGraalScope(isolate)) {
             Map<String, Object> paramsMap = new LinkedHashMap<>();
             if (params != null) {
                 for (int i = 0; i < params.length; i++) {
@@ -265,11 +270,11 @@ class SVMMBean implements DynamicMBean {
                 }
             }
             byte[] rawData = OptionsEncoder.encode(paramsMap);
-            rawData = HotSpotToSVMCalls.invoke(scope.getIsolateThread(), handle, actionName, rawData, signature);
+            rawData = HotSpotToSVMCalls.invoke(scope.getIsolateThreadAddress(), handle, actionName, rawData, signature);
             if (rawData == null) {
                 throw new MBeanException(null);
             }
-            AttributeList attributesList = rawToAttributeList(scope, rawData);
+            AttributeList attributesList = rawToAttributeList(rawData);
             return attributesList.isEmpty() ? null : ((Attribute) attributesList.get(0)).getValue();
         }
     }
@@ -281,8 +286,8 @@ class SVMMBean implements DynamicMBean {
      */
     @Override
     public MBeanInfo getMBeanInfo() {
-        try (IsolateThreadScope scope = IsolateThreadScope.open(isolate)) {
-            byte[] rawData = HotSpotToSVMCalls.getMBeanInfo(scope.getIsolateThread(), handle);
+        try (LibGraalScope scope = new LibGraalScope(isolate)) {
+            byte[] rawData = HotSpotToSVMCalls.getMBeanInfo(scope.getIsolateThreadAddress(), handle);
             Map<String, Object> map = OptionsEncoder.decode(rawData);
             String className = null;
             String description = null;
@@ -320,10 +325,8 @@ class SVMMBean implements DynamicMBean {
     }
 
     /**
-     * Returns a factory thread registering the {@link SVMMBean} instances into {@link MBeanServer}.
-     * If the factory thread does not exist it's created and started.
-     *
-     * @return the started factory thread instance.
+     * Returns a factory for registering the {@link SVMMBean} instances into {@link MBeanServer}. If
+     * the factory does not exist it is created and its registration thread is started.
      */
     static Factory getFactory() {
         Factory res = factory;
@@ -533,11 +536,15 @@ class SVMMBean implements DynamicMBean {
         private static final int POLL_INTERVAL_MS = 2000;
 
         private MBeanServer platformMBeanServer;
-        private final List<Long> todo;
+
+        /**
+         * Set of isolates yet to be processed for MBean registrations.
+         */
+        private final Set<Long> pendingIsolates;
 
         private Factory() {
             super("Libgraal MBean Registration");
-            this.todo = new ArrayList<>();
+            this.pendingIsolates = new LinkedHashSet<>();
             this.setPriority(Thread.MIN_PRIORITY);
             this.setDaemon(true);
         }
@@ -554,7 +561,7 @@ class SVMMBean implements DynamicMBean {
                 try {
                     synchronized (this) {
                         // Wait until there are deferred registrations to process
-                        while (todo.isEmpty()) {
+                        while (pendingIsolates.isEmpty()) {
                             wait();
                         }
                         try {
@@ -575,12 +582,36 @@ class SVMMBean implements DynamicMBean {
         }
 
         /**
-         * Called by {@code MBeanProxy} in SVM heap to notify the factory thread about new
+         * Called by {@code MBeanProxy} in SVM heap to notify this factory of an isolate with
+         * {@link DynamicMBean}s that needs registration.
+         */
+        synchronized void signalRegistrationRequest(long isolate) {
+            pendingIsolates.add(isolate);
+            notify();
+        }
+
+        /**
+         * Called by {@code MBeanProxy} in SVM heap when the isolate is closing to unregister its
          * {@link DynamicMBean}s.
          */
-        synchronized void signal(long isolate) {
-            todo.add(isolate);
-            notify();
+        synchronized void unregister(long isolate, String[] objectIds) {
+            // Remove pending registration requests
+            pendingIsolates.remove(isolate);
+            MBeanServer mBeanServer = findMBeanServer();
+            if (mBeanServer == null) {
+                // Nothing registered yet.
+                return;
+            }
+            for (String objectId : objectIds) {
+                try {
+                    ObjectName objectName = new ObjectName(objectId);
+                    if (mBeanServer.isRegistered(objectName)) {
+                        mBeanServer.unregisterMBean(objectName);
+                    }
+                } catch (MalformedObjectNameException | MBeanRegistrationException | InstanceNotFoundException e) {
+                    e.printStackTrace(TTY.out);
+                }
+            }
         }
 
         /**
@@ -596,16 +627,26 @@ class SVMMBean implements DynamicMBean {
          */
         private boolean poll() {
             assert Thread.holdsLock(this);
+            MBeanServer mBeanServer = findMBeanServer();
+            if (mBeanServer != null) {
+                return process();
+            } else {
+                return false;
+            }
+        }
+
+        /**
+         * Returns a {@link MBeanServer} if it already exists.
+         */
+        private MBeanServer findMBeanServer() {
+            assert Thread.holdsLock(this);
             if (platformMBeanServer == null) {
                 ArrayList<MBeanServer> servers = MBeanServerFactory.findMBeanServer(null);
                 if (!servers.isEmpty()) {
                     platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
-                    return process();
                 }
-            } else {
-                return process();
             }
-            return false;
+            return platformMBeanServer;
         }
 
         /**
@@ -619,87 +660,27 @@ class SVMMBean implements DynamicMBean {
          * @throws UnsupportedOperationException can be thrown by {@link MBeanServer}
          */
         private boolean process() {
-            for (Iterator<Long> todoIt = todo.iterator(); todoIt.hasNext();) {
-                long isolate = todoIt.next();
-                todoIt.remove();
-                try (IsolateThreadScope scope = IsolateThreadScope.open(isolate)) {
-                    long[] svmRegistrations = HotSpotToSVMCalls.pollRegistrations(scope.getIsolateThread());
+            for (Iterator<Long> iter = pendingIsolates.iterator(); iter.hasNext();) {
+                long isolate = iter.next();
+                iter.remove();
+                try (LibGraalScope scope = new LibGraalScope(isolate)) {
+                    long isolateThread = scope.getIsolateThreadAddress();
+                    long[] svmRegistrations = HotSpotToSVMCalls.pollRegistrations(isolateThread);
                     if (svmRegistrations.length > 0) {
                         for (long svmRegistration : svmRegistrations) {
                             SVMMBean bean = new SVMMBean(isolate, svmRegistration);
-                            String name = HotSpotToSVMCalls.getObjectName(scope.getIsolateThread(), svmRegistration);
+                            String name = HotSpotToSVMCalls.getObjectName(isolateThread, svmRegistration);
                             try {
-                                try {
-                                    platformMBeanServer.registerMBean(bean, new ObjectName(name));
-                                } catch (InstanceAlreadyExistsException e) {
-                                    String newName = name + "_" + Long.toHexString(scope.getIsolateThread());
-                                    TTY.out.printf("WARNING: The object name '%s' is already used by an existing MBean, using '%s' for libgraal MBean.%n",
-                                                    name, newName);
-                                    platformMBeanServer.registerMBean(bean, new ObjectName(newName));
-                                }
+                                platformMBeanServer.registerMBean(bean, new ObjectName(name));
                             } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
                                 e.printStackTrace(TTY.out);
                             }
                         }
-                        HotSpotToSVMCalls.finishRegistration(scope.getIsolateThread(), svmRegistrations);
+                        HotSpotToSVMCalls.finishRegistration(isolateThread, svmRegistrations);
                     }
                 }
             }
             return true;
-        }
-    }
-
-    private static final class IsolateThreadScope implements AutoCloseable {
-
-        private static final ThreadLocal<IsolateThreadScope> currentIsolateThread = new ThreadLocal<>();
-
-        private final long isolate;
-        private final IsolateThreadScope parent;
-        private long isolateThread;
-
-        private IsolateThreadScope(long isolate, IsolateThreadScope parent) {
-            if (parent != null && parent.isolate != isolate) {
-                throw new IllegalStateException("Thread can be entered only in single isolate.");
-            }
-            this.isolate = isolate;
-            this.parent = parent;
-            this.isolateThread = parent == null ? enterThread(isolate) : parent.isolateThread;
-        }
-
-        long getIsolateThread() {
-            if (isolateThread == 0L) {
-                throw new IllegalStateException("IsolateThreadScope is already closed.");
-            }
-            return isolateThread;
-        }
-
-        @Override
-        public void close() {
-            if (isolateThread != 0L) {
-                if (currentIsolateThread.get() != this) {
-                    throw new IllegalStateException("Unpaired scope close.");
-                }
-                currentIsolateThread.set(parent);
-                if (parent == null) {
-                    leaveThread(isolateThread);
-                }
-                isolateThread = 0L;
-            }
-        }
-
-        private static long enterThread(long isolate) {
-            return HotSpotToSVMCalls.attachThread(isolate);
-        }
-
-        private static void leaveThread(long isolateThread) {
-            HotSpotToSVMCalls.detachThread(isolateThread);
-        }
-
-        static IsolateThreadScope open(long isolate) {
-            IsolateThreadScope parent = currentIsolateThread.get();
-            IsolateThreadScope entered = new IsolateThreadScope(isolate, parent);
-            currentIsolateThread.set(entered);
-            return entered;
         }
     }
 }

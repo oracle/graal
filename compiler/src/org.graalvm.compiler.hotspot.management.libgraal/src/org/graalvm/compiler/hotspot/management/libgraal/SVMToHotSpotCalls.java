@@ -24,10 +24,13 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
-import static org.graalvm.word.WordFactory.nullPointer;
 import static org.graalvm.libgraal.jni.JNIUtil.GetMethodID;
+import static org.graalvm.libgraal.jni.JNIUtil.GetStaticFieldID;
 import static org.graalvm.libgraal.jni.JNIUtil.GetStaticMethodID;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
+import static org.graalvm.word.WordFactory.nullPointer;
+
+import java.util.Random;
 
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
@@ -43,7 +46,6 @@ import org.graalvm.word.WordFactory;
 final class SVMToHotSpotCalls {
 
     private static final String CLASS_SERVICES = "jdk/vm/ci/services/Services";
-    static final String CLASS_RUNTIME = "jdk/vm/ci/hotspot/HotSpotJVMCIRuntime";
     static final String CLASS_LIBGRAAL = "org/graalvm/libgraal/LibGraal";
 
     private static final String[] METHOD_GET_FACTORY = {
@@ -51,8 +53,12 @@ final class SVMToHotSpotCalls {
                     "()Lorg/graalvm/compiler/hotspot/management/SVMMBean$Factory;"
     };
     private static final String[] METHOD_SIGNAL = {
-                    "signal",
+                    "signalRegistrationRequest",
                     "(Lorg/graalvm/compiler/hotspot/management/SVMMBean$Factory;J)V"
+    };
+    private static final String[] METHOD_UNREGISTER = {
+                    "unregister",
+                    "(Lorg/graalvm/compiler/hotspot/management/SVMMBean$Factory;J[Ljava/lang/String;)V"
     };
     private static final String[] METHOD_GET_JVMCI_CLASS_LOADER = {
                     "getJVMCIClassLoader",
@@ -80,7 +86,11 @@ final class SVMToHotSpotCalls {
     };
     private static final String[] METHOD_REGISTER_NATIVES = {
                     "registerNativeMethods",
-                    "(Ljdk/vm/ci/hotspot/HotSpotJVMCIRuntime;Ljava/lang/Class;)V"
+                    "(Ljava/lang/Class;)V"
+    };
+    private static final String[] FIELD_NATIVES_REGISTERED = {
+                    "nativesRegistered",
+                    "Z"
     };
 
     private SVMToHotSpotCalls() {
@@ -116,15 +126,21 @@ final class SVMToHotSpotCalls {
         return env.getFunctions().getCallStaticObjectMethodA().call(env, svmToHotSpotEntryPointsClass, createId, nullPointer());
     }
 
-    static void signal(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass, JNI.JObject factory) {
+    static void signalRegistrationRequest(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass, JNI.JObject factory) {
         JNI.JMethodID signalId = findMethod(env, svmToHotSpotEntryPointsClass, true, false, METHOD_SIGNAL);
         JNI.JValue params = StackValue.get(2, JNI.JValue.class);
         params.addressOf(0).setJObject(factory);
         params.addressOf(1).setLong(CurrentIsolate.getIsolate().rawValue());
         env.getFunctions().getCallStaticVoidMethodA().call(env, svmToHotSpotEntryPointsClass, signalId, params);
-        if (JNIUtil.ExceptionCheck(env)) {
-            JNIUtil.ExceptionDescribe(env);
-        }
+    }
+
+    static void unregister(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass, JNI.JObject factory, JNI.JObjectArray objectNamesHandle) {
+        JNI.JMethodID unregisterId = findMethod(env, svmToHotSpotEntryPointsClass, true, false, METHOD_UNREGISTER);
+        JNI.JValue params = StackValue.get(3, JNI.JValue.class);
+        params.addressOf(0).setJObject(factory);
+        params.addressOf(1).setLong(CurrentIsolate.getIsolate().rawValue());
+        params.addressOf(2).setJObject(objectNamesHandle);
+        env.getFunctions().getCallStaticVoidMethodA().call(env, svmToHotSpotEntryPointsClass, unregisterId, params);
     }
 
     /**
@@ -159,17 +175,55 @@ final class SVMToHotSpotCalls {
         return (JNI.JClass) env.getFunctions().getCallObjectMethodA().call(env, classLoader, findClassId, params);
     }
 
+    /**
+     * Finds a class in HotSpot using a system class loader.
+     */
+    static JNI.JClass findClass(JNI.JNIEnv env, String className) {
+        try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(className)) {
+            return JNIUtil.FindClass(env, name.get());
+        }
+    }
+
     static JNI.JObject getRuntime(JNI.JNIEnv env, JNI.JClass runtimeClass) {
         JNI.JMethodID runtimeId = findMethod(env, runtimeClass, true, false, METHOD_RUNTIME);
         return env.getFunctions().getCallStaticObjectMethodA().call(env, runtimeClass, runtimeId, nullPointer());
     }
 
-    static void registerNatives(JNI.JNIEnv env, JNI.JClass libgraal, JNI.JObject runtime, JNI.JClass target) {
+    static void registerNatives(JNI.JNIEnv env, JNI.JClass libgraal, JNI.JClass target) {
         JNI.JMethodID registerId = findMethod(env, libgraal, true, false, METHOD_REGISTER_NATIVES);
-        JNI.JValue params = StackValue.get(2, JNI.JValue.class);
-        params.addressOf(0).setJObject(runtime);
-        params.addressOf(1).setJObject(target);
+        JNI.JValue params = StackValue.get(1, JNI.JValue.class);
+        params.addressOf(0).setJObject(target);
         env.getFunctions().getCallStaticObjectMethodA().call(env, libgraal, registerId, params);
+    }
+
+    static void notifyNativesRegistered(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
+        JNI.JFieldID nativesRegisteredId = findStaticField(env, hsToSvmCalls, FIELD_NATIVES_REGISTERED);
+        env.getFunctions().getSetStaticBooleanField().call(env, hsToSvmCalls, nativesRegisteredId, true);
+    }
+
+    static boolean waitForRegisterNatives(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
+        JNI.JFieldID nativesRegisteredId = findStaticField(env, hsToSvmCalls, FIELD_NATIVES_REGISTERED);
+        JNI.GetStaticBooleanField access = env.getFunctions().getGetStaticBooleanField();
+        boolean res;
+
+        int sleepLimit = 5;
+        Random rand = new Random();
+        do {
+            res = access.call(env, hsToSvmCalls, nativesRegisteredId);
+            if (JNIUtil.ExceptionCheck(env)) {
+                return false;
+            }
+            try {
+                // Randomize sleep time to mitigate waiting threads
+                // performing in lock-step with each other.
+                int sleep = rand.nextInt(sleepLimit);
+                Thread.sleep(sleep);
+                // Exponential back-off up to MAX_SLEEP ms
+                sleepLimit = Math.min(2000, sleepLimit * 2);
+            } catch (InterruptedException e) {
+            }
+        } while (!res);
+        return true;
     }
 
     private static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, boolean staticMethod, boolean optional, String[] descriptor) {
@@ -182,6 +236,16 @@ final class SVMToHotSpotCalls {
             } else {
                 MBeanProxy.checkException(env, "Cannot find method " + descriptor[0]);
             }
+            return result;
+        }
+    }
+
+    private static JNI.JFieldID findStaticField(JNI.JNIEnv env, JNI.JClass clazz, String[] descriptor) {
+        assert descriptor.length == 2;
+        JNI.JFieldID result;
+        try (CCharPointerHolder name = toCString(descriptor[0]); CCharPointerHolder sig = toCString(descriptor[1])) {
+            result = GetStaticFieldID(env, clazz, name.get(), sig.get());
+            MBeanProxy.checkException(env, "Cannot find method " + descriptor[0]);
             return result;
         }
     }

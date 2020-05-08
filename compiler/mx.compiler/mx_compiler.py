@@ -486,7 +486,7 @@ def _gate_java_benchmark(args, successRe):
         if jvmErrorFile:
             jvmErrorFile = jvmErrorFile.group()
             mx.log('Dumping ' + jvmErrorFile)
-            with open(jvmErrorFile, 'rb') as fp:
+            with open(jvmErrorFile) as fp:
                 mx.log(fp.read())
             os.unlink(jvmErrorFile)
 

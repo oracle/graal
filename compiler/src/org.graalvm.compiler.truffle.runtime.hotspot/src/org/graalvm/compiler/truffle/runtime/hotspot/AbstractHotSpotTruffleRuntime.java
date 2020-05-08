@@ -112,6 +112,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         StackIntrospection stackIntrospection;
 
         Lazy(AbstractHotSpotTruffleRuntime runtime) {
+            super(runtime);
             runtime.installDefaultListeners();
         }
     }

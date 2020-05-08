@@ -40,7 +40,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.FindDecision;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallNodes;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetKnownCallSiteCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallTargetForCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetClassName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCompilableCallCount;
@@ -51,6 +50,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetFailedSpeculationsAddress;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetFrameSlotKindTagForJavaKind;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetInlineKind;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetKnownCallSiteCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetLanguage;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetLineNumber;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetLoopExplosionKind;
@@ -105,11 +105,13 @@ import java.util.stream.Stream;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan.Decision;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
@@ -118,15 +120,12 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.libgraal.LibGraal;
 
 import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
-import org.graalvm.compiler.truffle.common.TruffleCallNode;
 
 /**
  * Entry points in HotSpot for {@linkplain SVMToHotSpot calls} from SVM.
@@ -144,8 +143,6 @@ final class SVMToHotSpotEntryPoints {
         assert checkHotSpotCalls();
     }
 
-    private static final HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
-
     @SVMToHotSpot(ConsumeOptimizedAssumptionDependency)
     static void consumeOptimizedAssumptionDependency(Consumer<OptimizedAssumptionDependency> consumer, OptimizedAssumptionDependency dep) {
         consumer.accept(dep);
@@ -153,40 +150,40 @@ final class SVMToHotSpotEntryPoints {
 
     @SVMToHotSpot(GetCallTargetForCallNode)
     static long getCallTargetForCallNode(HotSpotTruffleCompilerRuntime truffleRuntime, long callNodeHandle) {
-        JavaConstant callNode = LibGraal.unhand(jvmciRuntime, JavaConstant.class, callNodeHandle);
+        JavaConstant callNode = LibGraal.unhand(JavaConstant.class, callNodeHandle);
         JavaConstant callTarget = truffleRuntime.getCallTargetForCallNode(callNode);
-        return LibGraal.translate(jvmciRuntime, callTarget);
+        return LibGraal.translate(callTarget);
     }
 
     @SVMToHotSpot(IsTruffleBoundary)
     static boolean isTruffleBoundary(HotSpotTruffleCompilerRuntime truffleRuntime, long methodHandle) {
-        ResolvedJavaMethod method = LibGraal.unhand(jvmciRuntime, ResolvedJavaMethod.class, methodHandle);
+        ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         return truffleRuntime.isTruffleBoundary(method);
     }
 
     @SVMToHotSpot(IsValueType)
     static boolean isValueType(HotSpotTruffleCompilerRuntime truffleRuntime, long typeHandle) {
-        ResolvedJavaType type = LibGraal.unhand(jvmciRuntime, ResolvedJavaType.class, typeHandle);
+        ResolvedJavaType type = LibGraal.unhand(ResolvedJavaType.class, typeHandle);
         return truffleRuntime.isValueType(type);
     }
 
     @SVMToHotSpot(GetInlineKind)
     static int getInlineKind(HotSpotTruffleCompilerRuntime truffleRuntime, long methodHandle, boolean duringPartialEvaluation) {
-        ResolvedJavaMethod method = LibGraal.unhand(jvmciRuntime, ResolvedJavaMethod.class, methodHandle);
+        ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         TruffleCompilerRuntime.InlineKind inlineKind = truffleRuntime.getInlineKind(method, duringPartialEvaluation);
         return inlineKind.ordinal();
     }
 
     @SVMToHotSpot(GetLoopExplosionKind)
     static int getLoopExplosionKind(HotSpotTruffleCompilerRuntime truffleRuntime, long methodHandle) {
-        ResolvedJavaMethod method = LibGraal.unhand(jvmciRuntime, ResolvedJavaMethod.class, methodHandle);
+        ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         TruffleCompilerRuntime.LoopExplosionKind loopExplosionKind = truffleRuntime.getLoopExplosionKind(method);
         return loopExplosionKind.ordinal();
     }
 
     @SVMToHotSpot(GetConstantFieldInfo)
     static int getConstantFieldInfo(HotSpotTruffleCompilerRuntime truffleRuntime, long typeHandle, boolean isStatic, int fieldIndex) {
-        ResolvedJavaType enclosing = LibGraal.unhand(jvmciRuntime, ResolvedJavaType.class, typeHandle);
+        ResolvedJavaType enclosing = LibGraal.unhand(ResolvedJavaType.class, typeHandle);
         ResolvedJavaField[] declaredFields = isStatic ? enclosing.getStaticFields() : enclosing.getInstanceFields(false);
         ResolvedJavaField field = declaredFields[fieldIndex];
 
@@ -228,7 +225,7 @@ final class SVMToHotSpotEntryPoints {
         long[] res = new long[source.size()];
         int i = 0;
         for (ResolvedJavaMethod m : source) {
-            res[i++] = LibGraal.translate(jvmciRuntime, m);
+            res[i++] = LibGraal.translate(m);
         }
         return res;
     }
@@ -251,38 +248,38 @@ final class SVMToHotSpotEntryPoints {
 
     @SVMToHotSpot(RegisterOptimizedAssumptionDependency)
     static Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(HotSpotTruffleCompilerRuntime truffleRuntime, long optimizedAssumptionHandle) {
-        JavaConstant optimizedAssumption = LibGraal.unhand(jvmciRuntime, JavaConstant.class, optimizedAssumptionHandle);
+        JavaConstant optimizedAssumption = LibGraal.unhand(JavaConstant.class, optimizedAssumptionHandle);
         return truffleRuntime.registerOptimizedAssumptionDependency(optimizedAssumption);
     }
 
     @SVMToHotSpot(AsCompilableTruffleAST)
     static CompilableTruffleAST asCompilableTruffleAST(HotSpotTruffleCompilerRuntime truffleRuntime, long constantHandle) {
-        JavaConstant constant = LibGraal.unhand(jvmciRuntime, JavaConstant.class, constantHandle);
+        JavaConstant constant = LibGraal.unhand(JavaConstant.class, constantHandle);
         return truffleRuntime.asCompilableTruffleAST(constant);
     }
 
     @SVMToHotSpot(FindDecision)
     static TruffleInliningPlan.Decision findDecision(TruffleInliningPlan inliningPlan, long callNodeHandle) {
-        JavaConstant callNode = LibGraal.unhand(jvmciRuntime, JavaConstant.class, callNodeHandle);
+        JavaConstant callNode = LibGraal.unhand(JavaConstant.class, callNodeHandle);
         return inliningPlan.findDecision(callNode);
     }
 
     @SVMToHotSpot(GetPosition)
     static TruffleSourceLanguagePosition getPosition(TruffleInliningPlan inliningPlan, long callNodeHandle) {
-        JavaConstant callNode = LibGraal.unhand(jvmciRuntime, JavaConstant.class, callNodeHandle);
+        JavaConstant callNode = LibGraal.unhand(JavaConstant.class, callNodeHandle);
         return inliningPlan.getPosition(callNode);
     }
 
     @SVMToHotSpot(GetNodeRewritingAssumption)
     static long getNodeRewritingAssumption(TruffleInliningPlan.Decision decision) {
         JavaConstant assumption = decision.getNodeRewritingAssumption();
-        return LibGraal.translate(jvmciRuntime, assumption);
+        return LibGraal.translate(assumption);
     }
 
     @SVMToHotSpot(GetNodeRewritingAssumptionConstant)
     static long getNodeRewritingAssumptionConstant(CompilableTruffleAST compilable) {
         JavaConstant assumption = compilable.getNodeRewritingAssumptionConstant();
-        return LibGraal.translate(jvmciRuntime, assumption);
+        return LibGraal.translate(assumption);
     }
 
     @SVMToHotSpot(GetURI)
@@ -294,12 +291,12 @@ final class SVMToHotSpotEntryPoints {
     @SVMToHotSpot(AsJavaConstant)
     static long asJavaConstant(CompilableTruffleAST compilable) {
         JavaConstant constant = compilable.asJavaConstant();
-        return LibGraal.translate(jvmciRuntime, constant);
+        return LibGraal.translate(constant);
     }
 
     @SVMToHotSpot(OnCodeInstallation)
     static void onCodeInstallation(HotSpotTruffleCompilerRuntime truffleRuntime, CompilableTruffleAST compilable, long installedCodeHandle) {
-        InstalledCode installedCode = LibGraal.unhand(jvmciRuntime, InstalledCode.class, installedCodeHandle);
+        InstalledCode installedCode = LibGraal.unhand(InstalledCode.class, installedCodeHandle);
         truffleRuntime.onCodeInstallation(compilable, installedCode);
     }
 
@@ -496,7 +493,7 @@ final class SVMToHotSpotEntryPoints {
 
     @SVMToHotSpot(FindCallNode)
     static TruffleCallNode findCallNode(TruffleMetaAccessProvider provider, long callNodeHandle) {
-        JavaConstant callNode = LibGraal.unhand(jvmciRuntime, JavaConstant.class, callNodeHandle);
+        JavaConstant callNode = LibGraal.unhand(JavaConstant.class, callNodeHandle);
         return provider.findCallNode(callNode);
     }
 

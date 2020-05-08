@@ -24,6 +24,11 @@
  */
 package org.graalvm.libgraal;
 
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+import static org.graalvm.libgraal.LibGraalScope.methodIf;
+import static org.graalvm.libgraal.LibGraalScope.methodOrNull;
+import static org.graalvm.libgraal.LibGraalScope.sig;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -36,68 +41,32 @@ import jdk.vm.ci.services.Services;
  */
 public class LibGraal {
 
-    static final Method runtimeUnhand;
-    static final Method runtimeTranslate;
-    static final Method runtimeRegisterNativeMethods;
-    static final Method runtimeIsCurrentThreadAttached;
-    static final Method runtimeAttachCurrentThread;
-    static final Method runtimeDetachCurrentThread;
-    static final Method speculationLogGetFailedSpeculationsAddress;
-
     static {
-        Method unhand = null;
-        Method translate = null;
-        Method registerNativeMethods = null;
-        Method isCurrentThreadAttached = null;
-        Method attachCurrentThread = null;
-        Method detachCurrentThread = null;
-        Method getFailedSpeculationsAddress = null;
-        boolean firstFound = false;
-        // Initialize JVMCI to ensure JVMCI opens its packages to
-        // Graal otherwise the call to HotSpotJVMCIRuntime.runtime()
-        // below will fail on JDK13+.
+        // Initialize JVMCI to ensure JVMCI opens its packages to Graal.
         Services.initializeJVMCI();
-
-        Class<?> runtimeClass = HotSpotJVMCIRuntime.class;
-        try {
-            unhand = runtimeClass.getDeclaredMethod("unhand", Class.class, Long.TYPE);
-            firstFound = true;
-            translate = runtimeClass.getDeclaredMethod("translate", Object.class);
-            registerNativeMethods = runtimeClass.getDeclaredMethod("registerNativeMethods", Class.class);
-            isCurrentThreadAttached = runtimeClass.getDeclaredMethod("isCurrentThreadAttached");
-            attachCurrentThread = runtimeClass.getDeclaredMethod("attachCurrentThread", Boolean.TYPE);
-            detachCurrentThread = runtimeClass.getDeclaredMethod("detachCurrentThread");
-            getFailedSpeculationsAddress = HotSpotSpeculationLog.class.getDeclaredMethod("getFailedSpeculationsAddress");
-        } catch (NoSuchMethodException | SecurityException e) {
-            // If the very first method is unavailable assume nothing is available. Otherwise only
-            // some are missing so complain about it.
-            if (firstFound) {
-                throw new InternalError("some methods are unavailable", e);
-            }
-        }
-
-        runtimeUnhand = unhand;
-        runtimeTranslate = translate;
-        runtimeRegisterNativeMethods = registerNativeMethods;
-        runtimeIsCurrentThreadAttached = isCurrentThreadAttached;
-        runtimeAttachCurrentThread = attachCurrentThread;
-        runtimeDetachCurrentThread = detachCurrentThread;
-        speculationLogGetFailedSpeculationsAddress = getFailedSpeculationsAddress;
     }
 
+    private static final Method unhand = methodOrNull(HotSpotJVMCIRuntime.class, "unhand", sig(Class.class, Long.TYPE));
+    private static final Method translate = methodIf(unhand, HotSpotJVMCIRuntime.class, "translate", sig(Object.class));
+    private static final Method registerNativeMethods = methodIf(unhand, HotSpotJVMCIRuntime.class, "registerNativeMethods", sig(Class.class));
+    private static final Method isCurrentThreadAttached = methodIf(unhand, HotSpotJVMCIRuntime.class, "isCurrentThreadAttached");
+    private static final Method attachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "attachCurrentThread", sig(Boolean.TYPE, long[].class), sig(Boolean.TYPE));
+    private static final Method detachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "detachCurrentThread", sig(Boolean.TYPE), sig());
+    private static final Method getFailedSpeculationsAddress = methodIf(unhand, HotSpotSpeculationLog.class, "getFailedSpeculationsAddress");
+
     public static boolean isAvailable() {
-        return inLibGraal() || isolate != 0L;
+        return inLibGraal() || available;
     }
 
     public static boolean isSupported() {
-        return speculationLogGetFailedSpeculationsAddress != null;
+        return getFailedSpeculationsAddress != null;
     }
 
     public static boolean inLibGraal() {
         return Services.IS_IN_NATIVE_IMAGE;
     }
 
-    public static void registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
+    public static void registerNativeMethods(Class<?> clazz) {
         if (clazz.isPrimitive()) {
             throw new IllegalArgumentException();
         }
@@ -105,7 +74,7 @@ public class LibGraal {
             throw new IllegalStateException();
         }
         try {
-            runtimeRegisterNativeMethods.invoke(runtime, clazz);
+            registerNativeMethods.invoke(runtime(), clazz);
         } catch (Error e) {
             throw e;
         } catch (Throwable throwable) {
@@ -113,7 +82,7 @@ public class LibGraal {
         }
     }
 
-    public static long translate(HotSpotJVMCIRuntime runtime, Object obj) {
+    public static long translate(Object obj) {
         if (!isAvailable()) {
             throw new IllegalStateException();
         }
@@ -121,14 +90,14 @@ public class LibGraal {
             throw new IllegalStateException("Not within a " + LibGraalScope.class.getName());
         }
         try {
-            return (long) runtimeTranslate.invoke(runtime, obj);
+            return (long) translate.invoke(runtime(), obj);
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T unhand(HotSpotJVMCIRuntime runtime, Class<T> type, long handle) {
+    public static <T> T unhand(Class<T> type, long handle) {
         if (!isAvailable()) {
             throw new IllegalStateException();
         }
@@ -136,26 +105,20 @@ public class LibGraal {
             throw new IllegalStateException("Not within a " + LibGraalScope.class.getName());
         }
         try {
-            return (T) runtimeUnhand.invoke(runtime, type, handle);
+            return (T) unhand.invoke(runtime(), type, handle);
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
     }
 
     private static long initializeLibgraal() {
-        if (runtimeRegisterNativeMethods == null) {
+        if (registerNativeMethods == null) {
             return 0L;
         }
         try {
-            // Initialize JVMCI to ensure JVMCI opens its packages to
-            // Graal otherwise the call to HotSpotJVMCIRuntime.runtime()
-            // below might fail
-            Services.initializeJVMCI();
-
-            HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
-
-            long[] nativeInterface = (long[]) runtimeRegisterNativeMethods.invoke(runtime, LibGraal.class);
-            return nativeInterface[1];
+            long[] javaVMInfo = (long[]) registerNativeMethods.invoke(runtime(), LibGraalScope.class);
+            long isolate = javaVMInfo[1];
+            return isolate;
         } catch (InvocationTargetException e) {
             if (e.getTargetException() instanceof UnsupportedOperationException) {
                 return 0L;
@@ -166,38 +129,54 @@ public class LibGraal {
         }
     }
 
-    static final long isolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
+    static final long initialIsolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
+    static final boolean available = initialIsolate != 0L;
 
-    static boolean isCurrentThreadAttached(HotSpotJVMCIRuntime runtime) {
+    static boolean isCurrentThreadAttached() {
         try {
-            return (boolean) runtimeIsCurrentThreadAttached.invoke(runtime);
+            return (boolean) isCurrentThreadAttached.invoke(runtime());
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
     }
 
-    public static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime, boolean isDaemon) {
+    public static boolean attachCurrentThread(boolean isDaemon, long[] isolate) {
         try {
-            return (boolean) runtimeAttachCurrentThread.invoke(runtime, isDaemon);
+            if (attachCurrentThread.getParameterCount() == 2) {
+                long[] javaVMInfo = isolate != null ? new long[4] : null;
+                boolean res = (boolean) attachCurrentThread.invoke(runtime(), isDaemon, javaVMInfo);
+                if (isolate != null) {
+                    isolate[0] = javaVMInfo[1];
+                }
+                return res;
+            } else {
+                if (isolate != null) {
+                    isolate[0] = initialIsolate;
+                }
+                return (boolean) attachCurrentThread.invoke(runtime(), isDaemon);
+            }
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
     }
 
-    public static void detachCurrentThread(HotSpotJVMCIRuntime runtime) {
+    public static boolean detachCurrentThread(boolean release) {
         try {
-            runtimeDetachCurrentThread.invoke(runtime);
+            if (detachCurrentThread.getParameterCount() == 1) {
+                return (Boolean) detachCurrentThread.invoke(runtime(), release);
+            } else {
+                detachCurrentThread.invoke(runtime());
+                return false;
+            }
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
     }
-
-    static native long getCurrentIsolateThread(long iso);
 
     public static long getFailedSpeculationsAddress(HotSpotSpeculationLog log) {
-        if (speculationLogGetFailedSpeculationsAddress != null) {
+        if (getFailedSpeculationsAddress != null) {
             try {
-                return (long) speculationLogGetFailedSpeculationsAddress.invoke(log);
+                return (long) getFailedSpeculationsAddress.invoke(log);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
             }

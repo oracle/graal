@@ -24,20 +24,23 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
+import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
+import org.graalvm.libgraal.LibGraalScope.DetachAction;
 import org.graalvm.util.OptionsEncoder;
 
 import com.oracle.truffle.api.TruffleRuntime;
 
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -46,71 +49,106 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
-    private final long handle;
+    /**
+     * Handle to a HSTruffleCompilerRuntime object in an SVM heap.
+     */
+    static final class Handle extends LibGraalObject {
+        Handle(long handle) {
+            super(handle);
+        }
+    }
 
     @SuppressWarnings("try")
     LibGraalTruffleRuntime() {
-        HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
-        runtime.registerNativeMethods(HotSpotToSVMCalls.class);
-        MetaAccessProvider metaAccess = runtime.getHostJVMCIBackend().getMetaAccess();
-        HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) metaAccess.lookupJavaType(getClass());
-        try (LibGraalScope scope = new LibGraalScope(runtime)) {
-            long classLoaderDelegate = LibGraal.translate(runtime, type);
-            handle = HotSpotToSVMCalls.initializeRuntime(getIsolateThread(), this, classLoaderDelegate);
+        runtime().registerNativeMethods(HotSpotToSVMCalls.class);
+    }
+
+    long handle() {
+        try (LibGraalScope scope = new LibGraalScope()) {
+            return scope.getIsolate().getSingleton(Handle.class, () -> {
+                MetaAccessProvider metaAccess = runtime().getHostJVMCIBackend().getMetaAccess();
+                HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) metaAccess.lookupJavaType(getClass());
+                long classLoaderDelegate = LibGraal.translate(type);
+                return new Handle(HotSpotToSVMCalls.initializeRuntime(getIsolateThread(), LibGraalTruffleRuntime.this, classLoaderDelegate));
+            }).getHandle();
         }
     }
 
     @SuppressWarnings("try")
     @Override
     public HotSpotTruffleCompiler newTruffleCompiler() {
-        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            return new SVMHotSpotTruffleCompiler(HotSpotToSVMCalls.newCompiler(getIsolateThread(), handle));
+        try (LibGraalScope scope = new LibGraalScope()) {
+            return new SVMHotSpotTruffleCompiler(this);
         }
     }
 
     @SuppressWarnings("try")
     @Override
     protected String initLazyCompilerConfigurationName() {
-        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            return HotSpotToSVMCalls.getCompilerConfigurationFactoryName(getIsolateThread());
+        try (LibGraalScope scope = new LibGraalScope()) {
+            return HotSpotToSVMCalls.getCompilerConfigurationFactoryName(getIsolateThread(), handle());
         }
+    }
+
+    @Override
+    protected AutoCloseable openCompilerThreadScope() {
+        return new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE);
+    }
+
+    @Override
+    protected long getCompilerIdleDelay() {
+        // TODO: introduce a polyglot option (GR-23129)
+        return 1000L;
     }
 
     @SuppressWarnings("try")
     @Override
     protected Map<String, Object> createInitialOptions() {
-        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            byte[] serializedOptions = HotSpotToSVMCalls.getInitialOptions(getIsolateThread(), handle);
+        try (LibGraalScope scope = new LibGraalScope()) {
+            byte[] serializedOptions = HotSpotToSVMCalls.getInitialOptions(getIsolateThread(), handle());
             return OptionsEncoder.decode(serializedOptions);
         }
     }
 
     @Override
     protected OutputStream getDefaultLogStream() {
-        return TTYStream.INSTANCE;
+        try (LibGraalScope scope = new LibGraalScope()) {
+            return scope.getIsolate().getSingleton(TTYStream.class, () -> new TTYStream());
+        }
     }
 
-    private static final class TTYStream extends OutputStream {
+    /**
+     * Gets an output stream that write data to a libgraal TTY stream.
+     */
+    static final class TTYStream extends OutputStream {
 
-        static final OutputStream INSTANCE = new TTYStream();
+        private final ThreadLocal<LibGraalScope> localScope = new ThreadLocal<LibGraalScope>() {
+            @Override
+            protected LibGraalScope initialValue() {
+                return new LibGraalScope();
+            }
+        };
 
-        private TTYStream() {
+        private long isolateThread() {
+            return localScope.get().getIsolateThreadAddress();
         }
 
         @SuppressWarnings("try")
         @Override
         public void write(int b) {
-            try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-                HotSpotToSVMCalls.ttyWriteByte(getIsolateThread(), b);
-            }
+            HotSpotToSVMCalls.ttyWriteByte(isolateThread(), b);
         }
 
         @SuppressWarnings("try")
         @Override
         public void write(byte[] b, int off, int len) {
-            try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-                HotSpotToSVMCalls.ttyWriteBytes(getIsolateThread(), b, off, len);
-            }
+            HotSpotToSVMCalls.ttyWriteBytes(isolateThread(), b, off, len);
+        }
+
+        @Override
+        public void close() throws IOException {
+            localScope.get().close();
+            localScope.remove();
         }
     }
 }

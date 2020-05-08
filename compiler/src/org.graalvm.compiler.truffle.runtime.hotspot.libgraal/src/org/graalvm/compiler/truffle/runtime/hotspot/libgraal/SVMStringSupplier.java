@@ -28,10 +28,12 @@ import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import java.util.function.Supplier;
 
+import org.graalvm.libgraal.LibGraalObject;
+
 /**
  * Encapsulates a handle to a {@link Supplier} object in the SVM heap.
  */
-final class SVMStringSupplier extends SVMObject implements Supplier<String> {
+final class SVMStringSupplier extends LibGraalObject implements Supplier<String> {
 
     SVMStringSupplier(long handle) {
         super(handle);
@@ -39,6 +41,6 @@ final class SVMStringSupplier extends SVMObject implements Supplier<String> {
 
     @Override
     public String get() {
-        return HotSpotToSVMCalls.getSuppliedString(getIsolateThread(), handle);
+        return HotSpotToSVMCalls.getSuppliedString(getIsolateThread(), getHandle());
     }
 }

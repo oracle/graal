@@ -33,12 +33,15 @@ import org.graalvm.nativeimage.Platforms;
 @Platforms(Platform.HOSTED_ONLY.class)
 final class HotSpotToSVMCalls {
 
+    /**
+     * Used to synchronize libgraal isolates waiting for registration of the native methods in this
+     * class. The field is set to {@code true} from the libgraal native library when all natives in
+     * this class have been registered.
+     */
+    private static volatile boolean nativesRegistered;
+
     private HotSpotToSVMCalls() {
     }
-
-    static native long attachThread(long isolateId);
-
-    static native void detachThread(long isolateThreadId);
 
     static native long[] pollRegistrations(long isolateThreadId);
 

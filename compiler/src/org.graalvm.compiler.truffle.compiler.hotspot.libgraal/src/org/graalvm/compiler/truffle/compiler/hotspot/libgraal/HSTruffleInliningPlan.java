@@ -25,7 +25,7 @@
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import org.graalvm.libgraal.jni.HSObject;
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.FindCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.FindDecision;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetDescription;
@@ -84,7 +84,7 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
     @SVMToHotSpot(FindDecision)
     @Override
     public Decision findDecision(JavaConstant callNode) {
-        long callNodeHandle = LibGraal.translate(runtime(), callNode);
+        long callNodeHandle = LibGraal.translate(callNode);
         JNIEnv env = scope.getEnv();
         JObject res = callFindDecision(env, getHandle(), callNodeHandle);
         if (res.isNull()) {
@@ -96,7 +96,7 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
     @SVMToHotSpot(FindCallNode)
     @Override
     public TruffleCallNode findCallNode(JavaConstant callNode) {
-        long nodeHandle = LibGraal.translate(runtime(), callNode);
+        long nodeHandle = LibGraal.translate(callNode);
         JNIEnv env = scope.getEnv();
         JObject res = callFindCallNode(env, getHandle(), nodeHandle);
         if (res.isNull()) {
@@ -108,7 +108,7 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
     @SVMToHotSpot(GetPosition)
     @Override
     public TruffleSourceLanguagePosition getPosition(JavaConstant node) {
-        long nodeHandle = LibGraal.translate(runtime(), node);
+        long nodeHandle = LibGraal.translate(node);
         JNIEnv env = scope.getEnv();
         JObject res = callGetPosition(env, getHandle(), nodeHandle);
         if (res.isNull()) {
@@ -150,7 +150,7 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
         @Override
         public JavaConstant getNodeRewritingAssumption() {
             long javaConstantHandle = callGetNodeRewritingAssumption(scope.getEnv(), getHandle());
-            return LibGraal.unhand(runtime(), JavaConstant.class, javaConstantHandle);
+            return LibGraal.unhand(JavaConstant.class, javaConstantHandle);
         }
     }
 

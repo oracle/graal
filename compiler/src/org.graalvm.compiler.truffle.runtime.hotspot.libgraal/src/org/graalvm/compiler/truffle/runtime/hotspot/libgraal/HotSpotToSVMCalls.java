@@ -57,7 +57,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenDebugContext;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenDebugContextScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.PendingTransferToInterpreterOffset;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.ReleaseHandle;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.Shutdown;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.TtyWriteByte;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.TtyWriteBytes;
@@ -80,7 +79,7 @@ final class HotSpotToSVMCalls {
     static native long initializeRuntime(long isolateThreadId, TruffleCompilerRuntime truffleRuntime, long classLoaderDelegateId);
 
     @HotSpotToSVM(GetCompilerConfigurationFactoryName)
-    static native String getCompilerConfigurationFactoryName(long isolateThreadId);
+    static native String getCompilerConfigurationFactoryName(long isolateThreadId, long truffleRuntimeHandle);
 
     @HotSpotToSVM(NewCompiler)
     static native long newCompiler(long isolateThreadId, long truffleRuntimeHandle);
@@ -90,9 +89,6 @@ final class HotSpotToSVMCalls {
 
     @HotSpotToSVM(GetInitialOptions)
     static native byte[] getInitialOptions(long isolateThreadId, long truffleRuntimeHandle);
-
-    @HotSpotToSVM(ReleaseHandle)
-    static native void releaseHandle(long isolateThreadId, long handle);
 
     @HotSpotToSVM(OpenCompilation)
     static native long openCompilation(long isolateThreadId, long handle, CompilableTruffleAST compilable);

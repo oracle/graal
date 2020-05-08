@@ -27,6 +27,7 @@ package org.graalvm.compiler.hotspot.management.libgraal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.DynamicMBean;
@@ -38,6 +39,8 @@ import javax.management.MBeanParameterInfo;
 import javax.management.ReflectionException;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
+
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
@@ -57,12 +60,6 @@ final class HotSpotToSVMEntryPoints {
     private HotSpotToSVMEntryPoints() {
     }
 
-    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_HotSpotToSVMCalls_attachThread", builtin = CEntryPoint.Builtin.ATTACH_THREAD)
-    static native long attachThread(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateContext long isolateId);
-
-    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_HotSpotToSVMCalls_detachThread", builtin = CEntryPoint.Builtin.DETACH_THREAD)
-    static native void detachThread(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId);
-
     /**
      * Returns the pending {@link DynamicMBean} registrations.
      */
@@ -71,7 +68,7 @@ final class HotSpotToSVMEntryPoints {
     static JNI.JLongArray pollRegistrations(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
         HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.PollRegistrations, env);
         try (HotSpotToSVMScope<Id> s = scope) {
-            List<MBeanProxy<?>> registrations = MBeanProxy.drain();
+            List<MBeanProxy<?>> registrations = MBeanProxy.drainRegistrations();
             JNI.JLongArray res = JNIUtil.NewLongArray(env, registrations.size());
             CLongPointer elems = JNIUtil.GetLongArrayElements(env, res, WordFactory.nullPointer());
             try {
@@ -119,7 +116,11 @@ final class HotSpotToSVMEntryPoints {
         try (HotSpotToSVMScope<Id> s = scope) {
             ObjectHandles globalHandles = ObjectHandles.getGlobal();
             MBeanProxy<?> registration = globalHandles.get(WordFactory.pointer(svmRegistration));
+            long isolateID = IsolateUtil.getIsolateID();
             String name = registration.getName();
+            if (isolateID != 0L) {
+                name += '@' + isolateID;
+            }
             scope.setObjectResult(JNIUtil.createHSString(env, name));
         }
         return scope.getObjectResult();
@@ -337,8 +338,9 @@ enum Id {
     GetMBeanInfo,
     GetObjectName,
     Invoke,
-    NewMBean,
+    NewMBeans,
     PollRegistrations,
     RegisterNatives,
-    SetAttributes
+    SetAttributes,
+    UnregisterMBeans
 }

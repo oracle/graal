@@ -26,11 +26,7 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.util.Collections;
 import java.util.Map;
-import java.util.WeakHashMap;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
@@ -39,36 +35,55 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
+import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.util.OptionsEncoder;
 
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-
 /**
- * Encapsulates a handle to a {@link HotSpotTruffleCompiler} object in the SVM heap.
+ * Encapsulates handles to {@link HotSpotTruffleCompiler} objects in the SVM isolates.
  */
-final class SVMHotSpotTruffleCompiler extends SVMObject implements HotSpotTruffleCompiler {
+final class SVMHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
-    private final Map<CompilableTruffleAST, Reference<SVMTruffleCompilation>> activeCompilations = Collections.synchronizedMap(new WeakHashMap<>());
+    static final class Handle extends LibGraalObject {
+        Handle(long handle) {
+            super(handle);
+        }
+    }
 
-    SVMHotSpotTruffleCompiler(long handle) {
-        super(handle);
+    private final ThreadLocal<SVMTruffleCompilation> activeCompilation = new ThreadLocal<>();
+
+    private final LibGraalTruffleRuntime runtime;
+
+    private byte[] initialOptions = {};
+
+    long handle() {
+        try (LibGraalScope scope = new LibGraalScope()) {
+            return scope.getIsolate().getSingleton(Handle.class, () -> {
+                long isolateThread = getIsolateThread();
+                long compilerHandle = HotSpotToSVMCalls.newCompiler(isolateThread, runtime.handle());
+                Handle compiler = new Handle(compilerHandle);
+                HotSpotToSVMCalls.initializeCompiler(isolateThread, compilerHandle, initialOptions);
+                return compiler;
+            }).getHandle();
+        }
+    }
+
+    SVMHotSpotTruffleCompiler(LibGraalTruffleRuntime runtime) {
+        this.runtime = runtime;
     }
 
     @SuppressWarnings("try")
     @Override
     public void initialize(Map<String, Object> options) {
-        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            byte[] encodedOptions = OptionsEncoder.encode(options);
-            HotSpotToSVMCalls.initializeCompiler(getIsolateThread(), handle, encodedOptions);
-        }
+        this.initialOptions = OptionsEncoder.encode(options);
     }
 
     @Override
     public TruffleCompilation openCompilation(CompilableTruffleAST compilable) {
-        LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime());
-        SVMTruffleCompilation compilation = new SVMTruffleCompilation(this, HotSpotToSVMCalls.openCompilation(getIsolateThread(), handle, compilable), scope);
-        activeCompilations.put(compilable, new WeakReference<>(compilation));
+        LibGraalScope scope = new LibGraalScope();
+        long compilationHandle = HotSpotToSVMCalls.openCompilation(getIsolateThread(), handle(), compilable);
+        SVMTruffleCompilation compilation = new SVMTruffleCompilation(this, compilationHandle, scope);
+        activeCompilation.set(compilation);
         return compilation;
     }
 
@@ -85,30 +100,32 @@ final class SVMHotSpotTruffleCompiler extends SVMObject implements HotSpotTruffl
                     TruffleCompilationTask task,
                     TruffleCompilerListener listener) {
         byte[] encodedOptions = OptionsEncoder.encode(options);
-        HotSpotToSVMCalls.doCompile(getIsolateThread(), handle, ((IgvSupport) debug).handle, ((SVMTruffleCompilation) compilation).handle, encodedOptions, inlining, task, listener);
+        long debugContextHandle = ((IgvSupport) debug).getHandle();
+        long compilationHandle = ((SVMTruffleCompilation) compilation).getHandle();
+        HotSpotToSVMCalls.doCompile(getIsolateThread(), handle(), debugContextHandle, compilationHandle, encodedOptions, inlining, task, listener);
     }
 
     @SuppressWarnings("try")
     @Override
     public String getCompilerConfigurationName() {
-        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            return HotSpotToSVMCalls.getCompilerConfigurationName(getIsolateThread(), handle);
+        try (LibGraalScope scope = new LibGraalScope()) {
+            return HotSpotToSVMCalls.getCompilerConfigurationName(getIsolateThread(), handle());
         }
     }
 
     @SuppressWarnings("try")
     @Override
     public void shutdown() {
-        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            HotSpotToSVMCalls.shutdown(getIsolateThread(), handle);
+        try (LibGraalScope scope = new LibGraalScope()) {
+            HotSpotToSVMCalls.shutdown(getIsolateThread(), handle());
         }
     }
 
     @SuppressWarnings("try")
     @Override
     public void installTruffleCallBoundaryMethods() {
-        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            HotSpotToSVMCalls.installTruffleCallBoundaryMethods(getIsolateThread(), handle);
+        try (LibGraalScope scope = new LibGraalScope()) {
+            HotSpotToSVMCalls.installTruffleCallBoundaryMethods(getIsolateThread(), handle());
         }
     }
 
@@ -118,19 +135,19 @@ final class SVMHotSpotTruffleCompiler extends SVMObject implements HotSpotTruffl
     @Override
     public int pendingTransferToInterpreterOffset() {
         if (pendingTransferToInterpreterOffset == null) {
-            try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-                pendingTransferToInterpreterOffset = HotSpotToSVMCalls.pendingTransferToInterpreterOffset(getIsolateThread(), handle);
+            try (LibGraalScope scope = new LibGraalScope()) {
+                pendingTransferToInterpreterOffset = HotSpotToSVMCalls.pendingTransferToInterpreterOffset(getIsolateThread(), handle());
             }
         }
         return pendingTransferToInterpreterOffset;
     }
 
     void closeCompilation(SVMTruffleCompilation compilation) {
-        activeCompilations.remove(compilation.getCompilable());
+        assert activeCompilation.get() == compilation;
+        activeCompilation.set(null);
     }
 
-    SVMTruffleCompilation findCompilation(CompilableTruffleAST compilable) {
-        Reference<SVMTruffleCompilation> compilationRef = activeCompilations.get(compilable);
-        return compilationRef == null ? null : compilationRef.get();
+    SVMTruffleCompilation getActiveCompilation() {
+        return activeCompilation.get();
     }
 }
