@@ -39,7 +39,8 @@ class WarmupEstimatorNode extends ExecutionEventNode {
     private final double epsilon;
     private long start;
     private List<Long> samples = new ArrayList<>();
-    private static final String DOUBLE_FORMAT = "%-15s: %d\n";
+    private static final String DOUBLE_FORMAT = "%-15s: %f\n";
+    private static final String LONG_FORMAT = "%-15s: %d\n";
 
     WarmupEstimatorNode(double epsilon) {
         this.epsilon = epsilon;
@@ -47,15 +48,15 @@ class WarmupEstimatorNode extends ExecutionEventNode {
 
     void printSimpleResults(PrintStream out) {
         final long peak = peak();
-        out.printf(DOUBLE_FORMAT, "Peak", peak);
+        out.printf(LONG_FORMAT, "Peak", peak);
         final int peakStart = peakStart(peak, epsilon);
-        out.printf(DOUBLE_FORMAT, "Peak Start", peakStart);
+        out.printf(LONG_FORMAT, "Peak Start", peakStart);
         out.printf(DOUBLE_FORMAT, "Warmup", warmup(peakStart, peak));
-        out.printf(DOUBLE_FORMAT, "Iterations", samples.size());
+        out.printf(LONG_FORMAT, "Iterations", samples.size());
     }
 
-    private long warmup(int peakIter, long peak) {
-        long warmup = 0;
+    private double warmup(int peakIter, long peak) {
+        double warmup = 0;
         for (int i = 0; i < peakIter; i++) {
             warmup += samples.get(i) - peak;
         }
@@ -95,7 +96,7 @@ class WarmupEstimatorNode extends ExecutionEventNode {
         result.put("warmup", warmup(peakStart, peak));
         result.put("iterations", samples.size());
         result.put("samples", new JSONArray(samples));
-        result.put("normalized_samples", new JSONArray(samples.stream().map(each -> each / peak).collect(Collectors.toList())));
+        result.put("normalized_samples", new JSONArray(samples.stream().map(each -> (double) each / peak).collect(Collectors.toList())));
         printStream.print(result.toString(2));
     }
 }
