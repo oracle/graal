@@ -59,7 +59,7 @@ public class BackgroundCompileQueue {
 
 
     private Runnable onIdleDelayed;
-    private long delayMillis;
+    private long delayNanos;
 
     public BackgroundCompileQueue(GraalTruffleRuntime runtime, Runnable onIdleDelayed) {
         this.runtime = runtime;
@@ -86,7 +86,7 @@ public class BackgroundCompileQueue {
                 onIdleDelayed = null;
             }
             int delaySeconds = callTarget.getOptionValue(PolyglotCompilerOptions.EncodedGraphCachePurgeDelay);
-            this.delayMillis = TimeUnit.SECONDS.toMillis(delaySeconds);
+            this.delayNanos = TimeUnit.SECONDS.toNanos(delaySeconds);
 
             // NOTE: the value from the first Engine compiling wins for now
             int threads = callTarget.getOptionValue(PolyglotCompilerOptions.CompilerThreads);
@@ -274,8 +274,8 @@ public class BackgroundCompileQueue {
         }
     }
 
-    @SuppressWarnings("rawtypes") private static final AtomicLongFieldUpdater<IdlingPriorityBlockingQueue> LATEST_EVENT_MILLIS_UPDATER = AtomicLongFieldUpdater.newUpdater(
-                    IdlingPriorityBlockingQueue.class, "latestEventMillis");
+    @SuppressWarnings("rawtypes") private static final AtomicLongFieldUpdater<IdlingPriorityBlockingQueue> LATEST_EVENT_NANOS_UPDATER = AtomicLongFieldUpdater.newUpdater(
+                    IdlingPriorityBlockingQueue.class, "latestEventNanos");
 
     /**
      * {@link PriorityBlockingQueue} with (delayed) idling notification.
@@ -293,7 +293,7 @@ public class BackgroundCompileQueue {
 
         private static final long serialVersionUID = 5437415215836241566L;
 
-        @SuppressWarnings("unused") volatile long latestEventMillis;
+        @SuppressWarnings("unused") volatile long latestEventNanos;
 
         @Override
         public E take() throws InterruptedException {
@@ -303,13 +303,13 @@ public class BackgroundCompileQueue {
                             !((ThreadPoolExecutor) compilationExecutorService).allowsCoreThreadTimeOut() : "idling notification does not support dynamically sized thread pools";
 
             while (true) {
-                E elem = poll(delayMillis, TimeUnit.MILLISECONDS);
+                E elem = poll(delayNanos, TimeUnit.NANOSECONDS);
                 if (elem == null) {
                     // Compiler thread has been idle for >= delayMillis.
-                    long latestMillis = LATEST_EVENT_MILLIS_UPDATER.get(this);
-                    long nowMillis = System.currentTimeMillis();
-                    if (nowMillis - latestMillis >= delayMillis) {
-                        if (LATEST_EVENT_MILLIS_UPDATER.compareAndSet(this, latestMillis, nowMillis)) {
+                    long latestNanos = LATEST_EVENT_NANOS_UPDATER.get(this);
+                    long nowNanos = System.nanoTime();
+                    if (nowNanos - latestNanos >= delayNanos) {
+                        if (LATEST_EVENT_NANOS_UPDATER.compareAndSet(this, latestNanos, nowNanos)) {
                             onIdleDelayed.run();
                         }
                     }
