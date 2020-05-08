@@ -68,7 +68,6 @@ import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -783,7 +782,7 @@ public class FlatNodeGenFactory {
                 Modifier visibility = Modifier.PRIVATE;
 
                 if (cache.isWeak()) {
-                    type = new DeclaredCodeTypeMirror(context.getTypeElement(WeakReference.class), Arrays.asList(type));
+                    type = new DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleWeakReference), Arrays.asList(type));
                 }
 
                 CodeVariableElement cachedField;
@@ -830,7 +829,7 @@ public class FlatNodeGenFactory {
                 String fieldName = createFieldName(specialization, parameter);
                 TypeMirror type = parameter.getType();
                 if (cache.isWeak()) {
-                    type = new DeclaredCodeTypeMirror(context.getTypeElement(WeakReference.class), Arrays.asList(type));
+                    type = new DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleWeakReference), Arrays.asList(type));
                 }
                 Modifier visibility = useSpecializationClass ? null : Modifier.PRIVATE;
                 CodeVariableElement cachedField;
@@ -4075,7 +4074,7 @@ public class FlatNodeGenFactory {
                 CodeTreeBuilder valueBuilder = CodeTreeBuilder.createBuilder();
                 // we can be sure that this type is imported elsewhere for the field
                 // so we can just use the simple name here
-                valueBuilder.startNew(WeakReference.class.getSimpleName() + "<>");
+                valueBuilder.startNew(ElementUtils.getDeclaredName(types.TruffleWeakReference, false) + "<>");
                 valueBuilder.tree(value);
                 valueBuilder.end();
                 value = valueBuilder.build();

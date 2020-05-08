@@ -52,6 +52,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakInlineCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakSharedCacheNodeGen;
+import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakSimpleNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.GCUtils;
 
@@ -60,7 +61,7 @@ public class WeakCachedTest {
 
     @Test
     public void testWeakSimpleNode() {
-        WeakInlineCacheNode node = WeakInlineCacheNodeGen.create();
+        WeakSimpleNode node = WeakSimpleNodeGen.create();
         Object o = new String("");
         WeakReference<Object> ref = new WeakReference<>(o);
         node.execute(o);

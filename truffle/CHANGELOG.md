@@ -21,6 +21,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `ConditionProfile#create()` as an alias of `createBinaryProfile()` so it can be used like `@Cached ConditionProfile myProfile`.
 * GR-19736 - Added Truffle DSL `@Extract` annotation to common out expression for use in guards and specialization methods.
 * GR-23182 - Added support for @Cached annotations to be weak using `@Cached(value ="...", weak = true)`. 
+* GR-23182 - Added `TruffleWeakReference` utility to be used on partial evaluated code paths instead of the default JDK `WeakReference`.
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.
@@ -44,7 +45,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added new meta-data APIs to `InteropLibrary`:
 	* `has/getLanguage(Object receiver)` to access the original language of an object.
 	* `has/getSourceLocation(Object receiver)` to access the source location of an object (e.g. of function or classes).
-	* `has/toDisplayString(Object receiver, boolean allowsSideEffect)` to produce a human readable string.
+	* `toDisplayString(Object receiver, boolean allowsSideEffect)` to produce a human readable string.
 	* `has/getMetaObject(Object receiver)` to access the meta-object of an object.
 	* `isMetaObject(Object receiver)` to find out whether an object is a meta-object (e.g. Java class)
 	* `getMetaQualifiedName(Object receiver)` to get the qualified name of the meta-object

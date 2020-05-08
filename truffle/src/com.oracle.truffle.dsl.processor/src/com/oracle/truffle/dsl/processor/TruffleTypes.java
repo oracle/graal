@@ -271,5 +271,10 @@ public class TruffleTypes {
     public final DeclaredType ObjectType = c.getDeclaredTypeOptional(ObjectType_Name);
     public final DeclaredType Layout_ImplicitCast = c.getDeclaredTypeOptional(Layout_ImplicitCast_Name);
 
+    // Utilities API
+    public static final String TruffleWeakReference_Name = "com.oracle.truffle.api.utilities.TruffleWeakReference";
+
+    public final DeclaredType TruffleWeakReference = c.getDeclaredTypeOptional(TruffleWeakReference_Name);
+
     // Checkstyle: resume
 }
