@@ -192,6 +192,10 @@ public class SubstrateOptions {
         }
     };
 
+    /* Same option name and specification as the Java HotSpot VM. */
+    @Option(help = "Maximum total size of NIO direct-buffer allocations")//
+    public static final RuntimeOptionKey<Long> MaxDirectMemorySize = new RuntimeOptionKey<>(0L);
+
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
 

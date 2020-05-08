@@ -24,16 +24,20 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 
-@TargetClass(className = "java.nio.Bits")
-final class Target_java_nio_Bits {
+@TargetClass(className = "java.nio.Bits", onlyWith = JDK8OrEarlier.class)
+final class Target_java_nio_Bits_JDK8 {
 
     /*
      * The original native method implementation calls back into the Java HotSpot VM, via the
@@ -41,7 +45,6 @@ final class Target_java_nio_Bits {
      * native code. Our implementation is also OS and architecture independent - so we can have this
      * substitution without a @Platforms annotation.
      */
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
     private static void copySwapMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
         MemoryUtil.copyConjointSwap(
@@ -49,4 +52,46 @@ final class Target_java_nio_Bits {
                         Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
                         WordFactory.unsigned(bytes), WordFactory.unsigned(elemSize));
     }
+
+    /* Ensure lazy initialization of page size happens at image run time. */
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static int pageSize = -1;
+
+    /* Ensure lazy initialization of maximum direct memory size happens at image run time. */
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static boolean memoryLimitSet = false;
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static long maxMemory = -1;
+
+    /* Do not inherit any memory statistics from the image generator. */
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static AtomicLong reservedMemory = new AtomicLong();
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static AtomicLong totalCapacity = new AtomicLong();
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static AtomicLong count = new AtomicLong();
+}
+
+/* Fields changed names between JDK 8 and 11. */
+@TargetClass(className = "java.nio.Bits", onlyWith = JDK11OrLater.class)
+final class Target_java_nio_Bits_JDK11 {
+
+    // Checkstyle: stop
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static int PAGE_SIZE = -1;
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static boolean MEMORY_LIMIT_SET = false;
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static long MAX_MEMORY = -1;
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static AtomicLong RESERVED_MEMORY = new AtomicLong();
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static AtomicLong TOTAL_CAPACITY = new AtomicLong();
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static AtomicLong COUNT = new AtomicLong();
+
+    // Checkstyle: resume
 }
