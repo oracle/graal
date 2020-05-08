@@ -1,0 +1,111 @@
+>[0?] export TOOLCHAIN_PATH=`lli --print-toolchain-path`
+> ${TOOLCHAIN_PATH}/clang agent-sieve.c -lm -o ${TMP_DIR}/sieve
+>[1] lli --polyglot --insight=agent-limit.js --experimental-options ${TMP_DIR}/sieve
+found new prime number 2
+found new prime number 3
+found new prime number 5
+found new prime number 7
+found new prime number 11
+found new prime number 13
+found new prime number 17
+found new prime number 19
+found new prime number 23
+found new prime number 29
+found new prime number 31
+found new prime number 37
+found new prime number 41
+found new prime number 43
+found new prime number 47
+found new prime number 53
+found new prime number 59
+found new prime number 61
+found new prime number 67
+found new prime number 71
+found new prime number 73
+found new prime number 79
+found new prime number 83
+found new prime number 89
+found new prime number 97
+found new prime number 101
+found new prime number 103
+found new prime number 107
+found new prime number 109
+found new prime number 113
+found new prime number 127
+found new prime number 131
+found new prime number 137
+found new prime number 139
+found new prime number 149
+found new prime number 151
+found new prime number 157
+found new prime number 163
+found new prime number 167
+found new prime number 173
+found new prime number 179
+found new prime number 181
+found new prime number 191
+found new prime number 193
+found new prime number 197
+found new prime number 199
+found new prime number 211
+found new prime number 223
+found new prime number 227
+found new prime number 229
+found new prime number 233
+found new prime number 239
+found new prime number 241
+found new prime number 251
+found new prime number 257
+found new prime number 263
+found new prime number 269
+found new prime number 271
+found new prime number 277
+found new prime number 281
+found new prime number 283
+found new prime number 293
+found new prime number 307
+found new prime number 311
+found new prime number 313
+found new prime number 317
+found new prime number 331
+found new prime number 337
+found new prime number 347
+found new prime number 349
+found new prime number 353
+found new prime number 359
+found new prime number 367
+found new prime number 373
+found new prime number 379
+found new prime number 383
+found new prime number 389
+found new prime number 397
+found new prime number 401
+found new prime number 409
+found new prime number 419
+found new prime number 421
+found new prime number 431
+found new prime number 433
+found new prime number 439
+found new prime number 443
+found new prime number 449
+found new prime number 457
+found new prime number 461
+found new prime number 463
+found new prime number 467
+found new prime number 479
+found new prime number 487
+found new prime number 491
+found new prime number 499
+found new prime number 503
+found new prime number 509
+Computed 97 primes in [0-9]+ ms. Last one is 509
+found new prime number 521
+found new prime number 523
+found new prime number 541
+found new prime number 547
+GraalVM Insight: nextNatural method called 550 times. enough!
+.*at <js> :anonymous.*
+.*at <llvm> nextNatural.agent-sieve.*
+.*at <llvm> nextPrime.agent-sieve.*
+.*at <llvm> measure.agent-sieve.*
+.*at <llvm> main.agent-sieve.c*
