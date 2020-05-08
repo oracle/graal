@@ -321,7 +321,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
 
     @Option(help = "Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental).", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> LanguageAgnosticInlining = new OptionKey<>(false);
+    public static final OptionKey<Boolean> LanguageAgnosticInlining = new OptionKey<>(true);
 
     // Splitting
 

@@ -10,6 +10,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 	* `identityHashCode(Object receiver)` useful to implement maps that depend on identity.
 * Added `TriState` utility class represents three states TRUE, FALSE and UNDEFINED.
 * Added `InteropLibrary.getUncached()` and `InteropLibrary.getUncached(Object)` short-cut methods for convenience.
+* Enabled by default the new inlining heuristic in which inlining budgets are based on Graal IR node counts and not Truffle Node counts.
 
 * Added `ConditionProfile#create()` as an alias of `createBinaryProfile()` so it can be used like `@Cached ConditionProfile myProfile`. 
 
