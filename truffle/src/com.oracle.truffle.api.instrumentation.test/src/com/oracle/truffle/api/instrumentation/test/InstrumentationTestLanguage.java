@@ -905,7 +905,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 return tryNode.execute(frame);
             } catch (Exception ex) {
                 if (ex instanceof TruffleException) {
-                    Object exceptionObject = ((TruffleException) ex).getExceptionObject();
+                    Object exceptionObject = getExceptionObject((TruffleException) ex);
                     if (exceptionObject != null) {
                         String type = InstrumentationTestLanguage.toString(exceptionObject);
                         for (CatchNode cn : catchNodes) {
@@ -2879,6 +2879,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @TruffleBoundary
     private static String toString(Object object) {
         return object.toString();
+    }
+
+    @TruffleBoundary
+    private static Object getExceptionObject(TruffleException ex) {
+        return ex.getExceptionObject();
     }
 
     public static final class SpecialServiceImpl implements SpecialService {
