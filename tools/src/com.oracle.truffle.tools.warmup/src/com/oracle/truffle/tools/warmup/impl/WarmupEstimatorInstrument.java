@@ -38,6 +38,7 @@ import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import org.graalvm.options.OptionValues;
 
 @TruffleInstrument.Registration(id = WarmupEstimatorInstrument.ID, name = "Warmup Estimator", version = WarmupEstimatorInstrument.VERSION)
 public class WarmupEstimatorInstrument extends TruffleInstrument {
@@ -49,10 +50,10 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
     @Option(name = "RootName", help = "", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<String> ROOT_NAME = new OptionKey<>("");
-    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
+    @Option(name = "OutputFile", help = "Save output to the given file. Simple output is printed to stdout by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
-    @Option(name = "Epsilon", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
-    static final OptionKey<Double> EPSILON = new OptionKey<>(0.05);
+    @Option(name = "Epsilon", help = "Force epsilon value. It's inferred from the results by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
+    static final OptionKey<Double> EPSILON = new OptionKey<>(0.0);
 
     private boolean enabled;
     private WarmupEstimatorNode node;
@@ -83,8 +84,9 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
 
     @Override
     protected void onDispose(Env env) {
-        final String outputPath = OUTPUT_FILE.getValue(env.getOptions());
-        final Results results = node.getResults();
+        final OptionValues options = env.getOptions();
+        final String outputPath = OUTPUT_FILE.getValue(options);
+        final Results results = node.getResults(EPSILON.getValue(options));
         ResultsPrinter printer = new ResultsPrinter(results);
         if ("".equals(outputPath)) {
             printer.printSimpleResults(new PrintStream(env.out()));

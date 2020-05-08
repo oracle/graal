@@ -38,8 +38,8 @@ class WarmupEstimatorNode extends ExecutionEventNode {
     WarmupEstimatorNode() {
     }
 
-    Results getResults() {
-        return new Results(samples);
+    Results getResults(double epsilon) {
+        return new Results(samples, epsilon);
     }
 
     @Override
