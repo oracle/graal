@@ -76,6 +76,20 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
     }
 
     @Snippet
+    protected static Any typeEqualityTestDynamicSnippet(Object object, Any trueValue, Any falseValue, @ConstantParameter boolean allowsNull, DynamicHub exactType) {
+        if (object == null) {
+            return allowsNull ? trueValue : falseValue;
+        }
+        Object objectNonNull = PiNode.piCastNonNull(object, SnippetAnchorNode.anchor());
+        int typeCheckId = loadHub(objectNonNull).getTypeID();
+
+        if (typeCheckId == exactType.getTypeID()) {
+            return trueValue;
+        }
+        return falseValue;
+    }
+
+    @Snippet
     protected static Any instanceOfSnippet(Object object, Any trueValue, Any falseValue, @ConstantParameter boolean allowsNull, int fromTypeID, int numTypeIDs) {
         if (object == null) {
             return allowsNull ? trueValue : falseValue;
@@ -244,6 +258,8 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
 
     protected class InstanceOfDynamicLowering extends InstanceOfSnippetsTemplates implements NodeLoweringProvider<FloatingNode> {
 
+        private final SnippetInfo typeEqualityTestDynamic = snippet(TypeSnippets.class, "typeEqualityTestDynamicSnippet");
+
         public InstanceOfDynamicLowering(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                         TargetDescription target) {
             super(options, factories, providers, snippetReflection, target);
@@ -260,6 +276,20 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
         @Override
         protected Arguments makeArguments(InstanceOfUsageReplacer replacer, LoweringTool tool) {
             InstanceOfDynamicNode node = (InstanceOfDynamicNode) replacer.instanceOf;
+
+            if (node.isExact()) {
+                /*
+                 * We do a type check test.
+                 */
+                Arguments args = new Arguments(typeEqualityTestDynamic, node.graph().getGuardsStage(), tool.getLoweringStage());
+                args.add("object", node.getObject());
+                args.add("trueValue", replacer.trueValue);
+                args.add("falseValue", replacer.falseValue);
+                args.addConst("allowsNull", node.allowsNull());
+                args.add("exactType", node.getMirrorOrHub());
+                return args;
+            }
+
             Arguments args = new Arguments(instanceOfDynamic, node.graph().getGuardsStage(), tool.getLoweringStage());
             assert node.isMirror();
             args.add("type", node.getMirrorOrHub());
