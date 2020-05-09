@@ -174,7 +174,7 @@ local jdk8_gate_darwin            = base.jdk8 + base.gate       + base.darwin;
 local jdk8_gate_linux             = base.jdk8 + base.gate       + base.linux;
 local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate       + base.linux + base.eclipse + base.jdt;
 local jdk8_weekly_linux           = base.jdk8 + base.weekly     + base.linux;
-local jdk8_daily_bench_linux      = base.jdk8 + base.dailyBench + base.linux + base.x52;
+local jdk8_bench_linux            = base.jdk8 + base.bench      + base.linux + base.x52;
 
 local espresso_configs = ['jvm-ce', 'jvm-ee', 'native-ce', 'native-ee'];
 local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
@@ -185,8 +185,8 @@ local awfy = 'awfy:*';
 
 {
   builds: [
-    // JaCoCo coverage
-    jdk8_weekly_linux             + gate_coverage        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-gate-coverage-jdk8-linux-amd64'},
+    // JaCoCo coverage (disabled)
+    // jdk8_weekly_linux             + gate_coverage        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-gate-coverage-jdk8-linux-amd64'},
 
     // Gates
     jdk8_gate_linux + base.extra_jdk11 + gate_espresso   + {environment+: {GATE_TAGS: 'jackpot'}}         + {name: 'espresso-gate-jackpot-jdk8-linux-amd64'},
@@ -203,23 +203,27 @@ local awfy = 'awfy:*';
                                                                                                           + {name: 'espresso-meta-hello-world-linux-amd64'},
 
     // Hello World! should run in all supported configurations.
-    jdk8_gate_linux               + clone_build_run('jvm-ce', hello_world_args)                           + {name: 'espresso-gate-jvm-ce-hello-world-jdk8-linux-amd64'},
+    jdk8_gate_linux               + clone_build_run('jvm-ce',    hello_world_args)                        + {name: 'espresso-gate-jvm-ce-hello-world-jdk8-linux-amd64'},
     jdk8_gate_linux               + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-linux-amd64'},
     jdk8_gate_linux               + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk8-linux-amd64'},
     jdk8_gate_darwin              + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-darwin-amd64'},
     jdk8_gate_darwin              + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk8-darwin-amd64'},
-    jdk8_gate_windows             + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-windows-amd64'},
+    jdk8_gate_windows             + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-windows-amd64'},
+    jdk8_gate_windows             + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk8-windows-amd64'},
 
-    // Benchmarks
-    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ce', scala_dacapo)                            + {name: 'espresso-bench-jvm-ce-scala-dacapo-jdk8-linux-amd64'},
-    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ee', scala_dacapo)                            + {name: 'espresso-bench-jvm-ee-scala-dacapo-jdk8-linux-amd64'},
-    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
-    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ee', awfy)                                    + {name: 'espresso-bench-jvm-ee-awfy-jdk8-linux-amd64'},
-    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ee', awfy, 'la-inline')                       + {name: 'espresso-bench-jvm-ee-la-inline-awfy-jdk8-linux-amd64'}
+    // Benchmarks (post-merge)
+    jdk8_bench_linux   + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
+    jdk8_bench_linux   + espresso_benchmark('jvm-ee', awfy)                                    + {name: 'espresso-bench-jvm-ee-awfy-jdk8-linux-amd64'},
+    jdk8_bench_linux   + espresso_benchmark('jvm-ee', awfy, 'la-inline')                       + {name: 'espresso-bench-jvm-ee-la-inline-awfy-jdk8-linux-amd64'},
+    jdk8_bench_linux   + espresso_benchmark('native-ce', awfy)                                 + {name: 'espresso-bench-native-ce-awfy-jdk8-linux-amd64'},
+    jdk8_bench_linux   + espresso_benchmark('native-ee', awfy)                                 + {name: 'espresso-bench-native-ee-awfy-jdk8-linux-amd64'},
 
+    // TODO: Adjust number of iterations for Espresso.
+    // jdk8_bench_linux   + espresso_benchmark('jvm-ce', scala_dacapo)                            + {name: 'espresso-bench-jvm-ce-scala-dacapo-jdk8-linux-amd64'},
+    // jdk8_bench_linux   + espresso_benchmark('jvm-ee', scala_dacapo)                            + {name: 'espresso-bench-jvm-ee-scala-dacapo-jdk8-linux-amd64'},
 
     // Compilation on SVM is broken GR-22475
-    // jdk8_daily_bench_linux        + espresso_benchmark('native-ce', scala_dacapo)                         + {name: 'espresso-bench-native-ce-scala-dacapo-jdk8-linux-amd64'},
-    // jdk8_daily_bench_linux        + espresso_benchmark('native-ee', scala_dacapo)                         + {name: 'espresso-bench-native-ee-scala-dacapo-jdk8-linux-amd64'},
+    // jdk8_bench_linux   + espresso_benchmark('native-ce', scala_dacapo)                         + {name: 'espresso-bench-native-ce-scala-dacapo-jdk8-linux-amd64'},
+    // jdk8_bench_linux   + espresso_benchmark('native-ee', scala_dacapo)                         + {name: 'espresso-bench-native-ee-scala-dacapo-jdk8-linux-amd64'},
   ],
 }
