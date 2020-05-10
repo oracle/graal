@@ -76,7 +76,8 @@ gateTestCTW : {
 
 gateTestCTWWeekly : {
   environment : {
-    EXTRA_VM_ARGS : ""
+    # GR-23372
+    EXTRA_VM_ARGS : "-DCompileTheWorld.MaxClasses=50000"
   }
   run : [
     # At least one gate build should run without strict
