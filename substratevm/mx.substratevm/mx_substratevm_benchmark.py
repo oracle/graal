@@ -342,6 +342,26 @@ RENAISSANCE_EXTRA_PROFILE_ARGS = [
     '-Dnative-image.benchmark.extra-agent-profile-run-arg=5'
 ]
 
+_RENAISSANCE_EXTRA_VM_ARGS = {
+    'chi-square'        : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
+                           '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.hadoop.metrics2.MetricsSystem$Callback',
+                           '-Dnative-image.benchmark.extra-image-build-argument=-H:IncludeResourceBundles=sun.security.util.Resources,javax.servlet.http.LocalStrings,javax.servlet.LocalStrings',
+                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
+                           '-Dnative-image.benchmark.extra-image-build-argument=-H:-ThrowUnsafeOffsetErrors'],
+    'finagle-http'      : ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=com.fasterxml.jackson.annotation.JsonProperty$Access', '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
+    'log-regression'    : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
+                           '-Dnative-image.benchmark.extra-image-build-argument=-H:+TraceClassInitialization',
+                           '-Dnative-image.benchmark.extra-image-build-argument=-H:IncludeResourceBundles=sun.security.util.Resources,javax.servlet.http.LocalStrings,javax.servlet.LocalStrings',
+                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
+                           '-Dnative-image.benchmark.extra-image-build-argument=-H:-ThrowUnsafeOffsetErrors',
+                           # GR-24903
+                           '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=org.apache.hadoop.io.compress.zlib.BuiltInZlibInflater'],
+    'movie-lens'        : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.hadoop.metrics2.MetricsSystem$Callback',
+                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime', '-Dnative-image.benchmark.extra-image-build-argument=-H:IncludeResourceBundles=sun.security.util.Resources'],
+    'page-rank'         : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.hadoop.metrics2.MetricsSystem$Callback',
+                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime']
+}
+
 _renaissance_config = {
     "akka-uct"         : ("actors", 11), # GR-17994
     "reactors"         : ("actors", 11),
@@ -428,7 +448,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         else:
             bench_arg = benchmarks[0]
         run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))
-        vm_args = self.vmArgs(bmSuiteArgs)
+        vm_args = self.vmArgs(bmSuiteArgs) + self.extra_vm_args(bench_arg)
 
         agent_args = _RENAISSANCE_EXTRA_AGENT_ARGS + ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg]
         pgo_args = RENAISSANCE_EXTRA_PROFILE_ARGS + ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg, '-Dnative-image.benchmark.extra-agent-profile-run-arg=' + bench_arg]
@@ -447,7 +467,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         return ':'.join([mx.classpath(harness_project), mx.classpath(group_project)])
 
     def extra_vm_args(self, benchmark):
-        return []
+        return _RENAISSANCE_EXTRA_VM_ARGS[benchmark] if benchmark in _RENAISSANCE_EXTRA_VM_ARGS else []
 
     class RenaissanceDependency(mx.ClasspathDependency):
         def __init__(self, name, path): # pylint: disable=super-init-not-called
