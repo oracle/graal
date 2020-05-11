@@ -1576,7 +1576,7 @@ final class Runner {
         void execute(LLVMContext context, LLVMLocalScope localScope) {
             LLVMScope globalScope = context.getGlobalScope();
             LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-            NFIContextExtension nfiContextExtension = getNfiContextExtension();
+            NFIContextExtension nfiContextExtension = getNfiContextExtension(context);
 
             synchronized (context) {
                 // functions and globals
@@ -1593,8 +1593,8 @@ final class Runner {
         }
 
         @TruffleBoundary
-        private static NFIContextExtension getNfiContextExtension() {
-            return LLVMLanguage.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+        private static NFIContextExtension getNfiContextExtension(LLVMContext context) {
+            return context.getContextExtensionOrNull(NFIContextExtension.class);
         }
 
     }
