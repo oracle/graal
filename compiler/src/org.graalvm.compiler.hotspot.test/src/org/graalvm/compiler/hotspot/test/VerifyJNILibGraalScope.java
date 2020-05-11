@@ -32,7 +32,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.VerifyPhase;
-import org.graalvm.libgraal.jni.HotSpotToSVMScope;
+import org.graalvm.libgraal.jni.JNILibGraalScope;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNI.JObject;
 
@@ -42,11 +42,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Checks the invariant from {@link HotSpotToSVMScope} about object return values being passed
- * outside the scope with {@link HotSpotToSVMScope#setObjectResult(JObject)} and
- * {@link HotSpotToSVMScope#getObjectResult()}.
+ * Checks the invariant from {@link JNILibGraalScope} about object return values being passed
+ * outside the scope with {@link JNILibGraalScope#setObjectResult(JObject)} and
+ * {@link JNILibGraalScope#getObjectResult()}.
  */
-public class VerifyHotSpotToSVMScope extends VerifyPhase<CoreProviders> {
+public class VerifyJNILibGraalScope extends VerifyPhase<CoreProviders> {
 
     private static ValueNode unPi(ValueNode node) {
         if (node instanceof PiNode) {
@@ -59,7 +59,7 @@ public class VerifyHotSpotToSVMScope extends VerifyPhase<CoreProviders> {
     @Override
     protected void verify(StructuredGraph graph, CoreProviders context) {
         MetaAccessProvider metaAccess = context.getMetaAccess();
-        final ResolvedJavaType hotSpotToSVMScopeType = metaAccess.lookupJavaType(HotSpotToSVMScope.class);
+        final ResolvedJavaType hotSpotToSVMScopeType = metaAccess.lookupJavaType(JNILibGraalScope.class);
         final ResolvedJavaType jobjectType = metaAccess.lookupJavaType(JNI.JObject.class);
 
         ResolvedJavaMethod caller = graph.method();
@@ -80,7 +80,7 @@ public class VerifyHotSpotToSVMScope extends VerifyPhase<CoreProviders> {
                                     "out of a %s with setObjectResult() and returned by getObjectResult()",
                                     caller.format("%H.%n(%p)"),
                                     JNI.JObject.class.getSimpleName(),
-                                    HotSpotToSVMScope.class.getSimpleName());
+                                    JNILibGraalScope.class.getSimpleName());
                 }
             }
         }

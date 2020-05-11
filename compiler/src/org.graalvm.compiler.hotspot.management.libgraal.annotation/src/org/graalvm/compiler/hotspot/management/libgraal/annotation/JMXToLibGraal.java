@@ -46,8 +46,6 @@ public @interface JMXToLibGraal {
      */
     // Please keep sorted
     enum Id {
-        AttachThread,
-        DetachThread,
         FinishRegistration,
         GetAttributes,
         GetMBeanInfo,

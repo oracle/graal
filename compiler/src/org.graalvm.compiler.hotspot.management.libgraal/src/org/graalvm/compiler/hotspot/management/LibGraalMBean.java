@@ -325,8 +325,9 @@ public class LibGraalMBean implements DynamicMBean {
     }
 
     /**
-     * Returns a factory for registering the {@link LibGraalMBean} instances into {@link MBeanServer}. If
-     * the factory does not exist it is created and its registration thread is started.
+     * Returns a factory for registering the {@link LibGraalMBean} instances into
+     * {@link MBeanServer}. If the factory does not exist it is created and its registration thread
+     * is started.
      */
     static Factory getFactory() {
         Factory res = factory;
@@ -591,8 +592,8 @@ public class LibGraalMBean implements DynamicMBean {
         }
 
         /**
-         * Called by {@code MBeanProxy} in libgraal heap when the isolate is closing to unregister its
-         * {@link DynamicMBean}s.
+         * Called by {@code MBeanProxy} in libgraal heap when the isolate is closing to unregister
+         * its {@link DynamicMBean}s.
          */
         synchronized void unregister(long isolate, String[] objectIds) {
             // Remove pending registration requests
@@ -615,8 +616,8 @@ public class LibGraalMBean implements DynamicMBean {
         }
 
         /**
-         * In case of successful {@link MBeanServer} initialization creates {@link LibGraalMBean}s for
-         * pending libgraal {@link DynamicMBean}s and registers them.
+         * In case of successful {@link MBeanServer} initialization creates {@link LibGraalMBean}s
+         * for pending libgraal {@link DynamicMBean}s and registers them.
          *
          * @return {@code true} if {@link LibGraalMBean}s were successfuly registered, {@code false}
          *         when {@link MBeanServer} is not yet available and {@code poll} should be retried.
@@ -665,7 +666,7 @@ public class LibGraalMBean implements DynamicMBean {
                 iter.remove();
                 try (LibGraalScope scope = new LibGraalScope(isolate)) {
                     long isolateThread = scope.getIsolateThreadAddress();
-                    long[] handles =  JMXToLibGraalCalls.pollRegistrations(isolateThread);
+                    long[] handles = JMXToLibGraalCalls.pollRegistrations(isolateThread);
                     if (handles.length > 0) {
                         for (long handle : handles) {
                             LibGraalMBean bean = new LibGraalMBean(isolate, handle);

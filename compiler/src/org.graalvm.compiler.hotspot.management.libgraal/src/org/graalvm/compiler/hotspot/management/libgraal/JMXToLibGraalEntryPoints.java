@@ -47,7 +47,6 @@ import javax.management.MBeanParameterInfo;
 import javax.management.ReflectionException;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.hotspot.management.JMXToLibGraalCalls;
 import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal;
 import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id;
@@ -129,11 +128,7 @@ final class JMXToLibGraalEntryPoints {
         try (JNILibGraalScope<Id> s = scope) {
             ObjectHandles globalHandles = ObjectHandles.getGlobal();
             MBeanProxy<?> registration = globalHandles.get(WordFactory.pointer(handle));
-            long isolateID = IsolateUtil.getIsolateID();
             String name = registration.getName();
-            if (isolateID != 0L) {
-                name += '@' + isolateID;
-            }
             scope.setObjectResult(JNIUtil.createHSString(env, name));
         }
         return scope.getObjectResult();

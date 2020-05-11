@@ -40,7 +40,7 @@ import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.util.OptionsEncoder;
 
 /**
- * Encapsulates handles to {@link HotSpotTruffleCompiler} objects in the SVM isolates.
+ * Encapsulates handles to {@link HotSpotTruffleCompiler} objects in the libgraal isolates.
  */
 final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
@@ -141,7 +141,6 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
         }
         return pendingTransferToInterpreterOffset;
     }
-
 
     void closeCompilation(LibGraalTruffleCompilation compilation) {
         assert activeCompilation.get() == compilation;

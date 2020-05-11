@@ -60,10 +60,6 @@ final class DefineClassSupport {
                     "loadClass",
                     "(Ljava/lang/String;)Ljava/lang/Class;"
     };
-    private static final String[] METHOD_RUNTIME = {
-                    "runtime",
-                    "()Ljdk/vm/ci/hotspot/HotSpotJVMCIRuntime;"
-    };
     private static final String[] METHOD_REGISTER_NATIVES = {
                     "registerNativeMethods",
                     "(Ljava/lang/Class;)V"
@@ -117,11 +113,6 @@ final class DefineClassSupport {
         return (JNI.JClass) env.getFunctions().getCallObjectMethodA().call(env, classLoader, findClassId, params);
     }
 
-    static JNI.JObject getRuntime(JNI.JNIEnv env, JNI.JClass runtimeClass) {
-        JNI.JMethodID runtimeId = findMethod(env, runtimeClass, true, false, METHOD_RUNTIME);
-        return env.getFunctions().getCallStaticObjectMethodA().call(env, runtimeClass, runtimeId, nullPointer());
-    }
-
     static void registerNatives(JNI.JNIEnv env, JNI.JClass libgraal, JNI.JClass target) {
         JNI.JMethodID registerId = findMethod(env, libgraal, true, false, METHOD_REGISTER_NATIVES);
         JNI.JValue params = StackValue.get(1, JNI.JValue.class);
@@ -129,20 +120,20 @@ final class DefineClassSupport {
         env.getFunctions().getCallStaticObjectMethodA().call(env, libgraal, registerId, params);
     }
 
-    static void notifyNativesRegistered(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
-        JNI.JFieldID nativesRegisteredId = findStaticField(env, hsToSvmCalls, FIELD_NATIVES_REGISTERED);
-        env.getFunctions().getSetStaticBooleanField().call(env, hsToSvmCalls, nativesRegisteredId, true);
+    static void notifyNativesRegistered(JNI.JNIEnv env, JNI.JClass toLibGraalCalls) {
+        JNI.JFieldID nativesRegisteredId = findStaticField(env, toLibGraalCalls, FIELD_NATIVES_REGISTERED);
+        env.getFunctions().getSetStaticBooleanField().call(env, toLibGraalCalls, nativesRegisteredId, true);
     }
 
-    static boolean waitForRegisterNatives(JNI.JNIEnv env, JNI.JClass hsToSvmCalls) {
-        JNI.JFieldID nativesRegisteredId = findStaticField(env, hsToSvmCalls, FIELD_NATIVES_REGISTERED);
+    static boolean waitForRegisterNatives(JNI.JNIEnv env, JNI.JClass toLibGraalCalls) {
+        JNI.JFieldID nativesRegisteredId = findStaticField(env, toLibGraalCalls, FIELD_NATIVES_REGISTERED);
         JNI.GetStaticBooleanField access = env.getFunctions().getGetStaticBooleanField();
         boolean res;
 
         int sleepLimit = 5;
         Random rand = new Random();
         do {
-            res = access.call(env, hsToSvmCalls, nativesRegisteredId);
+            res = access.call(env, toLibGraalCalls, nativesRegisteredId);
             if (JNIUtil.ExceptionCheck(env)) {
                 return false;
             }
@@ -178,7 +169,7 @@ final class DefineClassSupport {
         JNI.JFieldID result;
         try (CCharPointerHolder name = toCString(descriptor[0]); CCharPointerHolder sig = toCString(descriptor[1])) {
             result = GetStaticFieldID(env, clazz, name.get(), sig.get());
-            MBeanProxy.checkException(env, "Cannot find method " + descriptor[0]);
+            JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
             return result;
         }
     }

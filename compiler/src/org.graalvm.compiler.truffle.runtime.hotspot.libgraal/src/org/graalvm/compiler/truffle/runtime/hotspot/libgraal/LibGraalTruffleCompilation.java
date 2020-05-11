@@ -31,7 +31,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 
-
 final class LibGraalTruffleCompilation extends LibGraalObject implements TruffleCompilation {
 
     private final LibGraalHotSpotTruffleCompiler owner;

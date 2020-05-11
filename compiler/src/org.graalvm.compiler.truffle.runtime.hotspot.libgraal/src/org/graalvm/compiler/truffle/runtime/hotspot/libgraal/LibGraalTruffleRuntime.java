@@ -50,7 +50,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     /**
-     * Handle to a HSTruffleCompilerRuntime object in an SVM heap.
+     * Handle to a HSTruffleCompilerRuntime object in an libgraal heap.
      */
     static final class Handle extends LibGraalObject {
         Handle(long handle) {
@@ -142,7 +142,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         @SuppressWarnings("try")
         @Override
         public void write(byte[] b, int off, int len) {
-           TruffleToLibGraalCalls.ttyWriteBytes(isolateThread(), b, off, len);
+            TruffleToLibGraalCalls.ttyWriteBytes(isolateThread(), b, off, len);
         }
 
         @Override

@@ -52,7 +52,8 @@ public @interface JMXFromLibGraal {
     // Please keep sorted
     enum Id implements FromLibGraalId {
         GetFactory(Object.class),
-        Signal(void.class, Object.class, long.class);
+        SignalRegistrationRequest(void.class, Object.class, long.class),
+        Unregister(void.class, Object.class, long.class, String[].class);
 
         private final String signature;
         private final String methodName;

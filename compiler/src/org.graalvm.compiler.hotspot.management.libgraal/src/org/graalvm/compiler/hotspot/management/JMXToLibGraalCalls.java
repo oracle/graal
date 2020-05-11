@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.management;
 
-import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.AttachThread;
-import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.DetachThread;
 import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.FinishRegistration;
 import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.GetAttributes;
 import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.GetMBeanInfo;
