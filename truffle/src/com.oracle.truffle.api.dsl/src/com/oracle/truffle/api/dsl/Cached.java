@@ -46,7 +46,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -305,16 +304,34 @@ public @interface Cached {
      * If set to <code>true</code> then weak references will be used to refer to this cached value
      * in the generated node. The default value is <code>false</code>. The weak cached parameter is
      * guaranteed to not become <code>null</code> in guards or specialization method invocations. If
-     * a weak cached parameter gets collected by the GC, then any compiled code will get
-     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() deoptimized}, the old
-     * specialization instance will be removed and a new specialization will get instantiated. For
-     * specializations with multiple instances all specialization instances where caches were
-     * collected will be removed. Initializer expressions of cached and weak parameters must not
-     * return <code>null</code>, to avoid immediate removal of the specialization instance. If the
-     * initializer result becomes <code>null</code> a {@link NullPointerException} is thrown. Weak
-     * cached parameters that are used as part of {@link GenerateUncached uncached} nodes, execute
-     * the cached initializer for each execution and therefore don't need to use a weak reference.
-     * Uncached initializers must also never become <code>null</code>.
+     * a weak cached parameter gets collected by the GC, then any compiled code remain unaffected
+     * and the specialization instance will not be removed. Specializations with collected cached
+     * references continue to count to the specialization limit. This is necessary to provide an
+     * upper bound for the number of invalidations that may happen for this specialization.
+     * <p>
+     * A weak cached parameter implicitly adds a <code>weakRef.get() != null</code> guard that is
+     * invoked before the cached value is referenced for the first time. This means that
+     * specializations which previously did not result in fall-through behavior may now
+     * fall-through. This is important if used in combination with {@link Fallback}. Weak cached
+     * parameters that are used as part of {@link GenerateUncached uncached} nodes, execute the
+     * cached initializer for each execution and therefore implicitly do not use a weak reference.
+     * <p>
+     * Example usage:
+     *
+     * <pre>
+     * &#64;GenerateUncached
+     * abstract class WeakInlineCacheNode extends Node {
+     *
+     *     abstract Object execute(Object arg0);
+     *
+     *     &#64;Specialization(guards = "cachedArg.equals(arg)", limit = "3")
+     *     Object s0(String arg,
+     *                     &#64;Cached(value = "arg", weak = true) String cachedArg) {
+     *         assertNotNull(cachedStorage);
+     *         return arg;
+     *     }
+     * }
+     * </pre>
      *
      * @see com.oracle.truffle.api.utilities.TruffleWeakReference
      * @since 20.2

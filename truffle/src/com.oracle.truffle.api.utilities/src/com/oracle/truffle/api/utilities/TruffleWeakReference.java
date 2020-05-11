@@ -42,7 +42,6 @@ package com.oracle.truffle.api.utilities;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
-import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -89,7 +88,7 @@ import com.oracle.truffle.api.CompilerDirectives;
  *     Object execute(Object arg) {
  *         if (reference == null) {
  *             CompilerDirectives.transferToInterpreterAndInvalidate();
- *             reference = TruffleWeakReference.createNonNull(arg);
+ *             reference = new TruffleWeakReference(arg);
  *         }
  *         return reference.get();
  *     }
@@ -108,7 +107,7 @@ public final class TruffleWeakReference<T> extends WeakReference<T> {
      * @see WeakReference#WeakReference(Object)
      * @since 20.2
      */
-    TruffleWeakReference(T t) {
+    public TruffleWeakReference(T t) {
         super(t);
         CompilerAsserts.neverPartOfCompilation();
     }
@@ -120,49 +119,9 @@ public final class TruffleWeakReference<T> extends WeakReference<T> {
      * @see WeakReference#WeakReference(Object, ReferenceQueue)
      * @since 20.2
      */
-    TruffleWeakReference(T referent, ReferenceQueue<? super T> q) {
+    public TruffleWeakReference(T referent, ReferenceQueue<? super T> q) {
         super(referent, q);
         CompilerAsserts.neverPartOfCompilation();
-    }
-
-    /**
-     * Creates a new Truffle weak reference that refers to the given object. For Truffle languages
-     * it is recommended to use {@link #createNonNull(Object)}, because creating null weak
-     * references is prone to deoptimization loops.
-     *
-     * @see WeakReference#WeakReference(Object, ReferenceQueue)
-     * @since 20.2
-     */
-    public static <T> TruffleWeakReference<T> create(T referent) {
-        CompilerAsserts.neverPartOfCompilation();
-        Objects.requireNonNull(referent);
-        return new TruffleWeakReference<>(referent);
-    }
-
-    /**
-     * Creates a new Truffle weak reference that refers to the given object. Compred
-     *
-     * @see WeakReference#WeakReference(Object, ReferenceQueue)
-     * @since 20.2
-     */
-    public static <T> TruffleWeakReference<T> create(T referent, ReferenceQueue<? super T> q) {
-        CompilerAsserts.neverPartOfCompilation();
-        Objects.requireNonNull(referent);
-        return new TruffleWeakReference<>(referent, q);
-    }
-
-    /**
-     * Creates a new Truffle weak reference that refers to the given object. Requires non-null
-     * referent.
-     *
-     *
-     * @see WeakReference#WeakReference(Object, ReferenceQueue)
-     * @since 20.2
-     */
-    public static <T> TruffleWeakReference<T> createNonNull(T referent) {
-        CompilerAsserts.neverPartOfCompilation();
-        Objects.requireNonNull(referent);
-        return new TruffleWeakReference<>(referent);
     }
 
 }

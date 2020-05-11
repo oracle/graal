@@ -52,6 +52,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.ConsistentGuardAndSpecializationNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.TestNullWeakCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakInlineCacheNodeGen;
@@ -85,10 +86,6 @@ public class WeakCachedTest extends AbstractPolyglotTest {
             return arg;
         }
 
-        @Fallback
-        Object fallback(Object arg) {
-            return arg;
-        }
     }
 
     @Test
@@ -97,25 +94,22 @@ public class WeakCachedTest extends AbstractPolyglotTest {
         Object o0 = new String("");
         Object o1 = new String("");
         Object o2 = new String("");
-        WeakReference<Object> ref1 = new WeakReference<>(o0);
-        WeakReference<Object> ref2 = new WeakReference<>(o1);
-        WeakReference<Object> ref3 = new WeakReference<>(o2);
+        WeakReference<Object> ref0 = new WeakReference<>(o0);
+        WeakReference<Object> ref1 = new WeakReference<>(o1);
+        WeakReference<Object> ref2 = new WeakReference<>(o2);
         node.execute(o0);
         node.execute(o1);
-        node.execute(o2);
         o0 = null;
+        GCUtils.assertGc("Reference is not collected", ref0);
+
+        node.execute(o1);
+        node.execute(o2);
         o1 = null;
+        o2 = null;
         GCUtils.assertGc("Reference is not collected", ref1);
         GCUtils.assertGc("Reference is not collected", ref2);
 
-        o0 = new String("");
-        o1 = new String("");
-        node.execute(o0);
-        node.execute(o1);
-        o0 = null;
-        o1 = null;
-        GCUtils.assertGc("Reference is not collected", ref1);
-        GCUtils.assertGc("Reference is not collected", ref2);
+        assertFails(() -> node.execute(new String("")), UnsupportedSpecializationException.class);
     }
 
     @GenerateUncached
@@ -123,10 +117,10 @@ public class WeakCachedTest extends AbstractPolyglotTest {
 
         abstract Object execute(Object arg0);
 
-        @Specialization(guards = "arg == cachedStorage", limit = "3")
+        @Specialization(guards = "cachedArg == arg", limit = "3")
         Object s0(String arg,
-                        @Cached(value = "arg", weak = true) String cachedStorage) {
-            assertNotNull(cachedStorage);
+                        @Cached(value = "arg", weak = true) String cachedArg) {
+            assertNotNull(cachedArg);
             return arg;
         }
 
@@ -162,10 +156,6 @@ public class WeakCachedTest extends AbstractPolyglotTest {
             return arg;
         }
 
-        @Fallback
-        Object fallback(Object arg, boolean expectNull) {
-            return arg;
-        }
     }
 
     /*
@@ -199,8 +189,8 @@ public class WeakCachedTest extends AbstractPolyglotTest {
 
     @Test
     public void testNullWeakReference() {
-        assertFails(() -> TestNullWeakCacheNodeGen.create().execute(null), NullPointerException.class);
-        assertFails(() -> TestNullWeakCacheNodeGen.getUncached().execute(null), NullPointerException.class);
+        assertFails(() -> TestNullWeakCacheNodeGen.create().execute(null), UnsupportedSpecializationException.class);
+        assertFails(() -> TestNullWeakCacheNodeGen.getUncached().execute(null), UnsupportedSpecializationException.class);
     }
 
     @GenerateUncached
@@ -253,7 +243,26 @@ public class WeakCachedTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == cachedStorage", limit = "3")
         Object s0(int arg,
-                        @ExpectError("Cached parameters with primitive types cannot be weak. Set weak to false to resolve this.") @Cached(value = "arg", weak = true) int cachedStorage) {
+                        @com.oracle.truffle.api.test.ExpectError("Cached parameters with primitive types cannot be weak. Set weak to false to resolve this.") //
+                        @Cached(value = "arg", weak = true) int cachedStorage) {
+            return arg;
+        }
+    }
+
+    @GenerateUncached
+    abstract static class ErrorWeakCachedReachablFromFallback extends Node {
+
+        abstract Object execute(Object arg0);
+
+        @Specialization
+        Object s0(String arg,
+                        @Cached(value = "arg", weak = true) String cachedStorage) {
+            return arg;
+        }
+
+        @com.oracle.truffle.api.test.ExpectError("Some guards for the following specializations could not be negated for the @Fallback specialization: [s0].%")
+        @Fallback
+        Object fallback(Object arg) {
             return arg;
         }
     }

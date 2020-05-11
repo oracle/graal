@@ -69,6 +69,7 @@ public final class GuardExpression extends MessageContainer {
     private final DSLExpression expression;
 
     private boolean libraryAcceptsGuard;
+    private boolean weakReferenceGuard;
 
     public GuardExpression(SpecializationData source, DSLExpression expression) {
         this.source = source;
@@ -96,6 +97,14 @@ public final class GuardExpression extends MessageContainer {
 
     public void setLibraryAcceptsGuard(boolean forceConstantTrueInSlowPath) {
         this.libraryAcceptsGuard = forceConstantTrueInSlowPath;
+    }
+
+    public boolean isWeakReferenceGuard() {
+        return weakReferenceGuard;
+    }
+
+    public void setWeakReferenceGuard(boolean weakReferenceGuard) {
+        this.weakReferenceGuard = weakReferenceGuard;
     }
 
     public boolean isLibraryAcceptsGuard() {

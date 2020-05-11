@@ -705,15 +705,24 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             List<SpecializationData> failedSpecializations = null;
             if (specialization.isReachesFallback() && !specialization.getCaches().isEmpty() && !specialization.getGuards().isEmpty()) {
-                boolean guardBoundByCache = false;
-                for (GuardExpression guard : specialization.getGuards()) {
-                    if (specialization.isGuardBoundWithCache(guard)) {
-                        guardBoundByCache = true;
+                boolean failed = false;
+                if (specialization.getMaximumNumberOfInstances() > 1) {
+                    for (GuardExpression guard : specialization.getGuards()) {
+                        if (specialization.isGuardBoundWithCache(guard)) {
+                            failed = true;
+                            break;
+                        }
+                    }
+                }
+
+                for (CacheExpression cache : specialization.getCaches()) {
+                    if (cache.isGuardForNull()) {
+                        failed = true;
                         break;
                     }
                 }
 
-                if (guardBoundByCache && specialization.getMaximumNumberOfInstances() > 1) {
+                if (failed) {
                     if (failedSpecializations == null) {
                         failedSpecializations = new ArrayList<>();
                     }
@@ -723,16 +732,15 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             if (failedSpecializations != null) {
                 List<String> specializationIds = failedSpecializations.stream().map((e) -> e.getId()).collect(Collectors.toList());
-
                 fallback.addError(
                                 "Some guards for the following specializations could not be negated for the @%s specialization: %s. " +
-                                                "Guards cannot be negated for the @%s when they bind @%s parameters and the specialization may consist of multiple instances. " +
+                                                "Guards cannot be negated for the @%s when they bind @%s parameters and the specialization may consist of multiple instances or if any of the @%s parameters is configured as weak. " +
                                                 "To fix this limit the number of instances to '1' or " +
                                                 "introduce a more generic specialization declared between this specialization and the fallback. " +
                                                 "Alternatively the use of @%s can be avoided by declaring a @%s with manually specified negated guards.",
-                                types.Fallback.asElement().getSimpleName().toString(), specializationIds, types.Fallback.asElement().getSimpleName().toString(),
-                                types.Cached.asElement().getSimpleName().toString(), types.Fallback.asElement().getSimpleName().toString(),
-                                types.Specialization.asElement().getSimpleName().toString());
+                                ElementUtils.getSimpleName(types.Fallback), specializationIds,
+                                ElementUtils.getSimpleName(types.Fallback), ElementUtils.getSimpleName(types.Cached), ElementUtils.getSimpleName(types.Cached),
+                                ElementUtils.getSimpleName(types.Fallback), ElementUtils.getSimpleName(types.Specialization));
             }
 
         }
@@ -2009,14 +2017,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     CodeVariableElement weakVariable = new CodeVariableElement(weakType, weakName);
                     Parameter weakParameter = new Parameter(parameter, weakVariable);
 
-                    DSLExpression newWeakReference = new DSLExpression.Call(null, "createNonNull", Arrays.asList(sourceExpression));
+                    DSLExpression newWeakReference = new DSLExpression.Call(null, "new", Arrays.asList(sourceExpression));
                     newWeakReference.setResolvedTargetType(weakType);
                     resolveCachedExpression(resolver, cache, weakType, newWeakReference, null);
 
                     CacheExpression weakCache = new CacheExpression(weakParameter, foundCached);
                     weakCache.setDefaultExpression(newWeakReference);
                     weakCache.setUncachedExpression(newWeakReference);
-                    weakCache.setIgnoreInUncached(true);
+                    weakCache.setWeakReference(true);
 
                     caches.add(0, weakCache);
 
@@ -2028,7 +2036,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     cache.setDefaultExpression(parsedDefaultExpression);
                     cache.setUncachedExpression(sourceExpression);
                     cache.setAlwaysInitialized(true);
-                    cache.setRemoveIfNull(true);
+                    cache.setGuardForNull(true);
                 } else {
                     parseCached(cache, specialization, resolver, parameter);
                 }
@@ -2536,24 +2544,60 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private void initializeGuards(SpecializationData specialization, DSLExpressionResolver resolver) {
-        final TypeMirror booleanType = context.getType(boolean.class);
         List<String> guardDefinitions = getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
-        for (String guard : guardDefinitions) {
-            GuardExpression guardExpression;
-            DSLExpression expression = null;
-            try {
-                expression = DSLExpression.parse(guard);
-                expression.accept(resolver);
-                guardExpression = new GuardExpression(specialization, expression);
-                if (!typeEquals(expression.getResolvedType(), booleanType)) {
-                    guardExpression.addError("Incompatible return type %s. Guards must return %s.", getSimpleName(expression.getResolvedType()), getSimpleName(booleanType));
+
+        Set<CacheExpression> handledCaches = new HashSet<>();
+        List<GuardExpression> guards = new ArrayList<>();
+        for (String guardExpression : guardDefinitions) {
+            GuardExpression guard = parseGuard(resolver, specialization, guardExpression);
+
+            Set<CacheExpression> caches = specialization.getBoundCaches(guard.getExpression(), false);
+            for (CacheExpression cache : caches) {
+                if (handledCaches.contains(cache)) {
+                    continue;
                 }
-            } catch (InvalidExpressionException e) {
-                guardExpression = new GuardExpression(specialization, null);
-                guardExpression.addError("Error parsing expression '%s': %s", guard, e.getMessage());
+                if (cache.isGuardForNull()) {
+                    guards.add(createWeakReferenceGuard(resolver, specialization, cache));
+                }
             }
-            specialization.getGuards().add(guardExpression);
+            handledCaches.addAll(caches);
+
+            guards.add(guard);
         }
+        for (CacheExpression cache : specialization.getCaches()) {
+            if (cache.isGuardForNull()) {
+                if (handledCaches.contains(cache)) {
+                    continue;
+                }
+                guards.add(createWeakReferenceGuard(resolver, specialization, cache));
+            }
+        }
+
+        specialization.getGuards().addAll(guards);
+    }
+
+    private GuardExpression createWeakReferenceGuard(DSLExpressionResolver resolver, SpecializationData specialization, CacheExpression cache) {
+        GuardExpression guard = parseGuard(resolver, specialization, cache.getParameter().getLocalName() + " != null");
+        guard.setWeakReferenceGuard(true);
+        return guard;
+    }
+
+    private GuardExpression parseGuard(DSLExpressionResolver resolver, SpecializationData specialization, String guard) {
+        final TypeMirror booleanType = context.getType(boolean.class);
+        GuardExpression guardExpression;
+        DSLExpression expression;
+        try {
+            expression = DSLExpression.parse(guard);
+            expression.accept(resolver);
+            guardExpression = new GuardExpression(specialization, expression);
+            if (!typeEquals(expression.getResolvedType(), booleanType)) {
+                guardExpression.addError("Incompatible return type %s. Guards must return %s.", getSimpleName(expression.getResolvedType()), getSimpleName(booleanType));
+            }
+        } catch (InvalidExpressionException e) {
+            guardExpression = new GuardExpression(specialization, null);
+            guardExpression.addError("Error parsing expression '%s': %s", guard, e.getMessage());
+        }
+        return guardExpression;
     }
 
     private void initializeGeneric(final NodeData node) {

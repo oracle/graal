@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -210,6 +211,7 @@ public final class SpecializationData extends TemplateMethod {
         final String[] resultValues = new String[]{
                         "get", ((TypeElement) ProcessorContext.getInstance().getTypes().TruffleLanguage_ContextReference.asElement()).getQualifiedName().toString(),
                         "get", ((TypeElement) ProcessorContext.getInstance().getTypes().TruffleLanguage_LanguageReference.asElement()).getQualifiedName().toString(),
+                        "get", ProcessorContext.getInstance().getTypeElement(Reference.class).getQualifiedName().toString(),
         };
 
         @Override
@@ -226,6 +228,7 @@ public final class SpecializationData extends TemplateMethod {
                 String searchClass = resultValues[i + 1];
                 if (searchMethod.equals(methodName) && className.equals(searchClass)) {
                     found = true;
+                    break;
                 }
             }
         }
@@ -246,7 +249,7 @@ public final class SpecializationData extends TemplateMethod {
 
         if (transitive) {
             for (CacheExpression cache : getBoundCaches(expression, false)) {
-                if (cache.isBind()) {
+                if (cache.isAlwaysInitialized()) {
                     if (isDynamicParameterBound(cache.getDefaultExpression(), true)) {
                         return true;
                     }
@@ -527,6 +530,8 @@ public final class SpecializationData extends TemplateMethod {
             if (cache.isAlwaysInitialized()) {
                 continue;
             } else if (!guard.isLibraryAcceptsGuard() && cache.isCachedLibrary()) {
+                continue;
+            } else if (guard.isWeakReferenceGuard() && cache.isWeakReference()) {
                 continue;
             }
             return true;
