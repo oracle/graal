@@ -29,7 +29,6 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
@@ -51,6 +50,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -64,9 +64,9 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
     private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(ArraycopySnippets.class, "doArraycopy", false, LocationIdentity.ANY_LOCATION);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{ARRAYCOPY};
 
-    public static void registerForeignCalls(Providers providers, Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls) {
+    public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
         for (SubstrateForeignCallDescriptor descriptor : FOREIGN_CALLS) {
-            foreignCalls.put(descriptor, new SubstrateForeignCallLinkage(providers, descriptor));
+            foreignCalls.register(new SubstrateForeignCallLinkage(providers, descriptor));
         }
     }
 
@@ -241,8 +241,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
         @Override
         public void lower(ArrayCopyWithExceptionNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
-            ForeignCallsProvider foreignCalls = tool.getProviders().getForeignCalls();
-            ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(foreignCalls, ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
+            ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
                             node.getDestinationPosition(), node.getLength()));
             call.setStateAfter(node.stateAfter());
             call.setBci(node.getBci());

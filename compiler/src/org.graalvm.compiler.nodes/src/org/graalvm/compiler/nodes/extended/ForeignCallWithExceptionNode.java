@@ -30,7 +30,6 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -66,26 +65,24 @@ public class ForeignCallWithExceptionNode extends WithExceptionNode implements F
     @Input protected NodeInputList<ValueNode> arguments;
     @OptionalInput(State) protected FrameState stateDuring;
     @OptionalInput(State) protected FrameState stateAfter;
-    protected final ForeignCallsProvider foreignCalls;
 
     protected final ForeignCallDescriptor descriptor;
     protected int bci = BytecodeFrame.UNKNOWN_BCI;
 
-    public ForeignCallWithExceptionNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        this(TYPE, foreignCalls, descriptor, arguments);
+    public ForeignCallWithExceptionNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
+        this(TYPE, descriptor, arguments);
     }
 
-    protected ForeignCallWithExceptionNode(NodeClass<? extends ForeignCallWithExceptionNode> c, ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    protected ForeignCallWithExceptionNode(NodeClass<? extends ForeignCallWithExceptionNode> c, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(c, StampFactory.forKind(JavaKind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
-        this.foreignCalls = foreignCalls;
         assert descriptor.getArgumentTypes().length == this.arguments.size() : "wrong number of arguments to " + this;
     }
 
     @Override
     public boolean hasSideEffect() {
-        return !foreignCalls.isReexecutable(descriptor);
+        return !descriptor.isReexecutable();
     }
 
     @Override
@@ -141,13 +138,8 @@ public class ForeignCallWithExceptionNode extends WithExceptionNode implements F
     }
 
     @Override
-    public ForeignCallsProvider getForeignCalls() {
-        return foreignCalls;
-    }
-
-    @Override
     public FixedNode replaceWithNonThrowing() {
-        ForeignCallNode foreignCall = this.asNode().graph().add(new ForeignCallNode(foreignCalls, descriptor, stamp, arguments));
+        ForeignCallNode foreignCall = this.asNode().graph().add(new ForeignCallNode(descriptor, stamp, arguments));
         AbstractBeginNode oldException = this.exceptionEdge;
         graph().replaceSplitWithFixed(this, foreignCall, this.next());
         GraphUtil.killCFG(oldException);

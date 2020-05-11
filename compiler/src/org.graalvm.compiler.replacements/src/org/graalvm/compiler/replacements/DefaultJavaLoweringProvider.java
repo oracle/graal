@@ -415,7 +415,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
         StructuredGraph graph = math.graph();
-        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallDescriptor, math.getX(), math.getY()));
+        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallSignature, math.getX(), math.getY()));
         graph.addAfterFixed(tool.lastFixedNode(), call);
         math.replaceAtUsages(call);
     }
@@ -433,7 +433,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
         StructuredGraph graph = math.graph();
-        ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallDescriptor, math.getValue()));
+        ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls.getDescriptor(math.getOperation().foreignCallSignature), math.getValue()));
         graph.addAfterFixed(tool.lastFixedNode(), call);
         math.replaceAtUsages(call);
     }

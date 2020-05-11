@@ -46,6 +46,7 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -613,7 +614,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
             StartNode newStart = graph.add(new StartNode());
             ParameterNode buffer = graph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(runtime.getTarget().wordJavaKind))));
-            ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(foreignCalls, OSR_MIGRATION_END, buffer));
+            ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(OSR_MIGRATION_END, buffer));
             migrationEnd.setStateAfter(osrStart.stateAfter());
             newStart.setNext(migrationEnd);
             FixedNode next = osrStart.next();
@@ -696,17 +697,17 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     public static final class RuntimeCalls {
-        public static final EnumMap<BytecodeExceptionKind, ForeignCallDescriptor> runtimeCalls;
+        public static final EnumMap<BytecodeExceptionKind, ForeignCallSignature> runtimeCalls;
 
         static {
             runtimeCalls = new EnumMap<>(BytecodeExceptionKind.class);
-            runtimeCalls.put(BytecodeExceptionKind.ARRAY_STORE, new ForeignCallDescriptor("createArrayStoreException", ArrayStoreException.class, Object.class));
-            runtimeCalls.put(BytecodeExceptionKind.CLASS_CAST, new ForeignCallDescriptor("createClassCastException", ClassCastException.class, Object.class, KlassPointer.class));
-            runtimeCalls.put(BytecodeExceptionKind.NULL_POINTER, new ForeignCallDescriptor("createNullPointerException", NullPointerException.class));
-            runtimeCalls.put(BytecodeExceptionKind.OUT_OF_BOUNDS, new ForeignCallDescriptor("createOutOfBoundsException", ArrayIndexOutOfBoundsException.class, int.class, int.class));
-            runtimeCalls.put(BytecodeExceptionKind.DIVISION_BY_ZERO, new ForeignCallDescriptor("createDivisionByZeroException", ArithmeticException.class));
-            runtimeCalls.put(BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW, new ForeignCallDescriptor("createIntegerExactOverflowException", ArithmeticException.class));
-            runtimeCalls.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, new ForeignCallDescriptor("createLongExactOverflowException", ArithmeticException.class));
+            runtimeCalls.put(BytecodeExceptionKind.ARRAY_STORE, new ForeignCallSignature("createArrayStoreException", ArrayStoreException.class, Object.class));
+            runtimeCalls.put(BytecodeExceptionKind.CLASS_CAST, new ForeignCallSignature("createClassCastException", ClassCastException.class, Object.class, KlassPointer.class));
+            runtimeCalls.put(BytecodeExceptionKind.NULL_POINTER, new ForeignCallSignature("createNullPointerException", NullPointerException.class));
+            runtimeCalls.put(BytecodeExceptionKind.OUT_OF_BOUNDS, new ForeignCallSignature("createOutOfBoundsException", ArrayIndexOutOfBoundsException.class, int.class, int.class));
+            runtimeCalls.put(BytecodeExceptionKind.DIVISION_BY_ZERO, new ForeignCallSignature("createDivisionByZeroException", ArithmeticException.class));
+            runtimeCalls.put(BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW, new ForeignCallSignature("createIntegerExactOverflowException", ArithmeticException.class));
+            runtimeCalls.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, new ForeignCallSignature("createLongExactOverflowException", ArithmeticException.class));
         }
     }
 
@@ -728,11 +729,11 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             return;
         }
 
-        ForeignCallDescriptor descriptor = RuntimeCalls.runtimeCalls.get(node.getExceptionKind());
+        ForeignCallDescriptor descriptor = foreignCalls.getDescriptor(RuntimeCalls.runtimeCalls.get(node.getExceptionKind()));
         assert descriptor != null;
 
         StructuredGraph graph = node.graph();
-        ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, descriptor, node.stamp(NodeView.DEFAULT), node.getArguments()));
+        ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), node.getArguments()));
         /*
          * The original BytecodeExceptionNode has a rethrowException FrameState which isn't suitable
          * for deopt because the exception to be thrown come from this call so it's not available in
