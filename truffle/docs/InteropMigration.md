@@ -110,7 +110,7 @@ The following interop messages were changed:
 READ, WRITE, REMOVE, HAS_SIZE, GET_SIZE, HAS_KEYS, KEYS
 ```
 
-The updated protocol with separate member and array namespace in [InteropLibrary](TODO) looks like this:
+The updated protocol with separate member and array namespace in [InteropLibrary](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html) looks like this:
 
 #### Object namespace:
 
