@@ -48,30 +48,30 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Extract;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.dsl.test.ExtractExpressionTestFactory.ExtractBindsCacheNodeGen;
-import com.oracle.truffle.api.dsl.test.ExtractExpressionTestFactory.ExtractFieldNodeGen;
-import com.oracle.truffle.api.dsl.test.ExtractExpressionTestFactory.ExtractInLimitNodeGen;
-import com.oracle.truffle.api.dsl.test.ExtractExpressionTestFactory.ExtractMethodNodeGen;
-import com.oracle.truffle.api.dsl.test.ExtractExpressionTestFactory.ExtractMethodTwiceNodeGen;
-import com.oracle.truffle.api.dsl.test.ExtractExpressionTestFactory.ExtractNodeFieldNodeGen;
-import com.oracle.truffle.api.dsl.test.ExtractExpressionTestFactory.ExtractTransitiveCachedInAssumptionNodeGen;
-import com.oracle.truffle.api.dsl.test.ExtractExpressionTestFactory.ExtractTransitiveCachedInLimitNodeGen;
-import com.oracle.truffle.api.dsl.test.ExtractExpressionTestFactory.ExtractTransitiveCachedWithLibraryNodeGen;
-import com.oracle.truffle.api.dsl.test.ExtractExpressionTestFactory.ExtractTransitiveDynamicAndCachedNodeGen;
-import com.oracle.truffle.api.dsl.test.ExtractExpressionTestFactory.ExtractTransitiveDynamicNodeGen;
-import com.oracle.truffle.api.dsl.test.ExtractExpressionTestFactory.ExtractTransitiveDynamicWithLibraryNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindBindsCacheNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindFieldNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindInLimitNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindMethodNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindMethodTwiceNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindNodeFieldNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveCachedInAssumptionNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveCachedInLimitNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveCachedWithLibraryNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveDynamicAndCachedNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveDynamicNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveDynamicWithLibraryNodeGen;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings("unused")
-public class ExtractExpressionTest extends AbstractPolyglotTest {
+public class BindExpressionTest extends AbstractPolyglotTest {
 
     static class TestObject {
 
@@ -80,7 +80,7 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
 
         int counter = 0;
 
-        int extract() {
+        int bind() {
             return counter++;
         }
     }
@@ -90,21 +90,21 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
      * field is read.
      */
     @Test
-    public void testExtractField() {
-        ExtractFieldNode node = ExtractFieldNodeGen.create();
+    public void testBindField() {
+        BindFieldNode node = BindFieldNodeGen.create();
         TestObject o = new TestObject();
         node.execute(o);
 
         assertFails(() -> node.execute(new TestObject()), UnsupportedSpecializationException.class);
     }
 
-    abstract static class ExtractFieldNode extends Node {
+    abstract static class BindFieldNode extends Node {
 
         abstract Object execute(Object arg0);
 
         @Specialization(guards = "storage == cachedStorage", limit = "1")
         Object s0(TestObject a0,
-                        @Extract("a0.storage") Object storage,
+                        @Bind("a0.storage") Object storage,
                         @Cached("storage") Object cachedStorage) {
             assertSame(storage, cachedStorage);
             assertSame(a0.storage, storage);
@@ -117,21 +117,21 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
      * used multiple times.
      */
     @Test
-    public void testExtractMethod() {
-        ExtractMethodNode node = ExtractMethodNodeGen.create();
+    public void testBindMethod() {
+        BindMethodNode node = BindMethodNodeGen.create();
         TestObject o = new TestObject();
         node.execute(o);
 
         assertFails(() -> node.execute(o), UnsupportedSpecializationException.class);
     }
 
-    abstract static class ExtractMethodNode extends Node {
+    abstract static class BindMethodNode extends Node {
 
         abstract Object execute(Object arg0);
 
         @Specialization(guards = "counter == 0")
         Object s0(TestObject a0,
-                        @Extract("a0.extract()") int counter,
+                        @Bind("a0.bind()") int counter,
                         @Cached("counter") int cachedCounter) {
             assertEquals(0, counter);
             assertEquals(0, cachedCounter);
@@ -144,21 +144,21 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
      * guard.
      */
     @Test
-    public void testExtractMethodTwice() {
-        ExtractMethodTwiceNode node = ExtractMethodTwiceNodeGen.create();
+    public void testBindMethodTwice() {
+        BindMethodTwiceNode node = BindMethodTwiceNodeGen.create();
         TestObject o = new TestObject();
         node.execute(o);
         node.execute(o);
         assertFails(() -> node.execute(o), UnsupportedSpecializationException.class);
     }
 
-    abstract static class ExtractMethodTwiceNode extends Node {
+    abstract static class BindMethodTwiceNode extends Node {
 
         abstract Object execute(Object arg0);
 
         @Specialization(guards = "counter == 0 || counter == 1")
         Object s0(TestObject a0,
-                        @Extract("a0.extract()") int counter,
+                        @Bind("a0.bind()") int counter,
                         @Cached("counter") int cachedCounter) {
             assertEquals(0, cachedCounter);
             return a0;
@@ -170,15 +170,15 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
      * executed multiple times.
      */
     @Test
-    public void testExtractBindsCache() {
-        ExtractBindsCacheNode node = ExtractBindsCacheNodeGen.create();
+    public void testBindBindsCache() {
+        BindBindsCacheNode node = BindBindsCacheNodeGen.create();
         TestObject o = new TestObject();
         node.execute(o);
         node.execute(o);
         node.execute(o);
     }
 
-    abstract static class ExtractBindsCacheNode extends Node {
+    abstract static class BindBindsCacheNode extends Node {
 
         abstract Object execute(Object arg0);
 
@@ -187,7 +187,7 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
         @Specialization(guards = "counter == cachedCounter", limit = "3")
         Object s0(TestObject a0,
                         @Cached("0") int cachedCounter,
-                        @Extract("cachedCounter") int counter) {
+                        @Bind("cachedCounter") int counter) {
             assertEquals(0, counter);
             assertEquals(0, cachedCounter);
             return a0;
@@ -199,22 +199,22 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
      * binds cached values.
      */
     @Test
-    public void testExtractInLimit() {
-        ExtractInLimitNode node = ExtractInLimitNodeGen.create();
+    public void testBindInLimit() {
+        BindInLimitNode node = BindInLimitNodeGen.create();
         TestObject o = new TestObject();
         node.execute(o);
         node.execute(o);
         assertFails(() -> node.execute(o), UnsupportedSpecializationException.class);
     }
 
-    abstract static class ExtractInLimitNode extends Node {
+    abstract static class BindInLimitNode extends Node {
 
         abstract Object execute(Object arg0);
 
         @Specialization(guards = "counter == cachedCounter", limit = "limit")
         Object s0(TestObject a0,
-                        @Extract("a0.extract()") int counter,
-                        @Extract("2") int limit,
+                        @Bind("a0.bind()") int counter,
+                        @Bind("2") int limit,
                         @Cached("counter") int cachedCounter) {
             assertEquals(cachedCounter, counter);
             assertEquals(cachedCounter, cachedCounter);
@@ -227,24 +227,24 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
      * nature is preserved.
      */
     @Test
-    public void testExtractTransitiveDynamic() {
-        ExtractTransitiveDynamicNode node = ExtractTransitiveDynamicNodeGen.create();
+    public void testBindTransitiveDynamic() {
+        BindTransitiveDynamicNode node = BindTransitiveDynamicNodeGen.create();
         TestObject o = new TestObject();
         node.execute(o);
         node.execute(o);
         assertFails(() -> node.execute(o), UnsupportedSpecializationException.class);
     }
 
-    abstract static class ExtractTransitiveDynamicNode extends Node {
+    abstract static class BindTransitiveDynamicNode extends Node {
 
         abstract Object execute(Object arg0);
 
         @Specialization(guards = "counter4 == cachedCounter", limit = "2")
         Object s0(TestObject a0,
-                        @Extract("a0.extract()") int counter1,
-                        @Extract("counter1") int counter2,
-                        @Extract("counter2") int counter3,
-                        @Extract("counter3") int counter4,
+                        @Bind("a0.bind()") int counter1,
+                        @Bind("counter1") int counter2,
+                        @Bind("counter2") int counter3,
+                        @Bind("counter3") int counter4,
                         @Cached("counter3") int cachedCounter) {
             return a0;
         }
@@ -255,23 +255,23 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
      * nature is preserved.
      */
     @Test
-    public void testExtractTransitiveDynamicAndCachedNode() {
-        ExtractTransitiveDynamicAndCachedNode node = ExtractTransitiveDynamicAndCachedNodeGen.create();
+    public void testBindTransitiveDynamicAndCachedNode() {
+        BindTransitiveDynamicAndCachedNode node = BindTransitiveDynamicAndCachedNodeGen.create();
         TestObject o = new TestObject();
         node.execute(o);
         node.execute(o);
         assertFails(() -> node.execute(o), UnsupportedSpecializationException.class);
     }
 
-    abstract static class ExtractTransitiveDynamicAndCachedNode extends Node {
+    abstract static class BindTransitiveDynamicAndCachedNode extends Node {
 
         abstract Object execute(Object arg0);
 
         @Specialization(guards = "counter1 == counter2", limit = "2")
         Object s0(TestObject a0,
-                        @Extract("a0.extract()") int counter1,
+                        @Bind("a0.bind()") int counter1,
                         @Cached("counter1") int cachedCounter,
-                        @Extract("cachedCounter") int counter2) {
+                        @Bind("cachedCounter") int counter2) {
             return a0;
         }
     }
@@ -281,23 +281,23 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
      * nature is preserved when used with a library.
      */
     @Test
-    public void testExtractTransitiveDynamicWithLibrary() {
-        ExtractTransitiveDynamicWithLibraryNode node = ExtractTransitiveDynamicWithLibraryNodeGen.create();
+    public void testBindTransitiveDynamicWithLibrary() {
+        BindTransitiveDynamicWithLibraryNode node = BindTransitiveDynamicWithLibraryNodeGen.create();
         TestObject o = new TestObject();
         node.execute(o);
         node.execute(o);
         assertFails(() -> node.execute(o), UnsupportedSpecializationException.class);
     }
 
-    abstract static class ExtractTransitiveDynamicWithLibraryNode extends Node {
+    abstract static class BindTransitiveDynamicWithLibraryNode extends Node {
 
         abstract Object execute(Object arg0);
 
         // this should not trigger a warning
         @Specialization(guards = "counter2 < 2", limit = "3")
         Object s0(TestObject a0,
-                        @Extract("a0.extract()") int counter1,
-                        @Extract("counter1") int counter2,
+                        @Bind("a0.bind()") int counter1,
+                        @Bind("counter1") int counter2,
                         @CachedLibrary("counter2") InteropLibrary lib) {
             assertTrue(lib.isNumber(counter2));
             return a0;
@@ -309,23 +309,23 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
      * nature is preserved when used with a library.
      */
     @Test
-    public void testExtractTransitiveCachedWithLibrary() {
-        ExtractTransitiveCachedWithLibraryNode node = ExtractTransitiveCachedWithLibraryNodeGen.create();
+    public void testBindTransitiveCachedWithLibrary() {
+        BindTransitiveCachedWithLibraryNode node = BindTransitiveCachedWithLibraryNodeGen.create();
         TestObject o = new TestObject();
         node.execute(o);
         node.execute(o);
     }
 
-    abstract static class ExtractTransitiveCachedWithLibraryNode extends Node {
+    abstract static class BindTransitiveCachedWithLibraryNode extends Node {
 
         abstract Object execute(Object arg0);
 
         @ExpectError("The limit expression has no effect.%")
         @Specialization(limit = "3")
         Object s0(TestObject a0,
-                        @Cached("a0.extract()") int cachedCounter,
-                        @Extract("cachedCounter") int counter1,
-                        @Extract("counter1") int counter2,
+                        @Cached("a0.bind()") int cachedCounter,
+                        @Bind("cachedCounter") int counter1,
+                        @Bind("counter1") int counter2,
                         @CachedLibrary("counter2") InteropLibrary lib) {
             assertTrue(lib.isNumber(counter2));
             return a0;
@@ -333,33 +333,33 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testExtractTransitiveCachedInLimit() {
-        ExtractTransitiveCachedInLimitNode node = ExtractTransitiveCachedInLimitNodeGen.create();
+    public void testBindTransitiveCachedInLimit() {
+        BindTransitiveCachedInLimitNode node = BindTransitiveCachedInLimitNodeGen.create();
         TestObject o = new TestObject();
         node.execute(o);
         node.execute(o);
         assertFails(() -> node.execute(o), UnsupportedSpecializationException.class);
     }
 
-    abstract static class ExtractTransitiveCachedInLimitNode extends Node {
+    abstract static class BindTransitiveCachedInLimitNode extends Node {
 
         abstract Object execute(Object arg0);
 
-        @Specialization(guards = "cachedExtract == extract", limit = "extractCachedLimit2")
+        @Specialization(guards = "cachedBind == counter", limit = "extractCachedLimit2")
         Object s0(TestObject a0,
-                        @Extract("a0.extract()") int extract,
-                        @Cached("extract") int cachedExtract,
+                        @Bind("a0.bind()") int counter,
+                        @Cached("counter") int cachedBind,
                         @Cached("2") int cachedLimit,
-                        @Extract("cachedLimit") int extractCachedLimit1,
-                        @Extract("extractCachedLimit1") int extractCachedLimit2) {
+                        @Bind("cachedLimit") int extractCachedLimit1,
+                        @Bind("extractCachedLimit1") int extractCachedLimit2) {
             assertEquals(2, cachedLimit);
             return a0;
         }
     }
 
     @Test
-    public void testExtractTransitiveCachedInAssumption() {
-        ExtractTransitiveCachedInAssumptionNode node = ExtractTransitiveCachedInAssumptionNodeGen.create();
+    public void testBindTransitiveCachedInAssumption() {
+        BindTransitiveCachedInAssumptionNode node = BindTransitiveCachedInAssumptionNodeGen.create();
         TestObject o = new TestObject();
         node.execute(o);
         node.execute(o);
@@ -370,35 +370,35 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
     /*
      * Test use of assumption is allowed for transitive extracted cached values.
      */
-    abstract static class ExtractTransitiveCachedInAssumptionNode extends Node {
+    abstract static class BindTransitiveCachedInAssumptionNode extends Node {
 
         abstract Object execute(Object arg0);
 
         @Specialization(assumptions = "extractAssumption2")
         Object s0(TestObject a0,
                         @Cached("a0.assumption") Assumption assumption,
-                        @Extract("assumption") Assumption extractAssumption1,
-                        @Extract("extractAssumption1") Assumption extractAssumption2) {
+                        @Bind("assumption") Assumption extractAssumption1,
+                        @Bind("extractAssumption1") Assumption extractAssumption2) {
             return a0;
         }
     }
 
     @Test
-    public void testExtractNodeField() {
-        ExtractNodeFieldNode node = ExtractNodeFieldNodeGen.create(2);
+    public void testBindNodeField() {
+        BindNodeFieldNode node = BindNodeFieldNodeGen.create(2);
         TestObject o = new TestObject();
         assertEquals(2, node.execute(o));
         assertEquals(2, node.execute(o));
     }
 
     @NodeField(name = "field0", type = int.class)
-    abstract static class ExtractNodeFieldNode extends Node {
+    abstract static class BindNodeFieldNode extends Node {
 
         abstract Object execute(Object arg0);
 
         @Specialization
         int s0(TestObject a0,
-                        @Extract("field0") int field) {
+                        @Bind("field0") int field) {
             return field;
         }
     }
@@ -410,7 +410,7 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
         @ExpectError("Assumption expressions must not bind dynamic parameter values.")
         @Specialization(assumptions = "assumption")
         Object s0(TestObject a0,
-                        @Extract("a0.assumption") Assumption assumption) {
+                        @Bind("a0.assumption") Assumption assumption) {
             return a0;
         }
     }
@@ -422,7 +422,7 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
         @ExpectError("Limit expressions must not bind dynamic parameter values.")
         @Specialization(guards = "counter == cachedCounter", limit = "counter")
         Object s0(TestObject a0,
-                        @Extract("a0.extract()") int counter,
+                        @Bind("a0.bind()") int counter,
                         @Cached("counter") int cachedCounter) {
             assertEquals(1, counter);
             assertEquals(1, cachedCounter);
@@ -436,10 +436,10 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
 
         @Specialization
         Object s0(TestObject a0,
-                        @Extract("a0.extract()") int extract,
+                        @Bind("a0.bind()") int extract,
                         @ExpectError("The initializer expression of parameter 'counter1' binds uninitialized parameter 'counter2. Reorder the parameters to resolve the problem.")//
-                        @Extract("counter2") int counter1,
-                        @Extract("counter1") int counter2) {
+                        @Bind("counter2") int counter1,
+                        @Bind("counter1") int counter2) {
             return a0;
         }
     }
@@ -451,7 +451,7 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
         @Specialization
         Object s0(TestObject a0,
                         @ExpectError("Error parsing expression 'asdf32': asdf32 cannot be resolved.")//
-                        @Extract("asdf32") int extract) {
+                        @Bind("asdf32") int extract) {
             return a0;
         }
     }
@@ -463,7 +463,7 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
         @Specialization
         Object s0(TestObject a0,
                         @ExpectError("Error parsing expression '': line 1:0 mismatched input '<EOF>'%")//
-                        @Extract("") int extract) {
+                        @Bind("") int extract) {
             return a0;
         }
     }
@@ -479,7 +479,7 @@ public class ExtractExpressionTest extends AbstractPolyglotTest {
         @Specialization
         Object s0(TestObject a0,
                         @ExpectError("Error parsing expression 'create()': The method create is undefined for the enclosing scope.")//
-                        @Extract("create()") ExtractFieldNode node) {
+                        @Bind("create()") BindFieldNode node) {
             return a0;
         }
 

@@ -129,13 +129,13 @@ public class TruffleTypes {
     public final DeclaredType VirtualFrame = c.getDeclaredType(VirtualFrame_Name);
 
     // DSL API
+    public static final String Bind_Name = "com.oracle.truffle.api.dsl.Bind";
     public static final String Cached_Exclusive_Name = "com.oracle.truffle.api.dsl.Cached.Exclusive";
     public static final String Cached_Name = "com.oracle.truffle.api.dsl.Cached";
     public static final String Cached_Shared_Name = "com.oracle.truffle.api.dsl.Cached.Shared";
     public static final String CachedContext_Name = "com.oracle.truffle.api.dsl.CachedContext";
     public static final String CachedLanguage_Name = "com.oracle.truffle.api.dsl.CachedLanguage";
     public static final String CreateCast_Name = "com.oracle.truffle.api.dsl.CreateCast";
-    public static final String Extract_Name = "com.oracle.truffle.api.dsl.Extract";
     public static final String Executed_Name = "com.oracle.truffle.api.dsl.Executed";
     public static final String Fallback_Name = "com.oracle.truffle.api.dsl.Fallback";
     public static final String GeneratedBy_Name = "com.oracle.truffle.api.dsl.GeneratedBy";
@@ -160,12 +160,12 @@ public class TruffleTypes {
     public static final String TypeSystemReference_Name = "com.oracle.truffle.api.dsl.TypeSystemReference";
     public static final String UnsupportedSpecializationException_Name = "com.oracle.truffle.api.dsl.UnsupportedSpecializationException";
 
+    public final DeclaredType Bind = c.getDeclaredType(Bind_Name);
     public final DeclaredType Cached = c.getDeclaredType(Cached_Name);
     public final DeclaredType Cached_Exclusive = c.getDeclaredType(Cached_Exclusive_Name);
     public final DeclaredType Cached_Shared = c.getDeclaredType(Cached_Shared_Name);
     public final DeclaredType CachedContext = c.getDeclaredType(CachedContext_Name);
     public final DeclaredType CachedLanguage = c.getDeclaredType(CachedLanguage_Name);
-    public final DeclaredType Extract = c.getDeclaredType(Extract_Name);
     public final DeclaredType CreateCast = c.getDeclaredType(CreateCast_Name);
     public final DeclaredType Executed = c.getDeclaredType(Executed_Name);
     public final DeclaredType Fallback = c.getDeclaredType(Fallback_Name);

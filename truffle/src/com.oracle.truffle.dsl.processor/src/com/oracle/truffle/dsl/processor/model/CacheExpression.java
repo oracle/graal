@@ -191,8 +191,8 @@ public final class CacheExpression extends MessageContainer {
         return isType(types.Cached);
     }
 
-    public boolean isExtract() {
-        return isType(types.Extract);
+    public boolean isBind() {
+        return isType(types.Bind);
     }
 
     public boolean isCachedLibrary() {

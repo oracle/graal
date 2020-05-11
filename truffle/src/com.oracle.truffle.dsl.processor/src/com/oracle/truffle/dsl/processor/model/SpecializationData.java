@@ -246,7 +246,7 @@ public final class SpecializationData extends TemplateMethod {
 
         if (transitive) {
             for (CacheExpression cache : getBoundCaches(expression, false)) {
-                if (cache.isExtract()) {
+                if (cache.isBind()) {
                     if (isDynamicParameterBound(cache.getDefaultExpression(), true)) {
                         return true;
                     }

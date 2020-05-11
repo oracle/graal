@@ -19,7 +19,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated and renamed `TruffleFile.getMimeType` to [TruffleFile.detectMimeType](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#detectMimeType--). The new method no longer throws `IOException` but returns `null` instead.
 * The languages are responsible for stopping and joining the stopped `Thread`s in the [TruffleLanguage.finalizeContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#finalizeContext-C-).
 * Added `ConditionProfile#create()` as an alias of `createBinaryProfile()` so it can be used like `@Cached ConditionProfile myProfile`.
-* GR-19736 - Added Truffle DSL `@Extract` annotation to common out expression for use in guards and specialization methods.
+* GR-19736 - Added Truffle DSL `@Bind` annotation to common out expression for use in guards and specialization methods.
 * GR-23182 - Added support for @Cached annotations to be weak using `@Cached(value ="...", weak = true)`. 
 * GR-23182 - Added `TruffleWeakReference` utility to be used on partial evaluated code paths instead of the default JDK `WeakReference`.
 

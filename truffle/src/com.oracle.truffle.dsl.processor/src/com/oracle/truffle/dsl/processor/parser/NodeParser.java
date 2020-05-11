@@ -177,7 +177,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     public static List<TypeMirror> getCachedAnnotations() {
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
-        return Arrays.asList(types.Cached, types.CachedLibrary, types.CachedContext, types.CachedLanguage, types.Extract);
+        return Arrays.asList(types.Cached, types.CachedLibrary, types.CachedContext, types.CachedLanguage, types.Bind);
     }
 
     public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
@@ -2169,7 +2169,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cache.setDefaultExpression(resolveCachedExpression(resolver, cache, null, accessReference, null));
                 cache.setUncachedExpression(resolveCachedExpression(resolver, cache, null, accessReference, null));
                 cache.setAlwaysInitialized(true);
-            } else if (cache.isExtract()) {
+            } else if (cache.isBind()) {
                 AnnotationMirror dynamic = cache.getMessageAnnotation();
                 String expression = ElementUtils.getAnnotationValue(String.class, dynamic, "value", false);
 

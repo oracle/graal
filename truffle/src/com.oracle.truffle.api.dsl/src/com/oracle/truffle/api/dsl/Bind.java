@@ -46,17 +46,17 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Extracts and executes an expression at most once for every execution of the node. This is useful
- * if an expression cannot be repeated safely for a guard and its associated specialization method.
- * For example, if a read of a field is volatile two consecutive reads might not lead to the same
+ * Binds and executes an expression at most once for every execution of the node. This is useful if
+ * an expression cannot be repeated safely for a guard and its associated specialization method. For
+ * example, if a read of a field is volatile two consecutive reads might not lead to the same
  * result. The name the extract parameter can be referred to in {@link Cached cached},
  * {@link Specialization#guards() guard}, {@link Specialization#limit() limit},
- * {@link Specialization#assumptions() assumption} expressions or the specialization body. The
- * extract expression may refer to dynamic parameters, previously declared extract or cached
- * parameters and {@link NodeField node field} declarations.
+ * {@link Specialization#assumptions() assumption} expressions or the specialization body. The bind
+ * expression may refer to dynamic parameters, previously declared bind or cached parameters and
+ * {@link NodeField node field} declarations.
  * <p>
- * If an extract parameter only binds cached values, then it is considered also a cached value. If
- * the parameter binds any dynamic parameter then the extract parameter is considered also a dynamic
+ * If a bind parameter only uses cached values, then it is considered also a cached value. If the
+ * parameter uses any dynamic parameter then the extract parameter is considered also a dynamic
  * parameter.
  * <p>
  * Usage examples:
@@ -77,7 +77,7 @@ import java.lang.annotation.Target;
  *
  *     &#64;Specialization(guards = "storage == cachedStorage", limit = "3")
  *     Object s0(DynamicObject a0,
- *                     &#64;Extract("a0.storage") Object storage,
+ *                     &#64;Bind("a0.storage") Object storage,
  *                     &#64;Cached("storage") Object cachedStorage) {
  *         // use storage in specialization and in guard.
  *         return a0;
@@ -92,12 +92,12 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PARAMETER})
-public @interface Extract {
+public @interface Bind {
 
     /**
      * The extract expression.
      *
-     * @see Extract
+     * @see Bind
      * @since 20.2
      */
     String value();
