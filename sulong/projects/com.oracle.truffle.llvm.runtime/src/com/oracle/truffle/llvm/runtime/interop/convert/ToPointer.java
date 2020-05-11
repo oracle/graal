@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -41,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer.InteropTypeNode
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 @NodeChild(type = Dummy.class)
 @NodeChild(type = InteropTypeNode.class)
@@ -122,8 +124,20 @@ public abstract class ToPointer extends ForeignToLLVM {
         return pointer;
     }
 
-    @Specialization(guards = {"notLLVM(obj)"})
-    protected LLVMManagedPointer fromTruffleObject(Object obj, LLVMInteropType.Structured type) {
+// @Specialization(guards = {"notLLVM(obj)"})
+// protected LLVMManagedPointer fromTruffleObject(Object obj, LLVMInteropType.Structured type) {
+// return LLVMManagedPointer.create(LLVMTypedForeignObject.create(obj, type));
+// }
+
+    @Specialization(guards = {"notLLVM(obj)", "nativeTypes.hasNativeType(obj)"})
+    protected LLVMManagedPointer fromTypedTruffleObject(Object obj, @SuppressWarnings("unused") LLVMInteropType.Structured type,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes) {
+        return LLVMManagedPointer.create(obj);
+    }
+
+    @Specialization(guards = {"notLLVM(obj)", "!nativeTypes.hasNativeType(obj)"})
+    protected LLVMManagedPointer fromNonTypedTruffleObject(Object obj, LLVMInteropType.Structured type,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes) {
         return LLVMManagedPointer.create(LLVMTypedForeignObject.create(obj, type));
     }
 
