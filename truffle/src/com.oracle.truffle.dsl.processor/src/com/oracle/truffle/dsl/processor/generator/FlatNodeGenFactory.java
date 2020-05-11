@@ -633,7 +633,7 @@ public class FlatNodeGenFactory {
         NodeExecutionData execution = specialization.getNode().getChildExecutions().get(0);
         frameState.set(execution, frameState.getValue(execution).accessWith(CodeTreeBuilder.singleString(receiverName)));
         for (CacheExpression cache : expressions) {
-            Collection<IfTriple> triples = persistAndInitializeCache(frameState, specialization, cache, false, true);
+            Collection<IfTriple> triples = persistAndInitializeCache(frameState, NodeExecutionMode.SLOW_PATH, executeAndSpecializeType, specialization, cache, false, true);
             IfTriple.materialize(b, triples, true);
         }
         return b.build();
@@ -718,7 +718,7 @@ public class FlatNodeGenFactory {
                         builder.staticReference(createLibraryConstant(libraryConstants, cache.getParameter().getType()));
                         builder.startCall(".getUncached").end();
                     } else {
-                        builder.tree(createCacheReference(frameState, specialization, cache, false));
+                        builder.tree(createCacheReference(frameState, specialization, cache));
                     }
                     builder.end();
                 }
@@ -781,10 +781,6 @@ public class FlatNodeGenFactory {
                 TypeMirror type = parameter.getType();
                 Modifier visibility = Modifier.PRIVATE;
 
-                if (cache.isWeak()) {
-                    type = new DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleWeakReference), Arrays.asList(type));
-                }
-
                 CodeVariableElement cachedField;
                 if (isAssignable(type, types.NodeInterface)) {
                     cachedField = createNodeField(visibility, type, fieldName, types.Node_Child);
@@ -828,9 +824,6 @@ public class FlatNodeGenFactory {
                 Parameter parameter = cache.getParameter();
                 String fieldName = createFieldName(specialization, parameter);
                 TypeMirror type = parameter.getType();
-                if (cache.isWeak()) {
-                    type = new DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleWeakReference), Arrays.asList(type));
-                }
                 Modifier visibility = useSpecializationClass ? null : Modifier.PRIVATE;
                 CodeVariableElement cachedField;
                 if (isAssignable(type, types.NodeInterface)) {
@@ -2590,7 +2583,6 @@ public class FlatNodeGenFactory {
                 }
             }
             if (fallbackNeedsState) {
-
                 builder.string(STATE_VALUE);
             }
             frameState.addReferencesTo(builder);
@@ -2618,6 +2610,24 @@ public class FlatNodeGenFactory {
             builder.statement("hasLock = false");
         }
 
+        Set<CacheExpression> alwaysInitializeCaches = new LinkedHashSet<>();
+        outer: for (CacheExpression cache : specialization.getCaches()) {
+            if (!cache.isAlwaysInitialized()) {
+                continue outer;
+            }
+            alwaysInitializeCaches.addAll(specialization.getBoundCaches(cache.getDefaultExpression(), false));
+            alwaysInitializeCaches.add(cache);
+        }
+        List<IfTriple> cachedTriples = new ArrayList<>();
+        NodeExecutionMode useMode = frameState.getMode();
+        // for slow path we already have all specializations initialized
+        // so we initialize the for fast path.
+        if (useMode == NodeExecutionMode.SLOW_PATH) {
+            useMode = NodeExecutionMode.FAST_PATH;
+        }
+        cachedTriples.addAll(initializeCaches(frameState, useMode, forType, SpecializationGroup.create(Arrays.asList(specialization)), alwaysInitializeCaches, true, false));
+        IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), true);
+
         if (specialization.getMethod() == null) {
             builder.tree(createThrowUnsupported(builder, frameState));
         } else {
@@ -2630,7 +2640,7 @@ public class FlatNodeGenFactory {
                     if (var != null) {
                         bindings[i] = var.createReference();
                     } else {
-                        bindings[i] = createCacheReference(frameState, specialization, specialization.findCache(parameter), false);
+                        bindings[i] = createCacheReference(frameState, specialization, specialization.findCache(parameter));
                     }
                 } else {
                     LocalVariable variable = bindExpressionVariable(frameState, specialization, parameter);
@@ -2872,7 +2882,7 @@ public class FlatNodeGenFactory {
                     break;
                 }
             }
-            cachedTriples.addAll(createMethodGuardChecks(frameState, group, unboundGuards, mode));
+            cachedTriples.addAll(createMethodGuardChecks(frameState, forType, group, unboundGuards, mode));
             guardExpressions.removeAll(unboundGuards);
         }
 
@@ -2919,6 +2929,26 @@ public class FlatNodeGenFactory {
             boolean extractInBoundary = false;
             boolean pushEnclosingNode = false;
 
+            if (specialization != null) {
+                for (GuardExpression guard : guardExpressions) {
+                    Set<CacheExpression> caches = group.getSpecialization().getBoundCaches(guard.getExpression(), true);
+                    if (cachesRequireFastPathBoundary(caches)) {
+                        // boundary cached is used in guard
+                        pushEnclosingNode = true;
+                    }
+                }
+                if (!pushEnclosingNode) {
+                    List<CacheExpression> caches = specialization.getCaches();
+                    extractInBoundary |= cachesRequireFastPathBoundary(caches);
+                    if (specialization.getFrame() != null) {
+                        if (ElementUtils.typeEquals(specialization.getFrame().getType(), types.VirtualFrame)) {
+                            // not supported for frames
+                            extractInBoundary = false;
+                        }
+                    }
+                }
+            }
+
             FrameState boundaryFrameState = frameState.copy();
 
             List<IfTriple> nonBoundaryGuards = new ArrayList<>();
@@ -2929,10 +2959,12 @@ public class FlatNodeGenFactory {
                     // boundary cached is used in guard
                     break;
                 }
-                nonBoundaryGuards.addAll(initializeCaches(frameState, mode, group, caches, true, false));
+                nonBoundaryGuards.addAll(initializeCaches(frameState, mode, forType, group, caches, true, false));
                 nonBoundaryGuards.add(createMethodGuardCheck(frameState, group.getSpecialization(), guard, mode));
                 iterator.remove();
             }
+
+            FrameState innerFrameState = extractInBoundary ? boundaryFrameState : frameState;
 
             for (GuardExpression guard : guardExpressions) {
                 Set<CacheExpression> caches = group.getSpecialization().getBoundCaches(guard.getExpression(), true);
@@ -2940,22 +2972,12 @@ public class FlatNodeGenFactory {
                     // boundary cached is used in guard
                     pushEnclosingNode = true;
                 }
-                cachedTriples.addAll(initializeCaches(frameState, mode, group, caches, true, false));
-                cachedTriples.add(createMethodGuardCheck(frameState, group.getSpecialization(), guard, mode));
+                cachedTriples.addAll(initializeCaches(innerFrameState, mode, forType, group, caches, true, false));
+                cachedTriples.add(createMethodGuardCheck(innerFrameState, group.getSpecialization(), guard, mode));
             }
 
             if (specialization != null) {
-                List<CacheExpression> caches = specialization.getCaches();
-                if (!pushEnclosingNode) {
-                    extractInBoundary |= cachesRequireFastPathBoundary(caches);
-                    if (specialization.getFrame() != null) {
-                        if (ElementUtils.typeEquals(specialization.getFrame().getType(), types.VirtualFrame)) {
-                            // not supported for frames
-                            extractInBoundary = false;
-                        }
-                    }
-                }
-                cachedTriples.addAll(initializeCaches(frameState, frameState.getMode(), group, specialization.getCaches(), true, false));
+                cachedTriples.addAll(initializeCaches(innerFrameState, frameState.getMode(), forType, group, specialization.getCaches(), true, false));
             }
 
             if (pushEnclosingNode && extractInBoundary) {
@@ -2964,18 +2986,14 @@ public class FlatNodeGenFactory {
 
             BlockState nonBoundaryIfCount = BlockState.NONE;
             final CodeTreeBuilder innerBuilder;
-            FrameState innerFrameState;
             if (extractInBoundary) {
                 nonBoundaryIfCount = nonBoundaryIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(nonBoundaryGuards), false));
                 innerBuilder = extractInBoundaryMethod(builder, frameState, specialization);
-                innerFrameState = boundaryFrameState;
             } else if (pushEnclosingNode) {
                 innerBuilder = builder;
-                innerFrameState = frameState;
                 nonBoundaryIfCount = IfTriple.materialize(innerBuilder, IfTriple.optimize(nonBoundaryGuards), false);
             } else {
                 innerBuilder = builder;
-                innerFrameState = frameState;
                 cachedTriples.addAll(0, nonBoundaryGuards);
             }
 
@@ -3019,7 +3037,7 @@ public class FlatNodeGenFactory {
 
             BlockState outerIfCount = BlockState.NONE;
             if (specialization == null) {
-                cachedTriples.addAll(createMethodGuardChecks(frameState, group, guardExpressions, mode));
+                cachedTriples.addAll(createMethodGuardChecks(frameState, forType, group, guardExpressions, mode));
 
                 outerIfCount = outerIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false));
 
@@ -3053,7 +3071,7 @@ public class FlatNodeGenFactory {
                     alwaysInitializeCaches.addAll(boundCaches);
                     alwaysInitializeCaches.add(cache);
                 }
-                cachedTriples.addAll(initializeCaches(frameState, mode, group, alwaysInitializeCaches, true, false));
+                cachedTriples.addAll(initializeCaches(frameState, mode, forType, group, alwaysInitializeCaches, true, false));
 
                 IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), true);
                 cachedTriples.clear();
@@ -3094,7 +3112,7 @@ public class FlatNodeGenFactory {
                 FrameState innerFrameState = frameState.copy();
 
                 List<IfTriple> innerTripples = new ArrayList<>();
-                innerTripples.addAll(createMethodGuardChecks(innerFrameState, group, guardExpressions, mode));
+                innerTripples.addAll(createMethodGuardChecks(innerFrameState, forType, group, guardExpressions, mode));
 
                 List<AssumptionExpression> assumptions = specialization.getAssumptionExpressions();
                 if (!assumptions.isEmpty()) {
@@ -3107,7 +3125,7 @@ public class FlatNodeGenFactory {
                     DSLExpression limit = optimizeExpression(specialization.getLimitExpression());
 
                     Set<CacheExpression> caches = specialization.getBoundCaches(limit, true);
-                    innerTripples.addAll(initializeCaches(innerFrameState, innerFrameState.getMode(), group, caches, true, false));
+                    innerTripples.addAll(initializeCaches(innerFrameState, innerFrameState.getMode(), forType, group, caches, true, false));
 
                     CodeTree limitExpression = writeExpression(innerFrameState, specialization, limit);
                     CodeTree limitCondition = CodeTreeBuilder.createBuilder().string(countName).string(" < ").tree(limitExpression).build();
@@ -3176,7 +3194,7 @@ public class FlatNodeGenFactory {
             }
 
             BlockState innerIfCount = BlockState.NONE;
-            cachedTriples.addAll(createMethodGuardChecks(frameState, group, guardExpressions, mode));
+            cachedTriples.addAll(createMethodGuardChecks(frameState, forType, group, guardExpressions, mode));
             cachedTriples.addAll(createAssumptionCheckTriples(frameState, specialization, NodeExecutionMode.FALLBACK_GUARD));
 
             cachedTriples = IfTriple.optimize(cachedTriples);
@@ -3213,7 +3231,7 @@ public class FlatNodeGenFactory {
             }
 
             ifCount = ifCount.add(IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false));
-            cachedTriples = createMethodGuardChecks(frameState, group, guardExpressions, mode);
+            cachedTriples = createMethodGuardChecks(frameState, forType, group, guardExpressions, mode);
 
             BlockState innerIfCount = IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false);
 
@@ -3342,7 +3360,8 @@ public class FlatNodeGenFactory {
         LocalVariable var = frameState.get(assumption.getId());
         CodeTree declaration = null;
         if (var == null) {
-            triples.addAll(initializeCaches(frameState, frameState.getMode(), group, group.getSpecialization().getBoundCaches(assumption.getExpression(), true), true, false));
+            triples.addAll(initializeCaches(frameState, frameState.getMode(), executeAndSpecializeType, group, group.getSpecialization().getBoundCaches(assumption.getExpression(), true), true,
+                            false));
             CodeTree assumptionExpressions = writeExpression(frameState, group.getSpecialization(), assumption.getExpression());
             String name = createAssumptionFieldName(group.getSpecialization(), assumption);
             var = new LocalVariable(assumption.getExpression().getResolvedType(), name.substring(0, name.length() - 1), null);
@@ -3376,7 +3395,7 @@ public class FlatNodeGenFactory {
         }
 
         List<IfTriple> duplicationtriples = new ArrayList<>();
-        duplicationtriples.addAll(createMethodGuardChecks(innerFrameState, group, guardExpressions, NodeExecutionMode.FAST_PATH));
+        duplicationtriples.addAll(createMethodGuardChecks(innerFrameState, executeAndSpecializeType, group, guardExpressions, NodeExecutionMode.FAST_PATH));
         duplicationtriples.addAll(createAssumptionCheckTriples(innerFrameState, specialization, NodeExecutionMode.SLOW_PATH));
         BlockState duplicationIfCount = IfTriple.materialize(builder, IfTriple.optimize(duplicationtriples), false);
         if (useDuplicate) {
@@ -3409,7 +3428,7 @@ public class FlatNodeGenFactory {
         List<IfTriple> triples = new ArrayList<>();
 
         triples.addAll(initializeSpecializationClass(frameState, specialization));
-        triples.addAll(initializeCaches(frameState, frameState.getMode(), group, specialization.getCaches(), false, true));
+        triples.addAll(initializeCaches(frameState, frameState.getMode(), executeAndSpecializeType, group, specialization.getCaches(), false, true));
         triples.addAll(persistAssumptions(frameState, specialization));
         triples.addAll(persistSpecializationClass(frameState, specialization));
         builder.end(IfTriple.materialize(builder, triples, true).blockCount);
@@ -3918,10 +3937,10 @@ public class FlatNodeGenFactory {
         return builder.build();
     }
 
-    private List<IfTriple> createMethodGuardChecks(FrameState frameState, SpecializationGroup group, List<GuardExpression> guardExpressions, NodeExecutionMode mode) {
+    private List<IfTriple> createMethodGuardChecks(FrameState frameState, ExecutableTypeData forType, SpecializationGroup group, List<GuardExpression> guardExpressions, NodeExecutionMode mode) {
         List<IfTriple> triples = new ArrayList<>();
         for (GuardExpression guard : guardExpressions) {
-            if (mode.isSlowPath() && !guard.isConstantTrueInSlowPath(context)) {
+            if (mode.isSlowPath() && !guard.isConstantTrueInSlowPath(context, mode.isUncached())) {
                 CodeTreeBuilder builder = new CodeTreeBuilder(null);
                 List<IfTriple> innerTriples = new ArrayList<>();
                 boolean guardStateBit = guardNeedsStateBit(group.getSpecialization(), guard);
@@ -3938,7 +3957,7 @@ public class FlatNodeGenFactory {
                 boolean store = !guardStateBit;
 
                 Set<CacheExpression> boundCaches = group.getSpecialization().getBoundCaches(guard.getExpression(), true);
-                innerTriples.addAll(initializeCaches(innerFrameState, mode, group, boundCaches, store, guardStateBit));
+                innerTriples.addAll(initializeCaches(innerFrameState, mode, forType, group, boundCaches, store, guardStateBit));
                 innerTriples.addAll(initializeCasts(innerFrameState, group, guard.getExpression(), mode));
 
                 IfTriple.materialize(builder, innerTriples, true);
@@ -3951,14 +3970,15 @@ public class FlatNodeGenFactory {
             } else if (mode.isGuardFallback()) {
                 triples.addAll(initializeCasts(frameState, group, guard.getExpression(), mode));
             } else if (mode.isFastPath()) {
-                triples.addAll(initializeCaches(frameState, mode, group, group.getSpecialization().getBoundCaches(guard.getExpression(), true), true, false));
+                triples.addAll(initializeCaches(frameState, mode, forType, group, group.getSpecialization().getBoundCaches(guard.getExpression(), true), true, false));
             }
             triples.add(createMethodGuardCheck(frameState, group.getSpecialization(), guard, mode));
         }
         return triples;
     }
 
-    private List<IfTriple> initializeCaches(FrameState frameState, NodeExecutionMode mode, SpecializationGroup group, Collection<CacheExpression> caches, boolean store, boolean forcePersist) {
+    private List<IfTriple> initializeCaches(FrameState frameState, NodeExecutionMode mode, ExecutableTypeData forType, SpecializationGroup group, Collection<CacheExpression> caches, boolean store,
+                    boolean forcePersist) {
         if (group.getSpecialization() == null || caches.isEmpty()) {
             return Collections.emptyList();
         }
@@ -3968,21 +3988,23 @@ public class FlatNodeGenFactory {
                 continue;
             } else if (mode.isFastPath() && !cache.isAlwaysInitialized()) {
                 continue;
+            } else if (mode.isUncached() && cache.isIgnoreInUncached()) {
+                continue;
             }
             triples.addAll(initializeCasts(frameState, group, cache.getDefaultExpression(), mode));
-            triples.addAll(persistAndInitializeCache(frameState, group.getSpecialization(), cache, store, forcePersist));
-
+            triples.addAll(persistAndInitializeCache(frameState, mode, forType, group.getSpecialization(), cache, store, forcePersist));
         }
         return triples;
     }
 
-    private Collection<IfTriple> persistAndInitializeCache(FrameState frameState, SpecializationData specialization, CacheExpression cache, boolean store, boolean persist) {
+    private Collection<IfTriple> persistAndInitializeCache(FrameState frameState, NodeExecutionMode mode, ExecutableTypeData forType, SpecializationData specialization, CacheExpression cache,
+                    boolean store, boolean persist) {
         List<IfTriple> triples = new ArrayList<>();
         triples.addAll(initializeReferences(frameState, cache));
         CodeTree init = initializeCache(frameState, specialization, cache);
         if (store) {
             // store as local variable
-            triples.addAll(storeCache(frameState, specialization, cache, init));
+            triples.addAll(storeCache(frameState, mode, forType, specialization, cache, init));
         }
         if (persist) {
             // persist to node instance
@@ -4070,17 +4092,7 @@ public class FlatNodeGenFactory {
                 }
             }
 
-            if (!frameState.getMode().isUncached() && !frameState.getMode().isFastPath() && cache.isWeak()) {
-                CodeTreeBuilder valueBuilder = CodeTreeBuilder.createBuilder();
-                // we can be sure that this type is imported elsewhere for the field
-                // so we can just use the simple name here
-                valueBuilder.startNew(ElementUtils.getDeclaredName(types.TruffleWeakReference, false) + "<>");
-                valueBuilder.tree(value);
-                valueBuilder.end();
-                value = valueBuilder.build();
-            }
-
-            CodeTree cacheReference = createCacheReference(frameState, specialization, cache, true);
+            CodeTree cacheReference = createCacheReference(frameState, specialization, cache);
             if (!cache.isEagerInitialize() && sharedCaches.containsKey(cache) && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
                 builder.startIf().tree(cacheReference).string(" == null").end().startBlock();
                 builder.startStatement().tree(cacheReference).string(" = ").tree(value).end();
@@ -4110,11 +4122,15 @@ public class FlatNodeGenFactory {
                 supplierLocalName = supplierLocalName + index;
             }
 
-            builder.declaration(cache.getReferenceType(), supplierLocalName, "this." + supplierName);
-            builder.startIf().string(supplierLocalName).string(" == null").end().startBlock();
             String method = cache.isCachedContext() ? "super.lookupContextReference" : "super.lookupLanguageReference";
-            builder.startStatement().string("this.", supplierName).string(" = ").string(supplierLocalName).string(" = ").startCall(method).typeLiteral(cache.getLanguageType()).end().end();
-            builder.end();
+            if (frameState.getMode().isSlowPath()) {
+                builder.declaration(cache.getReferenceType(), supplierLocalName, "this." + supplierName);
+                builder.startIf().string(supplierLocalName).string(" == null").end().startBlock();
+                builder.startStatement().string("this.", supplierName).string(" = ").string(supplierLocalName).string(" = ").startCall(method).typeLiteral(cache.getLanguageType()).end().end();
+                builder.end();
+            } else {
+                builder.startStatement().type(cache.getReferenceType()).string(" ", supplierLocalName).string(" = ").string("this.", supplierName).end();
+            }
 
             String supplierInitialized = supplierName + "$initialized";
             if (frameState.getBoolean(supplierInitialized, false)) {
@@ -4125,10 +4141,13 @@ public class FlatNodeGenFactory {
             frameState.set(supplierName, new LocalVariable(cache.getReferenceType(), supplierLocalName, null));
             return Arrays.asList(new IfTriple(builder.build(), null, null));
         }
+
         return Collections.emptyList();
     }
 
-    private Collection<IfTriple> storeCache(FrameState frameState, SpecializationData specialization, CacheExpression cache, CodeTree value) {
+    private Map<String, List<Parameter>> uniqueCachedParameterLocalNames = new HashMap<>();
+
+    private Collection<IfTriple> storeCache(FrameState frameState, NodeExecutionMode mode, ExecutableTypeData forType, SpecializationData specialization, CacheExpression cache, CodeTree value) {
         if (value == null) {
             return Collections.emptyList();
         }
@@ -4141,17 +4160,41 @@ public class FlatNodeGenFactory {
 
         TypeMirror type = cache.getParameter().getType();
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
+
         String refName = name + "_";
+        List<Parameter> variables = uniqueCachedParameterLocalNames.computeIfAbsent(refName, (v) -> new ArrayList<>());
+        int index = variables.indexOf(cache.getParameter());
+        if (index == -1) {
+            index = variables.size();
+            variables.add(cache.getParameter());
+        }
+        if (index != 0) {
+            refName = name + "_" + index;
+        }
+
         CodeTree useValue;
-        if (cache.isWeak()) {
-            useValue = CodeTreeBuilder.createBuilder().startCall(value, "get").end().build();
-        } else if ((ElementUtils.isAssignable(type, types.Node) || ElementUtils.isAssignable(type, new ArrayCodeTypeMirror(types.Node))) &&
+        if ((ElementUtils.isAssignable(type, types.Node) || ElementUtils.isAssignable(type, new ArrayCodeTypeMirror(types.Node))) &&
                         (!cache.isAlwaysInitialized())) {
             useValue = builder.create().startCall("super.insert").tree(value).end().build();
         } else {
             useValue = value;
         }
         builder.declaration(type, refName, useValue);
+
+        if (cache.isRemoveIfNull()) {
+            if (mode.isSlowPath()) {
+                // nothing to do handled by TruffleWeakReference#createNonNull
+            } else if (mode.isUncached()) {
+                builder.startIf().string(refName, " == null").end().startBlock();
+                builder.startThrow().startNew(context.getType(NullPointerException.class)).doubleQuote("Weak caches must not be null when they are initialized.").end().end();
+                builder.end();
+            } else {
+                builder.startIf().string(refName).string(" == null").end().startBlock();
+                builder.tree(createTransferToInterpreterAndInvalidate());
+                builder.tree(createRemoveThis(builder, frameState, forType, specialization));
+                builder.end();
+            }
+        }
 
         frameState.set(name, new LocalVariable(type, name, CodeTreeBuilder.singleString(refName)));
         List<IfTriple> triples = new ArrayList<>();
@@ -4238,7 +4281,7 @@ public class FlatNodeGenFactory {
                 expressionCode = null;
             }
         } else {
-            if (guard.isConstantTrueInSlowPath(context)) {
+            if (guard.isConstantTrueInSlowPath(context, mode.isUncached())) {
                 assertion = CodeTreeBuilder.createBuilder().startStatement().string("// assert ").tree(expressionCode).end().build();
                 expressionCode = null;
             }
@@ -4294,7 +4337,7 @@ public class FlatNodeGenFactory {
             CodeTree ref;
             if (localVariable == null) {
                 CacheExpression cache = specialization.findCache(resolvedParameter);
-                ref = createCacheReference(frameState, specialization, cache, false);
+                ref = createCacheReference(frameState, specialization, cache);
             } else {
                 ref = localVariable.createReference();
             }
@@ -4331,7 +4374,7 @@ public class FlatNodeGenFactory {
         return builder.build();
     }
 
-    private CodeTree createCacheReference(FrameState frameState, SpecializationData specialization, CacheExpression cache, boolean assignment) {
+    private CodeTree createCacheReference(FrameState frameState, SpecializationData specialization, CacheExpression cache) {
         if (cache == null) {
             return CodeTreeBuilder.singleString("null /* cache not resolved */");
         }
@@ -4348,9 +4391,6 @@ public class FlatNodeGenFactory {
                 } else {
                     String cacheFieldName = createFieldName(specialization, cache.getParameter());
                     ref = createSpecializationFieldReference(frameState, specialization, cacheFieldName);
-                }
-                if (cache.isWeak() && !assignment) {
-                    ref = CodeTreeBuilder.createBuilder().startCall(ref, "get").end().build();
                 }
                 return ref;
             }

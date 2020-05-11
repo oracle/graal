@@ -40,24 +40,29 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotNull;
 
 import java.lang.ref.WeakReference;
+import java.util.concurrent.Semaphore;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.ConsistentGuardAndSpecializationNodeGen;
+import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.TestNullWeakCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakInlineCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakSharedCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakSimpleNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.GCUtils;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings("unused")
-public class WeakCachedTest {
+public class WeakCachedTest extends AbstractPolyglotTest {
 
     @Test
     public void testWeakSimpleNode() {
@@ -79,6 +84,11 @@ public class WeakCachedTest {
                         @Cached(value = "arg", weak = true) String cachedStorage) {
             return arg;
         }
+
+        @Fallback
+        Object fallback(Object arg) {
+            return arg;
+        }
     }
 
     @Test
@@ -95,10 +105,17 @@ public class WeakCachedTest {
         node.execute(o2);
         o0 = null;
         o1 = null;
-        o2 = null;
         GCUtils.assertGc("Reference is not collected", ref1);
         GCUtils.assertGc("Reference is not collected", ref2);
-        GCUtils.assertGc("Reference is not collected", ref3);
+
+        o0 = new String("");
+        o1 = new String("");
+        node.execute(o0);
+        node.execute(o1);
+        o0 = null;
+        o1 = null;
+        GCUtils.assertGc("Reference is not collected", ref1);
+        GCUtils.assertGc("Reference is not collected", ref2);
     }
 
     @GenerateUncached
@@ -109,8 +126,10 @@ public class WeakCachedTest {
         @Specialization(guards = "arg == cachedStorage", limit = "3")
         Object s0(String arg,
                         @Cached(value = "arg", weak = true) String cachedStorage) {
+            assertNotNull(cachedStorage);
             return arg;
         }
+
     }
 
     @Test
@@ -121,7 +140,7 @@ public class WeakCachedTest {
         node.execute(o0, false);
         o0 = null;
         GCUtils.assertGc("Reference is not collected", ref1);
-        node.execute("", true);
+        node.execute("", false);
     }
 
     @GenerateUncached
@@ -132,23 +151,103 @@ public class WeakCachedTest {
         @Specialization(guards = "arg.length() > 0")
         Object s0(String arg, boolean expectNull,
                         @Shared("sharedArg") @Cached(value = "arg", weak = true) String cachedStorage) {
-            if (expectNull) {
-                assertNull(cachedStorage);
-            }
+            assertNotNull(cachedStorage);
             return arg;
         }
 
         @Specialization
         Object s1(String arg, boolean expectNull,
                         @Shared("sharedArg") @Cached(value = "arg", weak = true) String cachedStorage) {
-            if (expectNull) {
-                assertNull(cachedStorage);
-            }
+            assertNotNull(cachedStorage);
+            return arg;
+        }
+
+        @Fallback
+        Object fallback(Object arg, boolean expectNull) {
             return arg;
         }
     }
 
-    abstract static class ErrorWeakCachedNode extends Node {
+    /*
+     * Test that while executing a specialization, between guard and specialization the weak
+     * reference cannot get collected.
+     */
+    @Test
+    public void testConsistentGuardAndSpecialization() throws InterruptedException {
+        ConsistentGuardAndSpecializationNode node = ConsistentGuardAndSpecializationNodeGen.create();
+        Object o0 = new String("");
+        WeakReference<Object> ref1 = new WeakReference<>(o0);
+        node.execute(o0);
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+                node.locksEnabled = true;
+                node.execute(new String(""));
+            }
+        });
+        t.start();
+        node.waitForGuard.acquire();
+        o0 = null;
+        try {
+            GCUtils.assertNotGc("Reference is not collected", ref1);
+        } finally {
+            node.waitForSpecialization.release();
+            t.join();
+        }
+        GCUtils.assertGc("Reference is not collected", ref1);
+
+    }
+
+    @Test
+    public void testNullWeakReference() {
+        assertFails(() -> TestNullWeakCacheNodeGen.create().execute(null), NullPointerException.class);
+        assertFails(() -> TestNullWeakCacheNodeGen.getUncached().execute(null), NullPointerException.class);
+    }
+
+    @GenerateUncached
+    abstract static class TestNullWeakCacheNode extends Node {
+
+        abstract Object execute(Object arg0);
+
+        @Specialization
+        Object s0(Object arg,
+                        @Cached(value = "arg", weak = true) Object cachedStorage) {
+            assertNotNull(cachedStorage);
+            return arg;
+        }
+
+    }
+
+    abstract static class ConsistentGuardAndSpecializationNode extends Node {
+
+        final Semaphore waitForSpecialization = new Semaphore(0);
+        final Semaphore waitForGuard = new Semaphore(0);
+
+        abstract Object execute(Object arg0);
+
+        volatile boolean locksEnabled;
+
+        boolean acquireLock(Object a) {
+            if (locksEnabled) {
+                waitForGuard.release();
+                try {
+                    waitForSpecialization.acquire();
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+            }
+            return true;
+        }
+
+        @Specialization(guards = {"arg.equals(cachedStorage)", "acquireLock(arg)"}, limit = "3")
+        Object s0(String arg,
+                        @Cached(value = "arg", weak = true) String cachedStorage) {
+            assertNotNull(cachedStorage);
+            return arg;
+        }
+
+    }
+
+    abstract static class ErrorWeakPrimitiveNode extends Node {
 
         abstract Object execute(Object arg0);
 

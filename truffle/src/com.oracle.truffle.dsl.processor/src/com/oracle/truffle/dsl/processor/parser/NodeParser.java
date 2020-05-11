@@ -1956,7 +1956,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private SpecializationData initializeCaches(SpecializationData specialization, DSLExpressionResolver resolver) {
         List<CacheExpression> caches = new ArrayList<>();
         List<CacheExpression> cachedLibraries = new ArrayList<>();
-        parameters: for (Parameter parameter : specialization.getParameters()) {
+
+        Parameter[] parameters = specialization.getParameters().toArray(new Parameter[0]);
+        parameters: for (Parameter parameter : parameters) {
             if (!parameter.getSpecification().isCached()) {
                 continue;
             }
@@ -1989,7 +1991,48 @@ public final class NodeParser extends AbstractParser<NodeData> {
             caches.add(cache);
 
             if (cache.isCached()) {
-                parseCached(cache, specialization, resolver, parameter);
+                boolean weakReference = getAnnotationValue(Boolean.class, foundCached, "weak");
+                if (weakReference) {
+                    if (ElementUtils.isPrimitive(cache.getParameter().getType())) {
+                        cache.addError("Cached parameters with primitive types cannot be weak. Set weak to false to resolve this.");
+                    }
+
+                    parseCached(cache, specialization, resolver, parameter);
+                    if (cache.hasErrors()) {
+                        continue;
+                    }
+
+                    DSLExpression sourceExpression = cache.getDefaultExpression();
+
+                    String weakName = "weak" + ElementUtils.firstLetterUpperCase(parameter.getLocalName()) + "Gen_";
+                    TypeMirror weakType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleWeakReference), Arrays.asList(cache.getParameter().getType()));
+                    CodeVariableElement weakVariable = new CodeVariableElement(weakType, weakName);
+                    Parameter weakParameter = new Parameter(parameter, weakVariable);
+
+                    DSLExpression newWeakReference = new DSLExpression.Call(null, "createNonNull", Arrays.asList(sourceExpression));
+                    newWeakReference.setResolvedTargetType(weakType);
+                    resolveCachedExpression(resolver, cache, weakType, newWeakReference, null);
+
+                    CacheExpression weakCache = new CacheExpression(weakParameter, foundCached);
+                    weakCache.setDefaultExpression(newWeakReference);
+                    weakCache.setUncachedExpression(newWeakReference);
+                    weakCache.setIgnoreInUncached(true);
+
+                    caches.add(0, weakCache);
+
+                    DSLExpressionResolver weakResolver = resolver.copy(Arrays.asList());
+                    weakResolver.addVariable(weakName, weakVariable);
+                    specialization.addParameter(specialization.getParameters().size(), weakParameter);
+
+                    DSLExpression parsedDefaultExpression = parseCachedExpression(weakResolver, cache, parameter.getType(), weakName + ".get()");
+                    cache.setDefaultExpression(parsedDefaultExpression);
+                    cache.setUncachedExpression(sourceExpression);
+                    cache.setAlwaysInitialized(true);
+                    cache.setRemoveIfNull(true);
+                } else {
+                    parseCached(cache, specialization, resolver, parameter);
+                }
+
             } else if (cache.isCachedLibrary()) {
                 AnnotationMirror cachedLibrary = cache.getMessageAnnotation();
                 String expression = getCachedLibraryExpressions(cachedLibrary);
@@ -2453,14 +2496,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (specialization.isTrivialExpression(cache.getDefaultExpression())) {
                 cache.setUncachedExpression(cache.getDefaultExpression());
             }
-        }
-
-        boolean weakReference = getAnnotationValue(Boolean.class, cachedAnnotation, "weak");
-        if (weakReference) {
-            if (ElementUtils.isPrimitive(cache.getParameter().getType())) {
-                cache.addError("Cached parameters with primitive types cannot be weak. Set weak to false to resolve this.");
-            }
-            cache.setWeak(true);
         }
     }
 

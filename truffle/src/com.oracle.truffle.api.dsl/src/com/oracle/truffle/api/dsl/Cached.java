@@ -46,6 +46,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -301,12 +302,21 @@ public @interface Cached {
     String[] parameters() default {};
 
     /**
-     * If enabled weak references will be used to refer to this cached value in the generated node.
-     * Intended to be used with runtime values and not with node types. If not guarded by method
-     * guard, the cached parameter may become <code>null</code> when it gets collected by the GC. It
-     * is recommended to always check for <code>null</code> prior using weak cached values. Cannot
-     * be used with primitive values.
+     * If set to <code>true</code> then weak references will be used to refer to this cached value
+     * in the generated node. The default value is <code>false</code>. The weak cached parameter is
+     * guaranteed to not become <code>null</code> in guards or specialization method invocations. If
+     * a weak cached parameter gets collected by the GC, then any compiled code will get
+     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() deoptimized}, the old
+     * specialization instance will be removed and a new specialization will get instantiated. For
+     * specializations with multiple instances all specialization instances where caches were
+     * collected will be removed. Initializer expressions of cached and weak parameters must not
+     * return <code>null</code>, to avoid immediate removal of the specialization instance. If the
+     * initializer result becomes <code>null</code> a {@link NullPointerException} is thrown. Weak
+     * cached parameters that are used as part of {@link GenerateUncached uncached} nodes, execute
+     * the cached initializer for each execution and therefore don't need to use a weak reference.
+     * Uncached initializers must also never become <code>null</code>.
      *
+     * @see com.oracle.truffle.api.utilities.TruffleWeakReference
      * @since 20.2
      */
     boolean weak() default false;

@@ -70,7 +70,8 @@ public final class CacheExpression extends MessageContainer {
     private boolean requiresBoundary;
     private String sharedGroup;
     private boolean mergedLibrary;
-    private boolean weak;
+    private boolean removeIfNull;
+    private boolean ignoreInUncached;
 
     private TypeMirror languageType;
     private TypeMirror referenceType;
@@ -290,12 +291,20 @@ public final class CacheExpression extends MessageContainer {
         return b.toString() + libraryName + "_";
     }
 
-    public boolean isWeak() {
-        return weak;
+    public void setRemoveIfNull(boolean b) {
+        this.removeIfNull = b;
     }
 
-    public void setWeak(boolean weak) {
-        this.weak = weak;
+    public boolean isRemoveIfNull() {
+        return removeIfNull;
+    }
+
+    public void setIgnoreInUncached(boolean ignoreInUncached) {
+        this.ignoreInUncached = ignoreInUncached;
+    }
+
+    public boolean isIgnoreInUncached() {
+        return ignoreInUncached;
     }
 
 }

@@ -107,7 +107,7 @@ public final class GuardExpression extends MessageContainer {
         return "Guard[" + (expression != null ? expression.asString() : "null") + "]";
     }
 
-    public boolean isConstantTrueInSlowPath(ProcessorContext context) {
+    public boolean isConstantTrueInSlowPath(ProcessorContext context, boolean uncached) {
         if (libraryAcceptsGuard) {
             return true;
         }
@@ -118,7 +118,7 @@ public final class GuardExpression extends MessageContainer {
                 // on the slow path we can assume all cache expressions inlined.
                 for (CacheExpression cache : source.getCaches()) {
                     if (ElementUtils.variableEquals(cache.getParameter().getVariableElement(), binary.getResolvedVariable())) {
-                        return cache.getDefaultExpression();
+                        return uncached ? cache.getUncachedExpression() : cache.getDefaultExpression();
                     }
                 }
                 return super.visitVariable(binary);

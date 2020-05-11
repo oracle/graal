@@ -94,6 +94,10 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
         return accessType;
     }
 
+    public void addVariable(String variableName, VariableElement element) {
+        variables.computeIfAbsent(variableName, (l) -> new ArrayList<>()).add(element);
+    }
+
     private void processElements(List<? extends Element> lookupElements) {
         for (Element element : lookupElements) {
             ElementKind kind = element.getKind();
