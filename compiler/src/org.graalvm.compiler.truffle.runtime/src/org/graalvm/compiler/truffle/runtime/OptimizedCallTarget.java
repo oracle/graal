@@ -686,7 +686,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public final void onCompilationFailed(Supplier<String> reasonAndStackTrace, boolean bailout, boolean permanentBailout) {
+    public final void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout) {
         ExceptionAction action;
         if (bailout && !permanentBailout) {
             /*
@@ -701,14 +701,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             action = engine.compilationFailureAction;
         }
         if (action == ExceptionAction.Throw) {
-            final InternalError error = new InternalError(reasonAndStackTrace.get());
+            final InternalError error = new InternalError(serializedException.get());
             throw new OptimizationFailedException(error, this);
         }
         if (action.ordinal() >= ExceptionAction.Print.ordinal()) {
             GraalTruffleRuntime rt = runtime();
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("ASTSize", getNonTrivialNodeCount());
-            rt.logEvent(this, 0, "opt fail", toString(), properties, reasonAndStackTrace.get());
+            rt.logEvent(this, 0, "opt fail", toString(), properties, serializedException.get());
             if (action == ExceptionAction.ExitVM) {
                 String reason;
                 if (getOptionValue(PolyglotCompilerOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {

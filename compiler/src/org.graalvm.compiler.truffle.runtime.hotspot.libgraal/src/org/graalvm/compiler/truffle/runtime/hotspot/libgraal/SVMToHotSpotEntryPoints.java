@@ -441,8 +441,8 @@ final class SVMToHotSpotEntryPoints {
     }
 
     @SVMToHotSpot(OnCompilationFailed)
-    static void onCompilationFailed(CompilableTruffleAST compilable, Supplier<String> reasonAndStackTrace, boolean bailout, boolean permanentBailout) {
-        compilable.onCompilationFailed(reasonAndStackTrace, bailout, permanentBailout);
+    static void onCompilationFailed(CompilableTruffleAST compilable, Supplier<String> serializedException, boolean bailout, boolean permanentBailout) {
+        compilable.onCompilationFailed(serializedException, bailout, permanentBailout);
     }
 
     @SVMToHotSpot(OnSuccess)
