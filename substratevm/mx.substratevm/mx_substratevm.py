@@ -1365,62 +1365,8 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             distributions_transitive = mx.classpath_entries(self.deps)
             jdk = mx.get_jdk(tag='default')
             required_exports = mx_javamodules.requiredExports(distributions_transitive, jdk)
-            target_module = 'ALL-UNNAMED'
-            exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports, target_module)
+            exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
             graal_compiler_flags_map[11].extend(exports_flags)
-
-            # Packages to add-open
-            add_opens_packages = [
-                # Reflective access to jdk.internal.vm.compiler
-                'jdk.internal.vm.compiler/org.graalvm.compiler.debug',
-                'jdk.internal.vm.compiler/org.graalvm.compiler.nodes',
-
-                # Reflective access
-                'jdk.unsupported/sun.reflect',
-                # Reflective access to jdk.internal.module.Modules, using which I can export and open other modules.
-                'java.base/jdk.internal.module',
-
-                # These packages should be opened at runtime calls to Modules.addOpens, if they are still needed.
-                # Reflective access to jdk.internal.ref.CleanerImpl$PhantomCleanableRef.
-                'java.base/jdk.internal.ref',
-                # Reflective access to jdk.internal.reflect.MethodAccessor.
-                'java.base/jdk.internal.reflect',
-                # Reflective access to java.io.ExpiringCache
-                'java.base/java.io',
-                # Reflective access to private fields of java.lang.Class.
-                'java.base/java.lang',
-                # Reflective access to java.lang.reflect.ProxyGenerator.generateProxyClass
-                'java.base/java.lang.reflect',
-                # Reflective access to java.lang.invoke.VarHandle*.
-                'java.base/java.lang.invoke',
-                # Reflective access to java.lang.Reference.referent.
-                'java.base/java.lang.ref',
-                # Reflective access to java.net.URL.getURLStreamHandler.
-                'java.base/java.net',
-                # Reflective access to java.nio.MappedByteBuffer.fd.
-                'java.base/java.nio',
-                # Reflective access to java.nio.files.FileTypeDetector
-                'java.base/java.nio.file',
-                # Reflective access to java.security.Provider.knownEngines
-                'java.base/java.security',
-                # Reflective access javax.crypto.JceSecurity.getVerificationResult
-                'java.base/javax.crypto',
-                # Reflective access to java.util.Bits.words.
-                'java.base/java.util',
-                # Reflective access to java.util.concurrent.atomic.AtomicIntegerFieldUpdater$AtomicIntegerFieldUpdaterImpl.tclass.
-                'java.base/java.util.concurrent.atomic',
-                # Reflective access to sun.security.x509.OIDMap.nameMap
-                'java.base/sun.security.x509',
-                'java.base/jdk.internal.logger',
-
-                # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
-                'org.graalvm.sdk/org.graalvm.nativeimage.impl',
-                'org.graalvm.sdk/org.graalvm.polyglot',
-
-                'org.graalvm.truffle/com.oracle.truffle.polyglot',
-                'org.graalvm.truffle/com.oracle.truffle.api.impl',
-            ]
-            graal_compiler_flags_map[11].extend(['--add-opens=' + entry + '=' + target_module for entry in add_opens_packages])
 
             # Currently JDK 13, 14, 15 and JDK 11 have the same flags
             graal_compiler_flags_map[13] = graal_compiler_flags_map[11]
