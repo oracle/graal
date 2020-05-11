@@ -28,8 +28,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.option.RuntimeOptionKey;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -41,32 +45,109 @@ import com.oracle.svm.core.config.ConfigurationValues;
  * This class maintains the system properties at run time.
  *
  * Some of the standard system properties can just be taken from the image generator:
- * {@link #HOSTED_PROPERTIES}. Other important system properties need to be computed at run time.
+ * Other important system properties need to be computed at run time.
  * However, we want to do the computation lazily to reduce the startup cost. For example, getting
  * the current working directory is quite expensive. We initialize such a property either when it is
  * explicitly accessed, or when all properties are accessed.
  */
 public abstract class SystemPropertiesSupport {
 
-    /** System properties that are taken from the VM hosting the image generator. */
-    private static final String[] HOSTED_PROPERTIES = {
-                    "java.version",
-                    ImageInfo.PROPERTY_IMAGE_KIND_KEY,
-                    /*
-                     * We do not support cross-compilation for now. Separator might also be cached
-                     * in other classes, so changing them would be tricky.
-                     */
-                    "line.separator", "path.separator", "file.separator",
-                    /* For our convenience for now. */
-                    "file.encoding", "sun.jnu.encoding",
-                    "java.class.version",
-                    "java.specification.name",
-                    "java.specification.vendor",
-                    "java.specification.version",
-                    "java.vm.specification.name",
-                    "java.vm.specification.vendor",
-                    "java.vm.specification.version"
-    };
+    public static class SystemPropertyFeatureOptions{
+        @Option(help = "Report the usage of undefined property as exception when it is not explicitly set)")//
+        public static final RuntimeOptionKey<Boolean> ReportUndefinedSystemPropertyError = new RuntimeOptionKey<>(false);
+    }
+
+    private enum InitKind {AsHosted, Runtime, BuildTime, Undefined}
+
+    private static class PropertyInfo {
+        private String name;
+        private BooleanSupplier onlyWith;
+        private InitKind initKind;
+        private Supplier<String> initValue;
+
+        public PropertyInfo(String name, BooleanSupplier onlyWith, InitKind InitKind, Supplier<String> initValue) {
+            if (name == null) {
+                throw new NullPointerException("Property name should never be null!");
+            }
+            this.name = name;
+            this.onlyWith = onlyWith;
+            this.initKind = InitKind;
+            this.initValue = initValue;
+        }
+
+    }
+
+    private static final Map<String, PropertyInfo> SYSTEM_PROPERTIES= new ConcurrentHashMap<>();
+
+    private static final JDK8OrEarlier jdk8OrEarlier = new JDK8OrEarlier();
+    private static final JDK11OrLater jdk11OrLater = new JDK11OrLater();
+    private static final BooleanSupplier always = ()-> true;
+    private static final Supplier<String> STRING_SUPPLIER_SUPPLIER = () -> "";
+
+    static {
+        //Set properties same as hosted
+        addAsHostedSystemProperty("file.encoding", always);
+        // https://github.com/openjdk/jdk/commit/d4941f14af150fb81db7cff5394192637be701dd
+        addAsHostedSystemProperty("file.encoding.pkg", jdk8OrEarlier);
+        addAsHostedSystemProperty("file.separator", always);
+        addAsHostedSystemProperty("java.class.version", always);
+        addAsHostedSystemProperty("java.runtime.version", always);
+        addAsHostedSystemProperty("java.specification.name", always);
+        addAsHostedSystemProperty("java.specification.vendor", always);
+        addAsHostedSystemProperty("java.specification.version", always);
+        addAsHostedSystemProperty("java.version", always);
+        // https://openjdk.java.net/jeps/322
+       addAsHostedSystemProperty("java.version.date", jdk11OrLater);
+       addAsHostedSystemProperty("java.vendor.version", jdk11OrLater);
+       addAsHostedSystemProperty("java.vm.specification.name", always);
+       addAsHostedSystemProperty("java.vm.specification.vendor", always);
+       addAsHostedSystemProperty("java.vm.specification.version", always);
+       addAsHostedSystemProperty("line.separator", always);
+       addAsHostedSystemProperty("path.separator", always);
+       addAsHostedSystemProperty("sun.cpu.endian", always);
+       addAsHostedSystemProperty("sun.cpu.isalist", always);
+       addAsHostedSystemProperty("sun.jnu.encoding", always);
+       addAsHostedSystemProperty("sun.io.unicode.encoding", always);
+       addAsHostedSystemProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, always);
+
+        //Undefined properties
+        addUndefinedSystemProperty("awt.toolkit", always);
+        addUndefinedSystemProperty("java.awt.graphicsenv", always);
+        addUndefinedSystemProperty("java.awt.printerjob", always);
+        addUndefinedSystemProperty("java.home", always);
+        addUndefinedSystemProperty("sun.java.command", always);
+        addUndefinedSystemProperty("sun.java.launcher", always);
+        addUndefinedSystemProperty("sun.os.patch.level", always);
+        addUndefinedSystemProperty("user.country", always);
+        addUndefinedSystemProperty("user.language", always);
+        addUndefinedSystemProperty("user.timezone", always);
+        // http://hg.openjdk.java.net/jdk9/jdk9/hotspot/rev/3b241fb72b89
+        addUndefinedSystemProperty("java.vm.compressedOopsMode", jdk11OrLater);
+        // http://hg.openjdk.java.net/jdk9/jdk9/hotspot/rev/39c579b50006
+        addUndefinedSystemProperty("jdk.debug", jdk11OrLater);
+
+        // Build time initialized properties
+        addSystemProperty("java.class.path", always, InitKind.BuildTime, STRING_SUPPLIER_SUPPLIER);
+        // http://hg.openjdk.java.net/jdk9/jdk9/jdk/rev/e336cbd8b15e
+        addSystemProperty("java.endorsed.dirs", jdk8OrEarlier, InitKind.BuildTime, STRING_SUPPLIER_SUPPLIER);
+        addSystemProperty("java.ext.dirs", jdk8OrEarlier, InitKind.BuildTime, STRING_SUPPLIER_SUPPLIER);
+        addSystemProperty("java.runtime.name", always, InitKind.BuildTime, ()->"Substrate VM Runtime Environment");
+        addSystemProperty("java.vendor", always, InitKind.BuildTime, ()->"Oracle Corporation");
+        addSystemProperty("java.vendor.url.bug", always, InitKind.BuildTime, ()->"https://github.com/oracle/graal/issues");
+        addSystemProperty("java.vm.info", always, InitKind.BuildTime, ()->"static mode");
+        addSystemProperty("java.vm.name", always, InitKind.BuildTime, () ->"Substrate VM");
+        addSystemProperty("java.vm.vendor", always, InitKind.BuildTime, ()->"Oracle Corporation");
+        addSystemProperty("java.vendor.url", always, InitKind.BuildTime, ()->"https://www.graalvm.org/");
+        String targetArch = System.getProperty("svm.targetArch");
+        addSystemProperty("os.arch", always, InitKind.BuildTime, ()->targetArch != null ? targetArch : System.getProperty("os.arch"));
+        String targetName = System.getProperty("svm.targetName");
+        addSystemProperty("os.name", always, InitKind.BuildTime, ()->targetName != null ? targetName : System.getProperty("os.name"));
+        addSystemProperty("sun.arch.data.model", always, InitKind.BuildTime, ()->Integer.toString(ConfigurationValues.getTarget().wordJavaKind.getBitCount()));
+        // http://openjdk.java.net/jeps/261 http://hg.openjdk.java.net/jdk9/jdk9/hotspot/rev/c558850fac57
+        addSystemProperty("sun.boot.class.path", jdk8OrEarlier, InitKind.BuildTime, STRING_SUPPLIER_SUPPLIER);
+        addSystemProperty("sun.management.compiler", always, InitKind.BuildTime,()-> "GraalVM Compiler");
+        addSystemProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, always, InitKind.BuildTime, ()->ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
+    }
 
     /** System properties that are lazily computed at run time on first access. */
     private final Map<String, Supplier<String>> lazyRuntimeValues;
@@ -83,37 +164,43 @@ public abstract class SystemPropertiesSupport {
         savedProperties = new HashMap<>();
         readOnlySavedProperties = Collections.unmodifiableMap(savedProperties);
 
-        for (String key : HOSTED_PROPERTIES) {
-            String value = System.getProperty(key);
-            properties.put(key, value);
-            savedProperties.put(key, value);
-        }
-
-        initializeProperty("java.vm.name", "Substrate VM");
-        initializeProperty("java.vm.vendor", "Oracle Corporation");
-        initializeProperty("java.vendor", "Oracle Corporation");
-        initializeProperty("java.vendor.url", "https://www.graalvm.org/");
-
-        initializeProperty("java.class.path", "");
-        initializeProperty("java.endorsed.dirs", "");
-        initializeProperty("java.ext.dirs", "");
-        initializeProperty("java.library.path", "");
-        initializeProperty("sun.arch.data.model", Integer.toString(ConfigurationValues.getTarget().wordJavaKind.getBitCount()));
-
-        String targetName = System.getProperty("svm.targetName");
-        String targetArch = System.getProperty("svm.targetArch");
-        initializeProperty("os.name", targetName != null ? targetName : System.getProperty("os.name"));
-        initializeProperty("os.arch", targetArch != null ? targetArch : System.getProperty("os.arch"));
-
-        initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
+        // Runtime initialized properties
+       addSystemProperty("user.name", always, InitKind.Runtime, this::userName);
+       addSystemProperty("user.home", always, InitKind.Runtime, this::userHome);
+       addSystemProperty("user.dir", always, InitKind.Runtime, this::userDir);
+       addSystemProperty("java.io.tmpdir", always, InitKind.Runtime, this::tmpdirValue);
+       addSystemProperty("os.version", always, InitKind.Runtime, this::osVersionValue);
+       addSystemProperty("java.vm.version", always, InitKind.Runtime, VM::getVersion);
 
         lazyRuntimeValues = new HashMap<>();
-        lazyRuntimeValues.put("user.name", this::userName);
-        lazyRuntimeValues.put("user.home", this::userHome);
-        lazyRuntimeValues.put("user.dir", this::userDir);
-        lazyRuntimeValues.put("java.io.tmpdir", this::tmpdirValue);
-        lazyRuntimeValues.put("os.version", this::osVersionValue);
-        lazyRuntimeValues.put("java.vm.version", VM::getVersion);
+        SYSTEM_PROPERTIES.forEach((key, propertyInfo) -> {
+            if (propertyInfo.onlyWith.getAsBoolean()) {
+                switch (propertyInfo.initKind){
+                    case AsHosted:
+                        initializeProperty(key, System.getProperty(key));
+                        break;
+                   case BuildTime:
+                       initializeProperty(key, propertyInfo.initValue.get());
+                       break;
+                    case Undefined:
+                        break;
+                    case Runtime:
+                        lazyRuntimeValues.put(key, propertyInfo.initValue);
+                }
+            }
+        });
+    }
+
+    private static void addSystemProperty(String name, BooleanSupplier onlyWith, InitKind InitKind, Supplier<String> initValue){
+        SYSTEM_PROPERTIES.put(name,new PropertyInfo(name, onlyWith, InitKind, initValue));
+    }
+
+    private static void addUndefinedSystemProperty(String name, BooleanSupplier onlyWith) {
+        SYSTEM_PROPERTIES.put(name,new PropertyInfo(name, onlyWith, InitKind.Undefined, null));
+    }
+
+    private static void addAsHostedSystemProperty(String name, BooleanSupplier onlyWith){
+        SYSTEM_PROPERTIES.put(name,new PropertyInfo(name, onlyWith, InitKind.AsHosted, null));
     }
 
     private void ensureFullyInitialized() {
@@ -141,7 +228,16 @@ public abstract class SystemPropertiesSupport {
 
     protected String getProperty(String key) {
         initializeLazyValue(key);
-        return properties.getProperty(key);
+        String ret = properties.getProperty(key);
+        if (ret == null && isUndefined(key) && SystemPropertyFeatureOptions.ReportUndefinedSystemPropertyError.getValue()) {
+            throw new UndefinedSystemPropertyException("Java system property " + key + " is undefined in native image. Please explicitly assign the expected value via -D" + key + "=, or avoid using this property.");
+        }
+        return ret;
+    }
+
+    public static boolean isUndefined(String key) {
+        PropertyInfo propertyInfo = SYSTEM_PROPERTIES.get(key);
+        return propertyInfo != null && propertyInfo.initKind == InitKind.Undefined;
     }
 
     public void setProperties(Properties props) {
