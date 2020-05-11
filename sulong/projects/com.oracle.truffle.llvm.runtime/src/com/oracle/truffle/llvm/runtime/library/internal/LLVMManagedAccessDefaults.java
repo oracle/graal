@@ -49,8 +49,8 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject.ForeignGetTypeNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropReadNode;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropWriteNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToLLVM;
@@ -178,21 +178,21 @@ abstract class LLVMManagedAccessDefaults {
             }
         }
 
-        @Specialization(guards = {"nativeLibrary.isPointer(receiver)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver)"})
+        @Specialization(guards = {"natives.isPointer(receiver)", "isWrappedAutoDerefHandle(language, natives, receiver)"})
         static Object doHandle(Object receiver, long offset, ForeignToLLVMType type,
                         @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
                         @Shared("read") @Cached LLVMInteropReadNode read,
-                        @Shared("getType") @Cached ForeignGetTypeNode getType,
                         @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
-                        @CachedLibrary(limit = "3") LLVMNativeLibrary nativeLibrary,
+                        @CachedLibrary(limit = "3") LLVMNativeLibrary natives,
                         @Cached LLVMDerefHandleGetReceiverNode receiverNode,
                         @Cached LLVMAsForeignNode asForeignNode,
                         @Shared("fallbackRead") @Cached(value = "create()", uncached = "createUncached()") FallbackReadNode fallbackRead,
-                        @Cached("createBinaryProfile()") ConditionProfile hasTypeProfile) {
+                        @Cached("createBinaryProfile()") ConditionProfile typedReadProfile) {
             try {
-                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver));
-                if (hasTypeProfile.profile(nativeTypes.hasNativeType(recv.getObject()))) {
-                    return read.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, type);
+                LLVMManagedPointer recv = receiverNode.execute(natives.asPointer(receiver));
+                Object nativeType = nativeTypes.getNativeType(receiver);
+                if (typedReadProfile.profile(nativeType == null || nativeType instanceof LLVMInteropType.Structured)) {
+                    return read.execute((LLVMInteropType.Structured) nativeType, asForeignNode.execute(recv), recv.getOffset() + offset, type);
                 } else {
                     return fallbackRead.executeRead(recv.getObject(), offset, type);
                 }
@@ -202,21 +202,19 @@ abstract class LLVMManagedAccessDefaults {
             }
         }
 
-        @Specialization(guards = {"!nativeLibrary.isPointer(receiver)", "nativeTypes.hasNativeType(receiver)"})
-        static Object doTypedValue(Object receiver, long offset, ForeignToLLVMType type,
+        @Specialization(guards = {"!natives.isPointer(receiver)"})
+        static Object doValue(Object receiver, long offset, ForeignToLLVMType type,
                         @Shared("read") @Cached LLVMInteropReadNode read,
-                        @Shared("getType") @Cached ForeignGetTypeNode getType,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMNativeLibrary nativeLibrary) {
-            return read.execute(getType.execute(receiver), receiver, offset, type);
-        }
-
-        @Specialization(guards = {"!nativeLibrary.isPointer(receiver)", "!nativeTypes.hasNativeType(receiver)"})
-        static Object doNonTypedValue(Object receiver, long offset, ForeignToLLVMType type,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMNativeLibrary nativeLibrary,
-                        @Shared("fallbackRead") @Cached(value = "create()", uncached = "createUncached()") FallbackReadNode fallbackRead) {
-            return fallbackRead.executeRead(receiver, offset, type);
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMNativeLibrary natives,
+                        @Shared("fallbackRead") @Cached(value = "create()", uncached = "createUncached()") FallbackReadNode fallbackRead,
+                        @Cached("createBinaryProfile()") ConditionProfile typedReadProfile) {
+            Object nativeType = nativeTypes.getNativeType(receiver);
+            if (typedReadProfile.profile(nativeType == null || nativeType instanceof LLVMInteropType.Structured)) {
+                return read.execute((LLVMInteropType.Structured) nativeType, receiver, offset, type);
+            } else {
+                return fallbackRead.executeRead(receiver, offset, type);
+            }
         }
 
     }
@@ -334,17 +332,17 @@ abstract class LLVMManagedAccessDefaults {
         static void doTypedHandle(Object receiver, long offset, Object value, ForeignToLLVMType type,
                         @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
                         @Shared("interopWrite") @Cached LLVMInteropWriteNode interopWrite,
-                        @Shared("getType") @Cached ForeignGetTypeNode getType,
                         @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
                         @CachedLibrary(limit = "3") LLVMNativeLibrary nativeLibrary,
                         @Cached LLVMDerefHandleGetReceiverNode receiverNode,
                         @Cached LLVMAsForeignNode asForeignNode,
                         @Shared("fallbackWrite") @Cached FallbackWriteNode fallbackWrite,
-                        @Cached("createBinaryProfile()") ConditionProfile hasTypeProfile) {
+                        @Cached("createBinaryProfile()") ConditionProfile typedWriteProfile) {
             try {
                 LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver));
-                if (hasTypeProfile.profile(nativeTypes.hasNativeType(recv.getObject()))) {
-                    interopWrite.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, value, type);
+                Object nativeType = nativeTypes.getNativeType(receiver);
+                if (typedWriteProfile.profile(nativeType == null || nativeType instanceof LLVMInteropType.Structured)) {
+                    interopWrite.execute((LLVMInteropType.Structured) nativeType, asForeignNode.execute(recv), recv.getOffset() + offset, value, type);
                 } else {
                     fallbackWrite.executeWrite(recv.getObject(), offset, value, type);
                 }
@@ -354,23 +352,20 @@ abstract class LLVMManagedAccessDefaults {
             }
         }
 
-        @Specialization(guards = {"!nativeLibrary.isPointer(receiver)", "nativeTypes.hasNativeType(receiver)"})
-        static void doTypedValue(Object receiver, long offset, Object value, ForeignToLLVMType type,
+        @Specialization(guards = {"!natives.isPointer(receiver)"})
+        static void doValue(Object receiver, long offset, Object value, ForeignToLLVMType type,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
                         @Shared("interopWrite") @Cached LLVMInteropWriteNode interopWrite,
-                        @Shared("getType") @Cached ForeignGetTypeNode getType,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMNativeLibrary nativeLibrary) {
-            interopWrite.execute(getType.execute(receiver), receiver, offset, value, type);
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMNativeLibrary natives,
+                        @Shared("fallbackWrite") @Cached FallbackWriteNode fallbackWrite,
+                        @Cached("createBinaryProfile()") ConditionProfile typedWriteProfile) {
+            Object nativeType = nativeTypes.getNativeType(receiver);
+            if (typedWriteProfile.profile(nativeType == null || nativeType instanceof LLVMInteropType.Structured)) {
+                interopWrite.execute((LLVMInteropType.Structured) nativeType, receiver, offset, value, type);
+            } else {
+                fallbackWrite.executeWrite(receiver, offset, value, type);
+            }
         }
-
-        @Specialization(guards = {"!nativeLibrary.isPointer(receiver)", "!nativeTypes.hasNativeType(receiver)"})
-        static void doNonTypedValue(Object receiver, long offset, Object value, ForeignToLLVMType type,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMNativeLibrary nativeLibrary,
-                        @Shared("fallbackWrite") @Cached FallbackWriteNode fallbackWrite) {
-            fallbackWrite.executeWrite(receiver, offset, value, type);
-        }
-
     }
 
     @GenerateUncached

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -124,18 +124,13 @@ public abstract class ToPointer extends ForeignToLLVM {
         return pointer;
     }
 
-// @Specialization(guards = {"notLLVM(obj)"})
-// protected LLVMManagedPointer fromTruffleObject(Object obj, LLVMInteropType.Structured type) {
-// return LLVMManagedPointer.create(LLVMTypedForeignObject.create(obj, type));
-// }
-
-    @Specialization(guards = {"notLLVM(obj)", "nativeTypes.hasNativeType(obj)"})
-    protected LLVMManagedPointer fromTypedTruffleObject(Object obj, @SuppressWarnings("unused") LLVMInteropType.Structured type,
+    @Specialization(guards = {"notLLVM(obj)", "nativeTypes.hasNativeType(obj)", "type == null"})
+    protected LLVMManagedPointer fromTypedTruffleObjectNoAttachedType(Object obj, @SuppressWarnings("unused") LLVMInteropType.Structured type,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes) {
         return LLVMManagedPointer.create(obj);
     }
 
-    @Specialization(guards = {"notLLVM(obj)", "!nativeTypes.hasNativeType(obj)"})
+    @Specialization(guards = {"notLLVM(obj)", "!nativeTypes.hasNativeType(obj) || type != null"})
     protected LLVMManagedPointer fromNonTypedTruffleObject(Object obj, LLVMInteropType.Structured type,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes) {
         return LLVMManagedPointer.create(LLVMTypedForeignObject.create(obj, type));
