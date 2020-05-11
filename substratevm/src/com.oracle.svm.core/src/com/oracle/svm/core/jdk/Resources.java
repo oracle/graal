@@ -64,6 +64,21 @@ public final class Resources {
         public void afterRegistration(AfterRegistrationAccess access) {
             ImageSingletons.add(ResourcesSupport.class, new ResourcesSupport());
         }
+
+        @Override
+        public void afterCompilation(AfterCompilationAccess access) {
+            /*
+             * The resources embedded in the image heap are read-only at run time. Note that we do
+             * not mark the collection data structures as read-only because Java collections have
+             * all sorts of lazily initialized fields. Only the byte[] arrays themselves can be
+             * safely made read-only.
+             */
+            for (List<byte[]> resourceList : ImageSingletons.lookup(ResourcesSupport.class).resources.values()) {
+                for (byte[] resource : resourceList) {
+                    access.registerAsImmutable(resource);
+                }
+            }
+        }
     }
 
     private Resources() {
