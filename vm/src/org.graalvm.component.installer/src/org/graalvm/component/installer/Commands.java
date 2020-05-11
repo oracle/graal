@@ -219,4 +219,10 @@ public interface Commands {
      */
     String OPTION_SHOW_VERSION = "#";
     String LONG_OPTION_SHOW_VERSION = "show-version";
+
+    /**
+     * Will not fail, if at least one of the catalogs can be read.
+     */
+    String OPTION_IGNORE_CATALOG_ERRORS = "E";
+    String LONG_OPTION_IGNORE_CATALOG_ERRORS = "no-catalog-errors";
 }
