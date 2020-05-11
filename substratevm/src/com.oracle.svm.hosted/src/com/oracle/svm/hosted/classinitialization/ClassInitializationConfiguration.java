@@ -56,11 +56,11 @@ public class ClassInitializationConfiguration {
     private static final String ROOT_QUALIFIER = "";
     private static final int MAX_NUMBER_OF_REASONS = 3;
 
-    private InitializationNode root = new InitializationNode("", null, null);
+    private InitializationNode root = new InitializationNode("", null, null, false);
 
-    public synchronized void insert(String classOrPackage, InitKind kind, String reason) {
+    public synchronized void insert(String classOrPackage, InitKind kind, String reason, boolean strict) {
         assert kind != null;
-        insertRec(root, qualifierList(classOrPackage), kind, reason);
+        insertRec(root, qualifierList(classOrPackage), kind, reason, strict);
     }
 
     synchronized InitKind lookupKind(String classOrPackage) {
@@ -80,12 +80,13 @@ public class ClassInitializationConfiguration {
         return prefixed;
     }
 
-    private void insertRec(InitializationNode node, List<String> classOrPackage, InitKind kind, String reason) {
+    private void insertRec(InitializationNode node, List<String> classOrPackage, InitKind kind, String reason, boolean strict) {
         assert !classOrPackage.isEmpty();
         assert node.qualifier.equals(classOrPackage.get(0));
         if (classOrPackage.size() == 1) {
             if (node.kind == null) {
                 node.kind = kind;
+                node.strict = strict;
             } else if (node.kind == kind) {
                 if (node.reasons.size() < MAX_NUMBER_OF_REASONS) {
                     node.reasons.add(reason);
@@ -93,18 +94,22 @@ public class ClassInitializationConfiguration {
                     node.reasons.add("others");
                 }
             } else {
-                throw UserError.abort("Incompatible change of initialization policy for " + qualifiedName(node) + ": trying to change " + node.kind + " " + String.join(" and ", node.reasons) +
-                                " to " + kind + " " + reason);
+                if (node.strict) {
+                    throw UserError.abort("Incompatible change of initialization policy for " + qualifiedName(node) + ": trying to change " + node.kind + " " + String.join(" and ", node.reasons) +
+                                    " to " + kind + " " + reason);
+                } else {
+                    node.kind = node.kind.max(kind);
+                }
             }
         } else {
             List<String> tail = new ArrayList<>(classOrPackage);
             tail.remove(0);
             String nextQualifier = tail.get(0);
             if (!node.children.containsKey(nextQualifier)) {
-                node.children.put(nextQualifier, new InitializationNode(nextQualifier, node, null, reason));
+                node.children.put(nextQualifier, new InitializationNode(nextQualifier, node, null, false, reason));
                 assert node.children.containsKey(nextQualifier);
             }
-            insertRec(node.children.get(nextQualifier), tail, kind, reason);
+            insertRec(node.children.get(nextQualifier), tail, kind, reason, strict);
         }
     }
 
@@ -152,16 +157,18 @@ public class ClassInitializationConfiguration {
 
 final class InitializationNode {
     final String qualifier;
+    boolean strict;
     InitKind kind;
     final EconomicSet<String> reasons = EconomicSet.create();
 
     final InitializationNode parent;
     final EconomicMap<String, InitializationNode> children = EconomicMap.create();
 
-    InitializationNode(String qualifier, InitializationNode parent, InitKind kind, String... reasons) {
+    InitializationNode(String qualifier, InitializationNode parent, InitKind kind, boolean strict, String... reasons) {
         this.parent = parent;
         this.qualifier = qualifier;
         this.kind = kind;
+        this.strict = strict;
         this.reasons.addAll(Arrays.asList(reasons));
     }
 }
