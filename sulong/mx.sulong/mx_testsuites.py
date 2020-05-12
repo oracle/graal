@@ -114,7 +114,6 @@ class SulongTestSuiteBase(mx.NativeProject):  # pylint: disable=too-many-ancesto
 class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
                  buildSharedObject=False, **args):
-        # d = os.path.join(suite.dir, subDir)  # use common Makefile for all test suites
         projectDir = args.pop('dir', None)
         if projectDir:
             d = os.path.join(suite.dir, projectDir)
