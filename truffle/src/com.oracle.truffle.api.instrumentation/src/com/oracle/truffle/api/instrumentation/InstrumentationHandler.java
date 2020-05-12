@@ -643,44 +643,58 @@ final class InstrumentationHandler {
         Set<Class<?>> providedTags = getProvidedTags(rootNode);
         EventChainNode root = null;
         EventChainNode parent = null;
-        for (EventBinding.Source<?> binding : executionBindings) {
-            if (binding.isChildInstrumentedFull(providedTags, rootNode, parentInstrumentable, parentInstrumentableSourceSection, instrumentedNode, sourceSection)) {
-                if (TRACE) {
-                    trace("  Found input value binding %s, %s%n", binding.getInputFilter(), System.identityHashCode(binding));
-                }
-
-                EventChainNode next = probeNodeImpl.createParentEventChainCallback(frame, binding, rootNode, providedTags);
-                if (next == null) {
-                    // inconsistent AST
+        boolean newBindingFound;
+        Set<EventBinding.Source<?>> processedBindings = new HashSet<>();
+        do {
+            /*
+             * Execution event factory relies on the capability to add new execution bindings that
+             * are included in the same invocation of the createBindings method that called the
+             * factory.
+             */
+            newBindingFound = false;
+            for (EventBinding.Source<?> binding : executionBindings) {
+                if (!processedBindings.add(binding)) {
                     continue;
                 }
+                newBindingFound = true;
+                if (binding.isChildInstrumentedFull(providedTags, rootNode, parentInstrumentable, parentInstrumentableSourceSection, instrumentedNode, sourceSection)) {
+                    if (TRACE) {
+                        trace("  Found input value binding %s, %s%n", binding.getInputFilter(), System.identityHashCode(binding));
+                    }
 
-                if (root == null) {
-                    root = next;
-                } else {
-                    assert parent != null;
-                    parent.setNext(next);
-                }
-                parent = next;
-            }
+                    EventChainNode next = probeNodeImpl.createParentEventChainCallback(frame, binding, rootNode, providedTags);
+                    if (next == null) {
+                        // inconsistent AST
+                        continue;
+                    }
 
-            if (binding.isInstrumentedFull(providedTags, rootNode, instrumentedNode, sourceSection)) {
-                if (TRACE) {
-                    trace("  Found binding %s, %s%n", binding.getFilter(), binding.getElement());
+                    if (root == null) {
+                        root = next;
+                    } else {
+                        assert parent != null;
+                        parent.setNext(next);
+                    }
+                    parent = next;
                 }
-                EventChainNode next = probeNodeImpl.createEventChainCallback(frame, binding, rootNode, providedTags, instrumentedNode, sourceSection);
-                if (next == null) {
-                    continue;
+
+                if (binding.isInstrumentedFull(providedTags, rootNode, instrumentedNode, sourceSection)) {
+                    if (TRACE) {
+                        trace("  Found binding %s, %s%n", binding.getFilter(), binding.getElement());
+                    }
+                    EventChainNode next = probeNodeImpl.createEventChainCallback(frame, binding, rootNode, providedTags, instrumentedNode, sourceSection);
+                    if (next == null) {
+                        continue;
+                    }
+                    if (root == null) {
+                        root = next;
+                    } else {
+                        assert parent != null;
+                        parent.setNext(next);
+                    }
+                    parent = next;
                 }
-                if (root == null) {
-                    root = next;
-                } else {
-                    assert parent != null;
-                    parent.setNext(next);
-                }
-                parent = next;
             }
-        }
+        } while (newBindingFound);
 
         if (TRACE) {
             trace("END: Lazy updated for %s%n", sourceSection);
