@@ -65,6 +65,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import org.graalvm.libgraal.jni.annotation.FromLibGraalEntryPointsResolver;
 
 class MBeanProxy<T extends DynamicMBean> {
 
@@ -228,6 +229,7 @@ class MBeanProxy<T extends DynamicMBean> {
         return true;
     }
 
+    @FromLibGraalEntryPointsResolver(JMXFromLibGraal.Id.class)
     static JNI.JClass getHotSpotEntryPoints() {
         return fromLibGraalEntryPoints;
     }

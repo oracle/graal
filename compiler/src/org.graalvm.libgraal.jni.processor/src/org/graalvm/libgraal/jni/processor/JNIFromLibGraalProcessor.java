@@ -46,13 +46,8 @@ public class JNIFromLibGraalProcessor extends AbstractFromLibGraalProcessor<Id> 
     }
 
     @Override
-    protected String getFromLibGraalUtilInstanceAccess() {
-        return "FromLibGraalUtil.INSTANCE";
-    }
-
-    @Override
     protected boolean accept(ExecutableElement annotatedElement) {
         Element owner = annotatedElement.getEnclosingElement();
-        return owner != null && !((TypeElement) owner).getQualifiedName().contentEquals("org.graalvm.libgraal.jni.FromLibGraalEntryPoints");
+        return owner != null && !((TypeElement) owner).getQualifiedName().contentEquals("org.graalvm.libgraal.jni.JNIFromLibGraalEntryPoints");
     }
 }

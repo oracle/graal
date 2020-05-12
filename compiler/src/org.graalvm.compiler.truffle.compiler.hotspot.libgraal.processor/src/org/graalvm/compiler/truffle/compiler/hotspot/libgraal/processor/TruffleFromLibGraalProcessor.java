@@ -45,9 +45,4 @@ public class TruffleFromLibGraalProcessor extends AbstractFromLibGraalProcessor<
     public TruffleFromLibGraalProcessor() {
         super(Id.class);
     }
-
-    @Override
-    protected String getFromLibGraalUtilInstanceAccess() {
-        return "TruffleFromLibGraalUtil.INSTANCE";
-    }
 }

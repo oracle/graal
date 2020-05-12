@@ -51,13 +51,12 @@ import org.graalvm.libgraal.jni.JNI.JMethodID;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
 import org.graalvm.libgraal.jni.JNI.JObject;
 import org.graalvm.libgraal.jni.JNI.JValue;
-import org.graalvm.libgraal.jni.annotation.JNIFromLibGraal;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
 /**
  * Helpers for calling methods in HotSpot heap via JNI.
  */
-public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
+public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
 
     private static final Map<String, JNIClass> classes = new ConcurrentHashMap<>();
     /**
@@ -68,12 +67,16 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
     private static final ThreadLocal<Boolean> inExceptionHandler = new ThreadLocal<>();
 
     private final EnumMap<T, JNIMethod<T>> methods;
+    private volatile JClass peer;
 
-    protected FromLibGraalUtil(Class<T> idType) {
+    protected FromLibGraalCalls(Class<T> idType) {
         methods = new EnumMap<>(idType);
     }
 
-    protected abstract JClass peer(JNIEnv env);
+    /**
+     * Returns a {@link JClass} for the from LibGraal entry points.
+     */
+    protected abstract JClass resolvePeer(JNIEnv env);
 
     /**
      * Describes a class and holds a reference to its {@linkplain #jclass JNI value}.
@@ -221,6 +224,13 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
         }
     }
 
+    private JClass peer(JNIEnv env) {
+        if (peer.isNull()) {
+            peer = resolvePeer(env);
+        }
+        return peer;
+    }
+
     /**
      * Determines if {@code frame} is for a method denoting a call into HotSpot.
      */
@@ -230,7 +240,7 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
     }
 
     private static boolean isHotSpotCallImpl(StackTraceElement frame) {
-        if (!FromLibGraalUtil.class.getName().equals(frame.getClassName())) {
+        if (!FromLibGraalCalls.class.getName().equals(frame.getClassName())) {
             return false;
         }
         return HotSpotCallNames.contains(frame.getMethodName());
@@ -252,7 +262,7 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
         Map<String, Method> entryPoints = new HashMap<>();
         Map<String, Method> others = new HashMap<>();
 
-        for (Method m : FromLibGraalUtil.class.getDeclaredMethods()) {
+        for (Method m : FromLibGraalCalls.class.getDeclaredMethods()) {
             if (m.getAnnotation(HotSpotCall.class) != null) {
                 Method existing = entryPoints.put(m.getName(), m);
                 if (existing != null) {
@@ -272,22 +282,4 @@ public abstract class FromLibGraalUtil<T extends Enum<T> & FromLibGraalId> {
         }
         HotSpotCallNames = Collections.unmodifiableSet(entryPoints.keySet());
     }
-
-    static final FromLibGraalUtil<JNIFromLibGraal.Id> INSTANCE = new FromLibGraalUtil<JNIFromLibGraal.Id>(JNIFromLibGraal.Id.class) {
-
-        /**
-         * Name of the class in the HotSpot heap to which the calls are made via JNI.
-         */
-        private static final String FROM_LIBGRAAL_ENTRY_POINTS_CLASS_NAME = "org.graalvm.libgraal.jni.FromLibGraalEntryPoints";
-
-        private volatile JNI.JClass fromLibGraalEntryPointsPeer;
-
-        @Override
-        protected JClass peer(JNIEnv env) {
-            if (fromLibGraalEntryPointsPeer.isNull()) {
-                fromLibGraalEntryPointsPeer = getJNIClass(env, FROM_LIBGRAAL_ENTRY_POINTS_CLASS_NAME);
-            }
-            return fromLibGraalEntryPointsPeer;
-        }
-    };
 }

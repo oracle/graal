@@ -104,7 +104,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleDebugContextImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
-import org.graalvm.libgraal.jni.FromLibGraalUtil;
+import org.graalvm.libgraal.jni.FromLibGraalCalls;
 import org.graalvm.libgraal.jni.HSObject;
 import org.graalvm.libgraal.jni.JNILibGraalScope;
 import org.graalvm.libgraal.jni.JNI.JArray;
@@ -413,7 +413,7 @@ final class TruffleToLibGraalEntryPoints {
         try (JNILibGraalScope<TruffleToLibGraal.Id> s = scope) {
             GraphInfo orig = LibGraalObjectHandles.resolve(handle, GraphInfo.class);
             String[] nodeTypes = orig.getNodeTypes(simpleNames);
-            JClass componentType = FromLibGraalUtil.getJNIClass(env, String.class);
+            JClass componentType = FromLibGraalCalls.getJNIClass(env, String.class);
             JObjectArray res = NewObjectArray(env, nodeTypes.length, componentType, WordFactory.nullPointer());
             for (int i = 0; i < nodeTypes.length; i++) {
                 SetObjectArrayElement(env, res, i, JNIUtil.createHSString(env, nodeTypes[i]));
@@ -481,7 +481,7 @@ final class TruffleToLibGraalEntryPoints {
         JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(GetInfopoints, env);
         try (JNILibGraalScope<TruffleToLibGraal.Id> s = scope) {
             String[] infoPoints = LibGraalObjectHandles.resolve(handle, CompilationResultInfo.class).getInfopoints();
-            JClass componentType = FromLibGraalUtil.getJNIClass(env, String.class);
+            JClass componentType = FromLibGraalCalls.getJNIClass(env, String.class);
             JObjectArray res = NewObjectArray(env, infoPoints.length, componentType, WordFactory.nullPointer());
             for (int i = 0; i < infoPoints.length; i++) {
                 SetObjectArrayElement(env, res, i, createHSString(env, infoPoints[i]));

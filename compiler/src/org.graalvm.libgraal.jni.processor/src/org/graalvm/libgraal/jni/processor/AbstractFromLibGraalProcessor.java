@@ -70,11 +70,6 @@ public abstract class AbstractFromLibGraalProcessor<T extends Enum<T> & FromLibG
     }
 
     /**
-     * Returns a code snippet to access a {@code FromLibGraalUtil} instance.
-     */
-    protected abstract String getFromLibGraalUtilInstanceAccess();
-
-    /**
      * Allows subclasses to filter out annotated elements to generate calls for.
      */
     protected boolean accept(@SuppressWarnings("unused") ExecutableElement annotatedElement) {
@@ -109,11 +104,11 @@ public abstract class AbstractFromLibGraalProcessor<T extends Enum<T> & FromLibG
         }
     }
 
-    private static Element topDeclaringType(Element element) {
+    static TypeElement topDeclaringType(Element element) {
         Element enclosing = element.getEnclosingElement();
         if (enclosing == null || enclosing.getKind() == ElementKind.PACKAGE) {
             assert element.getKind() == ElementKind.CLASS || element.getKind() == ElementKind.INTERFACE;
-            return element;
+            return (TypeElement) element;
         }
         return topDeclaringType(enclosing);
     }
@@ -246,14 +241,14 @@ public abstract class AbstractFromLibGraalProcessor<T extends Enum<T> & FromLibG
                 } else {
                     returnPrefix = "return ";
                 }
-                out.printf("        %s%s.call%s(env, %s, args);%n", returnPrefix, getFromLibGraalUtilInstanceAccess(), toJNIType(rt, true), idName);
+                out.printf("        %s%s.INSTANCE.call%s(env, %s, args);%n", returnPrefix, getAccessorClassSimpleName(), toJNIType(rt, true), idName);
                 out.println("    }");
             }
             out.println("}");
         }
     }
 
-    private static PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {
+    static PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {
         try {
             // Ensure Unix line endings to comply with code style guide checked by Checkstyle
             JavaFileObject sourceFile = filer.createSourceFile(pkg + "." + relativeName, originatingElements);
@@ -268,6 +263,14 @@ public abstract class AbstractFromLibGraalProcessor<T extends Enum<T> & FromLibG
         }
     }
 
+    private String getAccessorClassSimpleName() {
+        Class<?> topLevel = null;
+        for (Class<?> current = idClass; current != null; current = current.getEnclosingClass()) {
+            topLevel = current;
+        }
+        return String.format("%sCalls", topLevel.getSimpleName());
+    }
+
     @Override
     public final boolean doProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
@@ -275,8 +278,7 @@ public abstract class AbstractFromLibGraalProcessor<T extends Enum<T> & FromLibG
         }
 
         Map<Element, CallsInfo> calls = new HashMap<>();
-        for (String supportedAnnotation : getSupportedAnnotationTypes()) {
-            TypeElement supportedAnnotationElement = getTypeElement(supportedAnnotation);
+        for (TypeElement supportedAnnotationElement : annotations) {
             for (Element element : roundEnv.getElementsAnnotatedWith(supportedAnnotationElement)) {
                 processElement((ExecutableElement) element, (DeclaredType) supportedAnnotationElement.asType(), calls);
             }

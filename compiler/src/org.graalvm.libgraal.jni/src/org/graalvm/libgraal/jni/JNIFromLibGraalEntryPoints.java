@@ -42,7 +42,7 @@ import org.graalvm.nativeimage.Platforms;
  * Entry points in HotSpot for exception handling from libgraal.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-final class FromLibGraalEntryPoints {
+final class JNIFromLibGraalEntryPoints {
 
     /**
      * Updates an exception stack trace by decoding a stack trace from libgraal.

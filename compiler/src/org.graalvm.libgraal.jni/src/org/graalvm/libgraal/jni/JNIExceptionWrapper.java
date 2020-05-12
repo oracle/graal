@@ -42,7 +42,7 @@ import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callGetStackTraceE
 import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callGetStackTraceElementMethodName;
 import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callGetThrowableMessage;
 import static org.graalvm.libgraal.jni.JNIExceptionWrapperGen.callUpdateStackTrace;
-import static org.graalvm.libgraal.jni.FromLibGraalUtil.isHotSpotCall;
+import static org.graalvm.libgraal.jni.FromLibGraalCalls.isHotSpotCall;
 import static org.graalvm.libgraal.jni.JNIUtil.ExceptionCheck;
 import static org.graalvm.libgraal.jni.JNIUtil.ExceptionClear;
 import static org.graalvm.libgraal.jni.JNIUtil.ExceptionDescribe;
@@ -65,13 +65,15 @@ import org.graalvm.libgraal.jni.JNI.JObject;
 import org.graalvm.libgraal.jni.JNI.JObjectArray;
 import org.graalvm.libgraal.jni.JNI.JString;
 import org.graalvm.libgraal.jni.JNI.JThrowable;
-import org.graalvm.word.WordFactory;
+import org.graalvm.libgraal.jni.annotation.FromLibGraalEntryPointsResolver;
 import org.graalvm.libgraal.jni.annotation.JNIFromLibGraal;
+import org.graalvm.word.WordFactory;
 
 /**
  * Wraps an exception thrown by a JNI call into HotSpot. If the exception propagates up to an
  * libgraal entry point, the exception is re-thrown in HotSpot.
  */
+@FromLibGraalEntryPointsResolver(value = JNIFromLibGraal.Id.class, entryPointsClassName = "org.graalvm.libgraal.jni.JNIFromLibGraalEntryPoints")
 public final class JNIExceptionWrapper extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
@@ -278,7 +280,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
      */
     private static boolean containsHotSpotCall(StackTraceElement[] stackTrace) {
         for (StackTraceElement e : stackTrace) {
-            if (FromLibGraalUtil.isHotSpotCall(e)) {
+            if (FromLibGraalCalls.isHotSpotCall(e)) {
                 return true;
             }
         }
@@ -287,7 +289,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
 
     @JNIFromLibGraal(UpdateStackTrace)
     private static JThrowable updateStackTrace(JNIEnv env, JThrowable throwableHandle, String[] encodedStackTrace) {
-        JClass string = FromLibGraalUtil.getJNIClass(env, String.class);
+        JClass string = FromLibGraalCalls.getJNIClass(env, String.class);
         JObjectArray stackTraceHandle = NewObjectArray(env, encodedStackTrace.length, string, WordFactory.nullPointer());
         for (int i = 0; i < encodedStackTrace.length; i++) {
             JString element = createHSString(env, encodedStackTrace[i]);

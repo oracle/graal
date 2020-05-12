@@ -48,11 +48,6 @@ public class JMXFromLibGraalProcessor extends AbstractFromLibGraalProcessor<Id> 
     }
 
     @Override
-    protected String getFromLibGraalUtilInstanceAccess() {
-        return "JMXFromLibGraalUtil.INSTANCE";
-    }
-
-    @Override
     protected boolean accept(ExecutableElement annotatedElement) {
         PackageElement pkg = getPackage(annotatedElement);
         return pkg != null && pkg.getQualifiedName().contentEquals("org.graalvm.compiler.hotspot.management.libgraal");
