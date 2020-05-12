@@ -853,7 +853,7 @@ def ll_reduce(args=None, out=None):
 
         shutil.copy(parsed_args.input, tmp_ll)
         run_lli(tmp_ll, tmp_sulong_out_original, tmp_sulong_err_original)
-	while (not parsed_args.timeout or time.time()-starttime < parsed_args.timeout) and \
+        while (not parsed_args.timeout or time.time()-starttime < parsed_args.timeout) and \
                  (not starttime_stabilized or time.time()-starttime_stabilized < parsed_args.timeout_stabilized):
             print("nrmutations: %d filesize: %d bytes" % (nrmutations, os.path.getsize(tmp_ll)))
             llvm_tool(["llvm-as", "-o", tmp_bc, tmp_ll])
