@@ -933,8 +933,8 @@ final class Runner {
             ArrayList<AllocSymbolNode> allocFuncsAndAliasesList = new ArrayList<>();
             for (FunctionSymbol functionSymbol : result.getDefinedFunctions()) {
                 LLVMFunction function = fileScope.getFunction(functionSymbol.getName());
-                if ((isSulongLibrary || this.moduleName.contains(LLVMLanguage.getLanguage().getCapability(PlatformCapability.class).getPolyglotMockLibrary())) &&
-                                intrinsicProvider.isIntrinsified(function.getName())) {
+                // All internal libraries are allowed to have intriniscs.
+                if ((isSulongLibrary || result.getRuntime().getLibrary().isInternal()) && intrinsicProvider.isIntrinsified(function.getName())) {
                     allocFuncsAndAliasesList.add(new AllocIntrinsicFunctionNode(function, nodeFactory, intrinsicProvider));
                 } else if (lazyParsing) {
                     allocFuncsAndAliasesList.add(new AllocLLVMFunctionNode(function));

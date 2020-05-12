@@ -297,7 +297,7 @@ public final class LLVMContext {
         }
         try {
             CallTarget libpolyglotMock = env.parseInternal(Source.newBuilder("llvm",
-                            env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()).toUri())).build());
+                            env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()).toUri())).internal(true).build());
             libpolyglotMock.call();
         } catch (Exception e) {
             throw new IllegalStateException(e);
