@@ -94,13 +94,14 @@ public class MergeStorage extends AbstractCatalogStorage implements ComponentCat
         List<SoftwareChannel> errChannels = new ArrayList<>();
         boolean oneSucceeded = false;
         Exception toThrow = null;
-        for (SoftwareChannel del : channels) {
+        for (SoftwareChannel del : new ArrayList<>(channels)) {
             try {
                 ids.addAll(del.getStorage().listComponentIDs());
                 oneSucceeded = true;
             } catch (IncompatibleException ex) {
                 savedEx.add(ex);
                 errChannels.add(del);
+                channels.remove(del);
             } catch (IOException | FailedOperationException ex) {
                 if (!isIgnoreCatalogErrors()) {
                     throw ex;
@@ -109,6 +110,7 @@ public class MergeStorage extends AbstractCatalogStorage implements ComponentCat
                     reportError(ex, del);
                 }
                 toThrow = ex;
+                channels.remove(del);
             }
         }
         if (!oneSucceeded || ids.isEmpty()) {
