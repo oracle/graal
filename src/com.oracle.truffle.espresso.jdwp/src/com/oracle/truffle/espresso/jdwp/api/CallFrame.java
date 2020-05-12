@@ -38,6 +38,7 @@ import java.util.Iterator;
 public final class CallFrame {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+    public static final Object INVALID_VALUE = new Object();
 
     private final byte typeTag;
     private final long classId;
@@ -106,19 +107,17 @@ public final class CallFrame {
 
     public Object getThisValue() {
         Scope theScope = getScope();
-        return theScope != null ? theScope.getReceiver() : null;
+        try {
+            return theScope != null ? INTEROP.readMember(theScope.getVariables(), "this") : null;
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            JDWPLogger.log("Unable to read 'this' value from method: %s", JDWPLogger.LogLevel.ALL, getMethod());
+            return INVALID_VALUE;
+        }
     }
 
     public Object getVariable(String identifier) throws InteropException {
         Scope theScope = getScope();
-        if (theScope == null) {
-            return null;
-        }
-        try {
-            return INTEROP.readMember(theScope.getVariables(), identifier);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            throw e;
-        }
+        return theScope != null ? INTEROP.readMember(theScope.getVariables(), identifier) : null;
     }
 
     public void setVariable(Object value, String identifier) {
