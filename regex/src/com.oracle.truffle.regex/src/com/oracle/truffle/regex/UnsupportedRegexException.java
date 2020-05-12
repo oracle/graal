@@ -88,7 +88,7 @@ public final class UnsupportedRegexException extends RuntimeException implements
             sb.append(" /");
             sb.append(regexSrc.getPattern());
             sb.append("/");
-            sb.append(regexSrc.getFlags());
+            sb.append(regexSrc.getFlags().getSource());
         }
         if (reason != null) {
             sb.append(": ");

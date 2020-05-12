@@ -137,14 +137,13 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     }
 
     @Override
-    int atEnd(TRegexDFAExecutorLocals frame, TRegexDFAExecutorNode executor) {
+    void atEnd(TRegexDFAExecutorLocals frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (isAnchoredFinalState() && executor.inputAtEnd(frame)) {
             applyAnchoredFinalStateTransition(frame, executor);
         } else {
             checkFinalState(frame, executor);
         }
-        return FS_RESULT_NO_SUCCESSOR;
     }
 
     private void checkFinalState(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {

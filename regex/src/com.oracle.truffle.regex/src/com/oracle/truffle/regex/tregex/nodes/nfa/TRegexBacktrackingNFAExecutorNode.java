@@ -233,7 +233,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                             // successors.
                             assert isForward();
                             while (inputHasNext(locals)) {
-                                if (loopbackInitialStateMatcher.execute(inputRead(locals), compactString)) {
+                                if (loopbackInitialStateMatcher.execute(inputReadAndDecode(locals), compactString)) {
                                     break;
                                 }
                                 inputAdvance(locals);
@@ -327,7 +327,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         CompilerDirectives.isPartialEvaluationConstant(successors);
         CompilerDirectives.isPartialEvaluationConstant(successors.length);
         boolean atEnd = inputAtEnd(locals);
-        int c = atEnd ? 0 : inputRead(locals);
+        int c = atEnd ? 0 : inputReadAndDecode(locals);
         final int index = locals.getIndex();
         if (curState.isDeterministic()) {
             /*

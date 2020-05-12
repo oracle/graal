@@ -45,30 +45,26 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class RegexValidator {
 
     private final RegexSource source;
-    private final RegexFlags flags;
     private final RegexLexer lexer;
     private RegexFeatures features;
 
-    public RegexValidator(RegexSource source, RegexFlags flags, RegexOptions options) {
+    public RegexValidator(RegexSource source, RegexOptions options) {
         this.source = source;
-        this.flags = flags;
-        this.lexer = new RegexLexer(source, flags, flags.isUnicode() ? Encodings.UTF_16 : Encodings.UTF_16_RAW, options);
+        this.lexer = new RegexLexer(source, options);
     }
 
     @TruffleBoundary
     public static void validate(RegexSource source) throws RegexSyntaxException {
-        new RegexValidator(source, RegexFlags.parseFlags(source.getFlags()), RegexOptions.DEFAULT).validate();
+        new RegexValidator(source, RegexOptions.DEFAULT).validate();
     }
 
     @TruffleBoundary
@@ -146,7 +142,7 @@ public class RegexValidator {
                     curTermState = CurTermState.Other;
                     break;
                 case dollar:
-                    if (lookBehindDepth > 0 && !flags.isMultiline()) {
+                    if (lookBehindDepth > 0 && !source.getFlags().isMultiline()) {
                         features.setEndOfStringAssertionsInLookBehind();
                     }
                     curTermState = CurTermState.Other;
@@ -173,7 +169,7 @@ public class RegexValidator {
                         case Null:
                             throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
                         case LookAheadAssertion:
-                            if (flags.isUnicode()) {
+                            if (source.getFlags().isUnicode()) {
                                 throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
                             }
                             break;

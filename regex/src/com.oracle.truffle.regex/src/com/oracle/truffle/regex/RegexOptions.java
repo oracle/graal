@@ -160,9 +160,9 @@ public final class RegexOptions {
     private static RegexFeatureSet parseFeatureSet(String optionsString, String value) throws RegexSyntaxException {
         switch (value) {
             case FEATURE_SET_TREGEX_JONI:
-                return RegexFeatureSet.TREGEX_JONI;
+                return RegexFeatureSet.DEFAULT;
             case FEATURE_SET_JONI:
-                return RegexFeatureSet.JONI;
+                return RegexFeatureSet.DEFAULT;
             default:
                 throw optionsSyntaxErrorUnexpectedValue(optionsString, FEATURE_SET_NAME, value, FEATURE_SET_TREGEX_JONI, FEATURE_SET_JONI);
         }
@@ -271,11 +271,7 @@ public final class RegexOptions {
         } else if (flavor == PythonFlavor.BYTES_INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_BYTES + ",");
         }
-        if (featureSet == RegexFeatureSet.TREGEX_JONI) {
-            sb.append(FEATURE_SET_NAME + "=" + FEATURE_SET_TREGEX_JONI + ",");
-        } else if (featureSet == RegexFeatureSet.JONI) {
-            sb.append(FEATURE_SET_NAME + "=" + FEATURE_SET_JONI + ",");
-        }
+        sb.append(FEATURE_SET_NAME + "=Default");
         return sb.toString();
     }
 

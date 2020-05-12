@@ -51,6 +51,7 @@ import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -248,6 +249,11 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     private static final CodePointSet XID_CONTINUE = UnicodeProperties.getProperty("XID_Continue");
 
     /**
+     * The source object of the input pattern.
+     */
+    private final RegexSource inSource;
+
+    /**
      * The source of the input pattern.
      */
     private final String inPattern;
@@ -320,8 +326,9 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
     @TruffleBoundary
     public PythonFlavorProcessor(RegexSource source, PythonREMode mode) {
+        this.inSource = source;
         this.inPattern = source.getPattern();
-        this.inFlags = source.getFlags();
+        this.inFlags = source.getFlags().getSource();
         this.mode = mode;
         this.position = 0;
         this.outPattern = new StringBuilder(inPattern.length());
@@ -377,7 +384,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // actually want to match on the individual code points of the Unicode string. In 'bytes'
         // patterns, all characters are in the range 0-255 and so the Unicode flag does not
         // interfere with the matching (no surrogates).
-        return new RegexSource(outPattern.toString(), "su" + (getGlobalFlags().isSticky() ? "y" : ""));
+        return new RegexSource(outPattern.toString(), RegexFlags.parseFlags(getGlobalFlags().isSticky() ? "suy" : "su"), mode == PythonREMode.Bytes ? Encodings.LATIN_1 : Encodings.UTF_16);
     }
 
     private PythonFlags getLocalFlags() {
@@ -623,7 +630,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     }
 
     private RegexSyntaxException syntaxError(String message, int atPosition) {
-        return new RegexSyntaxException(inPattern, inFlags, message, atPosition);
+        return new RegexSyntaxException(inSource, message, atPosition);
     }
 
     // Character predicates

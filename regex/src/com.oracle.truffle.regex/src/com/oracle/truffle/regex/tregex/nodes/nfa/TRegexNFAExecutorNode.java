@@ -136,7 +136,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     private void findNextStates(TRegexNFAExecutorLocals locals) {
-        int c = inputRead(locals);
+        int c = inputReadAndDecode(locals);
         while (locals.hasNext()) {
             expandState(locals, locals.next(), c, false);
             // If we have found a path to a final state, then we will trim all paths with lower

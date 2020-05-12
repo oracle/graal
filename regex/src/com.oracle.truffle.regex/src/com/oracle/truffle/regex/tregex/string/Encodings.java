@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
@@ -51,6 +52,7 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptIndexOfStri
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptimizationNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.Builder;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 public final class Encodings {
 
@@ -59,8 +61,28 @@ public final class Encodings {
     public static final Encoding UTF_8 = new Encoding.UTF8();
     public static final Encoding UTF_16 = new Encoding.UTF16();
     public static final Encoding UTF_32 = new Encoding.UTF32();
-
     public static final Encoding UTF_16_RAW = new Encoding.UTF16Raw();
+    public static final Encoding LATIN_1 = new Encoding.Latin1();
+
+    public static Encoding getEncoding(String name) {
+        switch (name) {
+            case "UTF-8":
+                return UTF_8;
+            case "UTF-16":
+                return UTF_16;
+            case "UTF-32":
+                return UTF_32;
+            case "UTF-16-RAW":
+                return UTF_16_RAW;
+            case "BYTES":
+                return LATIN_1;
+            case "LATIN-1":
+                return LATIN_1;
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw Exceptions.shouldNotReachHere("Unknown Encoding \"" + name + "\"");
+        }
+    }
 
     public abstract static class Encoding {
 
@@ -409,6 +431,62 @@ public final class Encodings {
             public Matchers toMatchers(Builder matchersBuilder) {
                 return new Matchers.UTF8Matchers(matchersBuilder.materialize(0), matchersBuilder.materialize(1), matchersBuilder.materialize(2), matchersBuilder.materialize(3),
                                 matchersBuilder.getNoMatchSuccessor());
+            }
+        }
+
+        public static final class Latin1 extends Encoding {
+
+            private Latin1() {
+            }
+
+            @Override
+            public String getName() {
+                return "LATIN-1";
+            }
+
+            @Override
+            public int getMaxValue() {
+                return 0xff;
+            }
+
+            @Override
+            public CodePointSet getFullSet() {
+                return Constants.BYTE_RANGE;
+            }
+
+            @Override
+            public int getEncodedSize(int codepoint) {
+                return 1;
+            }
+
+            @Override
+            public boolean isFixedCodePointWidth(CodePointSet set) {
+                return true;
+            }
+
+            @Override
+            public StringBufferUTF16 createStringBuffer(int capacity) {
+                return new StringBufferUTF16(capacity);
+            }
+
+            @Override
+            public LoopOptimizationNode extractLoopOptNode(CodePointSet cps) {
+                return new LoopOptIndexOfAnyCharNode(cps.inverseToCharArray(this));
+            }
+
+            @Override
+            public int getNumberOfDecodingSteps() {
+                return 1;
+            }
+
+            @Override
+            public void createMatcher(Builder matchersBuilder, int i, CodePointSet cps, CompilationBuffer compilationBuffer) {
+                matchersBuilder.getBuffer(0).set(i, CharMatchers.createMatcher(cps, compilationBuffer));
+            }
+
+            @Override
+            public Matchers toMatchers(Builder matchersBuilder) {
+                return new Matchers.SimpleMatchers(matchersBuilder.materialize(0), matchersBuilder.getNoMatchSuccessor());
             }
         }
     }

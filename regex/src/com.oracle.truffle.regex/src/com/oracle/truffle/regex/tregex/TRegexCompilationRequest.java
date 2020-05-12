@@ -47,7 +47,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexExecRootNode;
-import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -76,8 +75,6 @@ import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTLaTexExportVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.DFAExport;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.Loggers;
@@ -96,8 +93,6 @@ public final class TRegexCompilationRequest {
     private final TRegexCompiler tRegexCompiler;
 
     private final RegexSource source;
-    private final RegexFlags flags;
-    private final Encoding encoding;
     private RegexAST ast = null;
     private PureNFAMap pureNFA = null;
     private NFA nfa = null;
@@ -111,19 +106,15 @@ public final class TRegexCompilationRequest {
     TRegexCompilationRequest(TRegexCompiler tRegexCompiler, RegexSource source) {
         this.tRegexCompiler = tRegexCompiler;
         this.source = source;
-        this.flags = RegexFlags.parseFlags(source.getFlags());
-        this.encoding = flags.isUnicode() && !tRegexCompiler.getOptions().isUTF16ExplodeAstralSymbols() ? Encodings.UTF_16 : Encodings.UTF_16_RAW;
-        this.compilationBuffer = new CompilationBuffer(encoding);
+        this.compilationBuffer = new CompilationBuffer(source.getEncoding());
     }
 
     TRegexCompilationRequest(TRegexCompiler tRegexCompiler, NFA nfa) {
         this.tRegexCompiler = tRegexCompiler;
         this.source = nfa.getAst().getSource();
-        this.flags = nfa.getAst().getFlags();
-        this.encoding = nfa.getAst().getEncoding();
         this.ast = nfa.getAst();
         this.nfa = nfa;
-        this.compilationBuffer = new CompilationBuffer(encoding);
+        this.compilationBuffer = new CompilationBuffer(nfa.getAst().getEncoding());
     }
 
     public TRegexExecRootNode getRoot() {
@@ -274,7 +265,7 @@ public final class TRegexCompilationRequest {
     }
 
     private RegexParser createParser() {
-        return new RegexParser(source, flags, encoding, tRegexCompiler.getOptions(), compilationBuffer);
+        return new RegexParser(source, tRegexCompiler.getOptions(), compilationBuffer);
     }
 
     private void createNFA() {

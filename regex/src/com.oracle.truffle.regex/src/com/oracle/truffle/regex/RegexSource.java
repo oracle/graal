@@ -42,6 +42,7 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -50,26 +51,28 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 public final class RegexSource implements JsonConvertible {
 
     private final String pattern;
-    private final String flags;
+    private final RegexFlags flags;
+    private final Encoding encoding;
     private Source source;
     private boolean hashComputed = false;
     private int cachedHash;
 
-    public RegexSource(String pattern, String flags) {
+    public RegexSource(String pattern, RegexFlags flags, Encoding encoding) {
         this.pattern = pattern;
         this.flags = flags;
-    }
-
-    public RegexSource(String pattern) {
-        this(pattern, "");
+        this.encoding = encoding;
     }
 
     public String getPattern() {
         return pattern;
     }
 
-    public String getFlags() {
+    public RegexFlags getFlags() {
         return flags;
+    }
+
+    public Encoding getEncoding() {
+        return encoding;
     }
 
     public Source getSource() {
@@ -87,6 +90,7 @@ public final class RegexSource implements JsonConvertible {
             cachedHash = 1;
             cachedHash = prime * cachedHash + pattern.hashCode();
             cachedHash = prime * cachedHash + flags.hashCode();
+            cachedHash = prime * cachedHash + encoding.hashCode();
             hashComputed = true;
         }
         return cachedHash;
@@ -96,7 +100,8 @@ public final class RegexSource implements JsonConvertible {
     public boolean equals(Object obj) {
         return this == obj || obj instanceof RegexSource &&
                         pattern.equals(((RegexSource) obj).pattern) &&
-                        flags.equals(((RegexSource) obj).flags);
+                        flags.equals(((RegexSource) obj).flags) &&
+                        encoding.equals(((RegexSource) obj).encoding);
     }
 
     @Override
@@ -120,7 +125,7 @@ public final class RegexSource implements JsonConvertible {
                 i++;
             }
         }
-        if (!flags.isEmpty()) {
+        if (!flags.isNone()) {
             sb.append('_').append(flags);
         }
         return sb.toString();

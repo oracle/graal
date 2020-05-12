@@ -41,16 +41,27 @@
 package com.oracle.truffle.regex.tregex.util;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class Exceptions {
 
     public static RuntimeException shouldNotReachHere() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return new IllegalStateException();
+        return illegalStateException();
     }
 
     public static RuntimeException shouldNotReachHere(String msg) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
+        return illegalStateException(msg);
+    }
+
+    @TruffleBoundary
+    private static RuntimeException illegalStateException() {
+        return new IllegalStateException();
+    }
+
+    @TruffleBoundary
+    private static IllegalStateException illegalStateException(String msg) {
         return new IllegalStateException(msg);
     }
 

@@ -55,6 +55,8 @@ import com.oracle.truffle.regex.runtime.nodes.ToStringNode;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
@@ -97,11 +99,10 @@ public class RegexEngine extends AbstractConstantKeysObject {
             flavorProcessor.validate();
             regexObject = new RegexObject(compiler, regexSource, flavorProcessor.getFlags(), flavorProcessor.getNumberOfCaptureGroups(), flavorProcessor.getNamedCaptureGroups());
         } else {
-            RegexFlags flags = RegexFlags.parseFlags(regexSource.getFlags());
-            RegexValidator validator = new RegexValidator(regexSource, flags, options);
+            RegexValidator validator = new RegexValidator(regexSource, options);
             validator.validate();
             options.getFeatureSet().checkSupport(regexSource, validator.getFeatures());
-            regexObject = new RegexObject(compiler, regexSource, flags, validator.getNumberOfCaptureGroups(), validator.getNamedCaptureGroups());
+            regexObject = new RegexObject(compiler, regexSource, regexSource.getFlags(), validator.getNumberOfCaptureGroups(), validator.getNamedCaptureGroups());
         }
         if (options.isRegressionTestMode()) {
             // Force the compilation of the RegExp.
@@ -119,7 +120,7 @@ public class RegexEngine extends AbstractConstantKeysObject {
     public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
             case PROP_VALIDATE:
-                return ValidateMethod.getInstance();
+                return new ValidateMethod(this);
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);
@@ -134,8 +135,9 @@ public class RegexEngine extends AbstractConstantKeysObject {
     @ExportMessage
     Object execute(Object[] args,
                     @Shared("patternToStringNode") @Cached ToStringNode patternToStringNode,
-                    @Shared("flagsToStringNode") @Cached ToStringNode flagsToStringNode) throws ArityException, UnsupportedTypeException {
-        return compile(argsToRegexSource(args, patternToStringNode, flagsToStringNode));
+                    @Shared("flagsToStringNode") @Cached ToStringNode flagsToStringNode,
+                    @Shared("encodingToStringNode") @Cached ToStringNode encodingToStringNode) throws ArityException, UnsupportedTypeException {
+        return compile(argsToRegexSource(args, patternToStringNode, flagsToStringNode, encodingToStringNode));
     }
 
     @SuppressWarnings("static-method")
@@ -149,25 +151,23 @@ public class RegexEngine extends AbstractConstantKeysObject {
     Object invokeMember(String member, Object[] args,
                     @Shared("isValidatePropNode") @Cached StringEqualsNode isValidatePropNode,
                     @Shared("patternToStringNode") @Cached ToStringNode patternToStringNode,
-                    @Shared("flagsToStringNode") @Cached ToStringNode flagsToStringNode) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
+                    @Shared("flagsToStringNode") @Cached ToStringNode flagsToStringNode,
+                    @Shared("encodingToStringNode") @Cached ToStringNode encodingToStringNode) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
         if (!isValidatePropNode.execute(member, PROP_VALIDATE)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnknownIdentifierException.create(member);
         }
-        RegexLanguage.validateRegex(argsToRegexSource(args, patternToStringNode, flagsToStringNode));
+        RegexValidator.validate(argsToRegexSource(args, patternToStringNode, flagsToStringNode, encodingToStringNode));
         return true;
     }
 
     @ExportLibrary(InteropLibrary.class)
     public static final class ValidateMethod extends AbstractRegexObject {
 
-        private static final ValidateMethod INSTANCE = new ValidateMethod();
+        private final RegexEngine engine;
 
-        private ValidateMethod() {
-        }
-
-        public static ValidateMethod getInstance() {
-            return INSTANCE;
+        private ValidateMethod(RegexEngine engine) {
+            this.engine = engine;
         }
 
         @SuppressWarnings("static-method")
@@ -180,19 +180,28 @@ public class RegexEngine extends AbstractConstantKeysObject {
         @ExportMessage
         Object execute(Object[] args,
                         @Cached ToStringNode patternToStringNode,
-                        @Cached ToStringNode flagsToStringNode) throws ArityException, UnsupportedTypeException {
-            RegexLanguage.validateRegex(argsToRegexSource(args, patternToStringNode, flagsToStringNode));
+                        @Cached ToStringNode flagsToStringNode,
+                        @Cached ToStringNode encodingToStringNode) throws ArityException, UnsupportedTypeException {
+            RegexValidator.validate(engine.argsToRegexSource(args, patternToStringNode, flagsToStringNode, encodingToStringNode));
             return true;
         }
     }
 
-    private static RegexSource argsToRegexSource(Object[] args, ToStringNode patternToStringNode, ToStringNode flagsToStringNode) throws ArityException, UnsupportedTypeException {
-        if (!(args.length == 1 || args.length == 2)) {
+    private RegexSource argsToRegexSource(Object[] args, ToStringNode patternToStringNode, ToStringNode flagsToStringNode, ToStringNode encodingToStringNode)
+                    throws ArityException, UnsupportedTypeException {
+        if (args.length == 0 || args.length > 3) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw ArityException.create(2, args.length);
+            throw ArityException.create(3, args.length);
         }
-        String pattern = patternToStringNode.execute(args[0]);
-        String flags = args.length == 2 ? flagsToStringNode.execute(args[1]) : "";
-        return new RegexSource(pattern, flags);
+        String patternStr = patternToStringNode.execute(args[0]);
+        String flagsStr = args.length >= 2 ? flagsToStringNode.execute(args[1]) : "";
+        RegexFlags flags = RegexFlags.parseFlags(flagsStr);
+        Encoding encoding;
+        if (args.length == 3) {
+            encoding = Encodings.getEncoding(encodingToStringNode.execute(args[2]));
+        } else {
+            encoding = flags.isUnicode() && !options.isUTF16ExplodeAstralSymbols() ? Encodings.UTF_16 : Encodings.UTF_16_RAW;
+        }
+        return new RegexSource(patternStr, flags, encoding);
     }
 }

@@ -50,7 +50,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 
 /**
  * Truffle Regular Expression Language
@@ -98,14 +97,6 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     public final RegexEngineBuilder engineBuilder = new RegexEngineBuilder(this);
 
     private final CallTarget getEngineBuilderCT = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(engineBuilder));
-
-    public static void validateRegex(String pattern, String flags) throws RegexSyntaxException {
-        RegexValidator.validate(new RegexSource(pattern, flags));
-    }
-
-    public static void validateRegex(RegexSource source) throws RegexSyntaxException {
-        RegexValidator.validate(source);
-    }
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {

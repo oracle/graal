@@ -79,7 +79,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntries
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public final class RegexParser {
 
@@ -137,12 +136,12 @@ public final class RegexParser {
     private final CompilationBuffer compilationBuffer;
 
     @TruffleBoundary
-    public RegexParser(RegexSource source, RegexFlags flags, Encoding encoding, RegexOptions options, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
+    public RegexParser(RegexSource source, RegexOptions options, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.source = source;
-        this.flags = flags;
+        this.flags = source.getFlags();
         this.options = options;
-        this.lexer = new RegexLexer(source, flags, encoding, options);
-        this.ast = new RegexAST(source, flags, options, encoding);
+        this.lexer = new RegexLexer(source, options);
+        this.ast = new RegexAST(source, flags, options);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
         this.copyVisitor = new CopyVisitor(ast);
@@ -152,7 +151,7 @@ public final class RegexParser {
     }
 
     private static Group parseRootLess(String pattern) throws RegexSyntaxException {
-        return new RegexParser(new RegexSource(pattern), RegexFlags.DEFAULT, Encodings.UTF_16_RAW, RegexOptions.DEFAULT, new CompilationBuffer(Encodings.UTF_16_RAW)).parse(false);
+        return new RegexParser(new RegexSource(pattern, RegexFlags.DEFAULT, Encodings.UTF_16_RAW), RegexOptions.DEFAULT, new CompilationBuffer(Encodings.UTF_16_RAW)).parse(false);
     }
 
     @TruffleBoundary
