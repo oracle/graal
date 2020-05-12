@@ -27,8 +27,6 @@ package org.graalvm.libgraal;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.IsolateThread;
-
 /**
  * Scope for calling CEntryPoints in libgraal. {@linkplain #LibGraalScope() Opening} a scope ensures
  * the current thread is attached to libgraal and {@linkplain #close() closing} the outer most scope
@@ -181,7 +179,7 @@ public final class LibGraalScope implements AutoCloseable {
     /**
      * Attaches the current thread to the isolate at {@code isolateAddress}.
      *
-     * @return the address of the attached {@link IsolateThread}
+     * @return the address of the attached IsolateThread
      */
     // Implementation:
     // com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.attachThreadTo
