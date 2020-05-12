@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,6 @@ package org.graalvm.libgraal;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
-
-import org.graalvm.nativeimage.IsolateThread;
 
 /**
  * Scope for calling CEntryPoints in libgraal. {@linkplain #LibGraalScope() Opening} a scope ensures
@@ -181,7 +179,7 @@ public final class LibGraalScope implements AutoCloseable {
     /**
      * Attaches the current thread to the isolate at {@code isolateAddress}.
      *
-     * @return the address of the attached {@link IsolateThread}
+     * @return the address of the attached IsolateThread
      */
     // Implementation:
     // com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.attachThreadTo
