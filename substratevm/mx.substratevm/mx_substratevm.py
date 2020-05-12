@@ -32,6 +32,7 @@ import os
 import time
 import re
 import tempfile
+import json
 from glob import glob
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
@@ -53,6 +54,7 @@ from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
 from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets  # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
+from mx_urlrewrites import rewriteurl
 
 import sys
 
@@ -119,6 +121,9 @@ def svmbuild_dir(suite=None):
     if not suite:
         suite = svm_suite()
     return join(suite.dir, 'svmbuild')
+
+def is_musl_supported():
+    return mx.is_linux() and mx.get_arch() == "amd64" and mx.get_jdk(tag='default').javaCompliance == '11'
 
 
 class GraalVMConfig(object):
@@ -252,7 +257,8 @@ GraalTags = Tags([
     'build',
     'benchmarktest',
     'relocations',
-    "nativeimagehelp"
+    "nativeimagehelp",
+    'muslcbuild'
 ])
 
 
@@ -264,6 +270,89 @@ def vm_executable_path(executable, config):
     if mx.get_os() == 'windows':
         executable += '.cmd'  # links are `.cmd` on windows
     return join(_vm_home(config), 'bin', executable)
+
+
+def get_muslc_compilation_arg(bundle_url=None, bundle_sha1=None, bundle_download_dir=None):
+    """
+    Forms an argument that can be passed to native-image to link the resulting image against musl.
+    This function ensures that the necessary bundle exists, downloading it if missing.
+    :return An argument that can be passed to native-image:
+    """
+    if bundle_url is None:
+        bundle_url = "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jdk-static-libs/musl-zlib-libstdcpp-static.tar.gz"
+        bundle_sha1 = "3d893a0ceea4b3c4eacb02445c30a771b50b8acb"
+    elif bundle_sha1 is None:
+        mx.abort("When passing a musl bundle url, you must also pass in the bundle sha1.")
+
+    if bundle_download_dir is None:
+        bundle_download_dir = join(svmbuild_dir(), "musl-static-libs-bundle")
+
+    bundle_download_dir = os.path.abspath(bundle_download_dir)
+    bundle_name = bundle_url.rsplit('/', 1)[-1]
+    bundle_url = rewriteurl(bundle_url)
+    bundle_root = join(bundle_download_dir, "bundle")
+
+    if not exists(bundle_root):
+        with mx.TempDir() as temp_dir:
+            bundle_download_location = join(temp_dir, bundle_name)
+            mx.download_file_with_sha1(bundle_name, bundle_download_location, [bundle_url], bundle_sha1, bundle_download_location + ".sha1", True, True, sources=False)
+            extractor = mx.TarExtractor(bundle_download_location)
+            extractor.extract(join(temp_dir))
+            mx.rmtree(bundle_download_location)
+            mx.rmtree(bundle_download_location + ".sha1")
+            bundle_extracted_root = join(temp_dir, "bundle")
+            if exists(bundle_extracted_root):
+                mx.atomic_file_move_with_fallback(bundle_extracted_root, bundle_root)
+            else:
+                mx.abort("Musl libc, zlib and libstdc++ bundle layout requires a `bundle` folder in the top level. Please update the bundle archive accordingly.")
+
+    native_image_muslc_flag = "-H:UseMuslC="
+    return native_image_muslc_flag + os.path.abspath(bundle_root)
+
+
+def check_musl_jdk_version_consistent():
+    common_file = join(suite.vc_dir, "common.json")
+    if not exists(common_file):
+        mx.abort("Failed to find the common.json file. Has the file location changed? Expected path: " + common_file)
+    with open(common_file) as f:
+        common_file_parsed = json.load(f)
+    jdks = common_file_parsed.get("jdks")
+    if jdks is None:
+        mx.abort("Failed to get JDK versions from the common.json file. Has the format changed? Expected 'jdk' property in the topmost level.")
+
+    # The only place we can obtain the exact musl library version is from the library URL.
+    # We fetch whatever libraries are available in the primary suite and search for the musl one.
+    # This also avoids code duplication for EE.
+    musl_library = None
+    for library in mx.primary_suite().libs:
+        if library.name.endswith('LIBMUSL_STATIC_LIBS'):
+            musl_library = library
+            break
+    if musl_library is None:
+        mx.abort("Failed to find the musl JDK11 libraries in the primary suite. Has the musl JDK library name changed?")
+    musl_library_file = musl_library.urls[0].rsplit('/', 1)[-1]
+    target_jdk_distribution = "labsjdk-ce-11" if musl_library_file.startswith("labsjdk-ce") else "labsjdk-ee-11"
+    target_version = re.sub("labsjdk-(.*)-linux-(.*)", r"\1", musl_library_file)
+
+    common_jdk = jdks.get(target_jdk_distribution)
+    if common_jdk is None:
+        mx.abort("Failed to fetch the detected labsjdk distribution: " + target_jdk_distribution + ". Has common.json layout changed?")
+    common_jdk_version = common_jdk.get('version')
+    if common_jdk_version is None:
+        mx.abort("Failed to fetch the version of the detected labsjdk ddistribution. Has common.json layout changed?")
+    if common_jdk_version != target_version:
+        mx.abort("Musl and common.json JDK11 version mismatch:" + os.linesep +
+                 " - common.json JDK version for " + target_jdk_distribution + " is: " + common_jdk_version + os.linesep +
+                 " - Musl JDK version is: " + target_version + os.linesep +
+                 "If you are upgrading to a new version of the JDK11, please update the JDK11 musl library: " + musl_library.name +
+                 " located in " + mx.primary_suite().dir + "/mx." + mx.primary_suite().name + "/suite.py")
+    mx.log('Musl and common.json JDK11 version consistency check passed.')
+
+
+def run_musl_basic_tests():
+    if is_musl_supported():
+        check_musl_jdk_version_consistent()
+        helloworld(['--output-path', svmbuild_dir(), '--static', get_muslc_compilation_arg()])
 
 
 @contextmanager
@@ -430,6 +519,10 @@ def svm_gate_body(args, tasks):
                         remove_tree(reloc_test_path)
                 else:
                     mx.log('Skipping relocations test. Reason: Only tested on Linux.')
+
+            with Task('Musl static hello world and JVMCI version check', tasks, tags=[GraalTags.muslcbuild]) as t:
+                if t:
+                    run_musl_basic_tests()
 
     with Task('Check mx native-image --help', tasks, tags=[GraalTags.nativeimagehelp]) as t:
         if t:
@@ -1006,9 +1099,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
 ))
 
-is_musl_building_supported = mx.is_linux() and mx.get_arch() == "amd64" and mx.get_jdk(tag='default').javaCompliance == '11'
-
-if is_musl_building_supported:
+if is_musl_supported():
     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmStaticLib(
         suite=suite,
         name='JDK11 static libraries compiled with muslc',
@@ -1021,13 +1112,8 @@ if is_musl_building_supported:
         priority=5
     ))
 
-
-@mx.command(suite_name=suite.name, command_name='helloworld', usage_msg='[options]')
-def helloworld(args, config=None):
-    """
-    builds a Hello, World! native image.
-    """
-    parser = ArgumentParser(prog='mx helloworld')
+def run_helloworld_command(args, config, command_name):
+    parser = ArgumentParser(prog='mx ' + command_name)
     all_args = ['--output-path', '--javac-command', '--build-only']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
@@ -1038,9 +1124,10 @@ def helloworld(args, config=None):
     javac_command = unmask(parsed.javac_command.split())
     output_path = unmask(parsed.output_path)[0]
     build_only = parsed.build_only
+    image_args = unmask(parsed.image_args)
     native_image_context_run(
         lambda native_image, a:
-            _helloworld(native_image, javac_command, output_path, build_only, a), unmask(parsed.image_args),
+        _helloworld(native_image, javac_command, output_path, build_only, a), unmask(image_args),
         config=config,
         build_if_missing=True
     )
@@ -1066,6 +1153,15 @@ def debuginfotest(args, config=None):
         config=config,
         build_if_missing=True
     )
+
+
+@mx.command(suite_name=suite.name, command_name='helloworld', usage_msg='[options]')
+def helloworld(args, config=None):
+    """
+    builds a Hello, World! native image.
+    """
+    run_helloworld_command(args, config, "helloworld")
+
 
 @mx.command(suite.name, 'cinterfacetutorial', 'Runs the ')
 def cinterfacetutorial(args):
@@ -1620,7 +1716,7 @@ def maven_plugin_test(args):
 @mx.command(suite, 'javac-image', '[image-options]')
 def javac_image(args):
     """builds a javac image"""
-    parser = ArgumentParser(prog='mx helloworld')
+    parser = ArgumentParser(prog='mx javac-image')
     all_args = ['--output-path']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
@@ -1632,3 +1728,25 @@ def javac_image(args):
             _javac_image(native_image, output_path, command_args), unmask(parsed.image_args),
         build_if_missing=True
     )
+
+if is_musl_supported():
+    doc_string = "Downloads a muslc static library bundle and prints the native-image arguments required to use it."
+    @mx.command(suite.name, command_name='muslc-ni-args', usage_msg='[options]', doc_function=lambda: doc_string)
+    def mx_muslc_native_image_args(args):
+        parser = ArgumentParser(prog='mx muslc-ni-args', description=doc_string)
+        parser.add_argument('--bundle-url', action='store', required=False, help='Bundle archive URL location.')
+        parser.add_argument('--bundle-sha1', action='store', required=False, help='Bundle archive SHA1 signature.')
+        parser.add_argument('bundle_download_location', action='store', help='Bundle download location.')
+        parsed_args = parser.parse_args(args)
+        if parsed_args.bundle_url is None and parsed_args.bundle_sha1 is not None:
+            mx.abort("When using --bundle-url, you must also supply the bundle SHA1 signature.")
+        muslc_argument = get_muslc_compilation_arg(parsed_args.bundle_url, parsed_args.bundle_sha1, parsed_args.bundle_download_location)
+        print("Add the following to the native-image command line: --static " + muslc_argument)
+
+    doc_string = "Runs a musl based Hello World static native-image with custom build arguments."
+    @mx.command(suite.name, command_name='muslhelloworld', usage_msg='[options]', doc_function=lambda: doc_string)
+    def musl_helloworld(args, config=None):
+        musl_arg = get_muslc_compilation_arg()
+        args.append("--static")
+        args.append(musl_arg)
+        run_helloworld_command(args, config, 'muslhelloworld')
