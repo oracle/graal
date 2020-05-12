@@ -138,13 +138,13 @@ final class InstrumentationHandler {
     private final Collection<AllocationReporter> allocationReporters = new WeakAsyncList<>(16);
 
     private volatile boolean hasLoadOrExecutionBinding = false;
-    private final Collection<EventBinding.Source<?>> executionBindings = new EventBindingList<>(8);
+    private final Collection<EventBinding.Source<?>> executionBindings = new EventBindingList<>(8, true);
     private final ReadWriteLock executionBindingsLock = new ReentrantReadWriteLock();
-    private final Collection<EventBinding.Source<?>> sourceSectionBindings = new EventBindingList<>(8);
+    private final Collection<EventBinding.Source<?>> sourceSectionBindings = new EventBindingList<>(8, true);
     private final ReadWriteLock sourceSectionBindingsLock = new ReentrantReadWriteLock();
-    private final Collection<EventBinding.Source<?>> sourceLoadedBindings = new EventBindingList<>(8);
+    private final Collection<EventBinding.Source<?>> sourceLoadedBindings = new EventBindingList<>(8, true);
     private final ReadWriteLock sourceLoadedBindingsLock = new ReentrantReadWriteLock();
-    private final Collection<EventBinding.Source<?>> sourceExecutedBindings = new EventBindingList<>(8);
+    private final Collection<EventBinding.Source<?>> sourceExecutedBindings = new EventBindingList<>(8, true);
     private final ReadWriteLock sourceExecutedBindingsLock = new ReentrantReadWriteLock();
 
     private final Collection<EventBinding<? extends OutputStream>> outputStdBindings = new EventBindingList<>(1);
@@ -1141,7 +1141,7 @@ final class InstrumentationHandler {
         private final Scope scope;
         protected final Collection<EventBinding.Source<?>> bindings;
         protected final ReadWriteLock bindingsLock;
-        protected List<EventBinding.Source<?>> bindingsAtVisitorConstructionTime;
+        protected Collection<EventBinding.Source<?>> bindingsAtVisitorConstructionTime;
         /**
          * True if this operation contains only one binding. The reason for storing this in a
          * separate field is that the bindings collection is either a singleton list or an async
@@ -1180,20 +1180,38 @@ final class InstrumentationHandler {
             this.alwaysPerform = alwaysPerform;
         }
 
-        protected void copyBindings() {
-            Lock lock = bindingsLock.readLock();
-            lock.lock();
-            try {
-                bindingsAtVisitorConstructionTime = new ArrayList<>();
-                for (EventBinding.Source<?> binding : bindings) {
-                    bindingsAtVisitorConstructionTime.add(binding);
+        protected int captureCurrentBindings() {
+            int bindingsCount = 0;
+            if (singleBindingOperation) {
+                /*
+                 * Single binding operation has exactly one binding and that cannot go away, so
+                 * there is no reason for capturing the current state.
+                 */
+                bindingsAtVisitorConstructionTime = bindings;
+                bindingsCount = 1;
+            } else {
+                Lock lock = bindingsLock.readLock();
+                lock.lock();
+                try {
+                    for (EventBinding.Source<?> binding : bindings) {
+                        bindingsCount++;
+                        if (binding != null) {
+                            // no-op, just to avoid build warning
+                        }
+                    }
+                    if (bindingsCount == 0) {
+                        bindingsAtVisitorConstructionTime = Collections.emptyList();
+                        if (!bindings.isEmpty()) {
+                            bindings.clear();
+                        }
+                    } else {
+                        bindingsAtVisitorConstructionTime = ((EventBindingList<EventBinding.Source<?>>) bindings).getCurrentState();
+                    }
+                } finally {
+                    lock.unlock();
                 }
-                if (bindingsAtVisitorConstructionTime.isEmpty() && !bindings.isEmpty()) {
-                    bindings.clear();
-                }
-            } finally {
-                lock.unlock();
             }
+            return bindingsCount;
         }
 
         protected abstract void perform(EventBinding.Source<?> binding, Node node, SourceSection section, boolean executedRoot);
@@ -1210,7 +1228,7 @@ final class InstrumentationHandler {
 
         protected void preVisit(SourceSection rootSourceSection) {
             if (rootSourceSection != null) {
-                // no-op
+                // no-op, just to avoid build warning
             }
         }
 
@@ -1345,16 +1363,13 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void copyBindings() {
+        protected int captureCurrentBindings() {
+            int bindingsCount;
             Lock lock = bindingsLock.readLock();
             lock.lock();
             try {
-                bindingsAtVisitorConstructionTime = new ArrayList<>();
-                for (EventBinding.Source<?> binding : bindings) {
-                    bindingsAtVisitorConstructionTime.add(binding);
-                }
-                if (bindingsAtVisitorConstructionTime.isEmpty() && !bindings.isEmpty()) {
-                    bindings.clear();
+                bindingsCount = super.captureCurrentBindings();
+                if (bindingsCount == 0 && sourcesInitialized.get()) {
                     sources.clear();
                     sourcesList.clear();
                     sourcesInitialized.set(false);
@@ -1362,6 +1377,7 @@ final class InstrumentationHandler {
             } finally {
                 lock.unlock();
             }
+            return bindingsCount;
         }
 
         @Override
@@ -1597,7 +1613,7 @@ final class InstrumentationHandler {
             int singleBindingOperations = 0;
             int multiBindingOriginalTreeOperations = 0;
             for (VisitOperation operation : operations) {
-                operation.copyBindings();
+                operation.captureCurrentBindings();
                 /*
                  * If the operation is always performed no matter its bindings, it has no effect on
                  * whether we can or cannot do single binding optimzation.
@@ -2380,18 +2396,24 @@ final class InstrumentationHandler {
          * Size can be non volatile as it is not exposed or used for traversal.
          */
         private int nextInsertionIndex;
-        private final int initialCapacity;
+        protected final int initialCapacity;
+        private final boolean copyOnWrite;
 
         AbstractAsyncCollection(int initialCapacity) {
+            this(initialCapacity, false);
+        }
+
+        AbstractAsyncCollection(int initialCapacity, boolean copyOnWrite) {
             if (initialCapacity <= 0) {
                 throw new IllegalArgumentException("Invalid initial capacity " + initialCapacity);
             }
             this.values = new AtomicReferenceArray<>(initialCapacity);
             this.initialCapacity = initialCapacity;
+            this.copyOnWrite = copyOnWrite;
         }
 
         @Override
-        public synchronized void clear() {
+        public final synchronized void clear() {
             this.values = new AtomicReferenceArray<>(initialCapacity);
             nextInsertionIndex = 0;
         }
@@ -2403,7 +2425,7 @@ final class InstrumentationHandler {
                 // fail early
                 throw new NullPointerException();
             }
-            if (nextInsertionIndex >= values.length()) {
+            if (nextInsertionIndex >= values.length() || copyOnWrite) {
                 compact();
             }
             values.set(nextInsertionIndex++, wrappedElement);
@@ -2451,7 +2473,7 @@ final class InstrumentationHandler {
              * We ensure that the capacity after compaction is always twice as big as the number of
              * live elements. This can make the array grow or shrink as needed.
              */
-            AtomicReferenceArray<T> newValues = new AtomicReferenceArray<>(Math.max(liveElements * 2, 8));
+            AtomicReferenceArray<T> newValues = new AtomicReferenceArray<>(Math.max(liveElements * 2, initialCapacity));
             int index = 0;
             for (int i = 0; i < localValues.length(); i++) {
                 T ref = localValues.get(i);
@@ -2467,20 +2489,45 @@ final class InstrumentationHandler {
             this.values = newValues;
         }
 
-        /**
-         * Returns an iterator which can be traversed without a lock. The iterator that is
-         * constructed is not sequentially consistent. In other words, the user of the iterator may
-         * observe values that were added after the iterator was created.
-         */
-        @Override
-        public Iterator<R> iterator() {
+        ElementView getCurrentState() {
+            if (!copyOnWrite) {
+                throw new UnsupportedOperationException();
+            }
+            return new ElementView();
+        }
+
+        private class ElementView extends AbstractCollection<R> {
+            private final AtomicReferenceArray<T> values = AbstractAsyncCollection.this.values;
+
+            @Override
+            public boolean add(R r) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public Iterator<R> iterator() {
+                return constructIterator(values);
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return values.get(0) == null;
+            }
+
+            @Override
+            public int size() {
+                throw new UnsupportedOperationException();
+            }
+        }
+
+        private Iterator<R> constructIterator(final AtomicReferenceArray<T> iteratorValues) {
             return new Iterator<R>() {
 
                 /*
                  * We need to capture the values field in the iterator to have a consistent view on
                  * the data while iterating.
                  */
-                private final AtomicReferenceArray<T> values = AbstractAsyncCollection.this.values;
+                private final AtomicReferenceArray<T> values = iteratorValues;
                 private int index;
                 private R queuedNext;
 
@@ -2532,6 +2579,16 @@ final class InstrumentationHandler {
             };
         }
 
+        /**
+         * Returns an iterator which can be traversed without a lock. The iterator that is
+         * constructed is not sequentially consistent. In other words, the user of the iterator may
+         * observe values that were added after the iterator was created.
+         */
+        @Override
+        public Iterator<R> iterator() {
+            return constructIterator(values);
+        }
+
     }
 
     /**
@@ -2541,6 +2598,10 @@ final class InstrumentationHandler {
 
         EventBindingList(int initialCapacity) {
             super(initialCapacity);
+        }
+
+        EventBindingList(int initialCapacity, boolean copyOnWrite) {
+            super(initialCapacity, copyOnWrite);
         }
 
         @Override
@@ -2555,7 +2616,6 @@ final class InstrumentationHandler {
             }
             return element;
         }
-
     }
 
     /**
@@ -2576,6 +2636,5 @@ final class InstrumentationHandler {
         protected T unwrap(WeakReference<T> element) {
             return element.get();
         }
-
     }
 }
