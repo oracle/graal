@@ -192,6 +192,15 @@ public final class InspectorDebugger extends DebuggerDomain {
     }
 
     @Override
+    protected void notifyDisabled() {
+        // We might call startSession() in the constructor, without doEnable().
+        // That means that doDisable() might not have been called.
+        if (debuggerSession != null) {
+            doDisable();
+        }
+    }
+
+    @Override
     public void setBlackboxPatterns(String[] patterns) {
         final Pattern[] compiledPatterns = new Pattern[patterns.length];
         for (int i = 0; i < patterns.length; i++) {

@@ -320,7 +320,8 @@ public final class InspectorExecutionContext {
         this.roh = null;
         assert scriptsHandler == null;
         synchronized (runPermission) {
-            runPermission[0] = false;
+            runPermission[0] = true;
+            runPermission.notifyAll();
         }
     }
 
