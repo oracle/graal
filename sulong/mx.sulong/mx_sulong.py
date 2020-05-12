@@ -164,6 +164,16 @@ def _sulong_gate_sulongsuite_unittest(title, tasks, args, tags=None, testClasses
     test_suite = 'SULONG_TEST_SUITES'
     _sulong_gate_unittest(title, test_suite, tasks, args, tags=tags, testClasses=testClasses)
 
+
+class SulongGateEnv(object):
+    """"Sets a marker environment variable."""
+    def __enter__(self):
+        os.environ['_MX_SULONG_GATE'] = "1"
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        del os.environ['_MX_SULONG_GATE']
+
+
 def _sulong_gate_runner(args, tasks):
     with Task('CheckCopyright', tasks, tags=['style']) as t:
         if t:
@@ -199,8 +209,9 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'])
     with Task('TestToolchain', tasks, tags=['toolchain', 'sulongMisc', 'sulongCoverage']) as t:
         if t:
-            mx.command_function('clean')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
-            mx.command_function('build')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
+            with SulongGateEnv():
+                mx.command_function('clean')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
+                mx.command_function('build')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
 
 
 add_gate_runner(_suite, _sulong_gate_runner)

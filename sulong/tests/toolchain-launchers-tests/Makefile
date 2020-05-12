@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2019, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -31,6 +31,8 @@ SHELL=/bin/bash -o pipefail
 
 QUIETLY$(MX_VERBOSE)  = @
 
+ifdef _MX_SULONG_GATE
+# only "run" tests if called via mx gate
 TARGETS= \
 run-polyglot_biginteger.out-lli \
 run-polyglot_biginteger.comp-and-link.out-lli \
@@ -44,6 +46,9 @@ print-help \
 print-graalvm-help \
 print-graalvm-cmd \
 fembed-bitcode
+else
+TARGETS=
+endif
 
 .SECONDARY:
 .PHONY: default clean print-help print-graalvm-help
