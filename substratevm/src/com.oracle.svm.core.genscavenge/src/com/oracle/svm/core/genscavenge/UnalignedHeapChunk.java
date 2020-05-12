@@ -157,7 +157,7 @@ public final class UnalignedHeapChunk {
         Pointer cardTableStart = getCardTableStart(chunk);
         UnsignedWord objectIndex = getObjectIndex();
         if (verifyOnly) {
-            AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, objectIndex), "card must be dirty", "", "");
+            AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, objectIndex), "card must be dirty", "", "", 0L, 0L);
         } else {
             CardTable.dirtyEntryAtIndex(cardTableStart, objectIndex);
         }

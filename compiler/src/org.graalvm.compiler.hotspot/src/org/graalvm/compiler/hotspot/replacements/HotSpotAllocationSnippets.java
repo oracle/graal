@@ -66,7 +66,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PAT
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
-import static org.graalvm.compiler.replacements.ReplacementsUtil.runtimeAssert;
+import static org.graalvm.compiler.replacements.ReplacementsUtil.dynamicAssert;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.staticAssert;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static org.graalvm.compiler.replacements.nodes.CStringConstant.cstring;
@@ -290,7 +290,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         if (knownElementKind == JavaKind.Illegal) {
             layoutHelper = readLayoutHelper(nonNullKlass);
         } else {
-            runtimeAssert(knownLayoutHelper == readLayoutHelper(nonNullKlass), "layout mismatch");
+            dynamicAssert(knownLayoutHelper == readLayoutHelper(nonNullKlass), "layout mismatch");
             layoutHelper = knownLayoutHelper;
         }
         //@formatter:off
