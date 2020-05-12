@@ -59,6 +59,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
@@ -79,12 +80,14 @@ public class AnalysisUniverse implements Universe {
     private static final int ESTIMATED_FIELDS_PER_TYPE = 3;
     public static final int ESTIMATED_NUMBER_OF_TYPES = 2000;
     static final int ESTIMATED_METHODS_PER_TYPE = 15;
+    static final int ESTIMATED_EMBEDDED_ROOTS = 500;
 
     private final ConcurrentMap<ResolvedJavaType, Object> types = new ConcurrentHashMap<>(ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentMap<ResolvedJavaField, AnalysisField> fields = new ConcurrentHashMap<>(ESTIMATED_FIELDS_PER_TYPE * ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentMap<ResolvedJavaMethod, AnalysisMethod> methods = new ConcurrentHashMap<>(ESTIMATED_METHODS_PER_TYPE * ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentMap<Signature, WrappedSignature> signatures = new ConcurrentHashMap<>(ESTIMATED_METHODS_PER_TYPE * ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentMap<ConstantPool, WrappedConstantPool> constantPools = new ConcurrentHashMap<>(ESTIMATED_NUMBER_OF_TYPES);
+    private final ConcurrentHashMap<JavaConstant, BytecodePosition> embeddedRoots = new ConcurrentHashMap<>(ESTIMATED_EMBEDDED_ROOTS);
 
     private boolean sealed;
 
@@ -488,6 +491,17 @@ public class AnalysisUniverse implements Universe {
 
     public Collection<AnalysisMethod> getMethods() {
         return methods.values();
+    }
+
+    public Map<JavaConstant, BytecodePosition> getEmbeddedRoots() {
+        return embeddedRoots;
+    }
+
+    /**
+     * Register an embedded root, i.e., a JavaConstant embedded in a Graal graph via a ConstantNode.
+     */
+    public void registerEmbeddedRoot(JavaConstant root, BytecodePosition position) {
+        this.embeddedRoots.put(root, position);
     }
 
     public void registerObjectReplacer(Function<Object, Object> replacer) {
