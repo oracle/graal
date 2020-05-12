@@ -24,14 +24,12 @@
  */
 package org.graalvm.libgraal.jni.processor;
 
-import org.graalvm.libgraal.jni.annotation.JNIFromLibGraal;
-import org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
-
-import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
+import org.graalvm.libgraal.jni.annotation.JNIFromLibGraal;
+import org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id;
 
 /**
  * Processor for the {@link JNIFromLibGraal} annotation that generates code to push JNI arguments to
@@ -41,11 +39,10 @@ import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
  */
 @SupportedAnnotationTypes({"org.graalvm.libgraal.jni.annotation.JNIFromLibGraal",
                 "org.graalvm.libgraal.jni.annotation.JNIFromLibGraalRepeated"})
-public class JNIFromLibGraalProcessor extends AbstractFromLibGraalProcessor {
+public class JNIFromLibGraalProcessor extends AbstractFromLibGraalProcessor<Id> {
 
-    @Override
-    protected FromLibGraalId resolveId(String idName) {
-        return JNIFromLibGraal.Id.valueOf(idName);
+    public JNIFromLibGraalProcessor() {
+        super(Id.class);
     }
 
     @Override

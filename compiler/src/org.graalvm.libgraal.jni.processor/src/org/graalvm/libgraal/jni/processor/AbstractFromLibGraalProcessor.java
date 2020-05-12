@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.annotation.processing.Filer;
@@ -59,12 +60,14 @@ import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
  * incorrect arguments are pushed for a JNI call. Given the low level nature of
  * {@code org.graalvm.nativeimage.StackValue}, it's very hard to use runtime assertion checking.
  */
-public abstract class AbstractFromLibGraalProcessor extends AbstractProcessor {
+public abstract class AbstractFromLibGraalProcessor<T extends Enum<T> & FromLibGraalId> extends AbstractProcessor {
 
-    /**
-     * Resolves the string id into the {@link FromLibGraalId} instance.
-     */
-    protected abstract FromLibGraalId resolveId(String idName);
+    private final Class<T> idClass;
+
+    protected AbstractFromLibGraalProcessor(Class<T> idClass) {
+        Objects.requireNonNull(idClass);
+        this.idClass = idClass;
+    }
 
     /**
      * Returns a code snippet to access a {@code FromLibGraalUtil} instance.
@@ -140,7 +143,7 @@ public abstract class AbstractFromLibGraalProcessor extends AbstractProcessor {
         for (AnnotationMirror a : annotations) {
             VariableElement annotationValue = getAnnotationValue(a, "value", VariableElement.class);
             String idName = annotationValue.getSimpleName().toString();
-            FromLibGraalId id = resolveId(idName);
+            FromLibGraalId id = Enum.valueOf(idClass, idName);
             info.ids.add(id);
         }
     }
@@ -214,22 +217,24 @@ public abstract class AbstractFromLibGraalProcessor extends AbstractProcessor {
             out.printf("final class %s {%n", genClassName);
             for (FromLibGraalId id : info.ids) {
                 int p = 0;
+                String idName = id.getName();
                 Class<?> rt = id.getReturnType();
                 out.println("");
                 if (!rt.isPrimitive()) {
                     out.println("    @SuppressWarnings(\"unchecked\")");
-                    out.printf("    static <T extends JObject> T call%s(JNIEnv env", id.getName());
+                    out.printf("    static <T extends JObject> T call%s(JNIEnv env", idName);
                 } else {
-                    out.printf("    static %s call%s(JNIEnv env", toJNIType(rt, false), id.getName());
+                    out.printf("    static %s call%s(JNIEnv env", toJNIType(rt, false), idName);
                 }
-                for (Class<?> t : id.getParameterTypes()) {
+                Class<?>[] parameterTypes = id.getParameterTypes();
+                for (Class<?> t : parameterTypes) {
                     out.printf(", %s p%d", (t.isPrimitive() ? t.getName() : "JObject"), p);
                     p++;
                 }
                 out.println(") {");
-                out.printf("        JValue args = StackValue.get(%d, JValue.class);%n", id.getParameterTypes().length);
+                out.printf("        JValue args = StackValue.get(%d, JValue.class);%n", parameterTypes.length);
                 p = 0;
-                for (Class<?> t : id.getParameterTypes()) {
+                for (Class<?> t : parameterTypes) {
                     out.printf("        args.addressOf(%d).set%s(p%d);%n", p, toJNIType(t, true), p);
                     p++;
                 }
@@ -241,7 +246,7 @@ public abstract class AbstractFromLibGraalProcessor extends AbstractProcessor {
                 } else {
                     returnPrefix = "return ";
                 }
-                out.printf("        %s%s.call%s(env, %s, args);%n", returnPrefix, getFromLibGraalUtilInstanceAccess(), toJNIType(rt, true), id.getName());
+                out.printf("        %s%s.call%s(env, %s, args);%n", returnPrefix, getFromLibGraalUtilInstanceAccess(), toJNIType(rt, true), idName);
                 out.println("    }");
             }
             out.println("}");

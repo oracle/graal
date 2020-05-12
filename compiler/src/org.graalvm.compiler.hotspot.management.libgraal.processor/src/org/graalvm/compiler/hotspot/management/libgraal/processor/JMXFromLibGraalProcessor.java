@@ -24,16 +24,14 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal.processor;
 
-import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal;
-import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal.Id;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
-
-import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 import org.graalvm.libgraal.jni.processor.AbstractFromLibGraalProcessor;
+import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal;
+import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal.Id;
 
 /**
  * Processor for the {@link JMXFromLibGraal} annotation that generates code to push JNI arguments to
@@ -43,11 +41,10 @@ import org.graalvm.libgraal.jni.processor.AbstractFromLibGraalProcessor;
  */
 @SupportedAnnotationTypes({"org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal",
                 "org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraalRepeated"})
-public class JMXFromLibGraalProcessor extends AbstractFromLibGraalProcessor {
+public class JMXFromLibGraalProcessor extends AbstractFromLibGraalProcessor<Id> {
 
-    @Override
-    protected FromLibGraalId resolveId(String idName) {
-        return JMXFromLibGraal.Id.valueOf(idName);
+    public JMXFromLibGraalProcessor() {
+        super(Id.class);
     }
 
     @Override

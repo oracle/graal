@@ -31,17 +31,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
-
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
-import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan.Decision;
-import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 
 /**
@@ -67,59 +56,59 @@ public @interface TruffleFromLibGraal {
     // Please keep sorted
     enum Id implements FromLibGraalId {
         // @formatter:off
-        AsCompilableTruffleAST(CompilableTruffleAST.class, HotSpotTruffleCompilerRuntime.class, long.class),
-        AsJavaConstant(long.class, CompilableTruffleAST.class),
-        CallNodeHashCode(int.class, TruffleCallNode.class),
-        CancelInstalledTask(void.class, CompilableTruffleAST.class),
-        CompilableToString(String.class, CompilableTruffleAST.class),
-        ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, OptimizedAssumptionDependency.class),
-        CreateInliningPlan(TruffleInliningPlan.class, HotSpotTruffleCompilerRuntime.class, CompilableTruffleAST.class, TruffleCompilationTask.class),
+        AsCompilableTruffleAST(Object.class, Object.class, long.class),
+        AsJavaConstant(long.class, Object.class),
+        CallNodeHashCode(int.class, Object.class),
+        CancelInstalledTask(void.class, Object.class),
+        CompilableToString(String.class, Object.class),
+        ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class),
+        CreateInliningPlan(Object.class, Object.class, Object.class, Object.class),
         CreateStringSupplier(Supplier.class, long.class),
-        FindCallNode(TruffleCallNode.class, TruffleMetaAccessProvider.class, long.class),
-        FindDecision(TruffleInliningPlan.Decision.class, TruffleInliningPlan.class, long.class),
-        GetCallCount(int.class, TruffleCallNode.class),
-        GetCallNodes(TruffleCallNode[].class, CompilableTruffleAST.class),
-        GetCallTargetForCallNode(long.class, HotSpotTruffleCompilerRuntime.class, long.class),
-        GetCompilableCallCount(int.class, CompilableTruffleAST.class),
-        GetCompilableName(String.class, CompilableTruffleAST.class),
-        GetConstantFieldInfo(int.class, HotSpotTruffleCompilerRuntime.class, long.class, boolean.class, int.class),
-        GetCurrentCallTarget(CompilableTruffleAST.class, TruffleCallNode.class),
-        GetDescription(String.class, TruffleSourceLanguagePosition.class),
-        GetFailedSpeculationsAddress(long.class, CompilableTruffleAST.class),
-        GetFrameSlotKindTagForJavaKind(int.class, HotSpotTruffleCompilerRuntime.class, int.class),
-        GetFrameSlotKindTagsCount(int.class, HotSpotTruffleCompilerRuntime.class),
-        GetInlineKind(int.class, HotSpotTruffleCompilerRuntime.class, long.class, boolean.class),
-        GetJavaKindForFrameSlotKind(int.class, HotSpotTruffleCompilerRuntime.class, int.class),
-        GetKnownCallSiteCount(int.class, CompilableTruffleAST.class),
-        GetLanguage(String.class, TruffleSourceLanguagePosition.class),
-        GetLineNumber(int.class, TruffleSourceLanguagePosition.class),
-        GetLoopExplosionKind(int.class, HotSpotTruffleCompilerRuntime.class, long.class),
-        GetNodeRewritingAssumption(long.class, TruffleInliningPlan.Decision.class),
-        GetNodeRewritingAssumptionConstant(long.class, CompilableTruffleAST.class),
-        GetNonTrivialNodeCount(int.class, CompilableTruffleAST.class),
-        GetOffsetEnd(int.class, TruffleSourceLanguagePosition.class),
-        GetOffsetStart(int.class, TruffleSourceLanguagePosition.class),
-        GetPosition(TruffleSourceLanguagePosition.class, TruffleInliningPlan.class, long.class),
+        FindCallNode(Object.class, Object.class, long.class),
+        FindDecision(Object.class, Object.class, long.class),
+        GetCallCount(int.class, Object.class),
+        GetCallNodes(Object[].class, Object.class),
+        GetCallTargetForCallNode(long.class, Object.class, long.class),
+        GetCompilableCallCount(int.class, Object.class),
+        GetCompilableName(String.class, Object.class),
+        GetConstantFieldInfo(int.class, Object.class, long.class, boolean.class, int.class),
+        GetCurrentCallTarget(Object.class, Object.class),
+        GetDescription(String.class, Object.class),
+        GetFailedSpeculationsAddress(long.class, Object.class),
+        GetFrameSlotKindTagForJavaKind(int.class, Object.class, int.class),
+        GetFrameSlotKindTagsCount(int.class, Object.class),
+        GetInlineKind(int.class, Object.class, long.class, boolean.class),
+        GetJavaKindForFrameSlotKind(int.class, Object.class, int.class),
+        GetKnownCallSiteCount(int.class, Object.class),
+        GetLanguage(String.class, Object.class),
+        GetLineNumber(int.class, Object.class),
+        GetLoopExplosionKind(int.class, Object.class, long.class),
+        GetNodeRewritingAssumption(long.class, Object.class),
+        GetNodeRewritingAssumptionConstant(long.class, Object.class),
+        GetNonTrivialNodeCount(int.class, Object.class),
+        GetOffsetEnd(int.class, Object.class),
+        GetOffsetStart(int.class, Object.class),
+        GetPosition(Object.class, Object.class, long.class),
         GetSuppliedString(String.class, Supplier.class),
-        GetTargetName(String.class, Decision.class),
-        GetTruffleCallBoundaryMethods(long[].class, HotSpotTruffleCompilerRuntime.class),
-        GetURI(String.class, TruffleSourceLanguagePosition.class),
-        IsCancelled(boolean.class, TruffleCompilationTask.class),
-        IsInliningForced(boolean.class, TruffleCallNode.class),
-        IsLastTier(boolean.class, TruffleCompilationTask.class),
-        IsSameOrSplit(boolean.class, CompilableTruffleAST.class, CompilableTruffleAST.class),
-        IsTargetStable(boolean.class, Decision.class),
-        IsTruffleBoundary(boolean.class, HotSpotTruffleCompilerRuntime.class, long.class),
-        IsValueType(boolean.class, HotSpotTruffleCompilerRuntime.class, long.class),
-        Log(void.class, HotSpotTruffleCompilerRuntime.class, CompilableTruffleAST.class, String.class),
-        OnCodeInstallation(void.class, HotSpotTruffleCompilerRuntime.class, CompilableTruffleAST.class, long.class),
-        OnCompilationFailed(void.class, CompilableTruffleAST.class, Supplier.class, boolean.class, boolean.class),
-        OnFailure(void.class, TruffleCompilerListener.class, CompilableTruffleAST.class, String.class, boolean.class, boolean.class),
-        OnGraalTierFinished(void.class, TruffleCompilerListener.class, CompilableTruffleAST.class, long.class),
-        OnSuccess(void.class, TruffleCompilerListener.class, CompilableTruffleAST.class, TruffleInliningPlan.class, long.class, long.class),
-        OnTruffleTierFinished(void.class, TruffleCompilerListener.class, CompilableTruffleAST.class, TruffleInliningPlan.class, long.class),
-        RegisterOptimizedAssumptionDependency(Consumer.class, HotSpotTruffleCompilerRuntime.class, long.class),
-        ShouldInline(boolean.class, Decision.class);
+        GetTargetName(String.class, Object.class),
+        GetTruffleCallBoundaryMethods(long[].class, Object.class),
+        GetURI(String.class, Object.class),
+        IsCancelled(boolean.class, Object.class),
+        IsInliningForced(boolean.class, Object.class),
+        IsLastTier(boolean.class, Object.class),
+        IsSameOrSplit(boolean.class, Object.class, Object.class),
+        IsTargetStable(boolean.class, Object.class),
+        IsTruffleBoundary(boolean.class, Object.class, long.class),
+        IsValueType(boolean.class, Object.class, long.class),
+        Log(void.class, Object.class, Object.class, String.class),
+        OnCodeInstallation(void.class, Object.class, Object.class, long.class),
+        OnCompilationFailed(void.class, Object.class, Supplier.class, boolean.class, boolean.class),
+        OnFailure(void.class, Object.class, Object.class, String.class, boolean.class, boolean.class),
+        OnGraalTierFinished(void.class, Object.class, Object.class, long.class),
+        OnSuccess(void.class, Object.class, Object.class, Object.class, long.class, long.class),
+        OnTruffleTierFinished(void.class, Object.class, Object.class, Object.class, long.class),
+        RegisterOptimizedAssumptionDependency(Consumer.class, Object.class, long.class),
+        ShouldInline(boolean.class, Object.class);
         // @formatter:on
 
         private final String signature;

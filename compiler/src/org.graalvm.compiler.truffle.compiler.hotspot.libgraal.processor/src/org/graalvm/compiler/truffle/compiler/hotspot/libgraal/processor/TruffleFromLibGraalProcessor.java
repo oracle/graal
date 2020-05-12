@@ -28,7 +28,6 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
-import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 import org.graalvm.libgraal.jni.processor.AbstractFromLibGraalProcessor;
 
 /**
@@ -41,11 +40,10 @@ import org.graalvm.libgraal.jni.processor.AbstractFromLibGraalProcessor;
 @SupportedAnnotationTypes({
                 "org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal",
                 "org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraalRepeated"})
-public class TruffleFromLibGraalProcessor extends AbstractFromLibGraalProcessor {
+public class TruffleFromLibGraalProcessor extends AbstractFromLibGraalProcessor<Id> {
 
-    @Override
-    protected FromLibGraalId resolveId(String idName) {
-        return Id.valueOf(idName);
+    public TruffleFromLibGraalProcessor() {
+        super(Id.class);
     }
 
     @Override
