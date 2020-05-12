@@ -238,8 +238,7 @@ public final class RequestedJDWPEvents {
                 try {
                     if (!classPattern.endsWith("*") && !classPattern.startsWith("*")) {
                         classPattern = Pattern.quote(classPattern);
-                    }
-                    else if (classPattern.contains("*")) {
+                    } else if (classPattern.contains("*")) {
                         classPattern = wildcardToRegex(classPattern);
                     }
                     Pattern pattern = Pattern.compile(classPattern);
@@ -253,8 +252,7 @@ public final class RequestedJDWPEvents {
                 classPattern = input.readString();
                 if (!classPattern.endsWith("*") && !classPattern.startsWith("*")) {
                     classPattern = Pattern.quote(classPattern);
-                }
-                else if (classPattern.contains("*")) {
+                } else if (classPattern.contains("*")) {
                     classPattern = wildcardToRegex(classPattern);
                 }
                 try {
