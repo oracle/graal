@@ -234,27 +234,18 @@ public final class RequestedJDWPEvents {
                 JDWPLogger.log("RefType limit: %s", JDWPLogger.LogLevel.STEPPING, klass);
                 break;
             case 5: // class positive pattern
-                String classPattern = input.readString();
+                String classPattern = Pattern.quote(input.readString()).replace("*", "\\E.*\\Q");
                 try {
-                    if (!classPattern.endsWith("*") && !classPattern.startsWith("*")) {
-                        classPattern = Pattern.quote(classPattern);
-                    } else if (classPattern.contains("*")) {
-                        classPattern = wildcardToRegex(classPattern);
-                    }
                     Pattern pattern = Pattern.compile(classPattern);
                     filter.addPositivePattern(pattern);
                     JDWPLogger.log("adding positive refType pattern: %s", JDWPLogger.LogLevel.STEPPING, pattern.pattern());
                 } catch (PatternSyntaxException ex) {
                     // wrong input pattern, silently ignore this breakpoint request then
+                    System.out.println("EXCEPTION: " + ex);
                 }
                 break;
             case 6:
-                classPattern = input.readString();
-                if (!classPattern.endsWith("*") && !classPattern.startsWith("*")) {
-                    classPattern = Pattern.quote(classPattern);
-                } else if (classPattern.contains("*")) {
-                    classPattern = wildcardToRegex(classPattern);
-                }
+                classPattern = Pattern.quote(input.readString()).replace("*", "\\E.*\\Q");
                 try {
                     Pattern pattern = Pattern.compile(classPattern);
                     filter.addExcludePattern(pattern);
@@ -324,42 +315,6 @@ public final class RequestedJDWPEvents {
             default:
                 break;
         }
-    }
-
-    private static String wildcardToRegex(String wildcard) {
-        StringBuffer s = new StringBuffer(wildcard.length());
-        s.append('^');
-        for (int i = 0, is = wildcard.length(); i < is; i++) {
-            char c = wildcard.charAt(i);
-            switch (c) {
-                case '*':
-                    s.append(".*");
-                    break;
-                case '?':
-                    s.append(".");
-                    break;
-                // escape special regexp-characters
-                case '(':
-                case ')':
-                case '[':
-                case ']':
-                case '$':
-                case '^':
-                case '.':
-                case '{':
-                case '}':
-                case '|':
-                case '\\':
-                    s.append("\\");
-                    s.append(c);
-                    break;
-                default:
-                    s.append(c);
-                    break;
-            }
-        }
-        s.append('$');
-        return (s.toString());
     }
 
     public CommandResult clearRequest(Packet packet) {
