@@ -72,6 +72,10 @@ import com.oracle.svm.util.ModuleSupport;
 
 public final class ImageClassLoader {
 
+    /*
+     * This cannot be a HostedOption because all Subclasses of OptionDescriptors from inside builtin
+     * modules need to be initialized prior to option parsing so that they can be found.
+     */
     public static final String PROPERTY_IMAGEINCLUDEBUILTINMODULES = "substratevm.ImageIncludeBuiltinModules";
 
     private static final String CLASS_EXTENSION = ".class";
