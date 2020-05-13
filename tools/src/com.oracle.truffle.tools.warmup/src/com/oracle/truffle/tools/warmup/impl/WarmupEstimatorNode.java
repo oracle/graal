@@ -27,6 +27,9 @@ package com.oracle.truffle.tools.warmup.impl;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 
@@ -34,8 +37,7 @@ class WarmupEstimatorNode extends ExecutionEventNode {
 
     private final List<Long> times;
     // TODO: This should be checked for potential recursion
-    // TODO: This should be stored in the frame
-    private long start;
+    private FrameSlot startSlot;
 
     WarmupEstimatorNode(List<Long> times) {
         this.times = times;
@@ -43,18 +45,25 @@ class WarmupEstimatorNode extends ExecutionEventNode {
 
     @Override
     protected void onEnter(VirtualFrame frame) {
-        start = System.nanoTime();
+        if (this.startSlot == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            startSlot = frame.getFrameDescriptor().findOrAddFrameSlot(this, FrameSlotKind.Long);
+        }
+        frame.setLong(startSlot, System.nanoTime());
     }
 
     @Override
     protected void onReturnValue(VirtualFrame frame, Object result) {
-        record(System.nanoTime() - start);
+        if (startSlot != null) {
+            final long end = System.nanoTime();
+            record(end - FrameUtil.getLongSafe(frame, startSlot));
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
-    private boolean record(long duration) {
+    private void record(long duration) {
         synchronized (times) {
-            return times.add(duration);
+            times.add(duration);
         }
     }
 }
