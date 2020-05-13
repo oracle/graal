@@ -680,9 +680,7 @@ public class NativeImageGenerator {
                 bigbang.getHostVM().getClassInitializationSupport().setConfigurationSealed(true);
             }
 
-            try (StopTimer t = new Timer(imageName, "analysis").start()) {
-
-                Timer processFeaturesTimer = new Timer(imageName, "(features)", false);
+            try (StopTimer t = bigbang.analysisTimer.start()) {
 
                 /*
                  * Iterate until analysis reaches a fixpoint.
@@ -711,7 +709,7 @@ public class NativeImageGenerator {
                         /*
                          * Allow features to change the universe.
                          */
-                        try (StopTimer t2 = processFeaturesTimer.start()) {
+                        try (StopTimer t2 = bigbang.processFeaturesTimer.start()) {
                             int numTypes = aUniverse.getTypes().size();
                             int numMethods = aUniverse.getMethods().size();
                             int numFields = aUniverse.getFields().size();
@@ -744,7 +742,7 @@ public class NativeImageGenerator {
 
                 bigbang.typeFlowTimer.print();
                 bigbang.checkObjectsTimer.print();
-                processFeaturesTimer.print();
+                bigbang.processFeaturesTimer.print();
 
                 /* report the unsupported features by throwing UnsupportedFeatureException */
                 bigbang.getUnsupportedFeatures().report(bigbang);
