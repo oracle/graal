@@ -508,4 +508,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         return formalParamInits;
     }
+
+    public void resolveLinkageName() {
+        parser.parseLinkageName(runtime);
+    }
 }

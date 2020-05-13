@@ -126,6 +126,8 @@ public final class LLVMParser {
         LLVMFunction llvmFunction = LLVMFunction.create(functionSymbol.getName(), library, function, functionSymbol.getType(), runtime.getBitcodeID(), functionSymbol.getIndex(),
                         functionDefinition.isExported());
         runtime.getFileScope().register(llvmFunction);
+        lazyConverter.resolveLinkageName();
+
     }
 
     private void defineAlias(GlobalAlias alias) {
