@@ -77,7 +77,7 @@ public class FileSystemProviderTest {
         existingRelative = workDir.relativize(existingAbsolute);
         // Use FileSystem.setCurrentWorkingDirectory to verify that all FileSystem operations are
         // correctly using current working directory
-        fs = newFullIOFileSystem();
+        fs = FileSystem.newDefaultFileSystem();
         fs.setCurrentWorkingDirectory(workDir);
     }
 
@@ -245,17 +245,6 @@ public class FileSystemProviderTest {
             final Method m = clz.getDeclaredMethod("newDefaultFileSystem", Path.class);
             m.setAccessible(true);
             return (FileSystem) m.invoke(null, workDir);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    static FileSystem newFullIOFileSystem() {
-        try {
-            final Class<?> clz = Class.forName("com.oracle.truffle.polyglot.FileSystems");
-            final Method m = clz.getDeclaredMethod("newDefaultFileSystem");
-            m.setAccessible(true);
-            return (FileSystem) m.invoke(null);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }

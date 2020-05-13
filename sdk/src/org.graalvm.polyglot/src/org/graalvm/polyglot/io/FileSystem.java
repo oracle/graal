@@ -395,4 +395,16 @@ public interface FileSystem {
     default Path getTempDirectory() {
         throw new UnsupportedOperationException("Temporary directories not supported");
     }
+
+    /**
+     * Creates a default {@link FileSystem} implementation based on the Java NIO. The returned
+     * instance can be used as a delegate by a decorating {@link FileSystem}.
+     *
+     * @see org.graalvm.polyglot.Context.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)
+     *
+     * @since 20.2.0
+     */
+    static FileSystem newDefaultFileSystem() {
+        return IOHelper.IMPL.newDefaultFileSystem();
+    }
 }

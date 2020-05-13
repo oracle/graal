@@ -42,7 +42,6 @@ package org.graalvm.polyglot.io;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.Method;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,8 +50,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.graalvm.polyglot.Context.Builder;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 /**
  * Service-provider for guest languages process builder. This interface allows embedder to intercept
@@ -100,7 +97,7 @@ public interface ProcessHandler {
         private Redirect outputRedirect;
         private Redirect errorRedirect;
 
-        private ProcessCommand(List<String> command, String cwd, Map<String, String> environment, boolean redirectErrorStream,
+        ProcessCommand(List<String> command, String cwd, Map<String, String> environment, boolean redirectErrorStream,
                         Redirect inputRedirect, Redirect outputRedirect, Redirect errorRedirect) {
             Objects.requireNonNull(command, "Command must be non null.");
             Objects.requireNonNull(environment, "Environment must be non null.");
@@ -178,36 +175,6 @@ public interface ProcessHandler {
         public Redirect getErrorRedirect() {
             return errorRedirect;
         }
-
-        static {
-            try {
-                Method method = Engine.class.getDeclaredMethod("getImpl");
-                method.setAccessible(true);
-                AbstractPolyglotImpl polyglotImpl = (AbstractPolyglotImpl) method.invoke(null);
-                polyglotImpl.setIO(new IOAccessImpl());
-            } catch (Exception e) {
-                throw new IllegalStateException("Failed to initialize execution listener class.", e);
-            }
-        }
-
-        private static final class IOAccessImpl extends AbstractPolyglotImpl.IOAccess {
-            @Override
-            public ProcessCommand newProcessCommand(List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
-                            Redirect inputRedirect, Redirect outputRedirect, Redirect errorRedirect) {
-                return new ProcessCommand(cmd, cwd, environment, redirectErrorStream, inputRedirect, outputRedirect, errorRedirect);
-            }
-
-            @Override
-            public Redirect createRedirectToStream(OutputStream stream) {
-                Objects.requireNonNull("Stream must be non null.");
-                return new Redirect(Redirect.Type.STREAM, stream);
-            }
-
-            @Override
-            public OutputStream getOutputStream(Redirect redirect) {
-                return redirect.getOutputStream();
-            }
-        }
     }
 
     /**
@@ -281,7 +248,7 @@ public interface ProcessHandler {
             return type.equals(((Redirect) obj).type);
         }
 
-        private enum Type {
+        enum Type {
             /**
              * The type of {@link Redirect#PIPE Redirect.PIPE}.
              */
