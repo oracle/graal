@@ -24,32 +24,32 @@
  */
 package com.oracle.svm.hosted.dashboard;
 
-import com.oracle.shadowed.com.google.gson.JsonArray;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.shadowed.com.google.gson.JsonObject;
-
+import java.util.ArrayList;
 import java.util.Collection;
+
+import static com.oracle.svm.hosted.dashboard.DashboardDumpFeature.Dict;
 
 class CodeBreakdownDumper {
 
-    JsonObject dump(Feature.AfterCompilationAccess access) {
+    Dict dump(Feature.AfterCompilationAccess access) {
         FeatureImpl.AfterCompilationAccessImpl config = (FeatureImpl.AfterCompilationAccessImpl) access;
         final Collection<CompileQueue.CompileTask> compilationTasks = config.getCompilationTasks();
-        JsonArray methodInfos = new JsonArray(compilationTasks.size());
+        ArrayList<Object> methodInfos = new ArrayList<>(compilationTasks.size());
         for (CompileQueue.CompileTask task : compilationTasks) {
-            JsonObject methodInfo = new JsonObject();
+            Dict methodInfo = new Dict();
             final HostedMethod method = task.method;
             final int targetSize = task.result.getTargetCodeSize();
-            methodInfo.addProperty("name", method.format("%H.%n(%p) %r"));
-            methodInfo.addProperty("size", targetSize);
+            methodInfo.insert("name", method.format("%H.%n(%p) %r"));
+            methodInfo.insert("size", targetSize);
             methodInfos.add(methodInfo);
         }
-        final JsonObject breakdown = new JsonObject();
-        breakdown.add("code-size", methodInfos);
+        final Dict breakdown = new Dict();
+        breakdown.insert("code-size", methodInfos);
         return breakdown;
     }
 }

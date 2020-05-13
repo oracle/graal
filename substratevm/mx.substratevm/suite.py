@@ -61,13 +61,6 @@ suite = {
                 "version" : "2.6.2-jaxb-1.0.6",
            },
         },
-    	"GSON_SHADOWED": {
-      		"sha1": "b304ee4a635a313ea49552d8afe8bc5218752d64",
-      		"sourceSha1": "47c5969e5a9c4b3d0abb4ca8d80b43acf8f18b5f",
-      		"urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps",
-      		"urls": ["{urlbase}/gson-shadowed-2.8.5.jar"],
-      		"sourceUrls": ["{urlbase}/gson-shadowed-2.8.5-sources.jar"],
-    	},
         "LLVM_WRAPPER_SHADOWED": {
             "sha1" : "f2d365a8d432d6b2127acda19c5d3418126db9b0",
             "sourceSha1" : "0801daf22b189bbd9d515614a2b79c92af225d56",
@@ -330,7 +323,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.util",
-                "GSON_SHADOWED",
             ],
             "checkstyle": "com.oracle.graal.pointsto",
             "javaCompliance": "8+",

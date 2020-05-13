@@ -24,14 +24,13 @@
  */
 package com.oracle.svm.hosted.dashboard;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.svm.hosted.dashboard.DashboardDumpFeature.Dict;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.shadowed.com.google.gson.JsonArray;
-import com.oracle.shadowed.com.google.gson.JsonObject;
-import com.oracle.shadowed.com.google.gson.JsonPrimitive;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 
@@ -41,7 +40,7 @@ class HeapBreakdownDumper {
         long count = 0;
     }
 
-    JsonObject dump(Feature.AfterHeapLayoutAccess access) {
+    Dict dump(Feature.AfterHeapLayoutAccess access) {
         // Create the size histogram.
         FeatureImpl.AfterHeapLayoutAccessImpl config = (FeatureImpl.AfterHeapLayoutAccessImpl) access;
         NativeImageHeap heap = config.getHeap();
@@ -58,18 +57,18 @@ class HeapBreakdownDumper {
         }
 
         // Create JSON data.
-        JsonArray classInfos = new JsonArray();
+        ArrayList<Object> classInfos = new ArrayList<>();
         for (Map.Entry<String, Statistics> entry : sizes.entrySet()) {
             final String className = entry.getKey();
             final Statistics stats = entry.getValue();
-            JsonObject classInfo = new JsonObject();
-            classInfo.add("name", new JsonPrimitive(className));
-            classInfo.add("size", new JsonPrimitive(stats.size));
-            classInfo.add("count", new JsonPrimitive(stats.count));
+            Dict classInfo = new Dict();
+            classInfo.insert("name", className);
+            classInfo.insert("size", stats.size);
+            classInfo.insert("count", stats.count);
             classInfos.add(classInfo);
         }
-        JsonObject root = new JsonObject();
-        root.add("heap-size", classInfos);
+        Dict root = new Dict();
+        root.insert("heap-size", classInfos);
         return root;
     }
 }
