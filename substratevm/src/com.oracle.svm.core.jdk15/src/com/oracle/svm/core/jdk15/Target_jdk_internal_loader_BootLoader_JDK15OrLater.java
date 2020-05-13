@@ -37,6 +37,3 @@ final class Target_jdk_internal_loader_BootLoader_JDK15OrLater {
         System.loadLibrary(name);
     }
 }
-
-
-
