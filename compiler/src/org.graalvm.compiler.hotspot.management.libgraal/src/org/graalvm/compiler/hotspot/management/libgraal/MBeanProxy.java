@@ -310,17 +310,7 @@ class MBeanProxy<T extends DynamicMBean> {
      */
     private static void defineClassesInHotSpot(JNI.JNIEnv env) {
         JNI.JObject classLoader = DefineClassSupport.getJVMCIClassLoader(env);
-        JNI.JClass toLibGraalCalls = defineClassInHotSpot(env, classLoader, HS_CALLS_CLASS);
-        if (toLibGraalCalls.isNonNull()) {
-            try {
-                registerNatives(env, classLoader, toLibGraalCalls);
-            } finally {
-                notifyNativesRegistered(env, toLibGraalCalls);
-            }
-        } else {
-            toLibGraalCalls = findClassInHotSpot(env, classLoader, HS_CALLS_CLASS.binaryName, true);
-            waitForRegisterNatives(env, toLibGraalCalls);
-        }
+        findOrDefineClassInHotSpot(env, classLoader, HS_CALLS_CLASS);
         JNI.JClass entryPoints = findOrDefineClassInHotSpot(env, classLoader, HS_ENTRYPOINTS_CLASS);
         findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_CLASS);
         findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS);
@@ -396,13 +386,6 @@ class MBeanProxy<T extends DynamicMBean> {
         }
     }
 
-    private static void registerNatives(JNI.JNIEnv env, JNI.JObject classLoader, JNI.JClass target) {
-
-        JNI.JClass libgraalClass = findClassInHotSpot(env, classLoader, DefineClassSupport.CLASS_LIBGRAAL, true);
-        DefineClassSupport.registerNatives(env, libgraalClass, target);
-        JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
-    }
-
     /**
      * Gets a reference to factory thread running in HotSpot heap.
      */
@@ -434,23 +417,6 @@ class MBeanProxy<T extends DynamicMBean> {
             JNIUtil.SetObjectArrayElement(env, objectNamesHandle, i, objectName);
         }
         callUnregister(env, factory, CurrentIsolate.getIsolate().rawValue(), objectNamesHandle);
-    }
-
-    /**
-     * Unblocks the threads in other isolates waiting for native methods registration.
-     */
-    private static void notifyNativesRegistered(JNI.JNIEnv env, JNI.JClass toLibGraalCalls) {
-        DefineClassSupport.notifyNativesRegistered(env, toLibGraalCalls);
-        JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
-    }
-
-    /**
-     * Blocks waiting for the other isolate thread to register native methods in the
-     * {@code JMXToLibGraalEntryPoints} class.
-     */
-    private static void waitForRegisterNatives(JNI.JNIEnv env, JNI.JClass toLibGraalCalls) {
-        DefineClassSupport.waitForRegisterNatives(env, toLibGraalCalls);
-        JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
     }
 
     /**

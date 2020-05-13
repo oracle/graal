@@ -25,12 +25,9 @@
 package org.graalvm.compiler.hotspot.management.libgraal;
 
 import static org.graalvm.libgraal.jni.JNIUtil.GetMethodID;
-import static org.graalvm.libgraal.jni.JNIUtil.GetStaticFieldID;
 import static org.graalvm.libgraal.jni.JNIUtil.GetStaticMethodID;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 import static org.graalvm.word.WordFactory.nullPointer;
-
-import java.util.Random;
 
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIExceptionWrapper;
@@ -46,7 +43,6 @@ import org.graalvm.word.WordFactory;
 final class DefineClassSupport {
 
     private static final String CLASS_SERVICES = "jdk/vm/ci/services/Services";
-    static final String CLASS_LIBGRAAL = "org/graalvm/libgraal/LibGraal";
 
     private static final String[] METHOD_GET_JVMCI_CLASS_LOADER = {
                     "getJVMCIClassLoader",
@@ -59,14 +55,6 @@ final class DefineClassSupport {
     private static final String[] METHOD_LOAD_CLASS = {
                     "loadClass",
                     "(Ljava/lang/String;)Ljava/lang/Class;"
-    };
-    private static final String[] METHOD_REGISTER_NATIVES = {
-                    "registerNativeMethods",
-                    "(Ljava/lang/Class;)V"
-    };
-    private static final String[] FIELD_NATIVES_REGISTERED = {
-                    "nativesRegistered",
-                    "Z"
     };
 
     private DefineClassSupport() {
@@ -113,43 +101,6 @@ final class DefineClassSupport {
         return (JNI.JClass) env.getFunctions().getCallObjectMethodA().call(env, classLoader, findClassId, params);
     }
 
-    static void registerNatives(JNI.JNIEnv env, JNI.JClass libgraal, JNI.JClass target) {
-        JNI.JMethodID registerId = findMethod(env, libgraal, true, false, METHOD_REGISTER_NATIVES);
-        JNI.JValue params = StackValue.get(1, JNI.JValue.class);
-        params.addressOf(0).setJObject(target);
-        env.getFunctions().getCallStaticObjectMethodA().call(env, libgraal, registerId, params);
-    }
-
-    static void notifyNativesRegistered(JNI.JNIEnv env, JNI.JClass toLibGraalCalls) {
-        JNI.JFieldID nativesRegisteredId = findStaticField(env, toLibGraalCalls, FIELD_NATIVES_REGISTERED);
-        env.getFunctions().getSetStaticBooleanField().call(env, toLibGraalCalls, nativesRegisteredId, true);
-    }
-
-    static boolean waitForRegisterNatives(JNI.JNIEnv env, JNI.JClass toLibGraalCalls) {
-        JNI.JFieldID nativesRegisteredId = findStaticField(env, toLibGraalCalls, FIELD_NATIVES_REGISTERED);
-        JNI.GetStaticBooleanField access = env.getFunctions().getGetStaticBooleanField();
-        boolean res;
-
-        int sleepLimit = 5;
-        Random rand = new Random();
-        do {
-            res = access.call(env, toLibGraalCalls, nativesRegisteredId);
-            if (JNIUtil.ExceptionCheck(env)) {
-                return false;
-            }
-            try {
-                // Randomize sleep time to mitigate waiting threads
-                // performing in lock-step with each other.
-                int sleep = rand.nextInt(sleepLimit);
-                Thread.sleep(sleep);
-                // Exponential back-off up to MAX_SLEEP ms
-                sleepLimit = Math.min(2000, sleepLimit * 2);
-            } catch (InterruptedException e) {
-            }
-        } while (!res);
-        return true;
-    }
-
     private static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, boolean staticMethod, boolean optional, String[] descriptor) {
         assert descriptor.length == 2;
         JNI.JMethodID result;
@@ -160,16 +111,6 @@ final class DefineClassSupport {
             } else {
                 JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
             }
-            return result;
-        }
-    }
-
-    private static JNI.JFieldID findStaticField(JNI.JNIEnv env, JNI.JClass clazz, String[] descriptor) {
-        assert descriptor.length == 2;
-        JNI.JFieldID result;
-        try (CCharPointerHolder name = toCString(descriptor[0]); CCharPointerHolder sig = toCString(descriptor[1])) {
-            result = GetStaticFieldID(env, clazz, name.get(), sig.get());
-            JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
             return result;
         }
     }

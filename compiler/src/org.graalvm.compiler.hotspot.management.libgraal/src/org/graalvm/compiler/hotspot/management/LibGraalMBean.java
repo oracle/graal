@@ -62,6 +62,7 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -548,6 +549,7 @@ public class LibGraalMBean implements DynamicMBean {
             this.pendingIsolates = new LinkedHashSet<>();
             this.setPriority(Thread.MIN_PRIORITY);
             this.setDaemon(true);
+            LibGraal.registerNativeMethods(JMXToLibGraalCalls.class);
         }
 
         /**
