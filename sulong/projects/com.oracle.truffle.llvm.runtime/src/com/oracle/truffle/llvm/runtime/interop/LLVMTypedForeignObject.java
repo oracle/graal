@@ -38,7 +38,6 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -55,7 +54,7 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 @ValueType
-@ExportLibrary(InteropLibrary.class)
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "foreign")
 @ExportLibrary(LLVMManagedReadLibrary.class)
 @ExportLibrary(LLVMManagedWriteLibrary.class)
 @ExportLibrary(ReferenceLibrary.class)
@@ -208,26 +207,6 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject {
     @ExportMessage
     public void writePointer(long offset, LLVMPointer value, @CachedLibrary("this.foreign") LLVMManagedWriteLibrary writeLibrary) {
         writeLibrary.writePointer(foreign, offset, value);
-    }
-
-    @ExportMessage
-    boolean isNull(@CachedLibrary("this.foreign") InteropLibrary interop) {
-        return interop.isNull(foreign);
-    }
-
-    @ExportMessage
-    boolean isPointer(@CachedLibrary("this.foreign") InteropLibrary interop) {
-        return interop.isPointer(foreign);
-    }
-
-    @ExportMessage
-    long asPointer(@CachedLibrary("this.foreign") InteropLibrary interop) throws UnsupportedMessageException {
-        return interop.asPointer(foreign);
-    }
-
-    @ExportMessage
-    void toNative(@CachedLibrary("this.foreign") InteropLibrary interop) {
-        interop.toNative(foreign);
     }
 
     @GenerateUncached
