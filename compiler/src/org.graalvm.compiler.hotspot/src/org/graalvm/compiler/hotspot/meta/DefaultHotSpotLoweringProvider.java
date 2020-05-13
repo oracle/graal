@@ -296,7 +296,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                     if (instanceOfDynamicNode.allowsNull()) {
                         ValueNode object = instanceOfDynamicNode.getObject();
                         LogicNode newTypeCheck = graph.addOrUniqueWithInputs(
-                                        InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), instanceOfDynamicNode.getMirrorOrHub(), object, false));
+                                        InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), instanceOfDynamicNode.getMirrorOrHub(), object,
+                                                        false/* null checked below */, instanceOfDynamicNode.isExact()));
                         LogicNode newNode = LogicNode.or(graph.unique(IsNullNode.create(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
                         instanceOfDynamicNode.replaceAndDelete(newNode);
                     }
