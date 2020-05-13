@@ -40,16 +40,16 @@ public final class StackSlotAllocatorUtil {
     /**
      * The number of allocated stack slots.
      */
-    public static CounterKey allocatedSlots = DebugContext.counter("StackSlotAllocator[allocatedSlots]");
+    public static final CounterKey allocatedSlots = DebugContext.counter("StackSlotAllocator[allocatedSlots]");
     /**
      * The number of reused stack slots.
      */
-    public static CounterKey reusedSlots = DebugContext.counter("StackSlotAllocator[reusedSlots]");
+    public static final CounterKey reusedSlots = DebugContext.counter("StackSlotAllocator[reusedSlots]");
     /**
      * The size (in bytes) required for all allocated stack slots. Note that this number corresponds
      * to the actual frame size and might include alignment.
      */
-    public static CounterKey allocatedFramesize = DebugContext.counter("StackSlotAllocator[AllocatedFramesize]");
+    public static final CounterKey allocatedFramesize = DebugContext.counter("StackSlotAllocator[AllocatedFramesize]");
     /** The size (in bytes) required for all virtual stack slots. */
-    public static CounterKey virtualFramesize = DebugContext.counter("StackSlotAllocator[VirtualFramesize]");
+    public static final CounterKey virtualFramesize = DebugContext.counter("StackSlotAllocator[VirtualFramesize]");
 }

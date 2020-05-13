@@ -26,5 +26,5 @@ package org.graalvm.compiler.asm;
 
 public class AsmOptions {
 
-    public static int InitialCodeBufferSize = 232;
+    public static final int InitialCodeBufferSize = 232;
 }
