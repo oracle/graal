@@ -45,36 +45,36 @@ public class DashboardDumpFeature implements Feature {
             this.sections = new LinkedHashMap<>();
         }
 
-        public void insert(String key, Object value) {
+        void insert(String key, Object value) {
             sections.put(key, value);
         }
 
-        public boolean hasKey(String key) {
+        boolean hasKey(String key) {
             return sections.containsKey(key);
         }
 
-        public Object get(String key) {
+        Object get(String key) {
             return sections.get(key);
         }
 
-        public Integer getInt(String key) {
+        Integer getInt(String key) {
             return (Integer) get(key);
         }
 
-        public Number getNumber(String key) {
+        Number getNumber(String key) {
             return (Number) get(key);
         }
 
         @SuppressWarnings("unchecked")
-        public ArrayList<Object> getList(String key) {
+        ArrayList<Object> getList(String key) {
             return (ArrayList<Object>) get(key);
         }
 
-        public String getString(String key) {
+        String getString(String key) {
             return (String) get(key);
         }
 
-        public Dict getDict(String key) {
+        Dict getDict(String key) {
             return (Dict) get(key);
         }
 
@@ -84,7 +84,7 @@ public class DashboardDumpFeature implements Feature {
             int index = 0;
             for (Map.Entry<String, Object> entry : sections.entrySet()) {
                 writer.print("\"");
-                writer.print(entry.getKey());
+                writer.print(escape(entry.getKey()));
                 writer.print("\": ");
                 final Object value = entry.getValue();
                 dumpValue(writer, value);
@@ -98,7 +98,7 @@ public class DashboardDumpFeature implements Feature {
             writer.println();
         }
 
-        public static String escape(String input) {
+        static String escape(String input) {
             String escaped = input;
             escaped = escaped.replace("\\", "\\\\");
             escaped = escaped.replace("\"", "\\\"");
