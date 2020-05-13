@@ -469,7 +469,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
                 } else if (guard.condition() instanceof InstanceOfNode && guard.getReason() == DeoptimizationReason.ClassCastException && classCastStamp == null) {
                     InstanceOfNode condition = (InstanceOfNode) guard.condition();
-                    if (condition.getValue() instanceof Invoke || condition.getValue() instanceof LoadFieldNode) {
+                    if (condition.getValue() instanceof Invoke || condition.getValue() instanceof LoadFieldNode ||
+                                    condition.getValue() instanceof DynamicNewInstanceNode) {
                         /*
                          * The method handle chain can contain a cast of the returned value. We
                          * remove the cast here to simplify the graph, remember the type that needs
@@ -498,7 +499,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                     singleNewInstance = (DynamicNewInstanceNode) node;
                 } else if (node instanceof NewInstanceNode && singleNewInstance == null) {
                     singleNewInstance = (NewInstanceNode) node;
-                } else if (node instanceof MethodCallTargetNode || node instanceof InstanceOfNode || node instanceof FixedGuardNode) {
+                } else if (node instanceof MethodCallTargetNode) {
                     /* We check the Invoke, so we can ignore the call target. */
                 } else if ((node instanceof Invoke || node instanceof LoadFieldNode || node instanceof StoreFieldNode) && singleFunctionality == null) {
                     singleFunctionality = node;
@@ -508,6 +509,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                     reportUnsupportedFeature(b, methodHandleMethod);
                     return;
                 }
+            }
+
+            if (singleNewInstance != null && !(singleFunctionality instanceof Invoke)) {
+                throw VMError.shouldNotReachHere("singleFunctionality != Invoke with non null singleNewInstance");
             }
 
             /*
@@ -524,7 +529,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
             JavaKind returnResultKind = b.getInvokeReturnType().getJavaKind().getStackKind();
             ValueNode transplantedSingleFunctionality = null;
-            NewInstanceNode transplantedNewInstance = null;
+            ValueNode transplantedNewInstance = null;
             if (singleFunctionality instanceof Invoke) {
 
                 Invoke singleInvoke = (Invoke) singleFunctionality;
@@ -539,12 +544,11 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                     if (singleNewInstance instanceof NewInstanceNode) {
                         type = lookup(((NewInstanceNode) singleNewInstance).instanceClass());
                     }
-                    maybeEmitClassInitialization(b, true, resolvedTarget.getDeclaringClass());
-                    transplantedNewInstance = b.add(new SubstrateNewInstanceNode(type, true));
-                } else {
-                    maybeEmitClassInitialization(b, singleCallTarget.invokeKind() == InvokeKind.Static, resolvedTarget.getDeclaringClass());
+                    ValueNode newInstance = b.add(new SubstrateNewInstanceNode(type, true));
+                    transplantedNewInstance = maybeEmitClassCast(b, classCastStamp, newInstance);
                 }
 
+                maybeEmitClassInitialization(b, singleCallTarget.invokeKind() == InvokeKind.Static, resolvedTarget.getDeclaringClass());
                 /*
                  * Replace the originalTarget with the replacementTarget. Note that the
                  * replacementTarget node belongs to a different graph than originalTarget, so we
