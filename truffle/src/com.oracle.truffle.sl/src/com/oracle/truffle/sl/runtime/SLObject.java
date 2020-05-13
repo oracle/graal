@@ -82,7 +82,7 @@ import com.oracle.truffle.sl.SLLanguage;
 public final class SLObject extends DynamicObject implements TruffleObject {
     protected static final int CACHE_LIMIT = 3;
 
-    protected SLObject(Shape shape) {
+    public SLObject(Shape shape) {
         super(shape);
     }
 

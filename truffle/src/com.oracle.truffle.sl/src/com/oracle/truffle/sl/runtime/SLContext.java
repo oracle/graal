@@ -59,7 +59,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
@@ -101,7 +100,6 @@ public final class SLContext {
     private final BufferedReader input;
     private final PrintWriter output;
     private final SLFunctionRegistry functionRegistry;
-    private final Shape emptyShape;
     private final SLLanguage language;
     private final AllocationReporter allocationReporter;
     private final Iterable<Scope> topScopes; // Cache the top scopes
@@ -118,7 +116,6 @@ public final class SLContext {
         for (NodeFactory<? extends SLBuiltinNode> builtin : externalBuiltins) {
             installBuiltin(builtin);
         }
-        this.emptyShape = Shape.newBuilder().layout(SLObject.class).build();
     }
 
     /**
@@ -226,17 +223,6 @@ public final class SLContext {
      */
     public AllocationReporter getAllocationReporter() {
         return allocationReporter;
-    }
-
-    /**
-     * Allocate an empty object. All new objects initially have no properties. Properties are added
-     * when they are first stored, i.e., the store triggers a shape change of the object.
-     */
-    public SLObject createObject(AllocationReporter reporter) {
-        reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-        SLObject object = new SLObject(emptyShape);
-        reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        return object;
     }
 
     /*
