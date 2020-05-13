@@ -45,12 +45,12 @@ import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNode;
 
 public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNode {
-    @CompilationFinal private final FrameSlot exceptionValueSlot;
-    @CompilationFinal private final int headerId;
+    private final FrameSlot exceptionValueSlot;
+    private final int headerId;
     @Children private final LLVMBasicBlockNode[] bodyNodes;
     @CompilationFinal(dimensions = 1) private final int[] indexMapping;
     @CompilationFinal(dimensions = 1) private final int[] loopSuccessors;
-    @CompilationFinal private final FrameSlot successorSlot;
+    private final FrameSlot successorSlot;
     @CompilationFinal(dimensions = 1) private final LLVMBasicBlockNode[] originalBodyNodes;
 
     public LLVMLoopDispatchNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, LLVMBasicBlockNode[] originalBodyNodes, int headerId, int[] indexMapping, int[] successors,
