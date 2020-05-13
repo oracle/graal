@@ -133,7 +133,7 @@ public abstract class LLVMX86_VectorMathNode {
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_VectorCmpNode extends LLVMBuiltin { // mm_cmp_sd
-        private static double mask = Double.longBitsToDouble(0xffffffffffffffffL);
+        private static final double mask = Double.longBitsToDouble(0xffffffffffffffffL);
 
         protected enum Comparator {
             _CMP_EQ_OQ(0x00, cmp -> cmp == 0, true, false),
@@ -183,7 +183,7 @@ public abstract class LLVMX86_VectorMathNode {
             }
         }
 
-        protected static int cmpCnt = Comparator.values().length;
+        protected static final int cmpCnt = Comparator.values().length;
 
         protected static Comparator getComparator(int predicate) {
             return Comparator.values()[predicate];

@@ -41,7 +41,7 @@ import java.util.List;
  */
 public final class DefaultLibraryLocator extends LibraryLocator {
 
-    public static DefaultLibraryLocator INSTANCE = new DefaultLibraryLocator();
+    public static final DefaultLibraryLocator INSTANCE = new DefaultLibraryLocator();
 
     private DefaultLibraryLocator() {
     }
