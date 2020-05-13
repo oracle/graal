@@ -70,14 +70,12 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.shadowed.com.google.gson.JsonArray;
-import com.oracle.shadowed.com.google.gson.JsonElement;
-import com.oracle.shadowed.com.google.gson.JsonObject;
-import com.oracle.shadowed.com.google.gson.JsonPrimitive;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 
 import jdk.vm.ci.code.BytecodePosition;
+
+import static com.oracle.svm.hosted.dashboard.DashboardDumpFeature.Dict;
 
 class PointsToDumper {
 
@@ -220,20 +218,20 @@ class PointsToDumper {
      *
      * <pre>
      *   BigBang bb = (...);
-     *   JsonSerializedGraph serializedGraph = new JsonSerializedGraph(bb);
+     *   SerializedTypeFlowGraph serializedGraph = new SerializedTypeFlowGraph(bb);
      *   serializedGraph.build();
      *   String json = serializedGraph.toJson();
      *   System.out.println(json);
      * </pre>
      */
-    public static class JsonSerializedGraph {
+    public static class SerializedTypeFlowGraph {
 
         /**
          * A collection of names of type flows which require their enclosing method to be manually
          * added as an input to JSON type flow nodes of that flow type. The dashboard expects
          * certain flow types to have this information, in order to generate node- and edge labels.
          *
-         * @see JsonSerializedGraph#connectFlowToEnclosingMethod(TypeFlow, int)
+         * @see SerializedTypeFlowGraph#connectFlowToEnclosingMethod(TypeFlow, int)
          */
         private static final Collection<String> REQUIRE_ENCLOSING_METHOD_INPUT = new ArrayList<>(Arrays.asList("callsite", "alloc"));
 
@@ -243,14 +241,14 @@ class PointsToDumper {
          * type. The dashboard expects certain flow types to have this information, in order to
          * generate node- and edge labels.
          *
-         * @see JsonSerializedGraph#connectFlowToEnclosingMethod(TypeFlow, int)
+         * @see SerializedTypeFlowGraph#connectFlowToEnclosingMethod(TypeFlow, int)
          */
         private static final Collection<String> REQUIRE_ENCLOSING_METHOD_ID = new ArrayList<>(Arrays.asList("formalParam", "formalReturn", "callsite"));
 
         /**
          * Map from TypeFlow node IDs to their corresponding JSON object.
          */
-        private HashMap<Integer, JsonObject> nodeIndex;
+        private HashMap<Integer, Dict> nodeIndex;
 
         private BigBang bb;
 
@@ -259,7 +257,7 @@ class PointsToDumper {
          */
         private boolean isBuilt;
 
-        JsonSerializedGraph(BigBang bb) {
+        SerializedTypeFlowGraph(BigBang bb) {
             this.bb = bb;
             this.nodeIndex = new LinkedHashMap<>();
         }
@@ -348,7 +346,7 @@ class PointsToDumper {
         }
 
         /**
-         * Serialize all {@link AnalysisMethod}s in {@link JsonSerializedGraph#bb}'s universe.
+         * Serialize all {@link AnalysisMethod}s in {@link SerializedTypeFlowGraph#bb}'s universe.
          */
         private void serializeMethods() {
             for (AnalysisMethod method : bb.getUniverse().getMethods()) {
@@ -358,26 +356,25 @@ class PointsToDumper {
 
         /**
          * Serialize an {@link AnalysisMethod} and all of its {@link TypeFlow}s and add them to the
-         * {@link JsonSerializedGraph#nodeIndex}.
+         * {@link SerializedTypeFlowGraph#nodeIndex}.
          *
          * @param methodWrapper wrapped AnalysisMethod whose type flows to serialize
          */
         private void serializeMethod(AnalysisMethodWrapper methodWrapper) {
-
-            JsonObject methodNode = new JsonObject();
-            methodNode.addProperty("id", methodWrapper.getMethodId());
-            methodNode.addProperty("flowType", "method");
+            Dict methodNode = new Dict();
+            methodNode.insert("id", methodWrapper.getMethodId());
+            methodNode.insert("flowType", "method");
 
             // Register this new method node in the node index.
-            nodeIndex.put(methodNode.get("id").getAsInt(), methodNode);
+            nodeIndex.put((Integer) methodNode.get("id"), methodNode);
 
-            JsonObject info = new JsonObject();
-            info.addProperty("qualifiedName", methodWrapper.getQualifiedName());
+            Dict info = new Dict();
+            info.insert("qualifiedName", methodWrapper.getQualifiedName());
             // We currently need this to match against the stdout dump of the method histogram.
-            info.addProperty("qualifiedNameSimpleParams", methodWrapper.getQualifiedNameSimpleParams());
-            info.add("inputs", new JsonArray());
-            info.add("uses", new JsonArray());
-            methodNode.add("info", info);
+            info.insert("qualifiedNameSimpleParams", methodWrapper.getQualifiedNameSimpleParams());
+            info.insert("inputs", new ArrayList<>());
+            info.insert("uses", new ArrayList<>());
+            methodNode.insert("info", info);
 
             if (methodWrapper.getFlowsGraph() == null) {
                 // This method does not have type flows (e.g. interface methods).
@@ -398,9 +395,9 @@ class PointsToDumper {
 
         /**
          * JSON-serialize a given {@link TypeFlow} and add the result to the
-         * {@link JsonSerializedGraph#nodeIndex}. The JSON schema is documented in
-         * {@link JsonSerializedGraph}. This method creates a new JSON object with the given flow's
-         * ID, and adds the new JSON object to the node index. It then extracts additional
+         * {@link SerializedTypeFlowGraph#nodeIndex}. The JSON schema is documented in
+         * {@link SerializedTypeFlowGraph}. This method creates a new JSON object with the given
+         * flow's ID, and adds the new JSON object to the node index. It then extracts additional
          * information, such flow type, code location and qualified name out of the flow, and fills
          * this information into the JSON object, whereby not all flow types have the same
          * information extracted. Finally, it goes through all of the flows input, observee, use and
@@ -420,22 +417,22 @@ class PointsToDumper {
 
             // Create a new node for this flow, set its ID, and register the node in the node index
             // to avoid infinite recursion.
-            JsonObject newFlowNode = new JsonObject();
-            newFlowNode.addProperty("id", flowId);
+            Dict newFlowNode = new Dict();
+            newFlowNode.insert("id", flowId);
             nodeIndex.put(flowId, newFlowNode);
 
             // Translate this type flow's class name into the flow type nomenclature expected
             // by the dashboard.
-            newFlowNode.addProperty("flowType", serializeTypeFlowName(flow));
+            newFlowNode.insert("flowType", serializeTypeFlowName(flow));
 
             // Add info object with inputs, uses and code location (inputs and uses empty so far).
-            JsonObject info = new JsonObject();
-            newFlowNode.add("info", info);
-            JsonArray inputs = new JsonArray();
-            JsonArray uses = new JsonArray();
-            info.add("inputs", inputs);
-            info.add("uses", uses);
-            info.addProperty("codeLocation", getCodeLocation(flow));
+            Dict info = new Dict();
+            newFlowNode.insert("info", info);
+            ArrayList<Object> inputs = new ArrayList<>();
+            ArrayList<Object> uses = new ArrayList<>();
+            info.insert("inputs", inputs);
+            info.insert("uses", uses);
+            info.insert("codeLocation", getCodeLocation(flow));
 
             // Get type state, for flow types that require this information to be dumped.
             TypeState typeState = flow.getState();
@@ -444,32 +441,32 @@ class PointsToDumper {
             if (flow instanceof InvokeTypeFlow) {
                 // A callsite gets its callees as uses.
                 Collection<AnalysisMethod> callees = ((InvokeTypeFlow) flow).getCallees();
-                JsonArray calleeNamesJson = new JsonArray();
+                ArrayList<Object> calleeNames = new ArrayList<>();
                 for (AnalysisMethod callee : callees) {
                     int calleeId = callee.getTypeFlow().id();
                     addIntUnique(uses, calleeId);
-                    calleeNamesJson.add(callee.getQualifiedName());
+                    calleeNames.add(callee.getQualifiedName());
                 }
-                info.add("calleeNames", calleeNamesJson);
+                info.insert("calleeNames", calleeNames);
             } else if (flow instanceof NewInstanceTypeFlow || flow instanceof DynamicNewInstanceTypeFlow) {
-                JsonArray types = serializeTypeState(flow.getState());
-                info.add("types", types);
+                ArrayList<Object> types = serializeTypeState(flow.getState());
+                info.insert("types", types);
             } else if (flow instanceof LoadFieldTypeFlow.LoadInstanceFieldTypeFlow || flow instanceof LoadFieldTypeFlow.LoadStaticFieldTypeFlow) {
                 LoadFieldTypeFlow loadFlow = (LoadFieldTypeFlow) flow;
                 String qualifiedName = fieldName(loadFlow.field());
-                info.add("qualifiedName", new JsonPrimitive(qualifiedName));
+                info.insert("qualifiedName", qualifiedName);
             } else if (flow instanceof StoreFieldTypeFlow.StoreInstanceFieldTypeFlow || flow instanceof StoreFieldTypeFlow.StoreStaticFieldTypeFlow) {
-                info.add("types", serializeTypeState(typeState));
+                info.insert("types", serializeTypeState(typeState));
                 StoreFieldTypeFlow storeFlow = (StoreFieldTypeFlow) flow;
                 String qualifiedName = fieldName(storeFlow.field());
-                info.add("qualifiedName", new JsonPrimitive(qualifiedName));
+                info.insert("qualifiedName", qualifiedName);
             } else if (flow instanceof FieldTypeFlow) {
                 FieldTypeFlow fieldFlow = (FieldTypeFlow) flow;
                 String qualifiedName = fieldName(fieldFlow.getSource());
-                info.add("qualifiedName", new JsonPrimitive(qualifiedName));
+                info.insert("qualifiedName", qualifiedName);
             } else if (flow instanceof FormalReceiverTypeFlow) {
-                String receiverType = ((FormalReceiverTypeFlow) flow).getDeclaredType().toJavaName();
-                info.addProperty("qualifiedName", receiverType);
+                String receiverType = flow.getDeclaredType().toJavaName();
+                info.insert("qualifiedName", receiverType);
             }
 
             // Set inputs and uses for this node.
@@ -495,7 +492,7 @@ class PointsToDumper {
         /**
          * Connect all type flows to their enclosing method.
          *
-         * @see JsonSerializedGraph#connectFlowToEnclosingMethod(TypeFlow, int)
+         * @see SerializedTypeFlowGraph#connectFlowToEnclosingMethod(TypeFlow, int)
          */
         private void connectFlowsToEnclosingMethods() {
             for (AnalysisMethod method : bb.getUniverse().getMethods()) {
@@ -516,17 +513,17 @@ class PointsToDumper {
          * as a field in its <code>info</code> object, if needed. The dashboard expects certain flow
          * types to have their enclosing method as an input, or to have the ID of their enclosing
          * method listed as a field in their <code>info</code> object. The affected flow types are
-         * listed in {@link JsonSerializedGraph#REQUIRE_ENCLOSING_METHOD_INPUT} and
-         * {@link JsonSerializedGraph#REQUIRE_ENCLOSING_METHOD_ID} respectively. If a type flow node
-         * gets its enclosing method added as an input, it also gets added as a use to its enclosing
-         * method's node.
+         * listed in {@link SerializedTypeFlowGraph#REQUIRE_ENCLOSING_METHOD_INPUT} and
+         * {@link SerializedTypeFlowGraph#REQUIRE_ENCLOSING_METHOD_ID} respectively. If a type flow
+         * node gets its enclosing method added as an input, it also gets added as a use to its
+         * enclosing method's node.
          * <p>
          * If the flow type of the given type flow node is in neither of these collections, this
          * method does not apply any changes.
          *
          * @param flow type flow for which to add enclosing method input or ID if needed. The
-         *            {@link JsonSerializedGraph#nodeIndex} must contain an entry for this flow's
-         *            ID. If null, method returns immediately.
+         *            {@link SerializedTypeFlowGraph#nodeIndex} must contain an entry for this
+         *            flow's ID. If null, method returns immediately.
          * @param enclosingMethodId the ID of this type flow's enclosing method.
          */
         private void connectFlowToEnclosingMethod(TypeFlow<?> flow, int enclosingMethodId) {
@@ -535,35 +532,32 @@ class PointsToDumper {
                 return;
             }
 
-            JsonObject flowJson = nodeIndex.get(flow.id());
-            assert flowJson != null;
+            Dict flowDict = nodeIndex.get(flow.id());
+            assert flowDict != null;
 
-            String flowType = flowJson.getAsJsonPrimitive("flowType").getAsString();
+            String flowType = flowDict.getString("flowType");
 
             // Add enclosing method as input to this type flow node and vice versa, if applicable.
             if (REQUIRE_ENCLOSING_METHOD_INPUT.contains(flowType)) {
                 // Get node's parent method and inputs of node.
-                JsonArray inputsOfNode = flowJson
-                                .getAsJsonObject("info")
-                                .getAsJsonArray("inputs");
-                JsonObject parentMethodJson = nodeIndex.get(enclosingMethodId);
+                ArrayList<Object> inputsOfNode = flowDict.getDict("info").getList("inputs");
+                Dict parentMethodJson = nodeIndex.get(enclosingMethodId);
 
                 // Parent method must already be found in the node index.
                 assert parentMethodJson != null;
 
                 // Add enclosing method as input to this callsite.
-                addIntUnique(inputsOfNode, parentMethodJson.get("id").getAsInt());
+                addIntUnique(inputsOfNode, parentMethodJson.getInt("id"));
                 parentMethodJson
-                                .getAsJsonObject("info")
-                                .getAsJsonArray("uses")
-                                .add(flowJson.getAsJsonPrimitive("id").getAsInt());
+                                .getDict("info")
+                                .getList("uses")
+                                .add(flowDict.getInt("id"));
             }
 
             // Add enclosing method's ID to flow node's info object if applicable.
             if (REQUIRE_ENCLOSING_METHOD_ID.contains(flowType)) {
-                if (!flowJson.getAsJsonObject("info").has("enclosingMethod")) {
-                    flowJson.getAsJsonObject("info")
-                                    .addProperty("enclosingMethod", enclosingMethodId);
+                if (!flowDict.getDict("info").hasKey("enclosingMethod")) {
+                    flowDict.getDict("info").insert("enclosingMethod", enclosingMethodId);
                 }
             }
         }
@@ -586,25 +580,25 @@ class PointsToDumper {
         }
 
         /**
-         * Add the IDs of the given {@link TypeFlow}'s inputs and observees to the given JSON array,
-         * as uses of the given {@TypeFlow}. Indirectly-recursively serialize the inputs and
-         * observees of this type flow, where observees are objects that notify this flow when they
-         * change ({@link JsonSerializedGraph#serializeTypeFlow(TypeFlow)}).
+         * Add the IDs of the given {@link TypeFlow}'s inputs and observees to the given list, as
+         * uses of the given {@TypeFlow}. Indirectly-recursively serialize the inputs and observees
+         * of this type flow, where observees are objects that notify this flow when they change
+         * ({@link SerializedTypeFlowGraph#serializeTypeFlow(TypeFlow)}).
          *
          * @param flow TypeFlow who's inputs and observees to collect
-         * @param jsonArray target array for input use and observee IDs to
+         * @param targetList target array for input use and observee IDs to
          */
-        private void collectInputs(TypeFlow<?> flow, JsonArray jsonArray) {
+        private void collectInputs(TypeFlow<?> flow, ArrayList<Object> targetList) {
             for (Object input : flow.getInputs()) {
                 TypeFlow<?> inputFlow = (TypeFlow<?>) input;
-                addIntUnique(jsonArray, inputFlow.id());
+                addIntUnique(targetList, inputFlow.id());
                 // Indirect recursive call. Call with methodId = -1 to indicate that, at this point,
                 // we don't know the method ID of the parent methods of the input flows.
                 serializeTypeFlow(inputFlow);
             }
             for (Object observee : flow.getObservees()) {
                 TypeFlow<?> observeeFlow = (TypeFlow<?>) observee;
-                addIntUnique(jsonArray, observeeFlow.id());
+                addIntUnique(targetList, observeeFlow.id());
                 // Indirect recursive call. Call with methodId = -1 to indicate that, at this point,
                 // we don't know the method ID of the parent methods of the observee flows.
                 serializeTypeFlow(observeeFlow);
@@ -612,25 +606,25 @@ class PointsToDumper {
         }
 
         /**
-         * Add the IDs of the given {@link TypeFlow}'s uses and observers to the given JSON array,
-         * as uses of the given {@TypeFlow}. Indirectly-recursively serialize the uses and observers
-         * of this type flow, where observers are objects that are notified when this flow changes.
-         * {@link JsonSerializedGraph#serializeTypeFlow(TypeFlow)}.
+         * Add the IDs of the given {@link TypeFlow}'s uses and observers to the given list, as uses
+         * of the given {@TypeFlow}. Indirectly-recursively serialize the uses and observers of this
+         * type flow, where observers are objects that are notified when this flow changes.
+         * {@link SerializedTypeFlowGraph#serializeTypeFlow(TypeFlow)}.
          *
          * @param flow TypeFlow who's uses and observers to collect
-         * @param jsonArray target array for adding use and observer IDs to
+         * @param targetList target list for adding use and observer IDs to
          */
-        private void collectUses(TypeFlow<?> flow, JsonArray jsonArray) {
+        private void collectUses(TypeFlow<?> flow, ArrayList<Object> targetList) {
             for (Object use : flow.getUses()) {
                 TypeFlow<?> useFlow = (TypeFlow<?>) use;
-                addIntUnique(jsonArray, useFlow.id());
+                addIntUnique(targetList, useFlow.id());
                 // Indirect recursive call. Call with methodId = -1 to indicate that, at this point,
                 // we don't know the method ID of the parent methods of the use flows.
                 serializeTypeFlow(useFlow);
             }
             for (Object observer : flow.getObservers()) {
                 TypeFlow<?> observerFlow = (TypeFlow<?>) observer;
-                addIntUnique(jsonArray, observerFlow.id());
+                addIntUnique(targetList, observerFlow.id());
                 // Indirect recursive call. Call with methodId = -1 to indicate that, at this point,
                 // we don't know the method ID of the parent methods of the observer flows.
                 serializeTypeFlow(observerFlow);
@@ -638,15 +632,14 @@ class PointsToDumper {
         }
 
         /**
-         * Add an integer to a JSON array, if and only if the array does not already contain that
-         * integer.
+         * Add an integer to a list, if and only if the array does not already contain that integer.
          *
-         * @param jsonArray target JSON array
+         * @param list target list
          * @param element integer to add
          */
-        private static void addIntUnique(JsonArray jsonArray, int element) {
-            if (!jsonArray.contains(new JsonPrimitive(element))) {
-                jsonArray.add(element);
+        private static void addIntUnique(ArrayList<Object> list, int element) {
+            if (!list.contains(element)) {
+                list.add(element);
             }
         }
 
@@ -655,11 +648,11 @@ class PointsToDumper {
          * of {@link AnalysisType} in the TypeState.
          *
          * @param typeState the TypeState to be serialized.
-         * @return a JSON array of the formatted class names of the classes included in the given
+         * @return a list of the formatted class names of the classes included in the given
          *         TypeState.
          */
-        private static JsonArray serializeTypeState(TypeState typeState) {
-            JsonArray types = new JsonArray();
+        private static ArrayList<Object> serializeTypeState(TypeState typeState) {
+            ArrayList<Object> types = new ArrayList<>();
             if (typeState.getClass().getSimpleName().equals("UnknownTypeState")) {
                 return types;
             }
@@ -685,8 +678,8 @@ class PointsToDumper {
          * lists node B as an input, ensure that node B lists node A as a use, and vice versa.
          */
         private void matchInputsAndUses() {
-            Collection<JsonObject> nodes = nodeIndex.values();
-            for (JsonObject node : nodes) {
+            Collection<Dict> nodes = nodeIndex.values();
+            for (Dict node : nodes) {
                 matchFromTo(node, "inputs");
                 matchFromTo(node, "uses");
             }
@@ -697,21 +690,21 @@ class PointsToDumper {
          *
          * @param fromNode node for which to ensure symmetric inputs or uses
          * @param from "inputs" or "uses" - the array to match
-         * @see JsonSerializedGraph#matchInputsAndUses()
+         * @see SerializedTypeFlowGraph#matchInputsAndUses()
          */
-        private void matchFromTo(JsonObject fromNode, String from) {
+        private void matchFromTo(Dict fromNode, String from) {
             assert (from.equals("inputs") || from.equals("uses"));
             String to = from.equals("inputs") ? "uses" : "inputs";
-            int nodeId = fromNode.get("id").getAsInt();
-            JsonArray fromIds = fromNode.getAsJsonObject("info").getAsJsonArray(from);
-            for (JsonElement fromIdJson : fromIds) {
-                int fromId = fromIdJson.getAsInt();
-                JsonObject referencedNode = nodeIndex.get(fromId);
+            int nodeId = fromNode.getInt("id");
+            ArrayList<Object> fromIds = fromNode.getDict("info").getList(from);
+            for (Object fromIdObject : fromIds) {
+                Integer fromId = (Integer) fromIdObject;
+                Dict referencedNode = nodeIndex.get(fromId);
                 if (referencedNode == null) {
                     continue;
                 }
-                JsonArray usesJsonArray = referencedNode.getAsJsonObject("info").getAsJsonArray(to);
-                addIntUnique(usesJsonArray, nodeId);
+                ArrayList<Object> usesList = referencedNode.getDict("info").getList(to);
+                addIntUnique(usesList, nodeId);
             }
         }
 
@@ -719,29 +712,29 @@ class PointsToDumper {
          * Export pointsto graph into a JSON string, in the format expected by the dashboard.
          *
          * @return JSON serialization of pointsto graph
-         * @see JsonSerializedGraph
+         * @see SerializedTypeFlowGraph
          */
-        public JsonObject toJson() {
+        Dict toSection() {
             if (!isBuilt) {
                 throw new IllegalStateException("Tried exporting to JSON before building.");
             }
-            JsonArray nodes = new JsonArray();
-            for (JsonObject node : nodeIndex.values()) {
+            ArrayList<Object> nodes = new ArrayList<>();
+            for (Object node : nodeIndex.values()) {
                 nodes.add(node);
             }
-            JsonObject root = new JsonObject();
-            root.add("type-flows", nodes);
+            Dict root = new Dict();
+            root.sections.put("type-flows", nodes);
             return root;
         }
     }
 
-    JsonObject dump(OnAnalysisExitAccess access) {
+    Dict dump(OnAnalysisExitAccess access) {
         try {
             FeatureImpl.OnAnalysisExitAccessImpl config = (FeatureImpl.OnAnalysisExitAccessImpl) access;
             BigBang bigbang = config.getBigBang();
-            JsonSerializedGraph serializedGraph = new JsonSerializedGraph(bigbang);
+            SerializedTypeFlowGraph serializedGraph = new SerializedTypeFlowGraph(bigbang);
             serializedGraph.build();
-            return serializedGraph.toJson();
+            return serializedGraph.toSection();
         } catch (Exception e) {
             throw VMError.shouldNotReachHere(e);
         }
