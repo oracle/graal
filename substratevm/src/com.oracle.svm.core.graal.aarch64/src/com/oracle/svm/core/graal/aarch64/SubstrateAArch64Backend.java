@@ -242,12 +242,17 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            /* Change the VMThread status from Java to Native. */
-            try (ScratchRegister scratch = masm.getScratchRegister()) {
-                Register tempRegister = scratch.getRegister();
-                masm.mov(tempRegister, newThreadStatus);
-                masm.str(32, tempRegister,
-                                AArch64Address.createPairUnscaledImmediateAddress(runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset()));
+            /*
+             * Change VMThread status from Java to Native. Note a "store release" is needed for this
+             * update to ensure VMThread status is only updated once all prior stores are also
+             * observable.
+             */
+            try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
+                Register statusValueRegister = scratch1.getRegister();
+                Register statusAddressRegister = scratch2.getRegister();
+                masm.mov(statusValueRegister, newThreadStatus);
+                masm.lea(statusAddressRegister, AArch64Address.createUnscaledImmediateAddress(runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset()));
+                masm.stlr(32, statusValueRegister, statusAddressRegister);
             }
         }
     }
