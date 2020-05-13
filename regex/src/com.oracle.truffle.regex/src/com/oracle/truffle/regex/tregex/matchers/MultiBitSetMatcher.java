@@ -118,7 +118,7 @@ public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
     public String toString() {
         StringBuilder sb = new StringBuilder(modifiersToString()).append("[\n");
         for (int i = 0; i < bitSets.length; i++) {
-            sb.append(String.format("    %02x: ", i)).append(bitSets[i]).append("\n");
+            sb.append(String.format("    %02x: ", i)).append(BitSets.toString(bitSets[i])).append("\n");
         }
         return sb.append("  ]").toString();
     }
