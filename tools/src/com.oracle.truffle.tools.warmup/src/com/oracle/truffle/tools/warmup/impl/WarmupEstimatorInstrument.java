@@ -28,6 +28,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.logging.Level;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -57,6 +60,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
 
     private boolean enabled;
     private WarmupEstimatorNode node;
+    private List<Long> times = new LinkedList<>();
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -74,19 +78,23 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
             final SourceSectionFilter filter = SourceSectionFilter.newBuilder().includeInternal(false).tagIs(StandardTags.RootTag.class).rootNameIs(rootName::equals).build();
             env.getInstrumenter().attachExecutionEventFactory(filter, context -> {
                 if (node == null) {
-                    node = new WarmupEstimatorNode();
+                    node = new WarmupEstimatorNode(times);
                     return node;
                 }
-                throw new IllegalStateException("Cannot estimate warmup for multiple roots.");
+                env.getLogger(this.getClass()).log(Level.WARNING, "Ignoring multiple roots with name " + rootName + ".");
+                return null;
             });
         }
     }
 
     @Override
     protected void onDispose(Env env) {
+        if (node == null) {
+            throw new IllegalArgumentException("No root with name " + ROOT_NAME.getValue(env.getOptions()) + "found during execution.");
+        }
         final OptionValues options = env.getOptions();
         final String outputPath = OUTPUT_FILE.getValue(options);
-        final Results results = node.getResults(EPSILON.getValue(options));
+        final Results results = new Results(times, EPSILON.getValue(options));
         ResultsPrinter printer = new ResultsPrinter(results);
         if ("".equals(outputPath)) {
             printer.printSimpleResults(new PrintStream(env.out()));

@@ -24,22 +24,21 @@
  */
 package com.oracle.truffle.tools.warmup.impl;
 
-import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 
 class WarmupEstimatorNode extends ExecutionEventNode {
 
+    private final List<Long> times;
+    // TODO: This should be checked for potential recursion
+    // TODO: This should be stored in the frame
     private long start;
-    private List<Long> samples = new ArrayList<>();
 
-    WarmupEstimatorNode() {
-    }
-
-    Results getResults(double epsilon) {
-        return new Results(samples, epsilon);
+    WarmupEstimatorNode(List<Long> times) {
+        this.times = times;
     }
 
     @Override
@@ -49,8 +48,13 @@ class WarmupEstimatorNode extends ExecutionEventNode {
 
     @Override
     protected void onReturnValue(VirtualFrame frame, Object result) {
-        final long duration = System.nanoTime() - start;
-        samples.add(duration);
+        record(System.nanoTime() - start);
     }
 
+    @CompilerDirectives.TruffleBoundary
+    private boolean record(long duration) {
+        synchronized (times) {
+            return times.add(duration);
+        }
+    }
 }
