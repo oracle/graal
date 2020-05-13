@@ -78,6 +78,7 @@ import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK15OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.Resources;
@@ -753,6 +754,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         } else {
             throw VMError.shouldNotReachHere();
         }
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    public boolean isHidden() {
+        throw VMError.shouldNotReachHere();
     }
 
     @Substitute
