@@ -74,9 +74,11 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
+import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -93,6 +95,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.SubstrateNewInstanceNode;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
@@ -487,10 +490,15 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
              */
             Node singleFunctionality = null;
             ReturnNode singleReturn = null;
+            ValueNode singleNewInstance = null;
             for (Node node : graph.getNodes()) {
                 if (node == graph.start() || node instanceof ParameterNode || node instanceof ConstantNode || node instanceof FrameState) {
                     /* Ignore the allowed framework around the nodes we care about. */
-                } else if (node instanceof MethodCallTargetNode) {
+                } else if (node instanceof DynamicNewInstanceNode && singleNewInstance == null && ((DynamicNewInstanceNode) node).getInstanceType().isConstant()) {
+                    singleNewInstance = (DynamicNewInstanceNode) node;
+                } else if (node instanceof NewInstanceNode && singleNewInstance == null) {
+                    singleNewInstance = (NewInstanceNode) node;
+                } else if (node instanceof MethodCallTargetNode || node instanceof InstanceOfNode || node instanceof FixedGuardNode) {
                     /* We check the Invoke, so we can ignore the call target. */
                 } else if ((node instanceof Invoke || node instanceof LoadFieldNode || node instanceof StoreFieldNode) && singleFunctionality == null) {
                     singleFunctionality = node;
@@ -516,12 +524,26 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
             JavaKind returnResultKind = b.getInvokeReturnType().getJavaKind().getStackKind();
             ValueNode transplantedSingleFunctionality = null;
+            NewInstanceNode transplantedNewInstance = null;
             if (singleFunctionality instanceof Invoke) {
+
                 Invoke singleInvoke = (Invoke) singleFunctionality;
                 MethodCallTargetNode singleCallTarget = (MethodCallTargetNode) singleInvoke.callTarget();
                 ResolvedJavaMethod resolvedTarget = lookup(singleCallTarget.targetMethod());
 
-                maybeEmitClassInitialization(b, singleCallTarget.invokeKind() == InvokeKind.Static, resolvedTarget.getDeclaringClass());
+                if (singleNewInstance != null) {
+                    ResolvedJavaType type = null;
+                    if (singleNewInstance instanceof DynamicNewInstanceNode) {
+                        type = lookup(originalProviders.getConstantReflection().asJavaType(((DynamicNewInstanceNode) singleNewInstance).getInstanceType().asConstant()));
+                    }
+                    if (singleNewInstance instanceof NewInstanceNode) {
+                        type = lookup(((NewInstanceNode) singleNewInstance).instanceClass());
+                    }
+                    maybeEmitClassInitialization(b, true, resolvedTarget.getDeclaringClass());
+                    transplantedNewInstance = b.add(new SubstrateNewInstanceNode(type, true));
+                } else {
+                    maybeEmitClassInitialization(b, singleCallTarget.invokeKind() == InvokeKind.Static, resolvedTarget.getDeclaringClass());
+                }
 
                 /*
                  * Replace the originalTarget with the replacementTarget. Note that the
@@ -531,7 +553,12 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  */
                 ValueNode[] replacedArguments = new ValueNode[singleCallTarget.arguments().size()];
                 for (int i = 0; i < replacedArguments.length; i++) {
-                    replacedArguments[i] = lookup(b, methodHandleArguments, singleCallTarget.arguments().get(i));
+                    ValueNode argument = singleCallTarget.arguments().get(i);
+                    if (argument == singleNewInstance) {
+                        replacedArguments[i] = transplantedNewInstance;
+                    } else {
+                        replacedArguments[i] = lookup(b, methodHandleArguments, argument);
+                    }
                 }
                 b.handleReplacedInvoke(singleCallTarget.invokeKind(), resolvedTarget, replacedArguments, false);
 
@@ -567,6 +594,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             if (returnResultKind != JavaKind.Void) {
                 if (singleReturn.result() == singleFunctionality) {
                     b.push(returnResultKind, transplantedSingleFunctionality);
+                } else if (singleReturn.result() == singleNewInstance) {
+                    b.push(returnResultKind, transplantedNewInstance);
                 } else if (singleReturn.result().isJavaConstant()) {
                     JavaConstant constantResult = singleReturn.result().asJavaConstant();
                     b.addPush(returnResultKind, ConstantNode.forConstant(lookup(constantResult), universeProviders.getMetaAccess()));
