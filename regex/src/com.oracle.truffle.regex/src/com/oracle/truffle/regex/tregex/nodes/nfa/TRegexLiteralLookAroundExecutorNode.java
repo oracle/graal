@@ -92,7 +92,7 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNod
     public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
         for (int i = 0; i < matchers.length; i++) {
-            if (!inputHasNext(locals) || !matchers[i].execute(inputReadAndDecode(locals), compactString)) {
+            if (!inputHasNext(locals) || !matchers[i].execute(inputReadAndDecode(locals))) {
                 return negated;
             }
             inputAdvance(locals);

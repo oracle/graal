@@ -102,8 +102,8 @@ public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
     }
 
     @Specialization
-    protected boolean match(int c, boolean compactString) {
-        return result(BitSets.get(bitSets[compactString ? 0 : highByte(c)], lowByte(c)));
+    protected boolean match(int c) {
+        return result(BitSets.get(bitSets[highByte(c)], lowByte(c)));
     }
 
     @Override

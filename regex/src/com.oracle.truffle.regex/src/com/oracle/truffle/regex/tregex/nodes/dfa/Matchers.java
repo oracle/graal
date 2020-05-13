@@ -83,15 +83,15 @@ public abstract class Matchers extends Node {
     /**
      * Returns {@code true} iff transition {@code i} matches {@code c}.
      */
-    public abstract boolean match(int i, int c, boolean compactString);
+    public abstract boolean match(int i, int c);
 
     /**
      * Returns the index of the transition that matches the given character {@code c}, or
      * {@code noMatchSuccessor}. For debugging purposes.
      */
-    public int match(int c, boolean compactString) {
+    public int match(int c) {
         for (int i = 0; i < size(); i++) {
-            if (match(i, c, compactString)) {
+            if (match(i, c)) {
                 return i;
             }
         }
@@ -103,8 +103,8 @@ public abstract class Matchers extends Node {
      */
     public abstract String toString(int i);
 
-    static boolean match(CharMatcher[] matchers, int i, int c, boolean compactString) {
-        return matchers != null && matchers[i] != null && matchers[i].execute(c, compactString);
+    static boolean match(CharMatcher[] matchers, int i, int c) {
+        return matchers != null && matchers[i] != null && matchers[i].execute(c);
     }
 
     @TruffleBoundary
@@ -131,8 +131,8 @@ public abstract class Matchers extends Node {
         }
 
         @Override
-        public boolean match(int i, int c, boolean compactString) {
-            return match(matchers, i, c, compactString);
+        public boolean match(int i, int c) {
+            return match(matchers, i, c);
         }
 
         @TruffleBoundary
@@ -167,8 +167,8 @@ public abstract class Matchers extends Node {
         }
 
         @Override
-        public boolean match(int i, int c, boolean compactString) {
-            return match(latin1, i, c, compactString) || match(bmp, i, c, compactString);
+        public boolean match(int i, int c) {
+            return match(latin1, i, c) || match(bmp, i, c);
         }
 
         @TruffleBoundary
@@ -209,8 +209,8 @@ public abstract class Matchers extends Node {
         }
 
         @Override
-        public boolean match(int i, int c, boolean compactString) {
-            return match(bmp, i, c, compactString) || match(astral, i, c, compactString);
+        public boolean match(int i, int c) {
+            return match(bmp, i, c) || match(astral, i, c);
         }
 
         @TruffleBoundary
@@ -257,8 +257,8 @@ public abstract class Matchers extends Node {
         }
 
         @Override
-        public boolean match(int i, int c, boolean compactString) {
-            return match(ascii, i, c, compactString) || match(enc2, i, c, compactString) || match(enc3, i, c, compactString) || match(enc4, i, c, compactString);
+        public boolean match(int i, int c) {
+            return match(ascii, i, c) || match(enc2, i, c) || match(enc3, i, c) || match(enc4, i, c);
         }
 
         @TruffleBoundary

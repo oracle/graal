@@ -84,8 +84,8 @@ public abstract class BitSetMatcher extends InvertibleCharMatcher {
     }
 
     @Specialization
-    public boolean match(int c, boolean compactString) {
-        return result(!compactString && highByte(c) == highByte && BitSets.get(bitSet, lowByte(c)));
+    public boolean match(int c) {
+        return result(highByte(c) == highByte && BitSets.get(bitSet, lowByte(c)));
     }
 
     @Override
