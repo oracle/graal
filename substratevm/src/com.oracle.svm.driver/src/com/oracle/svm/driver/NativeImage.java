@@ -86,6 +86,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.ModuleSupport;
 
@@ -193,6 +194,7 @@ public class NativeImage {
     private final LinkedHashSet<String> imageBuilderArgs = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderBootClasspath = new LinkedHashSet<>();
+    private final LinkedHashSet<String> imageIncludeBuiltinModules = new LinkedHashSet<>();
     private final ArrayList<String> imageBuilderJavaArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageProvidedClasspath = new LinkedHashSet<>();
@@ -1051,6 +1053,9 @@ public class NativeImage {
         // The following two are for backwards compatibility reasons. They should be removed.
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
         imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
+        if (!imageIncludeBuiltinModules.isEmpty()) {
+            imageBuilderJavaArgs.add("-D" + ImageClassLoader.PROPERTY_IMAGEINCLUDEBUILTINMODULES + "=" + String.join(",", imageIncludeBuiltinModules));
+        }
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
@@ -1336,6 +1341,10 @@ public class NativeImage {
 
     void addImageBuilderBootClasspath(Path classpath) {
         imageBuilderBootClasspath.add(canonicalize(classpath));
+    }
+
+    public void addImageIncludeBuiltinModules(String moduleName) {
+        imageIncludeBuiltinModules.add(moduleName);
     }
 
     void addImageBuilderJavaArgs(String... javaArgs) {
