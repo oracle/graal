@@ -53,6 +53,18 @@ final class PinnedObjectImpl implements PinnedObject {
             trace.string("  returns: ]").object(result).newline();
             return result;
         }
+
+        @Override
+        public boolean isPinned(Object object) {
+            PinnedObjectImpl pin = HeapImpl.getHeapImpl().getPinHead().get();
+            while (pin != null) {
+                if (pin.open && pin.referent == object) {
+                    return true;
+                }
+                pin = pin.next;
+            }
+            return false;
+        }
     }
 
     @AutomaticFeature
