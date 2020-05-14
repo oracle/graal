@@ -72,7 +72,7 @@ public class ForeignRegexCompiler implements RegexCompiler {
     @Override
     public TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException {
         try {
-            return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(foreignCompiler, source.getPattern(), source.getFlags().getSource());
+            return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(foreignCompiler, source.getPattern(), source.getFlags());
         } catch (InteropException ex) {
             throw new RuntimeException(ex);
         }

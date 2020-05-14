@@ -76,7 +76,7 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
     @Override
     public SourceSection getSourceSection() {
         if (sourceSection == null) {
-            String patternSrc = "/" + source.getPattern() + "/" + source.getFlags().getSource();
+            String patternSrc = "/" + source.getPattern() + "/" + source.getFlags();
             Source src = Source.newBuilder(RegexLanguage.ID, patternSrc, source.getPattern()).internal(true).mimeType("application/js-regex").build();
             sourceSection = src.createSection(0, patternSrc.length());
         }

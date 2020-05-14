@@ -68,12 +68,12 @@ public class RegexSyntaxException extends RuntimeException implements TruffleExc
 
     @TruffleBoundary
     public RegexSyntaxException(RegexSource source, String msg) {
-        this(String.format(template, source.getPattern(), source.getFlags().getSource(), msg), msg, source);
+        this(String.format(template, source.getPattern(), source.getFlags(), msg), msg, source);
     }
 
     @TruffleBoundary
     public RegexSyntaxException(RegexSource source, String msg, int position) {
-        this(String.format(templatePosition, source.getPattern(), source.getFlags().getSource(), position, msg), msg, source, position);
+        this(String.format(templatePosition, source.getPattern(), source.getFlags(), position, msg), msg, source, position);
     }
 
     private RegexSyntaxException(String exceptionMsg, String reason, RegexSource regexSrc) {

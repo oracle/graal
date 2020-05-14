@@ -47,6 +47,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexExecRootNode;
+import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -107,6 +108,7 @@ public final class TRegexCompilationRequest {
         this.tRegexCompiler = tRegexCompiler;
         this.source = source;
         this.compilationBuffer = new CompilationBuffer(source.getEncoding());
+        assert source.getEncoding() != null;
     }
 
     TRegexCompilationRequest(TRegexCompiler tRegexCompiler, NFA nfa) {
@@ -115,6 +117,7 @@ public final class TRegexCompilationRequest {
         this.ast = nfa.getAst();
         this.nfa = nfa;
         this.compilationBuffer = new CompilationBuffer(nfa.getAst().getEncoding());
+        assert source.getEncoding() != null;
     }
 
     public TRegexExecRootNode getRoot() {
@@ -265,7 +268,7 @@ public final class TRegexCompilationRequest {
     }
 
     private RegexParser createParser() {
-        return new RegexParser(source, tRegexCompiler.getOptions(), compilationBuffer);
+        return new RegexParser(source, RegexFlags.parseFlags(source.getFlags()), tRegexCompiler.getOptions(), compilationBuffer);
     }
 
     private void createNFA() {

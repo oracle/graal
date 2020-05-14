@@ -136,11 +136,11 @@ public final class RegexParser {
     private final CompilationBuffer compilationBuffer;
 
     @TruffleBoundary
-    public RegexParser(RegexSource source, RegexOptions options, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
+    public RegexParser(RegexSource source, RegexFlags flags, RegexOptions options, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.source = source;
-        this.flags = source.getFlags();
+        this.flags = flags;
         this.options = options;
-        this.lexer = new RegexLexer(source, options);
+        this.lexer = new RegexLexer(source, flags, options);
         this.ast = new RegexAST(source, flags, options);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
@@ -151,7 +151,7 @@ public final class RegexParser {
     }
 
     private static Group parseRootLess(String pattern) throws RegexSyntaxException {
-        return new RegexParser(new RegexSource(pattern, RegexFlags.DEFAULT, Encodings.UTF_16_RAW), RegexOptions.DEFAULT, new CompilationBuffer(Encodings.UTF_16_RAW)).parse(false);
+        return new RegexParser(new RegexSource(pattern, "", Encodings.UTF_16_RAW), RegexFlags.DEFAULT, RegexOptions.DEFAULT, new CompilationBuffer(Encodings.UTF_16_RAW)).parse(false);
     }
 
     @TruffleBoundary
