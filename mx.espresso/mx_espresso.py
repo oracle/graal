@@ -159,5 +159,4 @@ mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'nfi', 'sdk', 'tfl',
 
 # Register soon-to-become-default configurations.
 mx_benchmark.java_vm_registry.add_vm(mx_espresso_benchmarks.EspressoVm('default', []), _suite)
-mx_benchmark.java_vm_registry.add_vm(mx_espresso_benchmarks.EspressoVm('la-inline', ['--experimental-options', '--engine.LanguageAgnosticInlining']), _suite)
 mx_benchmark.java_vm_registry.add_vm(mx_espresso_benchmarks.EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)
