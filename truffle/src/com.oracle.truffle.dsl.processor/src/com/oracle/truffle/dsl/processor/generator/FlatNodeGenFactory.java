@@ -3026,16 +3026,16 @@ public class FlatNodeGenFactory {
                 prev = visitSpecializationGroupChildren(builder, frameState, prev, group, forType, allowedSpecializations);
             } else {
 
-                outerIfCount = outerIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false));
-
                 for (CacheExpression cache : specialization.getCaches()) {
                     if (!cache.isAlwaysInitialized()) {
                         continue;
                     }
-                    builder.declarationDefault(cache.getParameter().getType(),
-                                    createCacheLocalName(specialization, cache));
+                    CodeTree prepare = CodeTreeBuilder.createBuilder().declarationDefault(cache.getParameter().getType(),
+                                    createCacheLocalName(specialization, cache)).build();
+                    cachedTriples.add(0, new IfTriple(prepare, null, null));
                 }
 
+                outerIfCount = outerIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false));
                 String countName = specialization != null ? "count" + specialization.getIndex() + "_" : null;
                 boolean needsDuplicationCheck = specialization.isGuardBindsCache() || specialization.hasMultipleInstances();
                 boolean useDuplicateFlag = specialization.isGuardBindsCache() && !specialization.hasMultipleInstances();
