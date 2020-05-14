@@ -225,7 +225,7 @@ public class LoopNodeTest {
                 return specialValue;
             } else {
                 iterations--;
-                return RepeatingNode.CONTINUE_LOOP_STATUS;
+                return RepeatingNode.DEFAULT_CONTINUE_LOOP_STATUS;
             }
         }
     }
@@ -310,7 +310,7 @@ public class LoopNodeTest {
             @Override
             public Object executeRepeatingWithValue(VirtualFrame frame) {
                 final Object result = bodyNode.execute(frame);
-                if (result == CONTINUE_LOOP_STATUS) {
+                if (result == DEFAULT_CONTINUE_LOOP_STATUS) {
                     continues++;
                 }
                 return result;
