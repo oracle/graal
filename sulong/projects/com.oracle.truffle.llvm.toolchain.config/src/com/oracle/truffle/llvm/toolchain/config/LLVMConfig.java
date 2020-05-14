@@ -39,9 +39,9 @@ public abstract class LLVMConfig {
     private LLVMConfig() {}
 
     /** LLVM version string. */
-    public static final String VERSION = "9.0.0";
+    public static final String VERSION = "10.0.0";
     /** Major version of the LLVM API. */
-    public static final int VERSION_MAJOR = 9;
+    public static final int VERSION_MAJOR = 10;
     /** Minor version of the LLVM API. */
     public static final int VERSION_MINOR = 0;
     /** Patch version of the LLVM API. */
