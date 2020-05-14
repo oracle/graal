@@ -425,6 +425,33 @@ suite = {
       "jacoco" : "include",
     },
 
+    "com.oracle.truffle.llvm.tools.fuzzing.native" : {
+      "subDir" : "projects",
+      "native" : True,
+      "vpath" : True,
+      "results" : [
+        "bin/<exe:llvm-reduce>",
+        "bin/<exe:llvm-stress>",
+      ],
+      "buildDependencies" : [
+        # "sdk:LLVM_TOOLCHAIN",
+      ],
+      "buildEnv" : {
+        # LLVM_TOOLCHAIN currently does not ship the llvm header files [GR-23492] - relying on system LLVM for now
+        # "LLVM_CONFIG" : "<path:LLVM_TOOLCHAIN>/bin/llvm-config",
+        # "CXX" : "<path:LLVM_TOOLCHAIN>/bin/clang++",
+        "LLVM_CONFIG" : "llvm-config",
+        "CXX" : "clang++",
+        "LLVM_REDUCE" :"bin/<exe:llvm-reduce>",
+        "LLVM_STRESS" :"bin/<exe:llvm-stress>",
+        "OS" : "<os>",
+      },
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "license" : "BSD-new",
+      "testProject" : True,
+      "jacoco" : "exclude",
+    },
+
     "com.oracle.truffle.llvm.tests.pipe" : {
       "subDir" : "tests",
       "sourceDirs" : ["src"],
@@ -1142,6 +1169,15 @@ suite = {
       "license": "BSD-new",
     },
 
+    "SULONG_TOOLS": {
+      "native": True,
+      "relpath": False,
+      "platformDependent": True,
+      "layout": {
+        "./": "dependency:com.oracle.truffle.llvm.tools.fuzzing.native/*",
+      },
+      "license": "BSD-new",
+    },
 
     "SULONG_TEST" : {
       "subDir" : "tests",

@@ -758,6 +758,12 @@ def llvm_dis(args=None, out=None):
         if tmp_dir:
             shutil.rmtree(tmp_dir)
 
+
+def _get_fuzz_tool(tool):
+    tool = os.path.join(mx.dependency('SULONG_TOOLS', fatalIfMissing=True).get_output(), 'bin', tool)
+    return tool
+
+
 def fuzz(args=None, out=None):
     parser = ArgumentParser(prog='mx fuzz', description='')
     parser.add_argument('--seed', help='Seed used for randomness.', metavar='<seed>', type=int, default=int(time.time()))
@@ -780,10 +786,13 @@ def fuzz(args=None, out=None):
         invalid = 0
         for _ in range(parsed_args.nrtestcases):
             #TODO add llvm-stress to toolchain
-            llvm_tool(["llvm-stress", "-o", tmp_ll, "-seed", str(rand.randint(0, 10000000)), "-size", str(300)])
+            tool = _get_fuzz_tool("llvm-stress")
+            mx.run([tool, "-o", tmp_ll, "-seed", str(rand.randint(0, 10000000)), "-size", str(300)])
             #TODO add recipe for fuzzmain in Makefile
             #TODO don't use sulong bootstrap clang
-            llvm_tool(["clang-sulong-bootstrap", "-O0", "-o", tmp_out, tmp_ll, os.path.join(get_sulong_home(), "fuzzmain.c")])
+            toolchain_clang = _get_toolchain_tool("native,CC")
+            fuzz_main = os.path.join(mx.dependency('com.oracle.truffle.llvm.tools.fuzzing.native', fatalIfMissing=True).dir, "src", "fuzzmain.c")
+            mx.run([toolchain_clang, "-O0", "-lm", "-o", tmp_out, tmp_ll, fuzz_main])
             timeout = 10000
             with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
                 runLLVM(['--llvm.llDebug', '--llvm.traceIR', '--experimental-options', tmp_out], timeout=timeout, nonZeroIsFatal=False, out=o, err=e)
@@ -800,7 +809,7 @@ def fuzz(args=None, out=None):
                 now = str(datetime.datetime.now())
                 now = now.replace(":","_")
                 current_out_dir = os.path.join(parsed_args.outdir, now)
-                os.mkdir(current_out_dir)
+                os.makedirs(current_out_dir)
                 gen = [
                     (tmp_ll, 'autogen.ll'),
                     (tmp_out, 'autogen'),
@@ -816,6 +825,7 @@ def fuzz(args=None, out=None):
             shutil.rmtree(tmp_dir)
     print("Test report:")
     print("tests passed: %i/%i invalid tests: %i seed: %i" % (passed, parsed_args.nrtestcases-invalid, invalid, parsed_args.seed))
+
 
 def ll_reduce(args=None, out=None):
     parser = ArgumentParser(prog='mx ll-reduce', description='')
@@ -847,17 +857,18 @@ def ll_reduce(args=None, out=None):
 
         def run_lli(input_f, out_f, err_f):
             additional_clang_input = [mx_subst.path_substitutions.substitute(ci) for ci in parsed_args.clang_input or []]
-            llvm_tool(["clang-sulong-bootstrap", "-O0", "-Wno-everything", "-o", tmp_out, input_f] + additional_clang_input)
+            toolchain_clang = _get_toolchain_tool("native,CC")
+            llvm_tool([toolchain_clang, "-O0", "-Wno-everything", "-o", tmp_out, input_f] + additional_clang_input)
             with open(out_f, 'w') as o, open(err_f, 'w') as e:
                 runLLVM([tmp_out], timeout=lli_timeout, nonZeroIsFatal=False, out=o, err=e)
 
         shutil.copy(parsed_args.input, tmp_ll)
         run_lli(tmp_ll, tmp_sulong_out_original, tmp_sulong_err_original)
-	while (not parsed_args.timeout or time.time()-starttime < parsed_args.timeout) and \
+        while (not parsed_args.timeout or time.time()-starttime < parsed_args.timeout) and \
                  (not starttime_stabilized or time.time()-starttime_stabilized < parsed_args.timeout_stabilized):
             print("nrmutations: %d filesize: %d bytes" % (nrmutations, os.path.getsize(tmp_ll)))
             llvm_tool(["llvm-as", "-o", tmp_bc, tmp_ll])
-            llvm_tool(["llvm-reduce", tmp_bc, "-ignore_remaining_args=1", "-mtriple", "x86_64-unknown-linux-gnu", "-nrmutations", str(nrmutations), "-seed", str(rand.randint(0, 10000000)), "-o", tmp_ll_reduced], out=devnull, err=devnull)
+            mx.run([_get_fuzz_tool("llvm-reduce"), tmp_bc, "-ignore_remaining_args=1", "-mtriple", "x86_64-unknown-linux-gnu", "-nrmutations", str(nrmutations), "-seed", str(rand.randint(0, 10000000)), "-o", tmp_ll_reduced], out=devnull, err=devnull)
             run_lli(tmp_ll_reduced, tmp_sulong_out, tmp_sulong_err)
             if all(filecmp.cmp(sulong_f, original_f, shallow=False) for sulong_f, original_f in ((tmp_sulong_out, tmp_sulong_out_original), (tmp_sulong_err, tmp_sulong_err_original))):
                 tmp_ll, tmp_ll_reduced = tmp_ll_reduced, tmp_ll
