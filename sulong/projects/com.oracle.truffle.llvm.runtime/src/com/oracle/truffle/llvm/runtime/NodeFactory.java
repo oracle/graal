@@ -95,9 +95,7 @@ public interface NodeFactory {
 
     LLVMStatementNode createFence();
 
-    LLVMExpressionNode createLiteral(Object value, Type type);
-
-    LLVMExpressionNode createVectorLiteralNode(List<LLVMExpressionNode> listValues, Type type);
+    LLVMExpressionNode createVectorLiteralNode(LLVMExpressionNode[] values, Type type);
 
     LLVMControlFlowNode createRetVoid();
 

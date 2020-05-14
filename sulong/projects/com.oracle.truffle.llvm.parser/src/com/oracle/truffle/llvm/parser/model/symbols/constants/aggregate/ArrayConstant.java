@@ -29,7 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 
 public final class ArrayConstant extends AggregateConstant {
@@ -53,4 +57,12 @@ public final class ArrayConstant extends AggregateConstant {
         return String.format("[%s]", super.toString());
     }
 
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        LLVMExpressionNode[] values = new LLVMExpressionNode[getElementCount()];
+        for (int i = 0; i < getElementCount(); i++) {
+            values[i] = getElement(i).createNode(runtime, dataLayout, stackFactory);
+        }
+        return runtime.getNodeFactory().createArrayLiteral(values, getType(), stackFactory);
+    }
 }

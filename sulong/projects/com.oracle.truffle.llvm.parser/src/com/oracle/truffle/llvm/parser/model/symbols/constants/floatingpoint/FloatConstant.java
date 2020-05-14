@@ -29,7 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public final class FloatConstant extends FloatingPointConstant {
@@ -46,10 +51,6 @@ public final class FloatConstant extends FloatingPointConstant {
         visitor.visit(this);
     }
 
-    public float getValue() {
-        return value;
-    }
-
     @Override
     public String toString() {
         return String.format("%.6f", value);
@@ -58,5 +59,10 @@ public final class FloatConstant extends FloatingPointConstant {
     @Override
     public String getStringValue() {
         return String.valueOf(value);
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        return CommonNodeFactory.createSimpleConstantNoArray(value, getType());
     }
 }

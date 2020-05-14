@@ -29,10 +29,15 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.enums.AsmDialect;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class InlineAsmConstant extends AbstractConstant {
@@ -119,5 +124,10 @@ public final class InlineAsmConstant extends AbstractConstant {
         final String asmFlags = asmFlagsBuilder.toString();
 
         return new InlineAsmConstant(type, asmExpression, asmFlags, hasSideEffects, stackAlign, AsmDialect.decode(asmDialect));
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        throw new LLVMParserException("Cannot resolve Inline ASM");
     }
 }

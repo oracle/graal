@@ -401,7 +401,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         int i = indicesSize - 1;
         for (Long idx : indices) {
             indicesArr[i] = idx;
-            indexNodes[i] = nf.createLiteral(idx.longValue(), PrimitiveType.I64);
+            indexNodes[i] = CommonNodeFactory.createLiteral(idx.longValue(), PrimitiveType.I64);
             i--;
         }
         assert i == -1;

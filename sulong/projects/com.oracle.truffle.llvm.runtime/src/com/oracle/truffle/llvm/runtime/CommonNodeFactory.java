@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Value;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
@@ -114,6 +115,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrap
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugDeclaration;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAArgNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMMetaLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVM80BitFloatLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMDoubleLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMFloatLiteralNodeGen;
@@ -123,6 +125,7 @@ import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMI64LiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMI8LiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMIVarBitLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMManagedPointerLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMNativePointerLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNode.LLVMPointerDirectLoadNode;
@@ -206,6 +209,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode.LLVMNegat
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorCompareNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMValueProfilingNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory;
@@ -226,6 +230,7 @@ import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVM
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI32VectorReadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI64VectorReadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI8VectorReadNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -247,6 +252,42 @@ import java.math.BigInteger;
 public class CommonNodeFactory {
 
     public CommonNodeFactory() {
+    }
+
+    public static LLVMExpressionNode createLiteral(Object value, Type type) {
+        if (type instanceof PointerType || type instanceof FunctionType) {
+            if (LLVMNativePointer.isInstance(value)) {
+                return LLVMNativePointerLiteralNodeGen.create(LLVMNativePointer.cast(value));
+            } else if (LLVMManagedPointer.isInstance(value)) {
+                return LLVMManagedPointerLiteralNodeGen.create(LLVMManagedPointer.cast(value));
+            } else if (value instanceof LLVMGlobal || value instanceof LLVMFunction) {
+                return LLVMAccessSymbolNodeGen.create((LLVMSymbol) value);
+            } else {
+                throw new AssertionError(value.getClass());
+            }
+        } else if (type instanceof PrimitiveType) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
+                case I1:
+                    return LLVMI1LiteralNodeGen.create((boolean) value);
+                case I8:
+                    return LLVMI8LiteralNodeGen.create((byte) value);
+                case I16:
+                    return LLVMI16LiteralNodeGen.create((short) value);
+                case I32:
+                    return LLVMI32LiteralNodeGen.create((int) value);
+                case I64:
+                    return LLVMI64LiteralNodeGen.create((long) value);
+                case FLOAT:
+                    return LLVMFloatLiteralNodeGen.create((float) value);
+                case DOUBLE:
+                    return LLVMDoubleLiteralNodeGen.create((double) value);
+                default:
+                    throw new AssertionError(value + " " + type);
+            }
+        } else if (type instanceof MetaType) {
+            return LLVMMetaLiteralNodeGen.create(value);
+        }
+        throw new AssertionError(value + " " + type);
     }
 
     public static LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind) {
@@ -514,9 +555,9 @@ public class CommonNodeFactory {
                     if (addressOffset != 0 || i == indexNodes.length - 1) {
                         LLVMExpressionNode indexNode;
                         if (indexType == PrimitiveType.I32) {
-                            indexNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
+                            indexNode = CommonNodeFactory.createLiteral(1, PrimitiveType.I32);
                         } else if (indexType == PrimitiveType.I64) {
-                            indexNode = nodeFactory.createLiteral(1L, PrimitiveType.I64);
+                            indexNode = CommonNodeFactory.createLiteral(1L, PrimitiveType.I64);
                         } else {
                             throw new AssertionError(indexType);
                         }

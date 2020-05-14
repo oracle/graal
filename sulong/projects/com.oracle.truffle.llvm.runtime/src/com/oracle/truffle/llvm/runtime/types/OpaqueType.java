@@ -31,7 +31,11 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import java.util.Objects;
 
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
@@ -95,5 +99,10 @@ public final class OpaqueType extends Type {
             return Objects.equals(name, other.name);
         }
         return false;
+    }
+
+    @Override
+    public LLVMExpressionNode createNullConstant(NodeFactory nodeFactory, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        throw new LLVMParserException("Unsupported Type for Zero Constant: " + this);
     }
 }

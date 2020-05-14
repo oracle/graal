@@ -40,11 +40,12 @@ import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
-public abstract class GlobalValueSymbol extends GlobalSymbol implements ValueSymbol, MetadataAttachmentHolder {
+public abstract class GlobalValueSymbol extends GlobalSymbol implements Constant, ValueSymbol, MetadataAttachmentHolder {
 
     private final PointerType type;
 

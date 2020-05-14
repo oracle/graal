@@ -29,8 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 
 public final class StringConstant extends AbstractConstant {
@@ -45,10 +49,6 @@ public final class StringConstant extends AbstractConstant {
     @Override
     public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
-    }
-
-    public byte[] getString() {
-        return value;
     }
 
     @Override
@@ -76,5 +76,10 @@ public final class StringConstant extends AbstractConstant {
 
     @Override
     public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        return runtime.getNodeFactory().createPrimitiveArrayLiteral(value, getType(), stackFactory);
     }
 }

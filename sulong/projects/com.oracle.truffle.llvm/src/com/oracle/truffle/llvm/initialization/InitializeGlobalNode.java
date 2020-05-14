@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -48,6 +49,7 @@ import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -106,30 +108,31 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
         if (global == null || global.getValue() == null) {
             return null;
         }
+        Type type = global.getType().getPointeeType();
+        long size;
+        try {
+            size = type.getSize(dataLayout);
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowStatement(e);
+        }
+        if (size == 0) {
+            return null;
+        }
 
+        /*
+         * For fetching the address of the global that we want to initialize, we must use the file
+         * scope because we are initializing the globals of the current file.
+         */
+        LLVMGlobal globalDescriptor = runtime.getFileScope().getGlobalVariable(global.getName());
+        assert globalDescriptor != null;
+        LLVMExpressionNode globalVarAddress = CommonNodeFactory.createLiteral(globalDescriptor, new PointerType(global.getType()));
         LLVMExpressionNode constant = symbolResolver.resolve(global.getValue());
         if (constant != null) {
-            try {
-                final Type type = global.getType().getPointeeType();
-                final long size = type.getSize(dataLayout);
-
-                /*
-                 * For fetching the address of the global that we want to initialize, we must use
-                 * the file scope because we are initializing the globals of the current file.
-                 */
-                LLVMGlobal globalDescriptor = runtime.getFileScope().getGlobalVariable(global.getName());
-                assert globalDescriptor != null;
-                final LLVMExpressionNode globalVarAddress = runtime.getNodeFactory().createLiteral(globalDescriptor, new PointerType(global.getType()));
-                if (size != 0) {
-                    if (type instanceof ArrayType || type instanceof StructureType) {
-                        return runtime.getNodeFactory().createStore(globalVarAddress, constant, type);
-                    } else {
-                        Type t = global.getValue().getType();
-                        return runtime.getNodeFactory().createStore(globalVarAddress, constant, t);
-                    }
-                }
-            } catch (Type.TypeOverflowException e) {
-                return Type.handleOverflowStatement(e);
+            if (type instanceof ArrayType || type instanceof StructureType) {
+                return runtime.getNodeFactory().createStore(globalVarAddress, constant, type);
+            } else {
+                Type t = global.getValue().getType();
+                return runtime.getNodeFactory().createStore(globalVarAddress, constant, t);
             }
         }
 

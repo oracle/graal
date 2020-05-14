@@ -677,30 +677,29 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createVectorLiteralNode(List<LLVMExpressionNode> listValues, Type type) {
-        LLVMExpressionNode[] vals = listValues.toArray(LLVMExpressionNode.NO_EXPRESSIONS);
+    public LLVMExpressionNode createVectorLiteralNode(LLVMExpressionNode[] values, Type type) {
         Type llvmType = ((VectorType) type).getElementType();
         if (llvmType instanceof PrimitiveType) {
             switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
                 case I1:
-                    return LLVMI1VectorLiteralNodeGen.create(vals);
+                    return LLVMI1VectorLiteralNodeGen.create(values);
                 case I8:
-                    return LLVMI8VectorLiteralNodeGen.create(vals);
+                    return LLVMI8VectorLiteralNodeGen.create(values);
                 case I16:
-                    return LLVMI16VectorLiteralNodeGen.create(vals);
+                    return LLVMI16VectorLiteralNodeGen.create(values);
                 case I32:
-                    return LLVMI32VectorLiteralNodeGen.create(vals);
+                    return LLVMI32VectorLiteralNodeGen.create(values);
                 case I64:
-                    return LLVMI64VectorLiteralNodeGen.create(vals);
+                    return LLVMI64VectorLiteralNodeGen.create(values);
                 case FLOAT:
-                    return LLVMFloatVectorLiteralNodeGen.create(vals);
+                    return LLVMFloatVectorLiteralNodeGen.create(values);
                 case DOUBLE:
-                    return LLVMDoubleVectorLiteralNodeGen.create(vals);
+                    return LLVMDoubleVectorLiteralNodeGen.create(values);
                 default:
                     throw new AssertionError();
             }
         } else if (llvmType instanceof PointerType || llvmType instanceof FunctionType) {
-            return LLVMPointerVectorLiteralNodeGen.create(vals);
+            return LLVMPointerVectorLiteralNodeGen.create(values);
         } else {
             throw new AssertionError(llvmType + " not yet supported");
         }
@@ -951,43 +950,6 @@ public class BasicNodeFactory implements NodeFactory {
         } else {
             throw new AssertionError(llvmType1 + " not yet supported");
         }
-    }
-
-    @Override
-    public LLVMExpressionNode createLiteral(Object value, Type type) {
-        if (type instanceof PointerType || type instanceof FunctionType) {
-            if (LLVMNativePointer.isInstance(value)) {
-                return LLVMNativePointerLiteralNodeGen.create(LLVMNativePointer.cast(value));
-            } else if (LLVMManagedPointer.isInstance(value)) {
-                return LLVMManagedPointerLiteralNodeGen.create(LLVMManagedPointer.cast(value));
-            } else if (value instanceof LLVMGlobal || value instanceof LLVMFunction) {
-                return LLVMAccessSymbolNodeGen.create((LLVMSymbol) value);
-            } else {
-                throw new AssertionError(value.getClass());
-            }
-        } else if (type instanceof PrimitiveType) {
-            switch (((PrimitiveType) type).getPrimitiveKind()) {
-                case I1:
-                    return LLVMI1LiteralNodeGen.create((boolean) value);
-                case I8:
-                    return LLVMI8LiteralNodeGen.create((byte) value);
-                case I16:
-                    return LLVMI16LiteralNodeGen.create((short) value);
-                case I32:
-                    return LLVMI32LiteralNodeGen.create((int) value);
-                case I64:
-                    return LLVMI64LiteralNodeGen.create((long) value);
-                case FLOAT:
-                    return LLVMFloatLiteralNodeGen.create((float) value);
-                case DOUBLE:
-                    return LLVMDoubleLiteralNodeGen.create((double) value);
-                default:
-                    throw new AssertionError(value + " " + type);
-            }
-        } else if (type instanceof MetaType) {
-            return LLVMMetaLiteralNodeGen.create(value);
-        }
-        throw new AssertionError(value + " " + type);
     }
 
     @Override

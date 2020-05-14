@@ -29,10 +29,16 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants.integer;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
@@ -99,5 +105,31 @@ public final class IntegerConstant extends AbstractConstant {
             v |= mask;
         }
         return v;
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        Type type = getType();
+        long lVal = getValue();
+        if (type instanceof PrimitiveType) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
+                case I1:
+                    return CommonNodeFactory.createSimpleConstantNoArray(lVal != 0, type);
+                case I8:
+                    return CommonNodeFactory.createSimpleConstantNoArray((byte) lVal, type);
+                case I16:
+                    return CommonNodeFactory.createSimpleConstantNoArray((short) lVal, type);
+                case I32:
+                    return CommonNodeFactory.createSimpleConstantNoArray((int) lVal, type);
+                case I64:
+                    return CommonNodeFactory.createSimpleConstantNoArray(lVal, type);
+                default:
+                    throw new LLVMParserException("Unsupported IntegerConstant: " + type);
+            }
+        } else if (type instanceof VariableBitWidthType) {
+            return CommonNodeFactory.createSimpleConstantNoArray(lVal, type);
+        } else {
+            throw new LLVMParserException("Unsupported IntegerConstant: " + type);
+        }
     }
 }
