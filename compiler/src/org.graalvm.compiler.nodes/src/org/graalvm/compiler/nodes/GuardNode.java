@@ -128,6 +128,7 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
         return speculation;
     }
 
+    @Override
     public void setSpeculation(Speculation speculation) {
         this.speculation = speculation;
     }

@@ -100,6 +100,11 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
     }
 
     @Override
+    public void setSpeculation(Speculation speculation) {
+        this.speculation = speculation;
+    }
+
+    @Override
     public boolean isNegated() {
         return negated;
     }
