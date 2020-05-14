@@ -30,6 +30,8 @@
 SHELL=/bin/bash -o pipefail
 
 QUIETLY$(MX_VERBOSE)  = @
+QUIETLY_REDIR$(MX_VERBOSE) = > /dev/null
+QUIETLY_REDIR_ERR$(MX_VERBOSE) = > /dev/null 2>&1
 
 ifdef _MX_SULONG_GATE
 # only "run" tests if called via mx gate
@@ -45,7 +47,8 @@ run-main.out-lli \
 print-help \
 print-graalvm-help \
 print-graalvm-cmd \
-fembed-bitcode
+fembed-bitcode \
+fuse-ld
 else
 TARGETS=
 endif
@@ -85,6 +88,8 @@ define CHECK_BC_FILE
 	( od -t x4 -N 4 $(1) | grep "$(BC_MAGIC)" ) > /dev/null || ( echo Not a bitcode file: $(1) ; false )
 endef
 
+CHECK_WRAPPER_SCRIPT= | grep "GraalVM wrapper script" $(QUIETLY_REDIR)
+
 ifeq ($(OS), darwin)
 SHARED_FLAGS=-dynamic -dylib -arch x86_64 -macosx_version_min 10.14.0 -lSystem
 else
@@ -92,8 +97,11 @@ SHARED_FLAGS=--shared
 main.out: LDFLAGS+=-Wl,--gc-sections
 endif
 
+PRINT_TEST=@echo Running toolchain test $@
+
 # randomly compile one file with -v
 obj/main.o: CFLAGS+=-v
+obj/main.o: QUIETLY_REDIR$(MX_VERBOSE)= > /dev/null 2>&1
 # require libployglot
 polyglot_biginteger.out: LDFLAGS+=-lpolyglot-mock
 polyglot_biginteger.comp-and-link.out: LDFLAGS+=-lpolyglot-mock
@@ -105,68 +113,81 @@ polyglot_biginteger_cxx.ld-linked.out: LDFLAGS+=-lpolyglot-mock
 # normal compilation (with -fLTO, i.e., result is bitcode file)
 obj/%.o: src/%.c
 	$(QUIETLY) mkdir -p $(dir $@)
-	$(QUIETLY) $(CLANG) $(CFLAGS) -c $< -o $@
+	$(QUIETLY) $(CLANG) $(CFLAGS) -c $< -o $@ $(QUIETLY_REDIR)
 	$(QUIETLY) $(call CHECK_BC_FILE,$@)
 
 obj/%.opp: src/%.cpp
 	$(QUIETLY) mkdir -p $(dir $@)
-	$(QUIETLY) $(CLANGXX) $(CXXFLAGS) -c $< -o $@
+	$(QUIETLY) $(CLANGXX) $(CXXFLAGS) -c $< -o $@ $(QUIETLY_REDIR)
 	$(QUIETLY) $(call CHECK_BC_FILE,$@)
 
 # compilation with PIC (with -fLTO, i.e., result is bitcode file)
 obj/%.lo: src/%.c
 	$(QUIETLY) mkdir -p $(dir $@)
-	$(QUIETLY) $(CLANG) $(CFLAGS) -fPIC -c $< -o $@
+	$(QUIETLY) $(CLANG) $(CFLAGS) -fPIC -c $< -o $@ $(QUIETLY_REDIR)
 	$(QUIETLY) $(call CHECK_BC_FILE,$@)
 
 obj/%.lopp: src/%.cpp
 	$(QUIETLY) mkdir -p $(dir $@)
-	$(QUIETLY) $(CLANGXX) $(CXXFLAGS) -fPIC -c $< -o $@
+	$(QUIETLY) $(CLANGXX) $(CXXFLAGS) -fPIC -c $< -o $@ $(QUIETLY_REDIR)
 	$(QUIETLY) $(call CHECK_BC_FILE,$@)
 
 # linking (executable with embedded bitcode)
 %.out: obj/%.o
-	$(QUIETLY) $(CLANG) $(LDFLAGS) $+ -o $@
+	$(QUIETLY) $(CLANG) $(LDFLAGS) $+ -o $@ $(QUIETLY_REDIR)
 	$(QUIETLY) $(call CHECK_BC_SECTION,$@)
 
 %.out: obj/%.opp
-	$(QUIETLY) $(CLANGXX) $(LDFLAGS) $+ -o $@
+	$(QUIETLY) $(CLANGXX) $(LDFLAGS) $+ -o $@ $(QUIETLY_REDIR)
 	$(QUIETLY) $(call CHECK_BC_SECTION,$@)
 
 # linking using ld (executable with embedded bitcode)
 %.ld-linked.out: obj/%.lo
-	$(QUIETLY) $(TOOLCHAIN_LD) $(SHARED_FLAGS) $(LDFLAGS) $+ -o $@
+	$(QUIETLY) $(TOOLCHAIN_LD) $(SHARED_FLAGS) $(LDFLAGS) $+ -o $@ $(QUIETLY_REDIR)
 	$(QUIETLY) $(call CHECK_BC_SECTION,$@)
 
 %.ld-linked.out: obj/%.lopp
-	$(QUIETLY) $(TOOLCHAIN_LD) $(SHARED_FLAGS) -lc++ $(LDFLAGS) $+ -o $@
+	$(QUIETLY) $(TOOLCHAIN_LD) $(SHARED_FLAGS) -lc++ $(LDFLAGS) $+ -o $@ $(QUIETLY_REDIR)
 	$(QUIETLY) $(call CHECK_BC_SECTION,$@)
 
 # compile and link (executable with embedded bitcode)
 %.comp-and-link.out: src/%.c
-	$(QUIETLY) $(CLANG) $(LDFLAGS) $+ -o $@
+	$(QUIETLY) $(CLANG) $(LDFLAGS) $+ -o $@ $(QUIETLY_REDIR)
 	$(QUIETLY) $(call CHECK_BC_SECTION,$@)
 
 %.comp-and-link.out: src/%.cpp
-	$(QUIETLY) $(CLANGXX) $(LDFLAGS) $+ -o $@
+	$(QUIETLY) $(CLANGXX) $(LDFLAGS) $+ -o $@ $(QUIETLY_REDIR)
 	$(QUIETLY) $(call CHECK_BC_SECTION,$@)
 
 # run with sulong
 run-%-lli: %
-	$(QUIETLY) $(SULONG_EXE) $<
+	$(PRINT_TEST)
+	$(QUIETLY) $(SULONG_EXE) $< $(QUIETLY_REDIR)
 
 print-help:
-	$(QUIETLY) $(CLANG) --help
+	$(PRINT_TEST)
+	$(QUIETLY) $(CLANG) --help $(CHECK_WRAPPER_SCRIPT)
 
 print-graalvm-help:
-	$(QUIETLY) $(CLANG) --graalvm-help
+	$(PRINT_TEST)
+	$(QUIETLY) $(CLANG) --graalvm-help $(CHECK_WRAPPER_SCRIPT)
 
 print-graalvm-cmd:
-	$(QUIETLY) $(CLANG) --graalvm-print-cmd bla.c
+	$(PRINT_TEST)
+	$(QUIETLY) $(CLANG) --graalvm-print-cmd bla.c | grep "running:.*clang.*bla.c" $(QUIETLY_REDIR)
 
 # not supported
 fembed-bitcode:
-	$(QUIETLY) $(CLANG) -fembed-bitcode bla.c ; test $$? -eq 1
+	$(PRINT_TEST)
+	$(QUIETLY) $(CLANG) -fembed-bitcode bla.c 2> $@.err ; test $$? -eq 1
+	$(QUIETLY) cat $@.err $(QUIETLY_REDIR)
+	$(QUIETLY) grep "Using \`-fembed-bitcode\` is not supported." $@.err $(QUIETLY_REDIR)
+
+fuse-ld:
+	$(PRINT_TEST)
+	$(QUIETLY) $(CLANG) -fuse-ld=ld bla.c 2> $@.err ; test $$? -eq 1
+	$(QUIETLY) cat $@.err $(QUIETLY_REDIR)
+	$(QUIETLY) grep "Using \`-fuse-ld\` is not supported." $@.err $(QUIETLY_REDIR)
 
 clean:
-	$(QUIETLY) rm -rf *.out obj
+	$(QUIETLY) rm -rf *.out obj *.err
