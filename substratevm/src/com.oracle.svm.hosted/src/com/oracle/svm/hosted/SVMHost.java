@@ -28,6 +28,8 @@ import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -302,8 +304,22 @@ public final class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
+        /*
+         * JDK 15 added support for Hidden Classes. Record if this javaClass is hidden.
+         */
+        boolean isHidden = false;
+        if (JavaVersionUtil.JAVA_SPEC >= 15) {
+            try {
+                Method isHiddenMethod = Class.class.getMethod("isHidden");
+                isHidden = (boolean) isHiddenMethod.invoke(javaClass);
+            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                String message = "Exception trying to lookup or call isHidden on class: " + javaClass + " " + e;
+                throw new UnsupportedFeatureException(message);
+            }
+        }
+
         final DynamicHub dynamicHub = new DynamicHub(className, computeHubType(type), computeReferenceType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
-                        modifiers, hubClassLoader);
+                        modifiers, hubClassLoader, isHidden);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         }
