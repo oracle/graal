@@ -1262,6 +1262,24 @@ suite = {
       "javaCompliance" : "9..11",
     },
 
+    "org.graalvm.compiler.replacements.jdk10.test" : {
+      "testProject" : True,
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.replacements.test"
+      ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+          "jdk.vm.ci.aarch64",
+        ],
+      },
+      "checkstyle": "org.graalvm.compiler.graph",
+      "javaCompliance" : "10+",
+    },
+
     "org.graalvm.compiler.replacements.jdk12.test" : {
       "testProject" : True,
       "subDir" : "src",
@@ -2227,6 +2245,7 @@ suite = {
         "org.graalvm.compiler.loop.test",
         "org.graalvm.compiler.replacements.jdk9.test",
         "org.graalvm.compiler.replacements.jdk9_11.test",
+        "org.graalvm.compiler.replacements.jdk10.test",
         "org.graalvm.compiler.replacements.jdk12.test",
         "org.graalvm.compiler.core.jdk9.test",
         "org.graalvm.compiler.hotspot.jdk9.test",

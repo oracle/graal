@@ -378,8 +378,10 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
 
         if (isJDK10OrHigher()) {
-            add(toBeInvestigated,
-                            "java/lang/Math.multiplyHigh(JJ)J");
+            if (!(arch instanceof AArch64)) {
+                add(toBeInvestigated,
+                                "java/lang/Math.multiplyHigh(JJ)J");
+            }
         }
 
         if (isJDK11OrHigher()) {
