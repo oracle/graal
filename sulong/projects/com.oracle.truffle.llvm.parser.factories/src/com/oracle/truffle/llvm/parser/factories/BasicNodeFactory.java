@@ -215,6 +215,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMoveNodeGen
 import com.oracle.truffle.llvm.runtime.nodes.memory.ProtectReadOnlyGlobalsBlockNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMArrayLiteralNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMArrayLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMI8ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMStructArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVM80BitFloatDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
@@ -357,6 +358,7 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LocalVariableDebugInfo;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -1038,6 +1040,28 @@ public class BasicNodeFactory implements NodeFactory {
 
     protected LLVMExpressionNode createAlloca(long byteSize, int alignment) {
         return LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment);
+    }
+
+    @Override
+    public LLVMExpressionNode createPrimitiveArrayLiteral(Object arrayValues, ArrayType arrayType, GetStackSpaceFactory arrayGetStackSpaceFactory) {
+        assert arrayType.getNumberOfElements() == Array.getLength(arrayValues);
+        LLVMExpressionNode arrayGetStackSpace = arrayGetStackSpaceFactory.createGetStackSpace(this, arrayType);
+        Type elementType = arrayType.getElementType();
+        try {
+            long elementSize = getByteSize(elementType);
+            if (elementSize == 0) {
+                throw new TypeOverflowException(elementType + " has size of 0!");
+            }
+            if (elementType instanceof PrimitiveType) {
+                PrimitiveType primitiveType = (PrimitiveType) elementType;
+                if (primitiveType.getPrimitiveKind() == PrimitiveKind.I8 && arrayValues instanceof byte[] && elementSize == 1) {
+                    return LLVMI8ArrayLiteralNodeGen.create((byte[]) arrayValues, arrayGetStackSpace);
+                }
+            }
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
+        throw new AssertionError(elementType);
     }
 
     @Override

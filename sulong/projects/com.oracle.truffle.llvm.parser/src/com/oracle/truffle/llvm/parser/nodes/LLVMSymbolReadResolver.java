@@ -381,16 +381,7 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(StringConstant constant) {
-            final String chars = constant.getString();
-
-            final LLVMExpressionNode[] values = new LLVMExpressionNode[chars.length() + (constant.isCString() ? 1 : 0)];
-            for (int i = 0; i < chars.length(); i++) {
-                values[i] = nodeFactory.createLiteral((byte) chars.charAt(i), PrimitiveType.I8);
-            }
-            if (constant.isCString()) {
-                values[values.length - 1] = nodeFactory.createLiteral((byte) 0, PrimitiveType.I8);
-            }
-            resolvedNode = nodeFactory.createArrayLiteral(values, constant.getType(), getStackSpaceFactory);
+            resolvedNode = nodeFactory.createPrimitiveArrayLiteral(constant.getString(), constant.getType(), getStackSpaceFactory);
         }
 
         @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,54 +27,33 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.runtime.nodes.memory.literal;
 
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OptimizedStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen.LLVMI8OptimizedStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class StringConstant extends AbstractConstant {
+@NodeChild(value = "address", type = LLVMExpressionNode.class)
+public abstract class LLVMI8ArrayLiteralNode extends LLVMExpressionNode {
 
-    private final byte[] value;
+    @CompilationFinal(dimensions = 1) private final byte[] values;
+    @Child private LLVMI8OptimizedStoreNode write = LLVMI8OptimizedStoreNodeGen.create();
 
-    public StringConstant(ArrayType type, byte[] value) {
-        super(type);
-        this.value = value;
+    public LLVMI8ArrayLiteralNode(byte[] values) {
+        this.values = values;
     }
 
-    @Override
-    public void accept(SymbolVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    public byte[] getString() {
-        return value;
-    }
-
-    @Override
-    public ArrayType getType() {
-        return (ArrayType) super.getType();
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-
-        sb.append("c\"");
-        for (int i = 0; i < value.length; i++) {
-            byte b = value[i];
-            if (b < ' ' || b >= '~') {
-                sb.append(String.format("\\%02X", b));
-            } else {
-                sb.append((char) b);
-            }
+    @Specialization
+    @ExplodeLoop
+    protected LLVMPointer foreignWrite(LLVMPointer addr) {
+        for (int i = 0; i < values.length; i++) {
+            write.executeWithTarget(addr, i, values[i]);
         }
-        sb.append("\"");
-
-        return sb.toString();
-    }
-
-    @Override
-    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+        return addr;
     }
 }
