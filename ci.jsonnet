@@ -202,7 +202,8 @@ local awfy = 'awfy:*';
                                                                            DYNAMIC_IMPORTS: '/truffleruby'},
                                                             timelimit: '1:00:00'}                         + {name: 'espresso-gate-unittest-with-ruby-jdk8-linux-amd64'},
 
-    jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS      : 'build,unittest_with_compilation',
+    // Disabled until GR-17135 makes this gate faster/bearable.
+    // jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS      : 'build,unittest_with_compilation',
                                                                            DYNAMIC_IMPORTS: '/compiler'},
                                                             timelimit: '1:00:00'}                         + {name: 'espresso-gate-unittest-compilation-jdk8-linux-amd64'},
 
