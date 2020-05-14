@@ -2454,30 +2454,22 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @Override
+    public Object continueLoopStatus() {
+        return TargetOffset.ZERO;
+    }
+
+    public boolean shouldContinue(Object value) {
+        return ((TargetOffset) value).value == 0;
+    }
+
+    @Override
     public boolean executeRepeating(VirtualFrame frame) {
         throw new WasmExecutionException(this, "This method should never have been called.");
     }
 
     @Override
     public Object executeRepeatingWithValue(VirtualFrame frame) {
-        final TargetOffset offset = execute(contextReference().get(), frame);
-        if (offset == TargetOffset.ZERO) {
-            return CONTINUE_LOOP_STATUS;
-        }
-        return offset;
-    }
-
-    @SuppressWarnings("unused")
-    public static boolean shouldContinue(Object value) {
-        // This is a trick to avoid the load of the value field.
-        // In particular, we avoid:
-        //
-        // return this.value == 0;
-        //
-        // This helps the partial evaluator short-circuit the
-        // pattern with a diamond and a loop exit check,
-        // when br_if occurs in the loop body.
-        return value == TargetOffset.ZERO;
+        return execute(contextReference().get(), frame);
     }
 
     @Override

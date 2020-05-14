@@ -67,6 +67,14 @@ public interface RepeatingNode extends NodeInterface {
         }
     };
 
+    default Object continueLoopStatus() {
+        return CONTINUE_LOOP_STATUS;
+    }
+
+    default boolean shouldContinue(Object returnValue) {
+        return returnValue == continueLoopStatus();
+    }
+
     /**
      * A value indicating that the loop should not be repeated. Any other value different than
      * {@code CONTINUE_LOOP_STATUS} can also be used to indicate that the loop should not be
