@@ -39,8 +39,8 @@ import org.openjdk.jmh.annotations.Warmup;
  * for each benchmark option. Individual options can be overridden in the subclasses or by an
  * individual benchmark.
  */
-@Warmup(iterations = WARMUP_ITERATIONS)
-@Measurement(iterations = MEASUREMENT_ITERATIONS)
+@Warmup(iterations = WARMUP_ITERATIONS, time = 5)
+@Measurement(iterations = MEASUREMENT_ITERATIONS, time = 5)
 @Fork(FORKS)
 public class GraalBenchmark {
     static {
@@ -50,6 +50,6 @@ public class GraalBenchmark {
     public static class Defaults {
         public static final int MEASUREMENT_ITERATIONS = 5;
         public static final int WARMUP_ITERATIONS = 5;
-        public static final int FORKS = 1;
+        public static final int FORKS = 3;
     }
 }
