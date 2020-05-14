@@ -31,8 +31,6 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_END;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
-import static com.oracle.svm.core.posix.headers.LibC.free;
-import static com.oracle.svm.core.posix.headers.LibC.malloc;
 import static com.oracle.svm.core.posix.headers.LibC.memcpy;
 import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
@@ -164,24 +162,21 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             if (mapfd == -1) {
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
-            final CCharPointer buffer = malloc(WordFactory.unsigned(MAX_PATHLEN));
+            final CCharPointer buffer = StackValue.get(MAX_PATHLEN);
             final CLongPointer startAddr = StackValue.get(CLongPointer.class);
             final CLongPointer offset = StackValue.get(CLongPointer.class);
             final CLongPointer inode = StackValue.get(CLongPointer.class);
             boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, inode, true);
             Unistd.NoTransitions.close(mapfd);
             if (!found) {
-                free(buffer);
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
             LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
             int opened = Fcntl.NoTransitions.open(buffer, Fcntl.O_RDONLY(), 0);
             if (opened < 0) {
-                free(buffer);
                 return CEntryPointErrors.OPEN_IMAGE_FAILED;
             }
             if (LinuxStat.NoTransitions.fstat64(opened, stat) != 0) {
-                free(buffer);
                 Unistd.NoTransitions.close(opened);
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
@@ -200,12 +195,10 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
                     Unistd.NoTransitions.close(versionfd);
                 }
                 if (!ignore) {
-                    free(buffer);
                     Unistd.NoTransitions.close(opened);
                     return CEntryPointErrors.LOCATE_IMAGE_IDENTITY_MISMATCH;
                 }
             }
-            free(buffer);
             Word imageHeapRelocsOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(IMAGE_HEAP_BEGIN.get());
             Word imageHeapOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(unsigned(startAddr.read())).subtract(imageHeapRelocsOffset);
             long fileOffset = offset.read() + imageHeapOffset.rawValue();
