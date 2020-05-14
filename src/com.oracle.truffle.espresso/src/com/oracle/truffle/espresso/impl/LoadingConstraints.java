@@ -23,16 +23,15 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
  * This class takes care of the loading constraints in Espresso, as described in {5.3.4. Loading
@@ -49,8 +48,8 @@ import com.oracle.truffle.espresso.substitutions.Host;
  * <p>
  * To represent this, we use a map from types to buckets. Buckets are a doubly linked list. To
  * support concurrency, we use a ConcurrentHashMap. failure to insert an item in the map due to
- * concurrency aborts the current constraint checking, and completely retries again. We are
- * guaranteed to retry at most once.
+ * concurrency simply means someone was faster than us, we can therefore simply use the one that is
+ * already present.
  * <p>
  * Once the bucket is obtained, we immediately synchronize on it. This prevents concurrency problems
  * as a whole, while allowing multiple threads to do constraint checking on different types.
@@ -68,40 +67,40 @@ final class LoadingConstraints implements ContextAccess {
     void checkConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
         Klass k1 = getContext().getRegistries().findLoadedClass(type, loader1);
         Klass k2 = getContext().getRegistries().findLoadedClass(type, loader2);
-        checkOrAdd(type, k1, k2, loader1, loader2);
+        checkOrAdd(type, k1, k2, getLoaderID(loader1, getMeta()), getLoaderID(loader2, getMeta()));
     }
 
     /**
      * Records that loader resolves type as klass.
      */
     void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
+        int loaderID = getLoaderID(loader, getMeta());
         ConstraintBucket bucket = lookup(type);
         if (bucket == null) {
             bucket = new ConstraintBucket();
-            Constraint newConstraint = Constraint.create(klass, loader);
+            Constraint newConstraint = Constraint.create(klass, loaderID);
             bucket.add(newConstraint);
             ConstraintBucket previous = pairings.putIfAbsent(type, bucket);
             if (previous != null) {
-                recordConstraint(type, klass, loader);
+                bucket = lookup(type);
             }
-        } else {
-            synchronized (bucket) {
-                Constraint constraint = bucket.lookup(loader);
+        }
+        synchronized (bucket) {
+            Constraint constraint = bucket.lookup(loaderID);
+            if (constraint == null) {
+                constraint = bucket.lookup(klass);
                 if (constraint == null) {
-                    constraint = bucket.lookup(klass);
-                    if (constraint == null) {
-                        bucket.add(Constraint.create(klass, loader));
-                    } else {
-                        constraint.add(loader);
-                    }
+                    bucket.add(Constraint.create(klass, loaderID));
                 } else {
-                    checkConstraint(klass, constraint);
+                    constraint.add(loaderID);
                 }
+            } else {
+                checkConstraint(klass, constraint);
             }
         }
     }
 
-    private void checkOrAdd(Symbol<Type> type, Klass k1, Klass k2, StaticObject loader1, StaticObject loader2) {
+    private void checkOrAdd(Symbol<Type> type, Klass k1, Klass k2, int loader1, int loader2) {
         if (k1 != null && k2 != null && k1 != k2) {
             throw linkageError("Loading constraint violated !");
         }
@@ -112,31 +111,30 @@ final class LoadingConstraints implements ContextAccess {
             bucket.add(Constraint.create(klass, loader1, loader2));
             ConstraintBucket previous = pairings.putIfAbsent(type, bucket);
             if (previous != null) {
-                checkOrAdd(type, k1, k2, loader1, loader2);
+                bucket = lookup(type);
             }
-        } else {
-            synchronized (bucket) {
-                Constraint c1 = bucket.lookup(loader1);
-                klass = checkConstraint(klass, c1);
-                Constraint c2 = bucket.lookup(loader2);
-                klass = checkConstraint(klass, c2);
-                if (c1 == null && c2 == null) {
-                    bucket.add(Constraint.create(klass, loader1, loader2));
-                } else if (c1 == c2) {
-                    /* Constraint already added */
-                } else if (c1 == null) {
-                    c2.add(loader1);
-                    if (c2.klass == null) {
-                        c2.klass = klass;
-                    }
-                } else if (c2 == null) {
-                    c1.add(loader2);
-                    if (c1.klass == null) {
-                        c1.klass = klass;
-                    }
-                } else {
-                    mergeConstraints(bucket, c1, c2);
+        }
+        synchronized (bucket) {
+            Constraint c1 = bucket.lookup(loader1);
+            klass = checkConstraint(klass, c1);
+            Constraint c2 = bucket.lookup(loader2);
+            klass = checkConstraint(klass, c2);
+            if (c1 == null && c2 == null) {
+                bucket.add(Constraint.create(klass, loader1, loader2));
+            } else if (c1 == c2) {
+                /* Constraint already added */
+            } else if (c1 == null) {
+                c2.add(loader1);
+                if (c2.klass == null) {
+                    c2.klass = klass;
                 }
+            } else if (c2 == null) {
+                c1.add(loader2);
+                if (c1.klass == null) {
+                    c1.klass = klass;
+                }
+            } else {
+                mergeConstraints(bucket, c1, c2);
             }
         }
     }
@@ -150,10 +148,10 @@ final class LoadingConstraints implements ContextAccess {
 
         private Constraint constraint;
 
-        Constraint lookup(StaticObject loader) {
+        Constraint lookup(int loader) {
             Constraint curr = constraint;
             while (curr != null) {
-                if (curr.loaders.contains(loader)) {
+                if (curr.contains(loader)) {
                     return curr;
                 }
                 curr = curr.next;
@@ -200,27 +198,58 @@ final class LoadingConstraints implements ContextAccess {
     private static final class Constraint {
         private Klass klass;
 
-        private final List<@Host(ClassLoader.class) StaticObject> loaders = new ArrayList<>();
-        Constraint prev;
+        /*
+         * Most applications will only see the boot loader and the app class loader used.
+         */
+        private static final int DEFAULT_INITIAL_SIZE = 2;
 
+        private int[] loaders = new int[DEFAULT_INITIAL_SIZE];
+        private int size = 0;
+        private int capacity = DEFAULT_INITIAL_SIZE;
+
+        Constraint prev;
         Constraint next;
+
+        boolean contains(int loader) {
+            for (int i = 0; i < size; i++) {
+                if (loaders[i] == loader) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        void merge(Constraint other) {
+            for (int loader : other.loaders) {
+                if (!contains(loader)) {
+                    add(loader);
+                }
+            }
+        }
 
         Constraint(Klass k) {
             this.klass = k;
         }
 
-        void add(StaticObject loader) {
-            loaders.add(loader);
+        void add(int loader) {
+            assert !contains(loader);
+            if (size >= capacity) {
+                loaders = Arrays.copyOf(loaders, capacity << 1);
+            }
+            loaders[size++] = loader;
         }
 
-        static Constraint create(Klass klass, StaticObject loader1, StaticObject loader2) {
+        static Constraint create(Klass klass, int loader1, int loader2) {
+            if (loader1 == loader2) {
+                return create(klass, loader1);
+            }
             Constraint constraint = new Constraint(klass);
             constraint.add(loader1);
             constraint.add(loader2);
             return constraint;
         }
 
-        static Constraint create(Klass klass, StaticObject loader) {
+        static Constraint create(Klass klass, int loader) {
             Constraint constraint = new Constraint(klass);
             constraint.add(loader);
             return constraint;
@@ -254,19 +283,30 @@ final class LoadingConstraints implements ContextAccess {
     private static void mergeConstraints(ConstraintBucket bucket, Constraint c1, Constraint c2) {
         Constraint merge;
         Constraint delete;
-        if (c1.loaders.size() < c2.loaders.size()) {
+        if (c1.loaders.length < c2.loaders.length) {
             merge = c2;
             delete = c1;
         } else {
             merge = c1;
             delete = c2;
         }
-        merge.loaders.addAll(delete.loaders);
+        merge.merge(delete);
         bucket.remove(delete);
     }
 
     private LinkageError linkageError(String message) {
         Meta meta = getMeta();
         throw Meta.throwExceptionWithMessage(meta.java_lang_LinkageError, message);
+    }
+
+    private static int getLoaderID(StaticObject loader, Meta meta) {
+        if (StaticObject.isNull(loader)) {
+            return meta.getContext().getBootClassLoaderID();
+        }
+        ClassRegistry classRegistry = (ClassRegistry) loader.getHiddenFieldVolatile(meta.HIDDEN_CLASS_LOADER_REGISTRY);
+        if (classRegistry == null) {
+            throw EspressoError.shouldNotReachHere();
+        }
+        return classRegistry.getLoaderID();
     }
 }
