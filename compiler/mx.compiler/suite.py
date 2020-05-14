@@ -2485,9 +2485,10 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.virtual.bench",
         "org.graalvm.compiler.microbenchmarks",
+        "org.graalvm.compiler.api.test"
       ],
       "distDependencies" : [
-        "GRAAL_TEST",
+        "GRAAL"
       ],
       "testDistribution" : True,
       "maven": False,
