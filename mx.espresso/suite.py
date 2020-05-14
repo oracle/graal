@@ -48,6 +48,40 @@ suite = {
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
+            {
+                "name": "tools",
+                "subdir": True,
+                # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
+                "version": "29cba69b20990b649bab716a50a37836ab7c6cac",
+                "urls": [
+                    {"url": "https://github.com/graalvm/graal", "kind": "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            {
+                "name": "truffleruby",
+                "version": "7c588c76f3a7c9c08eea614e1b1c54b36df8658e",
+                "dynamic": True,
+                "urls": [
+                    {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ],
+                "os_arch": {
+                    "linux": {
+                        "sparcv9": {
+                            "ignore": True
+                        },
+                        "<others>": {
+                            "ignore": False
+                        }
+                    },
+                    "<others>": {
+                        "<others>": {
+                            "ignore": False
+                        }
+                    }
+                }
+            },
         ],
     },
     "libraries": {
@@ -182,6 +216,7 @@ suite = {
                 "com.oracle.truffle.espresso",
                 "truffle:TRUFFLE_TCK",
                 "mx:JUNIT",
+                "tools:AGENTSCRIPT"
             ],
             # JTT unit tests run both on the host JVM and on Espresso, so they must be compiled with a version compatible with Espresso (8).
             # Espresso itself can be compiled with Java 11 and the unit tests (compiled to 8) should run on a JVM 11.
@@ -292,6 +327,7 @@ suite = {
                 "espresso:ESPRESSO",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_TCK",
+                "tools:AGENTSCRIPT",
                 "mx:JUNIT",
             ],
             "javaProperties": {

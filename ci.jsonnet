@@ -31,6 +31,7 @@ local base = {
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
       MX_PYTHON_VERSION: "3",
+      GATE_ARGS: "--strict-mode",
     },
   },
 
@@ -41,6 +42,8 @@ local base = {
       gcc: '>=4.9.1',
       'gcc-build-essentials': '>=4.9.1', # GCC 4.9.0 fails on cluster
       make: '>=3.83',
+      'sys:cmake': '==3.15.2',
+      ruby: "==2.6.5",
     },
     capabilities+: ['linux', 'amd64'],
   },
@@ -100,7 +103,7 @@ local gate_coverage = base.eclipse + {
   timelimit: '30:00',
 };
 
-local gate_cmd = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'];
+local gate_cmd = ['mx', '--strict-compliance', 'gate', '${GATE_ARGS}', '--tags', '${GATE_TAGS}'];
 
 local gate_espresso = {
   setup+: [
@@ -193,6 +196,11 @@ local awfy = 'awfy:*';
     jdk8_gate_linux_eclipse_jdt   + gate_espresso        + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'espresso-gate-style-fullbuild-jdk8-linux-amd64'},
 
     jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-gate-unittest-jdk8-linux-amd64'},
+
+    jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS      : 'build,unittest',
+                                                                           GATE_ARGS: '--no-warning-as-error',
+                                                                           DYNAMIC_IMPORTS: '/truffleruby'},
+                                                            timelimit: '1:00:00'}                         + {name: 'espresso-gate-unittest-with-ruby-jdk8-linux-amd64'},
 
     jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS      : 'build,unittest_with_compilation',
                                                                            DYNAMIC_IMPORTS: '/compiler'},
