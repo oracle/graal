@@ -29,13 +29,30 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public interface Constant extends SymbolImpl {
 
     LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory);
+
+    interface Buffer {
+        ByteBuffer getBuffer();
+
+        void addValue(LLVMExpressionNode value, Type type);
+    }
+
+    /**
+     * @throws TypeOverflowException may be thrown by implementing classes
+     */
+    default void addToBuffer(Buffer buffer, LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) throws TypeOverflowException {
+        buffer.addValue(createNode(runtime, dataLayout, stackFactory), getType());
+    }
 }

@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public final class ArrayConstant extends AggregateConstant {
 
@@ -64,5 +65,16 @@ public final class ArrayConstant extends AggregateConstant {
             values[i] = getElement(i).createNode(runtime, dataLayout, stackFactory);
         }
         return runtime.getNodeFactory().createArrayLiteral(values, getType(), stackFactory);
+    }
+
+    @Override
+    public void addToBuffer(Buffer buffer, LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) throws TypeOverflowException {
+        long startOffset = buffer.getBuffer().position();
+        long elementSize = getType().getElementType().getSize(dataLayout);
+        assert getType().getNumberOfElements() == getElementCount();
+        for (int i = 0; i < getElementCount(); i++) {
+            getElement(i).addToBuffer(buffer, runtime, dataLayout, stackFactory);
+            buffer.getBuffer().position((int) (startOffset + (i + 1) * elementSize));
+        }
     }
 }

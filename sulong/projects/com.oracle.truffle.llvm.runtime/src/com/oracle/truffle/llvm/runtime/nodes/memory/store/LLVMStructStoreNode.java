@@ -77,7 +77,7 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
     }
 
     @Specialization(guards = "getStructSize() > 0")
-    protected void doManaged(LLVMManagedPointer address, LLVMManagedPointer value) {
+    protected void doManaged(LLVMManagedPointer address, LLVMPointer value) {
         memMove.executeWithTarget(address, value, getStructSize());
     }
 

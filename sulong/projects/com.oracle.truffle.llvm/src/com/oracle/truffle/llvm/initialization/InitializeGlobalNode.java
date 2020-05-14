@@ -29,12 +29,16 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -44,15 +48,13 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOptimizedStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateLiteralInPlaceNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * {@link InitializeGlobalNode} initializes the value of all defined global symbols.
@@ -70,10 +72,11 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
     @Child StaticInitsNode globalVarInit;
     @Child LLVMMemoryOpNode protectRoData;
 
-    public InitializeGlobalNode(FrameDescriptor rootFrame, LLVMParserResult parserResult, String moduleName) {
+    public InitializeGlobalNode(LLVMParserResult parserResult, String moduleName) {
         this.dataLayout = parserResult.getDataLayout();
 
-        this.globalVarInit = createGlobalVariableInitializer(rootFrame, parserResult, moduleName);
+        this.globalVarInit = createGlobalVariableInitializer(parserResult, moduleName);
+
         this.protectRoData = parserResult.getRuntime().getNodeFactory().createProtectGlobalsBlock();
     }
 
@@ -90,12 +93,12 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
         return dataLayout;
     }
 
-    private static StaticInitsNode createGlobalVariableInitializer(FrameDescriptor rootFrame, LLVMParserResult parserResult, String moduleName) {
+    private static StaticInitsNode createGlobalVariableInitializer(LLVMParserResult parserResult, Object moduleName) {
         LLVMParserRuntime runtime = parserResult.getRuntime();
-        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, rootFrame, GetStackSpaceFactory.createAllocaFactory(), parserResult.getDataLayout(), false);
+        GetStackSpaceFactory stackFactory = GetStackSpaceFactory.createAllocaFactory();
         final List<LLVMStatementNode> globalNodes = new ArrayList<>();
         for (GlobalVariable global : parserResult.getDefinedGlobals()) {
-            final LLVMStatementNode store = createGlobalInitialization(runtime, symbolResolver, global, parserResult.getDataLayout());
+            final LLVMStatementNode store = createGlobalInitialization(runtime, stackFactory, global, parserResult.getDataLayout());
             if (store != null) {
                 globalNodes.add(store);
             }
@@ -104,10 +107,11 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
         return StaticInitsNodeGen.create(initNodes, "global variable initializers", moduleName);
     }
 
-    private static LLVMStatementNode createGlobalInitialization(LLVMParserRuntime runtime, LLVMSymbolReadResolver symbolResolver, GlobalVariable global, DataLayout dataLayout) {
+    private static LLVMStatementNode createGlobalInitialization(LLVMParserRuntime runtime, GetStackSpaceFactory stackFactory, GlobalVariable global, DataLayout dataLayout) {
         if (global == null || global.getValue() == null) {
             return null;
         }
+        Constant value = global.getValue();
         Type type = global.getType().getPointeeType();
         long size;
         try {
@@ -124,18 +128,78 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
          * scope because we are initializing the globals of the current file.
          */
         LLVMGlobal globalDescriptor = runtime.getFileScope().getGlobalVariable(global.getName());
-        assert globalDescriptor != null;
         LLVMExpressionNode globalVarAddress = CommonNodeFactory.createLiteral(globalDescriptor, new PointerType(global.getType()));
-        LLVMExpressionNode constant = symbolResolver.resolve(global.getValue());
-        if (constant != null) {
-            if (type instanceof ArrayType || type instanceof StructureType) {
-                return runtime.getNodeFactory().createStore(globalVarAddress, constant, type);
-            } else {
-                Type t = global.getValue().getType();
-                return runtime.getNodeFactory().createStore(globalVarAddress, constant, t);
+        assert globalDescriptor != null;
+        if (value.getType() instanceof PrimitiveType) {
+            return runtime.getNodeFactory().createStore(globalVarAddress, value.createNode(runtime, dataLayout, stackFactory), value.getType());
+        } else {
+            return createConstantInitialization(value, globalVarAddress, runtime, dataLayout, stackFactory);
+        }
+    }
+
+    private static final class Buffer implements Constant.Buffer {
+
+        private final ByteBuffer buffer;
+
+        private final LLVMParserRuntime runtime;
+        private final DataLayout dataLayout;
+
+        private final ArrayList<LLVMOptimizedStoreNode> valueStores = new ArrayList<>();
+        private final ArrayList<Integer> valueOffsets = new ArrayList<>();
+        private final ArrayList<Integer> valueSizes = new ArrayList<>();
+
+        Buffer(Type type, LLVMParserRuntime runtime, DataLayout dataLayout) throws TypeOverflowException {
+            this.runtime = runtime;
+            this.dataLayout = dataLayout;
+            long size = type.getSize(dataLayout);
+            if (size != (int) size) {
+                throw new TypeOverflowException("constant > 2GB");
+            }
+            this.buffer = ByteBuffer.allocate((int) size);
+            this.buffer.order(ByteOrder.nativeOrder());
+        }
+
+        @Override
+        public ByteBuffer getBuffer() {
+            return buffer;
+        }
+
+        @Override
+        public void addValue(LLVMExpressionNode value, Type type) {
+            try {
+                int size = (int) type.getSize(dataLayout);
+                valueOffsets.add(buffer.position());
+                valueStores.add(runtime.getNodeFactory().createOptimizedMemoryStore(type, value));
+                valueSizes.add(size);
+                buffer.position(buffer.position() + size);
+            } catch (TypeOverflowException e) {
+                // this would have happened before, when sizing the buffer
             }
         }
 
-        return null;
+        public LLVMStatementNode createNode(LLVMExpressionNode target) {
+            LLVMOptimizedStoreNode[] stores = new LLVMOptimizedStoreNode[valueStores.size()];
+            int[] offsets = new int[valueStores.size() + 1];
+            int[] sizes = new int[valueStores.size()];
+            for (int i = 0; i < valueStores.size(); i++) {
+                offsets[i] = valueOffsets.get(i);
+                sizes[i] = valueSizes.get(i);
+                stores[i] = valueStores.get(i);
+            }
+            offsets[offsets.length - 1] = buffer.capacity();
+            return AggregateLiteralInPlaceNodeGen.create(buffer.array(), stores, offsets, sizes, target);
+        }
+    }
+
+    private static LLVMStatementNode createConstantInitialization(Constant constant, LLVMExpressionNode target, LLVMParserRuntime runtime, DataLayout dataLayout,
+                    GetStackSpaceFactory stackFactory) {
+        try {
+            Buffer buffer = new Buffer(constant.getType(), runtime, dataLayout);
+            constant.addToBuffer(buffer, runtime, dataLayout, stackFactory);
+
+            return buffer.createNode(target);
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowStatement(e);
+        }
     }
 }

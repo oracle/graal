@@ -132,4 +132,28 @@ public final class IntegerConstant extends AbstractConstant {
             throw new LLVMParserException("Unsupported IntegerConstant: " + type);
         }
     }
+
+    @Override
+    public void addToBuffer(Buffer buffer, LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) throws TypeOverflowException {
+        if (getType() instanceof PrimitiveType) {
+            switch (((PrimitiveType) getType()).getPrimitiveKind()) {
+                case I1:
+                    buffer.getBuffer().put(value != 0 ? (byte) 1 : (byte) 0);
+                    return;
+                case I8:
+                    buffer.getBuffer().put((byte) value);
+                    return;
+                case I16:
+                    buffer.getBuffer().putShort((short) value);
+                    return;
+                case I32:
+                    buffer.getBuffer().putInt((int) value);
+                    return;
+                case I64:
+                    buffer.getBuffer().putLong(value);
+                    return;
+            }
+        }
+        super.addToBuffer(buffer, runtime, dataLayout, stackFactory);
+    }
 }

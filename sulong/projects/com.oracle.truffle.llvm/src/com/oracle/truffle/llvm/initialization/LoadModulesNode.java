@@ -146,7 +146,7 @@ public final class LoadModulesNode extends LLVMRootNode {
                         isInternalSulongLibrary, moduleName);
         this.initScopes = new InitializeScopeNode(parserResult);
         this.initExternals = new InitializeExternalNode(parserResult);
-        this.initGlobals = new InitializeGlobalNode(rootFrame, parserResult, moduleName);
+        this.initGlobals = new InitializeGlobalNode(parserResult, moduleName);
         this.initOverwrite = new InitializeOverwriteNode(parserResult);
         this.initModules = new InitializeModuleNode(language, parserResult, moduleName);
         this.indirectCall = IndirectCallNode.create();

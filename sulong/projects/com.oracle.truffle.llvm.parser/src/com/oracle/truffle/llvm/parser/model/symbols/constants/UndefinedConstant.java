@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public final class UndefinedConstant extends AbstractConstant {
 
@@ -60,5 +61,14 @@ public final class UndefinedConstant extends AbstractConstant {
     @Override
     public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
         return getType().createNullConstant(runtime.getNodeFactory(), dataLayout, stackFactory);
+    }
+
+    @Override
+    public void addToBuffer(Buffer buffer, LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) throws TypeOverflowException {
+        long newOffset = buffer.getBuffer().position() + getType().getSize(dataLayout);
+        if (newOffset != (int) newOffset) {
+            throw new TypeOverflowException("constant offset > 2GB");
+        }
+        buffer.getBuffer().position((int) newOffset);
     }
 }

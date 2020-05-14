@@ -49,7 +49,7 @@ public abstract class GlobalValueSymbol extends GlobalSymbol implements Constant
 
     private final PointerType type;
 
-    private SymbolImpl value = null;
+    private Constant value = null;
 
     private final Visibility visibility;
 
@@ -61,7 +61,7 @@ public abstract class GlobalValueSymbol extends GlobalSymbol implements Constant
         super(LLVMIdentifier.UNKNOWN, linkage, index);
         this.type = type;
         this.visibility = visibility;
-        this.value = value > 0 ? symbolTable.getForwardReferenced(value - 1, this) : null;
+        this.value = value > 0 ? (Constant) symbolTable.getForwardReferenced(value - 1, this) : null;
         this.sourceSymbol = null;
     }
 
@@ -78,7 +78,7 @@ public abstract class GlobalValueSymbol extends GlobalSymbol implements Constant
         return type;
     }
 
-    public SymbolImpl getValue() {
+    public Constant getValue() {
         return value;
     }
 
@@ -115,7 +115,7 @@ public abstract class GlobalValueSymbol extends GlobalSymbol implements Constant
     @Override
     public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
         if (value == oldValue) {
-            value = newValue;
+            value = (Constant) newValue;
         }
     }
 

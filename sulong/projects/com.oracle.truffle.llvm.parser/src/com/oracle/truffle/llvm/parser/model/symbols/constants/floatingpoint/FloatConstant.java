@@ -65,4 +65,9 @@ public final class FloatConstant extends FloatingPointConstant {
     public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
         return CommonNodeFactory.createSimpleConstantNoArray(value, getType());
     }
+
+    @Override
+    public void addToBuffer(Buffer buffer, LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        buffer.getBuffer().putFloat(value);
+    }
 }

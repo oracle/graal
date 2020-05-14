@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public final class StructureConstant extends AggregateConstant {
 
@@ -71,5 +72,25 @@ public final class StructureConstant extends AggregateConstant {
             constants[i] = getElement(i).createNode(runtime, dataLayout, stackFactory);
         }
         return runtime.getNodeFactory().createStructureConstantNode(getType(), stackFactory, isPacked(), types, constants);
+    }
+
+    @Override
+    public void addToBuffer(Buffer buffer, LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) throws TypeOverflowException {
+        long startOffset = buffer.getBuffer().position();
+        long offset = 0;
+        boolean packed = isPacked();
+        for (int i = 0; i < getElementCount(); i++) {
+            Type resolvedType = getElementType(i);
+            if (!packed) {
+                int padding = Type.getPadding(offset, resolvedType, dataLayout);
+                for (int j = 0; j < padding; j++) {
+                    buffer.getBuffer().put((byte) 0);
+                }
+                offset = Type.addUnsignedExact(offset, padding);
+            }
+            getElement(i).addToBuffer(buffer, runtime, dataLayout, stackFactory);
+            offset = Type.addUnsignedExact(offset, resolvedType.getSize(dataLayout));
+        }
+        buffer.getBuffer().position((int) (startOffset + getType().getSize(dataLayout)));
     }
 }
