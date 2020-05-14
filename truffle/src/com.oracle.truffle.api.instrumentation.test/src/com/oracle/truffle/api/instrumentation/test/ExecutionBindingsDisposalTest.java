@@ -98,14 +98,7 @@ public class ExecutionBindingsDisposalTest {
                             }
                         });
         Runnable infiniteLoop = () -> {
-            context.enter();
-            try {
-                context.eval(InstrumentationTestLanguage.ID, "ROOT(LOOP(infinity,EXPRESSION))");
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            } finally {
-                context.leave();
-            }
+            context.eval(InstrumentationTestLanguage.ID, "ROOT(LOOP(infinity,EXPRESSION))");
         };
         ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
         for (int i = 0; i < nThreads; i++) {

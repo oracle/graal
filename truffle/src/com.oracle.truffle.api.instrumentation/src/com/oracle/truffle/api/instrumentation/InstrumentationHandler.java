@@ -1584,8 +1584,25 @@ final class InstrumentationHandler {
         Set<Class<? extends Tag>> materializeTags;
 
         private final List<VisitOperation> operations;
+        /**
+         * <code>True</code> if there is exactly one non-always-perform operation that operates in
+         * the original tree and that operation has exactly one binding. It means that we can
+         * simplify the condition that tells us whether the operation should be performed for an
+         * instrumentable node.
+         */
         private final boolean singleBindingOptimization;
+        /**
+         * <code>True</code> if <code>singleBindingOptimization</code> is <code>true</code> and the
+         * <code>rootNode</code> is an instrumented root for the binding of the single binding
+         * operation. If this flag is <code>false</code> it is a sufficient condition not to perform
+         * the single binding operation for any instrumentable node in the AST. If it is
+         * <code>true</code> we can use simplified condition for determining whether to perform the
+         * single binding operation.
+         */
         private boolean singleBindingOptimizationPass;
+        /**
+         * <code>True</code> if only always-perform operations should be performed in the AST.
+         */
         private boolean onlyAlwaysPerformOperationsActive;
 
         Visitor(boolean shouldMaterializeSyntaxNodes, List<VisitOperation> operations) {
@@ -1596,7 +1613,7 @@ final class InstrumentationHandler {
             for (VisitOperation operation : operations) {
                 /*
                  * If the operation is always performed no matter its bindings, it has no effect on
-                 * whether we can or cannot do single binding optimzation.
+                 * whether we can or cannot do single binding optimization.
                  */
                 if (!operation.alwaysPerform) {
                     if (operation.singleBindingOperation) {
