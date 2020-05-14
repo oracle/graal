@@ -758,6 +758,7 @@ def llvm_dis(args=None, out=None):
         if tmp_dir:
             shutil.rmtree(tmp_dir)
 
+
 def fuzz(args=None, out=None):
     parser = ArgumentParser(prog='mx fuzz', description='')
     parser.add_argument('--seed', help='Seed used for randomness.', metavar='<seed>', type=int, default=int(time.time()))
@@ -780,10 +781,13 @@ def fuzz(args=None, out=None):
         invalid = 0
         for _ in range(parsed_args.nrtestcases):
             #TODO add llvm-stress to toolchain
-            llvm_tool(["llvm-stress", "-o", tmp_ll, "-seed", str(rand.randint(0, 10000000)), "-size", str(300)])
+            tool = os.path.join(mx.dependency('SULONG_TOOLS', fatalIfMissing=True).get_output(), 'bin', "llvm-stress")
+            mx.run([tool, "-o", tmp_ll, "-seed", str(rand.randint(0, 10000000)), "-size", str(300)])
             #TODO add recipe for fuzzmain in Makefile
             #TODO don't use sulong bootstrap clang
-            llvm_tool(["clang-sulong-bootstrap", "-O0", "-o", tmp_out, tmp_ll, os.path.join(get_sulong_home(), "fuzzmain.c")])
+            toolchain_clang = _get_toolchain_tool("native,CC")
+            fuzz_main = os.path.join(mx.dependency('com.oracle.truffle.llvm.tools.fuzzing.native', fatalIfMissing=True).dir, "src", "fuzzmain.c")
+            mx.run([toolchain_clang, "-O0", "-lm", "-o", tmp_out, tmp_ll, fuzz_main])
             timeout = 10000
             with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
                 runLLVM(['--llvm.llDebug', '--llvm.traceIR', '--experimental-options', tmp_out], timeout=timeout, nonZeroIsFatal=False, out=o, err=e)
@@ -800,7 +804,7 @@ def fuzz(args=None, out=None):
                 now = str(datetime.datetime.now())
                 now = now.replace(":","_")
                 current_out_dir = os.path.join(parsed_args.outdir, now)
-                os.mkdir(current_out_dir)
+                os.makedirs(current_out_dir)
                 gen = [
                     (tmp_ll, 'autogen.ll'),
                     (tmp_out, 'autogen'),
