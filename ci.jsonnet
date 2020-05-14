@@ -223,7 +223,6 @@ local awfy = 'awfy:*';
     // Benchmarks (post-merge)
     jdk8_bench_linux   + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
     jdk8_bench_linux   + espresso_benchmark('jvm-ee', awfy)                                    + {name: 'espresso-bench-jvm-ee-awfy-jdk8-linux-amd64'},
-    jdk8_bench_linux   + espresso_benchmark('jvm-ee', awfy, 'la-inline')                       + {name: 'espresso-bench-jvm-ee-la-inline-awfy-jdk8-linux-amd64'},
     jdk8_bench_linux   + espresso_benchmark('native-ce', awfy)                                 + {name: 'espresso-bench-native-ce-awfy-jdk8-linux-amd64'},
     jdk8_bench_linux   + espresso_benchmark('native-ee', awfy)                                 + {name: 'espresso-bench-native-ee-awfy-jdk8-linux-amd64'},
 
