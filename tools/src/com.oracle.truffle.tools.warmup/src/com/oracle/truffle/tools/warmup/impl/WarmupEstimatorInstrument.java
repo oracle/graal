@@ -55,8 +55,8 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     static final OptionKey<String> ROOT_NAME = new OptionKey<>("");
     @Option(name = "OutputFile", help = "Save output to the given file. Simple output is printed to stdout by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
-    @Option(name = "Epsilon", help = "Force epsilon value. It's inferred from the results by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
-    static final OptionKey<Double> EPSILON = new OptionKey<>(0.0);
+    @Option(name = "Epsilon", help = "Epsilon value. It's inferred if the value is 0. (default: 1.05)", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
+    static final OptionKey<Double> EPSILON = new OptionKey<>(1.05);
 
     private boolean enabled;
     private WarmupEstimatorNode node;
@@ -90,7 +90,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         if (node == null) {
-            throw new IllegalArgumentException("No root with name " + ROOT_NAME.getValue(env.getOptions()) + "found during execution.");
+            throw new IllegalArgumentException("No root with name " + ROOT_NAME.getValue(env.getOptions()) + " found during execution.");
         }
         final OptionValues options = env.getOptions();
         final String outputPath = OUTPUT_FILE.getValue(options);
