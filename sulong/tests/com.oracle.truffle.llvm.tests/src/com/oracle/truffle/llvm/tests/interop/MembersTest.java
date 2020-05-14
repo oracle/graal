@@ -41,19 +41,26 @@ import com.oracle.truffle.tck.TruffleRunner;
 public class MembersTest extends InteropTestBase {
 
     private static Value testLibrary;
+    private static Value testCppLibrary;
 
     @BeforeClass
     public static void loadTestBitcode() {
         testLibrary = loadTestBitcodeValue("stringTest.c");
+        testCppLibrary = loadTestBitcodeValue("membersTest.cpp");
     }
 
     @Test
     public void testMemberExists() {
         Assert.assertTrue(testLibrary.hasMember("test_as_string_utf8"));
+        Assert.assertTrue(testCppLibrary.hasMember("hello"));
+        Assert.assertTrue(testCppLibrary.hasMember("bye"));
+        Assert.assertTrue(testCppLibrary.hasMember("gcd"));
+
     }
 
     @Test
     public void testMemberDoesNotExist() {
         Assert.assertFalse(testLibrary.hasMember("abc"));
+        Assert.assertFalse(testCppLibrary.hasMember("abc"));
     }
 }
