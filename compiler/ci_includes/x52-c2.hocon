@@ -172,6 +172,13 @@ bench-specjbb2015-forks-c2 : ${bench-specjbb2015} ${weeklys-bench-notifications}
 
 builds += [
   # JDK 8
+  ${x52.c2} ${bench-micros-graal-dist}    ${oraclejdk8} { targets: [bench, weekly], name: "bench-jmh-micros-graal-dist-linux-x52-c2" }
+
+  # JDK 11
+  ${x52.c2} ${bench-micros-graal-dist}    ${labsjdk11} { targets: [bench, weekly], name: "bench-jmh-micros-graal-dist-11-linux-x52-c2" }
+
+  ## Multiple forks for stable numbers
+  # JDK 8
   ${x52.c2-tmpfs10g} ${bench-dacapo-hwloc-forks-c2}                     ${oraclejdk8} { name: "bench-forks-compiler-dacapo-linux-x52-c2" }
   ${x52.c2-tmpfs10g} ${bench-scala-dacapo-hwloc-forks-c2}               ${oraclejdk8} { name: "bench-forks-compiler-scala-dacapo-linux-x52-c2" }
   ${x52.c2} ${bench-specjvm2008-Single-forks-c2-batch0}                 ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-c2-batch0" }
