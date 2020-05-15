@@ -639,11 +639,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @SuppressWarnings("try")
     private void compileImpl(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
+        boolean compilationStarted = false;
         try {
             TruffleCompiler compiler = getTruffleCompiler(callTarget);
             try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
                 final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler(callTarget);
                 try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
+                    compilationStarted = true;
                     listeners.onCompilationStarted(callTarget);
                     TruffleInlining inlining = createInliningPlan(callTarget, task);
                     try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget))) {
@@ -673,17 +675,21 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             // Listeners already notified
             throw e;
         } catch (RuntimeException | Error e) {
-            notifyCompilationFailure(callTarget, e);
+            notifyCompilationFailure(callTarget, e, compilationStarted);
             throw e;
         } catch (Throwable e) {
-            notifyCompilationFailure(callTarget, e);
+            notifyCompilationFailure(callTarget, e, compilationStarted);
             throw new InternalError(e);
         }
     }
 
-    private void notifyCompilationFailure(OptimizedCallTarget callTarget, Throwable t) {
+    private void notifyCompilationFailure(OptimizedCallTarget callTarget, Throwable t, boolean compilationStarted) {
         try {
-            listeners.onCompilationFailed(callTarget, t.toString(), false, false);
+            if (compilationStarted) {
+                listeners.onCompilationFailed(callTarget, t.toString(), false, false);
+            } else {
+                listeners.onCompilationDequeued(callTarget, this, String.format("Failed to create Truffle compiler due to %s.", t.getMessage()));
+            }
         } finally {
             callTarget.onCompilationFailed(() -> CompilableTruffleAST.serializeException(t), false, false);
         }
