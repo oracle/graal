@@ -1077,9 +1077,6 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
             staticlib_wildcard[0:0] = ['jre']
         staticlib_wildcard_path = join(mx_compiler.jdk.home, *staticlib_wildcard)
         self.staticlibs = glob(staticlib_wildcard_path)
-        if not self.staticlibs:
-            mx.abort('Please use a JDK that contains static JDK libraries.\n'
-                     + 'See: https://github.com/oracle/graal/tree/master/substratevm#quick-start')
 
     def newestOutput(self):
         return mx.TimeStampFile(self.jvm_fallbacks_path)
@@ -1092,6 +1089,10 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
         outfile = self.newestOutput()
         if not outfile.timestamp:
             return True, outfile.path + ' does not exist'
+
+        if not self.staticlibs:
+            mx.abort('Please use a JDK that contains static JDK libraries.\n'
+                     + 'See: https://github.com/oracle/graal/tree/master/substratevm#quick-start')
 
         infile = mx.TimeStampFile.newest([self.jvm_funcs_path] + self.staticlibs)
         needs_build = infile.isNewerThan(outfile)
