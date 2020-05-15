@@ -1,8 +1,7 @@
 common_vm: ${common} ${vm_setup} {
   logs: [
     "*/mxbuild/dists/stripped/*.map"
-    "../fastr/libdownloads/*/gnur_configure.log"
-    "../fastr/libdownloads/*/gnur_make.log"
+    "**/install.packages.R.log"
   ]
 }
 
