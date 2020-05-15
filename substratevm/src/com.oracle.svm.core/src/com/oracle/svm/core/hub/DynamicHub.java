@@ -169,7 +169,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private Object isAnonymousClass;
 
     /**
-     * Is this a Hidden Class (Since JDK 15).  
+     * Is this a Hidden Class (Since JDK 15).
      */
     private boolean isHidden;
 
