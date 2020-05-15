@@ -465,6 +465,22 @@ public class CachedContextTest extends AbstractPolyglotTest {
         }
     }
 
+    abstract static class CachedLanguageError7Node extends Node {
+
+        abstract Object execute(Object argument);
+
+        /*
+         * Warning expected here as cachedEnv does not bind any dynamic parameter.
+         */
+        @ExpectError("The limit expression has no effect. %")
+        @Specialization(guards = "cachedEnv != null", limit = "3")
+        static String s0(Object value,
+                        @CachedContext(CachedContextTestLanguage.class) Env env,
+                        @Cached("env") Env cachedEnv) {
+            throw new AssertionError();
+        }
+    }
+
     @GenerateLibrary
     public abstract static class CachedContextTestLibrary extends Library {
 
@@ -483,7 +499,7 @@ public class CachedContextTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        final Object m1(@CachedContext(CachedContextTestLanguage.class) ContextReference<Env> env) {
+        final Object m1(@CachedContext(CachedContextTestLanguage.class) Env env) {
             return "m1";
         }
     }

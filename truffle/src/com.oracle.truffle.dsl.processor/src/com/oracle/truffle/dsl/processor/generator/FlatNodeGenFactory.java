@@ -2830,6 +2830,8 @@ public class FlatNodeGenFactory {
         final CodeTreeBuilder builder = parent.create();
         SpecializationGroup prev = originalPrev;
 
+        FrameState boundaryFrameState = frameState.copy();
+
         NodeExecutionMode mode = frameState.getMode();
         boolean hasFallthrough = false;
         boolean hasImplicitCast = false;
@@ -2872,6 +2874,7 @@ public class FlatNodeGenFactory {
         boolean needsRewrites = needsRewrites();
 
         if (mode.isFastPath()) {
+
             BlockState ifCount = BlockState.NONE;
             final boolean stateGuaranteed = group.isLast() && allowedSpecializations != null && allowedSpecializations.size() == 1 &&
                             group.getAllSpecializations().size() == allowedSpecializations.size();
@@ -2930,9 +2933,6 @@ public class FlatNodeGenFactory {
                     }
                 }
             }
-
-            FrameState boundaryFrameState = frameState.copy();
-
             List<IfTriple> nonBoundaryGuards = new ArrayList<>();
             for (Iterator<GuardExpression> iterator = guardExpressions.iterator(); iterator.hasNext();) {
                 GuardExpression guard = iterator.next();
@@ -2950,10 +2950,6 @@ public class FlatNodeGenFactory {
 
             for (GuardExpression guard : guardExpressions) {
                 Set<CacheExpression> caches = group.getSpecialization().getBoundCaches(guard.getExpression(), true);
-                if (cachesRequireFastPathBoundary(caches)) {
-                    // boundary cached is used in guard
-                    pushEnclosingNode = true;
-                }
                 cachedTriples.addAll(initializeCaches(innerFrameState, mode, group, caches, true, false));
                 cachedTriples.add(createMethodGuardCheck(innerFrameState, group.getSpecialization(), guard, mode));
             }
@@ -3372,6 +3368,24 @@ public class FlatNodeGenFactory {
         if (useDuplicate) {
             builder.startStatement().string(duplicateFoundName, " = true").end();
         }
+
+        List<CacheExpression> cachesToInitialize = new ArrayList<>();
+        for (CacheExpression cache : specialization.getCaches()) {
+            if (!cache.isAlwaysInitialized()) {
+                continue;
+            }
+            if (isCacheInitialized(innerFrameState, specialization, cache)) {
+                continue;
+            }
+
+            cachesToInitialize.add(cache);
+        }
+        if (!cachesToInitialize.isEmpty()) {
+            List<IfTriple> triples = initializeCaches(innerFrameState, NodeExecutionMode.FAST_PATH, group, cachesToInitialize, true, false);
+
+            IfTriple.materialize(builder, IfTriple.optimize(triples), true);
+        }
+
         if (specialization.hasMultipleInstances()) {
             builder.statement("break");
         }
