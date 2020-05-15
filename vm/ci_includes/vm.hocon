@@ -137,8 +137,8 @@ builds += [
       ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}, build]
       ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
     ] ${collect_profiles} [
-      ${mx_vm_common} ${vm_profiles} [build]
-      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk}
+      ${mx_vm_common} ${vm_profiles} ["--disable-installables=true", build]
+      ${mx_vm_common} ${vm_profiles} ["--disable-installables=true"] ${maven_deploy_sdk}
       ${notify-nexus-deploy}
     ]
     logs: ${common_vm.logs}
