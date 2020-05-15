@@ -275,6 +275,11 @@ public final class FrameStateBuilder implements SideEffectsState {
         monitorIds = other.monitorIds.length == 0 ? other.monitorIds : other.monitorIds.clone();
 
         assert lockedObjects.length == monitorIds.length;
+
+        if (other.sideEffects != null) {
+            sideEffects = new ArrayList<>();
+            sideEffects.addAll(other.sideEffects);
+        }
     }
 
     private static ValueNode[] allocateArray(int length) {

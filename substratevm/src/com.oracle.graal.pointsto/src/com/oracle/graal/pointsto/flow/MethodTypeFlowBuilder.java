@@ -1434,7 +1434,7 @@ public class MethodTypeFlowBuilder {
 
         /**
          * Model an unsafe-read-and-write operation.
-         * 
+         *
          * In the analysis this is used to model both {@link AtomicReadAndWriteNode}, i.e., an
          * atomic read-and-write operation like
          * {@link sun.misc.Unsafe#getAndSetObject(Object, long, Object)}, and a
