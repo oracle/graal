@@ -29,8 +29,8 @@
 
 setlocal enabledelayedexpansion
 
-set location=%~dp0
-set executablename=%~f0
+call :getScriptLocation location
+call :getExecutableName executablename
 for /f "delims=" %%i in ("%executablename%") do set "basename=%%~ni"
 
 set "relcp=<classpath>"
@@ -230,6 +230,17 @@ goto :eof
             set "launcher_args=%launcher_args% %*"
         )
     )
+    exit /b 0
+
+:: If this script is in `%PATH%` and called quoted without a full path (e.g., `"js"`), `%~dp0` is expanded to `cwd`
+:: rather than the path to the script.
+:: This does not happen if `%~dp0` is accessed in a subroutine.
+:getScriptLocation variableName
+    set "%~1=%~dp0"
+    exit /b 0
+
+:getExecutableName variableName
+    set "%~1=%~f0"
     exit /b 0
 
 endlocal
