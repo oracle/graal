@@ -40,8 +40,14 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -50,9 +56,15 @@ import com.oracle.truffle.api.object.Layout.ImplicitCast;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
-public class SharedShapeTest {
-    private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
+@RunWith(Parameterized.class)
+public class SharedShapeTest extends AbstractParametrizedLibraryTest {
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return Arrays.asList(TestRun.values());
+    }
 
     final Layout layout = Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToLong).build();
     final Shape rootShape = layout.createShape(new ObjectType());
@@ -66,9 +78,12 @@ public class SharedShapeTest {
     @Test
     public void testDifferentLocationsImplicitCast() {
         DynamicObject object = sharedShape.newInstance();
-        LIBRARY.put(object, "a", 1);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "a", 1);
         Location location1 = object.getShape().getProperty("a").getLocation();
-        LIBRARY.put(object, "a", 2L);
+        library.put(object, "a", 2L);
         Location location2 = object.getShape().getProperty("a").getLocation();
 
         DOTestAsserts.assertNotSameLocation(location1, location2);
@@ -82,15 +97,18 @@ public class SharedShapeTest {
     @Test
     public void testNoReuseOfPreviousLocation() {
         DynamicObject object = sharedShape.newInstance();
-        LIBRARY.put(object, "a", 1);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "a", 1);
         Location location1 = object.getShape().getProperty("a").getLocation();
-        LIBRARY.put(object, "a", 2L);
+        library.put(object, "a", 2L);
         Location location2 = object.getShape().getProperty("a").getLocation();
 
         DOTestAsserts.assertNotSameLocation(location1, location2);
         Assert.assertEquals(Object.class, getLocationType(location2));
 
-        LIBRARY.put(object, "b", 3);
+        library.put(object, "b", 3);
         Location locationB = object.getShape().getProperty("b").getLocation();
 
         DOTestAsserts.assertShape(new String[]{
@@ -107,9 +125,12 @@ public class SharedShapeTest {
     @Test
     public void testCanReuseLocationsUntilShared() {
         DynamicObject object = rootShape.newInstance();
-        LIBRARY.put(object, "a", 1);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "a", 1);
         Location locationA1 = object.getShape().getProperty("a").getLocation();
-        LIBRARY.put(object, "a", 2L);
+        library.put(object, "a", 2L);
         Location locationA2 = object.getShape().getProperty("a").getLocation();
 
         DOTestAsserts.assertSameLocation(locationA1, locationA2);
@@ -118,14 +139,14 @@ public class SharedShapeTest {
         DOTestAsserts.assertShapeFields(object, 1, 0);
 
         // Share object
-        LIBRARY.makeShared(object);
+        library.makeShared(object);
 
-        LIBRARY.put(object, "b", 3);
+        library.put(object, "b", 3);
         Location locationB1 = object.getShape().getProperty("b").getLocation();
-        LIBRARY.put(object, "b", 4L);
+        library.put(object, "b", 4L);
         Location locationB2 = object.getShape().getProperty("b").getLocation();
 
-        LIBRARY.put(object, "c", 5);
+        library.put(object, "c", 5);
 
         DOTestAsserts.assertNotSameLocation(locationB1, locationB2);
         Assert.assertEquals(Object.class, getLocationType(locationB2));
@@ -139,41 +160,47 @@ public class SharedShapeTest {
         // The old location can still be read
         Assert.assertEquals(3, locationB1.get(object));
         Assert.assertEquals(4L, locationB2.get(object));
-        Assert.assertEquals(5, LIBRARY.getOrDefault(object, "c", null));
+        Assert.assertEquals(5, library.getOrDefault(object, "c", null));
     }
 
     @Test
     public void testShapeIsSharedAndIdentity() {
         DynamicObject object = rootShape.newInstance();
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
         Assert.assertEquals(false, rootShape.isShared());
         Assert.assertSame(sharedShape, rootShape.makeSharedShape());
         Assert.assertEquals(true, sharedShape.isShared());
-        LIBRARY.makeShared(object);
+        library.makeShared(object);
         Assert.assertSame(sharedShape, object.getShape());
 
-        LIBRARY.put(object, "a", 1);
+        library.put(object, "a", 1);
         final Shape sharedShapeWithA = object.getShape();
         Assert.assertEquals(true, sharedShapeWithA.isShared());
 
         DynamicObject object2 = rootShape.newInstance();
-        LIBRARY.makeShared(object2);
+        library.makeShared(object2);
         Assert.assertSame(sharedShape, object2.getShape());
-        LIBRARY.put(object2, "a", 1);
+        library.put(object2, "a", 1);
         Assert.assertSame(sharedShapeWithA, object2.getShape());
 
         // Currently, sharing is a transition and transitions do not commute magically
         DynamicObject object3 = rootShape.newInstance();
-        LIBRARY.put(object3, "a", 1);
-        LIBRARY.makeShared(object3);
+        library.put(object3, "a", 1);
+        library.makeShared(object3);
         Assert.assertNotSame(sharedShapeWithA, object3.getShape());
     }
 
     @Test
     public void testReuseReplaceProperty() {
         DynamicObject object = sharedShape.newInstance();
-        LIBRARY.put(object, "a", 1);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "a", 1);
         Location location1 = object.getShape().getProperty("a").getLocation();
-        LIBRARY.putWithFlags(object, "a", 2, 42);
+        library.putWithFlags(object, "a", 2, 42);
         Location location2 = object.getShape().getProperty("a").getLocation();
         DOTestAsserts.assertSameLocation(location1, location2);
     }
@@ -181,12 +208,15 @@ public class SharedShapeTest {
     @Test
     public void testCannotDeleteFromSharedShape() {
         DynamicObject object = sharedShape.newInstance();
-        LIBRARY.put(object, "a", 1);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "a", 1);
         try {
-            LIBRARY.removeKey(object, "a");
+            library.removeKey(object, "a");
             Assert.fail();
         } catch (UnsupportedOperationException e) {
-            Assert.assertEquals(1, LIBRARY.getOrDefault(object, "a", null));
+            Assert.assertEquals(1, library.getOrDefault(object, "a", null));
         }
     }
 }

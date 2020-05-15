@@ -440,6 +440,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.object",
+        "com.oracle.truffle.api.test",
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",

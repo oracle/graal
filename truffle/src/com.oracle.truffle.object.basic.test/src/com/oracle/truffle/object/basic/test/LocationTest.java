@@ -40,8 +40,14 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -52,9 +58,15 @@ import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.Shape.Allocator;
+import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
-public class LocationTest {
-    private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
+@RunWith(Parameterized.class)
+public class LocationTest extends AbstractParametrizedLibraryTest {
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return Arrays.asList(TestRun.values());
+    }
 
     final Layout layout = Layout.newLayout().build();
     final Shape rootShape = layout.createShape(new ObjectType());
@@ -67,7 +79,10 @@ public class LocationTest {
     @Test
     public void testOnlyObjectLocationForObject() {
         DynamicObject object = rootShape.newInstance();
-        LIBRARY.put(object, "obj", new Object());
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "obj", new Object());
         Location location = object.getShape().getProperty("obj").getLocation();
         Assert.assertTrue(location instanceof ObjectLocation);
         DOTestAsserts.assertLocationFields(location, 0, 1);
@@ -77,7 +92,10 @@ public class LocationTest {
     @Test
     public void testOnlyPrimLocationForPrimitive() {
         DynamicObject object = rootShape.newInstance();
-        LIBRARY.put(object, "prim", 42);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "prim", 42);
         Location location = object.getShape().getProperty("prim").getLocation();
         Assert.assertEquals(int.class, getLocationType(location));
         DOTestAsserts.assertLocationFields(location, 1, 0);
@@ -87,13 +105,16 @@ public class LocationTest {
     @Test
     public void testPrim2Object() {
         DynamicObject object = rootShape.newInstance();
-        LIBRARY.put(object, "foo", 42);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "foo", 42);
         Location location1 = object.getShape().getProperty("foo").getLocation();
         Assert.assertEquals(int.class, getLocationType(location1));
         DOTestAsserts.assertLocationFields(location1, 1, 0);
         DOTestAsserts.assertShapeFields(object, 1, 0);
 
-        LIBRARY.putIfPresent(object, "foo", new Object());
+        library.putIfPresent(object, "foo", new Object());
         Location location2 = object.getShape().getProperty("foo").getLocation();
         Assert.assertEquals(Object.class, getLocationType(location2));
         DOTestAsserts.assertLocationFields(location2, 0, 1);
@@ -103,13 +124,16 @@ public class LocationTest {
     @Test
     public void testUnrelatedPrimitivesGoToObject() {
         DynamicObject object = rootShape.newInstance();
-        LIBRARY.put(object, "foo", 42L);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "foo", 42L);
         Location location1 = object.getShape().getProperty("foo").getLocation();
         Assert.assertEquals(long.class, getLocationType(location1));
         DOTestAsserts.assertLocationFields(location1, 1, 0);
         DOTestAsserts.assertShapeFields(object, 1, 0);
 
-        LIBRARY.putIfPresent(object, "foo", 3.14);
+        library.putIfPresent(object, "foo", 3.14);
         Location location2 = object.getShape().getProperty("foo").getLocation();
         Assert.assertEquals(Object.class, getLocationType(location2));
         DOTestAsserts.assertLocationFields(location2, 0, 1);
@@ -119,11 +143,14 @@ public class LocationTest {
     @Test
     public void testChangeFlagsReuseLocation() {
         DynamicObject object = rootShape.newInstance();
-        LIBRARY.put(object, "foo", 42);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "foo", 42);
         Location location = object.getShape().getProperty("foo").getLocation();
 
-        LIBRARY.putWithFlags(object, "foo", 43, 111);
-        Assert.assertEquals(43, LIBRARY.getOrDefault(object, "foo", null));
+        library.putWithFlags(object, "foo", 43, 111);
+        Assert.assertEquals(43, library.getOrDefault(object, "foo", null));
         Property newProperty = object.getShape().getProperty("foo");
         Assert.assertEquals(111, newProperty.getFlags());
         Location newLocation = newProperty.getLocation();
@@ -133,11 +160,14 @@ public class LocationTest {
     @Test
     public void testChangeFlagsChangeLocation() {
         DynamicObject object = rootShape.newInstance();
-        LIBRARY.put(object, "foo", 42);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "foo", 42);
         Location location = object.getShape().getProperty("foo").getLocation();
 
-        LIBRARY.putWithFlags(object, "foo", "str", 111);
-        Assert.assertEquals("str", LIBRARY.getOrDefault(object, "foo", null));
+        library.putWithFlags(object, "foo", "str", 111);
+        Assert.assertEquals("str", library.getOrDefault(object, "foo", null));
         Property newProperty = object.getShape().getProperty("foo");
         Assert.assertEquals(111, newProperty.getFlags());
         Location newLocation = newProperty.getLocation();
@@ -147,15 +177,18 @@ public class LocationTest {
     @Test
     public void testDelete() {
         DynamicObject object = rootShape.newInstance();
-        LIBRARY.put(object, "a", 1);
-        LIBRARY.put(object, "b", 2);
-        LIBRARY.removeKey(object, "a");
-        Assert.assertFalse(LIBRARY.containsKey(object, "a"));
-        Assert.assertTrue(LIBRARY.containsKey(object, "b"));
-        Assert.assertEquals(2, LIBRARY.getOrDefault(object, "b", null));
-        LIBRARY.put(object, "a", 3);
-        LIBRARY.removeKey(object, "b");
-        Assert.assertEquals(3, LIBRARY.getOrDefault(object, "a", null));
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.put(object, "a", 1);
+        library.put(object, "b", 2);
+        library.removeKey(object, "a");
+        Assert.assertFalse(library.containsKey(object, "a"));
+        Assert.assertTrue(library.containsKey(object, "b"));
+        Assert.assertEquals(2, library.getOrDefault(object, "b", null));
+        library.put(object, "a", 3);
+        library.removeKey(object, "b");
+        Assert.assertEquals(3, library.getOrDefault(object, "a", null));
     }
 
     @Test
@@ -170,11 +203,14 @@ public class LocationTest {
     @Test
     public void testDeleteDeclaredProperty() {
         DynamicObject object = rootShape.newInstance();
-        LIBRARY.putConstant(object, "a", new Object(), 0);
-        Assert.assertTrue(LIBRARY.containsKey(object, "a"));
-        LIBRARY.put(object, "a", 42);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+
+        library.putConstant(object, "a", new Object(), 0);
+        Assert.assertTrue(library.containsKey(object, "a"));
+        library.put(object, "a", 42);
         Assert.assertEquals(1, object.getShape().getPropertyCount());
-        LIBRARY.removeKey(object, "a");
-        Assert.assertFalse(LIBRARY.containsKey(object, "a"));
+        library.removeKey(object, "a");
+        Assert.assertFalse(library.containsKey(object, "a"));
     }
 }
