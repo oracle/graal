@@ -131,6 +131,9 @@ public class PointstoOptions {
     @Option(help = "Object scanning in parallel")//
     public static final OptionKey<Boolean> ScanObjectsParallel = new OptionKey<>(true);
 
+    @Option(help = "Scan all objects reachable from roots for analysis. By default false.")//
+    public static final OptionKey<Boolean> ExhaustiveHeapScan = new OptionKey<>(false);
+
     /**
      * Controls the static analysis context sensitivity. Available values:
      * <p/>

@@ -38,9 +38,10 @@ import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ReportUtils {
     static final String CONNECTING_INDENT = "\u2502   "; // "| "
@@ -48,9 +49,11 @@ public class ReportUtils {
     static final String CHILD = "\u251c\u2500\u2500 "; // "|-- "
     static final String LAST_CHILD = "\u2514\u2500\u2500 "; // "`-- "
 
-    static final Comparator<AnalysisMethod> methodComparator = Comparator.comparing(m -> m.format("%H.%n(%p)"));
-    static final Comparator<AnalysisField> fieldComparator = (f1, f2) -> f1.format("%H.%n").compareTo(f2.format("%H.%n"));
+    public static final Comparator<ResolvedJavaMethod> methodComparator = Comparator.comparing(m -> m.format("%H.%n(%p)"));
+    static final Comparator<AnalysisField> fieldComparator = Comparator.comparing(f -> f.format("%H.%n"));
     static final Comparator<InvokeTypeFlow> invokeComparator = Comparator.comparing(i -> i.getTargetMethod().format("%H.%n(%p)"));
+    static final Comparator<BytecodePosition> positionMethodComparator = Comparator.comparing(pos -> pos.getMethod().format("%H.%n(%p)"));
+    static final Comparator<BytecodePosition> positionComparator = positionMethodComparator.thenComparing(pos -> pos.getBCI());
 
     /**
      * Print a report in the format: path/name_timeStamp.extension. The path is relative to the
