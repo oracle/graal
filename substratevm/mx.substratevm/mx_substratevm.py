@@ -1054,19 +1054,50 @@ def clinittest(args):
     native_image_context_run(build_and_test_clinittest_image, args, build_if_missing=True)
 
 
-class SubstrateJvmFuncsFallbacksBuilder(mx.ArchivableProject):
-    def output_dir(self):
-        return self.get_output_root()
+class SubstrateJvmFuncsFallbacksBuilder(mx.Project):
+    def __init__(self, suite, name, deps, workingSets, theLicense, **kwArgs):
+        mx.Project.__init__(self, suite, name, "", [], deps, workingSets, suite.dir, theLicense, **kwArgs)
 
-    def archive_prefix(self):
-        return ''
+    def getBuildTask(self, args):
+        return JvmFuncsFallbacksBuildTask(self, args, 1)
 
-    def getResults(self):
-        return SubstrateJvmFuncsFallbacksBuilder.gen_fallbacks()
+class JvmFuncsFallbacksBuildTask(mx.BuildTask):
+    def __init__(self, subject, args, parallelism):
+        super(JvmFuncsFallbacksBuildTask, self).__init__(subject, args, parallelism)
 
-    @staticmethod
-    def gen_fallbacks():
-        native_project_dir = join(mx.dependency('substratevm:com.oracle.svm.native.jvm.' + ('windows' if mx.is_windows() else 'posix')).dir, 'src')
+        self.native_project_dir = join(mx.dependency('substratevm:com.oracle.svm.native.jvm.' + ('windows' if mx.is_windows() else 'posix')).dir, 'src')
+        self.jvm_funcs_path = join(self.native_project_dir, 'JvmFuncs.c')
+
+        native_project_src_gen_dir = join(self.native_project_dir, 'src_gen')
+        self.jvm_fallbacks_path = join(native_project_src_gen_dir, 'JvmFuncsFallbacks.c')
+
+        staticlib_wildcard = ['lib', mx_subst.path_substitutions.substitute('<staticlib:*>')]
+        if svm_java8():
+            staticlib_wildcard[0:0] = ['jre']
+        staticlib_wildcard_path = join(mx_compiler.jdk.home, *staticlib_wildcard)
+        self.staticlibs = glob(staticlib_wildcard_path)
+
+    def newestOutput(self):
+        return mx.TimeStampFile(self.jvm_fallbacks_path)
+
+    def needsBuild(self, newestInput):
+        sup = super(JvmFuncsFallbacksBuildTask, self).needsBuild(newestInput)
+        if sup[0]:
+            return sup
+
+        outfile = self.newestOutput()
+        if not outfile.timestamp:
+            return True, outfile.path + ' does not exist'
+
+        if not self.staticlibs:
+            mx.abort('Please use a JDK that contains static JDK libraries.\n'
+                     + 'See: https://github.com/oracle/graal/tree/master/substratevm#quick-start')
+
+        infile = mx.TimeStampFile.newest([self.jvm_funcs_path] + self.staticlibs)
+        needs_build = infile.isNewerThan(outfile)
+        return needs_build, infile.path + ' is newer than ' + outfile.path
+
+    def build(self):
 
         def collect_missing_symbols():
             symbols = set()
@@ -1108,15 +1139,7 @@ class SubstrateJvmFuncsFallbacksBuilder(mx.ArchivableProject):
             else:
                 mx.abort('gen_fallbacks not supported on ' + sys.platform)
 
-            staticlib_wildcard = ['lib', mx_subst.path_substitutions.substitute('<staticlib:*>')]
-            if svm_java8():
-                staticlib_wildcard[0:0] = ['jre']
-            staticlib_wildcard_path = join(mx_compiler.jdk.home, *staticlib_wildcard)
-            staticlibs = glob(staticlib_wildcard_path)
-            if not staticlibs:
-                mx.abort('Please use a JDK that contains static JDK libraries.\n'
-                        + 'See: https://github.com/oracle/graal/tree/master/substratevm#quick-start')
-            for staticlib_path in staticlibs:
+            for staticlib_path in self.staticlibs:
                 mx.logv('Collect from : ' + staticlib_path)
                 mx.run(symbol_dump_command.split() + [staticlib_path], out=collect_symbols_fn('JVM_'))
 
@@ -1126,8 +1149,6 @@ class SubstrateJvmFuncsFallbacksBuilder(mx.ArchivableProject):
 
         def collect_implementations():
             impls = set()
-
-            jvm_funcs_path = join(native_project_dir, 'JvmFuncs.c')
 
             def collect_impls_fn(symbol_prefix):
                 def collector(line):
@@ -1145,7 +1166,7 @@ class SubstrateJvmFuncsFallbacksBuilder(mx.ArchivableProject):
                         mx.logv('Skipping line: ' + line.rstrip())
                 return collector
 
-            with open(jvm_funcs_path) as f:
+            with open(self.jvm_funcs_path) as f:
                 collector = collect_impls_fn('JVM_')
                 for line in f:
                     collector(line)
@@ -1192,25 +1213,32 @@ JNIEXPORT void JNICALL {0}() {{
                     function_stub = plain_function_stub if name in noJNIEnvParam else jnienv_function_stub
                     new_fallback.write(function_stub.format(name))
 
+                same_content = False
                 if exists(jvm_fallbacks_path):
                     with open(jvm_fallbacks_path) as old_fallback:
                         if old_fallback.read() == new_fallback.getvalue():
-                            return
-
-                with open(jvm_fallbacks_path, mode='w') as new_fallback_file:
-                    new_fallback_file.write(new_fallback.getvalue())
-                    mx.log('Updated ' + jvm_fallbacks_path)
+                            same_content = True
+                if same_content:
+                    mx.TimeStampFile(jvm_fallbacks_path).touch()
+                else:
+                    mx.ensure_dir_exists(dirname(jvm_fallbacks_path))
+                    with open(jvm_fallbacks_path, mode='w') as new_fallback_file:
+                        new_fallback_file.write(new_fallback.getvalue())
+                        mx.log('Updated ' + jvm_fallbacks_path)
             finally:
                 if new_fallback:
                     new_fallback.close()
 
         required_fallbacks = collect_missing_symbols() - collect_implementations()
-        native_project_src_gen_dir = join(native_project_dir, 'src_gen')
-        mx.ensure_dir_exists(native_project_src_gen_dir)
-        jvm_fallbacks_path = join(native_project_src_gen_dir, 'JvmFuncsFallbacks.c')
-        write_fallbacks(sorted(required_fallbacks), jvm_fallbacks_path)
-        yield jvm_fallbacks_path
+        write_fallbacks(sorted(required_fallbacks), self.jvm_fallbacks_path)
 
+    def clean(self, forBuild=False):
+        gen_src_dir = dirname(self.jvm_fallbacks_path)
+        if exists(gen_src_dir):
+            remove_tree(gen_src_dir)
+
+    def __str__(self):
+        return 'JvmFuncsFallbacksBuildTask {}'.format(self.subject)
 
 class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
