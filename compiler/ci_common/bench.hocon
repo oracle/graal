@@ -147,7 +147,7 @@ bench-micros-graal-whitebox: ${bench-common} ${default-heap} ${micros-bench-noti
   run: [
     ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments}
   ]
-  timelimit: "5:00:00"
+  timelimit: "3:00:00"
 }
 
 bench-micros-graal-dist: ${bench-common} ${default-heap} ${micros-bench-notifications} {
