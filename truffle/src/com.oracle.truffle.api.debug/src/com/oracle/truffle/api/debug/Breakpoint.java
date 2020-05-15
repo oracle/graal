@@ -593,16 +593,14 @@ public class Breakpoint {
     }
 
     private void assignBinding(SourceSectionFilter locationFilter) {
-        EventBinding<BreakpointNodeFactory> binding = debugger.getInstrumenter().attachExecutionEventFactory(locationFilter, new BreakpointNodeFactory());
         synchronized (this) {
             if (breakpointBinding == null) {
+                EventBinding<BreakpointNodeFactory> binding = debugger.getInstrumenter().attachExecutionEventFactory(locationFilter, new BreakpointNodeFactory());
                 breakpointBinding = binding;
                 resolved = true;
                 for (DebuggerSession s : sessions) {
                     s.allBindings.add(binding);
                 }
-            } else {
-                binding.dispose();
             }
         }
     }
