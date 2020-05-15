@@ -2830,8 +2830,6 @@ public class FlatNodeGenFactory {
         final CodeTreeBuilder builder = parent.create();
         SpecializationGroup prev = originalPrev;
 
-        FrameState boundaryFrameState = frameState.copy();
-
         NodeExecutionMode mode = frameState.getMode();
         boolean hasFallthrough = false;
         boolean hasImplicitCast = false;
@@ -2946,7 +2944,15 @@ public class FlatNodeGenFactory {
                 iterator.remove();
             }
 
-            FrameState innerFrameState = extractInBoundary ? boundaryFrameState : frameState;
+            FrameState innerFrameState = frameState;
+            if (extractInBoundary) {
+                innerFrameState = frameState.copy();
+                for (CacheExpression cache : specialization.getCaches()) {
+                    if (cache.isAlwaysInitialized()) {
+                        setCacheInitialized(innerFrameState, specialization, cache, false);
+                    }
+                }
+            }
 
             for (GuardExpression guard : guardExpressions) {
                 Set<CacheExpression> caches = group.getSpecialization().getBoundCaches(guard.getExpression(), true);
@@ -3114,7 +3120,7 @@ public class FlatNodeGenFactory {
                         if (!cache.isAlwaysInitialized()) {
                             continue;
                         }
-                        setCacheInitialized(frameState, specialization, cache);
+                        setCacheInitialized(frameState, specialization, cache, true);
                     }
 
                     // need to ensure that we update the implicit cast specializations on duplicates
@@ -4097,39 +4103,51 @@ public class FlatNodeGenFactory {
     private final Map<String, Integer> uniqueSupplierLocalIndexes = new HashMap<>();
 
     private List<IfTriple> initializeReferences(FrameState frameState, CacheExpression cache) {
-        if (cache.isCachedContext() || cache.isCachedLanguage()) {
-            String supplierName = createElementReferenceName(cache);
-
-            CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-
-            String supplierLocalName = supplierName + "_";
-            int index = uniqueSupplierLocalIndexes.getOrDefault(supplierLocalName, 0);
-            uniqueSupplierLocalIndexes.put(supplierLocalName, index + 1);
-            if (index > 0) {
-                supplierLocalName = supplierLocalName + index;
-            }
-
-            String method = cache.isCachedContext() ? "super.lookupContextReference" : "super.lookupLanguageReference";
-            if (frameState.getMode().isSlowPath()) {
-                builder.declaration(cache.getReferenceType(), supplierLocalName, "this." + supplierName);
-                builder.startIf().string(supplierLocalName).string(" == null").end().startBlock();
-                builder.startStatement().string("this.", supplierName).string(" = ").string(supplierLocalName).string(" = ").startCall(method).typeLiteral(cache.getLanguageType()).end().end();
-                builder.end();
-            } else {
-                builder.startStatement().type(cache.getReferenceType()).string(" ", supplierLocalName).string(" = ").string("this.", supplierName).end();
-            }
-
-            String supplierInitialized = supplierName + "$initialized";
-            if (frameState.getBoolean(supplierInitialized, false)) {
-                return Collections.emptyList();
-            } else {
-                frameState.setBoolean(supplierInitialized, true);
-            }
-            frameState.set(supplierName, new LocalVariable(cache.getReferenceType(), supplierLocalName, null));
-            return Arrays.asList(new IfTriple(builder.build(), null, null));
+        if (isSupplierInitialized(frameState, cache)) {
+            return Collections.emptyList();
         }
 
-        return Collections.emptyList();
+        String supplierName = createElementReferenceName(cache);
+        String supplierLocalName = supplierName + "_";
+
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        int index = uniqueSupplierLocalIndexes.getOrDefault(supplierLocalName, 0);
+        uniqueSupplierLocalIndexes.put(supplierLocalName, index + 1);
+        if (index > 0) {
+            supplierLocalName = supplierLocalName + index;
+        }
+
+        String method = cache.isCachedContext() ? "super.lookupContextReference" : "super.lookupLanguageReference";
+        if (frameState.getMode().isSlowPath()) {
+            builder.declaration(cache.getReferenceType(), supplierLocalName, "this." + supplierName);
+            builder.startIf().string(supplierLocalName).string(" == null").end().startBlock();
+            builder.startStatement().string("this.", supplierName).string(" = ").string(supplierLocalName).string(" = ").startCall(method).typeLiteral(cache.getLanguageType()).end().end();
+            builder.end();
+        } else {
+            builder.startStatement().type(cache.getReferenceType()).string(" ", supplierLocalName).string(" = ").string("this.", supplierName).end();
+        }
+
+        setSupplierInitialized(frameState, cache, true);
+        frameState.set(supplierName, new LocalVariable(cache.getReferenceType(), supplierLocalName, null));
+        return Arrays.asList(new IfTriple(builder.build(), null, null));
+    }
+
+    private static boolean isSupplierInitialized(FrameState frameState, CacheExpression cache) {
+        if (!cache.isCachedContext() && !cache.isCachedLanguage()) {
+            return true;
+        }
+        String supplierName = createElementReferenceName(cache);
+        String supplierInitialized = supplierName + "$initialized";
+        return frameState.getBoolean(supplierInitialized, false);
+    }
+
+    private static void setSupplierInitialized(FrameState frameState, CacheExpression cache, boolean initialized) {
+        if (!cache.isCachedContext() && !cache.isCachedLanguage()) {
+            return;
+        }
+        String supplierName = createElementReferenceName(cache);
+        String supplierInitialized = supplierName + "$initialized";
+        frameState.setBoolean(supplierInitialized, initialized);
     }
 
     private Map<String, List<Parameter>> uniqueCachedParameterLocalNames = new HashMap<>();
@@ -4163,7 +4181,7 @@ public class FlatNodeGenFactory {
             builder.declaration(type, refName, useValue);
         }
 
-        setCacheInitialized(frameState, specialization, cache);
+        setCacheInitialized(frameState, specialization, cache, true);
         List<IfTriple> triples = new ArrayList<>();
         triples.add(new IfTriple(builder.build(), null, null));
         return triples;
@@ -4174,10 +4192,15 @@ public class FlatNodeGenFactory {
         return frameState.get(name) != null;
     }
 
-    private void setCacheInitialized(FrameState frameState, SpecializationData specialization, CacheExpression cache) {
+    private void setCacheInitialized(FrameState frameState, SpecializationData specialization, CacheExpression cache, boolean initialized) {
         String name = createFieldName(specialization, cache.getParameter());
-        frameState.set(name, new LocalVariable(cache.getParameter().getType(), name,
-                        CodeTreeBuilder.singleString(createCacheLocalName(specialization, cache))));
+        if (initialized) {
+            frameState.set(name, new LocalVariable(cache.getParameter().getType(), name,
+                            CodeTreeBuilder.singleString(createCacheLocalName(specialization, cache))));
+        } else {
+            frameState.set(name, null);
+            setSupplierInitialized(frameState, cache, false);
+        }
     }
 
     private String createCacheLocalName(SpecializationData specialization, CacheExpression cache) {
