@@ -133,6 +133,10 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             SignedWord previous = ((Pointer) CACHED_IMAGE_FD.get()).compareAndSwapWord(0, FIRST_ISOLATE_FD, UNASSIGNED_FD, LocationIdentity.ANY_LOCATION);
             if (FIRST_ISOLATE_FD.equal(previous)) {
                 // We are the first isolate to spawn, so just use the existing heap
+                if (VirtualMemoryProvider.get().protect(imageHeapBegin, imageHeapSizeInFile, Access.READ) != 0) {
+                    return CEntryPointErrors.PROTECT_HEAP_FAILED;
+                }
+
                 Pointer writableBegin = IMAGE_HEAP_WRITABLE_BEGIN.get();
                 UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBegin);
                 if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, Access.READ | Access.WRITE) != 0) {
