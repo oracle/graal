@@ -371,22 +371,26 @@ public final class ProbeNode extends Node {
             if (localVersion != null && localVersion.isValid()) {
                 return this.chain;
             }
-            nextChain = handler.createBindings(frame, ProbeNode.this);
-            if (nextChain == null) {
-                // chain is null -> remove wrapper;
-                // Note: never set child nodes to null, can cause races
-                if (retiredNodeReference == null) {
-                    InstrumentationHandler.removeWrapper(ProbeNode.this);
-                    return null;
+            EventBinding.Source<?>[] executionBindingsSnapshot;
+            do {
+                executionBindingsSnapshot = handler.getExecutionBindingsSnapshot();
+                nextChain = handler.createBindings(frame, ProbeNode.this, executionBindingsSnapshot);
+                if (nextChain == null) {
+                    // chain is null -> remove wrapper;
+                    // Note: never set child nodes to null, can cause races
+                    if (retiredNodeReference == null) {
+                        InstrumentationHandler.removeWrapper(ProbeNode.this);
+                        return null;
+                    } else {
+                        oldChain = this.chain;
+                        this.chain = null;
+                    }
                 } else {
                     oldChain = this.chain;
-                    this.chain = null;
+                    this.chain = insert(nextChain);
                 }
-            } else {
-                oldChain = this.chain;
-                this.chain = insert(nextChain);
-            }
-            this.version = Truffle.getRuntime().createAssumption("Instruments unchanged");
+                this.version = Truffle.getRuntime().createAssumption("Instruments unchanged");
+            } while (executionBindingsSnapshot != handler.getExecutionBindingsSnapshot());
         } finally {
             lock.unlock();
         }

@@ -1,6 +1,3 @@
-# overlay version
-overlay = 342aa921cb7cc26612d0be82f6141a6d6ff8e41d
-
 specVersion = "2"
 
 # oraclejdk* are released OracleJDK binaries
@@ -8,6 +5,9 @@ specVersion = "2"
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 include "common.json"
+
+# overlay version
+overlay = ${ci.overlay}
 
 # This must always point to HEAD in the master branch but can be used to point
 # to another branch/commit in a Graal PR when mx changes are required for the PR.

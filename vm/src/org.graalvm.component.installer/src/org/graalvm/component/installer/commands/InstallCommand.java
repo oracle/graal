@@ -25,7 +25,10 @@
 package org.graalvm.component.installer.commands;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -39,6 +42,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import java.util.zip.ZipException;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.CommandInput;
@@ -227,6 +231,22 @@ public class InstallCommand implements InstallerCommand {
                 inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
             }
             String licId = ldr.getLicenseID();
+            if (licId == null) {
+                String tp = ldr.getLicenseType();
+                if (Pattern.matches("[-_., 0-9A-Za-z]+", tp)) { // NOI18N
+                    licId = tp;
+                } else {
+                    // better make a digest
+                    try {
+                        MessageDigest dg = MessageDigest.getInstance("SHA-256"); // NOI18N
+                        byte[] result = dg.digest(tp.getBytes("UTF-8"));
+                        licId = SystemUtils.fingerPrint(result, false);
+                    } catch (NoSuchAlgorithmException | UnsupportedEncodingException ex) {
+                        feedback.error("INSTALL_CannotDigestLicense", ex, ex.getLocalizedMessage());
+                        licId = Integer.toHexString(tp.hashCode());
+                    }
+                }
+            }
             addLicenseToAccept(licId, ldr);
         }
     }
@@ -684,7 +704,8 @@ public class InstallCommand implements InstallerCommand {
      * @throws IOException
      */
     void acceptLicenses() throws IOException {
-        new LicensePresenter(feedback, input.getLocalRegistry(), licensesToAccept).run();
+        // disabled for 20.1 release
+        // new LicensePresenter(feedback, input.getLocalRegistry(), licensesToAccept).run();
     }
 
     public Set<String> getUnresolvedDependencies() {

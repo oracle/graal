@@ -346,13 +346,13 @@ final class Runner {
 
         @ExplodeLoop
         private void doInitSymbols(LLVMContext ctx, BitSet shouldInit, LLVMPointer[] roSections) {
-
             for (int i = 0; i < initSymbols.length; i++) {
                 if (initSymbols[i].shouldInitialize(ctx)) {
                     shouldInit.set(i);
                     initSymbols[i].initializeSymbolTable(ctx);
                 }
             }
+
             for (int i = 0; i < initSymbols.length; i++) {
                 // Only execute the symbols that are initialized into the symbol table.
                 if (shouldInit.get(i)) {
@@ -364,8 +364,11 @@ final class Runner {
         @ExplodeLoop
         private void doInitScope(LLVMContext ctx, LLVMLocalScope localScope) {
             for (int i = 0; i < initScopes.length; i++) {
-                addIDToLocalScope(localScope, initScopes[i].getBitcodeID());
-                initScopes[i].execute(ctx, localScope);
+                if (initScopes[i].shouldInitialize(ctx)) {
+                    addIDToLocalScope(localScope, initScopes[i].getBitcodeID());
+                    initScopes[i].execute(ctx, localScope);
+                    initScopes[i].initializeScope(ctx);
+                }
             }
         }
 
@@ -1496,11 +1499,12 @@ final class Runner {
     private static final class InitializeScopeNode extends LLVMNode {
         @Children final AllocScopeNode[] allocScopes;
         private final int bitcodeID;
+        private final LLVMScope fileScope;
 
         InitializeScopeNode(LLVMParserResult result, int bitcodeID) {
             this.bitcodeID = bitcodeID;
+            this.fileScope = result.getRuntime().getFileScope();
             ArrayList<AllocScopeNode> allocScopesList = new ArrayList<>();
-            LLVMScope fileScope = result.getRuntime().getFileScope();
             for (LLVMSymbol symbol : fileScope.values()) {
                 allocScopesList.add(new AllocScopeNode(symbol));
             }
@@ -1518,6 +1522,14 @@ final class Runner {
 
         public int getBitcodeID() {
             return bitcodeID;
+        }
+
+        public boolean shouldInitialize(LLVMContext ctx) {
+            return !ctx.isScopeLoadedForScopes(fileScope);
+        }
+
+        public void initializeScope(LLVMContext context) {
+            context.registerScopeForScopes(fileScope);
         }
     }
 
@@ -1576,7 +1588,7 @@ final class Runner {
         void execute(LLVMContext context, LLVMLocalScope localScope) {
             LLVMScope globalScope = context.getGlobalScope();
             LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-            NFIContextExtension nfiContextExtension = getNfiContextExtension();
+            NFIContextExtension nfiContextExtension = getNfiContextExtension(context);
 
             synchronized (context) {
                 // functions and globals
@@ -1593,8 +1605,8 @@ final class Runner {
         }
 
         @TruffleBoundary
-        private static NFIContextExtension getNfiContextExtension() {
-            return LLVMLanguage.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+        private static NFIContextExtension getNfiContextExtension(LLVMContext context) {
+            return context.getContextExtensionOrNull(NFIContextExtension.class);
         }
 
     }

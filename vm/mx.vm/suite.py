@@ -81,7 +81,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "6484314a1432cfbcf5bb431a3380ab3cd6eb4d91",
+                "version": "b6e4346ffab551de56d1deff0eef6368e7d90d6a",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},

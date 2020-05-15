@@ -50,7 +50,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     /**
-     * Handle to a HSTruffleCompilerRuntime object in an SVM heap.
+     * Handle to a HSTruffleCompilerRuntime object in an libgraal heap.
      */
     static final class Handle extends LibGraalObject {
         Handle(long handle) {
@@ -60,7 +60,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     @SuppressWarnings("try")
     LibGraalTruffleRuntime() {
-        runtime().registerNativeMethods(HotSpotToSVMCalls.class);
+        runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
     }
 
     long handle() {
@@ -69,7 +69,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
                 MetaAccessProvider metaAccess = runtime().getHostJVMCIBackend().getMetaAccess();
                 HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) metaAccess.lookupJavaType(getClass());
                 long classLoaderDelegate = LibGraal.translate(type);
-                return new Handle(HotSpotToSVMCalls.initializeRuntime(getIsolateThread(), LibGraalTruffleRuntime.this, classLoaderDelegate));
+                return new Handle(TruffleToLibGraalCalls.initializeRuntime(getIsolateThread(), LibGraalTruffleRuntime.this, classLoaderDelegate));
             }).getHandle();
         }
     }
@@ -78,7 +78,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     public HotSpotTruffleCompiler newTruffleCompiler() {
         try (LibGraalScope scope = new LibGraalScope()) {
-            return new SVMHotSpotTruffleCompiler(this);
+            return new LibGraalHotSpotTruffleCompiler(this);
         }
     }
 
@@ -86,7 +86,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     protected String initLazyCompilerConfigurationName() {
         try (LibGraalScope scope = new LibGraalScope()) {
-            return HotSpotToSVMCalls.getCompilerConfigurationFactoryName(getIsolateThread(), handle());
+            return TruffleToLibGraalCalls.getCompilerConfigurationFactoryName(getIsolateThread(), handle());
         }
     }
 
@@ -105,7 +105,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     protected Map<String, Object> createInitialOptions() {
         try (LibGraalScope scope = new LibGraalScope()) {
-            byte[] serializedOptions = HotSpotToSVMCalls.getInitialOptions(getIsolateThread(), handle());
+            byte[] serializedOptions = TruffleToLibGraalCalls.getInitialOptions(getIsolateThread(), handle());
             return OptionsEncoder.decode(serializedOptions);
         }
     }
@@ -136,13 +136,13 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         @SuppressWarnings("try")
         @Override
         public void write(int b) {
-            HotSpotToSVMCalls.ttyWriteByte(isolateThread(), b);
+            TruffleToLibGraalCalls.ttyWriteByte(isolateThread(), b);
         }
 
         @SuppressWarnings("try")
         @Override
         public void write(byte[] b, int off, int len) {
-            HotSpotToSVMCalls.ttyWriteBytes(isolateThread(), b, off, len);
+            TruffleToLibGraalCalls.ttyWriteBytes(isolateThread(), b, off, len);
         }
 
         @Override

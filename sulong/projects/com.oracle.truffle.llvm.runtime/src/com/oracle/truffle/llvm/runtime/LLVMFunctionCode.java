@@ -193,7 +193,7 @@ public class LLVMFunctionCode {
 
             TruffleObject wrapper = null;
             LLVMNativePointer pointer = null;
-            NFIContextExtension nfiContextExtension = descriptor.getContext().getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+            NFIContextExtension nfiContextExtension = descriptor.getContext().getContextExtensionOrNull(NFIContextExtension.class);
             if (nfiContextExtension != null) {
                 wrapper = nfiContextExtension.createNativeWrapper(descriptor);
                 if (wrapper != null) {
@@ -266,7 +266,7 @@ public class LLVMFunctionCode {
                     return;
                 }
 
-                NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+                NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
                 LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
                 assert !intrinsicProvider.isIntrinsified(descriptor.getLLVMFunction().getName());
                 if (nfiContextExtension != null) {

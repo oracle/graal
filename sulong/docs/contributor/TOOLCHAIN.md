@@ -47,23 +47,21 @@ The internal GraalVM LLVM runtime library layout follows the same approach.
 
 ## Java API
 
-Language implementations can access the toolchain via the [`Toolchain`](../../sulong/projects/com.oracle.truffle.llvm.api/src/com/oracle/truffle/llvm/api/Toolchain.java) service.
-The service provides two methods:
+Language implementations can access the toolchain via the [`Toolchain`](../../projects/com.oracle.truffle.llvm.api/src/com/oracle/truffle/llvm/api/Toolchain.java) service.
+The service provides three methods:
 
 * `TruffleFile getToolPath(String tool)`
   Returns the path to the executable for a given tool.
-  Every implementation is free to choose its own set of supported tools.
-  The command line interface of the executable is specific to the tool.
-  If a tool is not supported or not known, `null` is returned.
-  Consult the Javadoc for a list known tools.
+* `List<TruffleFile> getPaths(String pathName)`
+  Returns a list of directories for a given path name.
 * `String getIdentifier()`
   Returns the identifier for the toolchain.
-  It can be used to distinguish results produced by different toolchains.
-  The identifier can be used as a path suffix to place results in distinct locations,
-  therefore it does not contain special characters like slashes or spaces.
+
+Consult the [Javadoc](../../projects/com.oracle.truffle.llvm.api/src/com/oracle/truffle/llvm/api/Toolchain.java)
+for more details.
 
 The `Toolchain` lives in the `SULONG_API` distribution.
-The LLVM runtime will always provide a toolchain that matches its current mode.
+The LLVM runtime will always provide a toolchain that matches its current execution mode.
 The service can be looked-up via the `Env`:
 
 ```Java
@@ -72,6 +70,46 @@ Toolchain toolchain = env.lookup(llvmInfo, Toolchain.class);
 TruffleFile toolPath = toolchain.getToolPath("CC");
 String toolchainId = toolchain.getIdentifier();
 ```
+
+See the [ToolchainExampleSnippet](../../projects/com.oracle.truffle.llvm.api/src/com/oracle/truffle/llvm/api/Toolchain.java#ToolchainExampleSnippet)
+for a full example.
+
+## C API
+There is also a C level API for accessing the Toolchain defined in
+[`llvm/api/toolchain.h`](../../projects/com.oracle.truffle.llvm.libraries.bitcode/include/llvm/api/toolchain.h).
+It provides the following function which correspond to the Java API methods:
+
+```C
+// Returns the path to the executable for a given tool.
+void *toolchain_api_tool(const void *name);
+// Returns a list of directories for a given path name.
+void *toolchain_api_paths(const void *name);
+// Returns the identifier for the toolchain.
+void *toolchain_api_identifier(void);
+```
+
+The return values (and arguments) are [_polyglot values_](INTEROP.md) and
+need to be accessed via the `polyglot_*` API function:
+
+```C
+#include <stdio.h>
+#include <polyglot.h>
+#include <llvm/api/toolchain.h>
+
+#define BUFFER_SIZE 1024
+
+int main() {
+  char buffer[BUFFER_SIZE + 1];
+  void *cc = toolchain_api_tool("CC");
+  polyglot_as_string(cc, buffer, BUFFER_SIZE, "ascii");
+  buffer[BUFFER_SIZE] = '\0'; // ensure zero terminated
+  printf("CC=%s\n", buffer);
+  return 0;
+}
+```
+
+See the [test case](../../tests/com.oracle.truffle.llvm.tests.interop.native/interop/polyglotToolchain.c)
+for a usage example.
 
 ## `mx` integration
 
