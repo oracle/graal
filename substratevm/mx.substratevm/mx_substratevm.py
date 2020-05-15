@@ -1089,13 +1089,13 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
         if sup[0]:
             return sup
 
-        output = self.newestOutput()
-        if not output.timestamp:
-            return True, output.path + ' does not exist'
+        outfile = self.newestOutput()
+        if not outfile.timestamp:
+            return True, outfile.path + ' does not exist'
 
-        input = mx.TimeStampFile.newest([self.jvm_funcs_path] + self.staticlibs)
-        needs_build = input.isNewerThan(output)
-        return needs_build, input.path + ' is newer than ' + output.path
+        infile = mx.TimeStampFile.newest([self.jvm_funcs_path] + self.staticlibs)
+        needs_build = infile.isNewerThan(outfile)
+        return needs_build, infile.path + ' is newer than ' + outfile.path
 
     def build(self):
 

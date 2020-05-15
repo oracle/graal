@@ -32,6 +32,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 import org.junit.Test;
 
+// Checkstyle: stop
+
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
 public class JVMFuncFallbackTest {
     @Test
