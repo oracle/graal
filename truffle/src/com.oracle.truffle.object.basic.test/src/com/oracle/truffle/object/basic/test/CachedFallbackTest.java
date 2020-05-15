@@ -50,8 +50,9 @@ import org.junit.Test;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 
-public class CachedFallbackTest {
+public class CachedFallbackTest extends AbstractLibraryTest {
 
     @Test
     public void testMixedReceiverTypeSameShape() {
@@ -61,13 +62,13 @@ public class CachedFallbackTest {
         String key = "key";
         String val = "value";
 
-        CachedPutNode writeNode = DynamicObjectLibraryTest.adopt(CachedPutNodeGen.create());
+        CachedPutNode writeNode = adopt(CachedPutNodeGen.create());
         writeNode.execute(o1, key, val);
         writeNode.execute(o2, key, val);
 
         assertSame("expected same shape", o1.getShape(), o2.getShape());
 
-        CachedGetNode readNode = DynamicObjectLibraryTest.adopt(CachedGetNodeGen.create());
+        CachedGetNode readNode = adopt(CachedGetNodeGen.create());
         assertEquals(val, readNode.execute(o1, key));
         assertEquals(val, readNode.execute(o2, key));
     }
@@ -82,7 +83,7 @@ public class CachedFallbackTest {
         String key2 = "key2";
         String val2 = "value2";
 
-        DynamicObjectLibrary library = DynamicObjectLibraryTest.adopt(DynamicObjectLibrary.getFactory().create(o1));
+        DynamicObjectLibrary library = adopt(DynamicObjectLibrary.getFactory().create(o1));
         assertTrue(library.accepts(o1));
         assertTrue(library.accepts(o2));
         library.put(o1, key1, val1);
@@ -92,7 +93,7 @@ public class CachedFallbackTest {
 
         assertSame("expected same shape", o1.getShape(), o2.getShape());
 
-        CachedGetNode readNode = DynamicObjectLibraryTest.adopt(CachedGetNodeGen.create());
+        CachedGetNode readNode = adopt(CachedGetNodeGen.create());
         assertEquals(val1, readNode.execute(o1, key1));
         assertEquals(val1, readNode.execute(o2, key1));
         assertEquals(val2, readNode.execute(o1, key2));
@@ -110,16 +111,16 @@ public class CachedFallbackTest {
         String key2 = "key2";
         String val2 = "value2";
 
-        DynamicObjectLibrary library1 = DynamicObjectLibraryTest.adopt(DynamicObjectLibrary.getFactory().create(o1));
+        DynamicObjectLibrary library1 = adopt(DynamicObjectLibrary.getFactory().create(o1));
         library1.put(o1, key1, val1);
         library1.put(o2, key1, val1);
-        DynamicObjectLibrary library2 = DynamicObjectLibraryTest.adopt(DynamicObjectLibrary.getFactory().create(o1));
+        DynamicObjectLibrary library2 = adopt(DynamicObjectLibrary.getFactory().create(o1));
         library2.put(o1, key2, val2);
         library2.put(o2, key2, val2);
 
         assertSame("expected same shape", o1.getShape(), o2.getShape());
 
-        CachedGetNode readNode = DynamicObjectLibraryTest.adopt(CachedGetNodeGen.create());
+        CachedGetNode readNode = adopt(CachedGetNodeGen.create());
         assertEquals(val1, readNode.execute(o1, key1));
         assertEquals(val1, readNode.execute(o2, key1));
         assertEquals(val2, readNode.execute(o1, key2));

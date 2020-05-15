@@ -58,13 +58,9 @@ import java.util.function.Supplier;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeInterface;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -72,18 +68,12 @@ import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 import com.oracle.truffle.object.DynamicObjectImpl;
 
 @RunWith(Parameterized.class)
-public class DynamicObjectLibraryTest {
-    private final Supplier<? extends DynamicObject> emptyObjectSupplier;
-    private final LibraryMode mode;
-
-    enum LibraryMode {
-        Uncached,
-        Dispatched,
-        Cached,
-    }
+public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
+    @Parameter(1) public Supplier<? extends DynamicObject> emptyObjectSupplier;
 
     private DynamicObject createEmpty() {
         return emptyObjectSupplier.get();
@@ -111,47 +101,33 @@ public class DynamicObjectLibraryTest {
     }
 
     private static void addParams(Collection<Object[]> params, Supplier<? extends Object> supplier) {
-        for (LibraryMode mode : LibraryMode.values()) {
-            params.add(new Object[]{supplier, mode});
+        for (TestRun run : TestRun.values()) {
+            params.add(new Object[]{run, supplier});
         }
     }
 
-    public DynamicObjectLibraryTest(Supplier<? extends DynamicObject> emptyObjectSupplier, LibraryMode libraryMode) {
-        this.emptyObjectSupplier = emptyObjectSupplier;
-        this.mode = libraryMode;
-    }
-
     private DynamicObjectLibrary createDispatchedLibrary() {
-        if (mode != LibraryMode.Uncached) {
+        if (run == TestRun.DISPATCHED_CACHED || run == TestRun.CACHED) {
             return adopt(DynamicObjectLibrary.getFactory().createDispatched(5));
         }
         return DynamicObjectLibrary.getUncached();
     }
 
     private DynamicObjectLibrary createLibraryForReceiver(DynamicObject receiver) {
-        if (mode == LibraryMode.Cached) {
-            DynamicObjectLibrary cached = adopt(DynamicObjectLibrary.getFactory().create(receiver));
-            assertTrue(cached.accepts(receiver));
-            return cached;
-        }
-        return createDispatchedLibrary();
+        DynamicObjectLibrary objectLibrary = createLibrary(DynamicObjectLibrary.class, receiver);
+        assertTrue(objectLibrary.accepts(receiver));
+        return objectLibrary;
     }
 
     private DynamicObjectLibrary createLibraryForReceiverAndKey(DynamicObject receiver, Object key) {
         assertFalse(key instanceof DynamicObject);
-        if (mode == LibraryMode.Cached) {
-            DynamicObjectLibrary cached = adopt(DynamicObjectLibrary.getFactory().create(receiver));
-            assertTrue(cached.accepts(receiver));
-            return cached;
-        }
-        return createDispatchedLibrary();
+        DynamicObjectLibrary objectLibrary = createLibrary(DynamicObjectLibrary.class, receiver);
+        assertTrue(objectLibrary.accepts(receiver));
+        return objectLibrary;
     }
 
     private DynamicObjectLibrary createLibraryForKey(Object key) {
         assertFalse(key instanceof DynamicObject);
-        if (mode == LibraryMode.Cached) {
-            return adopt(DynamicObjectLibrary.getFactory().createDispatched(5));
-        }
         return createDispatchedLibrary();
     }
 
@@ -275,7 +251,7 @@ public class DynamicObjectLibraryTest {
         assertEquals(null, uncachedGet(o1, key2));
 
         setNode2.put(o1, key2, strval2);
-        assertEquals(mode != LibraryMode.Cached, setNode2.accepts(o1));
+        assertEquals(run != TestRun.CACHED, setNode2.accepts(o1));
         assertTrue(DynamicObjectLibrary.getUncached().containsKey(o1, key2));
         assertEquals(strval2, uncachedGet(o1, key2));
 
@@ -419,7 +395,7 @@ public class DynamicObjectLibraryTest {
         assertSame(myType, cached.getDynamicType(o4));
         Object myType2 = newObjectType();
         cached.setDynamicType(o4, myType2);
-        assertEquals(mode != LibraryMode.Cached, cached.accepts(o4));
+        assertEquals(run != TestRun.CACHED, cached.accepts(o4));
         assertSame(myType2, lib.getDynamicType(o4));
     }
 
@@ -454,7 +430,7 @@ public class DynamicObjectLibraryTest {
         assertEquals(flags, cached.getShapeFlags(o4));
         int flags2 = 43;
         cached.setShapeFlags(o4, flags2);
-        assertEquals(mode != LibraryMode.Cached, cached.accepts(o4));
+        assertEquals(run != TestRun.CACHED, cached.accepts(o4));
         assertEquals(flags2, lib.getShapeFlags(o4));
     }
 
@@ -778,29 +754,11 @@ public class DynamicObjectLibraryTest {
     }
 
     private List<Object> getKeyList(DynamicObject obj) {
-        if (mode == LibraryMode.Uncached) {
-            return obj.getShape().getKeyList();
-        } else {
-            return Arrays.asList(DynamicObjectLibrary.getUncached().getKeyArray(obj));
-        }
+        DynamicObjectLibrary objectLibrary = createLibrary(DynamicObjectLibrary.class, obj);
+        return Arrays.asList(objectLibrary.getKeyArray(obj));
     }
 
     private static boolean isNewLayout(DynamicObject obj) {
         return !(obj instanceof DynamicObjectImpl);
-    }
-
-    static <T extends NodeInterface> T adopt(T node) {
-        assert ((Node) node).isAdoptable();
-        RootNode dummyNode = new RootNode(null, null) {
-            @Child T child = node;
-
-            @TruffleBoundary
-            @Override
-            public Object execute(VirtualFrame frame) {
-                throw new UnsupportedOperationException();
-            }
-        };
-        dummyNode.adoptChildren();
-        return node;
     }
 }

@@ -56,8 +56,9 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 
-public class MergedLibraryTest {
+public class MergedLibraryTest extends AbstractLibraryTest {
 
     @ExportLibrary(InteropLibrary.class)
     static class MyObject extends DynamicObject implements TruffleObject {
@@ -108,7 +109,7 @@ public class MergedLibraryTest {
     public void testMembers() throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
         Shape shape = Shape.newBuilder().build();
         DynamicObject obj = new MyObject(shape);
-        InteropLibrary interop = DynamicObjectLibraryTest.adopt(InteropLibrary.getFactory().create(obj));
+        InteropLibrary interop = adopt(InteropLibrary.getFactory().create(obj));
         assertTrue(interop.accepts(obj));
         assertTrue(interop.isMemberInsertable(obj, "key"));
         interop.writeMember(obj, "key", "value");
