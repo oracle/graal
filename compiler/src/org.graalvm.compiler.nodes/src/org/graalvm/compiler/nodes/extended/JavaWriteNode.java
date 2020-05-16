@@ -50,11 +50,20 @@ public final class JavaWriteNode extends AbstractWriteNode implements Lowerable,
     public static final NodeClass<JavaWriteNode> TYPE = NodeClass.create(JavaWriteNode.class);
     protected final JavaKind writeKind;
     protected final boolean compressible;
+    protected final boolean hasSideEffect;
+
+    public JavaWriteNode(JavaKind writeKind, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean compressible, boolean hasSideEffect) {
+        super(TYPE, address, location, value, barrierType);
+        this.writeKind = writeKind;
+        this.compressible = compressible;
+        this.hasSideEffect = hasSideEffect;
+    }
 
     public JavaWriteNode(JavaKind writeKind, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean compressible) {
         super(TYPE, address, location, value, barrierType);
         this.writeKind = writeKind;
         this.compressible = compressible;
+        this.hasSideEffect = true;
     }
 
     @Override
@@ -83,5 +92,10 @@ public final class JavaWriteNode extends AbstractWriteNode implements Lowerable,
     @Override
     public Stamp getAccessStamp(NodeView view) {
         return value().stamp(view);
+    }
+
+    @Override
+    public boolean hasSideEffect() {
+        return hasSideEffect;
     }
 }
