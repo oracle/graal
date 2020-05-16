@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -561,6 +561,22 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
     @Override
     protected Iterable<SubstrateField> getNodeFields() {
         return getNodeFields(null);
+    }
+
+    @Override
+    protected SubstrateField[] getNodeFieldArray() {
+        if (rawAllInstanceFields == null) {
+            /*
+             * The type was created at run time from the Class, so we do not have field information.
+             * If we need the fields for a type, the type has to be created during image generation.
+             */
+            throw SubstrateNodeFieldIterator.noFieldsError(this);
+
+        } else if (rawAllInstanceFields instanceof SubstrateField) {
+            return new SubstrateField[]{(SubstrateField) rawAllInstanceFields};
+        } else {
+            return (SubstrateField[]) rawAllInstanceFields;
+        }
     }
 
     private Iterable<SubstrateField> getNodeFields(Predicate<SubstrateField> filter) {
