@@ -98,7 +98,11 @@ public class LLVMScope implements TruffleObject {
     }
 
     /**
-     * add a tuple of function name and function linkage name to the map
+     * Add a tuple of function name and function linkage name to the map.
+     *
+     * @param name Function name as specified in original (e.g. C/C++) source.
+     * @param linkageName Function name in LLVM code if @param name has been changed during
+     *            compilation to LLVM bitcode.
      */
     public void registerLinkageName(String name, String linkageName) {
         linkageNames.put(name, linkageName);
