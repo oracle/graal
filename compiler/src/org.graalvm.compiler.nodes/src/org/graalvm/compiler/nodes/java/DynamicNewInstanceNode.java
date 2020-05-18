@@ -78,16 +78,11 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
                 return this;
             }
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
-            if (type != null && type.isInitialized() && !throwsInstantiationException(type, tool.getMetaAccess())) {
-                return createNewInstanceNode(type);
+            if (type != null && type.isInitialized() && !throwsInstantiationException(type, tool.getMetaAccess()) && tool.getMetaAccessExtensionProvider().canConstantFoldDynamicAllocation(type)) {
+                return new NewInstanceNode(type, fillContents(), stateBefore());
             }
         }
         return this;
-    }
-
-    /** Hook for subclasses to instantiate a subclass of {@link NewInstanceNode}. */
-    protected NewInstanceNode createNewInstanceNode(ResolvedJavaType type) {
-        return new NewInstanceNode(type, fillContents(), stateBefore());
     }
 
     public static boolean throwsInstantiationException(Class<?> type, Class<?> classClass) {

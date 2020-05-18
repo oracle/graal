@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package org.graalvm.compiler.hotspot.meta;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 
-@NodeInfo
-public class SubstrateDynamicNewInstanceNode extends DynamicNewInstanceNode {
-    public static final NodeClass<SubstrateDynamicNewInstanceNode> TYPE = NodeClass.create(SubstrateDynamicNewInstanceNode.class);
-
-    public SubstrateDynamicNewInstanceNode(ValueNode clazz) {
-        super(TYPE, clazz, true, null);
+public class HotSpotMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
+    @Override
+    public JavaKind getStorageKind(JavaType type) {
+        return type.getJavaKind();
     }
 
     @Override
-    protected NewInstanceNode createNewInstanceNode(ResolvedJavaType type) {
-        return new SubstrateNewInstanceNode(type, fillContents(), stateBefore());
+    public boolean canConstantFoldDynamicAllocation(JavaType type) {
+        return true;
     }
 }

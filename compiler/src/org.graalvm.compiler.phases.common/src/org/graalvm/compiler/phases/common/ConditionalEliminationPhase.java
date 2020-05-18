@@ -287,8 +287,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             this.map = graph.createNodeMap();
             this.pendingTests = new ArrayDeque<>();
             this.conditions = new ArrayDeque<>();
-            tool = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(), false, graph.getAssumptions(), graph.getOptions(),
-                            context.getLowerer());
+            tool = GraphUtil.getDefaultSimplifier(context, false, graph.getAssumptions(), graph.getOptions());
             mergeMaps = EconomicMap.create(Equivalence.IDENTITY);
             infoElementProvider = new InfoElementProvider() {
 

@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.sparc.SPARCAddressLowering;
 import org.graalvm.compiler.core.sparc.SPARCSuitesCreator;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -38,9 +39,10 @@ import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.meta.AddressLoweringHotSpotSuitesProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotConstantFieldProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
-import org.graalvm.compiler.hotspot.meta.HotSpotPlatformConfigurationProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotMetaAccessExtensionProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotPlatformConfigurationProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegisters;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
@@ -102,8 +104,10 @@ public class SPARCHotSpotBackendFactory extends HotSpotBackendFactory {
         HotSpotForeignCallsProvider foreignCalls = new SPARCHotSpotForeignCallsProvider(jvmciRuntime, runtime, metaAccess, codeCache, wordTypes, nativeABICallerSaveRegisters);
         HotSpotStampProvider stampProvider = createStampProvider();
         HotSpotPlatformConfigurationProvider platformConfigurationProvider = createConfigInfoProvider(config, metaAccess);
-        LoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, constantReflection, platformConfigurationProvider, target);
-        Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, platformConfigurationProvider);
+        HotSpotMetaAccessExtensionProvider metaAccessExtensionProvider = createMetaAccessExtensionProvider();
+        LoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, constantReflection, platformConfigurationProvider, metaAccessExtensionProvider, target);
+        Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, platformConfigurationProvider,
+                        metaAccessExtensionProvider);
         HotSpotSnippetReflectionProvider snippetReflection = createSnippetReflection(runtime, constantReflection, wordTypes);
         BytecodeProvider bytecodeProvider = createBytecodeProvider(metaAccess, snippetReflection);
         HotSpotReplacementsImpl replacements = createReplacements(target, p, snippetReflection, bytecodeProvider);
@@ -112,7 +116,7 @@ public class SPARCHotSpotBackendFactory extends HotSpotBackendFactory {
         replacements.setGraphBuilderPlugins(plugins);
         HotSpotSuitesProvider suites = createSuites(config, runtime, compilerConfiguration, plugins, replacements);
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, suites, registers,
-                        snippetReflection, wordTypes, plugins, platformConfigurationProvider);
+                        snippetReflection, wordTypes, plugins, platformConfigurationProvider, metaAccessExtensionProvider);
         replacements.setProviders(providers);
         replacements.maybeInitializeEncoder(options);
 
@@ -159,8 +163,10 @@ public class SPARCHotSpotBackendFactory extends HotSpotBackendFactory {
     }
 
     protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls,
-                    HotSpotRegistersProvider registers, HotSpotConstantReflectionProvider constantReflection, PlatformConfigurationProvider platformConfig, TargetDescription target) {
-        return new SPARCHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, constantReflection, platformConfig, target);
+                    HotSpotRegistersProvider registers, HotSpotConstantReflectionProvider constantReflection, PlatformConfigurationProvider platformConfig,
+                    MetaAccessExtensionProvider metaAccessExtensionProvider,
+                    TargetDescription target) {
+        return new SPARCHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, constantReflection, platformConfig, metaAccessExtensionProvider, target);
     }
 
     protected HotSpotRegistersProvider createRegisters() {

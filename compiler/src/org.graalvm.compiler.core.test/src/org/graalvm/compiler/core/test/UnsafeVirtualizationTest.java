@@ -495,7 +495,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         VirtualObjectNode virtual = graph.getNodes().filter(VirtualObjectNode.class).first();
         if (virtual instanceof VirtualArrayNode) {
             VirtualArrayNode array = (VirtualArrayNode) virtual;
-            if (array.isVirtualByteArray()) {
+            if (array.isVirtualByteArray(context.getMetaAccessExtensionProvider())) {
                 canVirtualize = context.getPlatformConfigurationProvider().canVirtualizeLargeByteArrayAccess();
             }
         }

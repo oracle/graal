@@ -114,8 +114,6 @@ import com.oracle.svm.core.graal.nodes.ReadHeapBaseFixedNode;
 import com.oracle.svm.core.graal.nodes.ReadReturnAddressNode;
 import com.oracle.svm.core.graal.nodes.ReadStackPointerNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
-import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewArrayNode;
-import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewInstanceNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.nodes.SubstrateReflectionGetCallerClassNode;
 import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
@@ -140,7 +138,6 @@ import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
@@ -497,9 +494,9 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean analysis) {
-        registerUnsafePlugins(metaAccess, new Registration(plugins, sun.misc.Unsafe.class).setAllowOverwrite(true), snippetReflection, analysis);
+        registerUnsafePlugins(metaAccess, new Registration(plugins, sun.misc.Unsafe.class), snippetReflection, analysis);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe").setAllowOverwrite(true);
+            Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
             registerUnsafePlugins(metaAccess, r, snippetReflection, analysis);
             if (JavaVersionUtil.JAVA_SPEC >= 11) {
                 /* JDK 11 and later have Unsafe.objectFieldOffset(Class, String). */
@@ -525,15 +522,6 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, Registration r, SnippetReflectionProvider snippetReflection, boolean analysis) {
-        r.register2("allocateInstance", Receiver.class, Class.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
-                ValueNode clazzNonNull = b.nullCheckedValue(clazz, DeoptimizationAction.None);
-                b.addPush(JavaKind.Object, new SubstrateDynamicNewInstanceNode(clazzNonNull));
-                return true;
-            }
-        });
-
         r.register2("objectFieldOffset", Receiver.class, Field.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
@@ -581,13 +569,6 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerArrayPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean analysis) {
         Registration r = new Registration(plugins, Array.class).setAllowOverwrite(true);
-        r.register2("newInstance", Class.class, int.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz, ValueNode length) {
-                b.addPush(JavaKind.Object, new SubstrateDynamicNewArrayNode(clazz, length));
-                return true;
-            }
-        });
         r.register2("newInstance", Class.class, int[].class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazzNode, ValueNode dimensionsNode) {

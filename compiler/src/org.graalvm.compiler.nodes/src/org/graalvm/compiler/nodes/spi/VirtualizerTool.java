@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.spi;
 
 import java.util.List;
 
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -49,6 +50,11 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public interface VirtualizerTool {
 
     /**
+     * Returns all available providers.
+     */
+    CoreProviders getProviders();
+
+    /**
      * @return the {@link MetaAccessProvider} associated with the current compilation.
      */
     MetaAccessProvider getMetaAccess();
@@ -58,6 +64,8 @@ public interface VirtualizerTool {
      *         can be used to access {@link JavaConstant}s.
      */
     ConstantReflectionProvider getConstantReflection();
+
+    MetaAccessExtensionProvider getMetaAccessExtensionProvider();
 
     /**
      * This method should be used to query the maximum size of virtualized objects before attempting
@@ -96,7 +104,7 @@ public interface VirtualizerTool {
      * @param index the index to be set.
      * @param value the new value for the given index.
      * @param accessKind the kind of the store which might be different than
-     *            {@link VirtualObjectNode#entryKind(int)}.
+     *            {@link VirtualObjectNode#entryKind}.
      * @return true if the operation was permitted
      */
     boolean setVirtualEntry(VirtualObjectNode virtualObject, int index, ValueNode value, JavaKind accessKind, long offset);
