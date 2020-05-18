@@ -71,7 +71,7 @@ public class StringUTF16Substitutions {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
         // The intrinsic does not perform bounds/type checks, so it can be used here.
-        // Using KillsAny variant since we are reading and writing 2 different types.
-        ArrayCopyCallNode.disjointArraycopyKillsAny(value, srcBegin, dst, dstBegin, length, JavaKind.Char, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        ArrayCopyCallNode.disjointArraycopyDifferentKinds(value, srcBegin, dst, dstBegin, length, JavaKind.Char, JavaKind.Byte, JavaKind.Char,
+                        HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
     }
 }
