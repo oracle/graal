@@ -76,10 +76,9 @@ public class AArch64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsP
         RegisterValue exception = r0.asValue(LIRKind.reference(word));
         RegisterValue exceptionPc = r3.asValue(LIRKind.value(word));
         CallingConvention exceptionCc = new CallingConvention(0, ILLEGAL, exception, exceptionPc);
-        register(new HotSpotForeignCallLinkageImpl(HotSpotBackend.EXCEPTION_HANDLER, 0L, DESTROYS_ALL_CALLER_SAVE_REGISTERS, LEAF, NOT_REEXECUTABLE, exceptionCc, null, any()));
-        register(new HotSpotForeignCallLinkageImpl(HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, DESTROYS_ALL_CALLER_SAVE_REGISTERS, LEAF, NOT_REEXECUTABLE, exceptionCc,
-                        null,
-                        any()));
+        register(new HotSpotForeignCallLinkageImpl(HotSpotBackend.EXCEPTION_HANDLER, 0L, DESTROYS_ALL_CALLER_SAVE_REGISTERS, exceptionCc, null));
+        register(new HotSpotForeignCallLinkageImpl(HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, DESTROYS_ALL_CALLER_SAVE_REGISTERS, exceptionCc,
+                        null));
 
         // These stubs do callee saving
         if (config.useCRC32Intrinsics) {

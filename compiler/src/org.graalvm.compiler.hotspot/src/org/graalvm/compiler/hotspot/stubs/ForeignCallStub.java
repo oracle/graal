@@ -112,7 +112,7 @@ public class ForeignCallStub extends Stub {
     public ForeignCallStub(OptionValues options, HotSpotJVMCIRuntime runtime, HotSpotProviders providers, long address, HotSpotForeignCallDescriptor descriptor, boolean prependThread,
                     Transition transition, Reexecutability reexecutability, LocationIdentity... killedLocations) {
         super(options, providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getWordTypes(), providers.getForeignCalls(), descriptor, 0L,
-                        COMPUTES_REGISTERS_KILLED, JavaCall, JavaCallee, transition, reexecutability, killedLocations));
+                        COMPUTES_REGISTERS_KILLED, JavaCall, JavaCallee));
         this.jvmciRuntime = runtime;
         this.prependThread = prependThread;
         MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -120,7 +120,7 @@ public class ForeignCallStub extends Stub {
         HotSpotForeignCallDescriptor targetSig = new HotSpotForeignCallDescriptor(transition, reexecutability, killedLocations, descriptor.getName() + ":C", descriptor.getResultType(),
                         targetParameterTypes);
         target = HotSpotForeignCallLinkageImpl.create(metaAccess, providers.getCodeCache(), providers.getWordTypes(), providers.getForeignCalls(), targetSig, address,
-                        DESTROYS_ALL_CALLER_SAVE_REGISTERS, NativeCall, NativeCall, transition, reexecutability, killedLocations);
+                        DESTROYS_ALL_CALLER_SAVE_REGISTERS, NativeCall, NativeCall);
     }
 
     /**

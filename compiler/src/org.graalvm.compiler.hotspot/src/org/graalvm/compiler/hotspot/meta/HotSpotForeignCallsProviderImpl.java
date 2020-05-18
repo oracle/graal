@@ -128,10 +128,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
                         descriptor,
                         0L, effect,
                         JavaCall,
-                        JavaCallee,
-                        transition,
-                        reexecutability,
-                        killedLocations));
+                        JavaCallee));
     }
 
     public HotSpotForeignCallLinkage registerStubCall(
@@ -179,10 +176,8 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
                         address,
                         DESTROYS_ALL_CALLER_SAVE_REGISTERS,
                         outgoingCcType,
-                        null, // incomingCcType
-                        transition,
-                        reexecutability,
-                        killedLocations));
+                        null // incomingCcType
+        ));
     }
 
     /**

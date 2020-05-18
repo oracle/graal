@@ -27,8 +27,6 @@ package org.graalvm.compiler.hotspot;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
 
-import java.util.Arrays;
-
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.target.Backend;
@@ -36,7 +34,6 @@ import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
@@ -95,20 +92,12 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
      *            temporaries which are always destroyed)
      * @param outgoingCcType outgoing (caller) calling convention type
      * @param incomingCcType incoming (callee) calling convention type (can be null)
-     * @param transition specifies if this is a {@linkplain #needsDebugInfo() leaf} call
-     * @param reexecutability specifies if the call can be re-executed without (meaningful) side
-     *            effects. Deoptimization will not return to a point before a call that cannot be
-     *            re-executed.
-     * @param killedLocations the memory locations killed by the call
      */
     public static HotSpotForeignCallLinkage create(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, WordTypes wordTypes, HotSpotForeignCallsProvider foreignCalls,
-                    HotSpotForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, HotSpotForeignCallDescriptor.Transition transition,
-                    HotSpotForeignCallDescriptor.Reexecutability reexecutability,
-                    LocationIdentity... killedLocations) {
+                    HotSpotForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType) {
         CallingConvention outgoingCc = createCallingConvention(metaAccess, codeCache, wordTypes, foreignCalls, descriptor, outgoingCcType);
         CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(metaAccess, codeCache, wordTypes, foreignCalls, descriptor, incomingCcType);
-        HotSpotForeignCallLinkageImpl linkage = new HotSpotForeignCallLinkageImpl(descriptor, address, effect, transition, reexecutability, outgoingCc, incomingCc,
-                        killedLocations);
+        HotSpotForeignCallLinkageImpl linkage = new HotSpotForeignCallLinkageImpl(descriptor, address, effect, outgoingCc, incomingCc);
         if (outgoingCcType == HotSpotCallingConventionType.NativeCall) {
             linkage.temporaries = foreignCalls.getNativeABICallerSaveRegisters();
         }
@@ -139,9 +128,8 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         return javaType;
     }
 
-    public HotSpotForeignCallLinkageImpl(HotSpotForeignCallDescriptor descriptor, long address, RegisterEffect effect, HotSpotForeignCallDescriptor.Transition transition,
-                    HotSpotForeignCallDescriptor.Reexecutability reexecutability,
-                    CallingConvention outgoingCallingConvention, CallingConvention incomingCallingConvention, LocationIdentity... killedLocations) {
+    public HotSpotForeignCallLinkageImpl(HotSpotForeignCallDescriptor descriptor, long address, RegisterEffect effect,
+                    CallingConvention outgoingCallingConvention, CallingConvention incomingCallingConvention) {
         super(address);
         this.descriptor = descriptor;
         this.address = address;
@@ -149,11 +137,6 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         assert outgoingCallingConvention != null : "only incomingCallingConvention can be null";
         this.outgoingCallingConvention = outgoingCallingConvention;
         this.incomingCallingConvention = incomingCallingConvention != null ? incomingCallingConvention : outgoingCallingConvention;
-        assert reexecutability == descriptor.getReexecutability();
-        assert transition == descriptor.getTransition() ||
-                        (descriptor.getTransition() == HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO && transition == HotSpotForeignCallDescriptor.Transition.LEAF);
-        assert Arrays.equals(killedLocations, descriptor.getKilledLocations()) : descriptor.getName() + ": " + Arrays.toString(killedLocations) + " != " +
-                        Arrays.toString(descriptor.getKilledLocations());
     }
 
     @Override

@@ -84,11 +84,10 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         RegisterValue incomingExceptionPc = i1.asValue(LIRKind.value(word));
         CallingConvention outgoingExceptionCc = new CallingConvention(0, ILLEGAL, outgoingException, outgoingExceptionPc);
         CallingConvention incomingExceptionCc = new CallingConvention(0, ILLEGAL, incomingException, incomingExceptionPc);
-        register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER, 0L, DESTROYS_ALL_CALLER_SAVE_REGISTERS, LEAF_NO_VZERO, NOT_REEXECUTABLE, outgoingExceptionCc,
-                        incomingExceptionCc,
-                        any()));
-        register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, DESTROYS_ALL_CALLER_SAVE_REGISTERS, LEAF_NO_VZERO, NOT_REEXECUTABLE, outgoingExceptionCc,
-                        incomingExceptionCc, any()));
+        register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER, 0L, DESTROYS_ALL_CALLER_SAVE_REGISTERS, outgoingExceptionCc,
+                        incomingExceptionCc));
+        register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, DESTROYS_ALL_CALLER_SAVE_REGISTERS, outgoingExceptionCc,
+                        incomingExceptionCc));
 
         if (config.useCRC32Intrinsics) {
             // This stub does callee saving
