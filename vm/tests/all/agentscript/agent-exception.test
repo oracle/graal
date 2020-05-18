@@ -1,19 +1,19 @@
 >[7] js --jvm --experimental-options --insight=agent-exception.js -f log.js -e "howAreYou()"
-Hello GraalVM Insight.
+Hello GraalVM Insight!
 How
 great you are!
 .*at <js> checkLogging.agent-exception.js:.*
 .*at <js> log.log.js:1-6:18-.*
 .*at <js> howAreYou.log.js:11:.*.
-
+.*at <js> :program.<eval_script>:1:0-10.
 >[7] js --experimental-options --insight=agent-exception.js -f log.js -e "howAreYou()"
-Hello GraalVM Insight.
+Hello GraalVM Insight!
 How
 great you are!
 .*at <js> checkLogging.agent-exception.js:.*
 .*at <js> log.log.js:1-6:18-.*
 .*at <js> howAreYou.log.js:11:.*
-
+.*at <js> :program.<eval_script>:1:0-10.
 >[7] js --experimental-options --insight=agent-exception.js -f log.js -e "howDoYouDo()"
 Hello GraalVM Insight!
 How
