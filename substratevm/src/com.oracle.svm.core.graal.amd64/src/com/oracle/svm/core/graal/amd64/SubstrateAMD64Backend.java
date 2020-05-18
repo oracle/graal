@@ -592,7 +592,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-            return new SubstrateDebugInfoBuilder(graph, nodeValueMap);
+            return new SubstrateDebugInfoBuilder(graph, gen.getProviders().getMetaAccessExtensionProvider(), nodeValueMap);
         }
 
         @Override

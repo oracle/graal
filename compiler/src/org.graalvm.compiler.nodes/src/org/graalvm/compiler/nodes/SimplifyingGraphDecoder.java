@@ -30,7 +30,6 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.util.List;
 
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
@@ -47,13 +46,12 @@ import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Graph decoder that simplifies nodes during decoding. The standard
@@ -67,12 +65,13 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     protected final boolean canonicalizeReads;
     protected final CanonicalizerTool canonicalizerTool;
 
-    protected class PECanonicalizerTool implements CanonicalizerTool {
+    protected class PECanonicalizerTool extends CoreProvidersDelegate implements CanonicalizerTool {
 
         private final Assumptions assumptions;
         private final OptionValues options;
 
         public PECanonicalizerTool(Assumptions assumptions, OptionValues options) {
+            super(providers);
             this.assumptions = assumptions;
             this.options = options;
         }
@@ -80,21 +79,6 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         @Override
         public OptionValues getOptions() {
             return options;
-        }
-
-        @Override
-        public MetaAccessProvider getMetaAccess() {
-            return providers.getMetaAccess();
-        }
-
-        @Override
-        public ConstantReflectionProvider getConstantReflection() {
-            return providers.getConstantReflection();
-        }
-
-        @Override
-        public ConstantFieldProvider getConstantFieldProvider() {
-            return providers.getConstantFieldProvider();
         }
 
         @Override

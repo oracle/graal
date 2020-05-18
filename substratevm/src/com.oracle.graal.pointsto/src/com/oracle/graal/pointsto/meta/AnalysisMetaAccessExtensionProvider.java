@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
+package com.oracle.graal.pointsto.meta;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 
-@NodeInfo
-public class SubstrateDynamicNewArrayNode extends DynamicNewArrayNode {
-    public static final NodeClass<SubstrateDynamicNewArrayNode> TYPE = NodeClass.create(SubstrateDynamicNewArrayNode.class);
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 
-    public SubstrateDynamicNewArrayNode(ValueNode clazz, ValueNode length) {
-        super(TYPE, clazz, length, true, null, null, null);
+public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
+
+    @Override
+    public JavaKind getStorageKind(JavaType type) {
+        return ((AnalysisType) type).getStorageKind();
     }
 
     @Override
-    protected NewArrayNode createNewArrayNode(ResolvedJavaType type) {
-        return new SubstrateNewArrayNode(type, length(), fillContents(), stateBefore());
+    public boolean canConstantFoldDynamicAllocation(JavaType type) {
+        return true;
     }
 }

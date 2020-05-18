@@ -28,6 +28,7 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.Options.GraalArithmeti
 
 import org.graalvm.compiler.core.amd64.AMD64LoweringProviderMixin;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -61,8 +62,9 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     private AMD64X87MathSnippets.Templates mathSnippets;
 
     public AMD64HotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
-                    HotSpotConstantReflectionProvider constantReflection, PlatformConfigurationProvider platformConfig, TargetDescription target) {
-        super(runtime, metaAccess, foreignCalls, registers, constantReflection, platformConfig, target);
+                    HotSpotConstantReflectionProvider constantReflection, PlatformConfigurationProvider platformConfig, MetaAccessExtensionProvider metaAccessExtensionProvider,
+                    TargetDescription target) {
+        super(runtime, metaAccess, foreignCalls, registers, constantReflection, platformConfig, metaAccessExtensionProvider, target);
     }
 
     @Override

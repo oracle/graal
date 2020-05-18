@@ -35,16 +35,13 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 
-import com.oracle.svm.core.graal.nodes.SubstrateVirtualInstanceNode;
 import com.oracle.svm.core.meta.SharedType;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class SubstrateObjectCloneNode extends BasicObjectCloneNode implements DeoptBefore {
@@ -54,11 +51,6 @@ public final class SubstrateObjectCloneNode extends BasicObjectCloneNode impleme
 
     public SubstrateObjectCloneNode(MacroParams p) {
         super(TYPE, p);
-    }
-
-    @Override
-    public VirtualInstanceNode createVirtualInstanceNode(ResolvedJavaType type, boolean hasIdentity) {
-        return new SubstrateVirtualInstanceNode(type, hasIdentity);
     }
 
     @Override

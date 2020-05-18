@@ -25,8 +25,9 @@
 package org.graalvm.compiler.hotspot;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.hotspot.meta.HotSpotPlatformConfigurationProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotMetaAccessExtensionProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotPlatformConfigurationProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotSnippetReflectionProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotStampProvider;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
@@ -57,6 +58,10 @@ public abstract class HotSpotBackendFactory {
 
     protected HotSpotPlatformConfigurationProvider createConfigInfoProvider(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         return new HotSpotPlatformConfigurationProvider(config, metaAccess);
+    }
+
+    protected HotSpotMetaAccessExtensionProvider createMetaAccessExtensionProvider() {
+        return new HotSpotMetaAccessExtensionProvider();
     }
 
     protected HotSpotReplacementsImpl createReplacements(TargetDescription target, Providers p, HotSpotSnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider) {

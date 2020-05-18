@@ -30,7 +30,6 @@ import static org.graalvm.compiler.phases.common.CanonicalizerPhase.Canonicalize
 
 import java.util.EnumSet;
 
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -60,6 +59,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
@@ -67,8 +67,6 @@ import org.graalvm.compiler.phases.Phase;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
@@ -517,13 +515,14 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             return false;
         }
 
-        private final class Tool implements SimplifierTool, NodeView {
+        private final class Tool extends CoreProvidersDelegate implements SimplifierTool, NodeView {
 
             private final Assumptions assumptions;
             private final OptionValues options;
             private NodeView nodeView;
 
             Tool(Assumptions assumptions, OptionValues options) {
+                super(context);
                 this.assumptions = assumptions;
                 this.options = options;
                 this.nodeView = getNodeView();
@@ -534,21 +533,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 FixedNode fixedBranch = (FixedNode) branch;
                 fixedBranch.predecessor().replaceFirstSuccessor(fixedBranch, null);
                 GraphUtil.killCFG(fixedBranch);
-            }
-
-            @Override
-            public MetaAccessProvider getMetaAccess() {
-                return context.getMetaAccess();
-            }
-
-            @Override
-            public ConstantReflectionProvider getConstantReflection() {
-                return context.getConstantReflection();
-            }
-
-            @Override
-            public ConstantFieldProvider getConstantFieldProvider() {
-                return context.getConstantFieldProvider();
             }
 
             @Override

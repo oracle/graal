@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,33 +23,24 @@
  * questions.
  */
 
-package com.oracle.svm.core.graal.nodes;
+package com.oracle.svm.core.graal.code;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 
 import com.oracle.svm.core.meta.SharedType;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.JavaType;
 
-@NodeInfo
-public class SubstrateVirtualArrayNode extends VirtualArrayNode {
-    public static final NodeClass<SubstrateVirtualArrayNode> TYPE = NodeClass.create(SubstrateVirtualArrayNode.class);
+public class SubstrateMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
 
-    public SubstrateVirtualArrayNode(ResolvedJavaType componentType, int length) {
-        super(TYPE, componentType, length);
+    @Override
+    public JavaKind getStorageKind(JavaType type) {
+        return ((SharedType) type).getStorageKind();
     }
 
     @Override
-    public VirtualArrayNode duplicate() {
-        return new SubstrateVirtualArrayNode(componentType, length);
-    }
-
-    @Override
-    public JavaKind entryKind(int index) {
-        assert index >= 0 && index < length;
-        return ((SharedType) componentType).getStorageKind();
+    public boolean canConstantFoldDynamicAllocation(JavaType type) {
+        return ((SharedType) type).getHub().isInstantiated();
     }
 }

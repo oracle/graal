@@ -80,23 +80,14 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
          * they're excluded from escape analysis.
          */
         if (!tool.getMetaAccess().lookupJavaType(Reference.class).isAssignableFrom(instanceClass)) {
-            VirtualInstanceNode virtualObject = createVirtualInstanceNode(true);
+            VirtualInstanceNode virtualObject = new VirtualInstanceNode(instanceClass(), true);
             ResolvedJavaField[] fields = virtualObject.getFields();
             ValueNode[] state = new ValueNode[fields.length];
             for (int i = 0; i < state.length; i++) {
-                state[i] = defaultFieldValue(fields[i]);
+                state[i] = ConstantNode.defaultForKind(tool.getMetaAccessExtensionProvider().getStorageKind(fields[i].getType()), graph());
             }
             tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList(), false);
             tool.replaceWithVirtual(virtualObject);
         }
-    }
-
-    protected VirtualInstanceNode createVirtualInstanceNode(boolean hasIdentity) {
-        return new VirtualInstanceNode(instanceClass(), hasIdentity);
-    }
-
-    /* Factored out in a separate method so that subclasses can override it. */
-    protected ConstantNode defaultFieldValue(ResolvedJavaField field) {
-        return ConstantNode.defaultForKind(field.getType().getJavaKind(), graph());
     }
 }

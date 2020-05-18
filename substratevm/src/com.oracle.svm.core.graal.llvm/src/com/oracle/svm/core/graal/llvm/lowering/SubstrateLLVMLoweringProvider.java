@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.llvm.lowering;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.RemNode;
@@ -40,8 +41,10 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateLLVMLoweringProvider extends SubstrateBasicLoweringProvider {
 
-    public SubstrateLLVMLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig, TargetDescription target) {
-        super(metaAccess, foreignCalls, platformConfig, target);
+    public SubstrateLLVMLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
+                    MetaAccessExtensionProvider metaAccessExtensionProvider,
+                    TargetDescription target) {
+        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target);
     }
 
     @SuppressWarnings("unchecked")
