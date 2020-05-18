@@ -26,6 +26,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
@@ -53,10 +54,21 @@ public final class DebuggerConnection implements Commands {
         commandProcessor.start();
         activeThreads.add(commandProcessor);
 
-        jdwpTransport = new Thread(new JDWPTransportThread(suspend), "jdwp-transport");
+        jdwpTransport = new Thread(new JDWPTransportThread(), "jdwp-transport");
         jdwpTransport.setDaemon(true);
         jdwpTransport.start();
         activeThreads.add(jdwpTransport);
+
+        if (suspend) {
+            // check if this is called from a guest thread
+            Object guestThread = context.asGuestThread(Thread.currentThread());
+            if (guestThread == null) {
+                // a reconnect, meaning no suspend
+                return;
+            }
+            // only a JDWP resume/resumeAll command can resume this thread
+            controller.suspend(null, context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.emptyList(), null, false);
+        }
     }
 
     public void close() {
@@ -70,26 +82,26 @@ public final class DebuggerConnection implements Commands {
     @Override
     public void stepInto(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_INTO, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy());
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false);
         addBlocking(debuggerCommand);
     }
 
     @Override
     public void stepOver(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OVER, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy());
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false);
         addBlocking(debuggerCommand);
     }
 
     @Override
     public void stepOut(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OUT, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy());
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false);
         addBlocking(debuggerCommand);
     }
 
     // the suspended event instance is only valid while suspended, so
-    // to avoid a race, we have to block until we're sure that the debubgger
+    // to avoid a race, we have to block until we're sure that the debugger
     // command was prepared on the suspended event instance
     private void addBlocking(DebuggerCommand command) {
         queue.add(command);
@@ -194,47 +206,13 @@ public final class DebuggerConnection implements Commands {
     }
 
     private class JDWPTransportThread implements Runnable {
-
-        private boolean started;
         private RequestedJDWPEvents requestedJDWPEvents = new RequestedJDWPEvents(connection, controller);
-        // constant used to allow for initial startup sequence debugger commands to occur before
-        // waking up the main Espresso startup thread
-        private static final int GRACE_PERIOD = 100;
-
-        JDWPTransportThread(boolean suspend) {
-            this.started = !suspend;
-        }
 
         @Override
         public void run() {
-            long time = -1;
-            long limit = 0;
-
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    if (!started) {
-                        // in startup sequence
-                        if (time == -1) {
-                            // setup the grace period
-                            time = System.currentTimeMillis();
-                            limit = time + GRACE_PERIOD;
-                        } else {
-                            long currentTime = System.currentTimeMillis();
-                            if (currentTime > limit) {
-                                started = true;
-                                processPacket(Packet.fromByteArray(connection.readPacket()));
-                            } else {
-                                // check if a packet is available
-                                if (connection.isAvailable()) {
-                                    processPacket(Packet.fromByteArray(connection.readPacket()));
-                                    time = System.currentTimeMillis();
-                                    limit = time + GRACE_PERIOD;
-                                }
-                            }
-                        }
-                    } else {
-                        processPacket(Packet.fromByteArray(connection.readPacket()));
-                    }
+                    processPacket(Packet.fromByteArray(connection.readPacket()));
                 } catch (IOException e) {
                     if (!Thread.currentThread().isInterrupted()) {
                         JDWPLogger.log("Failed to process jdwp packet with message: %s", JDWPLogger.LogLevel.ALL, e.getMessage());
@@ -302,13 +280,16 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.DISPOSE_OBJECTS.createReply(packet);
                                     break;
                                 case JDWP.VirtualMachine.HOLD_EVENTS.ID:
-                                    result = JDWP.VirtualMachine.HOLD_EVENTS.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.HOLD_EVENTS.createReply(packet, controller);
                                     break;
                                 case JDWP.VirtualMachine.RELEASE_EVENTS.ID:
-                                    result = JDWP.VirtualMachine.RELEASE_EVENTS.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.RELEASE_EVENTS.createReply(packet, controller);
                                     break;
                                 case JDWP.VirtualMachine.CAPABILITIES_NEW.ID:
                                     result = JDWP.VirtualMachine.CAPABILITIES_NEW.createReply(packet);
+                                    break;
+                                case JDWP.VirtualMachine.REDEFINE_CLASSES.ID:
+                                    result = JDWP.VirtualMachine.REDEFINE_CLASSES.createReply(packet, context);
                                     break;
                                 case JDWP.VirtualMachine.SET_DEFAULT_STRATUM.ID:
                                     result = JDWP.VirtualMachine.SET_DEFAULT_STRATUM.createReply(packet);
@@ -359,6 +340,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ReferenceType.CLASS_OBJECT.ID:
                                     result = JDWP.ReferenceType.CLASS_OBJECT.createReply(packet, context);
                                     break;
+                                case JDWP.ReferenceType.SOURCE_DEBUG_EXTENSION.ID:
+                                    result = JDWP.ReferenceType.SOURCE_DEBUG_EXTENSION.createReply(packet, context);
+                                    break;
                                 case JDWP.ReferenceType.SIGNATURE_WITH_GENERIC.ID:
                                     result = JDWP.ReferenceType.SIGNATURE_WITH_GENERIC.createReply(packet, context);
                                     break;
@@ -389,7 +373,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ClassType.SET_VALUES.createReply(packet, context);
                                     break;
                                 case JDWP.ClassType.INVOKE_METHOD.ID:
-                                    result = JDWP.ClassType.INVOKE_METHOD.createReply(packet, controller);
+                                    result = JDWP.ClassType.INVOKE_METHOD.createReply(packet, controller, DebuggerConnection.this);
                                     break;
                                 case JDWP.ClassType.NEW_INSTANCE.ID:
                                     result = JDWP.ClassType.NEW_INSTANCE.createReply(packet, controller);
@@ -408,7 +392,7 @@ public final class DebuggerConnection implements Commands {
                         case JDWP.InterfaceType.ID: {
                             switch (packet.cmd) {
                                 case JDWP.InterfaceType.INVOKE_METHOD.ID:
-                                    result = JDWP.InterfaceType.INVOKE_METHOD.createReply(packet, controller);
+                                    result = JDWP.InterfaceType.INVOKE_METHOD.createReply(packet, controller, DebuggerConnection.this);
                                     break;
                             }
                             break;
@@ -425,7 +409,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.Methods.BYTECODES.createReply(packet, context);
                                     break;
                                 case JDWP.Methods.IS_OBSOLETE.ID:
-                                    result = JDWP.Methods.IS_OBSOLETE.createReply(packet);
+                                    result = JDWP.Methods.IS_OBSOLETE.createReply(packet, context);
                                     break;
                                 case JDWP.Methods.VARIABLE_TABLE_WITH_GENERIC.ID:
                                     result = JDWP.Methods.VARIABLE_TABLE_WITH_GENERIC.createReply(packet, context);
@@ -444,8 +428,11 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ObjectReference.SET_VALUES.ID:
                                     result = JDWP.ObjectReference.SET_VALUES.createReply(packet, context);
                                     break;
+                                case JDWP.ObjectReference.MONITOR_INFO.ID:
+                                    result = JDWP.ObjectReference.MONITOR_INFO.createReply(packet, controller);
+                                    break;
                                 case JDWP.ObjectReference.INVOKE_METHOD.ID:
-                                    result = JDWP.ObjectReference.INVOKE_METHOD.createReply(packet, controller);
+                                    result = JDWP.ObjectReference.INVOKE_METHOD.createReply(packet, controller, DebuggerConnection.this);
                                     break;
                                 case JDWP.ObjectReference.DISABLE_COLLECTION.ID:
                                     result = JDWP.ObjectReference.DISABLE_COLLECTION.createReply(packet, controller);
@@ -493,6 +480,12 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ThreadReference.FRAME_COUNT.ID:
                                     result = JDWP.ThreadReference.FRAME_COUNT.createReply(packet, controller);
                                     break;
+                                case JDWP.ThreadReference.OWNED_MONITORS.ID:
+                                    result = JDWP.ThreadReference.OWNED_MONITORS.createReply(packet, controller);
+                                    break;
+                                case JDWP.ThreadReference.CURRENT_CONTENDED_MONITOR.ID:
+                                    result = JDWP.ThreadReference.CURRENT_CONTENDED_MONITOR.createReply(packet, context);
+                                    break;
                                 case JDWP.ThreadReference.STOP.ID:
                                     result = JDWP.ThreadReference.STOP.createReply(packet, context);
                                     break;
@@ -503,10 +496,10 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ThreadReference.SUSPEND_COUNT.createReply(packet, controller);
                                     break;
                                 case JDWP.ThreadReference.OWNED_MONITORS_STACK_DEPTH_INFO.ID:
-                                    result = JDWP.ThreadReference.OWNED_MONITORS_STACK_DEPTH_INFO.createReply(packet);
+                                    result = JDWP.ThreadReference.OWNED_MONITORS_STACK_DEPTH_INFO.createReply(packet, controller);
                                     break;
                                 case JDWP.ThreadReference.FORCE_EARLY_RETURN.ID:
-                                    result = JDWP.ThreadReference.FORCE_EARLY_RETURN.createReply(packet);
+                                    result = JDWP.ThreadReference.FORCE_EARLY_RETURN.createReply(packet, controller);
                                     break;
                             }
                             break;
@@ -525,18 +518,15 @@ public final class DebuggerConnection implements Commands {
                             break;
                         case JDWP.ArrayReference.ID: {
                             switch (packet.cmd) {
-                                case JDWP.ArrayReference.LENGTH.ID: {
+                                case JDWP.ArrayReference.LENGTH.ID:
                                     result = JDWP.ArrayReference.LENGTH.createReply(packet, context);
                                     break;
-                                }
-                                case JDWP.ArrayReference.GET_VALUES.ID: {
+                                case JDWP.ArrayReference.GET_VALUES.ID:
                                     result = JDWP.ArrayReference.GET_VALUES.createReply(packet, context);
                                     break;
-                                }
-                                case JDWP.ArrayReference.SET_VALUES.ID: {
+                                case JDWP.ArrayReference.SET_VALUES.ID:
                                     result = JDWP.ArrayReference.SET_VALUES.createReply(packet, context);
                                     break;
-                                }
                                 default:
                                     break;
                             }
@@ -544,27 +534,23 @@ public final class DebuggerConnection implements Commands {
                         }
                         case JDWP.ClassLoaderReference.ID: {
                             switch (packet.cmd) {
-                                case JDWP.ClassLoaderReference.VISIBLE_CLASSES.ID: {
+                                case JDWP.ClassLoaderReference.VISIBLE_CLASSES.ID:
                                     result = JDWP.ClassLoaderReference.VISIBLE_CLASSES.createReply(packet, context);
                                     break;
-                                }
                             }
                             break;
                         }
                         case JDWP.EventRequest.ID: {
                             switch (packet.cmd) {
-                                case JDWP.EventRequest.SET.ID: {
+                                case JDWP.EventRequest.SET.ID:
                                     result = requestedJDWPEvents.registerEvent(packet, DebuggerConnection.this);
                                     break;
-                                }
-                                case JDWP.EventRequest.CLEAR.ID: {
+                                case JDWP.EventRequest.CLEAR.ID:
                                     result = requestedJDWPEvents.clearRequest(packet);
                                     break;
-                                }
-                                case JDWP.EventRequest.CLEAR_ALL_BREAKPOINTS.ID: {
+                                case JDWP.EventRequest.CLEAR_ALL_BREAKPOINTS.ID:
                                     result = requestedJDWPEvents.clearAllRequests(packet);
                                     break;
-                                }
                                 default:
                                     break;
                             }
@@ -572,18 +558,18 @@ public final class DebuggerConnection implements Commands {
                         }
                         case JDWP.StackFrame.ID: {
                             switch (packet.cmd) {
-                                case JDWP.StackFrame.GET_VALUES.ID: {
+                                case JDWP.StackFrame.GET_VALUES.ID:
                                     result = JDWP.StackFrame.GET_VALUES.createReply(packet, context);
                                     break;
-                                }
-                                case JDWP.StackFrame.SET_VALUES.ID: {
+                                case JDWP.StackFrame.SET_VALUES.ID:
                                     result = JDWP.StackFrame.SET_VALUES.createReply(packet, context);
                                     break;
-                                }
-                                case JDWP.StackFrame.THIS_OBJECT.ID: {
-                                    result = JDWP.StackFrame.THIS_OBJECT.createReply(packet, context);
+                                case JDWP.StackFrame.THIS_OBJECT.ID:
+                                    result = JDWP.StackFrame.THIS_OBJECT.createReply(packet, controller);
                                     break;
-                                }
+                                case JDWP.StackFrame.POP_FRAMES.ID:
+                                    result = JDWP.StackFrame.POP_FRAMES.createReply(packet, controller);
+                                    break;
                                 default:
                                     break;
                             }
@@ -591,10 +577,9 @@ public final class DebuggerConnection implements Commands {
                         }
                         case JDWP.ClassObjectReference.ID: {
                             switch (packet.cmd) {
-                                case JDWP.ClassObjectReference.REFLECTED_TYPE.ID: {
+                                case JDWP.ClassObjectReference.REFLECTED_TYPE.ID:
                                     result = JDWP.ClassObjectReference.REFLECTED_TYPE.createReply(packet, context);
                                     break;
-                                }
                                 default:
                                     break;
                             }
@@ -602,10 +587,9 @@ public final class DebuggerConnection implements Commands {
                         }
                         case JDWP.Event.ID: {
                             switch (packet.cmd) {
-                                case JDWP.Event.COMPOSITE.ID: {
+                                case JDWP.Event.COMPOSITE.ID:
                                     result = JDWP.Event.COMPOSITE.createReply(packet);
                                     break;
-                                }
                                 default:
                                     break;
                             }
@@ -615,40 +599,47 @@ public final class DebuggerConnection implements Commands {
                             break;
                     }
                 }
-                // run pre futures before sending the reply
-                if (result != null && result.getPreFutures() != null) {
-                    try {
-                        for (Callable<Void> future : result.getPreFutures()) {
-                            if (future != null) {
-                                future.call();
-                            }
-                        }
-                    } catch (Exception e) {
-                        JDWPLogger.log("Failed to run future for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
-                    }
-                }
-                if (result != null && result.getReply() != null) {
-                    JDWPLogger.log("replying to command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
-                    connection.queuePacket(result.getReply());
-                } else {
-                    JDWPLogger.log("no result for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
-                }
-                // run post futures after sending the reply
-                if (result != null && result.getPostFutures() != null) {
-                    try {
-                        for (Callable<Void> future : result.getPostFutures()) {
-                            if (future != null) {
-                                future.call();
-                            }
-                        }
-                    } catch (Exception e) {
-                        JDWPLogger.log("Failed to run future for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
-                    }
-                }
+                handleReply(packet, result);
             } finally {
                 if (entered) {
                     controller.leaveTruffleContext();
                 }
+            }
+        }
+    }
+
+    void handleReply(Packet packet, CommandResult result) {
+        if (result == null) {
+            return;
+        }
+        // run pre futures before sending the reply
+        if (result.getPreFutures() != null) {
+            try {
+                for (Callable<Void> future : result.getPreFutures()) {
+                    if (future != null) {
+                        future.call();
+                    }
+                }
+            } catch (Exception e) {
+                JDWPLogger.log("Failed to run future for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
+            }
+        }
+        if (result.getReply() != null) {
+            JDWPLogger.log("replying to command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
+            connection.queuePacket(result.getReply());
+        } else {
+            JDWPLogger.log("no result for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
+        }
+        // run post futures after sending the reply
+        if (result.getPostFutures() != null) {
+            try {
+                for (Callable<Void> future : result.getPostFutures()) {
+                    if (future != null) {
+                        future.call();
+                    }
+                }
+            } catch (Exception e) {
+                JDWPLogger.log("Failed to run future for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
             }
         }
     }

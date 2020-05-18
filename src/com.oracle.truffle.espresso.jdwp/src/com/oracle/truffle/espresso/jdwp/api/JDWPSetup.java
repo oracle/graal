@@ -33,8 +33,8 @@ public final class JDWPSetup {
 
     private DebuggerController controller;
 
-    public void setup(Debugger debugger, DebuggerController control, JDWPOptions options, JDWPContext context) {
-        control.initialize(debugger, options, context);
+    public void setup(Debugger debugger, DebuggerController control, JDWPOptions options, JDWPContext context, Object mainThread) {
+        control.initialize(debugger, options, context, mainThread);
         this.controller = control;
     }
 

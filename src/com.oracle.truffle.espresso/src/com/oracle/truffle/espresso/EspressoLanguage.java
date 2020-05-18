@@ -26,20 +26,19 @@ import java.util.Collections;
 import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
+import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
@@ -51,21 +50,17 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
-import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
+import com.oracle.truffle.espresso.nodes.interop.LoadKlassNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
 @Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
-
-    public static final TruffleLogger EspressoLogger = TruffleLogger.getLogger(EspressoLanguage.ID);
 
     public static final String ID = "java";
     public static final String NAME = "Java";
@@ -75,14 +70,13 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     public static final String VM_SPECIFICATION_VERSION = "1.8";
     public static final String VM_SPECIFICATION_NAME = "Java Virtual Machine Specification";
     public static final String VM_SPECIFICATION_VENDOR = "Oracle Corporation";
-    public static final String VM_VERSION = "1.8.0_212";
+    public static final String VM_VERSION = "1.8.0_241";
     public static final String VM_VENDOR = "Oracle Corporation";
     public static final String VM_NAME = "Espresso 64-Bit VM";
     public static final String VM_INFO = "mixed mode";
 
     public static final String FILE_EXTENSION = ".class";
 
-    public static final String ESPRESSO_SOURCE_FILE_KEY = "EspressoSourceFile";
     private static final String SCOPE_NAME = "block";
 
     private final Utf8ConstantTable utf8Constants;
@@ -94,10 +88,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public EspressoLanguage() {
         // Initialize statically defined symbols and substitutions.
-        Name.init();
-        Type.init();
-        Signature.init();
-        Substitutions.init();
+        Name.ensureInitialized();
+        Type.ensureInitialized();
+        Signature.ensureInitialized();
+        Substitutions.ensureInitialized();
 
         // Raw symbols are not exposed directly, use the typed interfaces: Names, Types and
         // Signatures instead.
@@ -113,28 +107,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return new EspressoOptionsOptionDescriptors();
     }
 
-    // cf. sun.launcher.LauncherHelper
-    enum LaunchMode {
-        LM_UNKNOWN,
-        LM_CLASS,
-        LM_JAR,
-        // LM_MODULE,
-        // LM_SOURCE
-    }
-
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
-        OptionValues options = env.getOptions();
         // TODO(peterssen): Redirect in/out to env.in()/out()
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
-
-        EspressoError.guarantee(options.hasBeenSet(EspressoOptions.Classpath), "classpath must be defined");
-
-        Object sourceFile = env.getConfig().get(EspressoLanguage.ESPRESSO_SOURCE_FILE_KEY);
-        if (sourceFile != null) {
-            context.setMainSourceFile((Source) sourceFile);
-        }
         return context;
     }
 
@@ -158,7 +135,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             scopeNode = statementNode.getBytecodesNode();
         } else if (espressoNode instanceof BytecodeNode) {
             BytecodeNode bytecodeNode = (BytecodeNode) espressoNode;
-            currentBci = 0;
+            try {
+                currentBci = bytecodeNode.readBCI(frame);
+            } catch (Throwable t) {
+                // fall back to entry of method then
+                currentBci = 0;
+            }
             method = bytecodeNode.getMethod();
             scopeNode = bytecodeNode;
         } else {
@@ -166,7 +148,30 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
         // construct the current scope with valid local variables information
         Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(currentBci);
-
+        if (liveLocals.length == 0) {
+            // class was compiled without a local variable table
+            // include "this" in method arguments throughout the method
+            int localCount = !method.isStatic() ? 1 : 0;
+            localCount += method.getParameterCount();
+            liveLocals = new Local[localCount];
+            Klass[] parameters = (Klass[]) method.getParameters();
+            if (!method.isStatic()) {
+                // include 'this' and method arguments
+                liveLocals[0] = new Local(utf8Constants.getOrCreate(Name.thiz), utf8Constants.getOrCreate(method.getDeclaringKlass().getType()), 0, 65536, 0);
+                for (int i = 1; i < localCount; i++) {
+                    Klass param = parameters[i - 1];
+                    Utf8Constant name = utf8Constants.getOrCreate(ByteSequence.create("" + (i - 1)));
+                    Utf8Constant type = utf8Constants.getOrCreate(param.getType());
+                    liveLocals[i] = new Local(name, type, 0, 65536, i);
+                }
+            } else {
+                // only include method arguments
+                for (int i = 0; i < localCount; i++) {
+                    Klass param = parameters[i];
+                    liveLocals[i] = new Local(utf8Constants.getOrCreate(ByteSequence.create("" + (i - 1))), utf8Constants.getOrCreate(param.getType()), 0, 65536, i);
+                }
+            }
+        }
         Scope scope = Scope.newBuilder(SCOPE_NAME, EspressoScope.createVariables(liveLocals, frame)).node(scopeNode).build();
         return Collections.singletonList(scope);
     }
@@ -177,6 +182,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         while (currentNode != null && !known) {
             if (currentNode instanceof QuickNode || currentNode instanceof BytecodeNode || currentNode instanceof EspressoStatementNode) {
                 known = true;
+            } else if (currentNode instanceof EspressoRootNode) {
+                EspressoRootNode rootNode = (EspressoRootNode) currentNode;
+                if (rootNode.isBytecodeNode()) {
+                    return rootNode.getBytecodeNode();
+                }
             } else {
                 currentNode = currentNode.getParent();
             }
@@ -194,9 +204,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     protected void finalizeContext(EspressoContext context) {
         long totalTime = System.currentTimeMillis() - startupClock;
         if (totalTime > 10000) {
-            EspressoLogger.log(Level.FINE, "Time spent in Espresso: {0} s", (totalTime / 1000));
+            context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} s", (totalTime / 1000));
         } else {
-            EspressoLogger.log(Level.FINE, "Time spent in Espresso: {0} ms", totalTime);
+            context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} ms", totalTime);
         }
 
         context.prepareDispose();
@@ -213,44 +223,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected CallTarget parse(final ParsingRequest request) throws Exception {
-        final Source source = request.getSource();
         final EspressoContext context = getCurrentContext();
-
         assert context.isInitialized();
         context.begin();
-
-        String className = source.getName();
-
-        Klass mainClass = loadMainClass(context, LaunchMode.LM_CLASS, className).getMirrorKlass();
-
-        EspressoError.guarantee(mainClass != null, "Error: Could not find or load main class %s", className);
-
-        Method mainMethod = mainClass.lookupDeclaredMethod(Name.main, Signature._void_String_array);
-
-        EspressoError.guarantee(mainMethod != null && mainMethod.isStatic(),
-                        "Error: Main method not found in class %s, please define the main method as:\n" +
-                                        "            public static void main(String[] args)\n",
-                        className);
-
-        assert mainMethod != null && mainMethod.isPublic() && mainMethod.isStatic();
-        return Truffle.getRuntime().createCallTarget(new MainLauncherRootNode(this, mainMethod));
-    }
-
-    /*
-     * Loads a class and verifies that the main class is present and it is ok to call it for more
-     * details refer to the java implementation.
-     */
-    private static StaticObject loadMainClass(EspressoContext context, LaunchMode mode, String name) {
-        assert context.isInitialized();
-        Meta meta = context.getMeta();
-        Klass launcherHelperKlass = meta.loadKlass(Type.sun_launcher_LauncherHelper, StaticObject.NULL);
-        Method checkAndLoadMain = launcherHelperKlass.lookupDeclaredMethod(Name.checkAndLoadMain, Signature.Class_boolean_int_String);
-        return (StaticObject) checkAndLoadMain.invokeDirect(null, true, mode.ordinal(), meta.toGuestString(name));
-    }
-
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof StaticObject;
+        String className = request.getSource().getCharacters().toString();
+        return Truffle.getRuntime().createCallTarget(new LoadKlassNode(this, className));
     }
 
     public Utf8ConstantTable getUtf8ConstantTable() {

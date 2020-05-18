@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.jni;
 import java.io.IOException;
 import java.io.UTFDataFormatException;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 /**
  * Modified UTF-8 conversions.
  */
@@ -184,13 +186,11 @@ public final class ModifiedUtf8 {
                     /* 110x xxxx 10xx xxxx */
                     count += 2;
                     if (count > utflen) {
-                        throw new UTFDataFormatException(
-                                        "malformed input: partial character at end");
+                        throw throwUTFDataFormatException("malformed input: partial character at end");
                     }
                     char2 = bytearr[count - 1 + offset];
                     if ((char2 & 0xC0) != 0x80) {
-                        throw new UTFDataFormatException(
-                                        "malformed input around byte " + count);
+                        throw throwUTFDataFormatException(malformedInputMessage(count));
                     }
                     chararr[chararrCount++] = (char) (((c & 0x1F) << 6) |
                                     (char2 & 0x3F));
@@ -199,14 +199,12 @@ public final class ModifiedUtf8 {
                     /* 1110 xxxx 10xx xxxx 10xx xxxx */
                     count += 3;
                     if (count > utflen) {
-                        throw new UTFDataFormatException(
-                                        "malformed input: partial character at end");
+                        throw throwUTFDataFormatException("malformed input: partial character at end");
                     }
                     char2 = bytearr[count - 2 + offset];
                     char3 = bytearr[count - 1 + offset];
                     if (((char2 & 0xC0) != 0x80) || ((char3 & 0xC0) != 0x80)) {
-                        throw new UTFDataFormatException(
-                                        "malformed input around byte " + (count - 1));
+                        throw throwUTFDataFormatException(malformedInputMessage(count - 1));
                     }
                     chararr[chararrCount++] = (char) (((c & 0x0F) << 12) |
                                     ((char2 & 0x3F) << 6) |
@@ -214,12 +212,21 @@ public final class ModifiedUtf8 {
                     break;
                 default:
                     /* 10xx xxxx, 1111 xxxx */
-                    throw new UTFDataFormatException(
-                                    "malformed input around byte " + count);
+                    throw throwUTFDataFormatException(malformedInputMessage(count));
             }
         }
         // The number of chars produced may be less than utflen
         return new String(chararr, 0, chararrCount);
+    }
+
+    @TruffleBoundary(transferToInterpreterOnException = false)
+    private static UTFDataFormatException throwUTFDataFormatException(String message) throws UTFDataFormatException {
+        throw new UTFDataFormatException(message);
+    }
+
+    @TruffleBoundary
+    private static String malformedInputMessage(int count) {
+        return "malformed input around byte " + count;
     }
 
     public static boolean isValid(byte[] bytearr, int offset, int length) {

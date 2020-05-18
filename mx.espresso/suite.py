@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "5.251.0",
+    "mxversion": "5.263.3",
     "name": "espresso",
 
     # ------------- licenses
@@ -42,11 +42,45 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "2d490de5f447a16b96a4e07a3c50dbe4f40cc6d6",
+                "version": "7e70d7bcdb56484f4ad482c74d16a052cadf6145",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
+            },
+            {
+                "name": "tools",
+                "subdir": True,
+                # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
+                "version": "7e70d7bcdb56484f4ad482c74d16a052cadf6145",
+                "urls": [
+                    {"url": "https://github.com/graalvm/graal", "kind": "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            {
+                "name": "truffleruby",
+                "version": "7c588c76f3a7c9c08eea614e1b1c54b36df8658e",
+                "dynamic": True,
+                "urls": [
+                    {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ],
+                "os_arch": {
+                    "linux": {
+                        "sparcv9": {
+                            "ignore": True
+                        },
+                        "<others>": {
+                            "ignore": False
+                        }
+                    },
+                    "<others>": {
+                        "<others>": {
+                            "ignore": False
+                        }
+                    }
+                }
             },
         ],
     },
@@ -59,6 +93,12 @@ suite = {
                 "https://sourceware.org/pub/libffi/libffi-3.2.1.tar.gz",
             ],
             "sha1": "280c265b789e041c02e5c97815793dfc283fb1e6",
+        },
+
+        # https://github.com/smarr/are-we-fast-yet
+        "AWFY" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/awfy/awfy-770c6649.jar"],
+            "sha1" : "f1bf1febd81ce7fbd83244682ddc79e74fec0076",
         },
     },
 
@@ -78,7 +118,7 @@ suite = {
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso",
             "checkstyleVersion": "8.8",
-            "checkPackagePrefix": False, # java.lang.ref.PublicFinalReference
+            "checkPackagePrefix": False,  # java.lang.ref.PublicFinalReference
         },
 
         "com.oracle.truffle.espresso.processor": {
@@ -129,7 +169,18 @@ suite = {
             "buildDependencies": [
                 "com.oracle.truffle.espresso.playground",
             ],
-            "cflags": ["-Wall", "-Werror"],
+            "os_arch": {
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-Wall"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
+                    },
+                },
+            },
         },
 
         # Native library for Espresso native interface
@@ -142,7 +193,18 @@ suite = {
             "buildDependencies": [
                 "truffle:TRUFFLE_NFI_NATIVE",
             ],
-            "cflags": ["-Wall", "-Werror"],
+            "os_arch": {
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-Wall"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
+                    },
+                },
+            },
         },
 
         "com.oracle.truffle.espresso.test": {
@@ -152,10 +214,14 @@ suite = {
             "jniHeaders": True,
             "dependencies": [
                 "com.oracle.truffle.espresso",
-                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "truffle:TRUFFLE_TCK",
                 "mx:JUNIT",
+                "tools:AGENTSCRIPT"
             ],
-            "javaCompliance": "1.8+",
+            # JTT unit tests run both on the host JVM and on Espresso, so they must be compiled with a version compatible with Espresso (8).
+            # Espresso itself can be compiled with Java 11 and the unit tests (compiled to 8) should run on a JVM 11.
+            "javaCompliance": "8",
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -166,7 +232,7 @@ suite = {
             "dependencies": [
                 "com.oracle.truffle.espresso.test"
             ],
-            "overlayTarget" : "com.oracle.truffle.espresso.test",
+            "overlayTarget": "com.oracle.truffle.espresso.test",
             "javaCompliance": "8",
         },
 
@@ -180,23 +246,34 @@ suite = {
             "buildDependencies": [
                 "com.oracle.truffle.espresso.test",
             ],
-            "cflags": ["-Wall", "-Werror"],
+            "os_arch": {
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-Wall"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
+                    },
+                },
+            },
         },
 
         # libjvm Espresso implementation
         "com.oracle.truffle.espresso.mokapot": {
             "subDir": "src",
             "native": "shared_lib",
-            "deliverable": "mokapot",
+            "deliverable": "jvm",
             "platformDependent": True,
             "use_jdk_headers": True,
             "buildDependencies": [
                 "truffle:TRUFFLE_NFI_NATIVE",
             ],
-            "cflags": ["-Wall", "-Werror"],
             "os_arch": {
                 "darwin": {
                     "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
                         "ldflags": [
                             "-Wl,-install_name,@rpath/libjvm.dylib",
                             "-Wl,-rpath,@loader_path/.",
@@ -208,12 +285,18 @@ suite = {
                 },
                 "linux": {
                     "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
                         ],
                     },
                 },
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-Wall"],
+                    },
+                }
             },
         },
     },
@@ -231,7 +314,7 @@ suite = {
                 "truffle:TRUFFLE_NFI",
             ],
             "javaProperties": {
-                "espresso.library.path": "<path:ESPRESSO_SUPPORT>/lib",
+                "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
             },
         },
 
@@ -243,7 +326,8 @@ suite = {
             "distDependencies": [
                 "espresso:ESPRESSO",
                 "truffle:TRUFFLE_API",
-                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "truffle:TRUFFLE_TCK",
+                "tools:AGENTSCRIPT",
                 "mx:JUNIT",
             ],
             "javaProperties": {
@@ -289,11 +373,9 @@ suite = {
                     "file:mx.espresso/reflectconfig.json",
                 ],
                 "lib/": [
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:mokapot>",
-                    "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>"
+                    "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],
-                # On MacOS -install_name (Linux's -soname counterpart) is not enough to fool the dynamic linker.
-                "lib/<lib:jvm>": "link:<lib:mokapot>",
             },
         },
 

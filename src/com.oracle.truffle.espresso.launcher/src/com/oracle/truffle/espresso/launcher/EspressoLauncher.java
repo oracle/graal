@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.launcher;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -38,7 +37,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 
 public class EspressoLauncher extends AbstractLanguageLauncher {
     public static void main(String[] args) {
@@ -47,6 +46,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
     private final ArrayList<String> mainClassArgs = new ArrayList<>();
     private String mainClassName = null;
+    private boolean pauseOnExit = false;
     private VersionAction versionAction = VersionAction.None;
     private final Map<String, String> espressoOptions = new HashMap<>();
 
@@ -103,6 +103,10 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-d64":
                 case "-Xdebug": // only for backward compatibility
                     // ignore
+                    break;
+
+                case "-XX:+PauseOnExit":
+                    pauseOnExit = true;
                     break;
 
                 default:
@@ -221,10 +225,6 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         // @formatter:on
     }
 
-    private static void print(String string) {
-        System.out.println(string);
-    }
-
     /**
      * Gets the values of the attribute {@code name} from the manifest in {@code jarFile}.
      *
@@ -255,6 +255,15 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         }
     }
 
+    // cf. sun.launcher.LauncherHelper
+    private enum LaunchMode {
+        LM_UNKNOWN,
+        LM_CLASS,
+        LM_JAR,
+        // LM_MODULE,
+        // LM_SOURCE
+    }
+
     @Override
     protected void launch(Builder contextBuilder) {
         contextBuilder.arguments(getLanguageId(), mainClassArgs.toArray(new String[0])).in(System.in).out(System.out).err(System.err);
@@ -268,14 +277,33 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         int rc = 1;
         try (Context context = contextBuilder.build()) {
 
-            runVersionAction(versionAction, context.getEngine());
+            // runVersionAction(versionAction, context.getEngine());
+            if (versionAction != VersionAction.None) {
+                Value version = context.eval("java", "sun.misc.Version");
+                version.invokeMember("print");
+                if (versionAction == VersionAction.PrintAndExit) {
+                    throw exit(0);
+                }
+            }
 
             if (mainClassName == null) {
                 throw abort(usage());
             }
 
             try {
-                eval(context);
+                Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
+                Value mainKlass = launcherHelper //
+                                .invokeMember("checkAndLoadMain", true, LaunchMode.LM_CLASS.ordinal(), mainClassName) //
+                                .getMember("static");
+                mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
+                if (pauseOnExit) {
+                    getError().print("Press any key to continue...");
+                    try {
+                        System.in.read();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
                 rc = 0;
             } catch (PolyglotException e) {
                 if (!e.isExit()) {
@@ -283,19 +311,9 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 } else {
                     rc = e.getExitStatus();
                 }
-            } catch (NoSuchFileException e) {
-                e.printStackTrace();
             }
-        } catch (IOException e) {
-            rc = 1;
-            e.printStackTrace();
         }
         throw exit(rc);
-    }
-
-    private void eval(Context context) throws IOException {
-        Source src = Source.newBuilder(getLanguageId(), "", mainClassName).build();
-        context.eval(src);
     }
 
     @Override
@@ -305,7 +323,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void printHelp(OptionCategory maxCategory) {
-        print(usage());
+        getOutput().println(usage());
     }
 
     @Override

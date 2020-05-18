@@ -30,14 +30,15 @@ import java.util.List;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ClassRedefinition;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
@@ -46,22 +47,22 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
+import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
+import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class JDWPContextImpl implements JDWPContext {
 
     public static final String JAVA_LANG_STRING = "Ljava/lang/String;";
-    public static final String JAVA_LANG_THREAD = "Ljava/lang/Thread;";
-    public static final String JAVA_LANG_CLASS = "Ljava/lang/Class;";
-    public static final String JAVA_LANG_CLASS_LOADER = "Ljava/lang/ClassLoader;";
-    public static final String JAVA_LANG_THREAD_GROUP = "Ljava/lang/ThreadGroup;";
 
     private final EspressoContext context;
     private final Ids<Object> ids;
@@ -74,12 +75,12 @@ public final class JDWPContextImpl implements JDWPContext {
         this.setup = new JDWPSetup();
     }
 
-    public VMListener jdwpInit(TruffleLanguage.Env env) {
+    public VMListener jdwpInit(TruffleLanguage.Env env, Object mainThread) {
         // enable JDWP instrumenter only if options are set (assumed valid if non-null)
         if (context.JDWPOptions != null) {
             Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
             DebuggerController control = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
-            setup.setup(debugger, control, context.JDWPOptions, this);
+            setup.setup(debugger, control, context.JDWPOptions, this, mainThread);
             eventListener = control.getEventListener();
         }
         return eventListener;
@@ -102,13 +103,18 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public boolean isValidThread(Object thread) {
+    public boolean isValidThread(Object thread, boolean checkTerminated) {
         if (thread instanceof StaticObject) {
             StaticObject staticObject = (StaticObject) thread;
-            return context.getMeta().java_lang_Thread.isAssignableFrom(staticObject.getKlass());
-        } else {
-            return false;
+            if (context.getMeta().java_lang_Thread.isAssignableFrom(staticObject.getKlass())) {
+                if (checkTerminated) {
+                    // check if thread has been terminated
+                    return getThreadStatus(thread) != Target_java_lang_Thread.State.TERMINATED.value;
+                }
+                return true;
+            }
         }
+        return false;
     }
 
     @Override
@@ -256,7 +262,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public MethodRef getMethodFromRootNode(RootNode root) {
         if (root != null && root instanceof EspressoRootNode) {
-            return ((EspressoRootNode) root).getMethod();
+            return ((EspressoRootNode) root).getMethodVersion();
         }
         return null;
     }
@@ -505,22 +511,14 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public boolean systemExitImplemented() {
-        return false;
+        return true;
     }
 
     @Override
     public void exit(int exitCode) {
         // TODO - implement proper system exit for Espresso
         // tracked here: /browse/GR-20496
-    }
-
-    public void holdEvents() {
-        eventListener.holdEvents();
-    }
-
-    @Override
-    public void releaseEvents() {
-        eventListener.releaseEvents();
+        System.exit(exitCode);
     }
 
     @Override
@@ -536,56 +534,105 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public int getCatchLocation(MethodRef method, Object guestException, int bci) {
         if (guestException instanceof StaticObject) {
-            Method guestMethod = (Method) method;
-            return guestMethod.getCatchLocation(bci, (StaticObject) guestException);
+            MethodVersion guestMethod = (MethodVersion) method;
+            return guestMethod.getMethod().getCatchLocation(bci, (StaticObject) guestException);
         } else {
             return -1;
         }
     }
 
     @Override
-    public boolean moreMethodCallsOnLine(RootNode callerRoot, FrameInstance frameInstance) {
+    public int getNextBCI(RootNode callerRoot, Frame frame) {
         if (callerRoot instanceof EspressoRootNode) {
             EspressoRootNode espressoRootNode = (EspressoRootNode) callerRoot;
-            int bci = (int) readBCIFromFrame(callerRoot, frameInstance);
+            int bci = (int) readBCIFromFrame(callerRoot, frame);
             if (bci != -1) {
-                Method method = espressoRootNode.getMethod();
-                BytecodeStream bs = new BytecodeStream(method.getOriginalCode());
-                LineNumberTableAttribute lineNumberTable = method.getLineNumberTable();
-                if (lineNumberTable == LineNumberTableAttribute.EMPTY) {
-                    return false;
-                }
-
-                int frameLineNumber = lineNumberTable.getLineNumber(bci);
-                int nextLine = lineNumberTable.getNextLine(frameLineNumber);
-                int end = bs.endBCI();
-
-                if (nextLine != Integer.MAX_VALUE) {
-                    end = (int) lineNumberTable.getBCI(nextLine);
-                }
-                // don't check the current opcode, since this is the invoke
-                bci = bs.nextBCI(bci);
-
-                while (bci < end) {
-                    int opcode = bs.currentBC(bci);
-                    if (Bytecodes.isInvoke(opcode) || opcode == Bytecodes.INVOKEDYNAMIC) {
-                        return true;
-                    }
-                    bci = bs.nextBCI(bci);
-                }
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public long readBCIFromFrame(RootNode root, FrameInstance frameInstance) {
-        if (root instanceof EspressoRootNode && frameInstance != null) {
-            EspressoRootNode rootNode = (EspressoRootNode) root;
-            if (rootNode.isBytecodeNode()) {
-                return rootNode.readBCI(frameInstance);
+                BytecodeStream bs = new BytecodeStream(espressoRootNode.getMethodVersion().getOriginalCode());
+                return bs.nextBCI(bci);
             }
         }
         return -1;
+    }
+
+    @Override
+    public long readBCIFromFrame(RootNode root, Frame frame) {
+        if (root instanceof EspressoRootNode && frame != null) {
+            EspressoRootNode rootNode = (EspressoRootNode) root;
+            if (rootNode.isBytecodeNode()) {
+                return rootNode.readBCI(frame);
+            }
+        }
+        return -1;
+    }
+
+    @Override
+    public CallFrame locateObjectWaitFrame() {
+        Object currentThread = asGuestThread(Thread.currentThread());
+        KlassRef klass = context.getMeta().java_lang_Object;
+        MethodRef method = context.getMeta().java_lang_Object_wait.getMethodVersion();
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null);
+    }
+
+    @Override
+    public Object getMonitorOwnerThread(Object object) {
+        if (object instanceof StaticObject) {
+            EspressoLock lock = ((StaticObject) object).getLock();
+            return asGuestThread(lock.getOwnerThread());
+        }
+        return null;
+    }
+
+    @Override
+    public MonitorStackInfo[] getOwnedMonitors(CallFrame[] callFrames) {
+        List<MonitorStackInfo> result = new ArrayList<>();
+        int stackDepth = 0;
+        for (CallFrame callFrame : callFrames) {
+            RootNode rootNode = callFrame.getRootNode();
+            if (rootNode instanceof EspressoRootNode) {
+                EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
+                if (espressoRootNode.usesMonitors()) {
+                    StaticObject[] monitors = espressoRootNode.getMonitorsOnFrame(callFrame.getFrame());
+                    for (StaticObject monitor : monitors) {
+                        if (monitor != null) {
+                            result.add(new MonitorStackInfo(monitor, stackDepth));
+                        }
+                    }
+                }
+            }
+            stackDepth++;
+        }
+        return result.toArray(new MonitorStackInfo[result.size()]);
+    }
+
+    @Override
+    public Object getCurrentContendedMonitor(Object guestThread) {
+        return eventListener.getCurrentContendedMonitor(guestThread);
+    }
+
+    @Override
+    public boolean forceEarlyReturn(Object returnValue, CallFrame topFrame) {
+        // exit all monitors on the current top frame
+        MonitorStackInfo[] ownedMonitors = getOwnedMonitors(new CallFrame[]{topFrame});
+        for (MonitorStackInfo ownedMonitor : ownedMonitors) {
+            InterpreterToVM.monitorExit((StaticObject) ownedMonitor.getMonitor());
+        }
+        eventListener.forceEarlyReturn(returnValue);
+        return true;
+    }
+
+    @Override
+    public Class<? extends TruffleLanguage<?>> getLanguageClass() {
+        return EspressoLanguage.class;
+    }
+
+    @Override
+    public int redefineClasses(RedefineInfo[] redefineInfos) {
+        for (RedefineInfo redefineInfo : redefineInfos) {
+            int result = ClassRedefinition.redefineClass((Klass) redefineInfo.getKlass(), redefineInfo.getClassBytes(), context, getIds());
+            if (result != 0) {
+                return result;
+            }
+        }
+        return 0;
     }
 }

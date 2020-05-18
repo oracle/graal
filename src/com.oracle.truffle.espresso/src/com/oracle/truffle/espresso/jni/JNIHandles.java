@@ -167,6 +167,10 @@ public final class JNIHandles {
         return getLocals().pushFrame(capacity);
     }
 
+    public void popFrame() {
+        getLocals().popFrame();
+    }
+
     public int pushFrame() {
         return pushFrame(NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY);
     }

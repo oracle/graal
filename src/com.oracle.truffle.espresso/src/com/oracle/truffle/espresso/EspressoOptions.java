@@ -42,6 +42,8 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {
 
+    public static final boolean RUNNING_ON_SVM = ImageInfo.inImageCode();
+
     private static final Path EMPTY = Paths.get("");
 
     /**
@@ -85,7 +87,7 @@ public final class EspressoOptions {
 
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for user Espresso native libraries.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<List<Path>> EspressoLibraryPath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
+    public static final OptionKey<Path> EspressoLibraryPath = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
 
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to search for boot class files. These are used in place of the boot class files included in the JDK.", //
                     category = OptionCategory.EXPERT) //
@@ -174,6 +176,10 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> SplitMethodHandles = new OptionKey<>(false);
 
+    @Option(help = "Load native libraries on a per-context, isolated linking namespace; by default enabled on the JVM, disabled on SVM.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> UseTruffleNFIIsolatedNamespace = new OptionKey<>(!RUNNING_ON_SVM);
+
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
                     new Function<String, JDWPOptions>() {
 
@@ -241,10 +247,11 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> EnableManagement = new OptionKey<>(true);
 
-    // Threads are enabled by default.
-    public static final boolean ENABLE_THREADS = (System.getProperty("espresso.EnableThreads") == null) || Boolean.getBoolean("espresso.EnableThreads");
-
-    public static final boolean RUNNING_ON_SVM = ImageInfo.inImageCode();
+    @Option(help = "Enable support for threads. " +
+                    "In single-threaded mode, Thread.start is disabled, weak references and finalizers won't be processed. " +
+                    "Lock operations may be optimized away.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> MultiThreaded = new OptionKey<>(true);
 
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
 }

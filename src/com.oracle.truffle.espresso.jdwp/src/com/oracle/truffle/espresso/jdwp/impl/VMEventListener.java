@@ -26,8 +26,6 @@ import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
-import java.util.concurrent.Callable;
-
 public interface VMEventListener extends VMListener {
     void setConnection(SocketConnection connection);
 
@@ -47,7 +45,7 @@ public interface VMEventListener extends VMListener {
 
     void addVMDeathRequest(int id);
 
-    Callable<Void> addClassPrepareRequest(ClassPrepareRequest request);
+    void addClassPrepareRequest(ClassPrepareRequest request);
 
     void removeClassPrepareRequest(int requestId);
 
@@ -78,4 +76,26 @@ public interface VMEventListener extends VMListener {
     void removeThreadDiedRequestId();
 
     void methodBreakpointHit(MethodBreakpointEvent methodEvent, Object currentThread, CallFrame callFrame);
+
+    void addMonitorContendedEnterRequest(int requestId, RequestFilter filter);
+
+    void removeMonitorContendedEnterRequest(int requestId);
+
+    void addMonitorContendedEnteredRequest(int requestId, RequestFilter filter);
+
+    void removeMonitorContendedEnteredRequest(int requestId);
+
+    void addMonitorWaitRequest(int requestId, RequestFilter filter);
+
+    void removeMonitorWaitRequest(int requestId);
+
+    void addMonitorWaitedRequest(int requestId, RequestFilter filter);
+
+    void removeMonitorWaitedRequest(int requestId);
+
+    void holdEvents();
+
+    void releaseEvents();
+
+    MonitorInfo getMonitorInfo(Object guestThread, Object monitor);
 }

@@ -106,7 +106,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         this.context = jdwpContext;
         try {
             if (controller.shouldWaitForAttach()) {
-                doConnect();
+                doConnect(true);
             } else {
                 // don't suspend until debugger attaches, so fire up deamon thread
                 Thread handshakeThread = new Thread(this, "jdwp-handshake-thread");
@@ -119,17 +119,19 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         }
     }
 
-    void doConnect() throws IOException {
+    void doConnect(boolean suspend) throws IOException {
         SocketConnection socketConnection = HandshakeController.createSocketConnection(controller.getListeningPort(), activeThreads);
         // connection established with handshake. Prepare to process commands from debugger
         connection = new DebuggerConnection(socketConnection, controller);
-        connection.doProcessCommands(controller.shouldWaitForAttach(), activeThreads);
+        controller.getEventListener().setConnection(socketConnection);
+        controller.getEventListener().vmStarted(suspend);
+        connection.doProcessCommands(suspend, activeThreads);
     }
 
     @Override
     public void run() {
         try {
-            doConnect();
+            doConnect(false);
         } catch (IOException e) {
             printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
             printStackTrace(e);
@@ -138,5 +140,9 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
 
     public JDWPContext getContext() {
         return context;
+    }
+
+    TruffleInstrument.Env getEnv() {
+        return env;
     }
 }

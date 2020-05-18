@@ -31,6 +31,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
@@ -40,6 +41,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import org.graalvm.options.OptionValues;
 
 // @formatter:off
 /**
@@ -128,6 +130,7 @@ public final class Target_java_lang_Thread {
         self.setIntField(meta.java_lang_Thread_threadStatus, state.value);
     }
 
+    @TruffleBoundary
     public static void checkDeprecatedState(Meta meta, StaticObject thread) {
         EspressoContext context = meta.getContext();
         assert thread == context.getCurrentThread();
@@ -192,7 +195,8 @@ public final class Target_java_lang_Thread {
                     @GuestCall DirectCallNode java_lang_Thread_exit,
                     // Checkstyle: resume
                     @InjectMeta Meta meta) {
-        if (EspressoOptions.ENABLE_THREADS) {
+        OptionValues options = EspressoLanguage.getCurrentContext().getEnv().getOptions();
+        if (options.get(EspressoOptions.MultiThreaded)) {
             // Thread.start() is synchronized.
             EspressoContext context = self.getKlass().getContext();
             KillStatus killStatus = getKillStatus(self);
@@ -256,11 +260,12 @@ public final class Target_java_lang_Thread {
             context.registerThread(hostThread, self);
             hostThread.start();
         } else {
-            System.err.println(
-                            "Thread.start() called on " + self.getKlass() + " but thread support is disabled. Use -Despresso.EnableThreads=true to enable thread support.");
+            EspressoLanguage.getCurrentContext().getLogger().warning(
+                            "Thread.start() called on " + self.getKlass() + " but thread support is disabled. Use --java.MultiThreaded=true to enable thread support.");
         }
     }
 
+    @TruffleBoundary
     @Substitution
     public static void yield() {
         Thread.yield();
@@ -298,6 +303,7 @@ public final class Target_java_lang_Thread {
         /* nop */
     }
 
+    @TruffleBoundary
     @Substitution
     public static boolean holdsLock(@Host(Object.class) StaticObject object, @InjectMeta Meta meta) {
         if (StaticObject.isNull(object)) {
@@ -408,6 +414,7 @@ public final class Target_java_lang_Thread {
         hostThread.interrupt();
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void setNativeName(@Host(Object.class) StaticObject self, @Host(String.class) StaticObject name) {
         Thread hostThread = getHostFromGuestThread(self);

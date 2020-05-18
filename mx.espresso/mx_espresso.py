@@ -23,23 +23,27 @@
 
 from argparse import ArgumentParser
 
+import os
+
 import mx
+import mx_benchmark
+import mx_espresso_benchmarks
 import mx_sdk_vm
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
 from mx_unittest import unittest
 
+
 _suite = mx.suite('espresso')
 
 
-class EspressoDefaultTags:
-    unittest = 'unittest'
-    unittest_with_compilation = 'unittest_with_compilation'
-    jackpot = 'jackpot'
-    meta = 'meta'
+def _espresso_launcher_command(args):
+    """Espresso launcher embedded in GraalVM + arguments"""
+    import mx_sdk_vm_impl
+    return [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', mx.cmd_suffix('espresso'))] + args
 
-
-def _espresso_command(args):
+def _espresso_standalone_command(args):
+    """Espresso standalone command from distribution jars + arguments"""
     vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
     return (
         vm_args
@@ -48,23 +52,37 @@ def _espresso_command(args):
     )
 
 
-def _run_espresso(args, cwd=None):
-    mx.run_java(_espresso_command(args), cwd=cwd)
+def _run_espresso_launcher(args=None, cwd=None):
+    """Run Espresso launcher within a GraalVM"""
+    mx.run(_espresso_launcher_command(args), cwd=cwd)
+
+
+def _run_espresso_standalone(args=None, cwd=None):
+    """Run standalone Espresso (not as part of GraalVM) from distribution jars"""
+    mx.run_java(_espresso_standalone_command(args), cwd=cwd)
 
 
 def _run_espresso_meta(args):
-    mx.run_java(['-Xss5m'] + _espresso_command(_espresso_command(args)))
+    """Run Espresso (standalone) on Espresso (launcher)"""
+    _run_espresso_launcher(['--vm.Xss4m'] + _espresso_standalone_command(args))
 
 
 def _run_espresso_playground(args):
+    """Run Espresso test programs"""
     parser = ArgumentParser(prog='mx espresso-playground')
     parser.add_argument('main_class', action='store', help='Unqualified class name to run.')
     parser.add_argument('main_class_args', nargs='*')
     args = parser.parse_args(args)
-
-    return _run_espresso(['-cp', mx.classpath('ESPRESSO_PLAYGROUND'),
+    return _run_espresso_launcher(['-cp', mx.classpath('ESPRESSO_PLAYGROUND'),
                             'com.oracle.truffle.espresso.playground.' + args.main_class]
                          + args.main_class_args)
+
+
+class EspressoDefaultTags:
+    unittest = 'unittest'
+    unittest_with_compilation = 'unittest_with_compilation'
+    jackpot = 'jackpot'
+    meta = 'meta'
 
 
 def _espresso_gate_runner(args, tasks):
@@ -122,11 +140,12 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
 ))
 
 
-# register new commands which can be used from the commandline with mx
+# Register new commands which can be used from the commandline with mx
 mx.update_commands(_suite, {
-    'espresso': [_run_espresso, ''],
-    'espresso-meta': [_run_espresso_meta, ''],
-    'espresso-playground': [_run_espresso_playground, ''],
+    'espresso': [_run_espresso_launcher, '[args]'],
+    'espresso-standalone': [_run_espresso_standalone, '[args]'],
+    'espresso-meta': [_run_espresso_meta, '[args]'],
+    'espresso-playground': [_run_espresso_playground, '[class_name] [args]'],
     'verify-ci' : [verify_ci, '[options]'],
 })
 
@@ -137,3 +156,7 @@ mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'nfi', 'sdk', 'tfl',
 mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee'                        ], _suite, env_file='jvm-ee')
 mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm'], _suite, env_file='native-ce')
 mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm'], _suite, env_file='native-ee')
+
+# Register soon-to-become-default configurations.
+mx_benchmark.java_vm_registry.add_vm(mx_espresso_benchmarks.EspressoVm('default', []), _suite)
+mx_benchmark.java_vm_registry.add_vm(mx_espresso_benchmarks.EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)

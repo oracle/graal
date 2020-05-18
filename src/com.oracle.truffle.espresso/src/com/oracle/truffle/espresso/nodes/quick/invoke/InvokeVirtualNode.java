@@ -31,6 +31,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
@@ -46,10 +47,10 @@ public abstract class InvokeVirtualNode extends QuickNode {
     protected abstract Object executeVirtual(StaticObject receiver, Object[] args);
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass")
+    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass", assumptions = "resolvedMethod.getAssumption()")
     Object callVirtualDirect(StaticObject receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
-                    @Cached("methodLookup(receiver, vtableIndex)") Method resolvedMethod,
+                    @Cached("methodLookup(receiver, vtableIndex)") MethodVersion resolvedMethod,
                     @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
         return directCallNode.call(args);
     }
@@ -58,8 +59,8 @@ public abstract class InvokeVirtualNode extends QuickNode {
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
         // vtable lookup.
-        Method target = methodLookup(receiver, vtableIndex);
-        if (!target.hasCode()) {
+        MethodVersion target = methodLookup(receiver, vtableIndex);
+        if (!target.getMethod().hasCode()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Meta meta = receiver.getKlass().getMeta();
             throw Meta.throwException(meta.java_lang_AbstractMethodError);
@@ -74,15 +75,15 @@ public abstract class InvokeVirtualNode extends QuickNode {
         this.vtableIndex = resolutionSeed.getVTableIndex();
     }
 
-    static Method methodLookup(StaticObject receiver, int vtableIndex) {
+    static MethodVersion methodLookup(StaticObject receiver, int vtableIndex) {
         // Suprisingly, invokeVirtuals can try to invoke interface methods, even non-default
         // ones.
         // Good thing is, miranda methods are taken care of at vtable creation !
         Klass receiverKlass = receiver.getKlass();
         if (receiverKlass.isArray()) {
-            return receiverKlass.getSuperKlass().vtableLookup(vtableIndex);
+            return receiverKlass.getSuperKlass().vtableLookup(vtableIndex).getMethodVersion();
         }
-        return receiverKlass.vtableLookup(vtableIndex);
+        return receiverKlass.vtableLookup(vtableIndex).getMethodVersion();
     }
 
     @Override

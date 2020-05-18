@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -33,8 +32,7 @@ import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
-// Currently extends ControlFlowException to disable Truffle Lazy Stack Traces.
-public final class EspressoException extends ControlFlowException implements TruffleException {
+public final class EspressoException extends RuntimeException implements TruffleException {
     private static final long serialVersionUID = -7667957575377419520L;
     private final StaticObject exception;
 

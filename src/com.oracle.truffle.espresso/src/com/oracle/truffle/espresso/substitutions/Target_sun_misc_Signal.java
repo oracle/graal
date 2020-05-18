@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -31,6 +32,7 @@ import sun.misc.Signal;
 @EspressoSubstitutions
 public final class Target_sun_misc_Signal {
     @Substitution
+    @TruffleBoundary
     public static int findSignal(@Host(String.class) StaticObject name) {
         return new Signal(Meta.toHostString(name)).getNumber();
     }

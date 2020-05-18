@@ -31,6 +31,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INNER_CLASS;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_MODULE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
@@ -56,6 +57,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDE
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
 
+import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.util.Objects;
 
@@ -72,6 +74,7 @@ import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
@@ -86,6 +89,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
+import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -213,7 +217,7 @@ public final class ClassfileParser {
         } catch (EspressoException e) {
             throw e;
         } catch (Throwable e) {
-            EspressoLanguage.EspressoLogger.severe("Unexpected host exception " + e + " thrown during class parsing.");
+            context.getLogger().severe("Unexpected host exception " + e + " thrown during class parsing.");
             throw e;
         }
     }
@@ -538,6 +542,8 @@ public final class ClassfileParser {
                         Symbol<Type> annotType = constant.value();
                         if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
                             methodFlags |= ACC_LAMBDA_FORM_COMPILED;
+                        } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType)) {
+                            methodFlags |= ACC_LAMBDA_FORM_HIDDEN;
                         } else if (Type.sun_reflect_CallerSensitive.equals(annotType)) {
                             methodFlags |= ACC_CALLER_SENSITIVE;
                         }
@@ -647,6 +653,7 @@ public final class ClassfileParser {
         }
 
         SourceFileAttribute sourceFileName = null;
+        SourceDebugExtensionAttribute sourceDebugExtensionAttribute = null;
         @SuppressWarnings("unused")
         SignatureAttribute genericSignature = null;
         @SuppressWarnings("unused")
@@ -668,6 +675,11 @@ public final class ClassfileParser {
                     throw ConstantPool.classFormatError("Duplicate SourceFile attribute");
                 }
                 classAttributes[i] = sourceFileName = parseSourceFileAttribute(attributeName);
+            } else if (attributeName.equals(Name.SourceDebugExtension)) {
+                if (sourceDebugExtensionAttribute != null) {
+                    throw ConstantPool.classFormatError("Duplicate SourceDebugExtension attribute");
+                }
+                classAttributes[i] = sourceDebugExtensionAttribute = parseSourceDebugExtensionAttribute(attributeName, attributeSize);
             } else if (attributeName.equals(Name.Synthetic)) {
                 classFlags |= ACC_SYNTHETIC;
                 classAttributes[i] = new Attribute(attributeName, null);
@@ -726,6 +738,20 @@ public final class ClassfileParser {
         assert Name.SourceFile.equals(name);
         int sourceFileIndex = stream.readU2();
         return new SourceFileAttribute(name, sourceFileIndex);
+    }
+
+    private SourceDebugExtensionAttribute parseSourceDebugExtensionAttribute(Symbol<Name> name, int attributeLength) {
+        assert Name.SourceDebugExtension.equals(name);
+        byte[] debugExBytes = stream.readByteArray(attributeLength);
+
+        String debugExtension = null;
+        try {
+            debugExtension = ModifiedUtf8.toJavaString(debugExBytes);
+        } catch (IOException e) {
+            // not able to convert the debug extension bytes to Java String
+            // this isn't critical, so we'll just mark as null
+        }
+        return new SourceDebugExtensionAttribute(name, debugExtension);
     }
 
     private LineNumberTableAttribute parseLineNumberTable(Symbol<Name> name) {

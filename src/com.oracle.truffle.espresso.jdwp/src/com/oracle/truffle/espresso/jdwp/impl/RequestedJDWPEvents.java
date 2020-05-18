@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
@@ -71,7 +72,8 @@ public final class RequestedJDWPEvents {
     }
 
     public CommandResult registerEvent(Packet packet, Commands callback) {
-        ArrayList<Callable<Void>> prefutures = new ArrayList<>();
+        ArrayList<Callable<Void>> preFutures = new ArrayList<>();
+        ArrayList<Callable<Void>> postFutures = new ArrayList<>();
         PacketStream input = new PacketStream(packet);
         JDWPContext context = controller.getContext();
 
@@ -110,7 +112,7 @@ public final class RequestedJDWPEvents {
                 eventListener.addBreakpointRequest(filter.getRequestId(), methodInfo);
                 eventListener.increaseMethodBreakpointCount();
                 for (KlassRef klass : filter.getKlassRefPatterns()) {
-                    for (MethodRef method : klass.getDeclaredMethods()) {
+                    for (MethodRef method : klass.getDeclaredMethodRefs()) {
                         method.addMethodBreakpointInfo(methodInfo);
                         methodInfo.addMethod(method);
                     }
@@ -124,13 +126,13 @@ public final class RequestedJDWPEvents {
                 }
                 info.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);
-                prefutures.add(callback.createMethodEntryBreakpointCommand(info));
+                preFutures.add(callback.createMethodEntryBreakpointCommand(info));
                 break;
             case BREAKPOINT:
                 info = filter.getBreakpointInfo();
                 info.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);
-                prefutures.add(callback.createLineBreakpointCommand(info));
+                postFutures.add(callback.createLineBreakpointCommand(info));
                 break;
             case EXCEPTION:
                 info = filter.getBreakpointInfo();
@@ -140,14 +142,11 @@ public final class RequestedJDWPEvents {
                 }
                 info.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);
-                prefutures.add(callback.createExceptionBreakpoint(info));
+                preFutures.add(callback.createExceptionBreakpoint(info));
                 JDWPLogger.log("Submitting new exception breakpoint", JDWPLogger.LogLevel.STEPPING);
                 break;
             case CLASS_PREPARE:
-                Callable<Void> callable = eventListener.addClassPrepareRequest(new ClassPrepareRequest(filter));
-                if (callable != null) {
-                    prefutures.add(callable);
-                }
+                eventListener.addClassPrepareRequest(new ClassPrepareRequest(filter));
                 JDWPLogger.log("Class prepare request received", JDWPLogger.LogLevel.PACKET);
                 break;
             case FIELD_ACCESS:
@@ -183,6 +182,18 @@ public final class RequestedJDWPEvents {
             case VM_DEATH: // no debuggers should request this event
                 eventListener.addVMDeathRequest(packet.id);
                 break;
+            case MONITOR_CONTENDED_ENTER:
+                eventListener.addMonitorContendedEnterRequest(packet.id, filter);
+                break;
+            case MONITOR_CONTENDED_ENTERED:
+                eventListener.addMonitorContendedEnteredRequest(packet.id, filter);
+                break;
+            case MONITOR_WAIT:
+                eventListener.addMonitorWaitRequest(packet.id, filter);
+                break;
+            case MONITOR_WAITED:
+                eventListener.addMonitorWaitedRequest(packet.id, filter);
+                break;
             default:
                 JDWPLogger.log("unhandled event kind %d", JDWPLogger.LogLevel.PACKET, eventKind);
                 break;
@@ -190,7 +201,7 @@ public final class RequestedJDWPEvents {
 
         // register the request filter for this event
         controller.getEventFilters().addFilter(filter);
-        return new CommandResult(toReply(packet), prefutures, null);
+        return new CommandResult(toReply(packet), preFutures, postFutures);
     }
 
     private static PacketStream toReply(Packet packet) {
@@ -355,6 +366,18 @@ public final class RequestedJDWPEvents {
                         break;
                     case CLASS_UNLOAD:
                         eventListener.addClassUnloadRequestId(packet.id);
+                        break;
+                    case MONITOR_CONTENDED_ENTER:
+                        eventListener.removeMonitorContendedEnterRequest(requestId);
+                        break;
+                    case MONITOR_CONTENDED_ENTERED:
+                        eventListener.removeMonitorContendedEnteredRequest(requestId);
+                        break;
+                    case MONITOR_WAIT:
+                        eventListener.removeMonitorWaitRequest(requestId);
+                        break;
+                    case MONITOR_WAITED:
+                        eventListener.removeMonitorWaitedRequest(requestId);
                         break;
                     default:
                         JDWPLogger.log("unhandled event clear kind %d", JDWPLogger.LogLevel.PACKET, eventKind);

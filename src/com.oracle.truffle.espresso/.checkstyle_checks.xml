@@ -210,11 +210,10 @@
     <property name="format" value="\r\n"/>
     <property name="message" value="illegal Windows line ending"/>
   </module>
-<!-- Forbid System.out/err.println logging, printlns are spread all over the codebase, tracked in GR-20120 -->
-<!--  <module name="RegexpSingleline">
+  <module name="RegexpSingleline">
     <property name="format" value="System\.(out|err)\.print"/>
     <property name="fileExtensions" value="java"/>
-  </module>-->
+  </module>
   <module name="SuppressWithPlainTextCommentFilter">
     <property name="offCommentFormat" value="Checkstyle: stop"/>
     <property name="onCommentFormat" value="Checkstyle: resume"/>

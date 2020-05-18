@@ -26,16 +26,14 @@ package com.oracle.truffle.espresso.substitutions;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Object {
     @Substitution(hasReceiver = true)
-
     public static int hashCode(@Host(Object.class) StaticObject self) {
-        return System.identityHashCode(MetaUtil.maybeUnwrapNull(self));
+        return VM.JVM_IHashCode(self);
     }
 
     @Substitution(hasReceiver = true)

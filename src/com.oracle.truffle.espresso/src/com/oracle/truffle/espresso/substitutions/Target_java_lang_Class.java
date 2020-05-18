@@ -28,6 +28,7 @@ import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntFunction;
+import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -150,11 +151,12 @@ public final class Target_java_lang_Class {
             throw e;
         } catch (Throwable e) {
             CompilerDirectives.transferToInterpreter();
-            System.err.println("Host exception happened in Class.forName: " + e);
+            meta.getContext().getLogger().log(Level.WARNING, "Host exception happened in Class.forName: {}", e);
             throw e;
         }
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(String.class) StaticObject getName0(@Host(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
@@ -186,6 +188,7 @@ public final class Target_java_lang_Class {
         return self.getMirrorKlass().getDefiningClassLoader();
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(java.lang.reflect.Field[].class) StaticObject getDeclaredFields0(@Host(Class.class) StaticObject self, boolean publicOnly,
                     @InjectMeta Meta meta) {
@@ -222,7 +225,7 @@ public final class Target_java_lang_Class {
                         /* signature */ Type.java_lang_String,
                         /* annotations */ Type._byte_array));
 
-        StaticObject fieldsArray = meta.java_lang_reflect_Field.allocateArray(fields.length, new IntFunction<StaticObject>() {
+        StaticObject fieldsArray = meta.java_lang_reflect_Field.allocateReferenceArray(fields.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 final Field f = fields[i];
@@ -230,12 +233,12 @@ public final class Target_java_lang_Class {
 
                 Attribute rawRuntimeVisibleAnnotations = f.getAttribute(Name.RuntimeVisibleAnnotations);
                 StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData())
+                                ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
                                 : StaticObject.NULL;
 
                 Attribute rawRuntimeVisibleTypeAnnotations = f.getAttribute(Name.RuntimeVisibleTypeAnnotations);
                 StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData())
+                                ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
                                 : StaticObject.NULL;
 
                 fieldInit.invokeDirect(
@@ -258,6 +261,7 @@ public final class Target_java_lang_Class {
     }
 
     // TODO(tg): inject constructor calltarget.
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(Constructor[].class) StaticObject getDeclaredConstructors0(@Host(Class.class) StaticObject self, boolean publicOnly,
                     @InjectMeta Meta meta) {
@@ -291,28 +295,28 @@ public final class Target_java_lang_Class {
                         /* annotations */ Type._byte_array,
                         /* parameterAnnotations */ Type._byte_array));
 
-        StaticObject arr = meta.java_lang_reflect_Constructor.allocateArray(constructors.length, new IntFunction<StaticObject>() {
+        StaticObject arr = meta.java_lang_reflect_Constructor.allocateReferenceArray(constructors.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 final Method m = constructors[i];
 
                 Attribute rawRuntimeVisibleAnnotations = m.getAttribute(Name.RuntimeVisibleAnnotations);
                 StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData())
+                                ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
                                 : StaticObject.NULL;
 
                 Attribute rawRuntimeVisibleParameterAnnotations = m.getAttribute(Name.RuntimeVisibleParameterAnnotations);
                 StaticObject runtimeVisibleParameterAnnotations = rawRuntimeVisibleParameterAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleParameterAnnotations.getData())
+                                ? StaticObject.wrap(rawRuntimeVisibleParameterAnnotations.getData(), meta)
                                 : StaticObject.NULL;
 
                 Attribute rawRuntimeVisibleTypeAnnotations = m.getAttribute(Name.RuntimeVisibleTypeAnnotations);
                 StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData())
+                                ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
                                 : StaticObject.NULL;
 
                 final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
-                StaticObject parameterTypes = meta.java_lang_Class.allocateArray(
+                StaticObject parameterTypes = meta.java_lang_Class.allocateReferenceArray(
                                 m.getParameterCount(),
                                 new IntFunction<StaticObject>() {
                                     @Override
@@ -322,7 +326,7 @@ public final class Target_java_lang_Class {
                                 });
 
                 final Klass[] rawCheckedExceptions = m.getCheckedExceptions();
-                StaticObject checkedExceptions = meta.java_lang_Class.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+                StaticObject checkedExceptions = meta.java_lang_Class.allocateReferenceArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
                     @Override
                     public StaticObject apply(int j) {
                         return rawCheckedExceptions[j].mirror();
@@ -361,6 +365,7 @@ public final class Target_java_lang_Class {
     }
 
     // TODO(tg): inject constructor calltarget.
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(java.lang.reflect.Method[].class) StaticObject getDeclaredMethods0(@Host(Class.class) StaticObject self, boolean publicOnly,
                     @InjectMeta Meta meta) {
@@ -399,31 +404,31 @@ public final class Target_java_lang_Class {
                         /* parameterAnnotations */ Type._byte_array,
                         /* annotationDefault */ Type._byte_array));
 
-        StaticObject arr = meta.java_lang_reflect_Method.allocateArray(methods.length, new IntFunction<StaticObject>() {
+        StaticObject arr = meta.java_lang_reflect_Method.allocateReferenceArray(methods.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 Method m = methods[i];
                 Attribute rawRuntimeVisibleAnnotations = m.getAttribute(Name.RuntimeVisibleAnnotations);
                 StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData())
+                                ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
                                 : StaticObject.NULL;
 
                 Attribute rawRuntimeVisibleParameterAnnotations = m.getAttribute(Name.RuntimeVisibleParameterAnnotations);
                 StaticObject runtimeVisibleParameterAnnotations = rawRuntimeVisibleParameterAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleParameterAnnotations.getData())
+                                ? StaticObject.wrap(rawRuntimeVisibleParameterAnnotations.getData(), meta)
                                 : StaticObject.NULL;
 
                 Attribute rawRuntimeVisibleTypeAnnotations = m.getAttribute(Name.RuntimeVisibleTypeAnnotations);
                 StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData())
+                                ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
                                 : StaticObject.NULL;
 
                 Attribute rawAnnotationDefault = m.getAttribute(Name.AnnotationDefault);
                 StaticObject annotationDefault = rawAnnotationDefault != null
-                                ? StaticObject.wrap(rawAnnotationDefault.getData())
+                                ? StaticObject.wrap(rawAnnotationDefault.getData(), meta)
                                 : StaticObject.NULL;
                 final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
-                StaticObject parameterTypes = meta.java_lang_Class.allocateArray(
+                StaticObject parameterTypes = meta.java_lang_Class.allocateReferenceArray(
                                 m.getParameterCount(),
                                 new IntFunction<StaticObject>() {
                                     @Override
@@ -433,7 +438,7 @@ public final class Target_java_lang_Class {
                                 });
 
                 final Klass[] rawCheckedExceptions = m.getCheckedExceptions();
-                StaticObject checkedExceptions = meta.java_lang_Class.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+                StaticObject checkedExceptions = meta.java_lang_Class.allocateReferenceArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
                     @Override
                     public StaticObject apply(int j) {
                         return rawCheckedExceptions[j].mirror();
@@ -480,7 +485,7 @@ public final class Target_java_lang_Class {
                     @InjectMeta Meta meta) {
         final Klass[] superInterfaces = self.getMirrorKlass().getInterfaces();
 
-        StaticObject instance = meta.java_lang_Class.allocateArray(superInterfaces.length, new IntFunction<StaticObject>() {
+        StaticObject instance = meta.java_lang_Class.allocateReferenceArray(superInterfaces.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 return superInterfaces[i].mirror();
@@ -543,7 +548,7 @@ public final class Target_java_lang_Class {
             if (enclosingMethodAttr.getMethodIndex() == 0) {
                 return StaticObject.NULL;
             }
-            StaticObject arr = meta.java_lang_Object.allocateArray(3);
+            StaticObject arr = meta.java_lang_Object.allocateReferenceArray(3);
             RuntimeConstantPool pool = klass.getConstantPool();
             Klass enclosingKlass = pool.resolvedKlassAt(klass, enclosingMethodAttr.getClassIndex());
 
@@ -664,7 +669,8 @@ public final class Target_java_lang_Class {
         if (klass instanceof ObjectKlass) {
             Attribute annotations = ((ObjectKlass) klass).getAttribute(Name.RuntimeVisibleAnnotations);
             if (annotations != null) {
-                return StaticObject.wrap(annotations.getData());
+                Meta meta = klass.getMeta();
+                return StaticObject.wrap(annotations.getData(), meta);
             }
         }
         return StaticObject.NULL;
@@ -676,7 +682,8 @@ public final class Target_java_lang_Class {
         if (klass instanceof ObjectKlass) {
             Attribute annotations = ((ObjectKlass) klass).getAttribute(Name.RuntimeVisibleTypeAnnotations);
             if (annotations != null) {
-                return StaticObject.wrap(annotations.getData());
+                Meta meta = klass.getMeta();
+                return StaticObject.wrap(annotations.getData(), meta);
             }
         }
         return StaticObject.NULL;
@@ -691,11 +698,12 @@ public final class Target_java_lang_Class {
             // No constant pool for arrays and primitives.
             return StaticObject.NULL;
         }
-        StaticObject cp = new StaticObject(meta.sun_reflect_ConstantPool);
+        StaticObject cp = StaticObject.createNew(meta.sun_reflect_ConstantPool);
         cp.setField(meta.sun_reflect_ConstantPool_constantPoolOop, self);
         return cp;
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(String.class) StaticObject getGenericSignature0(@Host(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
@@ -716,13 +724,13 @@ public final class Target_java_lang_Class {
                     @InjectMeta Meta meta) {
         Klass klass = self.getMirrorKlass();
         if (klass.isPrimitive() || klass.isArray()) {
-            return meta.java_lang_Class.allocateArray(0);
+            return meta.java_lang_Class.allocateReferenceArray(0);
         }
         ObjectKlass instanceKlass = (ObjectKlass) klass;
         InnerClassesAttribute innerClasses = (InnerClassesAttribute) instanceKlass.getAttribute(InnerClassesAttribute.NAME);
 
         if (innerClasses == null || innerClasses.entries().isEmpty()) {
-            return meta.java_lang_Class.allocateArray(0);
+            return meta.java_lang_Class.allocateReferenceArray(0);
         }
 
         RuntimeConstantPool pool = instanceKlass.getConstantPool();
@@ -750,7 +758,7 @@ public final class Target_java_lang_Class {
             }
         }
 
-        return meta.java_lang_Class.allocateArray(innerKlasses.size(), new IntFunction<StaticObject>() {
+        return meta.java_lang_Class.allocateReferenceArray(innerKlasses.size(), new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int index) {
                 return innerKlasses.get(index).mirror();

@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -37,14 +35,14 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
-public final class NativeRootNode extends EspressoMethodNode {
+public final class NativeMethodNode extends EspressoMethodNode {
 
     private final TruffleObject boundNative;
     private final boolean isJni;
@@ -53,7 +51,7 @@ public final class NativeRootNode extends EspressoMethodNode {
 
     private static final DebugCounter NATIVE_METHOD_CALLS = DebugCounter.create("Native method calls");
 
-    public NativeRootNode(TruffleObject boundNative, Method method, boolean isJni) {
+    public NativeMethodNode(TruffleObject boundNative, MethodVersion method, boolean isJni) {
         super(method);
         this.boundNative = boundNative;
         this.executeNative = InteropLibrary.getFactory().create(boundNative);
@@ -71,7 +69,7 @@ public final class NativeRootNode extends EspressoMethodNode {
         } else {
             if (!Types.isPrimitive(espressoType)) {
                 assert arg instanceof StaticObject;
-                return (/* @Word */ long) env.getHandles().createLocal((StaticObject) arg);
+                return (long) env.getHandles().createLocal((StaticObject) arg);
             }
             return arg;
         }
@@ -117,16 +115,6 @@ public final class NativeRootNode extends EspressoMethodNode {
     }
 
     @TruffleBoundary
-    private void logOut(Object[] argsWithEnv, Object result) {
-        System.err.println("Return from native " + getMethod() + Arrays.toString(argsWithEnv) + " -> " + result);
-    }
-
-    @TruffleBoundary
-    private void logIn(Object[] argsWithEnv) {
-        System.err.println("Calling native " + getMethod() + Arrays.toString(argsWithEnv));
-    }
-
-    @TruffleBoundary
     private static void maybeThrowAndClearPendingException(JniEnv jniEnv) {
         StaticObject ex = jniEnv.getPendingException();
         if (ex != null) {
@@ -136,7 +124,7 @@ public final class NativeRootNode extends EspressoMethodNode {
     }
 
     protected Object processResult(JniEnv env, Object result) {
-        assert env.getNativePointer() != 0;
+        assert !InteropLibrary.getFactory().getUncached().isNull(env.getNativePointer());
 
         // JNI exception handling.
         maybeThrowAndClearPendingException(env);

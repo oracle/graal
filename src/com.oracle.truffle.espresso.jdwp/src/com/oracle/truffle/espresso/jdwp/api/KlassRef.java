@@ -67,7 +67,7 @@ public interface KlassRef {
      * 
      * @return array of MethodRef
      */
-    MethodRef[] getDeclaredMethods();
+    MethodRef[] getDeclaredMethodRefs();
 
     /**
      * Returns a guest-language representation of the classloader for which loaded the class.
@@ -175,4 +175,10 @@ public interface KlassRef {
      */
     JDWPConstantPool getJDWPConstantPool();
 
+    /**
+     * Returns the source debug extension class file attribute value or <code>null</code>.
+     *
+     * @return the extension
+     */
+    String getSourceDebugExtension();
 }

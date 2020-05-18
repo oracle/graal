@@ -24,20 +24,20 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.util.concurrent.Callable;
 
-public final class ThreadJob {
+public final class ThreadJob<T> {
 
     private final Object jobLock = new Object();
     private final Object thread;
-    private final Callable<Object> callable;
+    private final Callable<T> callable;
     private final byte suspensionStrategy;
     private boolean resultAvailable;
-    private JobResult result;
+    private JobResult<T> result;
 
-    public ThreadJob(Object guestThread, Callable<Object> task) {
+    public ThreadJob(Object guestThread, Callable<T> task) {
         this(guestThread, task, SuspendStrategy.EVENT_THREAD);
     }
 
-    public ThreadJob(Object guestThread, Callable<Object> task, byte suspensionStrategy) {
+    public ThreadJob(Object guestThread, Callable<T> task, byte suspensionStrategy) {
         this.thread = guestThread;
         this.callable = task;
         this.suspensionStrategy = suspensionStrategy;
@@ -52,7 +52,7 @@ public final class ThreadJob {
     }
 
     public void runJob() {
-        result = new JobResult();
+        result = new JobResult<>();
         try {
             result.setResult(callable.call());
         } catch (Throwable e) {
@@ -65,7 +65,7 @@ public final class ThreadJob {
         }
     }
 
-    public JobResult getResult() {
+    public JobResult<T> getResult() {
         // let the job finish and return the result when available
         while (!resultAvailable && !Thread.currentThread().isInterrupted()) {
             synchronized (jobLock) {
@@ -79,11 +79,11 @@ public final class ThreadJob {
         return result;
     }
 
-    public class JobResult {
-        private Object result;
+    public class JobResult<C> {
+        private C result;
         private Throwable exception;
 
-        public Object getResult() {
+        public C getResult() {
             return result;
         }
 
@@ -91,7 +91,7 @@ public final class ThreadJob {
             return exception;
         }
 
-        private void setResult(Object obj) {
+        private void setResult(C obj) {
             this.result = obj;
         }
 

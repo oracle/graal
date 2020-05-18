@@ -46,10 +46,6 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
  * host to guest classes for a well known subset (e.g. common types and exceptions).
- *
- * Naming convention:
- *
- *
  */
 public final class Meta implements ContextAccess {
 
@@ -318,6 +314,7 @@ public final class Meta implements ContextAccess {
         java_security_AccessControlContext_privilegedContext = java_security_AccessControlContext.lookupDeclaredField(Name.privilegedContext, Type.java_security_AccessControlContext);
         java_security_AccessControlContext_isPrivileged = java_security_AccessControlContext.lookupDeclaredField(Name.isPrivileged, Type._boolean);
         java_security_AccessControlContext_isAuthorized = java_security_AccessControlContext.lookupDeclaredField(Name.isAuthorized, Type._boolean);
+        java_security_AccessController = knownKlass(Type.java_security_AccessController);
 
         java_lang_invoke_MethodType = knownKlass(Type.java_lang_invoke_MethodType);
         java_lang_invoke_MethodType_toMethodDescriptorString = java_lang_invoke_MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
@@ -365,6 +362,9 @@ public final class Meta implements ContextAccess {
 
         java_lang_ref_Finalizer = knownKlass(Type.java_lang_ref_Finalizer);
         java_lang_ref_Finalizer_register = java_lang_ref_Finalizer.lookupDeclaredMethod(Name.register, Signature._void_Object);
+
+        java_lang_Object_wait = java_lang_Object.lookupDeclaredMethod(Name.wait, Signature._void_long);
+        java_lang_Object_toString = java_lang_Object.lookupDeclaredMethod(Name.toString, Signature._void);
 
         // References
         java_lang_ref_Reference = knownKlass(Type.java_lang_ref_Reference);
@@ -650,6 +650,7 @@ public final class Meta implements ContextAccess {
     public final Field java_security_AccessControlContext_privilegedContext;
     public final Field java_security_AccessControlContext_isPrivileged;
     public final Field java_security_AccessControlContext_isAuthorized;
+    public final ObjectKlass java_security_AccessController;
 
     public final ObjectKlass java_lang_invoke_MethodType;
     public final Method java_lang_invoke_MethodType_toMethodDescriptorString;
@@ -693,6 +694,9 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant;
     public final Method java_lang_invoke_MethodHandleNatives_findMethodHandleType;
     public final Method java_lang_invoke_MethodHandleNatives_linkCallSite;
+
+    public final Method java_lang_Object_wait;
+    public final Method java_lang_Object_toString;
 
     // References
     public final ObjectKlass java_lang_ref_Finalizer;
@@ -993,7 +997,7 @@ public final class Meta implements ContextAccess {
         final char[] value = HostJava.getStringValue(hostString);
         final int hash = HostJava.getStringHash(hostString);
         StaticObject guestString = java_lang_String.allocateInstance();
-        java_lang_String_value.set(guestString, StaticObject.wrap(value));
+        java_lang_String_value.set(guestString, StaticObject.wrap(value, this));
         java_lang_String_hash.set(guestString, hash);
         // String.hashCode must be equivalent for host and guest.
         assert hostString.hashCode() == (int) java_lang_String_hashCode.invokeDirect(guestString);
@@ -1027,7 +1031,7 @@ public final class Meta implements ContextAccess {
             return hostObject;
         }
         if (hostObject instanceof StaticObject[]) {
-            return StaticObject.wrap((StaticObject[]) hostObject);
+            return StaticObject.wrap((StaticObject[]) hostObject, this);
         }
 
         if (hostObject instanceof Boolean ||
@@ -1189,7 +1193,7 @@ public final class Meta implements ContextAccess {
 
     // endregion Guest Unboxing
 
-    // region Guest
+    // region Guest boxing
 
     public @Host(Boolean.class) StaticObject boxBoolean(boolean value) {
         return (StaticObject) java_lang_Boolean_valueOf.invokeDirect(null, value);

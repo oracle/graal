@@ -121,6 +121,11 @@ public final class Symbol<T> extends ByteSequence {
         return 0;
     }
 
+    @Override
+    public boolean equals(Object that) {
+        return this == that;
+    }
+
     public static class ModifiedUTF8 {
 
         @SuppressWarnings("unchecked")
@@ -140,7 +145,7 @@ public final class Symbol<T> extends ByteSequence {
      */
     public static final class Name extends ModifiedUTF8 {
 
-        public static void init() {
+        public static void ensureInitialized() {
             /* nop */
         }
 
@@ -159,6 +164,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> exit = StaticSymbols.putName("exit");
         // Object and arrays
         public static final Symbol<Name> clone = StaticSymbols.putName("clone");
+        public static final Symbol<Name> toString = StaticSymbols.putName("toString");
+        // variable 'this' name
+        public static final Symbol<Name> thiz = StaticSymbols.putName("this");
 
         // finding main
         public static final Symbol<Name> checkAndLoadMain = StaticSymbols.putName("checkAndLoadMain");
@@ -238,6 +246,7 @@ public final class Symbol<T> extends ByteSequence {
         // java.nio.Buffer
         public static final Symbol<Name> address = StaticSymbols.putName("address");
         public static final Symbol<Name> capacity = StaticSymbols.putName("capacity");
+        public static final Symbol<Name> wait = StaticSymbols.putName("wait");
 
         // java.lang.invoke.*
         // CallSite
@@ -304,6 +313,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> isAuthorized = StaticSymbols.putName("isAuthorized");
         public static final Symbol<Name> isPrivileged = StaticSymbols.putName("isPrivileged");
         public static final Symbol<Name> privilegedContext = StaticSymbols.putName("privilegedContext");
+        public static final Symbol<Name> doPrivileged = StaticSymbols.putName("doPrivileged");
 
         // sun.reflect.ConstantPool
         public static final Symbol<Name> constantPoolOop = StaticSymbols.putName("constantPoolOop");
@@ -327,6 +337,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> RuntimeVisibleParameterAnnotations = StaticSymbols.putName("RuntimeVisibleParameterAnnotations");
         public static final Symbol<Name> Signature = StaticSymbols.putName("Signature");
         public static final Symbol<Name> SourceFile = StaticSymbols.putName("SourceFile");
+        public static final Symbol<Name> SourceDebugExtension = StaticSymbols.putName("SourceDebugExtension");
         public static final Symbol<Name> StackMapTable = StaticSymbols.putName("StackMapTable");
         public static final Symbol<Name> Synthetic = StaticSymbols.putName("Synthetic");
 
@@ -384,7 +395,7 @@ public final class Symbol<T> extends ByteSequence {
      */
     public static final class Type extends Descriptor {
 
-        public static void init() {
+        public static void ensureInitialized() {
             /* nop */
         }
 
@@ -404,6 +415,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_security_ProtectionDomain = StaticSymbols.putType(java.security.ProtectionDomain.class);
         public static final Symbol<Type> java_security_ProtectionDomain_array = StaticSymbols.putType(java.security.ProtectionDomain[].class);
         public static final Symbol<Type> java_security_AccessControlContext = StaticSymbols.putType(java.security.AccessControlContext.class);
+        public static final Symbol<Type> java_security_AccessController = StaticSymbols.putType(java.security.AccessController.class);
         public static final Symbol<Type> java_lang_SecurityManager = StaticSymbols.putType(SecurityManager.class);
         public static final Symbol<Type> java_security_CodeSource = StaticSymbols.putType(java.security.CodeSource.class);
         public static final Symbol<Type> java_security_PermissionCollection = StaticSymbols.putType(java.security.PermissionCollection.class);
@@ -561,6 +573,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_invoke_MethodHandle = StaticSymbols.putType(java.lang.invoke.MethodHandle.class);
         public static final Symbol<Type> java_lang_invoke_LambdaForm = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm;");
         public static final Symbol<Type> java_lang_invoke_LambdaForm$Compiled = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm$Compiled;");
+        public static final Symbol<Type> java_lang_invoke_LambdaForm$Hidden = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm$Hidden;");
         public static final Symbol<Type> sun_reflect_CallerSensitive = StaticSymbols.putType("Lsun/reflect/CallerSensitive;");
 
         // Special threads
@@ -588,7 +601,7 @@ public final class Symbol<T> extends ByteSequence {
      */
     public static final class Signature extends Descriptor {
 
-        public static void init() {
+        public static void ensureInitialized() {
             /* nop */
         }
 
@@ -622,6 +635,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_Exception = StaticSymbols.putSignature(Type._void, Type.java_lang_Exception);
         public static final Symbol<Signature> _void_String_String_String_int = StaticSymbols.putSignature(Type._void, Type.java_lang_String, Type.java_lang_String, Type.java_lang_String, Type._int);
         public static final Symbol<Signature> _void_int = StaticSymbols.putSignature(Type._void, Type._int);
+        public static final Symbol<Signature> _void_long = StaticSymbols.putSignature(Type._void, Type._long);
         public static final Symbol<Signature> _void_long_int = StaticSymbols.putSignature(Type._void, Type._long, Type._int);
 
         public static final Symbol<Signature> Boolean_boolean = StaticSymbols.putSignature(Type.java_lang_Boolean, Type._boolean);

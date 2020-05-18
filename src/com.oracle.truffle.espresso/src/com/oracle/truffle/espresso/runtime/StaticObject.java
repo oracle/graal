@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.runtime;
 
 import static com.oracle.truffle.api.CompilerDirectives.castExact;
+import static com.oracle.truffle.espresso.impl.Klass.STATIC_TO_CLASS;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.lang.reflect.Array;
@@ -30,8 +31,10 @@ import java.lang.reflect.Array;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -39,7 +42,9 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -58,15 +63,32 @@ import sun.misc.Unsafe;
 @ExportLibrary(InteropLibrary.class)
 public final class StaticObject implements TruffleObject {
 
+    private static final Unsafe UNSAFE = UnsafeAccess.get();
+
+    public static final StaticObject[] EMPTY_ARRAY = new StaticObject[0];
+
+    public static final StaticObject NULL = new StaticObject();
+
+    private volatile EspressoLock lock;
+
+    private final Klass klass; // != PrimitiveKlass
+
+    // Stores non-primitive fields only.
+    private final Object fields;
+
+    /**
+     * Stores all primitive types contiguously in a single byte array, without any unused bits
+     * between prims (except for 7 bits with booleans). In order to quickly reconstruct a long (for
+     * example), which would require reading 8 bytes and concatenating them, call Unsafe which can
+     * directly read a long.
+     */
+    private final byte[] primitiveFields;
+
     // region Interop
 
     @ExportMessage
     public static boolean isNull(StaticObject object) {
         assert object != null;
-        return object == StaticObject.NULL;
-    }
-
-    public static boolean isEspressoNull(Object object) {
         return object == StaticObject.NULL;
     }
 
@@ -80,16 +102,174 @@ public final class StaticObject implements TruffleObject {
         return Meta.toHostString(this);
     }
 
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return EspressoLanguage.class;
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    Object toDisplayString(boolean allowSideEffects) {
+        if (StaticObject.isNull(this)) {
+            return "NULL";
+        }
+        Klass thisKlass = getKlass();
+
+        if (allowSideEffects) {
+            // Call guest toString.
+            int toStringIndex = thisKlass.getMeta().java_lang_Object_toString.getVTableIndex();
+            Method toString = thisKlass.vtableLookup(toStringIndex);
+            return Meta.toHostString((StaticObject) toString.invokeDirect(this));
+        }
+
+        // Handle some special instances without side effects.
+        if (thisKlass == thisKlass.getMeta().java_lang_Class) {
+            return "class " + thisKlass.getTypeAsString();
+        }
+        if (thisKlass == thisKlass.getMeta().java_lang_String) {
+            return Meta.toHostString(this);
+        }
+        return thisKlass.getTypeAsString() + "@" + Integer.toHexString(System.identityHashCode(this));
+    }
+
+    public static final String CLASS_TO_STATIC = "static";
+
+    @ExportMessage
+    Object readMember(String member) throws UnknownIdentifierException {
+        if (notNull(this)) {
+            // Class<T>.static == Klass<T>
+            if (CLASS_TO_STATIC.equals(member)) {
+                if (getKlass() == getKlass().getMeta().java_lang_Class) {
+                    return getMirrorKlass();
+                }
+            }
+            // Class<T>.class == Class<T>
+            if (STATIC_TO_CLASS.equals(member)) {
+                if (getKlass() == getKlass().getMeta().java_lang_Class) {
+                    return this;
+                }
+            }
+        }
+        throw UnknownIdentifierException.create(member);
+    }
+
+    @ExportMessage
+    boolean hasMembers() {
+        return !isNull(this);
+    }
+
+    @ExportMessage
+    boolean isMemberReadable(String member) {
+        return notNull(this) && getKlass() == getKlass().getMeta().java_lang_Class //
+                        && (CLASS_TO_STATIC.equals(member) || STATIC_TO_CLASS.equals(member));
+    }
+
+    private static final KeysArray CLASS_MEMBERS = new KeysArray(new String[]{CLASS_TO_STATIC, STATIC_TO_CLASS});
+
+    @ExportMessage
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return (notNull(this) && getKlass() == getKlass().getMeta().java_lang_Class)
+                        ? KeysArray.EMPTY
+                        : CLASS_MEMBERS; // .static and .class
+    }
+
     // endregion Interop
 
-    private static final Unsafe UNSAFE = UnsafeAccess.get();
+    // Dedicated constructor for NULL.
+    private StaticObject() {
+        assert NULL == null : "Only meant for StaticObject.NULL";
+        this.klass = null;
+        this.fields = null;
+        this.primitiveFields = null;
+    }
 
-    public static final StaticObject[] EMPTY_ARRAY = new StaticObject[0];
+    // Constructor for object copy.
+    private StaticObject(ObjectKlass klass, Object[] fields, byte[] primitiveFields) {
+        this.klass = klass;
+        this.fields = fields;
+        this.primitiveFields = primitiveFields;
+    }
 
-    public static final StaticObject VOID = new StaticObject();
-    public static final StaticObject NULL = new StaticObject();
+    // Constructor for regular objects.
+    private StaticObject(ObjectKlass klass) {
+        assert klass != klass.getMeta().java_lang_Class;
+        this.klass = klass;
+        this.fields = klass.getObjectFieldsCount() > 0 ? new Object[klass.getObjectFieldsCount()] : null;
+        this.primitiveFields = klass.getPrimitiveFieldTotalByteCount() > 0 ? new byte[klass.getPrimitiveFieldTotalByteCount()] : null;
+        initInstanceFields(klass);
+    }
 
-    private volatile EspressoLock lock;
+    // Constructor for Class objects.
+    private StaticObject(Klass klass) {
+        ObjectKlass guestClass = klass.getMeta().java_lang_Class;
+        this.klass = guestClass;
+        int primitiveFieldCount = guestClass.getPrimitiveFieldTotalByteCount();
+        this.fields = guestClass.getObjectFieldsCount() > 0 ? new Object[guestClass.getObjectFieldsCount()] : null;
+        this.primitiveFields = primitiveFieldCount > 0 ? new byte[primitiveFieldCount] : null;
+        initInstanceFields(guestClass);
+        setHiddenField(klass.getMeta().HIDDEN_MIRROR_KLASS, klass);
+    }
+
+    // Constructor for static fields storage.
+    private StaticObject(ObjectKlass klass, @SuppressWarnings("unused") Void unused) {
+        this.klass = klass;
+        this.fields = klass.getStaticObjectFieldsCount() > 0 ? new Object[klass.getStaticObjectFieldsCount()] : null;
+        this.primitiveFields = klass.getPrimitiveStaticFieldTotalByteCount() > 0 ? new byte[klass.getPrimitiveStaticFieldTotalByteCount()] : null;
+        initStaticFields(klass);
+    }
+
+    /**
+     * Constructor for Array objects.
+     *
+     * Current implementation stores the array in lieu of fields. fields being an Object, a char
+     * array can be stored under it without any boxing happening. The array could have been stored
+     * in fields[0], but getting to the array would then require an additional indirection.
+     *
+     * Regular objects still always have an Object[] hiding under fields. In order to preserve the
+     * behavior and avoid casting to Object[] (a non-leaf cast), we perform field accesses with
+     * Unsafe operations.
+     */
+    private StaticObject(ArrayKlass klass, Object array) {
+        this.klass = klass;
+        assert klass.isArray();
+        assert array != null;
+        assert !(array instanceof StaticObject);
+        assert array.getClass().isArray();
+        this.fields = array;
+        this.primitiveFields = null;
+    }
+
+    public static StaticObject createNew(ObjectKlass klass) {
+        assert !klass.isAbstract() && !klass.isInterface();
+        return new StaticObject(klass);
+    }
+
+    public static StaticObject createClass(Klass klass) {
+        return new StaticObject(klass);
+    }
+
+    public static StaticObject createStatics(ObjectKlass klass) {
+        return new StaticObject(klass, null);
+    }
+
+    // Use an explicit method to create array, avoids confusion.
+    public static StaticObject createArray(ArrayKlass klass, Object array) {
+        assert array != null;
+        assert !(array instanceof StaticObject);
+        assert array.getClass().isArray();
+        return new StaticObject(klass, array);
+    }
+
+    public Klass getKlass() {
+        return klass;
+    }
 
     /**
      * Returns an {@link EspressoLock} instance for use with this {@link StaticObject} instance.
@@ -120,112 +300,11 @@ public final class StaticObject implements TruffleObject {
         return l;
     }
 
-    // Only non-primitive fields are stored in this
-    private final Object fields;
-
-    /**
-     * Stores all primitive types contiguously in a single byte array, without any unused bits
-     * between prims (except for 7 bits with booleans). In order to quickly reconstruct a long (for
-     * example), which would require reading 16 bytes and concatenating them, call Unsafe which can
-     * directly read a long.
-     */
-    // Note: For the time being, Graal does not allow virtualization of byte arrays with access
-    // kinds bigger than a byte.
-    // @see: VirtualizerToolImpl.setVirtualEntry
-    private final byte[] primitiveFields;
-
-    public byte[] cloneFields() {
-        return primitiveFields.clone();
-    }
-
-    // Dedicated constructor for VOID and NULL pseudo-singletons
-    private StaticObject() {
-        this.klass = null;
-        this.fields = null;
-        this.primitiveFields = null;
-    }
-
-    // Constructor for object copy
-    StaticObject(ObjectKlass klass, Object[] fields, byte[] primitiveFields) {
-        this.klass = klass;
-        this.fields = fields;
-        this.primitiveFields = primitiveFields;
-    }
-
-    // Constructor for regular objects.
-    public StaticObject(ObjectKlass klass) {
-        this(klass, false);
-    }
-
-    // Constructor for Class objects
-    public StaticObject(ObjectKlass guestClass, Klass thisKlass) {
-        assert thisKlass != null;
-        assert guestClass == guestClass.getMeta().java_lang_Class;
-        this.klass = guestClass;
-        // assert !isStatic || klass.isInitialized(); else {
-        int primitiveFieldCount = guestClass.getPrimitiveFieldTotalByteCount();
-        this.fields = guestClass.getObjectFieldsCount() > 0 ? new Object[guestClass.getObjectFieldsCount()] : null;
-        this.primitiveFields = primitiveFieldCount > 0 ? new byte[primitiveFieldCount] : null;
-        initFields(guestClass, false);
-        setHiddenField(thisKlass.getMeta().HIDDEN_MIRROR_KLASS, thisKlass);
-    }
-
-    public StaticObject(ObjectKlass klass, boolean isStatic) {
-        assert klass != klass.getMeta().java_lang_Class || isStatic;
-        this.klass = klass;
-        // assert !isStatic || klass.isInitialized();
-        if (isStatic) {
-            this.fields = klass.getStaticObjectFieldsCount() > 0 ? new Object[klass.getStaticObjectFieldsCount()] : null;
-            this.primitiveFields = klass.getPrimitiveStaticFieldTotalByteCount() > 0 ? new byte[klass.getPrimitiveStaticFieldTotalByteCount()] : null;
-        } else {
-            this.fields = klass.getObjectFieldsCount() > 0 ? new Object[klass.getObjectFieldsCount()] : null;
-            this.primitiveFields = klass.getPrimitiveFieldTotalByteCount() > 0 ? new byte[klass.getPrimitiveFieldTotalByteCount()] : null;
-        }
-        initFields(klass, isStatic);
-    }
-
-    // Use an explicit method to create array, avoids confusion.
-    public static StaticObject createArray(ArrayKlass klass, Object array) {
-        return new StaticObject(klass, array);
-    }
-
-    /**
-     * Constructor for Array objects.
-     *
-     * Current implementation stores the array in lieu of fields. fields being an Object, a char
-     * array can be stored under it without any boxing happening. The array could have been stored
-     * in fields[0], but getting to the array would then require an additional indirection.
-     *
-     * Regular objects still always have an Object[] hiding under fields. In order to preserve the
-     * behavior and avoid casting to Object[] (a non-leaf cast), we perform field accesses with
-     * Unsafe operations.
-     */
-    public StaticObject(ArrayKlass klass, Object array) {
-        this.klass = klass;
-        assert klass.isArray();
-        assert array != null;
-        assert !(array instanceof StaticObject);
-        assert array.getClass().isArray();
-        this.fields = array;
-        this.primitiveFields = null;
-    }
-
-    private final Klass klass;
-
-    public Klass getKlass() {
-        return klass;
-    }
-
     public static boolean notNull(StaticObject object) {
         return !isNull(object);
     }
 
     public boolean isStaticStorage() {
-        return this == getKlass().getStatics();
-    }
-
-    // FIXME(peterssen): Klass does not need to be initialized, just prepared?.
-    public boolean isStatic() {
         return this == getKlass().getStatics();
     }
 
@@ -235,30 +314,32 @@ public final class StaticObject implements TruffleObject {
             return NULL;
         }
         if (getKlass().isArray()) {
-            return new StaticObject((ArrayKlass) getKlass(), cloneWrapped());
+            return createArray((ArrayKlass) getKlass(), cloneWrappedArray());
         } else {
             return new StaticObject((ObjectKlass) getKlass(), fields == null ? null : ((Object[]) fields).clone(), primitiveFields == null ? null : primitiveFields.clone());
         }
     }
 
     @ExplodeLoop
-    private void initFields(ObjectKlass thisKlass, boolean isStatic) {
+    private void initInstanceFields(ObjectKlass thisKlass) {
         CompilerAsserts.partialEvaluationConstant(thisKlass);
-        if (isStatic) {
-            for (Field f : thisKlass.getStaticFieldTable()) {
-                assert f.isStatic();
+        for (Field f : thisKlass.getFieldTable()) {
+            assert !f.isStatic();
+            if (!f.isHidden()) {
                 if (f.getKind() == JavaKind.Object) {
                     setUnsafeField(f.getFieldIndex(), StaticObject.NULL);
                 }
             }
-        } else {
-            for (Field f : thisKlass.getFieldTable()) {
-                assert !f.isStatic();
-                if (!f.isHidden()) {
-                    if (f.getKind() == JavaKind.Object) {
-                        setUnsafeField(f.getFieldIndex(), StaticObject.NULL);
-                    }
-                }
+        }
+    }
+
+    @ExplodeLoop
+    private void initStaticFields(ObjectKlass thisKlass) {
+        CompilerAsserts.partialEvaluationConstant(thisKlass);
+        for (Field f : thisKlass.getStaticFieldTable()) {
+            assert f.isStatic();
+            if (f.getKind() == JavaKind.Object) {
+                setUnsafeField(f.getFieldIndex(), StaticObject.NULL);
             }
         }
     }
@@ -606,9 +687,6 @@ public final class StaticObject implements TruffleObject {
     @TruffleBoundary
     @Override
     public String toString() {
-        if (this == VOID) {
-            return "void";
-        }
         if (this == NULL) {
             return "null";
         }
@@ -626,9 +704,6 @@ public final class StaticObject implements TruffleObject {
 
     @TruffleBoundary
     public String toVerboseString() {
-        if (this == VOID) {
-            return "void";
-        }
         if (this == NULL) {
             return "null";
         }
@@ -700,7 +775,7 @@ public final class StaticObject implements TruffleObject {
         return Array.getLength(fields);
     }
 
-    private Object cloneWrapped() {
+    private Object cloneWrappedArray() {
         assert isArray();
         if (fields instanceof boolean[]) {
             return this.<boolean[]> unwrap().clone();
@@ -729,80 +804,68 @@ public final class StaticObject implements TruffleObject {
         return this.<StaticObject[]> unwrap().clone();
     }
 
-    public static StaticObject wrap(StaticObject[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta.java_lang_Object_array, array);
+    public static StaticObject wrap(StaticObject[] array, Meta meta) {
+        return createArray(meta.java_lang_Object_array, array);
     }
 
-    public static StaticObject wrap(byte[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._byte_array, array);
+    public static StaticObject wrap(byte[] array, Meta meta) {
+        return createArray(meta._byte_array, array);
     }
 
-    public static StaticObject wrap(boolean[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._boolean_array, array);
-    }
-
-    public static StaticObject wrap(char[] array) {
-        return wrap(array, EspressoLanguage.getCurrentContext().getMeta());
+    public static StaticObject wrap(boolean[] array, Meta meta) {
+        return createArray(meta._boolean_array, array);
     }
 
     public static StaticObject wrap(char[] array, Meta meta) {
-        return new StaticObject(meta._char_array, array);
+        return createArray(meta._char_array, array);
     }
 
-    public static StaticObject wrap(short[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._short_array, array);
+    public static StaticObject wrap(short[] array, Meta meta) {
+        return createArray(meta._short_array, array);
     }
 
-    public static StaticObject wrap(int[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._int_array, array);
+    public static StaticObject wrap(int[] array, Meta meta) {
+        return createArray(meta._int_array, array);
     }
 
-    public static StaticObject wrap(float[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._float_array, array);
+    public static StaticObject wrap(float[] array, Meta meta) {
+        return createArray(meta._float_array, array);
     }
 
-    public static StaticObject wrap(double[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._double_array, array);
+    public static StaticObject wrap(double[] array, Meta meta) {
+        return createArray(meta._double_array, array);
     }
 
-    public static StaticObject wrap(long[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._long_array, array);
+    public static StaticObject wrap(long[] array, Meta meta) {
+        return createArray(meta._long_array, array);
     }
 
-    public static StaticObject wrapPrimitiveArray(Object array) {
+    public static StaticObject wrapPrimitiveArray(Object array, Meta meta) {
         assert array != null;
         assert array.getClass().isArray() && array.getClass().getComponentType().isPrimitive();
         if (array instanceof boolean[]) {
-            return wrap((boolean[]) array);
+            return wrap((boolean[]) array, meta);
         }
         if (array instanceof byte[]) {
-            return wrap((byte[]) array);
+            return wrap((byte[]) array, meta);
         }
         if (array instanceof char[]) {
-            return wrap((char[]) array);
+            return wrap((char[]) array, meta);
         }
         if (array instanceof short[]) {
-            return wrap((short[]) array);
+            return wrap((short[]) array, meta);
         }
         if (array instanceof int[]) {
-            return wrap((int[]) array);
+            return wrap((int[]) array, meta);
         }
         if (array instanceof float[]) {
-            return wrap((float[]) array);
+            return wrap((float[]) array, meta);
         }
         if (array instanceof double[]) {
-            return wrap((double[]) array);
+            return wrap((double[]) array, meta);
         }
         if (array instanceof long[]) {
-            return wrap((long[]) array);
+            return wrap((long[]) array, meta);
         }
         throw EspressoError.shouldNotReachHere("Not a primitive array " + array);
     }

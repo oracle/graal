@@ -39,6 +39,7 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -214,8 +215,8 @@ public final class InterpreterToVM implements ContextAccess {
     @TruffleBoundary
     public static void monitorEnter(@Host(Object.class) StaticObject obj) {
         final EspressoLock lock = obj.getLock();
+        EspressoContext context = obj.getKlass().getContext();
         if (!lock.tryLock()) {
-            EspressoContext context = obj.getKlass().getContext();
             Meta meta = context.getMeta();
             StaticObject thread = context.getCurrentThread();
             Target_java_lang_Thread.fromRunnable(thread, meta, Target_java_lang_Thread.State.BLOCKED);
@@ -225,12 +226,15 @@ public final class InterpreterToVM implements ContextAccess {
                 Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
                 Target_java_lang_Thread.incrementThreadCounter(thread, blockedCount);
             }
+            context.getJDWPListener().onContendedMonitorEnter(obj);
             lock.lock();
+            context.getJDWPListener().onContendedMonitorEntered(obj);
             if (context.EnableManagement) {
                 thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, null);
             }
             Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
         }
+        context.getJDWPListener().onMonitorEnter(obj);
     }
 
     @TruffleBoundary
@@ -243,6 +247,7 @@ public final class InterpreterToVM implements ContextAccess {
             throw Meta.throwException(meta.java_lang_IllegalMonitorStateException);
         }
         lock.unlock();
+        obj.getKlass().getContext().getJDWPListener().onMonitorExit(obj);
     }
 
     // endregion
@@ -337,7 +342,7 @@ public final class InterpreterToVM implements ContextAccess {
         obj.setField(field, value);
     }
 
-    public static StaticObject newArray(Klass componentType, int length) {
+    public static StaticObject newReferenceArray(Klass componentType, int length) {
         if (length < 0) {
             // componentType is not always PE constant e.g. when called from the Array#newInstance
             // substitution. The derived context and meta accessor are not PE constant
@@ -380,7 +385,7 @@ public final class InterpreterToVM implements ContextAccess {
             if (component.isPrimitive()) {
                 return allocatePrimitiveArray((byte) component.getJavaKind().getBasicType(), dimensions[0]);
             } else {
-                return component.allocateArray(dimensions[0], new IntFunction<StaticObject>() {
+                return component.allocateReferenceArray(dimensions[0], new IntFunction<StaticObject>() {
                     @Override
                     public StaticObject apply(int value) {
                         return StaticObject.NULL;
@@ -389,8 +394,7 @@ public final class InterpreterToVM implements ContextAccess {
             }
         }
         int[] newDimensions = Arrays.copyOfRange(dimensions, 1, dimensions.length);
-        return component.allocateArray(dimensions[0], new IntFunction<StaticObject>() {
-
+        return component.allocateReferenceArray(dimensions[0], new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 return newMultiArrayWithoutChecks(((ArrayKlass) component).getComponentType(), newDimensions);
@@ -401,20 +405,20 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length) {
         // the constants for the cpi are loosely defined and no real cpi indices.
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (length < 0) {
-            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
             throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
         }
         // @formatter:off
         switch (jvmPrimitiveType) {
-            case 4  : return StaticObject.wrap(new boolean[length]);
-            case 5  : return StaticObject.wrap(new char[length]);
-            case 6  : return StaticObject.wrap(new float[length]);
-            case 7  : return StaticObject.wrap(new double[length]);
-            case 8  : return StaticObject.wrap(new byte[length]);
-            case 9  : return StaticObject.wrap(new short[length]);
-            case 10 : return StaticObject.wrap(new int[length]);
-            case 11 : return StaticObject.wrap(new long[length]);
+            case 4  : return StaticObject.wrap(new boolean[length], meta);
+            case 5  : return StaticObject.wrap(new char[length], meta);
+            case 6  : return StaticObject.wrap(new float[length], meta);
+            case 7  : return StaticObject.wrap(new double[length], meta);
+            case 8  : return StaticObject.wrap(new byte[length], meta);
+            case 9  : return StaticObject.wrap(new short[length], meta);
+            case 10 : return StaticObject.wrap(new int[length], meta);
+            case 11 : return StaticObject.wrap(new long[length], meta);
             default :
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere();
@@ -472,7 +476,7 @@ public final class InterpreterToVM implements ContextAccess {
                                             : meta.java_lang_InstantiationException);
         }
         klass.safeInitialize();
-        return new StaticObject((ObjectKlass) klass);
+        return StaticObject.createNew((ObjectKlass) klass);
     }
 
     public static int arrayLength(StaticObject arr) {
@@ -559,16 +563,21 @@ public final class InterpreterToVM implements ContextAccess {
                         if (rootNode instanceof EspressoRootNode) {
                             EspressoRootNode espressoNode = (EspressoRootNode) rootNode;
                             Method method = espressoNode.getMethod();
-                            if (!c.checkFillIn(method)) {
-                                if (!c.checkThrowableInit(method)) {
-                                    int bci = -1; // unknown
-                                    if (espressoNode.isBytecodeNode()) {
-                                        bci = espressoNode.readBCI(frameInstance);
-                                    } else if (method.isNative()) {
-                                        bci = -2; // native
+
+                            // Methods annotated with java.lang.invoke.LambdaForm.Hidden are
+                            // ignored.
+                            if ((method.getModifiers() & Constants.ACC_LAMBDA_FORM_HIDDEN) == 0) {
+                                if (!c.checkFillIn(method)) {
+                                    if (!c.checkThrowableInit(method)) {
+                                        int bci = -1; // unknown
+                                        if (espressoNode.isBytecodeNode()) {
+                                            bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
+                                        } else if (method.isNative()) {
+                                            bci = -2; // native
+                                        }
+                                        frames.add(new VM.StackElement(method, bci));
+                                        c.inc();
                                     }
-                                    frames.add(new VM.StackElement(method, bci));
-                                    c.inc();
                                 }
                             }
                         }
