@@ -157,6 +157,7 @@ public class NativeImage {
     static final String oR = "-R:";
 
     final String enablePrintFlags = SubstrateOptions.PrintFlags.getName() + "=";
+    final String enablePrintFlagsWithExtraHelp = SubstrateOptions.PrintFlagsWithExtraHelp.getName() + "=";
 
     private static <T> String oH(OptionKey<T> option) {
         return oH + option.getName() + "=";
@@ -211,7 +212,8 @@ public class NativeImage {
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
     private boolean jarOptionMode = false;
     private boolean dryRun = false;
-    private String queryOption = null;
+    private String printFlagsOptionQuery = null;
+    private String printFlagsWithExtraHelpOptionQuery = null;
 
     final Registry optionRegistry;
     private LinkedHashSet<EnabledOption> enabledLanguages;
@@ -1029,13 +1031,16 @@ public class NativeImage {
 
         completeOptionArgs();
 
-        if (queryOption != null) {
-            addPlainImageBuilderArg(NativeImage.oH + enablePrintFlags + queryOption);
-            addPlainImageBuilderArg(NativeImage.oR + enablePrintFlags + queryOption);
+        if (printFlagsOptionQuery != null) {
+            addPlainImageBuilderArg(NativeImage.oH + enablePrintFlags + printFlagsOptionQuery);
+            addPlainImageBuilderArg(NativeImage.oR + enablePrintFlags + printFlagsOptionQuery);
+        } else if (printFlagsWithExtraHelpOptionQuery != null) {
+            addPlainImageBuilderArg(NativeImage.oH + enablePrintFlagsWithExtraHelp + printFlagsWithExtraHelpOptionQuery);
+            addPlainImageBuilderArg(NativeImage.oR + enablePrintFlagsWithExtraHelp + printFlagsWithExtraHelpOptionQuery);
         }
 
         /* If no customImageClasspath was specified put "." on classpath */
-        if (!config.buildFallbackImage() && customImageClasspath.isEmpty() && queryOption == null) {
+        if (!config.buildFallbackImage() && customImageClasspath.isEmpty() && printFlagsOptionQuery == null && printFlagsWithExtraHelpOptionQuery == null) {
             addImageClasspath(Paths.get("."));
         } else {
             imageClasspath.addAll(customImageClasspath);
@@ -1080,7 +1085,7 @@ public class NativeImage {
         consolidateArgs(imageBuilderArgs, oHName, Function.identity(), Function.identity(), () -> null, takeLast);
         mainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
         boolean buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.contains(enableSharedLibraryFlag));
-        boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
+        boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags) || arg.contains(enablePrintFlagsWithExtraHelp));
 
         if (!printFlags) {
             List<String> extraImageArgs = new ArrayList<>();
@@ -1489,8 +1494,12 @@ public class NativeImage {
         return dryRun;
     }
 
-    public void setQueryOption(String val) {
-        this.queryOption = val;
+    public void setPrintFlagsOptionQuery(String val) {
+        this.printFlagsOptionQuery = val;
+    }
+
+    public void setPrintFlagsWithExtraHelpOptionQuery(String val) {
+        this.printFlagsWithExtraHelpOptionQuery = val;
     }
 
     void showVerboseMessage(boolean show, String message) {
