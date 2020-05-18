@@ -233,7 +233,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return LLVMNativeConvertNode.createFromNative(type.getReturnType());
     }
 
-    @Specialization(guards = {"foreigns.isForeign(receiver)", "natives.hasNativeType(receiver)"})
+    @Specialization(guards = {"foreigns.isForeign(receiver)"})
     protected Object doForeign(Object receiver, Object[] arguments,
                     @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
                     @CachedLibrary(limit = "3") NativeTypeLibrary natives,

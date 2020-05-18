@@ -42,7 +42,6 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
@@ -82,7 +81,7 @@ public class LLVMGlobalRootNode extends RootNode {
         try (StackPointer basePointer = getContext().getThreadingStack().getStack().newFrame()) {
             try {
                 Object appPath = new LLVMArgumentBuffer(applicationPath);
-                LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(appPath));
+                LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(appPath);
                 Object[] realArgs = new Object[]{basePointer, mainFunctionType, applicationPathObj, accessMainFunction.execute()};
                 Object result = startFunction.call(realArgs);
                 getContext().awaitThreadTermination();

@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -94,7 +93,7 @@ public abstract class ToAnyLLVM extends ForeignToLLVM {
     @Specialization(guards = {"foreigns.isForeign(obj)"})
     protected LLVMManagedPointer fromUnknownObject(Object obj,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
-        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(obj));
+        return LLVMManagedPointer.create(obj);
     }
 
     @Specialization
@@ -117,8 +116,7 @@ public abstract class ToAnyLLVM extends ForeignToLLVM {
         } else if (value instanceof LLVMInternalTruffleObject) {
             return LLVMManagedPointer.create(value);
         } else if (LLVMAsForeignLibrary.getFactory().getUncached().isForeign(value)) {
-            LLVMTypedForeignObject typed = LLVMTypedForeignObject.createUnknown(value);
-            return LLVMManagedPointer.create(typed);
+            return LLVMManagedPointer.create(value);
         } else {
             throw UnsupportedTypeException.create(new Object[]{value});
         }

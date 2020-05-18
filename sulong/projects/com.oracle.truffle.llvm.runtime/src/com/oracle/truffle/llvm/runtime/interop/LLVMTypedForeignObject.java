@@ -32,8 +32,8 @@ package com.oracle.truffle.llvm.runtime.interop;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -68,10 +68,6 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject {
         return new LLVMTypedForeignObject(foreign, type);
     }
 
-    public static LLVMTypedForeignObject createUnknown(Object foreign) {
-        return new LLVMTypedForeignObject(foreign, null);
-    }
-
     private LLVMTypedForeignObject(Object foreign, LLVMInteropType.Structured type) {
         this.foreign = new TypedForeignWrapper(foreign, type);
     }
@@ -102,8 +98,8 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean hasNativeType() {
-        return true;
+    boolean hasNativeType(@CachedLibrary("this.foreign.delegate") NativeTypeLibrary nativeTypes) {
+        return foreign.hasNativeType(nativeTypes);
     }
 
     @ExportMessage
@@ -234,14 +230,18 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject {
 
         @Specialization
         static boolean doTyped(LLVMTypedForeignObject receiver, LLVMTypedForeignObject other,
-                        @Cached CompareForeignNode compare) {
+                        @Shared("compare") @Cached CompareForeignNode compare) {
             return compare.execute(receiver.getForeign(), other.foreign.delegate);
         }
 
-        @Fallback
-        @SuppressWarnings("unused")
-        static boolean doGeneric(LLVMTypedForeignObject receiver, Object other) {
-            return false;
+        static boolean isNotLLVMTypedForeignObject(Object o) {
+            return !(o instanceof LLVMTypedForeignObject);
+        }
+
+        @Specialization(guards = "isNotLLVMTypedForeignObject(other)")
+        static boolean doGeneric(LLVMTypedForeignObject receiver, Object other,
+                        @Shared("compare") @Cached CompareForeignNode compare) {
+            return compare.execute(receiver.getForeign(), other);
         }
     }
 
@@ -259,11 +259,11 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject {
     @ExportLibrary(NativeTypeLibrary.class)
     @ExportLibrary(LLVMAsForeignLibrary.class)
     @ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
-    static class TypedForeignWrapper implements TruffleObject {
+    public static class TypedForeignWrapper implements TruffleObject {
         final Object delegate;
         final LLVMInteropType.Structured type;
 
-        TypedForeignWrapper(Object delegate, LLVMInteropType.Structured type) {
+        public TypedForeignWrapper(Object delegate, LLVMInteropType.Structured type) {
             this.delegate = delegate;
             this.type = type;
         }
