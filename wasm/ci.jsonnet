@@ -9,6 +9,7 @@ local common = import 'ci_common/common.jsonnet';
     common.jdk8_gate_linux_wabt_emsdk  + common.gate_graalwasm_emsdk_jvmci  + {environment+: {SUITE: 'wasm', GATE_TAGS: 'buildall,wasmextratest'}}                + {name: 'gate-graalwasm-extra-unittest-linux-amd64'},
     common.jdk8_gate_linux_wabt_emsdk  + common.gate_graalwasm_emsdk_jvmci  + {environment+: {SUITE: 'wasm', GATE_TAGS: 'buildall,wasmconstantspolicyextratest'}} + {name: 'gate-graalwasm-constantspolicy-extra-unittest-linux-amd64'},
     common.jdk8_gate_linux_wabt_emsdk  + common.gate_graalwasm_emsdk_jvmci  + {environment+: {SUITE: 'wasm', GATE_TAGS: 'buildall,wasmbenchtest'}}                + {name: 'gate-graalwasm-benchtest-linux-amd64'},
+    common.jdk8_gate_windows_wabt      + common.gate_graalwasm_jvmci        + {environment+: {SUITE: 'wasm', GATE_TAGS: 'build,wasmtest'}}                        + {name: 'gate-graalwasm-unittest-windows-amd64'},
 
     # Benchmark jobs.
     common.jdk8_bench_linux_wabt_emsdk + common.bench_graalwasm_emsdk_jvmci + {

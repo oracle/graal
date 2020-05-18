@@ -40,6 +40,10 @@
     capabilities+: ['linux', 'amd64'],
   },
 
+  windows: self.common + {
+    capabilities+: ['windows', 'amd64'],
+  },
+
   eclipse: {
     downloads+: {
       ECLIPSE: {name: 'eclipse', version: '4.14.0', platformspecific: true},
@@ -137,8 +141,9 @@
     capabilities+: ['x52'],
   },
 
-  jdk8_gate_linux_eclipse_jdt : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
-  jdk8_gate_linux_wabt        : self.jdk8 + self.gate + self.linux + self.wabt,
-  jdk8_gate_linux_wabt_emsdk  : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk,
-  jdk8_bench_linux_wabt_emsdk : self.jdk8 + self.bench + self.linux + self.wabt + self.emsdk,
+  jdk8_gate_linux_eclipse_jdt   : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
+  jdk8_gate_linux_wabt          : self.jdk8 + self.gate + self.linux + self.wabt,
+  jdk8_gate_linux_wabt_emsdk    : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk,
+  jdk8_bench_linux_wabt_emsdk   : self.jdk8 + self.bench + self.linux + self.wabt + self.emsdk,
+  jdk8_gate_windows_wabt        : self.jdk8 + self.gate + self.windows + self.wabt,
 }
