@@ -284,10 +284,8 @@ final class Runner {
                         throws TypeOverflowException {
             for (int i = 0; i < parserResults.size(); i++) {
                 LLVMParserResult res = parserResults.get(i);
-                Path path = res.getRuntime().getLibrary().getPath();
-                Path internalPath = context.getInternalLibraryPath();
                 String moduleName = res.getRuntime().getLibrary().toString();
-                initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory(), lazyParsing, path.startsWith(internalPath), moduleName);
+                initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory(), lazyParsing, isInternalSulongLibrary(context, res.getRuntime().getLibrary()), moduleName);
                 initExternals[offset + i] = new InitializeExternalNode(res);
                 initGlobals[offset + i] = new InitializeGlobalNode(rootFrame, res, moduleName);
                 initOverwrite[offset + i] = new InitializeOverwriteNode(res);
@@ -413,6 +411,12 @@ final class Runner {
         @TruffleBoundary
         private static LLVMLocalScope createLocalScope() {
             return new LLVMLocalScope();
+        }
+
+        // A library is a sulong internal library if it contains the path of the internal llvm library directory
+        private static boolean isInternalSulongLibrary(LLVMContext context, ExternalLibrary library) {
+            Path internalPath = context.getInternalLibraryPath();
+            return library.getPath().startsWith(internalPath);
         }
     }
 
@@ -934,7 +938,7 @@ final class Runner {
             ArrayList<AllocSymbolNode> allocFuncsAndAliasesList = new ArrayList<>();
             for (FunctionSymbol functionSymbol : result.getDefinedFunctions()) {
                 LLVMFunction function = fileScope.getFunction(functionSymbol.getName());
-                // All internal libraries are allowed to have intriniscs.
+                // Internal libraries in the llvm library path are allowed to have intriniscs.
                 if (isInternalSulongLibrary && intrinsicProvider.isIntrinsified(function.getName())) {
                     allocFuncsAndAliasesList.add(new AllocIntrinsicFunctionNode(function, nodeFactory, intrinsicProvider));
                 } else if (lazyParsing) {
