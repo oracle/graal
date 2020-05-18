@@ -413,7 +413,8 @@ final class Runner {
             return new LLVMLocalScope();
         }
 
-        // A library is a sulong internal library if it contains the path of the internal llvm library directory
+        // A library is a sulong internal library if it contains the path of the internal llvm
+        // library directory
         private static boolean isInternalSulongLibrary(LLVMContext context, ExternalLibrary library) {
             Path internalPath = context.getInternalLibraryPath();
             return library.getPath().startsWith(internalPath);
