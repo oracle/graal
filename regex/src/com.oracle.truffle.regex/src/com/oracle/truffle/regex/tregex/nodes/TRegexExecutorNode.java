@@ -142,7 +142,7 @@ public abstract class TRegexExecutorNode extends Node {
                 locals.setNextIndex(inputIncRaw(index));
                 return c;
             }
-            int codepoint = c;
+            int codepoint = c & 0x3f;
             if (!isForward()) {
                 assert c >> 6 == 2;
                 for (int i = 1; i < 4; i++) {
@@ -156,21 +156,25 @@ public abstract class TRegexExecutorNode extends Node {
             }
             int nBytes = Integer.numberOfLeadingZeros(~(c << 24));
             assert 1 < nBytes && nBytes < 5 : nBytes;
-            locals.setNextIndex(inputIncRaw(index, nBytes));
             if (isForward()) {
+                locals.setNextIndex(inputIncRaw(index));
                 codepoint = c & (0xff >>> nBytes);
                 // Checkstyle: stop
                 switch (nBytes) {
                     case 4:
-                        codepoint = codepoint << 6 | (inputReadRaw(locals, inputIncRaw(index, 3)) & 0x3f);
+                        codepoint = codepoint << 6 | (inputReadRaw(locals, locals.getNextIndex()) & 0x3f);
+                        locals.setNextIndex(inputIncRaw(locals.getNextIndex()));
                     case 3:
-                        codepoint = codepoint << 6 | (inputReadRaw(locals, inputIncRaw(index, 2)) & 0x3f);
+                        codepoint = codepoint << 6 | (inputReadRaw(locals, locals.getNextIndex()) & 0x3f);
+                        locals.setNextIndex(inputIncRaw(locals.getNextIndex()));
                     default:
-                        codepoint = codepoint << 6 | (inputReadRaw(locals, inputIncRaw(index, 1)) & 0x3f);
+                        codepoint = codepoint << 6 | (inputReadRaw(locals, locals.getNextIndex()) & 0x3f);
+                        locals.setNextIndex(inputIncRaw(locals.getNextIndex()));
                 }
                 // Checkstyle: resume
                 return codepoint;
             } else {
+                locals.setNextIndex(inputIncRaw(index, nBytes));
                 return codepoint | (c & (0xff >>> nBytes)) << (6 * (nBytes - 1));
             }
         } else {

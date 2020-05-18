@@ -40,7 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+
 public interface AbstractStringBuffer {
+
+    Encoding getEncoding();
 
     void append(int codepoint);
 

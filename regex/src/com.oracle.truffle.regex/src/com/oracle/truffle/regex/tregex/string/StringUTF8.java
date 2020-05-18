@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
+import java.util.Arrays;
+
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 public final class StringUTF8 implements AbstractString {
@@ -58,6 +61,21 @@ public final class StringUTF8 implements AbstractString {
     @Override
     public Object content() {
         return str;
+    }
+
+    @Override
+    public String toString() {
+        return defaultToString();
+    }
+
+    @Override
+    public StringUTF8 substring(int start, int end) {
+        return new StringUTF8(Arrays.copyOfRange(str, start, end));
+    }
+
+    @Override
+    public boolean regionMatches(int offset, AbstractString other, int ooffset, int encodedLength) {
+        return ArrayUtils.regionEqualsWithOrMask(str, offset, ((StringUTF8) other).str, ooffset, encodedLength, null);
     }
 
     @Override

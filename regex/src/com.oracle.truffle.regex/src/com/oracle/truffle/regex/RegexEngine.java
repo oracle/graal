@@ -66,6 +66,17 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * <li>{@link String} {@code pattern}: the source of the regular expression to be compiled</li>
  * <li>{@link String} {@code flags} (optional): a textual representation of the flags to be passed
  * to the compiler (one letter per flag), see {@link RegexFlags} for the supported flags</li>
+ * <li>{@link String} {@code encoding} (optional): the expected encoding of all strings given to the
+ * resulting {@link RegexObject}. If no encoding is specified, it is determined from {@code flags}
+ * in ECMAScript fashion: if the {@code 'u'}-flag is present, the encoding is expected to be UTF-16,
+ * otherwise "raw" UTF-16, where no surrogate pairs are actually decoded, and every 16-bit value in
+ * the string is treated as a code point. TRegex currently supports the following encodings:
+ * <ul>
+ * <li>UTF-8</li>
+ * <li>UTF-16</li>
+ * <li>UTF-16-RAW</li>
+ * </ul>
+ * </li>
  * </ol>
  * Executing the {@link RegexEngine} can also lead to the following exceptions:
  * <ul>

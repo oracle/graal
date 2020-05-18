@@ -59,8 +59,8 @@ public abstract class CharMatcher extends Node {
      * Conservatively estimate the equivalent number of integer comparisons of calling
      * {@link #execute(int)}.
      *
-     * @return the number of integer comparisons one call to {@link #execute(int)} is
-     *         roughly equivalent to. Array loads are treated as two comparisons.
+     * @return the number of integer comparisons one call to {@link #execute(int)} is roughly
+     *         equivalent to. Array loads are treated as two comparisons.
      */
     public abstract int estimatedCost();
 }

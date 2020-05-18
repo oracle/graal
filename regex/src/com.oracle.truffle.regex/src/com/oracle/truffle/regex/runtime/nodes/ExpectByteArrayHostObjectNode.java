@@ -38,38 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.matchers;
+package com.oracle.truffle.regex.runtime.nodes;
 
-/**
- * Abstract character matcher that allows matching behavior to be inverted with a constructor
- * parameter.
- */
-public abstract class InvertibleCharMatcher extends CharMatcher {
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexLanguage.RegexContext;
 
-    private final boolean invert;
+@GenerateUncached
+public abstract class ExpectByteArrayHostObjectNode extends Node {
 
-    /**
-     * Construct a new {@link InvertibleCharMatcher}.
-     *
-     * @param invert if this is set to true, the result of {@link #execute(int)} is always inverted.
-     */
-    protected InvertibleCharMatcher(boolean invert) {
-        this.invert = invert;
+    public abstract byte[] execute(Object arg);
+
+    @Specialization
+    static byte[] doByteArray(byte[] input) {
+        return input;
     }
 
-    protected boolean result(boolean result) {
-        return result != invert;
-    }
-
-    protected String modifiersToString() {
-        return invert ? "!" : "";
-    }
-
-    static int highByte(int i) {
-        return i >> Byte.SIZE;
-    }
-
-    static int lowByte(int i) {
-        return i & 0xff;
+    @Specialization
+    static byte[] doBoxed(Object input,
+                    @CachedContext(RegexLanguage.class) RegexContext context) {
+        return (byte[]) context.getEnv().asHostObject(input);
     }
 }

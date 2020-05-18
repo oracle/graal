@@ -356,7 +356,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                 }
                             }
                         } else {
-                            int codepoint = c;
+                            int codepoint = c & 0x3f;
                             if (isBackward()) {
                                 assert c >> 6 == 2;
                                 for (int i = 1; i < 4; i++) {

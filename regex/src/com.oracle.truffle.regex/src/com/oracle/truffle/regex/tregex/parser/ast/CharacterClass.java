@@ -158,7 +158,10 @@ public class CharacterClass extends QuantifiableTerm {
     public void extractSingleChar(AbstractStringBuffer literal, AbstractStringBuffer mask) {
         if (charSet.matchesSingleChar()) {
             literal.append(charSet.getMin());
-            mask.append(0);
+            assert mask.getEncoding().getEncodedSize(0) == 1;
+            for (int i = 0; i < mask.getEncoding().getEncodedSize(charSet.getMin()); i++) {
+                mask.append(0);
+            }
         } else {
             assert charSet.matches2CharsWith1BitDifference();
             int c1 = charSet.getMin();

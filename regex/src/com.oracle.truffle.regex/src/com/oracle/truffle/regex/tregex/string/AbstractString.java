@@ -48,4 +48,16 @@ public interface AbstractString extends Iterable<Integer> {
     int encodedLength();
 
     Object content();
+
+    AbstractString substring(int start, int end);
+
+    boolean regionMatches(int offset, AbstractString other, int ooffset, int encodedLength);
+
+    default String defaultToString() {
+        StringBufferUTF16 sb = new StringBufferUTF16(encodedLength() * 2);
+        for (int c : this) {
+            sb.append(c);
+        }
+        return sb.materialize().toString();
+    }
 }

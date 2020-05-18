@@ -60,6 +60,11 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 public class DFAStateNode extends DFAAbstractStateNode {
 
+    /**
+     * This node is used when all except a very small set of code points will loop back to the
+     * current DFA state. This node's {@link #execute(Object, int, int)} method will search for the
+     * given small set of code points in an optimized, possibly vectorized loop.
+     */
     public abstract static class LoopOptimizationNode extends Node {
 
         public abstract int execute(Object input, int preLoopIndex, int maxIndex);
@@ -87,6 +92,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
+    /**
+     * Optimized search for a set of up to 4 {@code char} values.
+     */
     public static final class LoopOptIndexOfAnyCharNode extends LoopOptIndexOfAnyNode {
 
         @CompilationFinal(dimensions = 1) private final char[] chars;
@@ -110,6 +118,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
+    /**
+     * Optimized search for a set of up to 4 {@code byte} values.
+     */
     public static final class LoopOptIndexOfAnyByteNode extends LoopOptIndexOfAnyNode {
 
         @CompilationFinal(dimensions = 1) private final byte[] bytes;
@@ -133,6 +144,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
+    /**
+     * Optimized search for a substring.
+     */
     public static final class LoopOptIndexOfStringNode extends LoopOptimizationNode {
 
         private final AbstractString str;
@@ -275,15 +289,30 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return allTransitionsInOneTreeMatcher;
     }
 
+    /**
+     * Returns {@code true} if this state has a {@link LoopOptimizationNode}.
+     */
     boolean canDoIndexOf() {
         return hasLoopToSelf() && loopOptimizationNode != null;
     }
 
+    /**
+     * Gets called when a new DFA state is entered.
+     */
     void beforeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         checkFinalState(locals, executor);
     }
 
+    /**
+     * Gets called after every call to {@link LoopOptimizationNode#execute(Object, int, int)}, which
+     * we call an {@code indexOf}-operation.
+     *
+     * @param preLoopIndex the starting index of the {@code indexOf}-operation.
+     * @param postLoopIndex the index found by the {@code indexOf}-operation. If the
+     *            {@code indexOf}-operation did not find a match, this value is equal to
+     *            {@link TRegexDFAExecutorLocals#getMaxIndex()}.
+     */
     void afterIndexOf(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, final int preLoopIndex, int postLoopIndex) {
         locals.setIndex(postLoopIndex);
         if (simpleCG != null && locals.getIndex() > preLoopIndex) {
@@ -295,11 +324,18 @@ public class DFAStateNode extends DFAAbstractStateNode {
         checkFinalState(locals, executor);
     }
 
+    /**
+     * Regression test method that compares the result of {@link AllTransitionsInOneTreeMatcher} to
+     * the result of regular matchers.
+     */
     boolean sameResultAsRegularMatchers(int c, int allTransitionsMatcherResult) {
         CompilerAsserts.neverPartOfCompilation();
         return allTransitionsMatcherResult == matchers.match(c);
     }
 
+    /**
+     * Save the current result iff we are in a final state.
+     */
     private void checkFinalState(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (isFinalState()) {
@@ -329,12 +365,18 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
+    /**
+     * Gets called when a matching transition was found.
+     */
     void successorFound(TRegexDFAExecutorLocals locals, @SuppressWarnings("unused") TRegexDFAExecutorNode executor, int i) {
         if (simpleCG != null) {
             applySimpleCGTransition(simpleCG.getTransitions()[i], locals);
         }
     }
 
+    /**
+     * Saves the current result (single index or all capture group boundaries).
+     */
     void storeResult(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, @SuppressWarnings("unused") boolean anchored) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (executor.isSimpleCG()) {
