@@ -41,7 +41,7 @@ public class IntrinsicSubstitutorNode extends EspressoMethodNode {
     private final DebugCounter nbSplits;
 
     public IntrinsicSubstitutorNode(Substitutor.Factory factory, Method method) {
-        super(method);
+        super(method.getMethodVersion());
         this.substitution = factory.create(EspressoLanguage.getCurrentContext().getMeta());
         if (substitution.shouldSplit()) {
             this.nbSplits = DebugCounter.create("Splits for: " + factory.getMethodName());
@@ -51,7 +51,7 @@ public class IntrinsicSubstitutorNode extends EspressoMethodNode {
     }
 
     private IntrinsicSubstitutorNode(IntrinsicSubstitutorNode toSplit) {
-        super(toSplit.getMethod());
+        super(toSplit.getMethodVersion());
         assert toSplit.substitution.shouldSplit();
         this.substitution = toSplit.substitution.split();
         this.nbSplits = toSplit.nbSplits;

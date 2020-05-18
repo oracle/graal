@@ -395,7 +395,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return descriptor;
     }
 
-    private CallTarget lookupJniRootNode(Method findNative, boolean fullSignature) {
+    private CallTarget lookupJniCallTarget(Method findNative, boolean fullSignature) {
         String mangledName = Mangle.mangleMethod(this, fullSignature);
         long handle = (long) findNative.invokeWithConversions(null, getDeclaringKlass().getDefiningClassLoader(), mangledName);
         if (handle == 0) { // not found

@@ -361,34 +361,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         return args;
     }
 
-    public Object[] popVarArgsWithReceiver(long varargsPtr, StaticObject receiver, final Symbol<Type>[] signature) {
-        VarArgs varargs = new VarArgsImpl(varargsPtr);
-        int paramCount = Signatures.parameterCount(signature, false) + 1;
-        Object[] args = new Object[paramCount];
-        args[0] = receiver;
-        for (int i = 1; i < paramCount; ++i) {
-            JavaKind kind = Signatures.parameterKind(signature, i);
-            // @formatter:off
-            // Checkstyle: stop
-            switch (kind) {
-                case Boolean : args[i] = varargs.popBoolean();   break;
-                case Byte    : args[i] = varargs.popByte();      break;
-                case Short   : args[i] = varargs.popShort();     break;
-                case Char    : args[i] = varargs.popChar();      break;
-                case Int     : args[i] = varargs.popInt();       break;
-                case Float   : args[i] = varargs.popFloat();     break;
-                case Long    : args[i] = varargs.popLong();      break;
-                case Double  : args[i] = varargs.popDouble();    break;
-                case Object  : args[i] = varargs.popObject();    break;
-                default:
-                    throw EspressoError.shouldNotReachHere("invalid parameter kind: " + kind);
-            }
-            // @formatter:on
-            // Checkstyle: resume
-        }
-        return args;
-    }
-
     private JniEnv(EspressoContext context) {
         EspressoProperties props = context.getVmProperties();
         this.context = context;
@@ -2642,9 +2614,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Host(Class.class) StaticObject FindClass(@Pointer TruffleObject namePtr,
-        @GuestCall DirectCallNode java_lang_ClassLoader_getSystemClassLoader, @GuestCall DirectCallNode java_lang_ClassLoader$NativeLibrary_getFromClass,
-        @GuestCall DirectCallNode java_lang_Class_forName_String_boolean_ClassLoader,
-        @InjectProfile SubstitutionProfiler profiler) {
+                    @GuestCall DirectCallNode java_lang_ClassLoader_getSystemClassLoader, @GuestCall DirectCallNode java_lang_ClassLoader$NativeLibrary_getFromClass,
+                    @GuestCall DirectCallNode java_lang_Class_forName_String_boolean_ClassLoader,
+                    @InjectProfile SubstitutionProfiler profiler) {
         String name = interopPointerToString(namePtr);
         Meta meta = getMeta();
         if (name == null || name.contains(".")) {
