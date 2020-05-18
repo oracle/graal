@@ -234,29 +234,25 @@ public final class RequestedJDWPEvents {
                 JDWPLogger.log("RefType limit: %s", JDWPLogger.LogLevel.STEPPING, klass);
                 break;
             case 5: // class positive pattern
-                String classPattern = input.readString();
+                String classPattern = Pattern.quote(input.readString()).replace("*", "\\E.*\\Q");
                 try {
-                    if (!classPattern.endsWith("*") && !classPattern.startsWith("*")) {
-                        classPattern = Pattern.quote(classPattern);
-                    }
                     Pattern pattern = Pattern.compile(classPattern);
                     filter.addPositivePattern(pattern);
                     JDWPLogger.log("adding positive refType pattern: %s", JDWPLogger.LogLevel.STEPPING, pattern.pattern());
                 } catch (PatternSyntaxException ex) {
-                    // wrong input pattern, silently ignore this breakpoint request then
+                    // wrong input pattern
+                    throw new RuntimeException("should not reach here");
                 }
                 break;
             case 6:
-                classPattern = input.readString();
-                if (!classPattern.endsWith("*") && !classPattern.startsWith("*")) {
-                    classPattern = Pattern.quote(classPattern);
-                }
+                classPattern = Pattern.quote(input.readString()).replace("*", "\\E.*\\Q");
                 try {
                     Pattern pattern = Pattern.compile(classPattern);
                     filter.addExcludePattern(pattern);
                     JDWPLogger.log("adding negative refType pattern: %s", JDWPLogger.LogLevel.STEPPING, pattern.pattern());
                 } catch (PatternSyntaxException ex) {
-                    // wrong input pattern, silently ignore this breakpoint request then
+                    // wrong input pattern
+                    throw new RuntimeException("should not reach here");
                 }
                 break;
             case 7: // location-specific

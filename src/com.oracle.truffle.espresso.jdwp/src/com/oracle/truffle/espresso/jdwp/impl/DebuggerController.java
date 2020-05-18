@@ -585,7 +585,9 @@ public final class DebuggerController implements ContextsListener {
                     lock.wait();
                 }
             } catch (InterruptedException e) {
-                throw new RuntimeException("not able to suspend thread: " + getThreadName(thread), e);
+                // the thread was interrupted, so let it run dry
+                // make sure the interrupted flag is set though
+                Thread.currentThread().interrupt();
             }
         }
 
@@ -666,7 +668,6 @@ public final class DebuggerController implements ContextsListener {
                 try {
                     codeIndex = context.readBCIFromFrame(root, frame);
                 } catch (Throwable t) {
-                    t.printStackTrace();
                     JDWPLogger.log("Unable to read current BCI from frame in method: %s.%s", JDWPLogger.LogLevel.ALL, klass.getNameAsString(), method.getNameAsString());
                 }
                 if (codeIndex == -1) {
@@ -720,11 +721,10 @@ public final class DebuggerController implements ContextsListener {
             Object currentThread = getContext().asGuestThread(Thread.currentThread());
             JDWPLogger.log("Suspended at: %s in thread: %s", JDWPLogger.LogLevel.STEPPING, event.getSourceSection().toString(), getThreadName(currentThread));
             SteppingInfo steppingInfo = commandRequestIds.remove(currentThread);
-
             if (steppingInfo != null) {
-                // get the top frame for checking instance filters
                 CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), 1, steppingInfo);
-                if (checkExclusionFilters(steppingInfo, event, currentThread, callFrames[0])) {
+                // get the top frame for checking instance filters
+                if (callFrames.length > 0 && checkExclusionFilters(steppingInfo, event, currentThread, callFrames[0])) {
                     JDWPLogger.log("not suspending here: %s", JDWPLogger.LogLevel.STEPPING, event.getSourceSection());
                     // continue stepping until completed
                     commandRequestIds.put(currentThread, steppingInfo);
@@ -733,15 +733,8 @@ public final class DebuggerController implements ContextsListener {
             }
 
             CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), -1, steppingInfo);
+            RootNode callerRootNode = callFrames.length > 1 ? callFrames[1].getRootNode() : null;
 
-            RootNode callerRootNode = null;
-            int i = 0;
-            for (DebugStackFrame stackFrame : event.getStackFrames()) {
-                if (i == 1) {
-                    callerRootNode = stackFrame.getRawNode(context.getLanguageClass()).getRootNode();
-                }
-                i++;
-            }
             SuspendedInfo suspendedInfo = new SuspendedInfo(event, callFrames, currentThread, callerRootNode);
             suspendedInfos.put(currentThread, suspendedInfo);
 
@@ -944,7 +937,7 @@ public final class DebuggerController implements ContextsListener {
                 }
 
                 Frame rawFrame = frame.getRawFrame(context.getLanguageClass(), FrameInstance.FrameAccess.READ_WRITE);
-                MethodRef method = getContext().getMethodFromRootNode(root);
+                MethodRef method = context.getMethodFromRootNode(root);
                 KlassRef klass = method.getDeclaringKlass();
 
                 klassId = ids.getIdAsLong(klass);

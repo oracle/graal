@@ -282,7 +282,6 @@ public final class VMEventListenerImpl implements VMEventListener {
                 stream.writeLong(ids.getIdAsLong(klass));
                 stream.writeString(klass.getTypeAsString());
                 stream.writeInt(ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED);
-                classPrepareRequests.remove(cpr.getRequestId());
             }
             if (suspendPolicy != SuspendStrategy.NONE) {
                 // the current thread has just prepared the class
