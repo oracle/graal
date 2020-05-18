@@ -55,6 +55,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * as a whole, while allowing multiple threads to do constraint checking on different types.
  */
 final class LoadingConstraints implements ContextAccess {
+    private static final int NULL_KLASS_ID = -1;
+
     private final EspressoContext context;
 
     LoadingConstraints(EspressoContext context) {
@@ -67,14 +69,15 @@ final class LoadingConstraints implements ContextAccess {
     void checkConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
         Klass k1 = getContext().getRegistries().findLoadedClass(type, loader1);
         Klass k2 = getContext().getRegistries().findLoadedClass(type, loader2);
-        checkOrAdd(type, k1, k2, getLoaderID(loader1, getMeta()), getLoaderID(loader2, getMeta()));
+        checkOrAdd(type, getKlassID(k1), getKlassID(k2), getLoaderID(loader1, getMeta()), getLoaderID(loader2, getMeta()));
     }
 
     /**
      * Records that loader resolves type as klass.
      */
-    void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
+    void recordConstraint(Symbol<Type> type, Klass k, StaticObject loader) {
         int loaderID = getLoaderID(loader, getMeta());
+        int klass = getKlassID(k);
         ConstraintBucket bucket = lookup(type);
         if (bucket == null) {
             bucket = new ConstraintBucket();
@@ -86,9 +89,9 @@ final class LoadingConstraints implements ContextAccess {
             }
         }
         synchronized (bucket) {
-            Constraint constraint = bucket.lookup(loaderID);
+            Constraint constraint = bucket.lookupLoader(loaderID);
             if (constraint == null) {
-                constraint = bucket.lookup(klass);
+                constraint = bucket.lookupKlass(klass);
                 if (constraint == null) {
                     bucket.add(Constraint.create(klass, loaderID));
                 } else {
@@ -100,11 +103,11 @@ final class LoadingConstraints implements ContextAccess {
         }
     }
 
-    private void checkOrAdd(Symbol<Type> type, Klass k1, Klass k2, int loader1, int loader2) {
-        if (k1 != null && k2 != null && k1 != k2) {
+    private void checkOrAdd(Symbol<Type> type, int k1, int k2, int loader1, int loader2) {
+        if (exists(k1) && exists(k2) && k1 != k2) {
             throw linkageError("Loading constraint violated !");
         }
-        Klass klass = k1 == null ? k2 : k1;
+        int klass = !exists(k1) ? k2 : k1;
         ConstraintBucket bucket = lookup(type);
         if (bucket == null) {
             bucket = new ConstraintBucket();
@@ -115,9 +118,9 @@ final class LoadingConstraints implements ContextAccess {
             }
         }
         synchronized (bucket) {
-            Constraint c1 = bucket.lookup(loader1);
+            Constraint c1 = bucket.lookupLoader(loader1);
             klass = checkConstraint(klass, c1);
-            Constraint c2 = bucket.lookup(loader2);
+            Constraint c2 = bucket.lookupLoader(loader2);
             klass = checkConstraint(klass, c2);
             if (c1 == null && c2 == null) {
                 bucket.add(Constraint.create(klass, loader1, loader2));
@@ -125,12 +128,12 @@ final class LoadingConstraints implements ContextAccess {
                 /* Constraint already added */
             } else if (c1 == null) {
                 c2.add(loader1);
-                if (c2.klass == null) {
+                if (!exists(c2.klass)) {
                     c2.klass = klass;
                 }
             } else if (c2 == null) {
                 c1.add(loader2);
-                if (c1.klass == null) {
+                if (!exists(c1.klass)) {
                     c1.klass = klass;
                 }
             } else {
@@ -148,7 +151,7 @@ final class LoadingConstraints implements ContextAccess {
 
         private Constraint constraint;
 
-        Constraint lookup(int loader) {
+        Constraint lookupLoader(int loader) {
             Constraint curr = constraint;
             while (curr != null) {
                 if (curr.contains(loader)) {
@@ -159,7 +162,7 @@ final class LoadingConstraints implements ContextAccess {
             return null;
         }
 
-        Constraint lookup(Klass klass) {
+        Constraint lookupKlass(int klass) {
             Constraint curr = constraint;
             while (curr != null) {
                 if (curr.klass == klass) {
@@ -196,7 +199,7 @@ final class LoadingConstraints implements ContextAccess {
     }
 
     private static final class Constraint {
-        private Klass klass;
+        private int klass;
 
         /*
          * Most applications will only see the boot loader and the app class loader used.
@@ -227,7 +230,7 @@ final class LoadingConstraints implements ContextAccess {
             }
         }
 
-        Constraint(Klass k) {
+        Constraint(int k) {
             this.klass = k;
         }
 
@@ -239,7 +242,7 @@ final class LoadingConstraints implements ContextAccess {
             loaders[size++] = loader;
         }
 
-        static Constraint create(Klass klass, int loader1, int loader2) {
+        static Constraint create(int klass, int loader1, int loader2) {
             if (loader1 == loader2) {
                 return create(klass, loader1);
             }
@@ -249,7 +252,7 @@ final class LoadingConstraints implements ContextAccess {
             return constraint;
         }
 
-        static Constraint create(Klass klass, int loader) {
+        static Constraint create(int klass, int loader) {
             Constraint constraint = new Constraint(klass);
             constraint.add(loader);
             return constraint;
@@ -263,10 +266,10 @@ final class LoadingConstraints implements ContextAccess {
         return pairings.get(type);
     }
 
-    private Klass checkConstraint(Klass klass, Constraint c1) {
+    private int checkConstraint(int klass, Constraint c1) {
         if (c1 != null) {
-            if (c1.klass != null) {
-                if (klass != null) {
+            if (exists(c1.klass)) {
+                if (exists(klass)) {
                     if (klass != c1.klass) {
                         throw linkageError("New loading constraint violates an older one!");
                     }
@@ -308,5 +311,13 @@ final class LoadingConstraints implements ContextAccess {
             throw EspressoError.shouldNotReachHere();
         }
         return classRegistry.getLoaderID();
+    }
+
+    private static int getKlassID(Klass k) {
+        return k == null ? NULL_KLASS_ID : k.getId();
+    }
+
+    private static boolean exists(int klass) {
+        return klass != NULL_KLASS_ID;
     }
 }
