@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.impl;
 
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -56,8 +57,10 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 final class LoadingConstraints implements ContextAccess {
     private static final int NULL_KLASS_ID = -1;
+    static final int INVALID_LOADER_ID = -1;
 
     private final EspressoContext context;
+    private final PurgeInfo info = new PurgeInfo();
 
     LoadingConstraints(EspressoContext context) {
         this.context = context;
@@ -101,6 +104,28 @@ final class LoadingConstraints implements ContextAccess {
                 checkConstraint(klass, constraint);
             }
         }
+    }
+
+    void purge() {
+        int[] alive = context.getRegistries().aliveLoaders();
+        info.emptyBuckets = 0;
+        for (ConstraintBucket bucket : pairings.values()) {
+            synchronized (bucket) {
+                bucket.purge(alive, info);
+                if (bucket.constraint == null) {
+                    // Unfortunately, we cannot remove safely this bucket without blocking
+                    // constraint checking context-wide. Some other thread might have already
+                    // obtained the bucket while we are reclaiming it. Removing it here would
+                    // require having the other thread run checks on its size, slowing down the
+                    // constraint checking process.
+                    info.emptyBuckets++;
+                }
+            }
+        }
+        getContext().getLogger().log(Level.INFO, "purging constraints stats:\n" +
+                        "reclaimed slots: " + info.reclaimedSlots + "\n" +
+                        "reclaimed constraints: " + info.reclaimedConstraints + "\n" +
+                        "empty buckets: " + info.emptyBuckets);
     }
 
     private void checkOrAdd(Symbol<Type> type, int k1, int k2, int loader1, int loader2) {
@@ -196,6 +221,18 @@ final class LoadingConstraints implements ContextAccess {
             }
         }
 
+        void purge(int[] alive, PurgeInfo info) {
+            assert Thread.holdsLock(this);
+            Constraint curr = constraint;
+            while (curr != null) {
+                curr.purge(alive, info);
+                if (curr.size == 0) {
+                    remove(curr);
+                    info.reclaimedConstraints++;
+                }
+                curr = curr.next;
+            }
+        }
     }
 
     private static final class Constraint {
@@ -237,9 +274,52 @@ final class LoadingConstraints implements ContextAccess {
         void add(int loader) {
             assert !contains(loader);
             if (size >= capacity) {
-                loaders = Arrays.copyOf(loaders, capacity << 1);
+                loaders = Arrays.copyOf(loaders, capacity <<= 1);
             }
             loaders[size++] = loader;
+        }
+
+        public void purge(int[] alive, PurgeInfo info) {
+            int i = 0;
+            while (i < size) {
+                if (!isAlive(loaders[i], alive)) {
+                    swap(i, --size, loaders);
+                    info.reclaimedSlots++;
+                } else {
+                    i++;
+                }
+            }
+            if (size > 0 && // size == 0 gets reclaimed after
+                            size < (capacity >> 1) &&
+                            capacity > DEFAULT_INITIAL_SIZE // have 2 slots
+            ) {
+                int shift = 1;
+                while (size < (capacity >> (shift + 1))) {
+                    shift += 1;
+                }
+                int[] newLoaders = new int[capacity = Math.max(DEFAULT_INITIAL_SIZE, capacity >> shift)];
+                System.arraycopy(loaders, 0, newLoaders, 0, size);
+                loaders = newLoaders;
+            }
+        }
+
+        static void swap(int i, int j, int[] loaders) {
+            int a = loaders[i];
+            loaders[i] = loaders[j];
+            loaders[j] = a;
+        }
+
+        static boolean isAlive(int loader, int[] alive) {
+            for (int i = 0; i < alive.length; i++) {
+                int live = alive[i];
+                if (live == INVALID_LOADER_ID) {
+                    return false;
+                }
+                if (live == loader) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         static Constraint create(int klass, int loader1, int loader2) {
@@ -257,7 +337,6 @@ final class LoadingConstraints implements ContextAccess {
             constraint.add(loader);
             return constraint;
         }
-
     }
 
     private final ConcurrentHashMap<Symbol<Type>, ConstraintBucket> pairings = new ConcurrentHashMap<>();
@@ -319,5 +398,11 @@ final class LoadingConstraints implements ContextAccess {
 
     private static boolean exists(int klass) {
         return klass != NULL_KLASS_ID;
+    }
+
+    private static class PurgeInfo {
+        int reclaimedSlots = 0;
+        int reclaimedConstraints = 0;
+        int emptyBuckets = 0;
     }
 }
