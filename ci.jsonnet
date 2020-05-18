@@ -31,6 +31,7 @@ local base = {
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
       MX_PYTHON_VERSION: "3",
+      GATE_ARGS: "--strict-mode",
     },
   },
 
@@ -41,6 +42,8 @@ local base = {
       gcc: '>=4.9.1',
       'gcc-build-essentials': '>=4.9.1', # GCC 4.9.0 fails on cluster
       make: '>=3.83',
+      'sys:cmake': '==3.15.2',
+      ruby: "==2.6.5",
     },
     capabilities+: ['linux', 'amd64'],
   },
@@ -100,7 +103,7 @@ local gate_coverage = base.eclipse + {
   timelimit: '30:00',
 };
 
-local gate_cmd = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'];
+local gate_cmd = ['mx', '--strict-compliance', 'gate', '${GATE_ARGS}', '--tags', '${GATE_TAGS}'];
 
 local gate_espresso = {
   setup+: [
@@ -194,9 +197,15 @@ local awfy = 'awfy:*';
 
     jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-gate-unittest-jdk8-linux-amd64'},
 
-    jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS      : 'build,unittest_with_compilation',
-                                                                           DYNAMIC_IMPORTS: '/compiler'},
-                                                            timelimit: '1:00:00'}                         + {name: 'espresso-gate-unittest-compilation-jdk8-linux-amd64'},
+    jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS      : 'build,unittest',
+                                                                           GATE_ARGS: '--no-warning-as-error',
+                                                                           DYNAMIC_IMPORTS: '/truffleruby'},
+                                                            timelimit: '1:00:00'}                         + {name: 'espresso-gate-unittest-with-ruby-jdk8-linux-amd64'},
+
+    // Disabled until GR-17135 makes this gate faster/bearable.
+    // jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS      : 'build,unittest_with_compilation',
+    //                                                                       DYNAMIC_IMPORTS: '/compiler'},
+    //                                                        timelimit: '1:00:00'}                         + {name: 'espresso-gate-unittest-compilation-jdk8-linux-amd64'},
 
     // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
     jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS: 'build,meta', LD_DEBUG: 'unused'}}
@@ -214,7 +223,6 @@ local awfy = 'awfy:*';
     // Benchmarks (post-merge)
     jdk8_bench_linux   + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
     jdk8_bench_linux   + espresso_benchmark('jvm-ee', awfy)                                    + {name: 'espresso-bench-jvm-ee-awfy-jdk8-linux-amd64'},
-    jdk8_bench_linux   + espresso_benchmark('jvm-ee', awfy, 'la-inline')                       + {name: 'espresso-bench-jvm-ee-la-inline-awfy-jdk8-linux-amd64'},
     jdk8_bench_linux   + espresso_benchmark('native-ce', awfy)                                 + {name: 'espresso-bench-native-ce-awfy-jdk8-linux-amd64'},
     jdk8_bench_linux   + espresso_benchmark('native-ee', awfy)                                 + {name: 'espresso-bench-native-ee-awfy-jdk8-linux-amd64'},
 
