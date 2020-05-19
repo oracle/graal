@@ -122,28 +122,15 @@ public class SnippetRuntime {
 
         private final Class<?> declaringClass;
         private final String methodName;
-        private final boolean isReexecutable;
-        private final LocationIdentity[] killedLocations;
-        private final boolean needsDebugInfo;
-        private final boolean isGuaranteedSafepoint;
 
         SubstrateForeignCallDescriptor(String descriptorName, Method method, boolean isReexecutable, LocationIdentity[] killedLocations, boolean needsDebugInfo, boolean isGuaranteedSafepoint) {
             super(descriptorName, method.getReturnType(), method.getParameterTypes(), isReexecutable, killedLocations, needsDebugInfo, isGuaranteedSafepoint);
             this.declaringClass = method.getDeclaringClass();
             this.methodName = method.getName();
-            this.isReexecutable = isReexecutable;
-            this.killedLocations = killedLocations;
-            this.needsDebugInfo = needsDebugInfo;
-            this.isGuaranteedSafepoint = isGuaranteedSafepoint;
         }
 
         public Class<?> getDeclaringClass() {
             return declaringClass;
-        }
-
-        @Override
-        public boolean isReexecutable() {
-            return isReexecutable;
         }
 
         public ResolvedJavaMethod findMethod(MetaAccessProvider metaAccess) {
@@ -155,23 +142,8 @@ public class SnippetRuntime {
             throw VMError.shouldNotReachHere("method " + methodName + " not found");
         }
 
-        @Override
-        public LocationIdentity[] getKilledLocations() {
-            return killedLocations;
-        }
-
-        @Override
-        public boolean canDeoptimize() {
-            return needsDebugInfo();
-        }
-
         public boolean needsDebugInfo() {
-            return needsDebugInfo;
-        }
-
-        @Override
-        public boolean isGuaranteedSafepoint() {
-            return isGuaranteedSafepoint;
+            return canDeoptimize();
         }
     }
 
