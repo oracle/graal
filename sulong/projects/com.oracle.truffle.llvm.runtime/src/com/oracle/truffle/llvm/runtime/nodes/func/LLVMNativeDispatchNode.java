@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -70,7 +70,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
     @TruffleBoundary
     protected TruffleObject identityFunction() {
         LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-        NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtension(NFIContextExtension.class);
+        NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
         String signature;
         try {
             signature = nfiContextExtension.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);

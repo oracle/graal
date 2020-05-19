@@ -48,7 +48,23 @@ final class RootNodeBits {
     private static final int SAME_SOURCE = 1 << 1;
     private static final int NO_SOURCE_SECTION = 1 << 2;
     private static final int SOURCE_SECTION_HIERARCHICAL = 1 << 3;
-    private static final int ALL = INITIALIZED | SAME_SOURCE | NO_SOURCE_SECTION | SOURCE_SECTION_HIERARCHICAL;
+    private static final int NOT_EXECUTED = 1 << 4;
+    private static final int ALL = INITIALIZED | SAME_SOURCE | NO_SOURCE_SECTION | SOURCE_SECTION_HIERARCHICAL | NOT_EXECUTED;
+
+    /**
+     * Returns true from the point just before the root is executed onwards. This is not guaranteed!
+     * The root bits are not always initialized and the not-executed bit is not always unset before
+     * the first execution of the root node. It is manipulated by the instrumentation handler only
+     * when certain additional conditions hold. The application logic must ensure that this method
+     * is relied upon only at places where this root node bit is properly initialized.
+     */
+    static boolean wasExecuted(int bits) {
+        return bits > 0 && (bits & NOT_EXECUTED) == 0;
+    }
+
+    static boolean wasNotExecuted(int bits) {
+        return (bits & NOT_EXECUTED) > 0;
+    }
 
     /**
      * Returns true if source the source sections of the root node are all contained within the
@@ -78,11 +94,15 @@ final class RootNodeBits {
     }
 
     static int setHasDifferentSource(int bits) {
-        return bits & ~NO_SOURCE_SECTION;
+        return bits & ~SAME_SOURCE;
     }
 
     static int setHasSourceSection(int bits) {
         return bits & ~NO_SOURCE_SECTION;
+    }
+
+    static int setExecuted(int bits) {
+        return bits & ~NOT_EXECUTED;
     }
 
     static int get(RootNode root) {

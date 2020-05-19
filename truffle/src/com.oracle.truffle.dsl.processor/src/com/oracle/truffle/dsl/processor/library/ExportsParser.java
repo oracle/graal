@@ -517,7 +517,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
 
             if (explicitReceiver) {
-                if (!isSubtype(receiverClass, libraryData.getSignatureReceiverType())) {
+                TypeMirror receiverTypeErasure = context.getEnvironment().getTypeUtils().erasure(libraryData.getSignatureReceiverType());
+                if (!isSubtype(receiverClass, receiverTypeErasure)) {
                     lib.addError(exportAnnotationMirror, receiverClassValue, "The export receiver type %s is not compatible with the library receiver type '%s' of library '%s'. ",
                                     getSimpleName(receiverClass),
                                     getSimpleName(libraryData.getSignatureReceiverType()),

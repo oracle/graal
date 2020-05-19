@@ -47,11 +47,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -123,11 +123,13 @@ public final class LLVMContext {
 
     private final LLVMSourceContext sourceContext;
 
+    @CompilationFinal private List<ContextExtension> contextExtensions;
     @CompilationFinal private Env env;
     private final LLVMScope globalScope;
     private final ArrayList<LLVMLocalScope> localScopes;
 
     private final DynamicLinkChain dynamicLinkChain;
+    private final DynamicLinkChain dynamicLinkChainForScopes;
     private final List<RootCallTarget> destructorFunctions;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
     private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry;
@@ -201,6 +203,7 @@ public final class LLVMContext {
         this.globalScope = new LLVMScope();
         this.localScopes = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
+        this.dynamicLinkChainForScopes = new DynamicLinkChain();
 
         this.mainArguments = getMainArguments(env);
 
@@ -267,9 +270,10 @@ public final class LLVMContext {
     }
 
     @SuppressWarnings("unchecked")
-    void initialize() {
+    void initialize(List<ContextExtension> contextExtens) {
         this.initializeContextCalled = true;
         assert this.threadingStack == null;
+        this.contextExtensions = contextExtens;
 
         final String traceOption = env.getOptions().get(SulongEngineOption.TRACE_IR);
         if (SulongEngineOption.optionEnabled(traceOption)) {
@@ -280,7 +284,7 @@ public final class LLVMContext {
         }
 
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), parseStackSize(env.getOptions().get(SulongEngineOption.STACK_SIZE)));
-        for (ContextExtension ext : language.getLanguageContextExtension()) {
+        for (ContextExtension ext : getContextExtensions()) {
             ext.initialize();
         }
         String languageHome = language.getLLVMLanguageHome();
@@ -291,8 +295,44 @@ public final class LLVMContext {
             // add internal library location also to the external library lookup path
             addLibraryPath(internalLibraryPath.toString());
         }
-        Loader loader = getLanguage().getCapability(Loader.class);
-        loader.loadDefaults(this, internalLibraryPath);
+        try {
+            CallTarget libpolyglotMock = env.parseInternal(Source.newBuilder("llvm",
+                            env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()).toUri())).internal(true).build());
+            libpolyglotMock.call();
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private List<ContextExtension> getContextExtensions() {
+        verifyContextExtensionsInitialized();
+        return contextExtensions;
+    }
+
+    public <T extends ContextExtension> T getContextExtension(Class<T> type) {
+        T result = getContextExtensionOrNull(type);
+        if (result != null) {
+            return result;
+        }
+        throw new IllegalStateException("No context extension for: " + type);
+    }
+
+    public <T extends ContextExtension> T getContextExtensionOrNull(Class<T> type) {
+        CompilerAsserts.neverPartOfCompilation();
+        verifyContextExtensionsInitialized();
+        for (ContextExtension ce : contextExtensions) {
+            if (ce.extensionClass() == type) {
+                return type.cast(ce);
+            }
+        }
+        return null;
+    }
+
+    private void verifyContextExtensionsInitialized() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (contextExtensions == null) {
+            throw new IllegalStateException("LLVMContext is not yet initialized");
+        }
     }
 
     public Path getInternalLibraryPath() {
@@ -831,6 +871,16 @@ public final class LLVMContext {
     @TruffleBoundary
     public void registerScope(LLVMScope scope) {
         dynamicLinkChain.addScope(scope);
+    }
+
+    @TruffleBoundary
+    public boolean isScopeLoadedForScopes(LLVMScope scope) {
+        return dynamicLinkChainForScopes.containsScope(scope);
+    }
+
+    @TruffleBoundary
+    public void registerScopeForScopes(LLVMScope scope) {
+        dynamicLinkChainForScopes.addScope(scope);
     }
 
     public synchronized void registerThread(LLVMThread thread) {

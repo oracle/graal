@@ -29,13 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.graalvm.options.OptionDescriptors;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -66,6 +59,10 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import org.graalvm.options.OptionDescriptors;
+
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE}, //
@@ -102,7 +99,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     // The bitcode file ID starts at 1, 0 is reserved for misc functions, such as toolchain paths.
     private final AtomicInteger nextID = new AtomicInteger(1);
 
-    @CompilationFinal private List<ContextExtension> contextExtensions;
     @CompilationFinal private Configuration activeConfiguration = null;
 
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
@@ -112,40 +108,12 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
 
     public abstract static class Loader implements LLVMCapability {
-        public abstract void loadDefaults(LLVMContext context, Path internalLibraryPath);
-
         public abstract CallTarget load(LLVMContext context, Source source, AtomicInteger id);
     }
 
-    public List<ContextExtension> getLanguageContextExtension() {
-        verifyContextExtensionsInitialized();
-        return contextExtensions;
-    }
-
-    public <T extends ContextExtension> T getContextExtension(Class<T> type) {
-        T result = getContextExtensionOrNull(type);
-        if (result != null) {
-            return result;
-        }
-        throw new IllegalStateException("No context extension for: " + type);
-    }
-
-    public <T extends ContextExtension> T getContextExtensionOrNull(Class<T> type) {
-        CompilerAsserts.neverPartOfCompilation();
-        verifyContextExtensionsInitialized();
-        for (ContextExtension ce : contextExtensions) {
-            if (ce.extensionClass() == type) {
-                return type.cast(ce);
-            }
-        }
-        return null;
-    }
-
-    private void verifyContextExtensionsInitialized() {
-        CompilerAsserts.neverPartOfCompilation();
-        if (contextExtensions == null) {
-            throw new IllegalStateException("LLVMContext is not yet initialized");
-        }
+    @Override
+    protected void initializeContext(LLVMContext context) {
+        context.initialize(activeConfiguration.createContextExtensions(context.getEnv()));
     }
 
     /**
@@ -228,12 +196,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     @Override
-    protected void initializeContext(LLVMContext context) {
-        this.contextExtensions = activeConfiguration.createContextExtensions(context.getEnv());
-        context.initialize();
-    }
-
-    @Override
     protected ExecutableNode parse(InlineParsingRequest request) {
         Iterable<Scope> globalScopes = findTopScopes(getCurrentContext(LLVMLanguage.class));
         final com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser d = new com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser(request, globalScopes,
@@ -268,7 +230,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void disposeContext(LLVMContext context) {
-        // TODO (PLi): The globals loaded by the context passed needs to be freed.
+        // TODO (PLi): The globals loaded by the context needs to be freed manually.
         LLVMMemory memory = getLLVMMemory();
         context.dispose(memory);
     }

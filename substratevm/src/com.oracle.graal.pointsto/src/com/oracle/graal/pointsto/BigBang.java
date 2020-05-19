@@ -97,6 +97,8 @@ public abstract class BigBang {
     private final HostedProviders providers;
     private final Replacements replacements;
 
+    private final HeapScanningPolicy heapScanningPolicy;
+
     /** The type of {@link java.lang.Object}. */
     private final AnalysisType objectType;
     private TypeFlow<?> allSynchronizedTypeFlow;
@@ -167,6 +169,14 @@ public abstract class BigBang {
         executor = new CompletionExecutor(this, executorService, heartbeatCallback);
         executor.init(timing);
         this.heartbeatCallback = heartbeatCallback;
+
+        heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
+                        ? HeapScanningPolicy.scanAll()
+                        : HeapScanningPolicy.skipTypes(skippedHeapTypes());
+    }
+
+    public AnalysisType[] skippedHeapTypes() {
+        return new AnalysisType[]{metaAccess.lookupJavaType(String.class)};
     }
 
     public Runnable getHeartbeatCallback() {
@@ -621,6 +631,10 @@ public abstract class BigBang {
             objectScanner.scanBootImageHeapRoots(null);
         }
         AnalysisType.updateAssignableTypes(this);
+    }
+
+    public HeapScanningPolicy scanningPolicy() {
+        return heapScanningPolicy;
     }
 
     /**

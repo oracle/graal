@@ -65,7 +65,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
     private HotSpotCodeCacheProvider codeCacheProvider;
 
     public HotSpotDebugInfoBuilder(NodeValueMap nodeValueMap, HotSpotLockStack lockStack, HotSpotLIRGenerator gen) {
-        super(nodeValueMap, gen.getResult().getLIR().getDebug());
+        super(nodeValueMap, gen.getProviders().getMetaAccessExtensionProvider(), gen.getResult().getLIR().getDebug());
         this.lockStack = lockStack;
         this.codeCacheProvider = gen.getProviders().getCodeCache();
     }

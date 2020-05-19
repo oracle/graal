@@ -47,6 +47,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -209,8 +210,9 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected ForeignCallSnippets.Templates foreignCallSnippets;
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
-                    HotSpotConstantReflectionProvider constantReflection, PlatformConfigurationProvider platformConfig, TargetDescription target) {
-        super(metaAccess, foreignCalls, platformConfig, target, runtime.getVMConfig().useCompressedOops);
+                    HotSpotConstantReflectionProvider constantReflection, PlatformConfigurationProvider platformConfig, MetaAccessExtensionProvider metaAccessExtensionProvider,
+                    TargetDescription target) {
+        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target, runtime.getVMConfig().useCompressedOops);
         this.runtime = runtime;
         this.registers = registers;
         this.constantReflection = constantReflection;
@@ -296,7 +298,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                     if (instanceOfDynamicNode.allowsNull()) {
                         ValueNode object = instanceOfDynamicNode.getObject();
                         LogicNode newTypeCheck = graph.addOrUniqueWithInputs(
-                                        InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), instanceOfDynamicNode.getMirrorOrHub(), object, false));
+                                        InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), instanceOfDynamicNode.getMirrorOrHub(), object,
+                                                        false/* null checked below */, instanceOfDynamicNode.isExact()));
                         LogicNode newNode = LogicNode.or(graph.unique(IsNullNode.create(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
                         instanceOfDynamicNode.replaceAndDelete(newNode);
                     }
@@ -798,11 +801,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     @Override
     public int arrayLengthOffset() {
         return runtime.getVMConfig().arrayOopDescLengthOffset();
-    }
-
-    @Override
-    public final JavaKind getStorageKind(ResolvedJavaField field) {
-        return field.getJavaKind();
     }
 
     @Override

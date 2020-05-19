@@ -1400,20 +1400,11 @@ def _graal_config():
     return __graal_config
 
 def _jvmci_jars():
-    if not isJDK8 and _is_jaotc_supported():
-        return [
-            'compiler:GRAAL',
-            'compiler:GRAAL_MANAGEMENT',
-            'compiler:GRAAL_TRUFFLE_JFR_IMPL',
-            'compiler:JAOTC',
-        ]
-    else:
-        # JAOTC is JDK 9+
-        return [
-            'compiler:GRAAL',
-            'compiler:GRAAL_MANAGEMENT',
-            'compiler:GRAAL_TRUFFLE_JFR_IMPL',
-        ]
+    return [
+        'compiler:GRAAL',
+        'compiler:GRAAL_MANAGEMENT',
+        'compiler:GRAAL_TRUFFLE_JFR_IMPL',
+    ] + (['compiler:JAOTC'] if not isJDK8 and _is_jaotc_supported() else [])
 
 # The community compiler component
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJvmciComponent(

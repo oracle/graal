@@ -171,8 +171,8 @@ public abstract class ExceptionUnwind {
      * using a normal Java catch-all exception handler.
      */
     private static void reportUnhandledException(Throwable exception) {
+        Log.log().string("Isolate: ").hex(CurrentIsolate.getIsolate()).newline();
         Log.log().exception(exception);
-        Log.log().string("Isolate: 0X").hex(CurrentIsolate.getIsolate()).newline();
         ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 

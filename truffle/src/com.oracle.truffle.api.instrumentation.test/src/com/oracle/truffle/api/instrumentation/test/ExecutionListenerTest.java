@@ -43,11 +43,11 @@ package com.oracle.truffle.api.instrumentation.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -65,11 +65,15 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.management.ExecutionEvent;
 import org.graalvm.polyglot.management.ExecutionListener;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.instrumentation.SourceFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class ExecutionListenerTest extends AbstractPolyglotTest {
 
@@ -812,6 +816,41 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         } catch (IllegalArgumentException e) {
         }
         ctx.close();
+    }
+
+    @Test
+    public void testDifferentSourcesInAST() {
+        setupEnv(Context.create(), new SourceListenerTest.MultiSourceASTLanguage());
+        String code = "abcd";
+        StringBuilder loadedCode = new StringBuilder();
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        Assert.assertEquals(code + code, loadedCode.toString());
+    }
+
+    @Test
+    public void testMaterializedSourcesInAST() {
+        setupEnv(Context.create(), new SourceListenerTest.MultiSourceASTLanguage());
+        String code = "Mabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        // Not materialized yet:
+        Assert.assertEquals(code + "M", loadedCode.toString());
+        // Force materialization:
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, e -> {
+        }, true);
+        Assert.assertEquals(code + code, loadedCode.toString());
+    }
+
+    @Test
+    public void testInsertedSourcesInAST() {
+        setupEnv(Context.create(), new SourceListenerTest.MultiSourceASTLanguage());
+        String code = "Iabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        Assert.assertEquals(code + code, loadedCode.toString());
     }
 
     private Source eval(String code) {

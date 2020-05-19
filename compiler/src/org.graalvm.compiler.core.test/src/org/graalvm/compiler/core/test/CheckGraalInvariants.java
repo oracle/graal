@@ -151,13 +151,23 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         }
 
         protected String getClassPath() {
-            String bootclasspath;
+            String classpath;
             if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                bootclasspath = System.getProperty("sun.boot.class.path");
+                classpath = System.getProperty("sun.boot.class.path");
             } else {
-                bootclasspath = JRT_CLASS_PATH_ENTRY;
+                classpath = JRT_CLASS_PATH_ENTRY;
             }
-            return bootclasspath;
+
+            // Also process classes that go into the libgraal native image.
+            String javaClassPath = System.getProperty("java.class.path");
+            if (javaClassPath != null) {
+                for (String path : javaClassPath.split(File.pathSeparator)) {
+                    if (path.contains("libgraal") && !path.contains("processor")) {
+                        classpath += File.pathSeparator + path;
+                    }
+                }
+            }
+            return classpath;
         }
 
         protected boolean shouldLoadClass(String className) {

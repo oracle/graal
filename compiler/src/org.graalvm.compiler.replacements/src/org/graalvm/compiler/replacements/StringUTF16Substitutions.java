@@ -40,7 +40,7 @@ public class StringUTF16Substitutions {
 
     @MethodSubstitution
     public static char getChar(byte[] value, int i) {
-        ReplacementsUtil.runtimeAssert((i << 1) + 1 < value.length, "Trusted caller missed bounds check");
+        ReplacementsUtil.dynamicAssert((i << 1) + 1 < value.length, "Trusted caller missed bounds check");
         return getCharDirect(value, i << 1);
     }
 
@@ -51,7 +51,7 @@ public class StringUTF16Substitutions {
 
     @MethodSubstitution
     public static void putChar(byte[] value, int i, int c) {
-        ReplacementsUtil.runtimeAssert((i << 1) + 1 < value.length, "Trusted caller missed bounds check");
+        ReplacementsUtil.dynamicAssert((i << 1) + 1 < value.length, "Trusted caller missed bounds check");
         putCharDirect(value, i << 1, c);
     }
 

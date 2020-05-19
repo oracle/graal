@@ -1,8 +1,7 @@
 common_vm: ${common} ${vm_setup} {
   logs: [
     "*/mxbuild/dists/stripped/*.map"
-    "../fastr/libdownloads/*/gnur_configure.log"
-    "../fastr/libdownloads/*/gnur_make.log"
+    "**/install.packages.R.log"
   ]
 }
 
@@ -168,6 +167,10 @@ gate_vm_linux: ${vm_linux} {
 }
 
 gate_vm_darwin: ${vm_darwin} {
+  targets: [gate]
+}
+
+gate_vm_windows: ${vm_windows} {
   targets: [gate]
 }
 

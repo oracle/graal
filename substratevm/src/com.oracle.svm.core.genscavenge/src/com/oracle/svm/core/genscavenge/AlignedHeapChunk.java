@@ -190,7 +190,7 @@ public final class AlignedHeapChunk {
         Pointer cardTableStart = getCardTableStart(chunk);
         UnsignedWord index = getObjectIndex(chunk, objectPointer);
         if (verifyOnly) {
-            AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, index), "card must be dirty", "", "");
+            AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, index), "card must be dirty", "", "", 0L, 0L);
         } else {
             CardTable.dirtyEntryAtIndex(cardTableStart, index);
         }
