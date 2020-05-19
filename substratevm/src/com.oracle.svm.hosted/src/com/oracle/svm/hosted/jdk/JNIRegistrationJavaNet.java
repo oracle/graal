@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import java.net.DatagramPacket;
 import java.net.InetAddress;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -115,14 +114,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramPacketInit,
                         method(a, "java.net.DatagramPacket", "init"));
 
-        if (JavaVersionUtil.JAVA_SPEC >= 15) {
-            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramSocketCheckOldImpl,
-                            method(a, "java.net.DatagramSocket", "checkOldImpl", java.net.DatagramSocketImpl.class));
-        } else {
-            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramSocketCheckOldImpl,
-                            method(a, "java.net.DatagramSocket", "checkOldImpl"));
-        }
-
         String plainDatagramSocketImpl = isWindows() ? "TwoStacksPlainDatagramSocketImpl" : "PlainDatagramSocketImpl";
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainDatagramSocketImplInit,
                         method(a, "java.net." + plainDatagramSocketImpl, "init"));
@@ -206,16 +197,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
     private static void registerDatagramPacketInit(DuringAnalysisAccess a) {
         JNIRuntimeAccess.register(fields(a, "java.net.DatagramPacket", "address", "port", "buf", "offset", "length", "bufLength"));
-    }
-
-    private static void registerDatagramSocketCheckOldImpl(DuringAnalysisAccess a) {
-        a.registerSubtypeReachabilityHandler((access, clazz) -> {
-            // Checkstyle: stop
-            if (!java.lang.reflect.Modifier.isAbstract(clazz.getModifiers())) {
-                // Checkstyle: resume
-                RuntimeReflection.register(method(access, clazz.getName(), "peekData", DatagramPacket.class));
-            }
-        }, clazz(a, "java.net.DatagramSocketImpl"));
     }
 
     private static void registerPlainDatagramSocketImplInit(DuringAnalysisAccess a) {
