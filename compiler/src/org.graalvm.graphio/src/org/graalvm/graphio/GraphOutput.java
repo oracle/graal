@@ -44,6 +44,12 @@ import java.util.Map;
 public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
     private final GraphProtocol<G, ?, ?, ?, ?, M, ?, ?, ?, ?> printer;
 
+    /**
+     * Name of stream attribute to identify the VM execution, allows to join different GraphOutput
+     * streams. The value should be the same for all related {@link GraphOutput}s.
+     */
+    public static final String ATTR_VM_ID = "vm.uuid"; // NOI18N
+
     private GraphOutput(GraphProtocol<G, ?, ?, ?, ?, M, ?, ?, ?, ?> p) {
         this.printer = p;
     }
@@ -141,7 +147,7 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
      * @param <M> the type of the methods
      */
     public static final class Builder<G, N, M> {
-        private static final int DEFAULT_MAJOR_VERSION = 4;
+        private static final int DEFAULT_MAJOR_VERSION = 7;
         private static final int DEFAULT_MINOR_VERSION = 0;
 
         private final GraphStructure<G, N, ?, ?> structure;
