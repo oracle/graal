@@ -98,15 +98,15 @@ public final class FusedMultiplyAddNode extends TernaryNode implements Arithmeti
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool, ValueNode x, ValueNode y, ValueNode z) {
-        if (x.isConstant() && y.isConstant() && z.isConstant()) {
-            JavaConstant constantX = x.asJavaConstant();
-            JavaConstant constantY = y.asJavaConstant();
-            JavaConstant constantZ = z.asJavaConstant();
-            if (x.getStackKind() == JavaKind.Float) {
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY, ValueNode forZ) {
+        if (forX.isConstant() && forY.isConstant() && forZ.isConstant()) {
+            JavaConstant constantX = forX.asJavaConstant();
+            JavaConstant constantY = forY.asJavaConstant();
+            JavaConstant constantZ = forZ.asJavaConstant();
+            if (forX.getStackKind() == JavaKind.Float) {
                 return ConstantNode.forFloat(GraalServices.fma(constantX.asFloat(), constantY.asFloat(), constantZ.asFloat()));
             } else {
-                assert x.getStackKind() == JavaKind.Double;
+                assert forX.getStackKind() == JavaKind.Double;
                 return ConstantNode.forDouble(GraalServices.fma(constantX.asDouble(), constantY.asDouble(), constantZ.asDouble()));
             }
         }
