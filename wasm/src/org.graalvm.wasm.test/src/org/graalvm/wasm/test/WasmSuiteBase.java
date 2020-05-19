@@ -389,7 +389,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             final int width = Integer.parseInt(output.split(" ")[1]);
             return width;
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.out.println("Could not retrieve terminal width: " + e.getMessage());
+            return -1;
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
