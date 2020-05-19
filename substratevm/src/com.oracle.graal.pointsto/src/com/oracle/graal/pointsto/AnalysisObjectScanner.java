@@ -106,7 +106,6 @@ public class AnalysisObjectScanner extends ObjectScanner {
 
     @Override
     public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex) {
-        assert elementType.isInstantiated();
         /*
          * *ALL* constants are scanned after each analysis iteration, thus the elementType will
          * eventually be added to the AllInstantiatedTypeFlow and the array elements flow will
