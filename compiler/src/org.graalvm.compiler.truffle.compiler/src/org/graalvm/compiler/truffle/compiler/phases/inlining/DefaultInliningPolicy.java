@@ -124,10 +124,6 @@ final class DefaultInliningPolicy implements InliningPolicy {
             if (expandedCount > expansionBudget) {
                 break;
             }
-            if (candidate.isForced()) {
-                doExpand(candidate, expandQueue);
-                continue;
-            }
             if (candidate.getRecursionDepth() > maximumRecursiveInliningValue || candidate.getDepth() > MAX_DEPTH) {
                 continue;
             }
