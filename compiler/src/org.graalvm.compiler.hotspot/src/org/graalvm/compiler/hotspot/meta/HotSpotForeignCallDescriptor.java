@@ -24,36 +24,15 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
+
+import java.util.Arrays;
+
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.word.LocationIdentity;
 
 public class HotSpotForeignCallDescriptor extends ForeignCallDescriptor {
-
-    private final Transition transition;
-    private final Reexecutability reexecutability;
-
-    public HotSpotForeignCallDescriptor(Transition transition, Reexecutability reexecutability, LocationIdentity[] killedLocations, String name, Class<?> resultType, Class<?>... argumentTypes) {
-        super(name, resultType, argumentTypes, reexecutability == Reexecutability.REEXECUTABLE, killedLocations, transition == Transition.SAFEPOINT, transition == Transition.SAFEPOINT);
-        this.transition = transition;
-        this.reexecutability = reexecutability;
-    }
-
-    public HotSpotForeignCallDescriptor(Transition transition, Reexecutability reexecutability, LocationIdentity killedLocation, String name, Class<?> resultType, Class<?>... argumentTypes) {
-        this(transition, reexecutability, killedLocation == null ? HotSpotForeignCallsProviderImpl.NO_LOCATIONS : new LocationIdentity[]{killedLocation}, name, resultType, argumentTypes);
-    }
-
-    public HotSpotForeignCallDescriptor(ForeignCallSignature signature, Transition transition, Reexecutability reexecutability, LocationIdentity[] killedLocations) {
-        this(transition, reexecutability, killedLocations, signature.getName(), signature.getResultType(), signature.getArgumentTypes());
-    }
-
-    public Transition getTransition() {
-        return transition;
-    }
-
-    public Reexecutability getReexecutability() {
-        return reexecutability;
-    }
 
     /**
      * Constants for specifying whether a call is a leaf or not and whether a
@@ -111,5 +90,42 @@ public class HotSpotForeignCallDescriptor extends ForeignCallDescriptor {
          * effects it is assumed that the same exception will be thrown.
          */
         REEXECUTABLE
+    }
+
+    private final Transition transition;
+    private final Reexecutability reexecutability;
+
+    public HotSpotForeignCallDescriptor(Transition transition, Reexecutability reexecutability, LocationIdentity[] killedLocations, String name, Class<?> resultType, Class<?>... argumentTypes) {
+        super(name, resultType, argumentTypes, reexecutability == Reexecutability.REEXECUTABLE, killedLocations, transition == SAFEPOINT, transition == SAFEPOINT);
+        this.transition = transition;
+        this.reexecutability = reexecutability;
+    }
+
+    public HotSpotForeignCallDescriptor(Transition transition, Reexecutability reexecutability, LocationIdentity killedLocation, String name, Class<?> resultType, Class<?>... argumentTypes) {
+        this(transition, reexecutability, killedLocation == null ? HotSpotForeignCallsProviderImpl.NO_LOCATIONS : new LocationIdentity[]{killedLocation}, name, resultType, argumentTypes);
+    }
+
+    public HotSpotForeignCallDescriptor(ForeignCallSignature signature, Transition transition, Reexecutability reexecutability, LocationIdentity[] killedLocations) {
+        this(transition, reexecutability, killedLocations, signature.getName(), signature.getResultType(), signature.getArgumentTypes());
+    }
+
+    public Transition getTransition() {
+        return transition;
+    }
+
+    public Reexecutability getReexecutability() {
+        return reexecutability;
+    }
+
+    @Override
+    public String toString() {
+        return "HotSpotForeignCallDescriptor{" + signature +
+                        ", isReexecutable=" + isReexecutable +
+                        ", canDeoptimize=" + canDeoptimize +
+                        ", isGuaranteedSafepoint=" + isGuaranteedSafepoint +
+                        ", killedLocations=" + Arrays.toString(killedLocations) +
+                        ", transition=" + transition +
+                        ", reexecutability=" + reexecutability +
+                        '}';
     }
 }
