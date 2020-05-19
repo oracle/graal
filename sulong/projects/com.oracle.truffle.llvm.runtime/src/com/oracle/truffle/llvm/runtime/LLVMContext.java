@@ -47,11 +47,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -295,8 +295,13 @@ public final class LLVMContext {
             // add internal library location also to the external library lookup path
             addLibraryPath(internalLibraryPath.toString());
         }
-        Loader loader = getLanguage().getCapability(Loader.class);
-        loader.loadDefaults(this, internalLibraryPath);
+        try {
+            CallTarget libpolyglotMock = env.parseInternal(Source.newBuilder("llvm",
+                            env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()).toUri())).internal(true).build());
+            libpolyglotMock.call();
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private List<ContextExtension> getContextExtensions() {

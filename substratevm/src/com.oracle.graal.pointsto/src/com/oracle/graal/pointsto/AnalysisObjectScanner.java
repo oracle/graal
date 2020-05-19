@@ -134,8 +134,6 @@ public class AnalysisObjectScanner extends ObjectScanner {
         Object valueObj = bb.getSnippetReflectionProvider().asObject(Object.class, value);
         AnalysisType type = bb.getMetaAccess().lookupJavaType(valueObj.getClass());
 
-        if (!type.isInstantiated()) {
-            type.registerAsInHeap();
-        }
+        type.registerAsInHeap();
     }
 }

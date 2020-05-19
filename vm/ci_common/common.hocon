@@ -170,6 +170,10 @@ gate_vm_darwin: ${vm_darwin} {
   targets: [gate]
 }
 
+gate_vm_windows: ${vm_windows} {
+  targets: [gate]
+}
+
 bench_vm_linux: ${vm_linux} {
   targets: [bench, post-merge]
 }

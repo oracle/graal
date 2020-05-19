@@ -132,7 +132,9 @@ final class ReferenceObjectProcessing {
             }
         }
         trace.string(" remembered to revisit later]").newline();
-        ReferenceInternals.setNextDiscovered(dr, rememberedRefsList);
+        // null link means undiscovered, avoid for the last node with a cyclic reference
+        Reference<?> next = (rememberedRefsList != null) ? rememberedRefsList : dr;
+        ReferenceInternals.setNextDiscovered(dr, next);
         rememberedRefsList = dr;
     }
 
@@ -221,7 +223,8 @@ final class ReferenceObjectProcessing {
     private static Reference<?> popRememberedRef() {
         Reference<?> result = rememberedRefsList;
         if (result != null) {
-            rememberedRefsList = ReferenceInternals.getNextDiscovered(result);
+            Reference<?> next = ReferenceInternals.getNextDiscovered(result);
+            rememberedRefsList = (next != result) ? next : null; // cyclic link for last node
             ReferenceInternals.setNextDiscovered(result, null);
         }
         return result;

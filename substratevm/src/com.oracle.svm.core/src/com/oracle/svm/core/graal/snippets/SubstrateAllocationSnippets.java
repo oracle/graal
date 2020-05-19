@@ -77,10 +77,6 @@ import com.oracle.svm.core.allocationprofile.AllocationSite;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
-import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewArrayNode;
-import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewInstanceNode;
-import com.oracle.svm.core.graal.nodes.SubstrateNewArrayNode;
-import com.oracle.svm.core.graal.nodes.SubstrateNewInstanceNode;
 import com.oracle.svm.core.graal.nodes.UnreachableNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -420,24 +416,11 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         }
 
         public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-            NewInstanceLowering newInstanceLowering = new NewInstanceLowering();
-            lowerings.put(NewInstanceNode.class, newInstanceLowering);
-            lowerings.put(SubstrateNewInstanceNode.class, newInstanceLowering);
-
-            NewArrayLowering newArrayLowering = new NewArrayLowering();
-            lowerings.put(NewArrayNode.class, newArrayLowering);
-            lowerings.put(SubstrateNewArrayNode.class, newArrayLowering);
-
-            DynamicNewInstanceLowering dynamicNewInstanceLowering = new DynamicNewInstanceLowering();
-            lowerings.put(DynamicNewInstanceNode.class, dynamicNewInstanceLowering);
-            lowerings.put(SubstrateDynamicNewInstanceNode.class, dynamicNewInstanceLowering);
-
-            DynamicNewArrayLowering dynamicNewArrayLowering = new DynamicNewArrayLowering();
-            lowerings.put(DynamicNewArrayNode.class, dynamicNewArrayLowering);
-            lowerings.put(SubstrateDynamicNewArrayNode.class, dynamicNewArrayLowering);
-
-            NewMultiArrayLowering newMultiArrayLowering = new NewMultiArrayLowering();
-            lowerings.put(NewMultiArrayNode.class, newMultiArrayLowering);
+            lowerings.put(NewInstanceNode.class, new NewInstanceLowering());
+            lowerings.put(NewArrayNode.class, new NewArrayLowering());
+            lowerings.put(DynamicNewInstanceNode.class, new DynamicNewInstanceLowering());
+            lowerings.put(DynamicNewArrayNode.class, new DynamicNewArrayLowering());
+            lowerings.put(NewMultiArrayNode.class, new NewMultiArrayLowering());
         }
 
         private AllocationProfilingData getProfilingData(ValueNode node, ResolvedJavaType type) {

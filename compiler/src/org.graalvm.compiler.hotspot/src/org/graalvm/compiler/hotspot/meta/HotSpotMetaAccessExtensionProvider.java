@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.asm;
+package org.graalvm.compiler.hotspot.meta;
 
-public class AsmOptions {
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 
-    public static final int InitialCodeBufferSize = 232;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+
+public class HotSpotMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
+    @Override
+    public JavaKind getStorageKind(JavaType type) {
+        return type.getJavaKind();
+    }
+
+    @Override
+    public boolean canConstantFoldDynamicAllocation(JavaType type) {
+        return true;
+    }
 }

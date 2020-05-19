@@ -32,6 +32,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -62,17 +63,27 @@ public class SubstrateOptionsParser {
 
     public static final String HOSTED_OPTION_PREFIX = "-H:";
     public static final String RUNTIME_OPTION_PREFIX = "-R:";
+    public static final int PRINT_OPTION_INDENTATION = 2;
+    public static final int PRINT_OPTION_WIDTH = 45;
+    public static final int PRINT_OPTION_WRAP_WIDTH = 120;
 
     /**
      * The result of {@link SubstrateOptionsParser#parseOption}.
      */
     static final class OptionParseResult {
         private final EnumSet<OptionType> printFlags;
+        private final Set<String> optionNameFilter;
         private final String error;
+        private static final String EXTRA_HELP_OPTIONS_WILDCARD = "*";
 
-        private OptionParseResult(EnumSet<OptionType> printFlags, String error) {
+        private OptionParseResult(EnumSet<OptionType> printFlags, String error, Set<String> optionNameFilter) {
             this.printFlags = printFlags;
             this.error = error;
+            this.optionNameFilter = optionNameFilter;
+        }
+
+        private OptionParseResult(EnumSet<OptionType> printFlags, String error) {
+            this(printFlags, error, new HashSet<>());
         }
 
         static OptionParseResult error(String message) {
@@ -87,12 +98,25 @@ public class SubstrateOptionsParser {
             return new OptionParseResult(selectedOptionTypes, null);
         }
 
+        static OptionParseResult printFlagsWithExtraHelp(Set<String> optionNameFilter) {
+            Set<String> optionNames = optionNameFilter;
+            if (optionNames.contains(EXTRA_HELP_OPTIONS_WILDCARD)) {
+                optionNames = new HashSet<>();
+                optionNames.add(EXTRA_HELP_OPTIONS_WILDCARD);
+            }
+            return new OptionParseResult(EnumSet.noneOf(OptionType.class), null, optionNames);
+        }
+
         boolean printFlags() {
             return !printFlags.isEmpty();
         }
 
+        boolean printFlagsWithExtraHelp() {
+            return !optionNameFilter.isEmpty();
+        }
+
         public boolean isValid() {
-            return printFlags.isEmpty() && error == null;
+            return printFlags.isEmpty() && optionNameFilter.isEmpty() && error == null;
         }
 
         public String getError() {
@@ -100,8 +124,17 @@ public class SubstrateOptionsParser {
         }
 
         private boolean matchesFlags(OptionDescriptor d, boolean svmOption) {
-            boolean showAll = printFlags.equals(EnumSet.allOf(OptionType.class));
-            return showAll || svmOption && printFlags.contains(d.getOptionType());
+            if (!printFlags.isEmpty()) {
+                boolean showAll = printFlags.equals(EnumSet.allOf(OptionType.class));
+                return showAll || svmOption && printFlags.contains(d.getOptionType());
+            }
+            if (!optionNameFilter.isEmpty()) {
+                if (optionNameFilter.contains(EXTRA_HELP_OPTIONS_WILDCARD) && !d.getExtraHelp().isEmpty()) {
+                    return true;
+                }
+                return optionNameFilter.contains(d.getName());
+            }
+            return false;
         }
 
         boolean matchesFlagsRuntime(OptionDescriptor d) {
@@ -254,6 +287,12 @@ public class SubstrateOptionsParser {
             }
             return OptionParseResult.printFlags(selectedOptionTypes);
         }
+        if (SubstrateOptions.PrintFlagsWithExtraHelp.getName().equals(optionName)) {
+            String optionValue = (String) value;
+            String[] optionNames = SubstrateUtil.split(optionValue, ",");
+            HashSet<String> selectedOptionNames = new HashSet<>(Arrays.asList(optionNames));
+            return OptionParseResult.printFlagsWithExtraHelp(selectedOptionNames);
+        }
 
         return OptionParseResult.correct();
     }
@@ -309,8 +348,8 @@ public class SubstrateOptionsParser {
         }
 
         OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, arg.substring(optionPrefix.length()), valuesMap, optionPrefix, booleanOptionFormat);
-        if (optionParseResult.printFlags()) {
-            SubstrateOptionsParser.printFlags(optionParseResult::matchesFlagsHosted, options, optionPrefix, out);
+        if (optionParseResult.printFlags() || optionParseResult.printFlagsWithExtraHelp()) {
+            SubstrateOptionsParser.printFlags(optionParseResult::matchesFlagsHosted, options, optionPrefix, out, optionParseResult.printFlagsWithExtraHelp());
             throw new InterruptImageBuilding();
         }
         if (!optionParseResult.isValid()) {
@@ -341,13 +380,14 @@ public class SubstrateOptionsParser {
         return sb.toString();
     }
 
-    private static void printOption(PrintStream out, String option, String description) {
-        printOption(out::println, option, description, 2, 45, 120);
+    private static void printOption(PrintStream out, String option, String description, int wrap) {
+        printOption(out::println, option, description, PRINT_OPTION_INDENTATION, PRINT_OPTION_WIDTH, wrap);
     }
 
     public static void printOption(Consumer<String> println, String option, String description, int indentation, int optionWidth, int wrapWidth) {
         String indent = spaces(indentation);
-        String desc = wrap(description != null ? description : "", wrapWidth);
+        String desc = description != null ? description : "";
+        desc = wrapWidth > 0 ? wrap(desc, wrapWidth) : desc;
         String nl = System.lineSeparator();
         String[] descLines = SubstrateUtil.split(desc, nl);
         if (option.length() >= optionWidth && description != null) {
@@ -360,13 +400,13 @@ public class SubstrateOptionsParser {
         }
     }
 
-    static void printFlags(Predicate<OptionDescriptor> filter, SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out) {
+    static void printFlags(Predicate<OptionDescriptor> filter, SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out, boolean verbose) {
         for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
             OptionDescriptor descriptor = entry.getValue();
             if (!filter.test(descriptor)) {
                 continue;
             }
-            String helpMsg = descriptor.getHelp();
+            String helpMsg = verbose && !descriptor.getExtraHelp().isEmpty() ? "" : descriptor.getHelp();
             int helpLen = helpMsg.length();
             if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
                 helpMsg += '.';
@@ -401,6 +441,13 @@ public class SubstrateOptionsParser {
                     stringifiedArrayValue = true;
                 }
             }
+            String verboseHelp = "";
+            if (verbose) {
+                verboseHelp = System.lineSeparator() + descriptor.getHelp() + System.lineSeparator() + String.join(System.lineSeparator(), descriptor.getExtraHelp());
+            } else if (!descriptor.getExtraHelp().isEmpty()) {
+                verboseHelp = " [Extra help available]";
+            }
+            int wrapWidth = verbose ? 0 : PRINT_OPTION_WRAP_WIDTH;
             if (descriptor.getOptionValueType() == Boolean.class) {
                 Boolean val = (Boolean) defaultValue;
                 if (helpLen != 0) {
@@ -413,7 +460,7 @@ public class SubstrateOptionsParser {
                         helpMsg += "Default: - (disabled).";
                     }
                 }
-                printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg);
+                printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg + verboseHelp, wrapWidth);
             } else {
                 if (defaultValue == null) {
                     if (helpLen != 0) {
@@ -421,13 +468,14 @@ public class SubstrateOptionsParser {
                     }
                     helpMsg += "Default: None";
                 }
+                helpMsg += verboseHelp;
                 if (stringifiedArrayValue || defaultValue == null) {
-                    printOption(out, prefix + entry.getKey() + "=...", helpMsg);
+                    printOption(out, prefix + entry.getKey() + "=...", helpMsg, wrapWidth);
                 } else {
                     if (defaultValue instanceof String) {
                         defaultValue = '"' + String.valueOf(defaultValue) + '"';
                     }
-                    printOption(out, prefix + entry.getKey() + "=" + defaultValue, helpMsg);
+                    printOption(out, prefix + entry.getKey() + "=" + defaultValue, helpMsg, wrapWidth);
                 }
             }
         }

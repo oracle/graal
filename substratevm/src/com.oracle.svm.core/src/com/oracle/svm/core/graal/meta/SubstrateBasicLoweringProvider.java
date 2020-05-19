@@ -29,6 +29,7 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -47,8 +48,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
@@ -56,8 +55,6 @@ import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
-import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
-import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.DefaultJavaLoweringProvider;
@@ -73,10 +70,6 @@ import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
-import com.oracle.svm.core.graal.nodes.SubstrateNewArrayNode;
-import com.oracle.svm.core.graal.nodes.SubstrateNewInstanceNode;
-import com.oracle.svm.core.graal.nodes.SubstrateVirtualArrayNode;
-import com.oracle.svm.core.graal.nodes.SubstrateVirtualInstanceNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -98,8 +91,10 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     private final AbstractObjectStamp hubStamp;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateBasicLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig, TargetDescription target) {
-        super(metaAccess, foreignCalls, platformConfig, target, ReferenceAccess.singleton().haveCompressedReferences());
+    public SubstrateBasicLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
+                    MetaAccessExtensionProvider metaAccessExtensionProvider,
+                    TargetDescription target) {
+        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target, ReferenceAccess.singleton().haveCompressedReferences());
         lowerings = new HashMap<>();
 
         AbstractObjectStamp hubRefStamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(DynamicHub.class)));
@@ -213,22 +208,6 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         return field.isAccessed() ? field.getLocation() : -1;
     }
 
-    @Override
-    public NewInstanceNode createNewInstanceFromVirtual(VirtualObjectNode virtual) {
-        if (virtual instanceof SubstrateVirtualInstanceNode) {
-            return new SubstrateNewInstanceNode(virtual.type(), true, null);
-        }
-        return super.createNewInstanceFromVirtual(virtual);
-    }
-
-    @Override
-    protected NewArrayNode createNewArrayFromVirtual(VirtualObjectNode virtual, ValueNode length) {
-        if (virtual instanceof SubstrateVirtualArrayNode) {
-            return new SubstrateNewArrayNode(((VirtualArrayNode) virtual).componentType(), length, true, null);
-        }
-        return super.createNewArrayFromVirtual(virtual, length);
-    }
-
     private static void lowerAssertionNode(AssertionNode n) {
         // we discard the assertion if it was not handled by any other lowering
         n.graph().removeFixed(n);
@@ -242,10 +221,5 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     @Override
     protected ValueNode newCompressionNode(CompressionOp op, ValueNode value) {
         return new SubstrateCompressionNode(op, value, ReferenceAccess.singleton().getCompressEncoding());
-    }
-
-    @Override
-    public final JavaKind getStorageKind(ResolvedJavaField field) {
-        return ((SharedField) field).getStorageKind();
     }
 }

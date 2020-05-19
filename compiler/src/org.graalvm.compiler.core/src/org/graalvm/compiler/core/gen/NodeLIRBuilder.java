@@ -158,7 +158,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-        return new DebugInfoBuilder(nodeValueMap, graph.getDebug());
+        return new DebugInfoBuilder(nodeValueMap, gen.getProviders().getMetaAccessExtensionProvider(), graph.getDebug());
     }
 
     /**
