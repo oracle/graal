@@ -95,7 +95,6 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
-import com.oracle.svm.core.graal.nodes.SubstrateNewInstanceNode;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
@@ -544,7 +543,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                     if (singleNewInstance instanceof NewInstanceNode) {
                         type = lookup(((NewInstanceNode) singleNewInstance).instanceClass());
                     }
-                    ValueNode newInstance = b.add(new SubstrateNewInstanceNode(type, true));
+                    ValueNode newInstance = b.add(new NewInstanceNode(type, true));
                     transplantedNewInstance = maybeEmitClassCast(b, classCastStamp, newInstance);
                 }
 
