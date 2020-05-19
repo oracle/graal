@@ -26,15 +26,10 @@ package org.graalvm.compiler.truffle.common;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * A provider for {@link TruffleCallNode}s.
  */
 public interface TruffleMetaAccessProvider {
-
-    List<CompilableTruffleAST> targets = new ArrayList<>();
 
     /**
      * Gets the runtime representation of the call node constant.
@@ -47,13 +42,15 @@ public interface TruffleMetaAccessProvider {
      */
     TruffleSourceLanguagePosition getPosition(JavaConstant node);
 
-    default void addTargetToDequeue(CompilableTruffleAST target) {
-        targets.add(target);
-    }
+    /**
+     * Records the given target to be dequed from the compilation queue at the end of the current
+     * compilation.
+     */
+    void addTargetToDequeue(CompilableTruffleAST target);
 
-    default void dequeueTargets() {
-        for (CompilableTruffleAST target : targets) {
-            target.cancelInstalledTask();
-        }
-    }
+    /**
+     * Dequeue from the compilation queue the targets
+     * {@link #addTargetToDequeue(CompilableTruffleAST) added}.
+     */
+    void dequeueTargets();
 }

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.libgraal.jni.HSObject;
 
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindCallNode;
@@ -115,6 +116,16 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
             return null;
         }
         return new HSTruffleSourceLanguagePosition(scope, res);
+    }
+
+    @Override
+    public void addTargetToDequeue(CompilableTruffleAST target) {
+        // TODO
+    }
+
+    @Override
+    public void dequeueTargets() {
+        // TODO
     }
 
     /**
