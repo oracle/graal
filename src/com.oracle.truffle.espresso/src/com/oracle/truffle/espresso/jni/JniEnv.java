@@ -652,7 +652,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 // primitive java.lang.Class
                 Klass klass = clazz.getMirrorKlass();
                 if (klass.isPrimitive()) {
-                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoSuchMethodError, String.format("static %s.%s%s", klass, name, signature));
+                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoSuchMethodError, name);
                 }
 
                 klass.safeInitialize();
@@ -1518,6 +1518,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @param charsPtr a pointer to a Unicode string.
      */
     @JniImpl
+    @TruffleBoundary
     public void ReleaseStringChars(@SuppressWarnings("unused") @Host(String.class) StaticObject string, @Pointer TruffleObject charsPtr) {
         long nativePtr = interopAsPointer(charsPtr);
         assert nativeBuffers.containsKey(nativePtr);
@@ -1525,6 +1526,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
+    @TruffleBoundary
     public void ReleaseStringUTFChars(@SuppressWarnings("unused") @Host(String.class) StaticObject str, @Pointer TruffleObject charsPtr) {
         long nativePtr = interopAsPointer(charsPtr);
         assert nativeBuffers.containsKey(nativePtr);
@@ -1532,6 +1534,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
+    @TruffleBoundary
     public void ReleaseStringCritical(@SuppressWarnings("unused") @Host(String.class) StaticObject str, @Pointer TruffleObject criticalRegionPtr) {
         long nativePtr = interopAsPointer(criticalRegionPtr);
         assert nativeBuffers.containsKey(nativePtr);
@@ -1696,6 +1699,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public static void FatalError(@Pointer TruffleObject msgPtr) {
         String msg = interopPointerToString(msgPtr);
+        CompilerDirectives.transferToInterpreter();
         throw new EspressoError(msg);
     }
 
@@ -1873,6 +1877,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     // region Release*ArrayElements
 
+    @TruffleBoundary
     private void ReleasePrimitiveArrayElements(StaticObject object, @Pointer TruffleObject bufPtr, int mode) {
         if (mode == 0 || mode == JNI_COMMIT) { // Update array contents.
             StaticObject array = object;
@@ -2046,6 +2051,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region Register/Unregister natives
 
     @JniImpl
+    @TruffleBoundary
     public int RegisterNative(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject methodNamePtr, @Pointer TruffleObject methodSignaturePtr, @Pointer TruffleObject closure) {
         String methodName = interopPointerToString(methodNamePtr);
         String methodSignature = interopPointerToString(methodSignaturePtr);
@@ -2095,6 +2101,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *            Returns 0 on success; returns a negative value on failure.
      */
     @JniImpl
+    @TruffleBoundary
     public int UnregisterNatives(@Host(Class.class) StaticObject clazz) {
         Klass klass = clazz.getMirrorKlass();
         for (Method m : klass.getDeclaredMethods()) {
@@ -2148,7 +2155,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             }
         }
 
-        throw EspressoError.shouldNotReachHere("Method/constructor not found " + method);
+        throw EspressoError.shouldNotReachHere("Method/constructor not found ", method);
     }
 
     /**
@@ -2173,7 +2180,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             }
         }
 
-        throw EspressoError.shouldNotReachHere("Field not found " + field);
+        throw EspressoError.shouldNotReachHere("Field not found ", field);
     }
 
     /**
@@ -2490,6 +2497,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
+    @TruffleBoundary
     public void ReleasePrimitiveArrayCritical(@Host(Object.class) StaticObject object, @Pointer TruffleObject carrayPtr, int mode) {
         if (mode == 0 || mode == JNI_COMMIT) { // Update array contents.
             StaticObject array = object;
@@ -2613,6 +2621,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
+    @TruffleBoundary
     public @Host(Class.class) StaticObject FindClass(@Pointer TruffleObject namePtr,
                     @GuestCall DirectCallNode java_lang_ClassLoader_getSystemClassLoader, @GuestCall DirectCallNode java_lang_ClassLoader$NativeLibrary_getFromClass,
                     @GuestCall DirectCallNode java_lang_Class_forName_String_boolean_ClassLoader,

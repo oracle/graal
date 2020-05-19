@@ -58,7 +58,6 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.jni.Pointer;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -103,6 +102,7 @@ import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
 import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
+import com.oracle.truffle.espresso.jni.Pointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -332,6 +332,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    // SVM windows has System.currentTimeMillis() BlackListed.
+    @TruffleBoundary
     public static long JVM_CurrentTimeMillis(@SuppressWarnings("unused") StaticObject ignored) {
         return System.currentTimeMillis();
     }
@@ -442,6 +444,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    @TruffleBoundary
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notifyAll is just forwarded from the guest.")
     public void JVM_MonitorNotifyAll(@Host(Object.class) StaticObject self, @InjectProfile SubstitutionProfiler profiler) {
         try {
@@ -454,6 +457,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    @TruffleBoundary
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
     public void JVM_MonitorNotify(@Host(Object.class) StaticObject self, @InjectProfile SubstitutionProfiler profiler) {
         try {
@@ -506,6 +510,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
+    @TruffleBoundary
     public static boolean JVM_SupportsCX8() {
         try {
             Class<?> klass = Class.forName("java.util.concurrent.atomic.AtomicLong");
@@ -519,6 +524,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    @TruffleBoundary
     // TODO(peterssen): @Type annotaion only for readability purposes.
     public @Host(String.class) StaticObject JVM_InternString(@Host(String.class) StaticObject self) {
         return getInterpreterToVM().intern(self);
@@ -645,6 +651,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    @TruffleBoundary
     public @Host(StackTraceElement.class) StaticObject JVM_GetStackTraceElement(@Host(Throwable.class) StaticObject self, int index,
                     @GuestCall DirectCallNode java_lang_StackTraceElement_init, @InjectProfile SubstitutionProfiler profiler) {
         Meta meta = getMeta();
@@ -1649,11 +1656,12 @@ public final class VM extends NativeEnv implements ContextAccess {
             return (StaticObject) getMeta().java_lang_Long_valueOf.invokeDirect(null, (long) elem);
         }
 
-        throw EspressoError.shouldNotReachHere("Not a boxed type " + elem);
+        throw EspressoError.shouldNotReachHere("Not a boxed type ", elem);
     }
 
     @VmImpl
     @JniImpl
+    @TruffleBoundary
     public @Host(String.class) StaticObject JVM_GetSystemPackage(@Host(String.class) StaticObject name) {
         String hostPkgName = Meta.toHostString(name);
         if (hostPkgName.endsWith("/")) {
@@ -1665,6 +1673,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    @TruffleBoundary
     public @Host(String[].class) StaticObject JVM_GetSystemPackages() {
         String[] packages = getRegistries().getBootClassRegistry().getPackages();
         StaticObject[] array = new StaticObject[packages.length];
@@ -1687,6 +1696,7 @@ public final class VM extends NativeEnv implements ContextAccess {
      */
     @VmImpl
     @JniImpl
+    @TruffleBoundary
     public @Host(typeName = "Ljava/lang/AssertionStatusDirectives;") StaticObject JVM_AssertionStatusDirectives(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused) {
         Meta meta = getMeta();
         StaticObject instance = meta.java_lang_AssertionStatusDirectives.allocateInstance();
@@ -1990,6 +2000,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
+    @TruffleBoundary
     public int GetThreadInfo(@Host(long[].class) StaticObject ids, int maxDepth, @Host(Object[].class) StaticObject infoArray, @InjectProfile SubstitutionProfiler profiler) {
         Meta meta = getMeta();
         if (StaticObject.isNull(ids) || StaticObject.isNull(infoArray)) {
@@ -2223,7 +2234,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             case JMM_THREAD_ALLOCATED_MEMORY:
                 return JMM_THREAD_ALLOCATED_MEMORY_state;
         }
-        throw EspressoError.unimplemented("GetBoolAttribute " + att);
+        throw EspressoError.unimplemented("GetBoolAttribute ", att);
     }
 
     @JniImpl
@@ -2241,12 +2252,13 @@ public final class VM extends NativeEnv implements ContextAccess {
             case JMM_THREAD_ALLOCATED_MEMORY:
                 return JMM_THREAD_ALLOCATED_MEMORY_state = flag;
         }
-        throw EspressoError.unimplemented("SetBoolAttribute " + att);
+        throw EspressoError.unimplemented("SetBoolAttribute ", att);
     }
 
     @JniImpl
     @VmImpl
-    public int GetVMGlobals(@Host(Object[].class) StaticObject names, /* jmmVMGlobal* */ @Pointer TruffleObject globalsPtr, @SuppressWarnings("unused") int count, @InjectProfile SubstitutionProfiler profiler) {
+    public int GetVMGlobals(@Host(Object[].class) StaticObject names, /* jmmVMGlobal* */ @Pointer TruffleObject globalsPtr, @SuppressWarnings("unused") int count,
+                    @InjectProfile SubstitutionProfiler profiler) {
         Meta meta = getMeta();
         if (getUncached().isNull(globalsPtr)) {
             profiler.profile(0);

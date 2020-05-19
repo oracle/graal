@@ -35,7 +35,7 @@ public class IntrinsicSubstitutorNode extends EspressoMethodNode {
     @Child private Substitutor substitution;
 
     @CompilerDirectives.CompilationFinal //
-    int callCount = 0;
+    int callState = 0;
 
     // Truffle does not want to report split on first call. Delay until the second.
     private final DebugCounter nbSplits;
@@ -55,17 +55,18 @@ public class IntrinsicSubstitutorNode extends EspressoMethodNode {
         assert toSplit.substitution.shouldSplit();
         this.substitution = toSplit.substitution.split();
         this.nbSplits = toSplit.nbSplits;
-        this.callCount = 3;
+        this.callState = 3;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        if (CompilerDirectives.inInterpreter() && callCount <= 1) {
-            callCount++;
+        if (CompilerDirectives.inInterpreter() && callState <= 1) {
+            callState++;
         }
-        if (CompilerDirectives.inInterpreter() && callCount == 2 && !substitution.uninitialized()) {
+        if (CompilerDirectives.inInterpreter() && callState == 2 && !substitution.uninitialized()) {
+            // Hints to the truffle runtime that it should split this node on every new call site
             reportPolymorphicSpecialize();
-            callCount = 3;
+            callState = 3;
         }
         return substitution.invoke(frame.getArguments());
     }
