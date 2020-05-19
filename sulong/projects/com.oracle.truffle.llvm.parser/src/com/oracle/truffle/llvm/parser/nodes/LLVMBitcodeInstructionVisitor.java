@@ -863,7 +863,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(LoadInstruction load) {
         LLVMExpressionNode source = resolveOptimized(load.getSource());
-        LLVMExpressionNode result = CommonNodeFactory.createLoad(load.getType(), source);
+        LLVMExpressionNode result = nodeFactory.createLoad(load.getType(), source);
 
         createFrameWrite(result, load);
     }

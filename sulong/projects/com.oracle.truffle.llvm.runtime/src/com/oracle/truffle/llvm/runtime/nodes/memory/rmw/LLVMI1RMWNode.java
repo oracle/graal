@@ -61,7 +61,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
-                boolean result = (boolean) read.executeWithTarget(address);
+                boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, value);
                 return result;
             }
@@ -81,7 +81,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
-                boolean result = (boolean) read.executeWithTarget(address);
+                boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result ^ value);
                 return result;
             }
@@ -101,7 +101,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
-                boolean result = (boolean) read.executeWithTarget(address);
+                boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result ^ value);
                 return result;
             }
@@ -121,7 +121,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
-                boolean result = (boolean) read.executeWithTarget(address);
+                boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result & value);
                 return result;
             }
@@ -141,7 +141,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
-                boolean result = (boolean) read.executeWithTarget(address);
+                boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, !(result & value));
                 return result;
             }
@@ -161,7 +161,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
-                boolean result = (boolean) read.executeWithTarget(address);
+                boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result | value);
                 return result;
             }
@@ -181,7 +181,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
-                boolean result = (boolean) read.executeWithTarget(address);
+                boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result ^ value);
                 return result;
             }

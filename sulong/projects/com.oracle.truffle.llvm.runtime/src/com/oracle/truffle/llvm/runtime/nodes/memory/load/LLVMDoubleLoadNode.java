@@ -49,6 +49,8 @@ public abstract class LLVMDoubleLoadNode extends LLVMLoadNode {
         return LLVMDoubleLoadNodeGen.create((LLVMExpressionNode) null);
     }
 
+    public abstract double executeWithTarget(Object address);
+
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected double doDoubleNative(LLVMNativePointer addr,
                     @Cached("createRawIdentityProfile()") DoubleValueProfile profile,

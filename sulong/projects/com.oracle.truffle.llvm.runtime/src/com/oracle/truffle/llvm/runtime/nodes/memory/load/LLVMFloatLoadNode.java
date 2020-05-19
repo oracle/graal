@@ -49,6 +49,8 @@ public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
         return LLVMFloatLoadNodeGen.create((LLVMExpressionNode) null);
     }
 
+    public abstract float executeWithTarget(Object address);
+
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected float doFloatNative(LLVMNativePointer addr,
                     @Cached("createRawIdentityProfile()") FloatValueProfile profile,

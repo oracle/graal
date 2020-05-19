@@ -59,7 +59,7 @@ public abstract class LLVMForeignReadNode extends LLVMNode {
                     @Cached(value = "type.kind", allowUncached = true) @SuppressWarnings(value = "unused") LLVMInteropType.ValueKind cachedKind,
                     @Cached(parameters = "cachedKind") LLVMLoadNode load,
                     @Cached(parameters = "cachedKind.foreignToLLVMType") LLVMDataEscapeNode dataEscape) {
-        Object ret = load.executeWithTarget(ptr);
+        Object ret = load.executeWithTargetGeneric(ptr);
         return dataEscape.executeWithType(ret, type.baseType);
     }
 }

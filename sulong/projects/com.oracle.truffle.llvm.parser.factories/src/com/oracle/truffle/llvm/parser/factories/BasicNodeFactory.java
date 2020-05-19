@@ -465,6 +465,11 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
+    public LLVMExpressionNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget) {
+        return CommonNodeFactory.createLoad(resolvedResultType, loadTarget);
+    }
+
+    @Override
     public LLVMStatementNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
         try {
             return createMemoryStore(pointerNode, valueNode, type);

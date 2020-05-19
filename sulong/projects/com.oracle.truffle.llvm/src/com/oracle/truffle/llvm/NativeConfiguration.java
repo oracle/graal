@@ -48,13 +48,13 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 
-public final class NativeConfiguration implements Configuration {
+public class NativeConfiguration implements Configuration {
 
     private final Loader loader;
     private final LLVMIntrinsicProvider intrinsicProvider;
     private final PlatformCapability<?> platformCapability;
 
-    NativeConfiguration(LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, Key key) {
+    protected NativeConfiguration(LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, Key key) {
         loader = new DefaultLoader();
         intrinsicProvider = new BasicIntrinsicsProvider(language);
         platformCapability = BasicPlatformCapability.create(key.loadCxxLibraries);

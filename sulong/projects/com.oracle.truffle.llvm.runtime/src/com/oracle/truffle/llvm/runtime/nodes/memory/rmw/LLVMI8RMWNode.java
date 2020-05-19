@@ -61,7 +61,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI8LoadNode read,
                         @Cached("createWrite()") LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
-                byte result = (byte) read.executeWithTarget(address);
+                byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, value);
                 return result;
             }
@@ -81,7 +81,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI8LoadNode read,
                         @Cached("createWrite()") LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
-                byte result = (byte) read.executeWithTarget(address);
+                byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ((byte) (result + value)));
                 return result;
             }
@@ -101,7 +101,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI8LoadNode read,
                         @Cached("createWrite()") LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
-                byte result = (byte) read.executeWithTarget(address);
+                byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ((byte) (result - value)));
                 return result;
             }
@@ -121,7 +121,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI8LoadNode read,
                         @Cached("createWrite()") LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
-                byte result = (byte) read.executeWithTarget(address);
+                byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ((byte) (result & value)));
                 return result;
             }
@@ -141,7 +141,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI8LoadNode read,
                         @Cached("createWrite()") LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
-                byte result = (byte) read.executeWithTarget(address);
+                byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ((byte) ~(result & value)));
                 return result;
             }
@@ -161,7 +161,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI8LoadNode read,
                         @Cached("createWrite()") LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
-                byte result = (byte) read.executeWithTarget(address);
+                byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ((byte) (result | value)));
                 return result;
             }
@@ -181,7 +181,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
                         @Cached LLVMI8LoadNode read,
                         @Cached("createWrite()") LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
-                byte result = (byte) read.executeWithTarget(address);
+                byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ((byte) (result ^ value)));
                 return result;
             }

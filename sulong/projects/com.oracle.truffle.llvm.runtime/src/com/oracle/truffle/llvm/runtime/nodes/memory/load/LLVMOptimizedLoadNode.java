@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,10 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.api;
+package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-@NodeChild(value = "address", type = LLVMExpressionNode.class)
-public abstract class LLVMLoadNode extends LLVMExpressionNode {
+public abstract class LLVMOptimizedLoadNode extends LLVMNode {
 
-    public abstract Object executeWithTargetGeneric(Object address);
-
-    public static final LLVMLoadNode create(LLVMInteropType.ValueKind kind) {
-        return CommonNodeFactory.createLoadNode(kind);
-    }
-
-    public static LLVMLoadNode getUncached(LLVMInteropType.ValueKind kind) {
-        return CommonNodeFactory.getUncachedLoadNode(kind);
-    }
 }

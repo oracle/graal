@@ -59,9 +59,9 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, value);
                 return result;
             }
@@ -79,9 +79,9 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result + value);
                 return result;
             }
@@ -99,9 +99,9 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result - value);
                 return result;
             }
@@ -119,9 +119,9 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result & value);
                 return result;
             }
@@ -139,9 +139,9 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ~(result & value));
                 return result;
             }
@@ -159,9 +159,9 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result | value);
                 return result;
             }
@@ -179,9 +179,9 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result ^ value);
                 return result;
             }

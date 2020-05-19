@@ -456,7 +456,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
              */
             LLVMExpressionNode argMaybeUnpack = LLVMUnpackVarargsNodeGen.create(nodeFactory.createFunctionArgNode(argIndex, topLevelPointerType));
             LLVMExpressionNode sourceAddress = getTargetAddress(argMaybeUnpack, topLevelPointerType.getPointeeType(), indices);
-            LLVMExpressionNode sourceLoadNode = CommonNodeFactory.createLoad(currentType, sourceAddress);
+            LLVMExpressionNode sourceLoadNode = nodeFactory.createLoad(currentType, sourceAddress);
             LLVMStatementNode storeNode = nodeFactory.createStore(targetAddress, sourceLoadNode, currentType);
             initializers.add(storeNode);
         }

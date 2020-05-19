@@ -151,7 +151,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
             LLVMMemory memory = language.getLLVMMemory();
             synchronized (address.getObject()) {
                 LLVMNativePointer allocation = allocateResult(frame);
-                byte currentValue = (byte) read.executeWithTarget(address);
+                byte currentValue = read.executeWithTarget(address);
                 boolean success = currentValue == comparisonValue;
                 if (success) {
                     write.executeWithTarget(address, newValue);
@@ -170,7 +170,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
             LLVMMemory memory = language.getLLVMMemory();
             synchronized (address.getObject()) {
                 LLVMNativePointer allocation = allocateResult(frame);
-                short currentValue = (short) read.executeWithTarget(address);
+                short currentValue = read.executeWithTarget(address);
                 boolean success = currentValue == comparisonValue;
                 if (success) {
                     write.executeWithTarget(address, newValue);
@@ -189,7 +189,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
             LLVMMemory memory = language.getLLVMMemory();
             synchronized (address.getObject()) {
                 LLVMNativePointer allocation = allocateResult(frame);
-                int currentValue = (int) read.executeWithTarget(address);
+                int currentValue = read.executeWithTarget(address);
                 boolean success = currentValue == comparisonValue;
                 if (success) {
                     write.executeWithTarget(address, newValue);
@@ -208,7 +208,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
             LLVMMemory memory = language.getLLVMMemory();
             synchronized (address.getObject()) {
                 LLVMNativePointer allocation = allocateResult(frame);
-                long currentValue = (long) read.executeWithTarget(address);
+                long currentValue = (long) read.executeWithTargetGeneric(address);
                 boolean success = currentValue == comparisonValue;
                 if (success) {
                     write.executeWithTarget(address, newValue);
