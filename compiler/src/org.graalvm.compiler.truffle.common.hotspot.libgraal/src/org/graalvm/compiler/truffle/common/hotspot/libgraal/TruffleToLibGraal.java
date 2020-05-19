@@ -57,6 +57,7 @@ public @interface TruffleToLibGraal {
         GetDataPatchesCount,
         GetDumpChannel,
         GetExceptionHandlersCount,
+        GetExecutionID,
         GetGraphDumpDirectory,
         GetInfopoints,
         GetInfopointsCount,
