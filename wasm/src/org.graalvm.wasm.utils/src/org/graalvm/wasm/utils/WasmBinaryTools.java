@@ -51,13 +51,14 @@ import java.util.stream.Collectors;
 
 public class WasmBinaryTools {
 
-    private static void runExternalToolAndVerify(String message, String[] args) throws IOException, InterruptedException {
+    private static void runExternalToolAndVerify(String message, String[] commandLine) throws IOException, InterruptedException {
         Runtime runtime = Runtime.getRuntime();
-        Process process = runtime.exec(args);
+        Process process = runtime.exec(commandLine);
         int exitCode = process.waitFor();
         if (exitCode != 0) {
             String stderr = new BufferedReader(new InputStreamReader((process.getErrorStream()))).lines().collect(Collectors.joining(System.lineSeparator()));
-            Assert.fail(Assert.format("%s: %s", message, stderr));
+            String stdout = new BufferedReader(new InputStreamReader((process.getInputStream()))).lines().collect(Collectors.joining(System.lineSeparator()));
+            Assert.fail(Assert.format("%s ('%s', exit code %d)\nstderr:\n%s\nstdout:\n%s", message, String.join(" ", commandLine), exitCode, stderr, stdout));
         }
     }
 
@@ -73,6 +74,7 @@ public class WasmBinaryTools {
                                         input.getPath(),
                                         // This option is needed so that wat2wasm agrees to generate
                                         // invalid wasm files.
+                                        "-v",
                                         "--no-check",
                                         "-o",
                                         output.getPath(),
