@@ -911,14 +911,21 @@ suite = {
                     "com.oracle.svm.hosted.agent                  to java.instrument",
                     "* to org.graalvm.nativeimage.driver",
                 ],
-                "requiresConcealed" : {
-                    "jdk.internal.vm.ci" : [
+                "requires": [
+                    "java.management",
+                    "jdk.management",
+                ],
+                "requiresConcealed": {
+                    "jdk.internal.vm.ci": [
                         "jdk.vm.ci.meta",
                         "jdk.vm.ci.code",
                         "jdk.vm.ci.services",
                         "jdk.vm.ci.runtime",
                         "jdk.vm.ci.amd64",
                         "jdk.vm.ci.aarch64",
+                    ],
+                    "java.base": [
+                        "sun.security.util",
                     ],
                 },
             },
