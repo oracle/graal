@@ -35,6 +35,7 @@ public class ModuleSupport {
          * As such, we need to start the provider search at the app class loader instead of the
          * platform class loader.
          */
-        return ServiceLoader.load(OptionDescriptors.class, ClassLoader.getSystemClassLoader());
+        //return ServiceLoader.load(OptionDescriptors.class, ClassLoader.getSystemClassLoader());
+        return ServiceLoader.load(ModuleSupport.class.getModule().getLayer(), OptionDescriptors.class);
     }
 }
