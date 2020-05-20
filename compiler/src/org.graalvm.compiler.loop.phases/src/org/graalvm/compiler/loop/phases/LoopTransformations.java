@@ -73,6 +73,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
+import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
@@ -354,6 +355,45 @@ public abstract class LoopTransformations {
                 phi.safeDelete();
             }
             graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After deleting unussed phis");
+        }
+
+        if (graph.hasValueProxies()) {
+            /*
+             * Fix the framestates for the pre loop exit node and the main loop exit node.
+             *
+             * The only exit that actually really exits the original loop is the loop exit of the
+             * post-loop. We can never go from pre/main loop directly to the code after the loop, we
+             * always have to go through the original loop header, thus we need to fix the correct
+             * state on the pre/main loop exit, which is the loop header state with the values fixed
+             * (proxies if need be),
+             */
+            FrameState preLoopExitStateAfter = preLoopBegin.stateAfter().duplicateWithVirtualState();
+            graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After duplicating pre loop begin state for new exit state");
+            preLoopExitStateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
+                @Override
+                public void apply(Node from, Position p) {
+                    ValueNode usage = (ValueNode) p.get(from);
+                    if (preLoopBegin.isPhiAtMerge(usage)) {
+                        Node replacement = proxy(graph, usage, usage, preLoopBegin.loopExits().first());
+                        p.set(from, replacement);
+                    }
+                }
+            });
+            graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After proxy-ing phis for exit state");
+            preLoopBegin.loopExits().first().setStateAfter(preLoopExitStateAfter);
+            graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After setting exit state");
+            FrameState mainLoopExitStateAfter = mainLoopBegin.stateAfter().duplicateWithVirtualState();
+            mainLoopExitStateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
+                @Override
+                public void apply(Node from, Position p) {
+                    ValueNode usage = (ValueNode) p.get(from);
+                    if (mainLoopBegin.isPhiAtMerge(usage)) {
+                        Node replacement = proxy(graph, usage, usage, mainLoopBegin.loopExits().first());
+                        p.set(from, replacement);
+                    }
+                }
+            });
+            mainLoopBegin.loopExits().first().setStateAfter(mainLoopExitStateAfter);
         }
 
         LoopExitNode preLoopExit = preLoopBegin.loopExits().first();
