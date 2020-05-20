@@ -30,18 +30,20 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Function;
 import java.util.logging.Level;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionType;
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import org.graalvm.options.OptionValues;
 
 @TruffleInstrument.Registration(id = WarmupEstimatorInstrument.ID, name = "Warmup Estimator", version = WarmupEstimatorInstrument.VERSION)
 public class WarmupEstimatorInstrument extends TruffleInstrument {
@@ -49,12 +51,30 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     public static final String ID = "warmup";
     public static final String VERSION = "0.0.1";
 
+    static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
+                    new Function<String, Output>() {
+                        @Override
+                        public Output apply(String s) {
+                            try {
+                                return Output.valueOf(s.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                StringBuilder message = new StringBuilder("Output can be one of: ");
+                                for (Output output : Output.values()) {
+                                    message.append(output.toString().toLowerCase());
+                                    message.append(" ");
+                                }
+                                throw new IllegalArgumentException(message.toString());
+                            }
+                        }
+                    });
     @Option(name = "", help = "Enable the Warmup Estimator (default: false).", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
     @Option(name = "RootName", help = "", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<String> ROOT_NAME = new OptionKey<>("");
     @Option(name = "OutputFile", help = "Save output to the given file. Simple output is printed to stdout by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
+    @Option(name = "Output", help = "Can be: 'raw' for json array of raw samples; 'json' for included post processing of samples; 'simple' for just the human-readable post-processing result (default: simple)", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
+                    Output.SIMPLE, CLI_OUTPUT_TYPE);
     @Option(name = "Epsilon", help = "Epsilon value. It's inferred if the value is 0. (default: 1.05)", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<Double> EPSILON = new OptionKey<>(1.05);
 
@@ -93,23 +113,43 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
             throw new IllegalArgumentException("No root with name " + ROOT_NAME.getValue(env.getOptions()) + " found during execution.");
         }
         final OptionValues options = env.getOptions();
+        try (PrintStream stream = outputStream(env, options)) {
+            final ResultsPrinter printer = new ResultsPrinter(new Results(times, EPSILON.getValue(options)), stream);
+            switch (OUTPUT.getValue(options)) {
+                case SIMPLE:
+                    printer.printSimpleResults();
+                    break;
+                case JSON:
+                    printer.printJsonResults();
+                    break;
+                case RAW:
+                    printer.printRawResults();
+                    break;
+            }
+        }
+        super.onDispose(env);
+    }
+
+    private PrintStream outputStream(Env env, OptionValues options) {
         final String outputPath = OUTPUT_FILE.getValue(options);
-        final Results results = new Results(times, EPSILON.getValue(options));
-        ResultsPrinter printer = new ResultsPrinter(results);
         if ("".equals(outputPath)) {
-            printer.printSimpleResults(new PrintStream(env.out()));
+            return new PrintStream(env.out());
         } else {
             final File file = new File(outputPath);
             if (file.exists()) {
                 throw new IllegalArgumentException("Cannot redirect output to an existing file!");
             }
             try {
-                printer.printJsonResults(new PrintStream(new FileOutputStream(file)));
+                return new PrintStream(new FileOutputStream(file));
             } catch (FileNotFoundException e) {
-                e.printStackTrace();
+                throw new IllegalArgumentException("File not found for argument " + outputPath, e);
             }
         }
-        super.onDispose(env);
     }
 
+    enum Output {
+        SIMPLE,
+        JSON,
+        RAW,
+    }
 }
