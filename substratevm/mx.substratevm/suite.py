@@ -48,11 +48,6 @@ suite = {
             "sha1" : "5d534f0b7aa9124d9797a180688468d2f126039a",
         },
 
-        "JDK11_LIBMUSL_STATIC_LIBS" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jdk-static-libs/labsjdk-ce-11.0.7+10-jvmci-20.1-b02-linux-amd64-musl-static-libs.tar.gz"],
-            "sha1" : "59b10b496f11729fba813fc9254eaa9cdad610cc",
-        },
-
         "XERCES_IMPL" : {
             "sha1" : "006898f2bdfeca5ac996cfff1b76ef98af5aa6f2",
             "maven" : {
@@ -1177,30 +1172,6 @@ suite = {
             "description" : "Native-image based junit testing support",
             "layout" : {
                 "native-image.properties" : "file:mx.substratevm/macro-junit.properties",
-            },
-        },
-
-        "JDK11_NATIVE_IMAGE_MUSL_SUPPORT_CE" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "Static JDK11 libraries required for building images with musl",
-            "javaCompliance" : "11",
-            "os_arch" : {
-                "linux" : {
-                    "amd64" : {
-                        "layout" : {
-                            "musl/" : ["extracted-dependency:substratevm:JDK11_LIBMUSL_STATIC_LIBS"],
-                        },
-                    },
-                    "<others>" : {
-                        "ignore" : "only linux-amd64 is supported",
-                    },
-                },
-                "<others>" : {
-                    "<others>" : {
-                        "ignore" : "only linux-amd64 is supported",
-                    },
-                },
             },
         },
 

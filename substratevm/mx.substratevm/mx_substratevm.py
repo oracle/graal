@@ -310,48 +310,8 @@ def get_muslc_compilation_arg(bundle_url=None, bundle_sha1=None, bundle_download
     return native_image_muslc_flag + os.path.abspath(bundle_root)
 
 
-def check_musl_jdk_version_consistent():
-    common_file = join(suite.vc_dir, "common.json")
-    if not exists(common_file):
-        mx.abort("Failed to find the common.json file. Has the file location changed? Expected path: " + common_file)
-    with open(common_file) as f:
-        common_file_parsed = json.load(f)
-    jdks = common_file_parsed.get("jdks")
-    if jdks is None:
-        mx.abort("Failed to get JDK versions from the common.json file. Has the format changed? Expected 'jdk' property in the topmost level.")
-
-    # The only place we can obtain the exact musl library version is from the library URL.
-    # We fetch whatever libraries are available in the primary suite and search for the musl one.
-    # This also avoids code duplication for EE.
-    musl_library = None
-    for library in mx.primary_suite().libs:
-        if library.name.endswith('LIBMUSL_STATIC_LIBS'):
-            musl_library = library
-            break
-    if musl_library is None:
-        mx.abort("Failed to find the musl JDK11 libraries in the primary suite. Has the musl JDK library name changed?")
-    musl_library_file = musl_library.urls[0].rsplit('/', 1)[-1]
-    target_jdk_distribution = "labsjdk-ce-11" if musl_library_file.startswith("labsjdk-ce") else "labsjdk-ee-11"
-    target_version = re.sub("labsjdk-(.*)-linux-(.*)", r"\1", musl_library_file)
-
-    common_jdk = jdks.get(target_jdk_distribution)
-    if common_jdk is None:
-        mx.abort("Failed to fetch the detected labsjdk distribution: " + target_jdk_distribution + ". Has common.json layout changed?")
-    common_jdk_version = common_jdk.get('version')
-    if common_jdk_version is None:
-        mx.abort("Failed to fetch the version of the detected labsjdk ddistribution. Has common.json layout changed?")
-    if common_jdk_version != target_version:
-        mx.abort("Musl and common.json JDK11 version mismatch:" + os.linesep +
-                 " - common.json JDK version for " + target_jdk_distribution + " is: " + common_jdk_version + os.linesep +
-                 " - Musl JDK version is: " + target_version + os.linesep +
-                 "If you are upgrading to a new version of the JDK11, please update the JDK11 musl library: " + musl_library.name +
-                 " located in " + mx.primary_suite().dir + "/mx." + mx.primary_suite().name + "/suite.py")
-    mx.log('Musl and common.json JDK11 version consistency check passed.')
-
-
 def run_musl_basic_tests():
     if is_musl_supported():
-        check_musl_jdk_version_consistent()
         helloworld(['--output-path', svmbuild_dir(), '--static', get_muslc_compilation_arg()])
 
 
@@ -1099,18 +1059,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
 ))
 
-if is_musl_supported():
-    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmStaticLib(
-        suite=suite,
-        name='JDK11 static libraries compiled with muslc',
-        short_name='mjdksl',
-        dir_name=False,
-        license_files=[],
-        third_party_license_files=[],
-        dependencies=['svm'],
-        support_distributions=['substratevm:JDK11_NATIVE_IMAGE_MUSL_SUPPORT_CE'],
-        priority=5
-    ))
 
 def run_helloworld_command(args, config, command_name):
     parser = ArgumentParser(prog='mx ' + command_name)
