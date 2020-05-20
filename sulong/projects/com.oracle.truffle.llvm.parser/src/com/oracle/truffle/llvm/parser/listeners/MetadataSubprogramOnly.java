@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
@@ -65,7 +66,7 @@ public class MetadataSubprogramOnly extends Metadata {
         }
     }
 
-    public static class MDSubprogramParsedException extends RuntimeException {
+    public static class MDSubprogramParsedException extends ControlFlowException {
 
         private static final long serialVersionUID = 1L;
         public final String linkageName;
@@ -75,12 +76,6 @@ public class MetadataSubprogramOnly extends Metadata {
             this.linkageName = linkageName;
             this.displayName = displayName;
         }
-
-        @Override
-        public synchronized Throwable fillInStackTrace() {
-            return this;
-        }
-
     }
 
 }
