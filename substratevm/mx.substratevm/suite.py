@@ -909,6 +909,7 @@ suite = {
                 "exports" : [
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
+                    "com.oracle.svm.core.graal.nodes              to jdk.internal.vm.compiler",
                     "* to org.graalvm.nativeimage.driver",
                 ],
                 "requires": [
@@ -917,15 +918,20 @@ suite = {
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [
+                        "jdk.vm.ci.common",
                         "jdk.vm.ci.meta",
                         "jdk.vm.ci.code",
                         "jdk.vm.ci.services",
                         "jdk.vm.ci.runtime",
                         "jdk.vm.ci.amd64",
                         "jdk.vm.ci.aarch64",
+                        "jdk.vm.ci.hotspot",
                     ],
                     "java.base": [
                         "sun.security.util",
+                        "sun.security.provider",
+                        "com.sun.crypto.provider",
+                        "sun.reflect.generics.repository",
                     ],
                 },
             },
@@ -1098,14 +1104,21 @@ suite = {
                 "com.oracle.graal.pointsto",
                 "com.oracle.graal.pointsto.api",
                 "com.oracle.graal.pointsto.reports",
+                "com.oracle.graal.pointsto.constraints",
                 "com.oracle.graal.pointsto.util",
                 "com.oracle.graal.pointsto.meta",
+                "com.oracle.graal.pointsto.flow",
+                "com.oracle.graal.pointsto.nodes",
                 "com.oracle.graal.pointsto.infrastructure",
+                "com.oracle.graal.pointsto.flow.context.object",
               ],
               "requiresConcealed" : {
                 "java.base" : ["jdk.internal.module"],
                 "jdk.internal.vm.ci" : [
                   "jdk.vm.ci.meta",
+                  "jdk.vm.ci.common",
+                  "jdk.vm.ci.code",
+                  "jdk.vm.ci.runtime",
                 ],
               }
             },

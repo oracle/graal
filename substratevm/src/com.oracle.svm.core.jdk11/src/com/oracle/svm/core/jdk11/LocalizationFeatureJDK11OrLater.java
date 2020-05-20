@@ -46,7 +46,7 @@ final class LocalizationFeatureJDK11OrLater extends LocalizationFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
+        return false && JavaVersionUtil.JAVA_SPEC >= 11;
     }
 
     @Override
