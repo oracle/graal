@@ -50,11 +50,23 @@ public final class FunctionType extends Type {
     private final Type[] argumentTypes;
     private final boolean isVarargs;
 
-    public FunctionType(Type returnType, Type[] argumentTypes, boolean isVarargs) {
+    private FunctionType(Type returnType, Type[] argumentTypes, boolean isVarargs) {
         this.returnTypeAssumption = Truffle.getRuntime().createAssumption("FunctionType.returnType");
         this.returnType = returnType;
         this.argumentTypes = argumentTypes;
         this.isVarargs = isVarargs;
+    }
+
+    /**
+     * Creates a function type with known argument types.
+     *
+     * <b>Attention!</b> the {@code argumentTypes} array will be copied. Modifications to the
+     * original array are not propagated. Use {@link #setArgumentType} to modify the types. If you
+     * want create a function with unknown argument types use
+     * {@link #FunctionType(Type, int, boolean)} )} instead.
+     */
+    public static FunctionType createByCopy(Type returnType, Type[] argumentTypes, boolean isVarargs) {
+        return new FunctionType(returnType, argumentTypes.clone(), isVarargs);
     }
 
     public FunctionType(Type returnType, int numArguments, boolean isVarargs) {
@@ -62,7 +74,7 @@ public final class FunctionType extends Type {
     }
 
     public static FunctionType copy(FunctionType type) {
-        return new FunctionType(type.returnType, type.argumentTypes, type.isVarargs);
+        return createByCopy(type.returnType, type.argumentTypes, type.isVarargs);
     }
 
     public void setArgumentType(int idx, Type type) {

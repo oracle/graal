@@ -65,7 +65,6 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetRecei
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
@@ -215,7 +214,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     @TruffleBoundary
     private Object decorateForeign(Object function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
-        FunctionType newFunctionType = new FunctionType(wrapperFunction.getLLVMFunction().getType().getReturnType(), Type.EMPTY_ARRAY, true);
+        FunctionType newFunctionType = new FunctionType(wrapperFunction.getLLVMFunction().getType().getReturnType(), 0, true);
         DecoratedRoot decoratedRoot = new ForeignDecoratedRoot(lookupLanguageReference(LLVMLanguage.class).get(), newFunctionType, function, wrapperFunction);
         return registerRoot(wrapperFunction.getLLVMFunction().getLibrary(), newFunctionType, decoratedRoot);
     }
