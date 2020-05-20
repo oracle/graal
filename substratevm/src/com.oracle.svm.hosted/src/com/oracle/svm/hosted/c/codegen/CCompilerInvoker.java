@@ -38,7 +38,6 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -126,7 +125,7 @@ public abstract class CCompilerInvoker {
         protected CompilerInfo createCompilerInfo(Path compilerPath, Scanner scanner) {
             try {
                 /* For cl.exe the first line holds all necessary information */
-                scanner.findInLine(Pattern.quote("Microsoft (R) C/C++ Optimizing Compiler Version "));
+                scanner.findInLine("Microsoft.?\\(R\\) C/C\\+\\+ Optimizing Compiler Version ");
                 scanner.useDelimiter("[. ]");
                 int major = scanner.nextInt();
                 int minor0 = scanner.nextInt();
