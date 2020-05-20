@@ -162,7 +162,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
             }
 
             static LangStartVtableType create(DataLayout datalayout, Type vtableType) throws TypeOverflowException {
-                FunctionType fnType = (FunctionType) ((PointerType) ((StructureType) vtableType).getElementTypes()[5]).getPointeeType();
+                FunctionType fnType = (FunctionType) ((PointerType) ((StructureType) vtableType).getElementType(5)).getPointeeType();
                 return new LangStartVtableType(datalayout, (StructureType) vtableType, fnType);
             }
 

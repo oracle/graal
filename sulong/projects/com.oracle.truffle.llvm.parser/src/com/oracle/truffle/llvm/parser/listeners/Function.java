@@ -659,9 +659,9 @@ public final class Function implements ParserListener {
         // type table
         for (Type t : types) {
             if (t instanceof StructureType) {
-                final Type[] elts = ((StructureType) t).getElementTypes();
-                if (elts.length == CMPXCHG_TYPE_LENGTH && elementType == elts[CMPXCHG_TYPE_ELEMENTTYPE] && PrimitiveType.I1 == elts[CMPXCHG_TYPE_BOOLTYPE]) {
-                    return (AggregateType) t;
+                StructureType st = (StructureType) t;
+                if (st.getNumberOfElementsInt() == CMPXCHG_TYPE_LENGTH && elementType == st.getElementType(CMPXCHG_TYPE_ELEMENTTYPE) && PrimitiveType.I1 == st.getElementType(CMPXCHG_TYPE_BOOLTYPE)) {
+                    return st;
                 }
             }
         }
