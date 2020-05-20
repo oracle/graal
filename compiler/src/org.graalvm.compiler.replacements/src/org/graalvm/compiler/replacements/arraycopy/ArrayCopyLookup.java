@@ -27,6 +27,8 @@ package org.graalvm.compiler.replacements.arraycopy;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.vm.ci.meta.JavaKind;
 
 public interface ArrayCopyLookup {
@@ -36,5 +38,5 @@ public interface ArrayCopyLookup {
 
     ForeignCallDescriptor lookupCheckcastArraycopyDescriptor(boolean uninit);
 
-    ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny);
+    ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation);
 }

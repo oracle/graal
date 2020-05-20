@@ -38,6 +38,7 @@ import org.graalvm.compiler.replacements.arraycopy.ArrayCopyLookup;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -100,9 +101,9 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
     }
 
     @Override
-    public ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny) {
+    public ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation) {
         if (arrayCopyLookup != null) {
-            return arrayCopyLookup.lookupArraycopyDescriptor(kind, aligned, disjoint, uninit, killAny);
+            return arrayCopyLookup.lookupArraycopyDescriptor(kind, aligned, disjoint, uninit, killedLocation);
         } else {
             throw VMError.unsupportedFeature("Fast ArrayCopy not supported yet.");
         }
