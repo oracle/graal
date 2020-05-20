@@ -29,14 +29,12 @@ import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
-import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -111,21 +109,10 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
      * Creates and registers the details for linking a foreign call to a {@link Stub}.
      *
      * @param descriptor the signature of the call to the stub
-     * @param transition specifies if this is a {@linkplain Transition#LEAF leaf} call
-     * @param reexecutability specifies if the stub call can be re-executed without (meaningful)
-     *            side effects. Deoptimization will not return to a point before a stub call that
-     *            cannot be re-executed.
-     * @param killedLocations the memory locations killed by the stub call
      */
     public HotSpotForeignCallLinkage registerStubCall(
                     HotSpotForeignCallDescriptor descriptor,
-                    Transition transition,
-                    Reexecutability reexecutability,
-                    RegisterEffect effect,
-                    LocationIdentity... killedLocations) {
-        assert descriptor.getTransition() == transition || (transition == LEAF && descriptor.getTransition() == LEAF_NO_VZERO);
-        assert descriptor.getReexecutability() == reexecutability;
-        assert Arrays.equals(descriptor.getKilledLocations(), killedLocations) : descriptor + ": " + Arrays.toString(descriptor.getKilledLocations()) + " != " + Arrays.toString(killedLocations);
+                    RegisterEffect effect) {
         return register(HotSpotForeignCallLinkageImpl.create(metaAccess,
                         codeCache,
                         wordTypes,
@@ -144,7 +131,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
                     LocationIdentity... killedLocations) {
         HotSpotForeignCallDescriptor descriptor = new HotSpotForeignCallDescriptor(signature, transition, reexecutability, killedLocations);
         signatureMap.put(signature, descriptor);
-        return registerStubCall(descriptor, transition, reexecutability, effect, killedLocations);
+        return registerStubCall(descriptor, effect);
     }
 
     /**
@@ -155,23 +142,11 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
      * @param descriptor the signature of the foreign call
      * @param address the address of the code to call (must be non-zero)
      * @param outgoingCcType outgoing (caller) calling convention type
-     * @param transition specifies if this is a {@linkplain Transition#LEAF leaf} call
-     * @param reexecutability specifies if the foreign call can be re-executed without (meaningful)
-     *            side effects. Deoptimization will not return to a point before a foreign call that
-     *            cannot be re-executed.
-     * @param killedLocations the memory locations killed by the foreign call
      */
     public HotSpotForeignCallLinkage registerForeignCall(
                     HotSpotForeignCallDescriptor descriptor,
                     long address,
-                    CallingConvention.Type outgoingCcType,
-                    Transition transition,
-                    Reexecutability reexecutability,
-                    LocationIdentity... killedLocations) {
-        assert descriptor.getTransition() == transition || (transition == LEAF && descriptor.getTransition() == LEAF_NO_VZERO);
-        assert descriptor.getReexecutability() == reexecutability;
-        assert Arrays.equals(descriptor.getKilledLocations(), killedLocations) : descriptor + ": " + Arrays.toString(descriptor.getKilledLocations()) + " != " + Arrays.toString(killedLocations);
-
+                    CallingConvention.Type outgoingCcType) {
         if (address == 0) {
             throw new IllegalArgumentException("address must be non-zero");
         }
@@ -198,23 +173,12 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
      * @param address the address of the foreign code to call
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
-     * @param transition specifies if this is a {@linkplain Transition#LEAF leaf} call
-     * @param reexecutability specifies if the foreign call can be re-executed without (meaningful)
-     *            side effects. Deoptimization will not return to a point before a foreign call that
-     *            cannot be re-executed.
-     * @param killedLocations the memory locations killed by the foreign call
      */
     public void linkForeignCall(OptionValues options,
                     HotSpotProviders providers,
                     HotSpotForeignCallDescriptor descriptor,
                     long address,
-                    boolean prependThread,
-                    Transition transition,
-                    Reexecutability reexecutability,
-                    LocationIdentity... killedLocations) {
-        assert descriptor.getTransition() == transition || (transition == LEAF && descriptor.getTransition() == LEAF_NO_VZERO);
-        assert descriptor.getReexecutability() == reexecutability;
-        assert Arrays.equals(descriptor.getKilledLocations(), killedLocations) : descriptor + ": " + Arrays.toString(descriptor.getKilledLocations()) + " != " + Arrays.toString(killedLocations);
+                    boolean prependThread) {
         if (address != 0) {
             ForeignCallStub stub = new ForeignCallStub(options, jvmciRuntime, providers, address, descriptor, prependThread);
             HotSpotForeignCallLinkage linkage = stub.getLinkage();
