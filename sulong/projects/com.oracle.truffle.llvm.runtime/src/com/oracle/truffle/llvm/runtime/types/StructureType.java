@@ -52,8 +52,20 @@ public final class StructureType extends AggregateType {
         this.types = types;
     }
 
+    public StructureType(String structName, boolean isPacked, int numElements) {
+        this(structName, isPacked, new Type[numElements]);
+    }
+
     public StructureType(boolean isPacked, Type[] types) {
         this(LLVMIdentifier.UNKNOWN, isPacked, types);
+    }
+
+    public StructureType(boolean isPacked, int numElements) {
+        this(isPacked, new Type[numElements]);
+    }
+
+    public void setElementType(int idx, Type type) {
+        types[idx] = type;
     }
 
     public Type[] getElementTypes() {

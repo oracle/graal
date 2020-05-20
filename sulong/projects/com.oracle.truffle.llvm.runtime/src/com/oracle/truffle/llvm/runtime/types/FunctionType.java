@@ -55,6 +55,14 @@ public final class FunctionType extends Type {
         this.isVarargs = isVarargs;
     }
 
+    public FunctionType(Type returnType, int numArguments, boolean isVarargs) {
+        this(returnType, new Type[numArguments], isVarargs);
+    }
+
+    public void setArgumentType(int idx, Type type) {
+        argumentTypes[idx] = type;
+    }
+
     public Type[] getArgumentTypes() {
         return argumentTypes;
     }
