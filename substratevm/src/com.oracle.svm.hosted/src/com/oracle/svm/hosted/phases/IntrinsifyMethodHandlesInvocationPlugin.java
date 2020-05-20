@@ -475,7 +475,9 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                          * remove the cast here to simplify the graph, remember the type that needs
                          * to be checked, and then re-add the check in the target method.
                          */
-                        classCastStamp = lookup(condition.getCheckedStamp());
+                        if (!(condition.getValue() instanceof DynamicNewInstanceNode)) {
+                            classCastStamp = lookup(condition.getCheckedStamp());
+                        }
                         GraphUtil.removeFixedWithUnusedInputs(guard);
                     }
                 }
@@ -510,10 +512,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 }
             }
 
-            if (singleNewInstance != null && !(singleFunctionality instanceof Invoke)) {
-                throw VMError.shouldNotReachHere("singleFunctionality != Invoke with non null singleNewInstance");
-            }
-
             /*
              * When parsing for compilation, we must not intrinsify method handles that were not
              * intrinsified during analysis. Otherwise new code that was no seen as reachable by the
@@ -529,23 +527,23 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             JavaKind returnResultKind = b.getInvokeReturnType().getJavaKind().getStackKind();
             ValueNode transplantedSingleFunctionality = null;
             ValueNode transplantedNewInstance = null;
-            if (singleFunctionality instanceof Invoke) {
 
+            if (singleNewInstance != null) {
+                ResolvedJavaType type = null;
+                if (singleNewInstance instanceof DynamicNewInstanceNode) {
+                    type = lookup(originalProviders.getConstantReflection().asJavaType(((DynamicNewInstanceNode) singleNewInstance).getInstanceType().asConstant()));
+                }
+                if (singleNewInstance instanceof NewInstanceNode) {
+                    type = lookup(((NewInstanceNode) singleNewInstance).instanceClass());
+                }
+                maybeEmitClassInitialization(b, true, type);
+                transplantedNewInstance = b.add(new NewInstanceNode(type, true));
+            }
+
+            if (singleFunctionality instanceof Invoke) {
                 Invoke singleInvoke = (Invoke) singleFunctionality;
                 MethodCallTargetNode singleCallTarget = (MethodCallTargetNode) singleInvoke.callTarget();
                 ResolvedJavaMethod resolvedTarget = lookup(singleCallTarget.targetMethod());
-
-                if (singleNewInstance != null) {
-                    ResolvedJavaType type = null;
-                    if (singleNewInstance instanceof DynamicNewInstanceNode) {
-                        type = lookup(originalProviders.getConstantReflection().asJavaType(((DynamicNewInstanceNode) singleNewInstance).getInstanceType().asConstant()));
-                    }
-                    if (singleNewInstance instanceof NewInstanceNode) {
-                        type = lookup(((NewInstanceNode) singleNewInstance).instanceClass());
-                    }
-                    ValueNode newInstance = b.add(new NewInstanceNode(type, true));
-                    transplantedNewInstance = maybeEmitClassCast(b, classCastStamp, newInstance);
-                }
 
                 maybeEmitClassInitialization(b, singleCallTarget.invokeKind() == InvokeKind.Static, resolvedTarget.getDeclaringClass());
                 /*

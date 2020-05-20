@@ -125,6 +125,20 @@ public final class SVMHost implements HostVM {
     private final ConcurrentMap<AnalysisMethod, Set<AnalysisType>> initializedClasses = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
+    private static final Method isHiddenMethod;
+
+    static {
+        if (JavaVersionUtil.JAVA_SPEC >= 15) {
+            try {
+                isHiddenMethod = Class.class.getMethod("isHidden");
+            } catch (NoSuchMethodException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        } else {
+            isHiddenMethod = null;
+        }
+    }
+
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport, UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
         this.options = options;
         this.classLoader = classLoader;
@@ -310,11 +324,9 @@ public final class SVMHost implements HostVM {
         boolean isHidden = false;
         if (JavaVersionUtil.JAVA_SPEC >= 15) {
             try {
-                Method isHiddenMethod = Class.class.getMethod("isHidden");
                 isHidden = (boolean) isHiddenMethod.invoke(javaClass);
-            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                String message = "Exception trying to lookup or call isHidden on class: " + javaClass + " " + e;
-                throw new UnsupportedFeatureException(message);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw VMError.shouldNotReachHere(e);
             }
         }
 
