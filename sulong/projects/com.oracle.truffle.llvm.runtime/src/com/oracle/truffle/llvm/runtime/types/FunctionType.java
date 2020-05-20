@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.runtime.types;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -67,8 +69,8 @@ public final class FunctionType extends Type {
         argumentTypes[idx] = type;
     }
 
-    public Type[] getArgumentTypes() {
-        return argumentTypes;
+    public List<Type> getArgumentTypes() {
+        return Collections.unmodifiableList(Arrays.asList(argumentTypes));
     }
 
     public Type getArgumentType(int idx) {

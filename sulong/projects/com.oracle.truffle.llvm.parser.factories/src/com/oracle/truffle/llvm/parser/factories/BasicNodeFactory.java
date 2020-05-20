@@ -1244,7 +1244,7 @@ public class BasicNodeFactory implements NodeFactory {
                 // Inline Sulong intrinsics directly at their call site, to avoid the overhead of a
                 // call node and extra argument nodes.
                 LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-                return intrinsicProvider.generateIntrinsicNode(name, args, argsTypes, this);
+                return intrinsicProvider.generateIntrinsicNode(name, args, Arrays.asList(argsTypes), this);
             }
         }
         return null;

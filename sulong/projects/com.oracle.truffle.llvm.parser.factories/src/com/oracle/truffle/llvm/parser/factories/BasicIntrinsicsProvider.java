@@ -169,7 +169,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     @Override
-    public final RootCallTarget generateIntrinsicTarget(String name, Type[] argTypes, NodeFactory nodeFactory) {
+    public final RootCallTarget generateIntrinsicTarget(String name, List<Type> argTypes, NodeFactory nodeFactory) {
         CompilerAsserts.neverPartOfCompilation();
         LLVMTypedIntrinsicFactory factory = getFactory(name);
         if (factory == null) {
@@ -183,19 +183,19 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
 
             @Override
             public int size() {
-                return argTypes.length;
+                return argTypes.size();
             }
-        }, nodeFactory, language, argTypes));
+        }, nodeFactory, language, argTypes.toArray(Type.EMPTY_ARRAY)));
     }
 
     @Override
-    public final LLVMExpressionNode generateIntrinsicNode(String name, LLVMExpressionNode[] arguments, Type[] argTypes, NodeFactory nodeFactory) {
+    public final LLVMExpressionNode generateIntrinsicNode(String name, LLVMExpressionNode[] arguments, List<Type> argTypes, NodeFactory nodeFactory) {
         CompilerAsserts.neverPartOfCompilation();
         LLVMTypedIntrinsicFactory factory = getFactory(name);
         if (factory == null) {
             return null;
         }
-        return factory.generate(Arrays.asList(arguments), nodeFactory, language, argTypes);
+        return factory.generate(Arrays.asList(arguments), nodeFactory, language, argTypes.toArray(Type.EMPTY_ARRAY));
     }
 
     private LLVMTypedIntrinsicFactory getFactory(String name) {
