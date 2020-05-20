@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
@@ -46,22 +47,49 @@ public final class StructureType extends AggregateType {
     @CompilationFinal(dimensions = 1) private final Type[] types;
     private long size = -1;
 
-    public StructureType(String name, boolean isPacked, Type[] types) {
+    private StructureType(String name, boolean isPacked, Type[] types, boolean dummy) {
         this.name = name;
         this.isPacked = isPacked;
         this.types = types;
     }
 
-    public StructureType(String structName, boolean isPacked, int numElements) {
-        this(structName, isPacked, new Type[numElements]);
+    /**
+     * Creates a named structure type with known element types.
+     *
+     * <b>Attention!</b> the {@code types} array will be copied. Modifications to the original array
+     * are not propagated. Use {@link #setElementType} to modify the types. If you want create a
+     * structure with unknown element types use {@link #StructureType(String, boolean, int)}
+     * instead.
+     */
+    public StructureType(String name, boolean isPacked, Type[] types) {
+        this(name, isPacked, Arrays.copyOf(types, types.length), true);
     }
 
+    /**
+     * @see #StructureType(String, boolean, Type[])
+     */
+    public StructureType(String name, boolean isPacked, ArrayList<Type> types) {
+        this(name, isPacked, types.toArray(Type.EMPTY_ARRAY), true);
+    }
+
+    /**
+     * Creates an unnamed structure type with known element types.
+     *
+     * <b>Attention!</b> the {@code types} array will be copied. Modifications to the original array
+     * are not propagated. Use {@link #setElementType} to modify the types. If you want create a
+     * structure with unknown element types use {@link #StructureType(boolean, int)}
+     * instead.
+     */
     public StructureType(boolean isPacked, Type[] types) {
-        this(LLVMIdentifier.UNKNOWN, isPacked, types);
+        this(LLVMIdentifier.UNKNOWN, isPacked, Arrays.copyOf(types, types.length), true);
+    }
+
+    public StructureType(String name, boolean isPacked, int numElements) {
+        this(name, isPacked, new Type[numElements], true);
     }
 
     public StructureType(boolean isPacked, int numElements) {
-        this(isPacked, new Type[numElements]);
+        this(LLVMIdentifier.UNKNOWN, isPacked, new Type[numElements], true);
     }
 
     public void setElementType(int idx, Type type) {
