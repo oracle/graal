@@ -142,7 +142,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
 
             private LangStartVtableType(DataLayout datalayout, StructureType type, FunctionType fnType) throws TypeOverflowException {
                 this.offsetFn = type.getOffsetOf(5, datalayout);
-                this.fnExpectsCoercedMain = !(((PointerType) fnType.getArgumentTypes()[0]).getPointeeType() instanceof PointerType);
+                this.fnExpectsCoercedMain = !(((PointerType) fnType.getArgumentType(0)).getPointeeType() instanceof PointerType);
             }
 
             long readFn(LLVMMemory memory, long address) {

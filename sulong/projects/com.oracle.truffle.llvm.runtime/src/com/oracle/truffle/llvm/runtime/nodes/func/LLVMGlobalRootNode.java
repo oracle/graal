@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -108,10 +109,10 @@ public class LLVMGlobalRootNode extends RootNode {
      */
     private static int getMainFunctionType(LLVMFunction function) {
         CompilerAsserts.neverPartOfCompilation();
-        Type returnType = function.getType().getReturnType();
-        Type[] argumentTypes = function.getType().getArgumentTypes();
-        if (argumentTypes.length > 0 && argumentTypes[0] instanceof PrimitiveType) {
-            if (((PrimitiveType) argumentTypes[0]).getPrimitiveKind() == PrimitiveKind.I64) {
+        FunctionType functionType = function.getType();
+        Type returnType = functionType.getReturnType();
+        if (functionType.getNumberOfArguments() > 0 && functionType.getArgumentType(0) instanceof PrimitiveType) {
+            if (((PrimitiveType) functionType.getArgumentType(0)).getPrimitiveKind() == PrimitiveKind.I64) {
                 return 1;
             }
         }

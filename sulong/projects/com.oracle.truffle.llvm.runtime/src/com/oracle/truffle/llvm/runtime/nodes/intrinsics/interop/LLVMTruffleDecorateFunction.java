@@ -207,7 +207,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     private Object decorate(LLVMFunctionDescriptor function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
         FunctionType type = wrapperFunction.getLLVMFunction().getType();
-        FunctionType newFunctionType = new FunctionType(type.getReturnType(), type.getArgumentTypes(), type.isVarargs());
+        FunctionType newFunctionType = FunctionType.copy(type);
         NativeDecoratedRoot decoratedRoot = new NativeDecoratedRoot(lookupLanguageReference(LLVMLanguage.class).get(), function, wrapperFunction);
         return registerRoot(function.getLLVMFunction().getLibrary(), newFunctionType, decoratedRoot);
     }

@@ -59,12 +59,24 @@ public final class FunctionType extends Type {
         this(returnType, new Type[numArguments], isVarargs);
     }
 
+    public static FunctionType copy(FunctionType type) {
+        return new FunctionType(type.returnType, type.argumentTypes, type.isVarargs);
+    }
+
     public void setArgumentType(int idx, Type type) {
         argumentTypes[idx] = type;
     }
 
     public Type[] getArgumentTypes() {
         return argumentTypes;
+    }
+
+    public Type getArgumentType(int idx) {
+        return argumentTypes[idx];
+    }
+
+    public int getNumberOfArguments() {
+        return argumentTypes.length;
     }
 
     public Type getReturnType() {

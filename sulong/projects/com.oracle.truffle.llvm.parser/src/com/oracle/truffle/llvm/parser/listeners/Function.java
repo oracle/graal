@@ -166,7 +166,8 @@ public final class Function implements ParserListener {
     public void setupScope() {
         scope.startLocalScope(function);
         final FunctionType functionType = function.getType();
-        for (Type argType : functionType.getArgumentTypes()) {
+        for (int i = 0; i < functionType.getNumberOfArguments(); i++) {
+            Type argType = functionType.getArgumentType(i);
             scope.addSymbol(function.createParameter(argType), argType);
         }
     }
@@ -419,7 +420,7 @@ public final class Function implements ParserListener {
         int[] args = new int[buffer.remaining()];
         int j = 0;
         // the formal parameters are read without forward types
-        while (j < functionType.getArgumentTypes().length && buffer.remaining() > 0) {
+        while (j < functionType.getNumberOfArguments() && buffer.remaining() > 0) {
             args[j++] = readIndex(buffer);
         }
         // now varargs are read with forward types
@@ -502,7 +503,7 @@ public final class Function implements ParserListener {
 
         int[] args = new int[buffer.remaining()];
         int j = 0;
-        while (j < functionType.getArgumentTypes().length && buffer.remaining() > 0) {
+        while (j < functionType.getNumberOfArguments() && buffer.remaining() > 0) {
             args[j++] = readIndex(buffer);
         }
         while (buffer.remaining() > 0) {
