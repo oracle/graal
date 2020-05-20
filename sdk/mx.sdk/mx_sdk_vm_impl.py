@@ -1755,12 +1755,17 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             image_config = self.subject.native_image_config
             return mx.list_to_cmd_line(image_config.extra_jvm_args)
 
+        def _get_option_vars():
+            image_config = self.subject.native_image_config
+            return ' '.join(image_config.option_vars)
+
         _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
         _template_subst.register_no_arg('classpath', _get_classpath)
         _template_subst.register_no_arg('jre_bin', _get_jre_bin)
         _template_subst.register_no_arg('main_class', _get_main_class)
         _template_subst.register_no_arg('extra_jvm_args', _get_extra_jvm_args)
         _template_subst.register_no_arg('macro_name', GraalVmNativeProperties.macro_name(self.subject.native_image_config))
+        _template_subst.register_no_arg('option_vars', _get_option_vars)
 
         with open(self._template_file(), 'r') as template, mx.SafeFileCreation(output_file) as sfc, open(sfc.tmpPath, 'w') as launcher:
             for line in template:

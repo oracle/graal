@@ -132,7 +132,8 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
-                 default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None, **kwargs):
+                 default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None,
+                 option_vars=None, **kwargs):
         """
         :param str main_class
         :param bool is_main_launcher
@@ -147,6 +148,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         self.is_sdk_launcher = is_sdk_launcher
         self.custom_launcher_script = custom_launcher_script
         self.extra_jvm_args = [] if extra_jvm_args is None else extra_jvm_args
+        self.option_vars = [] if option_vars is None else option_vars
 
         self.relative_home_paths = {}
 
