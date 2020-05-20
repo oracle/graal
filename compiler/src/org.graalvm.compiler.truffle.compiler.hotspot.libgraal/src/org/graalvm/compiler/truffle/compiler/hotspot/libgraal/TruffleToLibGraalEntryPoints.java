@@ -753,7 +753,7 @@ final class TruffleToLibGraalEntryPoints {
     @TruffleToLibGraal(GetExecutionID)
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_getExecutionID")
     @SuppressWarnings({"unused", "try"})
-    public JString getExecutionID(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
+    public static JString getExecutionID(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
         JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(GetExecutionID, env);
         try (JNILibGraalScope<TruffleToLibGraal.Id> s = scope) {
             scope.setObjectResult(createHSString(env, GraalServices.getExecutionID()));

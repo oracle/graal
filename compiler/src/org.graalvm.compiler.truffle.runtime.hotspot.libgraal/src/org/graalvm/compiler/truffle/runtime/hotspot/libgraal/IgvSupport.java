@@ -70,10 +70,7 @@ final class IgvSupport extends LibGraalObject implements TruffleDebugContext {
         if (sharedChannel == null) {
             sharedChannel = new IgvDumpChannel(TruffleToLibGraalCalls.getDumpChannel(getIsolateThread(), getHandle()));
         }
-        final GraphOutput<G, M> res = builder
-                .attr("vm.uuid", getExecutionID())  // Make "vm.uuid" a constant in graphio
-                .embedded(true)
-                .build(sharedChannel);
+        final GraphOutput<G, M> res = builder.attr(GraphOutput.ATTR_VM_ID, getExecutionID()).embedded(true).build(sharedChannel);
         parentOutput = res;
         return res;
     }
