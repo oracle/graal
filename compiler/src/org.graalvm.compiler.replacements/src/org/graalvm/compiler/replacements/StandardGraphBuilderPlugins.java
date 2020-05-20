@@ -119,6 +119,7 @@ import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
@@ -182,7 +183,7 @@ public class StandardGraphBuilderPlugins {
         registerBoxingPlugins(plugins);
         registerJMHBlackholePlugins(plugins, replacements);
         registerJFRThrowablePlugins(plugins, replacements);
-        registerMethodHandleImplPlugins(plugins, snippetReflection, replacements);
+        registerMethodHandleImplPlugins(plugins, replacements);
         registerJcovCollectPlugins(plugins, replacements);
     }
 
@@ -1410,7 +1411,7 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerMethodHandleImplPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, Replacements replacements) {
+    private static void registerMethodHandleImplPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.invoke.MethodHandleImpl", replacements);
         // In later JDKs this no longer exists and the usage is replace by Class.cast which is
         // already an intrinsic
@@ -1440,7 +1441,7 @@ public class StandardGraphBuilderPlugins {
                 }
                 if (counters.isConstant()) {
                     ValueNode newResult = result;
-                    int[] ctrs = snippetReflection.asObject(int[].class, (JavaConstant) counters.asConstant());
+                    int[] ctrs = ConstantReflectionUtil.loadIntArrayConstant(b.getConstantReflection(), (JavaConstant) counters.asConstant(), 2);
                     if (ctrs != null && ctrs.length == 2) {
                         int falseCount = ctrs[0];
                         int trueCount = ctrs[1];
@@ -1465,7 +1466,7 @@ public class StandardGraphBuilderPlugins {
                     return true;
                 }
                 b.addPush(JavaKind.Boolean,
-                                new ProfileBooleanNode(snippetReflection, MacroParams.of(b, targetMethod, result, counters)));
+                                new ProfileBooleanNode(b.getConstantReflection(), MacroParams.of(b, targetMethod, result, counters)));
                 return true;
             }
         });

@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static org.graalvm.compiler.nodes.util.ConstantReflectionUtil.loadByteArrayConstant;
+import static org.graalvm.compiler.nodes.util.ConstantReflectionUtil.loadCharArrayConstant;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
@@ -43,7 +45,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -73,7 +74,7 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             args.add("targetCount", stringIndexOf.getArgument(5));
             args.add("origFromIndex", stringIndexOf.getArgument(6));
             JavaConstant targetArg = stringIndexOf.getArgument(3).asJavaConstant();
-            char[] targetCharArray = loadCharArrayConstant(targetArg);
+            char[] targetCharArray = loadCharArrayConstant(providers.getConstantReflection(), targetArg, Integer.MAX_VALUE);
             args.addConst("md2", md2(targetCharArray));
             args.addConst("cache", computeCache(targetCharArray));
             template(stringIndexOf, args).instantiate(providers.getMetaAccess(), stringIndexOf, DEFAULT_REPLACER, args);
@@ -88,7 +89,7 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             args.add("targetCount", latin1IndexOf.getArgument(3));
             args.add("origFromIndex", latin1IndexOf.getArgument(4));
             JavaConstant targetArg = latin1IndexOf.getArgument(2).asJavaConstant();
-            byte[] targetByteArray = loadByteArrayConstant(targetArg);
+            byte[] targetByteArray = loadByteArrayConstant(providers.getConstantReflection(), targetArg, Integer.MAX_VALUE);
             args.addConst("md2", md2(targetByteArray));
             args.addConst("cache", computeCache(targetByteArray));
             template(latin1IndexOf, args).instantiate(providers.getMetaAccess(), latin1IndexOf, DEFAULT_REPLACER, args);
@@ -104,30 +105,10 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             args.add("targetCount", utf16IndexOf.getArgument(3));
             args.add("origFromIndex", utf16IndexOf.getArgument(4));
             JavaConstant targetArg = utf16IndexOf.getArgument(2).asJavaConstant();
-            byte[] targetByteArray = loadByteArrayConstant(targetArg);
+            byte[] targetByteArray = loadByteArrayConstant(providers.getConstantReflection(), targetArg, Integer.MAX_VALUE);
             args.addConst("md2", md2Utf16(tool.getMetaAccess(), targetByteArray));
             args.addConst("cache", computeCacheUtf16(tool.getMetaAccess(), targetByteArray));
             template(utf16IndexOf, args).instantiate(providers.getMetaAccess(), utf16IndexOf, DEFAULT_REPLACER, args);
-        }
-
-        private byte[] loadByteArrayConstant(JavaConstant targetArg) {
-            ConstantReflectionProvider crp = providers.getConstantReflection();
-            int targetArgLength = crp.readArrayLength(targetArg);
-            byte[] targetByteArray = new byte[targetArgLength];
-            for (int i = 0; i < targetArgLength; i++) {
-                targetByteArray[i] = (byte) crp.readArrayElement(targetArg, i).asInt();
-            }
-            return targetByteArray;
-        }
-
-        private char[] loadCharArrayConstant(JavaConstant targetArg) {
-            ConstantReflectionProvider crp = providers.getConstantReflection();
-            int targetArgLength = crp.readArrayLength(targetArg);
-            char[] targetCharArray = new char[targetArgLength];
-            for (int i = 0; i < targetArgLength; i++) {
-                targetCharArray[i] = (char) crp.readArrayElement(targetArg, i).asInt();
-            }
-            return targetCharArray;
         }
     }
 
