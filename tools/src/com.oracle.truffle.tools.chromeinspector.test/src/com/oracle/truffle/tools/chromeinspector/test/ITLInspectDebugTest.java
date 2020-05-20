@@ -37,6 +37,8 @@ import org.junit.Test;
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import com.oracle.truffle.tck.DebuggerTester;
+import com.oracle.truffle.tools.chromeinspector.types.Script;
 
 /**
  * {@link InstrumentationTestLanguage} inspector debugging test.
@@ -285,8 +287,9 @@ public class ITLInspectDebugTest {
         String testFileURI3 = InspectorTester.getStringURI(source3.getURI());
         assertTrue(testFileURI3, testFileURI3.startsWith("file://"));
         tester.eval(source3);
+        String hash = new Script(0, null, DebuggerTester.getSourceImpl(source3)).getHash();
         assertTrue(tester.compareReceivedMessages(
-                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":0,\"scriptId\":\"2\",\"endColumn\":16,\"startColumn\":0,\"startLine\":0,\"length\":" + length + ",\"executionContextId\":" + id + ",\"url\":\"" + testFileURI3 + "\",\"hash\":\"f4399823e456ed0affffffffffffffffffffffff\"}}\n"));
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":0,\"scriptId\":\"2\",\"endColumn\":16,\"startColumn\":0,\"startLine\":0,\"length\":" + length + ",\"executionContextId\":" + id + ",\"url\":\"" + testFileURI3 + "\",\"hash\":\"" + hash + "\"}}\n"));
 
         tester.finish();
     }
