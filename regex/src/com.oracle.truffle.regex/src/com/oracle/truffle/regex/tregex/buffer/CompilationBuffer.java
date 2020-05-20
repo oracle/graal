@@ -64,8 +64,6 @@ public class CompilationBuffer {
     private ObjectArrayBuffer<Object> objectBuffer2;
     private ByteArrayBuffer byteArrayBuffer;
     private ShortArrayBuffer shortArrayBuffer;
-    private CharRangesBuffer charRangesBuffer1;
-    private CharRangesBuffer charRangesBuffer2;
     private IntRangesBuffer intRangesBuffer1;
     private IntRangesBuffer intRangesBuffer2;
     private IntRangesBuffer intRangesBuffer3;
@@ -105,22 +103,6 @@ public class CompilationBuffer {
         }
         shortArrayBuffer.clear();
         return shortArrayBuffer;
-    }
-
-    public CharRangesBuffer getCharRangesBuffer1() {
-        if (charRangesBuffer1 == null) {
-            charRangesBuffer1 = new CharRangesBuffer(64);
-        }
-        charRangesBuffer1.clear();
-        return charRangesBuffer1;
-    }
-
-    public CharRangesBuffer getCharRangesBuffer2() {
-        if (charRangesBuffer2 == null) {
-            charRangesBuffer2 = new CharRangesBuffer(64);
-        }
-        charRangesBuffer2.clear();
-        return charRangesBuffer2;
     }
 
     public IntRangesBuffer getIntRangesBuffer1() {

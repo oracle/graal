@@ -72,6 +72,7 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyFindStartRootNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfile.TracksRegexProfile {
 
@@ -85,6 +86,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
     private NFARegexSearchNode nfaNode;
     private NFARegexSearchNode regressTestBacktrackingNode;
     private RegexProfile regexProfile;
+    private final Encoding encoding;
     private final int numberOfCaptureGroups;
     private final boolean regressionTestMode;
     private final boolean backtrackingMode;
@@ -94,6 +96,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
     public TRegexExecRootNode(TRegexCompiler tRegexCompiler, RegexAST ast, TRegexExecutorNode nfaExecutor) {
         super(tRegexCompiler.getLanguage(), ast.getSource(), ast.getFlags().isUnicode());
         this.tRegexCompiler = tRegexCompiler;
+        this.encoding = ast.getEncoding();
         this.numberOfCaptureGroups = ast.getNumberOfCaptureGroups();
         this.nfaNode = new NFARegexSearchNode(createEntryNode(nfaExecutor));
         this.backtrackingMode = nfaExecutor instanceof TRegexBacktrackingNFAExecutorNode;
@@ -135,6 +138,10 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
             }
         }
         return result;
+    }
+
+    public Encoding getEncoding() {
+        return encoding;
     }
 
     public int getNumberOfCaptureGroups() {
@@ -354,7 +361,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
                 backwardCallTarget = null;
             } else {
                 backwardCallTarget = Truffle.getRuntime().createCallTarget(
-                                new RegexRootNode(language, new TRegexLazyFindStartRootNode(language, source, getForwardExecutor().getPrefixLength(), backwardNode)));
+                                new RegexRootNode(language, new TRegexLazyFindStartRootNode(language, source, backwardNode)));
             }
             this.captureGroupEntryNode = insert(captureGroupNode);
             if (captureGroupNode == null) {
@@ -418,12 +425,11 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         }
 
         private RegexResult executeBackwardAnchored(Object input, int fromIndexArg, int inputLength) {
-            int maxIndex = Math.max(-1, fromIndexArg - 1 - getForwardExecutor().getPrefixLength());
             if (getBackwardExecutor().isSimpleCG()) {
-                int[] result = (int[]) backwardEntryNode.execute(input, fromIndexArg, inputLength - 1, maxIndex);
+                int[] result = (int[]) backwardEntryNode.execute(input, fromIndexArg, inputLength, inputLength);
                 return result == null ? NoMatchResult.getInstance() : new SingleIndexArrayResult(result);
             }
-            final int backwardResult = (int) backwardEntryNode.execute(input, fromIndexArg, inputLength - 1, maxIndex);
+            final int backwardResult = (int) backwardEntryNode.execute(input, fromIndexArg, inputLength, inputLength);
             if (backwardResult == TRegexDFAExecutorNode.NO_MATCH) {
                 return NoMatchResult.getInstance();
             }
@@ -434,7 +440,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
                 }
                 return preCalcResult;
             }
-            final int start = backwardResult + 1;
+            final int start = backwardResult;
             if (flags.isSticky() && start != fromIndexArg) {
                 return NoMatchResult.getInstance();
             }

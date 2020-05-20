@@ -53,37 +53,38 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.runtime.nodes.ToCharNode;
+import com.oracle.truffle.regex.tregex.string.StringUTF16;
 
 @GenerateUncached
-public abstract class InputCharAtNode extends Node {
+public abstract class InputReadNode extends Node {
 
-    public static InputCharAtNode create() {
-        return InputCharAtNodeGen.create();
+    public static InputReadNode create() {
+        return InputReadNodeGen.create();
     }
 
-    public abstract char execute(Object input, int index);
+    public abstract int execute(Object input, int index);
 
     @Specialization
-    static char doString(String input, int index) {
+    static int doString(String input, int index) {
         return input.charAt(index);
     }
 
     @Specialization(guards = "inputs.hasArrayElements(input)", limit = "2")
-    static char doBoxedCharArray(Object input, int index,
+    static int doBoxedCharArray(Object input, int index,
                     @CachedLibrary("input") InteropLibrary inputs,
                     @Cached ToCharNode toCharNode) {
         try {
             return toCharNode.execute(inputs.readArrayElement(input, index));
         } catch (UnsupportedMessageException | InvalidArrayIndexException | UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            CompilerDirectives.transferToInterpreter();
             // should never be reached
             throw new RuntimeException(e);
         }
     }
 
-    public static char charAtWithMask(TruffleObject input, int indexInput, String mask, int indexMask, InputCharAtNode charAtNode) {
+    public static int readWithMask(TruffleObject input, int indexInput, StringUTF16 mask, int indexMask, InputReadNode charAtNode) {
         CompilerAsserts.partialEvaluationConstant(mask == null);
-        char c = charAtNode.execute(input, indexInput);
-        return (mask == null ? c : (char) (c | mask.charAt(indexMask)));
+        int c = charAtNode.execute(input, indexInput);
+        return (mask == null ? c : (c | mask.charAt(indexMask)));
     }
 }

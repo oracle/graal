@@ -88,6 +88,10 @@ public class ByteArrayBuffer extends AbstractArrayBuffer {
         return buf[i];
     }
 
+    public void set(int i, byte b) {
+        buf[i] = b;
+    }
+
     public void add(byte b) {
         if (length == buf.length) {
             grow(length * 2);
