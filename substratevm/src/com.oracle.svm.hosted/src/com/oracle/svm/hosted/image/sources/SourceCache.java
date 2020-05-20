@@ -109,7 +109,7 @@ public abstract class SourceCache {
      * A local directory serving as the root for all source trees maintained by the different
      * available source caches.
      */
-    private static final String SOURCE_CACHE_ROOT_DIR = "sources";
+    private static final String SOURCE_CACHE_ROOT_DIR = SubstrateOptions.DebugInfoSourceCacheRoot.getValue();
 
     /**
      * The top level path relative to the root directory under which files belonging to this

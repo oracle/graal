@@ -469,4 +469,14 @@ public class SubstrateOptions {
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
     public static final HostedOptionKey<String[]> DebugInfoSourceSearchPath = new HostedOptionKey<String[]>(null) {
     };
+    @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
+    public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<String>("sources") {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            // disallow null or empty string
+            if (newValue == null || newValue.length() == 0) {
+                DebugInfoSourceCacheRoot.update(values, oldValue);
+            }
+        }
+    };
 }
