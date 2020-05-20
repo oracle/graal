@@ -41,9 +41,30 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLazyException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
+import com.oracle.truffle.llvm.runtime.types.visitors.RecursiveTypeCheckVisitor;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public abstract class Type {
+
+    /**
+     * Checks whether adding {@code type} to {@code this} would create a cycle. The only allowed
+     * cycles are via pointers to named structs.
+     */
+    protected boolean verifyCycleFree(Type type) {
+        RecursiveTypeCheckVisitor.check(this, type);
+        return true;
+    }
+
+    /**
+     * Checks whether adding {@code types} to {@code this} would create a cycle. The only allowed
+     * cycles are via pointers to named structs.
+     */
+    protected boolean verifyCycleFree(Type[] types) {
+        for (Type type : types) {
+            verifyCycleFree(type);
+        }
+        return true;
+    }
 
     /**
      * Indicates that calculations based on properties {@link Type} would overflow. For example,
