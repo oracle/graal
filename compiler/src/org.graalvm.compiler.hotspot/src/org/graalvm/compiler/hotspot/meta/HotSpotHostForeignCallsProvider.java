@@ -457,11 +457,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
     }
 
-// public HotSpotForeignCallLinkage getForeignCall(ForeignCallDescriptor descriptor) {
-// assert foreignCalls != null : descriptor;
-// return foreignCalls.get(descriptor);
-// }
-
     @SuppressWarnings("unused")
     protected void registerMathStubs(GraalHotSpotVMConfig hotSpotVMConfig, HotSpotProviders providers, OptionValues options) {
         registerForeignCall(createDescriptor(SIN.foreignCallSignature, LEAF, REEXECUTABLE, NO_LOCATIONS), hotSpotVMConfig.arithmeticSinAddress, NativeCall);
