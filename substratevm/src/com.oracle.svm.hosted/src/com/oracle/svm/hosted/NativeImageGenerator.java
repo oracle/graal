@@ -162,6 +162,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.libc.GLibc;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibc;
+import com.oracle.svm.core.c.libc.BionicLibc;
 import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
@@ -876,6 +877,8 @@ public class NativeImageGenerator {
         LibCBase libc;
         if (SubstrateOptions.UseMuslC.hasBeenSet()) {
             libc = new MuslLibc();
+        } else if (SubstrateOptions.UseBionicC.hasBeenSet()) {
+            libc = new BionicLibc();
         } else {
             libc = new GLibc();
         }
