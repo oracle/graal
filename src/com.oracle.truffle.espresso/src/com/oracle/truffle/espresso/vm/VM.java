@@ -2069,8 +2069,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             public StaticObject apply(int value) {
                 // (String name, String type)
                 return (StaticObject) getMeta().sun_management_ManagementFactory_createMemoryManager.invokeDirect(null,
-                                /* String name */ getMeta().toGuestString("foo"),
-                                /* String type */ StaticObject.NULL);
+                                /* String name */ getMeta().toGuestString("foo"));
             }
         });
     }
