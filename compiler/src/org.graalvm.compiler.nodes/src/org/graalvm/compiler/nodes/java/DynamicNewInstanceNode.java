@@ -78,7 +78,7 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
                 return this;
             }
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
-            if (type != null && type.isInitialized() && !throwsInstantiationException(type, tool.getMetaAccess()) && tool.getMetaAccessExtensionProvider().canConstantFoldDynamicAllocation(type)) {
+            if (type != null && !throwsInstantiationException(type, tool.getMetaAccess()) && tool.getMetaAccessExtensionProvider().canConstantFoldDynamicAllocation(type)) {
                 return new NewInstanceNode(type, fillContents(), stateBefore());
             }
         }

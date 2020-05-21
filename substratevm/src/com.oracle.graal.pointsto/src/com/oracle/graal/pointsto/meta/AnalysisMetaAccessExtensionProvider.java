@@ -29,6 +29,7 @@ import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
 
@@ -38,7 +39,7 @@ public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionP
     }
 
     @Override
-    public boolean canConstantFoldDynamicAllocation(JavaType type) {
+    public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
         return true;
     }
 }

@@ -31,6 +31,7 @@ import com.oracle.svm.core.meta.SharedType;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
 
@@ -40,7 +41,7 @@ public class SubstrateMetaAccessExtensionProvider implements MetaAccessExtension
     }
 
     @Override
-    public boolean canConstantFoldDynamicAllocation(JavaType type) {
+    public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
         return ((SharedType) type).getHub().isInstantiated();
     }
 }
