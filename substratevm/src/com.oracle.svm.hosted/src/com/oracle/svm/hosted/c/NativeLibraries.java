@@ -48,6 +48,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
@@ -68,7 +69,9 @@ import org.graalvm.word.WordBase;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
@@ -275,6 +278,20 @@ public final class NativeLibraries {
     private static final String libPrefix = OS.getCurrent() == OS.WINDOWS ? "" : "lib";
     private static final String libSuffix = OS.getCurrent() == OS.WINDOWS ? ".lib" : ".a";
 
+    private static Path getPlatformDependentJDKStaticLibraryPath() throws IOException {
+        Path baseSearchPath = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            baseSearchPath = baseSearchPath.resolve("static");
+            SubstrateTargetDescription target = ConfigurationValues.getTarget();
+            Path platformDependentPath = baseSearchPath.resolve((OS.getCurrent().className + "-" + target.arch.getName()).toLowerCase());
+            if (OS.getCurrent() == OS.LINUX) {
+                platformDependentPath = platformDependentPath.resolve(LibCBase.singleton().getName());
+            }
+            return platformDependentPath;
+        }
+        return baseSearchPath;
+    }
+
     private static LinkedHashSet<String> initCLibraryPath() {
         LinkedHashSet<String> libraryPaths = new LinkedHashSet<>();
 
@@ -283,9 +300,7 @@ public final class NativeLibraries {
 
         /* Probe for static JDK libraries in JDK lib directory */
         try {
-            Path baseSearchPath = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
-            String currentLibcDir = ImageSingletons.lookup(LibCBase.class).getJDKStaticLibsPath();
-            Path jdkLibDir = currentLibcDir.equals(LibCBase.PATH_DEFAULT) ? baseSearchPath : baseSearchPath.resolve(CUSTOM_LIBC_STATIC_DIST_PATH).resolve(currentLibcDir);
+            Path jdkLibDir = getPlatformDependentJDKStaticLibraryPath();
 
             List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltInLibraries);
             Predicate<String> hasStaticLibrary = s -> Files.isRegularFile(jdkLibDir.resolve(libPrefix + s + libSuffix));

@@ -50,7 +50,7 @@ public class MuslLibc implements LibCBase {
     private static final String PATH_PLACEHOLDER = "__BASE_PATH__";
 
     @Override
-    public String getJDKStaticLibsPath() {
+    public String getName() {
         return "musl";
     }
 

@@ -31,8 +31,8 @@ import java.util.List;
 public class GLibc implements LibCBase {
 
     @Override
-    public String getJDKStaticLibsPath() {
-        return LibCBase.PATH_DEFAULT;
+    public String getName() {
+        return "glibc";
     }
 
     @Override

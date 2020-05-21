@@ -716,15 +716,9 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
                 zf.writestr(name, contents)
 
         mx.logv('[Copying static libraries]')
-        lib_prefix = mx.add_lib_prefix('')
-        lib_suffix = '.lib' if mx.is_windows() else '.a'
-        lib_directory = join(jdk.home, 'lib')
-        dst_lib_directory = join(dst_jdk_dir, 'lib')
-        for f in os.listdir(lib_directory):
-            if f.startswith(lib_prefix) and f.endswith(lib_suffix):
-                lib_path = join(lib_directory, f)
-                if isfile(lib_path):
-                    shutil.copy2(lib_path, dst_lib_directory)
+        lib_directory = join(jdk.home, 'lib', 'static')
+        dst_lib_directory = join(dst_jdk_dir, 'lib', 'static')
+        mx.copytree(lib_directory, dst_lib_directory)
 
     finally:
         if not mx.get_opts().verbose:

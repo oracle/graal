@@ -123,7 +123,11 @@ def svmbuild_dir(suite=None):
     return join(suite.dir, 'svmbuild')
 
 def is_musl_supported():
-    return mx.is_linux() and mx.get_arch() == "amd64" and mx.get_jdk(tag='default').javaCompliance == '11'
+    jdk = mx.get_jdk(tag='default')
+    if mx.is_linux() and mx.get_arch() == "amd64" and mx.get_jdk(tag='default').javaCompliance == '11':
+        musl_library_path = join(jdk.home, 'lib', 'static', 'linux-amd64', 'musl')
+        return exists(musl_library_path)
+    return False
 
 
 class GraalVMConfig(object):
@@ -1175,9 +1179,15 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
         native_project_src_gen_dir = join(self.native_project_dir, 'src_gen')
         self.jvm_fallbacks_path = join(native_project_src_gen_dir, 'JvmFuncsFallbacks.c')
 
-        staticlib_wildcard = ['lib', mx_subst.path_substitutions.substitute('<staticlib:*>')]
         if svm_java8():
-            staticlib_wildcard[0:0] = ['jre']
+            staticlib_path = ['jre', 'lib']
+        else:
+            staticlib_path = ['lib', 'static', mx.get_os() + '-' + mx.get_arch()]
+            if mx.is_linux():
+                # Assume we are running under glibc by default for now.
+                staticlib_path = staticlib_path + ['glibc']
+
+        staticlib_wildcard = staticlib_path + [mx_subst.path_substitutions.substitute('<staticlib:*>')]
         staticlib_wildcard_path = join(mx_compiler.jdk.home, *staticlib_wildcard)
         self.staticlibs = glob(staticlib_wildcard_path)
 
