@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.word.LocationIdentity;
 
@@ -90,11 +89,6 @@ public final class CEntryPointUtilityNode extends DeoptimizingFixedWithNextNode 
 
     public ValueNode getParameter1() {
         return parameter1;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override

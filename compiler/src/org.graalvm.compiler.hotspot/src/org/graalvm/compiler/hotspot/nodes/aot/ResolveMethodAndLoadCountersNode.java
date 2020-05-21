@@ -33,7 +33,6 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -48,11 +47,6 @@ public class ResolveMethodAndLoadCountersNode extends DeoptimizingFixedWithNextN
         super(TYPE, MethodCountersPointerStamp.methodCountersNonNull());
         this.method = method;
         this.hub = hub;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     public ResolvedJavaMethod getMethod() {
