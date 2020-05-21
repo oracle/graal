@@ -51,8 +51,8 @@ public interface GraalFeature extends Feature {
      * @param foreignCalls The foreign call registry to add to.
      * @param hosted True if registering for ahead-of-time compilation, false otherwise
      */
-    default void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
-                    SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+    default void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls,
+                    boolean hosted) {
     }
 
     /**
