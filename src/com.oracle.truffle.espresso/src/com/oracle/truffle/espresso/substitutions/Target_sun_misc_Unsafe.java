@@ -263,7 +263,7 @@ public final class Target_sun_misc_Unsafe {
     // CAS ops should be atomic.
     @Substitution(hasReceiver = true)
     public static boolean compareAndSwapObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                    Object before, Object after) {
+                                               @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after) {
         if (isNullOrArray(holder)) {
             return UNSAFE.compareAndSwapObject(unwrapNullOrArray(holder), offset, before, after);
         }
@@ -526,9 +526,9 @@ public final class Target_sun_misc_Unsafe {
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static Object getObjectVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset) {
+    public static @Host(Object.class) StaticObject getObjectVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset) {
         if (isNullOrArray(holder)) {
-            return UNSAFE.getObjectVolatile(unwrapNullOrArray(holder), offset);
+            return (StaticObject) UNSAFE.getObjectVolatile(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
@@ -578,7 +578,7 @@ public final class Target_sun_misc_Unsafe {
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static void putObjectVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, Object value) {
+    public static void putObjectVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @Host(Object.class) StaticObject value) {
         if (isNullOrArray(holder)) {
             UNSAFE.putObjectVolatile(unwrapNullOrArray(holder), offset, value);
             return;
@@ -789,7 +789,7 @@ public final class Target_sun_misc_Unsafe {
     // region put*(Object holder, long offset, * value)
 
     @Substitution(hasReceiver = true)
-    public static void putObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, Object value) {
+    public static void putObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @Host(Object.class) StaticObject value) {
         if (isNullOrArray(holder)) {
             UNSAFE.putObject(unwrapNullOrArray(holder), offset, value);
             return;
@@ -934,7 +934,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void putOrderedObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, Object value) {
+    public static void putOrderedObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @Host(Object.class) StaticObject value) {
         if (isNullOrArray(holder)) {
             UNSAFE.putOrderedObject(unwrapNullOrArray(holder), offset, value);
             return;
