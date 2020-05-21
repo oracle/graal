@@ -78,6 +78,7 @@ import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * A Truffle TCK {@code Feature} detecting privileged calls done by Truffle language. The
@@ -198,6 +199,11 @@ public class PermissionsFeature implements Feature {
             Set<AnalysisMethod> importantMethods = new HashSet<>();
             importantMethods.addAll(findMethods(bigbang, SecurityManager.class, (m) -> m.getName().startsWith("check")));
             importantMethods.addAll(findMethods(bigbang, sun.misc.Unsafe.class, (m) -> m.isPublic()));
+            // The type of the host Java NIO FileSystem.
+            // The FileSystem obtained from the FileSystem.newDefaultFileSystem() is in the Truffle
+            // package but
+            // can be directly used by a language. We need to include it into importantMethods.
+            importantMethods.addAll(findMethods(bigbang, FileSystem.newDefaultFileSystem().getClass(), (m) -> m.isPublic()));
             if (!importantMethods.isEmpty()) {
                 Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(bigbang, importantMethods, debugContext);
                 List<List<AnalysisMethod>> report = new ArrayList<>();
@@ -379,11 +385,15 @@ public class PermissionsFeature implements Feature {
         if (useNoReports >= maxReports) {
             return useNoReports;
         }
-        if (isCompilerClass(m)) {
-            return useNoReports;
-        }
-        if (isExcludedClass(m)) {
-            return useNoReports;
+        if (depth > 1) {
+            // The important method can be a compiler method
+            if (isCompilerClass(m)) {
+                return useNoReports;
+            }
+            // The important method cannot be excluded by a white list
+            if (isExcludedClass(m)) {
+                return useNoReports;
+            }
         }
         if (!visited.contains(m)) {
             visited.add(m);
@@ -483,13 +493,14 @@ public class PermissionsFeature implements Feature {
      * @param owner the class which methods should be listed
      * @param filter the predicate filtering methods declared in {@code owner}
      * @return the methods accepted by {@code filter}
+     * @throws IllegalStateException if owner cannot be resolved
      */
     private static Set<AnalysisMethod> findMethods(BigBang bigBang, Class<?> owner, Predicate<ResolvedJavaMethod> filter) {
         AnalysisType clazz = bigBang.forClass(owner);
-        if (clazz != null) {
-            return findMethods(bigBang, clazz, filter);
+        if (clazz == null) {
+            throw new IllegalStateException("Cannot resolve " + owner.getName() + ".");
         }
-        return Collections.emptySet();
+        return findMethods(bigBang, clazz, filter);
     }
 
     /**
