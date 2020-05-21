@@ -54,7 +54,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
@@ -74,9 +73,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
     private static final CloneNotSupportedException CLONE_NOT_SUPPORTED_EXCEPTION = new CloneNotSupportedException("Object is not instance of Cloneable.");
 
     public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
-        for (SubstrateForeignCallDescriptor descriptor : FOREIGN_CALLS) {
-            foreignCalls.register(new SubstrateForeignCallLinkage(providers, descriptor));
-        }
+        foreignCalls.register(providers, FOREIGN_CALLS);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)

@@ -31,7 +31,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -54,14 +53,8 @@ final class ImplicitExceptionsFeature implements GraalFeature {
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
-                    SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-
-        for (SubstrateForeignCallDescriptor descriptor : ImplicitExceptions.FOREIGN_CALLS) {
-            foreignCalls.register(new SubstrateForeignCallLinkage(providers, descriptor));
-        }
-        for (SubstrateForeignCallDescriptor descriptor : ExceptionUnwind.FOREIGN_CALLS) {
-            foreignCalls.register(new SubstrateForeignCallLinkage(providers, descriptor));
-        }
+    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+        foreignCalls.register(providers, ImplicitExceptions.FOREIGN_CALLS);
+        foreignCalls.register(providers, ExceptionUnwind.FOREIGN_CALLS);
     }
 }
