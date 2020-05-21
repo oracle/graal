@@ -43,6 +43,7 @@ package org.graalvm.polyglot.io;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
@@ -52,9 +53,11 @@ import java.nio.file.CopyOption;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -217,4 +220,52 @@ final class IOHelper {
             return redirect.getOutputStream();
         }
     }
+}
+
+class CodeSnippets {
+    // BEGIN: CodeSnippets#RestrictedFileSystem
+    abstract class RestrictedFileSystem implements FileSystem {
+
+        private final FileSystem delegate;
+        private final Path allowedFolder;
+
+        RestrictedFileSystem(String allowedFolder) throws IOException {
+            this.delegate = FileSystem.newDefaultFileSystem();
+            this.allowedFolder = delegate.toRealPath(
+                            delegate.parsePath(allowedFolder));
+        }
+
+        @Override
+        public Path parsePath(String path) {
+            return delegate.parsePath(path);
+        }
+
+        @Override
+        public Path parsePath(URI uri) {
+            return delegate.parsePath(uri);
+        }
+
+        @Override
+        public SeekableByteChannel newByteChannel(Path path,
+                        Set<? extends OpenOption> options,
+                        FileAttribute<?>... attrs) throws IOException {
+            verifyAccess(path);
+            return delegate.newByteChannel(path, options, attrs);
+        }
+
+        private void verifyAccess(Path path) {
+            Path realPath = null;
+            for (Path c = path; c != null; c = c.getParent()) {
+                try {
+                    realPath = delegate.toRealPath(c);
+                    break;
+                } catch (IOException ioe) {
+                }
+            }
+            if (realPath == null || !realPath.startsWith(allowedFolder)) {
+                throw new SecurityException("Access to " + path + " is denied.");
+            }
+        }
+    }
+    // END: CodeSnippets#RestrictedFileSystem
 }

@@ -63,6 +63,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -371,6 +372,7 @@ public interface FileSystem {
      * @since 19.0
      */
     default String getMimeType(Path path) {
+        Objects.requireNonNull(path);
         return null;
     }
 
@@ -384,6 +386,7 @@ public interface FileSystem {
      * @since 19.0
      */
     default Charset getEncoding(Path path) {
+        Objects.requireNonNull(path);
         return null;
     }
 
@@ -397,8 +400,11 @@ public interface FileSystem {
     }
 
     /**
-     * Creates a default {@link FileSystem} implementation based on the Java NIO. The returned
-     * instance can be used as a delegate by a decorating {@link FileSystem}.
+     * Creates a {@link FileSystem} implementation based on the host Java NIO. The returned instance
+     * can be used as a delegate by a decorating {@link FileSystem}.
+     * <p>
+     * The following example shows a {@link FileSystem} restricting an IO access only to a given
+     * folder. {@codesnippet CodeSnippets#RestrictedFileSystem}
      *
      * @see org.graalvm.polyglot.Context.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)
      *
