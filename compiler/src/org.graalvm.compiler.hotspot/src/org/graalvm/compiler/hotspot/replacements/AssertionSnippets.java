@@ -26,6 +26,9 @@ package org.graalvm.compiler.hotspot.replacements;
 
 import static org.graalvm.compiler.api.directives.GraalDirectives.SLOWPATH_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static org.graalvm.compiler.replacements.nodes.CStringConstant.cstring;
 
@@ -35,6 +38,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
 import org.graalvm.compiler.hotspot.nodes.StubStartNode;
@@ -57,7 +61,8 @@ public class AssertionSnippets implements Snippets {
      * This call can only be used with true for the "vmError" parameter, so that it can be
      * configured to be a leaf method.
      */
-    public static final ForeignCallDescriptor ASSERTION_VM_MESSAGE_C = new ForeignCallDescriptor("assertionVmMessageC", void.class, boolean.class, Word.class, long.class, long.class, long.class);
+    public static final HotSpotForeignCallDescriptor ASSERTION_VM_MESSAGE_C = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS, "assertionVmMessageC", void.class, boolean.class,
+                    Word.class, long.class, long.class, long.class);
 
     @Snippet
     public static void assertion(boolean condition, @ConstantParameter String message, long l1, long l2) {

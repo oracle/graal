@@ -165,7 +165,7 @@ public final class ArrayCopyCallNode extends FixedWithNextNode implements Lowera
             if (len.stamp(NodeView.DEFAULT).getStackKind() != JavaKind.Long) {
                 len = IntegerConvertNode.convert(len, StampFactory.forKind(JavaKind.Long), graph(), NodeView.DEFAULT);
             }
-            ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, desc, srcAddr, destAddr, len));
+            ForeignCallNode call = graph.add(new ForeignCallNode(desc, srcAddr, destAddr, len));
             graph.replaceFixedWithFixed(this, call);
         }
     }

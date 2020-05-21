@@ -77,6 +77,7 @@ import com.oracle.svm.core.allocationprofile.AllocationSite;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.UnreachableNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -105,9 +106,9 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
 
     private static final String RUNTIME_REFLECTION_TYPE_NAME = RuntimeReflection.class.getTypeName();
 
-    public static void registerForeignCalls(Providers providers, Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls) {
+    public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
         for (SubstrateForeignCallDescriptor descriptor : FOREIGN_CALLS) {
-            foreignCalls.put(descriptor, new SubstrateForeignCallLinkage(providers, descriptor));
+            foreignCalls.register(new SubstrateForeignCallLinkage(providers, descriptor));
         }
     }
 

@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.nodes.java;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 
 /**
  * The foreign call descriptors used by nodes in this package.
@@ -37,6 +37,6 @@ public class ForeignCallDescriptors {
     /**
      * @see RegisterFinalizerNode
      */
-    public static final ForeignCallDescriptor REGISTER_FINALIZER = new ForeignCallDescriptor("registerFinalizer", void.class, Object.class);
+    public static final ForeignCallSignature REGISTER_FINALIZER = new ForeignCallSignature("registerFinalizer", void.class, Object.class);
 
 }

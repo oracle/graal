@@ -32,6 +32,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -65,21 +66,18 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
 
     @Input protected NodeInputList<ValueNode> arguments;
     @OptionalInput(State) protected FrameState stateDuring;
-    protected final ForeignCallsProvider foreignCalls;
 
     protected final ForeignCallDescriptor descriptor;
     protected int bci = BytecodeFrame.UNKNOWN_BCI;
 
     public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod targetMethod, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter ForeignCallsProvider foreignCalls,
-                    ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        if (!foreignCalls.isAvailable(descriptor)) {
-            // When using encoded snippets a graph main contain a reference to a foreign call that's
-            // not actually available in the current configuration. It's assumed that further
-            // simplification of the graph will eliminate this call completely.
-            return false;
-        }
+                    ForeignCallSignature signature, ValueNode... arguments) {
+        ForeignCallDescriptor descriptor = foreignCalls.getDescriptor(signature);
+        return intrinsify(b, targetMethod, returnStamp, descriptor, arguments);
+    }
 
-        ForeignCallNode node = new ForeignCallNode(foreignCalls, descriptor, arguments);
+    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod targetMethod, @InjectedNodeParameter Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+        ForeignCallNode node = new ForeignCallNode(descriptor, arguments);
         node.setStamp(returnStamp);
 
         assert verifyDescriptor(b, targetMethod, descriptor);
@@ -115,36 +113,37 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
         return true;
     }
 
-    public ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        this(TYPE, foreignCalls, descriptor, arguments);
+    public ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallSignature signature, ValueNode... arguments) {
+        this(TYPE, foreignCalls.getDescriptor(signature), arguments);
     }
 
-    public ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
+    public ForeignCallNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
+        this(TYPE, descriptor, arguments);
+    }
+
+    public ForeignCallNode(ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
         super(TYPE, stamp);
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
-        this.foreignCalls = foreignCalls;
         assert descriptor.getArgumentTypes().length == this.arguments.size() : "wrong number of arguments to " + this;
     }
 
-    public ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
+    public ForeignCallNode(ForeignCallDescriptor descriptor, Stamp stamp) {
         super(TYPE, stamp);
         this.arguments = new NodeInputList<>(this);
         this.descriptor = descriptor;
-        this.foreignCalls = foreignCalls;
     }
 
-    protected ForeignCallNode(NodeClass<? extends ForeignCallNode> c, ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    protected ForeignCallNode(NodeClass<? extends ForeignCallNode> c, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(c, StampFactory.forKind(JavaKind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
-        this.foreignCalls = foreignCalls;
         assert descriptor.getArgumentTypes().length == this.arguments.size() : "wrong number of arguments to " + this;
     }
 
     @Override
     public boolean hasSideEffect() {
-        return !foreignCalls.isReexecutable(descriptor);
+        return !descriptor.isReexecutable();
     }
 
     @Override
@@ -183,11 +182,6 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
     @Override
     public NodeInputList<ValueNode> getArguments() {
         return arguments;
-    }
-
-    @Override
-    public ForeignCallsProvider getForeignCalls() {
-        return foreignCalls;
     }
 
     @Override

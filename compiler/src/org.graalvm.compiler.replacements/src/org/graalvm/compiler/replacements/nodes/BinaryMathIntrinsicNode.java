@@ -27,8 +27,7 @@ package org.graalvm.compiler.replacements.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import jdk.vm.ci.meta.Value;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -48,9 +47,10 @@ import org.graalvm.compiler.nodes.calc.SqrtNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaKind;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.vm.ci.meta.Value;
 
 @NodeInfo(nameTemplate = "MathIntrinsic#{p#operation/s}", cycles = CYCLES_UNKNOWN, size = SIZE_1)
 public final class BinaryMathIntrinsicNode extends BinaryNode implements ArithmeticLIRLowerable, Lowerable {
@@ -59,12 +59,12 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
     protected final BinaryOperation operation;
 
     public enum BinaryOperation {
-        POW(new ForeignCallDescriptor("arithmeticPow", double.class, double.class, double.class));
+        POW(new ForeignCallSignature("arithmeticPow", double.class, double.class, double.class));
 
-        public final ForeignCallDescriptor foreignCallDescriptor;
+        public final ForeignCallSignature foreignCallSignature;
 
-        BinaryOperation(ForeignCallDescriptor foreignCallDescriptor) {
-            this.foreignCallDescriptor = foreignCallDescriptor;
+        BinaryOperation(ForeignCallSignature foreignCallSignature) {
+            this.foreignCallSignature = foreignCallSignature;
         }
     }
 
