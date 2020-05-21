@@ -186,6 +186,11 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected LLVM80BitFloat doDouble(double from) {
+            return LLVM80BitFloat.fromDouble(from);
+        }
+
+        @Specialization
         protected LLVM80BitFloat doLLVM80BitFloatNode(LLVM80BitFloat from) {
             return from;
         }

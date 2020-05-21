@@ -83,6 +83,10 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMBitcastToLLVM80BitFloatNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMSignedCastToLLVM80BitFloatNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToDoubleNodeGen.LLVMBitcastToDoubleNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToDoubleNodeGen.LLVMSignedCastToDoubleNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMDispatchBasicBlockNode;
@@ -1537,6 +1541,12 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMX86_Pmovmskb128NodeGen.create(args[1]);
                 case "llvm.x86.sse2.movmsk.pd":
                     return LLVMX86_MovmskpdNodeGen.create(args[1]);
+                case "llvm.experimental.constrained.fpext.f64":
+                case "llvm.experimental.constrained.fpext.f64.f32":
+                    return LLVMSignedCastToDoubleNodeGen.create(args[1]);
+                case "llvm.experimental.constrained.fpext.f80":
+                case "llvm.experimental.constrained.fpext.f80.f64":
+                    return LLVMSignedCastToLLVM80BitFloatNodeGen.create(args[1]);
                 default:
                     break;
             }
