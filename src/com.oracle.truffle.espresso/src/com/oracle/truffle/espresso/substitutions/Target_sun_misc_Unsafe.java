@@ -1218,4 +1218,20 @@ public final class Target_sun_misc_Unsafe {
         }
         return object.getLock().tryLock();
     }
+
+    /**
+     * Gets the load average in the system run queue assigned to the available processors averaged
+     * over various periods of time. This method retrieves the given <tt>nelem</tt> samples and
+     * assigns to the elements of the given <tt>loadavg</tt> array. The system imposes a maximum of
+     * 3 samples, representing averages over the last 1, 5, and 15 minutes, respectively.
+     *
+     * @params loadavg an array of double of size nelems
+     * @params nelems the number of samples to be retrieved and must be 1 to 3.
+     *
+     * @return the number of samples actually retrieved; or -1 if the load average is unobtainable.
+     */
+    @Substitution(hasReceiver = true)
+    public static int getLoadAverage(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(double[].class) StaticObject loadavg, int nelems) {
+        return -1; // unobtainable
+    }
 }
