@@ -247,7 +247,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.CustomNodeCount;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -321,7 +320,7 @@ import com.oracle.truffle.object.DebugCounter;
  * bytecode is first processed/executed without growing or shrinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoMethodNode implements CustomNodeCount {
+public final class BytecodeNode extends EspressoMethodNode {
 
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
@@ -2224,12 +2223,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         StaticObject result = peekObject(frame, top - skipSlots - 1);
         assert result != null;
         return result;
-    }
-
-    @Override
-    public int customNodeCount() {
-        int codeSize = getMethodVersion().getCodeSize();
-        return 2 * codeSize + 1;
     }
 
     static final class InstrumentationSupport extends Node {
