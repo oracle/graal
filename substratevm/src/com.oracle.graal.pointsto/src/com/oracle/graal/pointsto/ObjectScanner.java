@@ -351,7 +351,7 @@ public abstract class ObjectScanner {
 
     private String asString(JavaConstant constant) {
         Object obj = constantAsObject(bb, constant);
-        return obj.getClass().getTypeName() + '@' + Integer.toHexString(obj.hashCode());
+        return obj.getClass().getTypeName() + '@' + Integer.toHexString(System.identityHashCode(obj));
     }
 
     /**
