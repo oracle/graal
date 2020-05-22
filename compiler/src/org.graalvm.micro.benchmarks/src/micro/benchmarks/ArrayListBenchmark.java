@@ -46,7 +46,6 @@ public class ArrayListBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
-    @Warmup(iterations = 20)
     public void addBoxedAndClear(ThreadState state) {
         for (int i = 0; i < N; ++i) {
             state.list.add(i);
@@ -55,7 +54,6 @@ public class ArrayListBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
-    @Warmup(iterations = 20)
     public void addNullAndClear(ThreadState state) {
         for (int i = 0; i < N; ++i) {
             state.list.add(null);
@@ -75,7 +73,6 @@ public class ArrayListBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
-    @Warmup(iterations = 20)
     public void addNull(ClearedThreadState state) {
         for (int i = 0; i < N; ++i) {
             state.list.add(null);
