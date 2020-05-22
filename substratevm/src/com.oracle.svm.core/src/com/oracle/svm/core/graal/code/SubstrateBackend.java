@@ -50,6 +50,20 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class SubstrateBackend extends Backend {
 
+    public enum SubstrateMarkId implements CompilationResult.MarkId {
+        PROLOGUE_DECD_RSP,
+        PROLOGUE_SAVED_REGS,
+        PROLOGUE_END,
+        EPILOGUE_START,
+        EPILOGUE_INCD_RSP,
+        EPILOGUE_END;
+
+        @Override
+        public String getName() {
+            return toString();
+        }
+    }
+
     private RuntimeConfiguration runtimeConfiguration;
 
     protected SubstrateBackend(Providers providers) {

@@ -196,7 +196,7 @@ public class CompilationResult {
     private final List<SourceMapping> sourceMapping = new ArrayList<>();
     private final List<DataPatch> dataPatches = new ArrayList<>();
     private final List<ExceptionHandler> exceptionHandlers = new ArrayList<>();
-    private final List<Mark> marks = new ArrayList<>();
+    private final List<CodeMark> marks = new ArrayList<>();
 
     private int totalFrameSize = -1;
     private int maxInterpreterFrameSize = -1;
@@ -607,9 +607,9 @@ public class CompilationResult {
      * @param codePos the position in the code that is covered by the handler
      * @param markId the identifier for this mark
      */
-    public Mark recordMark(int codePos, Object markId) {
+    public CodeMark recordMark(int codePos, MarkId markId) {
         checkOpen();
-        Mark mark = new Mark(codePos, markId);
+        CodeMark mark = new CodeMark(codePos, markId);
         marks.add(mark);
         return mark;
     }
@@ -696,13 +696,91 @@ public class CompilationResult {
     }
 
     /**
-     * @return the list of marks
+     * An identified mark in the generated code.
      */
-    public List<Mark> getMarks() {
+    public interface MarkId {
+
+        /**
+         * A human readable name for this mark.
+         */
+        String getName();
+
+        /**
+         * Return the object which should be used in the {@link Mark}. On some platoforms that may
+         * be different than this object.
+         */
+        default Object getId() {
+            return this;
+        }
+    }
+
+    /**
+     * An alternative to the existing {@link Mark} which isn't very flexible since it's final. This
+     * enforces some API for the mark object and can be converted into the standard mark for code
+     * installation if necessary.
+     */
+    public static class CodeMark extends Site {
+
+        /**
+         * An object denoting extra semantic information about the machine code position of this
+         * mark.
+         */
+        public final MarkId id;
+
+        /**
+         * Creates a mark that associates {@code id} with the machine code position
+         * {@code pcOffset}.
+         */
+        public CodeMark(int pcOffset, MarkId id) {
+            super(pcOffset);
+            this.id = id;
+            assert id != null : this;
+        }
+
+        @Override
+        public String toString() {
+            return id + "@" + pcOffset;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof CodeMark) {
+                CodeMark that = (CodeMark) obj;
+                if (this.pcOffset == that.pcOffset && Objects.equals(this.id, that.id)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    /**
+     * @return the list of {@link CodeMark code marks}.
+     */
+    public List<CodeMark> getMarks() {
         if (marks.isEmpty()) {
             return emptyList();
         }
         return unmodifiableList(marks);
+    }
+
+    /**
+     * @return the list of {@link Mark marks} converted from the {@link CodeMark CodeMarks}.
+     */
+    public List<Mark> getTranslatedMarks() {
+        if (marks.isEmpty()) {
+            return emptyList();
+        }
+        // The HotSpot backend needs these in the exact form of a Mark so convert all the marks
+        // to that form.
+        List<Mark> translated = new ArrayList<>(marks.size());
+        for (CompilationResult.CodeMark m : marks) {
+            translated.add(new Mark(m.pcOffset, m.id.getId()));
+        }
+        return unmodifiableList(translated);
     }
 
     /**
@@ -793,7 +871,7 @@ public class CompilationResult {
         });
         iterateAndReplace(dataPatches, pos, site -> new DataPatch(site.pcOffset + bytesToShift, site.reference, site.note));
         iterateAndReplace(exceptionHandlers, pos, site -> new ExceptionHandler(site.pcOffset + bytesToShift, site.handlerPos));
-        iterateAndReplace(marks, pos, site -> new Mark(site.pcOffset + bytesToShift, site.id));
+        iterateAndReplace(marks, pos, site -> new CodeMark(site.pcOffset + bytesToShift, site.id));
         if (annotations != null) {
             for (CodeAnnotation annotation : annotations) {
                 int annotationPos = annotation.position;
@@ -813,15 +891,15 @@ public class CompilationResult {
         }
     }
 
-    private final EconomicMap<Call, Mark> callToMark = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+    private final EconomicMap<Call, CodeMark> callToMark = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
 
-    public void recordCallContext(Mark mark, Call call) {
+    public void recordCallContext(CodeMark mark, Call call) {
         if (call != null) {
             callToMark.put(call, mark);
         }
     }
 
-    public Mark getAssociatedMark(Call call) {
+    public CodeMark getAssociatedMark(Call call) {
         return callToMark.get(call);
     }
 }

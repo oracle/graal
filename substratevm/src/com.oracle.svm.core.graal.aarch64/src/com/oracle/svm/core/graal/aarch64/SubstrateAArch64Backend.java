@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
+import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP;
+import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.aarch64.AArch64.lr;
@@ -155,13 +157,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
 public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGenerationProvider {
-
-    public static final String MARK_PROLOGUE_DECD_RSP = "PROLOGUE_DECD_RSP";
-    public static final String MARK_PROLOGUE_SAVED_REGS = "PROLOGUE_SAVED_REGS";
-    public static final String MARK_PROLOGUE_END = "PROLOGUE_END";
-    public static final String MARK_EPILOGUE_START = "EPILOGUE_START";
-    public static final String MARK_EPILOGUE_INCD_RSP = "EPILOGUE_INCD_RSP";
-    public static final String MARK_EPILOGUE_END = "EPILOGUE_END";
 
     protected static CompressEncoding getCompressEncoding() {
         return ImageSingletons.lookup(CompressEncoding.class);
@@ -538,15 +533,15 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
                 }
             }
-            crb.recordMark(MARK_PROLOGUE_DECD_RSP);
-            crb.recordMark(MARK_PROLOGUE_END);
+            crb.recordMark(PROLOGUE_DECD_RSP);
+            crb.recordMark(PROLOGUE_END);
         }
 
         @Override
         public void leave(CompilationResultBuilder crb) {
             int frameSize = crb.frameMap.frameSize();
 
-            crb.recordMark(MARK_EPILOGUE_START);
+            crb.recordMark(SubstrateMarkId.EPILOGUE_START);
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
             FrameMap frameMap = crb.frameMap;
             final int totalFrameSize = frameMap.totalFrameSize();
@@ -570,9 +565,9 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 }
             }
             if (frameSize != 0) {
-                crb.recordMark(MARK_EPILOGUE_INCD_RSP);
+                crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
             }
-            crb.recordMark(MARK_EPILOGUE_END);
+            crb.recordMark(SubstrateMarkId.EPILOGUE_END);
         }
 
         @Override
@@ -864,8 +859,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             }
             asm.jmp(scratchRegister);
         }
-        result.recordMark(asm.position(), SubstrateAArch64Backend.MARK_PROLOGUE_DECD_RSP);
-        result.recordMark(asm.position(), SubstrateAArch64Backend.MARK_PROLOGUE_END);
+        result.recordMark(asm.position(), PROLOGUE_DECD_RSP);
+        result.recordMark(asm.position(), PROLOGUE_END);
         byte[] instructions = asm.close(true);
         result.setTargetCode(instructions, instructions.length);
         result.setTotalFrameSize(getTarget().wordSize); // not really, but 0 not allowed

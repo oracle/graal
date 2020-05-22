@@ -136,10 +136,10 @@ public class HotSpotCompiledCodeBuilder {
                 jvmciCompileState = 0L;
             }
             return new HotSpotCompiledNmethod(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, isImmutablePIC,
-                            totalFrameSize, customStackArea, hsMethod, entryBCI, id, jvmciCompileState, hasUnsafeAccess);
+                    totalFrameSize, customStackArea, hsMethod, entryBCI, id, jvmciCompileState, hasUnsafeAccess);
         } else {
             return new HotSpotCompiledCode(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, isImmutablePIC,
-                            totalFrameSize, customStackArea);
+                    totalFrameSize, customStackArea);
         }
     }
 
@@ -216,11 +216,11 @@ public class HotSpotCompiledCodeBuilder {
      */
     private static Site[] getSortedSites(CompilationResult target, OptionValues options, boolean includeSourceInfo) {
         List<Site> sites = new ArrayList<>(
-                        target.getExceptionHandlers().size() + target.getInfopoints().size() + target.getDataPatches().size() + target.getMarks().size() + target.getSourceMappings().size());
+                target.getExceptionHandlers().size() + target.getInfopoints().size() + target.getDataPatches().size() + target.getMarks().size() + target.getSourceMappings().size());
         sites.addAll(target.getExceptionHandlers());
         sites.addAll(target.getInfopoints());
         sites.addAll(target.getDataPatches());
-        sites.addAll(target.getMarks());
+        sites.addAll(target.getTranslatedMarks());
 
         if (includeSourceInfo) {
             /*

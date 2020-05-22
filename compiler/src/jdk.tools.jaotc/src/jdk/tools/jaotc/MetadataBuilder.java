@@ -109,7 +109,7 @@ final class MetadataBuilder {
             int codeSize = methodInfo.getCodeSize();
 
             // get code offsets
-            CodeOffsets co = CodeOffsets.buildFrom(methodInfo.getCompilationResult().getMarks());
+            CodeOffsets co = CodeOffsets.buildFrom(methodInfo.getCompilationResult().getTranslatedMarks());
             int unverifiedEntry = co.entry();
             int verifiedEntry = co.verifiedEntry();
             int exceptionHandler = co.exceptionHandler();
@@ -236,7 +236,7 @@ final class MetadataBuilder {
                 infopointProcessor.process(methodInfo, infoPoint);
             }
 
-            for (Mark mark : compilationResult.getMarks()) {
+            for (CompilationResult.CodeMark mark : compilationResult.getMarks()) {
                 markProcessor.process(methodInfo, mark);
             }
 

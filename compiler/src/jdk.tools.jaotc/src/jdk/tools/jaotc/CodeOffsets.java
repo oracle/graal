@@ -27,6 +27,8 @@ package jdk.tools.jaotc;
 
 import java.util.List;
 
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
+
 import jdk.vm.ci.code.site.Mark;
 
 final class CodeOffsets {
@@ -49,8 +51,8 @@ final class CodeOffsets {
         int deoptHandler = -1;
 
         for (Mark mark : marks) {
-            if (mark.id instanceof Integer) {
-                MarkId markId = MarkId.getEnum((int) mark.id);
+            if (mark.id instanceof HotSpotMarkId) {
+                HotSpotMarkId markId = (HotSpotMarkId) mark.id;
                 switch (markId) {
                     case UNVERIFIED_ENTRY:
                         entry = mark.pcOffset;

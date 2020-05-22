@@ -31,7 +31,6 @@ import java.util.List;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -880,40 +879,36 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                     getConstant("Deoptimization::_support_large_access_byte_array_virtualization", Boolean.class, false, JVMCI || JDK >= 15);
 
     // Checkstyle: stop
-    public final int MARKID_VERIFIED_ENTRY = getConstant("CodeInstaller::VERIFIED_ENTRY", Integer.class);
-    public final int MARKID_UNVERIFIED_ENTRY = getConstant("CodeInstaller::UNVERIFIED_ENTRY", Integer.class);
-    public final int MARKID_OSR_ENTRY = getConstant("CodeInstaller::OSR_ENTRY", Integer.class);
-    public final int MARKID_EXCEPTION_HANDLER_ENTRY = getConstant("CodeInstaller::EXCEPTION_HANDLER_ENTRY", Integer.class);
-    public final int MARKID_DEOPT_HANDLER_ENTRY = getConstant("CodeInstaller::DEOPT_HANDLER_ENTRY", Integer.class);
-    public final int MARKID_FRAME_COMPLETE = getConstant("CodeInstaller::FRAME_COMPLETE", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK >= 15));
-    public final int MARKID_INVOKEINTERFACE = getConstant("CodeInstaller::INVOKEINTERFACE", Integer.class);
-    public final int MARKID_INVOKEVIRTUAL = getConstant("CodeInstaller::INVOKEVIRTUAL", Integer.class);
-    public final int MARKID_INVOKESTATIC = getConstant("CodeInstaller::INVOKESTATIC", Integer.class);
-    public final int MARKID_INVOKESPECIAL = getConstant("CodeInstaller::INVOKESPECIAL", Integer.class);
-    public final int MARKID_INLINE_INVOKE = getConstant("CodeInstaller::INLINE_INVOKE", Integer.class);
-    public final int MARKID_POLL_NEAR = getConstant("CodeInstaller::POLL_NEAR", Integer.class);
-    public final int MARKID_POLL_RETURN_NEAR = getConstant("CodeInstaller::POLL_RETURN_NEAR", Integer.class);
-    public final int MARKID_POLL_FAR = getConstant("CodeInstaller::POLL_FAR", Integer.class);
-    public final int MARKID_POLL_RETURN_FAR = getConstant("CodeInstaller::POLL_RETURN_FAR", Integer.class);
-    public final int MARKID_CARD_TABLE_SHIFT = getConstant("CodeInstaller::CARD_TABLE_SHIFT", Integer.class);
-    public final int MARKID_CARD_TABLE_ADDRESS = getConstant("CodeInstaller::CARD_TABLE_ADDRESS", Integer.class);
-    public final int MARKID_INVOKE_INVALID = getConstant("CodeInstaller::INVOKE_INVALID", Integer.class);
+    public final int VERIFIED_ENTRY = getConstant("CodeInstaller::VERIFIED_ENTRY", Integer.class);
+    public final int UNVERIFIED_ENTRY = getConstant("CodeInstaller::UNVERIFIED_ENTRY", Integer.class);
+    public final int OSR_ENTRY = getConstant("CodeInstaller::OSR_ENTRY", Integer.class);
+    public final int EXCEPTION_HANDLER_ENTRY = getConstant("CodeInstaller::EXCEPTION_HANDLER_ENTRY", Integer.class);
+    public final int DEOPT_HANDLER_ENTRY = getConstant("CodeInstaller::DEOPT_HANDLER_ENTRY", Integer.class);
+    public final int FRAME_COMPLETE = getConstant("CodeInstaller::FRAME_COMPLETE", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK >= 15));
+    public final int INVOKEINTERFACE = getConstant("CodeInstaller::INVOKEINTERFACE", Integer.class);
+    public final int INVOKEVIRTUAL = getConstant("CodeInstaller::INVOKEVIRTUAL", Integer.class);
+    public final int INVOKESTATIC = getConstant("CodeInstaller::INVOKESTATIC", Integer.class);
+    public final int INVOKESPECIAL = getConstant("CodeInstaller::INVOKESPECIAL", Integer.class);
+    public final int INLINE_INVOKE = getConstant("CodeInstaller::INLINE_INVOKE", Integer.class);
+    public final int POLL_NEAR = getConstant("CodeInstaller::POLL_NEAR", Integer.class);
+    public final int POLL_RETURN_NEAR = getConstant("CodeInstaller::POLL_RETURN_NEAR", Integer.class);
+    public final int POLL_FAR = getConstant("CodeInstaller::POLL_FAR", Integer.class);
+    public final int POLL_RETURN_FAR = getConstant("CodeInstaller::POLL_RETURN_FAR", Integer.class);
+    public final int CARD_TABLE_SHIFT = getConstant("CodeInstaller::CARD_TABLE_SHIFT", Integer.class);
+    public final int CARD_TABLE_ADDRESS = getConstant("CodeInstaller::CARD_TABLE_ADDRESS", Integer.class);
+    public final int INVOKE_INVALID = getConstant("CodeInstaller::INVOKE_INVALID", Integer.class);
 
     public final boolean CPU_HAS_INTEL_JCC_ERRATUM = getFieldValue("VM_Version::_has_intel_jcc_erratum", Boolean.class, "bool",
                     true, "amd64".equals(osArch) && (JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK >= 15));
 
     /**
      * The following constants are given default values here since they are missing in the native
-     * JVMCI-8 code but are still required for {@link GraalHotSpotVMConfigNode#canonical} to work in
-     * a JDK8 environment.
+     * JVMCI-8 code but are still required for {@link HotSpotMarkId} to work in a JDK8 environment.
      */
-    public final int MARKID_HEAP_TOP_ADDRESS = getConstant("CodeInstaller::HEAP_TOP_ADDRESS", Integer.class, 17, JDK > 9);
-    public final int MARKID_HEAP_END_ADDRESS = getConstant("CodeInstaller::HEAP_END_ADDRESS", Integer.class, 18, JDK > 9);
-    public final int MARKID_NARROW_KLASS_BASE_ADDRESS = getConstant("CodeInstaller::NARROW_KLASS_BASE_ADDRESS", Integer.class, 19, JDK > 9);
-    public final int MARKID_NARROW_OOP_BASE_ADDRESS = getConstant("CodeInstaller::NARROW_OOP_BASE_ADDRESS", Integer.class, 20, JDK > 9);
-    public final int MARKID_CRC_TABLE_ADDRESS = getConstant("CodeInstaller::CRC_TABLE_ADDRESS", Integer.class, 21, JDK > 9);
-    public final int MARKID_LOG_OF_HEAP_REGION_GRAIN_BYTES = getConstant("CodeInstaller::LOG_OF_HEAP_REGION_GRAIN_BYTES", Integer.class, 22, JDK > 9);
-    public final int MARKID_INLINE_CONTIGUOUS_ALLOCATION_SUPPORTED = getConstant("CodeInstaller::INLINE_CONTIGUOUS_ALLOCATION_SUPPORTED", Integer.class, 23, JDK > 9);
+    public final int NARROW_KLASS_BASE_ADDRESS = getConstant("CodeInstaller::NARROW_KLASS_BASE_ADDRESS", Integer.class, 19, JDK > 9);
+    public final int NARROW_OOP_BASE_ADDRESS = getConstant("CodeInstaller::NARROW_OOP_BASE_ADDRESS", Integer.class, 20, JDK > 9);
+    public final int CRC_TABLE_ADDRESS = getConstant("CodeInstaller::CRC_TABLE_ADDRESS", Integer.class, 21, JDK > 9);
+    public final int LOG_OF_HEAP_REGION_GRAIN_BYTES = getConstant("CodeInstaller::LOG_OF_HEAP_REGION_GRAIN_BYTES", Integer.class, 22, JDK > 9);
 
     // Checkstyle: resume
 
