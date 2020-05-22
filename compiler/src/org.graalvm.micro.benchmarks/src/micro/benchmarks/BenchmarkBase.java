@@ -31,8 +31,8 @@ import org.openjdk.jmh.annotations.Warmup;
 /**
  * Base class for JMH benchmarks.
  */
-@Warmup(iterations = BenchmarkBase.Defaults.WARMUP_ITERATIONS)
-@Measurement(iterations = BenchmarkBase.Defaults.MEASUREMENT_ITERATIONS)
+@Warmup(iterations = BenchmarkBase.Defaults.WARMUP_ITERATIONS, time = 5)
+@Measurement(iterations = BenchmarkBase.Defaults.MEASUREMENT_ITERATIONS, time = 5)
 @Fork(BenchmarkBase.Defaults.FORKS)
 public class BenchmarkBase {
 

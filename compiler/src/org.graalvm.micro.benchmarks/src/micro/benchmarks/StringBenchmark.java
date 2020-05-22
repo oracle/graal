@@ -30,7 +30,6 @@ import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.Warmup;
 
 /**
  * Benchmarks cost of {@link String#indexOf(int)} and {@link String#indexOf(String)}.
@@ -69,73 +68,61 @@ public class StringBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public int indexOfChar(BenchState state) {
         return state.lorem.indexOf(state.ch1);
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public int indexOfConstantChar(BenchState state) {
         return state.smallLorem.indexOf(' ');
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public int indexOfSingleCharString(BenchState state) {
         return state.lorem.indexOf(state.ch1string);
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public int indexOfSingleCharStringLong(BenchState state) {
         return state.longString.indexOf('x');
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public int indexOfCharNotFound(BenchState state) {
         return state.lorem.indexOf(state.ch2);
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public int indexOfString(BenchState state) {
         return state.lorem.indexOf(state.s1);
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public int indexOfStringNotFound(BenchState state) {
         return state.lorem.indexOf(state.s2);
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public int compareTo(BenchState state) {
         return state.lorem.compareTo(state.loremLastChar);
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public String compressSmallString(BenchState state) {
         return new String(state.smallCharArray);
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public String compressLargeString(BenchState state) {
         return new String(state.largeCharArray);
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public char[] inflateSmallString(BenchState state) {
         return state.smallLorem.toCharArray();
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public char[] inflateLargeString(BenchState state) {
         return state.largeLorem.toCharArray();
     }
