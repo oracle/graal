@@ -22,35 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.c.libc;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
 
-public class BionicLibc implements LibCBase {
+@Platforms(Platform.HOSTED_ONLY.class)
+public interface TemporaryBuildDirectoryProvider {
 
-    @Override
-    public String getJDKStaticLibsPath() {
-        return LibCBase.PATH_DEFAULT;
-    }
+    Path getTemporaryBuildDirectory();
 
-    @Override
-    public void prepare(Path directory) {
-    }
-
-    @Override
-    public List<String> getAdditionalQueryCodeCompilerOptions() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public List<String> getCCompilerOptions() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public boolean hasIsolatedNamespaces() {
-        return false;
-    }
 }

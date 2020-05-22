@@ -322,12 +322,14 @@ public final class NativeLibraries {
             libraryPaths.add(staticLibsDir.toString());
         } else {
             if (!NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
-                if (SubstrateOptions.UseMuslC.hasBeenSet()) {
-                    throw UserError.abort("Your version of the JDK does not support statically linking against musl.");
-                }
                 /* Fail if we will statically link JDK libraries but do not have them available */
+                String libCMessage = "";
+                if (Platform.includedIn(Platform.LINUX.class)) {
+                    libCMessage = "(target libc: " + LibCBase.singleton().getName() + ")";
+                }
                 UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
-                                "Building images for %s requires static JDK libraries.%nUse JDK from %s or %s%s",
+                                "Building images for %s%s requires static JDK libraries.%nUse JDK from %s or %s%s",
+                                libCMessage,
                                 ImageSingletons.lookup(Platform.class).getClass().getName(),
                                 "https://github.com/graalvm/openjdk8-jvmci-builder/releases",
                                 "https://github.com/graalvm/labs-openjdk-11/releases",

@@ -22,35 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c.libc;
+package com.oracle.svm.core.posix.linux.libc;
 
-import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
-public class GLibc implements LibCBase {
-
-    @Override
-    public String getName() {
-        return "glibc";
-    }
-
-    @Override
-    public void prepare(Path directory) {
-    }
+@AutomaticFeature
+public class AlternativeLibCFeature implements Feature {
 
     @Override
-    public List<String> getAdditionalQueryCodeCompilerOptions() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public List<String> getCCompilerOptions() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public boolean hasIsolatedNamespaces() {
-        return true;
+    public void afterRegistration(AfterRegistrationAccess access) {
+        TemporaryBuildDirectoryProvider tempDirectoryProvider = ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class);
+        LibCBase libc;
+        if (SubstrateOptions.UseMuslC.hasBeenSet()) {
+            libc = new MuslLibc();
+        } else if (SubstrateOptions.UseBionicC.hasBeenSet()) {
+            libc = new BionicLibc();
+        } else {
+            libc = new GLibC();
+        }
+        libc.prepare(tempDirectoryProvider.getTemporaryBuildDirectory());
+        ImageSingletons.add(LibCBase.class, libc);
     }
 }

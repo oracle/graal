@@ -22,17 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c.libc;
+package com.oracle.svm.core.posix.linux.libc;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import com.oracle.svm.core.c.libc.LibCBase;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD, ElementType.TYPE, ElementType.PACKAGE})
-public @interface Libc {
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
 
-    Class<? extends LibCBase>[] value();
+public class GLibC implements LibCBase {
 
+    @Override
+    public String getName() {
+        return "glibc";
+    }
+
+    @Override
+    public void prepare(Path directory) {
+    }
+
+    @Override
+    public List<String> getAdditionalQueryCodeCompilerOptions() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public List<String> getCCompilerOptions() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public boolean hasIsolatedNamespaces() {
+        return true;
+    }
 }
