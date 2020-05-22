@@ -121,6 +121,12 @@ public abstract class LibraryFactory<T extends Library> {
     @SuppressWarnings("unused")
     private static void resetNativeImageState() {
         assert TruffleOptions.AOT : "Only supported during image generation";
+        for (Map.Entry<Class<?>, LibraryFactory<?>> entry : LIBRARIES.entrySet()) {
+            LibraryFactory<?> libraryFactory = entry.getValue();
+            clearNonTruffleClasses(libraryFactory.exportCache);
+            clearNonTruffleClasses(libraryFactory.uncachedCache);
+            clearNonTruffleClasses(libraryFactory.cachedCache);
+        }
         clearNonTruffleClasses(LIBRARIES);
         clearNonTruffleClasses(ResolvedDispatch.CACHE);
         clearNonTruffleClasses(ResolvedDispatch.REGISTRY);

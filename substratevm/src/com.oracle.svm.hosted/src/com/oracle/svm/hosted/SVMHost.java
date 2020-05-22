@@ -63,6 +63,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -398,6 +399,22 @@ public final class SVMHost implements HostVM {
             return ReferenceType.Other;
         }
         return ReferenceType.None;
+    }
+
+    @Override
+    public void checkType(ResolvedJavaType type, AnalysisUniverse universe) {
+        Class<?> originalClass = OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), type);
+        ClassLoader originalClassLoader = originalClass.getClassLoader();
+        if (originalClassLoader instanceof NativeImageClassLoader && !originalClassLoader.equals(classLoader)) {
+            String message = "Class " + originalClass.getName() + " was loaded by " + originalClassLoader + " and not by the current image class loader " + classLoader + ". ";
+            message += "This usually means that some objects from a previous build leaked in the current build. ";
+            message += "This can happen when using the image build server. ";
+            message += "To fix the issue you must reset all static state from the bootclasspath and application classpath that points to the application objects. ";
+            message += "If the offending code is in JDK code please file a bug with GraalVM. ";
+            message += "As an workaround you can disable the image build server by adding --no-server to the command line. ";
+
+            throw new UnsupportedFeatureException(message);
+        }
     }
 
     @Override
