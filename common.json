@@ -22,5 +22,9 @@
         }
       }
     }
+  },
+
+  "ci": {
+    "overlay": "6c2bede4e1e7e2c16912d7c7e97ba8b2c155d6ee"
   }
 }
