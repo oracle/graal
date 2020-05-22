@@ -30,7 +30,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
-public class BionicLibc implements LibCBase {
+public class BionicLibC implements LibCBase {
 
     @Override
     public String getName() {

@@ -43,7 +43,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-public class MuslLibc implements LibCBase {
+public class MuslLibC implements LibCBase {
 
     private Path specFilePath;
 
@@ -85,7 +85,7 @@ public class MuslLibc implements LibCBase {
         VMError.guarantee(specFilePath == null);
         specFilePath = directory.resolve(GCC_MUSL_SPEC_PATH);
 
-        InputStream stream = MuslLibc.class.getResourceAsStream(GCC_MUSL_TEMPLATE_PATH);
+        InputStream stream = MuslLibC.class.getResourceAsStream(GCC_MUSL_TEMPLATE_PATH);
         BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
         String content = reader.lines().collect(Collectors.joining(System.lineSeparator()));
         String muslPath = Paths.get(AlternativeLibCFeature.LibCOptions.UseMuslC.getValue()).toAbsolutePath().toString();

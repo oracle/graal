@@ -55,9 +55,9 @@ public class AlternativeLibCFeature implements Feature {
         TemporaryBuildDirectoryProvider tempDirectoryProvider = ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class);
         LibCBase libc;
         if (LibCOptions.UseMuslC.hasBeenSet()) {
-            libc = new MuslLibc();
+            libc = new MuslLibC();
         } else if (LibCOptions.UseBionicC.hasBeenSet()) {
-            libc = new BionicLibc();
+            libc = new BionicLibC();
         } else {
             libc = new GLibC();
         }
