@@ -2210,11 +2210,12 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public @Host(ThreadInfo[].class) StaticObject DumpThreads(@Host(long[].class) StaticObject ids, boolean locked_monitors, boolean locked_synchronizers) {
+    @SuppressWarnings("unused")
+    public @Host(ThreadInfo[].class) StaticObject DumpThreads(@Host(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers) {
         StaticObject threadIds = ids;
         if (StaticObject.isNull(threadIds)) {
             StaticObject[] activeThreads = getContext().getActiveThreads();
-            threadIds = getInterpreterToVM().allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length);
+            threadIds = InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length);
             for (int j = 0; j < activeThreads.length; ++j) {
                 long tid = (long) getMeta().java_lang_Thread_tid.get(activeThreads[j]);
                 getInterpreterToVM().setArrayLong(tid, j, threadIds);

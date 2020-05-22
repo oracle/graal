@@ -263,7 +263,7 @@ public final class Target_sun_misc_Unsafe {
     // CAS ops should be atomic.
     @Substitution(hasReceiver = true)
     public static boolean compareAndSwapObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                                               @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after) {
+                    @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after) {
         if (isNullOrArray(holder)) {
             return UNSAFE.compareAndSwapObject(unwrapNullOrArray(holder), offset, before, after);
         }
@@ -578,7 +578,8 @@ public final class Target_sun_misc_Unsafe {
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static void putObjectVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @Host(Object.class) StaticObject value) {
+    public static void putObjectVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
+                    @Host(Object.class) StaticObject value) {
         if (isNullOrArray(holder)) {
             UNSAFE.putObjectVolatile(unwrapNullOrArray(holder), offset, value);
             return;
@@ -934,7 +935,8 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void putOrderedObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @Host(Object.class) StaticObject value) {
+    public static void putOrderedObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
+                    @Host(Object.class) StaticObject value) {
         if (isNullOrArray(holder)) {
             UNSAFE.putOrderedObject(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1231,7 +1233,8 @@ public final class Target_sun_misc_Unsafe {
      * @return the number of samples actually retrieved; or -1 if the load average is unobtainable.
      */
     @Substitution(hasReceiver = true)
-    public static int getLoadAverage(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(double[].class) StaticObject loadavg, int nelems) {
+    @SuppressWarnings("unused")
+    public static int getLoadAverage(@Host(Unsafe.class) StaticObject self, @Host(double[].class) StaticObject loadavg, int nelems) {
         return -1; // unobtainable
     }
 }
