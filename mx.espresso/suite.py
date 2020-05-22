@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "5.263.3",
+    "mxversion": "5.263.7",
     "name": "espresso",
 
     # ------------- licenses
@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "7e70d7bcdb56484f4ad482c74d16a052cadf6145",
+                "version": "e471a0b956a33fe9fbc0b676135f91296ddb6d05",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -52,7 +52,7 @@ suite = {
                 "name": "tools",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "7e70d7bcdb56484f4ad482c74d16a052cadf6145",
+                "version": "e471a0b956a33fe9fbc0b676135f91296ddb6d05",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -60,7 +60,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "7c588c76f3a7c9c08eea614e1b1c54b36df8658e",
+                "version": "32e6ec4949d79320e6d4f8dd38a11662f8e963ea",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
