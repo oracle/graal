@@ -38,7 +38,7 @@ public class ArrayAllocationBenchmark extends BenchmarkBase {
 
     @State(Scope.Benchmark)
     public static class ThreadState {
-        @Param({"128", "256", "512", "1024", "2048", "4096", "8192", "16384", "32768", "65536", "131072"}) int size;
+        @Param({"128", "1024", "65536"}) int size;
         byte[] result;
     }
 
