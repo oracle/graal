@@ -49,7 +49,7 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         rerunClassInit(a, "sun.nio.ch.IOUtil", "sun.nio.ch.ServerSocketChannelImpl", "sun.nio.ch.DatagramChannelImpl", "sun.nio.ch.FileChannelImpl", "sun.nio.ch.FileKey");
-        rerunClassInit(a, "java.nio.file.Files$FileTypeDetectors", "java.nio.file.TempFileHelper");
+        rerunClassInit(a, "java.nio.file.Files$FileTypeDetectors");
         rerunClassInit(a, "sun.nio.ch.Net", "sun.nio.ch.SocketOptionRegistry$LazyInitialization");
         /* Ensure that the interrupt signal handler is initialized at runtime. */
         rerunClassInit(a, "sun.nio.ch.NativeThread");
