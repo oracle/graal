@@ -58,7 +58,7 @@ public class MuslLibc implements LibCBase {
 
     @Override
     public void prepare(Path directory) {
-        String useMuslCFlag = SubstrateOptionsParser.commandArgument(SubstrateOptions.UseMuslC, "+");
+        String useMuslCFlag = SubstrateOptionsParser.commandArgument(AlternativeLibCFeature.LibCOptions.UseMuslC, "+");
         if (!SubstrateOptions.StaticExecutable.getValue()) {
             String staticExecutableFlag = SubstrateOptionsParser.commandArgument(SubstrateOptions.StaticExecutable, "+");
             UserError.abort(useMuslCFlag + " can only be used when producing a static executable. Please add " + staticExecutableFlag + " to the command line arguments, or remove " +
@@ -88,7 +88,7 @@ public class MuslLibc implements LibCBase {
         InputStream stream = MuslLibc.class.getResourceAsStream(GCC_MUSL_TEMPLATE_PATH);
         BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
         String content = reader.lines().collect(Collectors.joining(System.lineSeparator()));
-        String muslPath = Paths.get(SubstrateOptions.UseMuslC.getValue()).toAbsolutePath().toString();
+        String muslPath = Paths.get(AlternativeLibCFeature.LibCOptions.UseMuslC.getValue()).toAbsolutePath().toString();
 
         content = content.replaceAll(PATH_PLACEHOLDER, muslPath);
         try {
