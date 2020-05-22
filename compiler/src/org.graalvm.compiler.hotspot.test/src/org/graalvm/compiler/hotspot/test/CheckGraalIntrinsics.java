@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -158,11 +158,15 @@ public class CheckGraalIntrinsics extends GraalTest {
     private static Collection<String> add(Collection<String> c, String... elements) {
         String[] sorted = elements.clone();
         Arrays.sort(sorted);
-        for (int i = 0; i < elements.length; i++) {
-            if (!elements[i].equals(sorted[i])) {
-                // Let's keep the list sorted for easier visual inspection
-                fail("Element %d is out of order, \"%s\"", i, elements[i]);
+        if (!Arrays.equals(elements, sorted)) {
+            int width = 2 + Arrays.asList(elements).stream().map(String::length).reduce(0, Integer::max);
+            Formatter fmt = new Formatter();
+            fmt.format("%-" + width + "s | sorted%n", "original");
+            fmt.format("%s%n", new String(new char[width * 2 + 2]).replace('\0', '='));
+            for (int i = 0; i < elements.length; i++) {
+                fmt.format("%-" + width + "s | %s%n", elements[i], sorted[i]);
             }
+            fail("Elements not sorted alphabetically:%n%s", fmt);
         }
         c.addAll(Arrays.asList(elements));
         return c;
@@ -357,7 +361,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                             "java/lang/StringUTF16.indexOfLatin1([B[B)I");
 
-            if (!config.useAESCTRIntrinsics) {
+            if (!config.useAESCTRIntrinsics && (arch instanceof AMD64)) {
                 add(ignore,
                                 "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
             }
@@ -412,7 +416,9 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (isJDK14OrHigher()) {
             add(toBeInvestigated,
                             "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
-                            "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
+                            "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I",
+                            "java/math/BigInteger.shiftLeftImplWorker([I[IIII)V",
+                            "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
         }
 
         if (!config.inlineNotify()) {
@@ -425,6 +431,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (!(arch instanceof AMD64)) {
             // Can we implement these on non-AMD64 platforms? C2 seems to.
             add(toBeInvestigated,
+                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
                             "java/lang/String.compareTo(Ljava/lang/String;)I",
                             "java/lang/StringLatin1.indexOf([B[B)I",
                             "java/lang/StringLatin1.inflate([BI[BII)V",
@@ -464,7 +471,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                                     "jdk/internal/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
                 }
                 add(toBeInvestigated,
-                                "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
                                 "java/lang/Thread.onSpinWait()V",
                                 "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I",
                                 "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
@@ -517,8 +523,8 @@ public class CheckGraalIntrinsics extends GraalTest {
         // AES intrinsics
         if (!config.useAESIntrinsics) {
             add(ignore,
-                            "com/sun/crypto/provider/AESCrypt." + aesEncryptName + "([BI[BI)V",
                             "com/sun/crypto/provider/AESCrypt." + aesDecryptName + "([BI[BI)V",
+                            "com/sun/crypto/provider/AESCrypt." + aesEncryptName + "([BI[BI)V",
                             "com/sun/crypto/provider/CipherBlockChaining." + cbcDecryptName + "([BII[BI)I",
                             "com/sun/crypto/provider/CipherBlockChaining." + cbcEncryptName + "([BII[BI)I");
         }
