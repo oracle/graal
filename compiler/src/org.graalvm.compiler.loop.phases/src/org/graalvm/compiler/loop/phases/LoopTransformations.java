@@ -298,7 +298,7 @@ public abstract class LoopTransformations {
 
         // Each duplication is inserted after the original, ergo create the post loop first
         LoopFragmentWhole mainLoop = preLoop.duplicate();
-        graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After  duplication of to main loop %s", mainLoop);
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After  duplication of main loop %s", mainLoop);
 
         LoopBeginNode mainLoopBegin = mainLoop.getDuplicatedNode(preLoopBegin);
         AbstractBeginNode mainLoopExitNode = mainLoop.getDuplicatedNode(preLoopExitNode);
@@ -311,7 +311,7 @@ public abstract class LoopTransformations {
         preLoopBegin.incrementSplits();
         preLoopBegin.incrementSplits();
         preLoopBegin.setPreLoop();
-        graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After post loop duplication");
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After post loop duplication");
         mainLoopBegin.setMainLoop();
         postLoopBegin.setPostLoop();
 
@@ -347,14 +347,14 @@ public abstract class LoopTransformations {
                     }
                 }
             }
-            graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After  fixing post dominating proxy usages");
+            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After fixing post dominating proxy usages");
             FrameState fs = postMergeNode.stateAfter();
             postMergeNode.setStateAfter(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);
             for (PhiNode phi : postMergeNode.phis().snapshot()) {
                 phi.safeDelete();
             }
-            graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After deleting unussed phis");
+            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After deleting unussed phis");
         }
 
         if (graph.hasValueProxies()) {
@@ -368,7 +368,7 @@ public abstract class LoopTransformations {
              * (proxies if need be),
              */
             FrameState preLoopExitStateAfter = preLoopBegin.stateAfter().duplicateWithVirtualState();
-            graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After duplicating pre loop begin state for new exit state");
+            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After duplicating pre loop begin state for new exit state");
             preLoopExitStateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
                 @Override
                 public void apply(Node from, Position p) {
@@ -379,9 +379,9 @@ public abstract class LoopTransformations {
                     }
                 }
             });
-            graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After proxy-ing phis for exit state");
+            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After proxy-ing phis for exit state");
             preLoopBegin.loopExits().first().setStateAfter(preLoopExitStateAfter);
-            graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After setting exit state");
+            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After setting exit state");
             FrameState mainLoopExitStateAfter = mainLoopBegin.stateAfter().duplicateWithVirtualState();
             mainLoopExitStateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
                 @Override
@@ -413,7 +413,7 @@ public abstract class LoopTransformations {
                 mainPhiNode.setValueAt(0, prePhiNode);
             }
         }
-        graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After updating value flow from pre loop phi to main loop phi");
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After updating value flow from pre loop phi to main loop phi");
 
         AbstractEndNode postEntryNode = postLoopBegin.forwardEnd();
 
@@ -427,7 +427,7 @@ public abstract class LoopTransformations {
 
         // Add and update any phi edges as per merge usage as needed and update usages
         processPreLoopPhis(loop, mainLoop, postLoop);
-        graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "After processing pre loop phis");
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing pre loop phis");
 
         continuationNode.predecessor().clearSuccessors();
         postLoopExitNode.setNext(continuationNode);
@@ -461,7 +461,7 @@ public abstract class LoopTransformations {
             mergeNode.removeEnd(end);
             end.safeDelete();
         }
-        mergeNode.getDebug().dump(DebugContext.DETAILED_LEVEL, mergeNode.graph(), "After cleaning up merge %s", mergeNode);
+        mergeNode.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, mergeNode.graph(), "After cleaning up merge %s", mergeNode);
         mergeNode.prepareDelete(landingNode);
         mergeNode.safeDelete();
     }

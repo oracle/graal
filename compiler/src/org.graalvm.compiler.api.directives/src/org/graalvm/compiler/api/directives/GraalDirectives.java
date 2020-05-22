@@ -92,7 +92,7 @@ public final class GraalDirectives {
      * effect killing all memory locations.
      */
     public static int sideEffect(@SuppressWarnings("unused") int a) {
-        return 0;
+        return a;
     }
 
     /**
