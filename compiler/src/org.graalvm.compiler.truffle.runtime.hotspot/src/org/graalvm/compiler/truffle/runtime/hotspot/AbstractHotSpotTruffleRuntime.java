@@ -108,7 +108,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      * introspection.
      */
     static final class Lazy extends BackgroundCompileQueue {
-        private final AbstractHotSpotTruffleRuntime runtime;
         StackIntrospection stackIntrospection;
 
         Lazy(AbstractHotSpotTruffleRuntime runtime) {
@@ -117,8 +116,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
 
         @Override
-        public void compileQueueIdled() {
-            TruffleCompiler compiler = runtime.truffleCompiler;
+        public void compilerThreadIdled() {
+            TruffleCompiler compiler = ((AbstractHotSpotTruffleRuntime) runtime).truffleCompiler;
             if (compiler instanceof HotSpotTruffleCompiler) {
                 ((HotSpotTruffleCompiler) compiler).purgeCaches();
             }
