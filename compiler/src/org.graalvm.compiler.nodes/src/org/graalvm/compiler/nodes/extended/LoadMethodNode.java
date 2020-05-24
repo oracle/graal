@@ -40,7 +40,6 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.meta.Assumptions;
@@ -80,11 +79,6 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
         if (!method.isInVirtualMethodTable(receiverType)) {
             throw new GraalError("%s does not have a vtable entry in type %s", method, receiverType);
         }
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override

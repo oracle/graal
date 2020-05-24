@@ -32,7 +32,6 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
 public final class LoadExceptionObjectNode extends AbstractStateSplit implements Lowerable {
@@ -43,8 +42,4 @@ public final class LoadExceptionObjectNode extends AbstractStateSplit implements
         super(TYPE, stamp);
     }
 
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
 }

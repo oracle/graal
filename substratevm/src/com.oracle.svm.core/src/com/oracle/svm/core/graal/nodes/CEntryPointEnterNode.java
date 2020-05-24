@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -100,11 +99,6 @@ public final class CEntryPointEnterNode extends DeoptimizingFixedWithNextNode im
 
     public boolean isCrashHandler() {
         return isCrashHandler;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override

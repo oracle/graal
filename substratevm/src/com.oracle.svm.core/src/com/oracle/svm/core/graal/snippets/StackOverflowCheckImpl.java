@@ -214,11 +214,6 @@ final class StackOverflowCheckNode extends FixedWithNextNode implements Lowerabl
     protected StackOverflowCheckNode() {
         super(TYPE, StampFactory.forVoid());
     }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
 }
 
 final class InsertStackOverflowCheckPhase extends Phase {

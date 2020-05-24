@@ -35,7 +35,6 @@ import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -82,11 +81,6 @@ public interface ArrayCopy extends Virtualizable, SingleMemoryKill, MemoryAccess
     int getBci();
 
     JavaKind getElementKind();
-
-    @Override
-    default void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this.asNode(), tool);
-    }
 
     default boolean checkBounds(int position, int length, VirtualObjectNode virtualObject) {
         assert length >= 0;
