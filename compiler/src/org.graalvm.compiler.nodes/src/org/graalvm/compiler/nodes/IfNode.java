@@ -96,6 +96,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     private static final CounterKey CORRECTED_PROBABILITIES = DebugContext.counter("CorrectedProbabilities");
 
+    /*
+     * Any change to successor fields (reordering, renaming, adding or removing) would need an
+     * according update to SimplifyingGraphDecoder#earlyCanonicalization.
+     */
     @Successor AbstractBeginNode trueSuccessor;
     @Successor AbstractBeginNode falseSuccessor;
     @Input(InputType.Condition) LogicNode condition;
