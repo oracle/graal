@@ -1,4 +1,4 @@
-gateCmdSuffix : ["-v", "--kill-with-sigquit", "gate", "--strict-mode", "--extra-vm-argument=-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true -Dgraal.PrintBackendCFG=true", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
+gateCmdSuffix : ["--kill-with-sigquit", "gate", "--strict-mode", "--extra-vm-argument=-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true -Dgraal.PrintBackendCFG=true", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
 gateCmd : ["mx", "--strict-compliance"] ${gateCmdSuffix}
 
 graalWeekly: ${graal-weekly-notifications} {
@@ -77,7 +77,7 @@ gateTestCTW : {
 gateTestCTWWeekly : {
   environment : {
     # GR-23372
-    EXTRA_VM_ARGS : "-DCompileTheWorld.MaxClasses=50000"
+    EXTRA_VM_ARGS : "-DCompileTheWorld.MaxClasses=5000"
   }
   run : [
     # At least one gate build should run without strict
