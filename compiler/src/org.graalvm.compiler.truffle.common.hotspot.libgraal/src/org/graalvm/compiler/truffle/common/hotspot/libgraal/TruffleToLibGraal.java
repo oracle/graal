@@ -69,6 +69,7 @@ public @interface TruffleToLibGraal {
         GetTotalFrameSize,
         GetTruffleCompilationId,
         GetTruffleCompilationTruffleAST,
+        GetVersionProperties,
         InitializeCompiler,
         InitializeRuntime,
         InstallTruffleCallBoundaryMethods,
