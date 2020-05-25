@@ -233,7 +233,7 @@ public final class Main {
             // The GC names are spelled the same in both enums, so no clever remapping is needed
             // here.
             String name = "CollectedHeap::" + graalGC.name();
-            int gc = graalHotSpotVMConfig.getConstant(name, Integer.class, def, false);
+            int gc = graalHotSpotVMConfig.getConstant(name, Integer.class, def, true);
 
             BinaryContainer binaryContainer = new BinaryContainer(graalOptions, graalHotSpotVMConfig, graphBuilderConfig, gc, JVM_VERSION);
             DataBuilder dataBuilder = new DataBuilder(this, backend, classes, binaryContainer);
