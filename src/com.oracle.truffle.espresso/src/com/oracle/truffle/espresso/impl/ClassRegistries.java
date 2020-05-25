@@ -46,7 +46,10 @@ public final class ClassRegistries {
     private final EspressoContext context;
 
     private final Set<StaticObject> weakClassLoaderSet = Collections.newSetFromMap(new WeakHashMap<>());
-    private volatile int totalClassLoadersSet = 0;
+
+    // Used as a volatile field. All accesses are done in synchronized blocks, so we do not need to
+    // specify it as volatile.
+    private int totalClassLoadersSet = 0;
 
     public ClassRegistries(EspressoContext context) {
         this.context = context;

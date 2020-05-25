@@ -122,7 +122,7 @@ final class LoadingConstraints implements ContextAccess {
                 }
             }
         }
-        getContext().getLogger().log(Level.INFO, "purging constraints stats:\n" +
+        getContext().getLogger().log(Level.FINE, "purging constraints stats:\n" +
                         "reclaimed slots: " + info.reclaimedSlots + "\n" +
                         "reclaimed constraints: " + info.reclaimedConstraints + "\n" +
                         "empty buckets: " + info.emptyBuckets);
