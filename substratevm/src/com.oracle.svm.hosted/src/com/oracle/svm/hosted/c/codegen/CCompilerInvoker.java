@@ -124,15 +124,28 @@ public abstract class CCompilerInvoker {
         @Override
         protected CompilerInfo createCompilerInfo(Path compilerPath, Scanner scanner) {
             try {
+                String targetArch = null;
                 /* For cl.exe the first line holds all necessary information */
-                scanner.findInLine("Microsoft.?\\(R\\) C/C\\+\\+ Optimizing Compiler Version ");
+                if (scanner.hasNext("用于")) {
+                    /* Simplified-Chinese has targetArch first */
+                    scanner.next();
+                    targetArch = scanner.next();
+                }
+                if (scanner.findInLine("Microsoft.*\\(R\\) C/C\\+\\+") == null) {
+                    return null;
+                }
                 scanner.useDelimiter("[. ]");
+                while (!scanner.hasNextInt()) {
+                    scanner.next();
+                }
                 int major = scanner.nextInt();
                 int minor0 = scanner.nextInt();
                 int minor1 = scanner.nextInt();
-                scanner.reset(); /* back to default delimiters */
-                scanner.findInLine("for ");
-                String targetArch = scanner.next();
+                if (targetArch == null) {
+                    scanner.reset(); /* back to default delimiters */
+                    scanner.next();
+                    targetArch = scanner.next();
+                }
                 return new CompilerInfo(compilerPath, "microsoft", "C/C++ Optimizing Compiler", "cl", major, minor0, minor1, targetArch);
             } catch (NoSuchElementException e) {
                 return null;
