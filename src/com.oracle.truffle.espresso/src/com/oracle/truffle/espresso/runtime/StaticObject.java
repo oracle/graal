@@ -370,9 +370,21 @@ public final class StaticObject implements TruffleObject {
         return (StaticObject) result;
     }
 
-    // Use with caution. Can be used with hidden fields
+    // Use with caution. Can be used with hidden fields.
     public Object getUnsafeField(int fieldIndex) {
         return UNSAFE.getObject(castExact(fields, Object[].class), getObjectFieldIndex(fieldIndex));
+    }
+
+    private void setUnsafeField(int index, Object value) {
+        UNSAFE.putObject(fields, getObjectFieldIndex(index), value);
+    }
+
+    private Object getUnsafeFieldVolatile(int fieldIndex) {
+        return UNSAFE.getObjectVolatile(castExact(fields, Object[].class), getObjectFieldIndex(fieldIndex));
+    }
+
+    private void setUnsafeFieldVolatile(int index, Object value) {
+        UNSAFE.putObjectVolatile(fields, getObjectFieldIndex(index), value);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -390,10 +402,6 @@ public final class StaticObject implements TruffleObject {
             Object[] fieldArray = castExact(fields, Object[].class);
             fieldArray[field.getFieldIndex()] = value;
         }
-    }
-
-    private void setUnsafeField(int index, Object value) {
-        UNSAFE.putObject(fields, getObjectFieldIndex(index), value);
     }
 
     public boolean compareAndSwapField(Field field, Object before, Object after) {
@@ -732,6 +740,16 @@ public final class StaticObject implements TruffleObject {
     public Object getHiddenField(Field hiddenField) {
         assert hiddenField.isHidden();
         return getUnsafeField(hiddenField.getFieldIndex());
+    }
+
+    public void setHiddenFieldVolatile(Field hiddenField, Object value) {
+        assert hiddenField.isHidden();
+        setUnsafeFieldVolatile(hiddenField.getFieldIndex(), value);
+    }
+
+    public Object getHiddenFieldVolatile(Field hiddenField) {
+        assert hiddenField.isHidden();
+        return getUnsafeFieldVolatile(hiddenField.getFieldIndex());
     }
 
     /**
