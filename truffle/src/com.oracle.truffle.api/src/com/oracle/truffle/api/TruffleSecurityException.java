@@ -43,7 +43,7 @@ package com.oracle.truffle.api;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("serial")
-final class TruffleSecurityException extends SecurityException implements TruffleException {
+final class TruffleSecurityException extends SecurityException implements TruffleException {    //TODO: What to do with SecurityException?
 
     TruffleSecurityException(String message) {
         super(message);

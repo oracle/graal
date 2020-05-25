@@ -41,7 +41,7 @@
 package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-
+import com.oracle.truffle.api.AbstractTruffleException;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -200,7 +200,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
     }
 
     @SuppressWarnings("serial")
-    private static class HostLanguageException extends RuntimeException implements TruffleException {
+    private static class HostLanguageException extends AbstractTruffleException {
 
         HostLanguageException(String message) {
             super(message);

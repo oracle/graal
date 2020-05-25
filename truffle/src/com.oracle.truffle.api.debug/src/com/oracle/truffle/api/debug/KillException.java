@@ -55,7 +55,7 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * @since 0.12
  */
-final class KillException extends ThreadDeath implements TruffleException {
+final class KillException extends ThreadDeath implements TruffleException { //TODO: What to do with ThreadDeath
     private static final long serialVersionUID = -8638020836970813894L;
     private final Node node;
 

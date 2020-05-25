@@ -1362,7 +1362,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     }
 
     @SuppressWarnings("serial")
-    static final class CancelExecution extends ThreadDeath implements TruffleException {
+    static final class CancelExecution extends ThreadDeath implements TruffleException {    //TODO: What to do with ThreadDeath
 
         private final Node location;
         private final String cancelMessage;

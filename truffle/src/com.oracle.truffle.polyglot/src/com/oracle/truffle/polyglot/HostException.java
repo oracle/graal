@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Exception wrapper for an error occurred in the host language.
  */
 @SuppressWarnings("serial")
-final class HostException extends RuntimeException implements TruffleException {
+final class HostException extends AbstractTruffleException {
 
     private final Throwable original;
 
@@ -81,6 +81,7 @@ final class HostException extends RuntimeException implements TruffleException {
         return HostObject.forException(exception, PolyglotContextImpl.currentNotEntered().getHostContext(), this);
     }
 
+    @Override
     public Node getLocation() {
         return null;
     }

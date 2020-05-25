@@ -242,6 +242,9 @@ public final class TruffleStackTrace extends Exception {
 
     private static LazyStackTrace findImpl(Throwable t) {
         assert !(t instanceof ControlFlowException);
+        if (t instanceof AbstractTruffleException) {
+            return ((AbstractTruffleException)t).getLazyStackTrace();
+        }
         Throwable cause = getCause(t);
         while (cause != null) {
             if (cause instanceof LazyStackTrace) {
@@ -435,16 +438,19 @@ public final class TruffleStackTrace extends Exception {
         }
 
         int stackTraceElementLimit = ((TruffleException) t).getStackTraceElementLimit();
-
-        Throwable cause = getCause(t);
         LazyStackTrace lazy;
-        if (cause == null) {
-            insert(t, lazy = new LazyStackTrace());
-        } else if (cause instanceof LazyStackTrace) {
-            lazy = (LazyStackTrace) cause;
+        if ((t instanceof AbstractTruffleException)) {
+            lazy = ((AbstractTruffleException)t).getLazyStackTrace();
         } else {
-            addStackFrameInfoSlowPath(callNode, root, cause, currentFrame, stackTraceElementLimit);
-            return;
+            Throwable cause = getCause(t);
+            if (cause == null) {
+                insert(t, lazy = new LazyStackTrace());
+            } else if (cause instanceof LazyStackTrace) {
+                lazy = (LazyStackTrace) cause;
+            } else {
+                addStackFrameInfoSlowPath(callNode, root, cause, currentFrame, stackTraceElementLimit);
+                return;
+            }
         }
         appendLazyStackTrace(callNode, root, currentFrame, lazy, stackTraceElementLimit);
     }

@@ -41,12 +41,13 @@
 
 package com.oracle.truffle.sl.parser;
 
+import com.oracle.truffle.api.AbstractTruffleException;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-public class SLParseError extends RuntimeException implements TruffleException {
+public class SLParseError extends AbstractTruffleException {
 
     public static final long serialVersionUID = 1L;
     private final Source source;

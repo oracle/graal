@@ -90,6 +90,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.AbstractTruffleException;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -283,7 +284,7 @@ public class LanguageSPITest {
     }
 
     @SuppressWarnings("serial")
-    private static class Interrupted extends RuntimeException implements TruffleException {
+    private static class Interrupted extends AbstractTruffleException {
 
         public boolean isCancelled() {
             return true;
