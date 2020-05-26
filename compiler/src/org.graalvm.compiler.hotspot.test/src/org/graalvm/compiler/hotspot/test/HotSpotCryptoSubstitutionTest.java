@@ -28,6 +28,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.AlgorithmParameters;
+import java.security.NoSuchAlgorithmException;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -63,11 +64,11 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         KeyGenerator gen = KeyGenerator.getInstance(generatorAlgorithm);
         gen.init(keySize);
         SecretKey key = gen.generateKey();
-        byte[] expected = runEncryptDecrypt(key, algorithm);
+        Result expected = runEncryptDecrypt(key, algorithm);
         InstalledCode intrinsic = compileAndInstallSubstitution(klass, methodName);
         if (intrinsic != null) {
-            byte[] actual = runEncryptDecrypt(key, algorithm);
-            Assert.assertArrayEquals(expected, actual);
+            Result actual = runEncryptDecrypt(key, algorithm);
+            assertEquals(expected, actual);
             intrinsic.invalidate();
         }
     }
@@ -161,11 +162,15 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         return classFile;
     }
 
-    public byte[] runEncryptDecrypt(SecretKey key, String algorithm) throws Exception {
-        byte[] indata = input.clone();
-        byte[] cipher = encrypt(indata, key, algorithm);
-        byte[] plain = decrypt(cipher, key, algorithm);
-        Assert.assertArrayEquals(indata, plain);
-        return plain;
+    public Result runEncryptDecrypt(SecretKey key, String algorithm) throws Exception {
+        try {
+            byte[] indata = input.clone();
+            byte[] cipher = encrypt(indata, key, algorithm);
+            byte[] plain = decrypt(cipher, key, algorithm);
+            Assert.assertArrayEquals(indata, plain);
+            return new Result(plain, null);
+        } catch (NoSuchAlgorithmException e) {
+            return new Result(null, e);
+        }
     }
 }
