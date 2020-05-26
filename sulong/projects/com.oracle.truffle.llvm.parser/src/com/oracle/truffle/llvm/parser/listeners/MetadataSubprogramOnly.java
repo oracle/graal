@@ -35,12 +35,21 @@ import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 
+/**
+ * This class is used to find an MDSubprogram that has been attached to a LLVM function.
+ */
+
 public class MetadataSubprogramOnly extends Metadata {
 
     MetadataSubprogramOnly(Types types, IRScope scope) {
         super(types, scope);
     }
 
+    /**
+     * Parses the given opCode while looking for an MDSubprogam.
+     *
+     * @throws MDSubprogramParsedException if the MDSubprogram is found.
+     */
     @Override
     protected void parseOpcode(RecordBuffer buffer, long[] args, int opCode) {
         super.parseOpcode(buffer, args, opCode);

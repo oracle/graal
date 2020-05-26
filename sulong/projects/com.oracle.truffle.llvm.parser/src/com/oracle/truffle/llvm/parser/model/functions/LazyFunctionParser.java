@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -87,8 +87,10 @@ public final class LazyFunctionParser {
                 parser.setupScope();
                 scanner.scanBlock(parser);
             } catch (MDSubprogramParsedException e) {
-                // if linkageName/displayName is found, an exception is thrown (s.t.
-                // parsing/searching does not have to be continued)
+                /*
+                 * If linkageName/displayName is found, an exception is thrown (such that
+                 * parsing/searching does not have to be continued).
+                 */
                 final String displayName = e.displayName;
                 final String linkageName = e.linkageName;
 

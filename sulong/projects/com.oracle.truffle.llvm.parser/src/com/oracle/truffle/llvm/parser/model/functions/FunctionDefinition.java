@@ -94,7 +94,10 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
     }
 
     public String getDisplayName() {
-        // for LLVM from C++, function.name stores the linkage name, but not 'original' C++ name
+        /*
+         * For LLVM code produced from C++ sources, function.name stores the linkage name, but not
+         * 'original' C++ name.
+         */
         if (mdAttachments != null && mdAttachments.size() > 0) {
             for (MDAttachment mdAttachment : mdAttachments) {
                 if (mdAttachment.getValue() instanceof MDSubprogram) {

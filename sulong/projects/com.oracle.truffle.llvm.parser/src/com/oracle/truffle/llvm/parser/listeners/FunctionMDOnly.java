@@ -53,6 +53,10 @@ public final class FunctionMDOnly implements ParserListener {
 
     }
 
+    /**
+     * Only to look for an MDSubprogram that is attached to a function. MetadataSubprogramOnly
+     * throws an MDSubprogramParsedException when it is parsed.
+     */
     @Override
     public ParserListener enter(Block block) {
         switch (block) {
@@ -68,7 +72,13 @@ public final class FunctionMDOnly implements ParserListener {
 
     @Override
     public void exit() {
-        // no linkageName found
+        /*
+         * No linkageName found. This method is not called if a linkage name has been found (i.e.,
+         * MDSubprogramOnly has thrown MDSubprogramParsedException), since the information which had
+         * been looked for has already been found, and the state of this parser is not relevant any
+         * more. In case of another parsing step of this function (due to lazy parsing), a different
+         * parser is used.
+         */
         scope.exitLocalScope();
     }
 
