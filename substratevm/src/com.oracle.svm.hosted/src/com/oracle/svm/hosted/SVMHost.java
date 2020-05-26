@@ -32,11 +32,14 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
@@ -71,6 +74,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
@@ -88,6 +92,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -117,7 +122,22 @@ public final class SVMHost implements HostVM {
      */
     private final ConcurrentMap<AnalysisMethod, Boolean> containsStackValueNode = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisMethod, Boolean> classInitializerSideEffect = new ConcurrentHashMap<>();
+    private final ConcurrentMap<AnalysisMethod, Set<AnalysisType>> initializedClasses = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
+
+    private static final Method isHiddenMethod;
+
+    static {
+        if (JavaVersionUtil.JAVA_SPEC >= 15) {
+            try {
+                isHiddenMethod = Class.class.getMethod("isHidden");
+            } catch (NoSuchMethodException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        } else {
+            isHiddenMethod = null;
+        }
+    }
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport, UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
         this.options = options;
@@ -304,11 +324,9 @@ public final class SVMHost implements HostVM {
         boolean isHidden = false;
         if (JavaVersionUtil.JAVA_SPEC >= 15) {
             try {
-                Method isHiddenMethod = Class.class.getMethod("isHidden");
                 isHidden = (boolean) isHiddenMethod.invoke(javaClass);
-            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                String message = "Exception trying to lookup or call isHidden on class: " + javaClass + " " + e;
-                throw new UnsupportedFeatureException(message);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw VMError.shouldNotReachHere(e);
             }
         }
 
@@ -459,7 +477,7 @@ public final class SVMHost implements HostVM {
             if (n instanceof StackValueNode) {
                 containsStackValueNode.put(method, true);
             }
-            checkClassInitializerSideEffect(method, n);
+            checkClassInitializerSideEffect(bb, method, n);
         }
     }
 
@@ -482,7 +500,7 @@ public final class SVMHost implements HostVM {
      * call chain is the class initializer. But this does not fit well into the current approach
      * where each method has a `Safety` flag.
      */
-    private void checkClassInitializerSideEffect(AnalysisMethod method, Node n) {
+    private void checkClassInitializerSideEffect(BigBang bb, AnalysisMethod method, Node n) {
         if (n instanceof AccessFieldNode) {
             ResolvedJavaField field = ((AccessFieldNode) n).field();
             if (field.isStatic() && (!method.isClassInitializer() || !field.getDeclaringClass().equals(method.getDeclaringClass()))) {
@@ -494,6 +512,14 @@ public final class SVMHost implements HostVM {
              * field they are accessing.
              */
             classInitializerSideEffect.put(method, true);
+        } else if (n instanceof EnsureClassInitializedNode) {
+            Constant constantHub = ((EnsureClassInitializedNode) n).getHub().asConstant();
+            if (constantHub != null) {
+                AnalysisType type = (AnalysisType) bb.getProviders().getConstantReflection().asJavaType(constantHub);
+                initializedClasses.computeIfAbsent(method, k -> new HashSet<>()).add(type);
+            } else {
+                classInitializerSideEffect.put(method, true);
+            }
         }
     }
 
@@ -514,6 +540,15 @@ public final class SVMHost implements HostVM {
 
     public boolean hasClassInitializerSideEffect(AnalysisMethod method) {
         return classInitializerSideEffect.containsKey(method);
+    }
+
+    public Set<AnalysisType> getInitializedClasses(AnalysisMethod method) {
+        Set<AnalysisType> result = initializedClasses.get(method);
+        if (result != null) {
+            return result;
+        } else {
+            return Collections.emptySet();
+        }
     }
 
     public boolean isAnalysisTrivialMethod(AnalysisMethod method) {

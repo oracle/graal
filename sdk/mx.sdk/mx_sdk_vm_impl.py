@@ -616,7 +616,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             _add(layout, _component_base, [{
                 'source_type': 'extracted-dependency',
                 'dependency': d,
-                'exclude': _component.license_files if mx.get_opts().no_licenses else [],
+                'exclude': _component.license_files if _no_licenses() else [],
                 'path': None,
             } for d in _component.support_distributions], _component)
             _add(layout, '<jdk_base>/include/', [{
@@ -640,7 +640,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _jdk_jre_bin = '<jre_base>/bin/'
 
             _licenses = _component.third_party_license_files
-            if not mx.get_opts().no_licenses:
+            if not _no_licenses():
                 _licenses = _licenses + _component.license_files
             for _license in _licenses:
                 if mx.is_windows() or isinstance(self, mx.AbstractJARDistribution):
@@ -870,7 +870,7 @@ def _components_set(stage1):
             for library_config in _get_library_configs(component):
                 if _skip_libraries(library_config):
                     components_set.add('s' + remove_lib_prefix_suffix(basename(library_config.destination)))
-    if mx.get_opts().no_licenses:
+    if _no_licenses():
         components_set.add('nolic')
     return components_set
 
@@ -2758,6 +2758,10 @@ def _image_profile(image):
         if arg.startswith(prefix):
             profiles += arg[prefix_len:].split(',')
     return profiles
+
+
+def _no_licenses():
+    return mx.get_opts().no_licenses or _env_var_to_bool('NO_LICENSES')
 
 
 def _with_polyglot_lib_project():

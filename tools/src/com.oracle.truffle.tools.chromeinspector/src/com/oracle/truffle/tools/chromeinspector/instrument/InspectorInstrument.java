@@ -150,7 +150,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             }
         }
         if (jarFile != null) {
-            StringBuilder ssp = new StringBuilder("file://").append(jarFile.getAbsolutePath());
+            StringBuilder ssp = new StringBuilder("file://").append(jarFile.toPath().toUri().getPath());
             if (index < path.length()) {
                 if (path.charAt(index) != '!') {
                     ssp.append('!');

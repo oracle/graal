@@ -438,6 +438,9 @@ public class SubstrateOptions {
     @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.Expert)//
     public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);
 
+    @Option(help = "When set to true, sets the internally used libc to Bionic. Note that this does not currently download and link against Bionic libc, but serves as a workaround that makes it possible externally", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> UseBionicC = new HostedOptionKey<>(false);
+
     @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
     public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
 

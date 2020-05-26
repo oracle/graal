@@ -85,11 +85,13 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
         Suites ret = defaultSuitesCreator.createSuites(options);
 
         if (ImmutableCode.getValue(options)) {
+            ListIterator<BasePhase<? super MidTierContext>> midTierLowering = ret.getMidTier().findPhase(LoweringPhase.class);
+
             // lowering introduces class constants, therefore it must be after lowering
-            ret.getHighTier().appendPhase(new LoadJavaMirrorWithKlassPhase(config));
+            midTierLowering.add(new LoadJavaMirrorWithKlassPhase(config));
 
             if (VerifyPhases.getValue(options)) {
-                ret.getHighTier().appendPhase(new AheadOfTimeVerificationPhase());
+                midTierLowering.add(new AheadOfTimeVerificationPhase());
             }
 
             if (GeneratePIC.getValue(options)) {
@@ -99,7 +101,6 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
                 if (HotSpotAOTProfilingPlugin.Options.TieredAOT.getValue(options)) {
                     highTierLowering.add(new FinalizeProfileNodesPhase(HotSpotAOTProfilingPlugin.Options.TierAInvokeInlineeNotifyFreqLog.getValue(options)));
                 }
-                ListIterator<BasePhase<? super MidTierContext>> midTierLowering = ret.getMidTier().findPhase(LoweringPhase.class);
                 midTierLowering.add(new ReplaceConstantNodesPhase());
 
                 // Replace inlining policy

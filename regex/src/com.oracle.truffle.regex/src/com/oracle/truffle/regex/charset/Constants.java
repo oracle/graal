@@ -52,9 +52,9 @@ public final class Constants {
 
     public static final CodePointSet BMP_WITHOUT_SURROGATES = CodePointSet.createNoDedup(0x0000, 0xd7ff, 0xe000, 0xffff);
 
-    public static final CodePointSet TRAIL_SURROGATE_RANGE = CodePointSet.createNoDedup(0xdc00, 0xdfff);
-
     public static final CodePointSet ASTRAL_SYMBOLS = CodePointSet.createNoDedup(0x010000, 0x10ffff);
+
+    public static final CodePointSet SURROGATES = CodePointSet.createNoDedup(0xd800, 0xdfff);
 
     public static final CodePointSet LEAD_SURROGATES = CodePointSet.createNoDedup(0xd800, 0xdbff);
 

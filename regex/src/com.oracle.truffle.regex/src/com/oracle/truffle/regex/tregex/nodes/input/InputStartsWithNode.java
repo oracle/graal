@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.tregex.string.StringUTF16;
 
 public abstract class InputStartsWithNode extends Node {
 
@@ -52,39 +53,39 @@ public abstract class InputStartsWithNode extends Node {
         return InputStartsWithNodeGen.create();
     }
 
-    public abstract boolean execute(Object input, String prefix, String mask);
+    public abstract boolean execute(Object input, Object prefix, Object mask);
 
     @Specialization(guards = "mask == null")
-    public boolean startsWith(String input, String prefix, @SuppressWarnings("unused") String mask) {
-        return input.startsWith(prefix);
+    public boolean startsWith(String input, StringUTF16 prefix, @SuppressWarnings("unused") Object mask) {
+        return input.startsWith(prefix.toString());
     }
 
     @Specialization(guards = "mask != null")
-    public boolean startsWithWithMask(String input, String prefix, String mask) {
-        return ArrayUtils.regionEqualsWithOrMask(input, 0, prefix, 0, mask.length(), mask);
+    public boolean startsWithWithMask(String input, StringUTF16 prefix, StringUTF16 mask) {
+        return ArrayUtils.regionEqualsWithOrMask(input, 0, prefix.toString(), 0, mask.encodedLength(), mask.toString());
     }
 
     @Specialization(guards = "mask == null")
-    public boolean startsWithTruffleObjNoMask(TruffleObject input, String prefix, String mask,
+    public boolean startsWithTruffleObjNoMask(TruffleObject input, StringUTF16 prefix, @SuppressWarnings("unused") Object mask,
                     @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputCharAtNode charAtNode) {
-        return startsWithTruffleObj(input, prefix, mask, lengthNode, charAtNode);
+                    @Cached("create()") InputReadNode charAtNode) {
+        return startsWithTruffleObj(input, prefix, null, lengthNode, charAtNode);
     }
 
     @Specialization(guards = "mask != null")
-    public boolean startsWithTruffleObjWithMask(TruffleObject input, String prefix, String mask,
+    public boolean startsWithTruffleObjWithMask(TruffleObject input, StringUTF16 prefix, StringUTF16 mask,
                     @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputCharAtNode charAtNode) {
-        assert mask.length() == prefix.length();
+                    @Cached("create()") InputReadNode charAtNode) {
+        assert mask.encodedLength() == prefix.encodedLength();
         return startsWithTruffleObj(input, prefix, mask, lengthNode, charAtNode);
     }
 
-    private static boolean startsWithTruffleObj(TruffleObject input, String prefix, String mask, InputLengthNode lengthNode, InputCharAtNode charAtNode) {
-        if (lengthNode.execute(input) < prefix.length()) {
+    private static boolean startsWithTruffleObj(TruffleObject input, StringUTF16 prefix, StringUTF16 mask, InputLengthNode lengthNode, InputReadNode charAtNode) {
+        if (lengthNode.execute(input) < prefix.encodedLength()) {
             return false;
         }
-        for (int i = 0; i < prefix.length(); i++) {
-            if (InputCharAtNode.charAtWithMask(input, i, mask, i, charAtNode) != prefix.charAt(i)) {
+        for (int i = 0; i < prefix.encodedLength(); i++) {
+            if (InputReadNode.readWithMask(input, i, mask, i, charAtNode) != prefix.charAt(i)) {
                 return false;
             }
         }

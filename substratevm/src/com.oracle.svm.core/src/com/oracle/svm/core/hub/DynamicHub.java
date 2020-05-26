@@ -75,6 +75,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK15OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
@@ -502,9 +504,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     public void ensureInitialized() {
-        if (!classInitializationInfo.isInitialized()) {
-            classInitializationInfo.initialize(this);
-        }
+        EnsureClassInitializedNode.ensureClassInitialized(toClass(this));
     }
 
     public SharedType getMetaType() {

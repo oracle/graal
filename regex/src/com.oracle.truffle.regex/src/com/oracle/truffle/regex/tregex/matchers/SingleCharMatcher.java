@@ -75,7 +75,7 @@ public abstract class SingleCharMatcher extends InvertibleCharMatcher {
     }
 
     @Specialization
-    public boolean match(char m, boolean compactString) {
+    public boolean match(int m, boolean compactString) {
         return result((!compactString || c < 256) && c == m);
     }
 

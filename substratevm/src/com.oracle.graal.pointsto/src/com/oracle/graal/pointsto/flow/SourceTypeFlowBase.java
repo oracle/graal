@@ -32,7 +32,6 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * The all-instantiated type state is defined as the maximum state that is allowed. If our type was
@@ -66,8 +65,6 @@ public abstract class SourceTypeFlowBase extends TypeFlow<BytecodePosition> {
      */
     protected final TypeState sourceState;
 
-    private final JavaConstant constantValue;
-
     public SourceTypeFlowBase(ValueNode node, TypeState state) {
         this(node, state.exactType(), state);
     }
@@ -75,7 +72,6 @@ public abstract class SourceTypeFlowBase extends TypeFlow<BytecodePosition> {
     public SourceTypeFlowBase(ValueNode node, AnalysisType declaredType, TypeState state) {
         super(node.getNodeSourcePosition(), declaredType);
         this.sourceState = state;
-        this.constantValue = node.asJavaConstant();
     }
 
     public SourceTypeFlowBase(BigBang bb, SourceTypeFlowBase original, MethodFlowsGraph methodFlows) {
@@ -85,14 +81,6 @@ public abstract class SourceTypeFlowBase extends TypeFlow<BytecodePosition> {
     public SourceTypeFlowBase(@SuppressWarnings("unused") BigBang bb, SourceTypeFlowBase original, MethodFlowsGraph methodFlows, TypeState state) {
         super(original, methodFlows);
         this.sourceState = state;
-        this.constantValue = original.constantValue;
-    }
-
-    /**
-     * Returns the constant value if the type flow was created from a constant node, or null.
-     */
-    public JavaConstant getConstantValue() {
-        return constantValue;
     }
 
     @Override

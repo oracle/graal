@@ -153,8 +153,6 @@ public abstract class ClangLikeBase extends Driver {
         List<String> sulongArgs = new ArrayList<>();
         if (os == OS.DARWIN && Files.isExecutable(Paths.get(XCRUN)) && Files.isExecutable(Paths.get(exe))) {
             sulongArgs.add(XCRUN);
-            sulongArgs.add("--sdk");
-            sulongArgs.add("macosx");
         }
         sulongArgs.add(exe);
 

@@ -1148,12 +1148,12 @@ public class BasicNodeFactory implements NodeFactory {
             assemblyRoot = getLazyUnsupportedInlineRootNode(asmExpression, e);
         }
         LLVMIRFunction function = new LLVMIRFunction(Truffle.getRuntime().createCallTarget(assemblyRoot), null);
-        LLVMFunction functionDetail = LLVMFunction.create("<asm>", library, function, new FunctionType(MetaType.UNKNOWN, Type.EMPTY_ARRAY, false), LLVMSymbol.INVALID_INDEX, LLVMSymbol.INVALID_INDEX,
+        LLVMFunction functionDetail = LLVMFunction.create("<asm>", library, function, new FunctionType(MetaType.UNKNOWN, 0, false), LLVMSymbol.INVALID_INDEX, LLVMSymbol.INVALID_INDEX,
                         false);
         LLVMFunctionDescriptor asm = context.createFunctionDescriptor(functionDetail);
         LLVMManagedPointerLiteralNode asmFunction = LLVMManagedPointerLiteralNodeGen.create(LLVMManagedPointer.create(asm));
 
-        return LLVMCallNode.create(new FunctionType(MetaType.UNKNOWN, argTypes, false), asmFunction, args, false);
+        return LLVMCallNode.create(FunctionType.createByCopy(MetaType.UNKNOWN, argTypes, false), asmFunction, args, false);
     }
 
     private LLVMInlineAssemblyRootNode getLazyUnsupportedInlineRootNode(String asmExpression, AsmParseException e) {
@@ -1244,7 +1244,7 @@ public class BasicNodeFactory implements NodeFactory {
                 // Inline Sulong intrinsics directly at their call site, to avoid the overhead of a
                 // call node and extra argument nodes.
                 LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-                return intrinsicProvider.generateIntrinsicNode(name, args, argsTypes, this);
+                return intrinsicProvider.generateIntrinsicNode(name, args, Arrays.asList(argsTypes), this);
             }
         }
         return null;

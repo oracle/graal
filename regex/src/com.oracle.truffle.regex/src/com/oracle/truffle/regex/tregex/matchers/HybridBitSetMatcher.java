@@ -41,86 +41,97 @@
 
 package com.oracle.truffle.regex.tregex.matchers;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.regex.charset.Range;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.util.MathUtil;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
- * Character matcher that uses a sorted list of bit sets (like {@link BitSetMatcher}) in conjunction
- * with another {@link CharMatcher} to cover all characters not covered by the bit sets.
+ * Character matcher that compiles to a binary search in a sorted list of ranges, like
+ * {@link RangeTreeMatcher}, but replaces some subtrees with bit-set matches. Specifically, if the
+ * character set contains many short ranges that differ only in the lowest byte, those ranges are
+ * converted to a bit-set, which is checked when the binary search finds that the given character is
+ * in the byte range denoted by the bit set. The threshold for bit-set conversion is defined by
+ * {@link TRegexOptions#TRegexRangeToBitSetConversionThreshold}.
+ *
+ * Example:
+ *
+ * <pre>
+ * Character set:
+ * [0x02, 0x04, 0x06, 0x1000, 0x1020-0x1030]
+ *
+ * Resulting Hybrid matcher with threshold = 3:
+ * - ranges:   [0x02-0x06,          0x1000, 0x1020-0x1030]
+ * - bit-sets: [[0x02, 0x04, 0x06], null,   null         ]
+ * </pre>
  */
 public abstract class HybridBitSetMatcher extends InvertibleCharMatcher {
 
-    @CompilationFinal(dimensions = 1) private final byte[] highBytes;
+    @CompilationFinal(dimensions = 1) private final int[] sortedRanges;
     @CompilationFinal(dimensions = 1) private final CompilationFinalBitSet[] bitSets;
-    private final CharMatcher restMatcher;
 
     /**
      * Constructs a new {@link HybridBitSetMatcher}.
      *
      * @param invert see {@link InvertibleCharMatcher}.
-     * @param highBytes the respective high bytes of the bit sets.
      * @param bitSets the bit sets that match the low bytes if the character under inspection has
      *            the corresponding high byte.
-     * @param restMatcher any {@link CharMatcher}, to cover the characters not covered by the bit
-     *            sets.
      */
-    HybridBitSetMatcher(boolean invert, byte[] highBytes, CompilationFinalBitSet[] bitSets, CharMatcher restMatcher) {
+    HybridBitSetMatcher(boolean invert, int[] sortedRanges, CompilationFinalBitSet[] bitSets) {
         super(invert);
-        this.highBytes = highBytes;
+        this.sortedRanges = sortedRanges;
         this.bitSets = bitSets;
-        this.restMatcher = restMatcher;
-        assert isSortedUnsigned(highBytes);
+        assert bitSets.length == sortedRanges.length / 2;
     }
 
-    public static HybridBitSetMatcher create(boolean invert, byte[] highBytes, CompilationFinalBitSet[] bitSets, CharMatcher restMatcher) {
-        return HybridBitSetMatcherNodeGen.create(invert, highBytes, bitSets, restMatcher);
+    public static HybridBitSetMatcher create(boolean invert, int[] sortedRanges, CompilationFinalBitSet[] bitSets) {
+        return HybridBitSetMatcherNodeGen.create(invert, sortedRanges, bitSets);
     }
 
     @Specialization
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    protected boolean match(char c, boolean compactString) {
+    public boolean match(int c, boolean compactString) {
         assert !compactString : "this matcher should be avoided via ProfilingCharMatcher on compact strings";
-        final int highByte = highByte(c);
-        for (int i = 0; i < highBytes.length; i++) {
-            int bitSetHighByte = Byte.toUnsignedInt(highBytes[i]);
-            if (highByte == bitSetHighByte) {
-                return result(bitSets[i].get(lowByte(c)));
-            }
-            if (highByte < bitSetHighByte) {
-                break;
-            }
+        CompilerAsserts.partialEvaluationConstant(this);
+        return matchTree(0, (sortedRanges.length >>> 1) - 1, c);
+    }
+
+    private boolean matchTree(int fromIndex, int toIndex, int c) {
+        CompilerAsserts.partialEvaluationConstant(fromIndex);
+        CompilerAsserts.partialEvaluationConstant(toIndex);
+        if (fromIndex > toIndex) {
+            return result(false);
         }
-        return result(restMatcher.execute(c, compactString));
+        final int mid = (fromIndex + toIndex) >>> 1;
+        CompilerAsserts.partialEvaluationConstant(mid);
+        if (c < sortedRanges[mid << 1]) {
+            return matchTree(fromIndex, mid - 1, c);
+        } else if (c > sortedRanges[(mid << 1) + 1]) {
+            return matchTree(mid + 1, toIndex, c);
+        } else {
+            return result(bitSets[mid] == null || bitSets[mid].get(lowByte(c)));
+        }
     }
 
     @Override
     public int estimatedCost() {
-        return (bitSets.length * 2) + restMatcher.estimatedCost();
+        return 2 * (MathUtil.log2ceil(sortedRanges.length / 2) - 1);
     }
 
     @Override
     @TruffleBoundary
     public String toString() {
-        StringBuilder sb = new StringBuilder(modifiersToString()).append("hybrid [\n");
-        for (int i = 0; i < highBytes.length; i++) {
-            sb.append(String.format("  %02x: ", Byte.toUnsignedInt(highBytes[i]))).append(bitSets[i]).append("\n");
-        }
-        return sb.append("  rest: ").append(restMatcher).append("\n]").toString();
-    }
-
-    private static boolean isSortedUnsigned(byte[] array) {
-        int prev = Integer.MIN_VALUE;
-        for (byte b : array) {
-            int i = Byte.toUnsignedInt(b);
-            if (prev > i) {
-                return false;
+        StringBuilder sb = new StringBuilder("hybrid ").append(modifiersToString()).append("[");
+        for (int i = 0; i < sortedRanges.length; i += 2) {
+            if (bitSets[i / 2] == null) {
+                sb.append(Range.toString(sortedRanges[i], sortedRanges[i + 1]));
+            } else {
+                sb.append("[range: ").append(Range.toString(sortedRanges[i], sortedRanges[i + 1])).append(", bs: ").append(bitSets[i / 2]).append("]");
             }
-            prev = i;
         }
-        return true;
+        return sb.append("]").toString();
     }
 }

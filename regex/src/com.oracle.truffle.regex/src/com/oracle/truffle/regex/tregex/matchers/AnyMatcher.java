@@ -57,7 +57,7 @@ public abstract class AnyMatcher extends CharMatcher {
 
     @Specialization
     @SuppressWarnings("unused")
-    boolean match(char c, boolean compactString) {
+    boolean match(int c, boolean compactString) {
         return true;
     }
 

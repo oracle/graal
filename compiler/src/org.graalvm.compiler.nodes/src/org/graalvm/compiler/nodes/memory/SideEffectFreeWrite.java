@@ -34,7 +34,7 @@ import org.graalvm.word.LocationIdentity;
 /**
  * This is a special form of write node that does not have a side effect to the interpreter, i.e.,
  * it does not modify memory that is visible to other threads or modifies state beyond what is
- * captured in {@link FrameState} nodes. Thus is should only be used with caution in sutiable
+ * captured in {@link FrameState} nodes. Thus is should only be used with caution in suitable
  * scenarios.
  */
 @NodeInfo(nameTemplate = "SideEffectFreeWrite#{p#location/s}")
@@ -42,7 +42,7 @@ public class SideEffectFreeWrite extends WriteNode {
 
     public static final NodeClass<SideEffectFreeWrite> TYPE = NodeClass.create(SideEffectFreeWrite.class);
 
-    protected SideEffectFreeWrite(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
+    public SideEffectFreeWrite(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
         super(TYPE, address, location, value, barrierType);
     }
 
