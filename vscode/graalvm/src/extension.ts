@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { toggleCodeCoverage, activeTextEditorChaged } from './graalVMCoverage';
-import { GraalVMConfigurationProvider, GraalVMDebugAdapterTracker } from './graalVMDebug';
+import { GraalVMConfigurationProvider, GraalVMDebugAdapterDescriptorFactory, GraalVMDebugAdapterTracker } from './graalVMDebug';
 import { installGraalVM, installGraalVMComponent, selectInstalledGraalVM } from './graalVMInstall';
 import { startLanguageServer, stopLanguageServer } from './graalVMLanguageServer';
 import { installRPackage, rConfig, R_LANGUAGE_SERVER_PACKAGE_NAME } from './graalVMR';
@@ -58,6 +58,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const configurationProvider = new GraalVMConfigurationProvider();
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('graalvm', configurationProvider));
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('node', configurationProvider));
+	context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('graalvm', new GraalVMDebugAdapterDescriptorFactory()));
 	context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory('graalvm', new GraalVMDebugAdapterTracker()));
 	context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
 		if (e.affectsConfiguration('graalvm.home')) {

@@ -6,12 +6,18 @@
  */
 
 import * as vscode from 'vscode';
+import * as cp from 'child_process';
+import * as fs from 'fs';
 import * as net from 'net';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
+import * as utils from './utils';
 import { LSPORT, connectToLanguageServer, stopLanguageServer, lspArgs, hasLSClient, setLSPID } from './graalVMLanguageServer';
 import { StreamInfo } from 'vscode-languageclient';
+import { ILaunchRequestArguments, IGraalVMLaunchInfo } from './graalVMDebugInterfaces';
 
+const DEBUG_TERMINAL_NAME = 'GraalVM Debug Console';
+const NODE: string = "node";
 const POLYGLOT: string = "polyglot";
 
 let rTermArgs: string[] | undefined;
@@ -123,16 +129,86 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 	}
 
 	resolveDebugConfigurationWithSubstitutedVariables?(_folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration, _token?: vscode.CancellationToken): vscode.ProviderResult<vscode.DebugConfiguration> {
-        if (config.program) {
-            if (!vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean) {
-                vscode.commands.getCommands().then((commands: string[]) => {
-                    if (commands.includes('dry_run')) {
-                        vscode.commands.executeCommand('dry_run', pathToFileURL(config.program));
-                    }
-                });
-            }
-        }
-        return config;
+        return getLaunchInfo(config, vscode.workspace.getConfiguration('graalvm').get('home') as string).then(launchInfo => {
+			config.graalVMLaunchInfo = launchInfo;
+			if (config.program) {
+				if (!vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean) {
+					vscode.commands.getCommands().then((commands: string[]) => {
+						if (commands.includes('dry_run')) {
+							vscode.commands.executeCommand('dry_run', pathToFileURL(config.program));
+						}
+					});
+				}
+			}
+			return config;
+		});
+	}
+}
+
+export class GraalVMDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
+
+	createDebugAdapterDescriptor(session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+		if (!session.configuration.protocol || session.configuration.protocol === 'debugAdapter') {
+			if (session.configuration.request === 'attach') {
+				return new vscode.DebugAdapterServer(session.configuration.port, session.configuration.address);
+			} else if (session.configuration.request === 'launch') {
+				if (session.configuration.console === 'integratedTerminal') {
+					let terminal: vscode.Terminal | undefined = vscode.window.terminals.find(term => term.name === DEBUG_TERMINAL_NAME);
+					if (terminal) {
+						terminal.sendText(`cd ${session.configuration.graalVMLaunchInfo.cwd}`);
+					} else {
+						terminal = vscode.window.createTerminal({name: DEBUG_TERMINAL_NAME,	cwd: session.configuration.graalVMLaunchInfo.cwd});
+					}
+					terminal.sendText(`${session.configuration.graalVMLaunchInfo.exec.replace(/(\s+)/g, '\\$1')} ${session.configuration.graalVMLaunchInfo.args.join(' ')}`);
+					terminal.show();
+					return new Promise<vscode.DebugAdapterServer>(resolve => {
+						setTimeout(() => {
+							resolve(new vscode.DebugAdapterServer(session.configuration.graalVMLaunchInfo.port));
+						}, session.configuration.timeout | 3000);
+					});
+				} else if (!session.configuration.console || session.configuration.console === 'internalConsole') {
+					const spawnOpts: cp.SpawnOptions = {cwd: session.configuration.graalVMLaunchInfo.cwd, env: process.env, detached: true};
+					const childProcess = cp.spawn(session.configuration.graalVMLaunchInfo.exec, session.configuration.graalVMLaunchInfo.args, spawnOpts);
+					return new Promise<vscode.DebugAdapterServer>((resolve, reject) => {
+						childProcess.on('error', (error) => {
+							reject(new Error(`Cannot launch debug target (${error.toString()}).`));
+						});
+						const captureStdOutput: boolean = session.configuration.outputCapture === 'std';
+						const noDebugMode = session.configuration.noDebug;
+						if (childProcess.stderr) {
+							childProcess.stderr.on('data', (data: string) => {
+								if (noDebugMode || captureStdOutput) {
+									let msg = data.toString();
+									vscode.debug.activeDebugConsole.appendLine(msg);
+								}
+							});
+						}
+						let lastEarlyNodeMsgSeen: boolean = false;
+						if (childProcess.stdout) {
+							childProcess.stdout.on('data', (data: string) => {
+								let msg = data.toString();
+								if (!lastEarlyNodeMsgSeen && !noDebugMode) {
+									let regExp = /^\s*\[Graal DAP\] Starting server and listening on \S*\s*$/m;
+									if (msg.match(regExp)) {
+										lastEarlyNodeMsgSeen = true;
+										resolve(new vscode.DebugAdapterServer(session.configuration.graalVMLaunchInfo.port));
+									}
+								}
+								if (noDebugMode || captureStdOutput) {
+									vscode.debug.activeDebugConsole.appendLine(msg);
+								}
+							});
+						}
+					});
+				} else {
+					throw new Error(`Unknown console type '${session.configuration.console}'.`);
+				}
+			}
+		}
+		return executable;
+	}
+
+	dispose() {
 	}
 }
 
@@ -146,4 +222,73 @@ function updatePath(path: string | undefined, graalVMBin: string): string {
 		pathItems.unshift(graalVMBin);
 	}
 	return pathItems.join(':');
+}
+
+async function getLaunchInfo(config: vscode.DebugConfiguration | ILaunchRequestArguments, graalVMHome: string | undefined): Promise<IGraalVMLaunchInfo> {
+	const port = config.port || utils.random(3000, 50000);
+	let runtimeExecutable = config.runtimeExecutable;
+	if (runtimeExecutable) {
+		if (path.isAbsolute(runtimeExecutable)) {
+			if (!fs.existsSync(runtimeExecutable)) {
+				return Promise.reject(new Error(`Attribute 'runtimeExecutable' does not exist ('${runtimeExecutable}').`));
+			}
+		} else {
+			const re = utils.findExecutable(runtimeExecutable, graalVMHome);
+			if (!re) {
+				return Promise.reject(new Error(`Cannot find runtime '${runtimeExecutable}' within your GraalVM installation. Make sure to have GraalVM '${runtimeExecutable}' installed.`));
+			}
+			runtimeExecutable = re;
+		}
+	} else {
+		const re = utils.findExecutable(NODE, graalVMHome);
+		if (!re) {
+			return Promise.reject(new Error(`Cannot find runtime '${NODE}' within your GraalVM installation. Make sure to have GraalVM '${NODE}' installed.`));
+		}
+		runtimeExecutable = re;
+	}
+	let programPath = config.program;
+	if (programPath) {
+		if (!path.isAbsolute(programPath)) {
+			return Promise.reject(new Error(`Attribute 'program' is not absolute ('${programPath}'); consider adding '\${workspaceFolder}/' as a prefix to make it absolute.`));
+		}
+		if (!fs.existsSync(programPath)) {
+			if (fs.existsSync(programPath + '.js')) {
+				programPath += '.js';
+			} else {
+				return Promise.reject(new Error(`Attribute 'program' does not exist ('${programPath}').`));
+			}
+		}
+		programPath = path.normalize(programPath);
+	}
+	let program: string | undefined;
+	let cwd = config.cwd;
+	if (cwd) {
+		if (!path.isAbsolute(cwd)) {
+			return Promise.reject(new Error(`Attribute 'cwd' is not absolute ('${cwd}'); consider adding '\${workspaceFolder}/' as a prefix to make it absolute.`));
+		}
+		if (!fs.existsSync(cwd)) {
+			return Promise.reject(new Error(`Attribute 'cwd' does not exist ('${cwd}').`));
+		}
+		if (programPath) {
+			program = await utils.isSymlinked(cwd) ? programPath : path.relative(cwd, programPath);
+		}
+	} else if (programPath) {
+		cwd = path.dirname(programPath);
+		program = await utils.isSymlinked(cwd) ? programPath : path.basename(programPath);
+	}
+	const runtimeArgs = config.runtimeArgs || [];
+	const programArgs = config.args || [];
+	let launchArgs = [];
+	if (!config.noDebug) {
+		if (!config.protocol || config.protocol === 'debugAdapter') {
+			launchArgs.push(`--dap=${port}`);
+		} else if (config.protocol === 'chromeDevTools') {
+			if (path.basename(runtimeExecutable) === NODE) {
+				launchArgs.push(`--inspect-brk=${port}`);
+			} else {
+				launchArgs.push(`--inspect=${port}`);
+			}
+		}
+	}
+	return Promise.resolve({exec: runtimeExecutable, args: runtimeArgs.concat(launchArgs, program ? [program] : [], programArgs), cwd: cwd, port: port});
 }

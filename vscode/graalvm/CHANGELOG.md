@@ -1,6 +1,7 @@
 # Change Log
 
 ## Version 0.0.11
+* GraalVM DAP support added
 * GraalVM for Windows supported
 
 ## Version 0.0.10

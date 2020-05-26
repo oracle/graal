@@ -9,12 +9,15 @@ import * as Core from 'vscode-chrome-debug-core';
 
 type ConsoleType = 'internalConsole' | 'integratedTerminal';
 type OutputCaptureType = 'console' | 'std';
+type Protocol = 'debugAdapter' | 'chromeDevTools';
 
 export interface ICommonRequestArgs extends Core.ICommonRequestArgs {
     /** TCP/IP address of process to be debugged. Default is 'localhost'. */
     address?: string;
     /** Optional timeout to connect */
     timeout?: number;
+    /** Protocol used to connect the debuggee */
+    protocol?: Protocol;
 }
 
 export interface ILaunchRequestArguments extends Core.ILaunchRequestArgs, ICommonRequestArgs {
@@ -34,8 +37,8 @@ export interface ILaunchRequestArguments extends Core.ILaunchRequestArgs, ICommo
     port?: number;
     /** Source of the debug output */
     outputCapture?: OutputCaptureType;
-    /** Optional path to GraalVM home directory. */
-    graalVMHome?: string;
+    /** GraalVM launch info. */
+    graalVMLaunchInfo: IGraalVMLaunchInfo;
 }
 
 export interface IAttachRequestArguments extends Core.IAttachRequestArgs, ICommonRequestArgs {
@@ -43,4 +46,15 @@ export interface IAttachRequestArguments extends Core.IAttachRequestArgs, ICommo
     remoteRoot?: string;
     /** VS Code's root directory. */
     localRoot?: string;
+}
+
+export interface IGraalVMLaunchInfo {
+    /** Absolute path to the runtime executable. */
+    exec: string;
+    /** Arguments passed to the runtime executable. */
+    args: string[];
+    /** Launch the runtime executable in this working directory (specified as an absolute path). */
+    cwd: string;
+    /** Selected debugging port. */
+    port: number;
 }
