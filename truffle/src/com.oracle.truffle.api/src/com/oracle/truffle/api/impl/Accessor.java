@@ -854,7 +854,7 @@ public abstract class Accessor {
             case "com.oracle.truffle.api.debug.Debugger$AccessorDebug":
             case "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor":
             case "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor":
-            case "com.oracle.truffle.api.test.polyglot.FileSystemsTest$TestAPIAccessor":
+            case "com.oracle.truffle.api.test.polyglot.TestAPIAccessor":
             case "com.oracle.truffle.api.impl.TVMCIAccessor":
             case "com.oracle.truffle.api.impl.DefaultRuntimeAccessor":
             case "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor":

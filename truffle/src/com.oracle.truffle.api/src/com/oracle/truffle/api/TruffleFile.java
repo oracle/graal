@@ -1592,20 +1592,27 @@ public final class TruffleFile {
                 return result;
             }
             for (FileTypeDetector detector : fileSystemContext.getFileTypeDetectors(validMimeTypes)) {
-                result = detector.findMimeType(this);
-                if (result != null && (validMimeTypes == null || validMimeTypes.contains(result))) {
-                    return result;
+                try {
+                    result = detector.findMimeType(this);
+                    if (result != null && (validMimeTypes == null || validMimeTypes.contains(result))) {
+                        return result;
+                    }
+                } catch (IOException ioe) {
+                    continue;
                 }
             }
             return null;
-        } catch (IOException | SecurityException e) {
+        } catch (IOException ioe) {
+            // invalid path
+            return null;
+        } catch (SecurityException e) {
             throw e;
         } catch (Throwable t) {
             throw wrapHostException(t);
         }
     }
 
-    Charset getEncoding(String mimeType) throws IOException {
+    Charset getEncoding(String mimeType) {
         try {
             assert mimeType != null;
             checkFileOperationPreconditions();
@@ -1614,13 +1621,20 @@ public final class TruffleFile {
                 return result;
             }
             for (FileTypeDetector detector : fileSystemContext.getFileTypeDetectors(Collections.singleton(mimeType))) {
-                result = detector.findEncoding(this);
-                if (result != null) {
-                    return result;
+                try {
+                    result = detector.findEncoding(this);
+                    if (result != null) {
+                        return result;
+                    }
+                } catch (IOException ioe) {
+                    continue;
                 }
             }
             return null;
-        } catch (IOException | UnsupportedOperationException | SecurityException e) {
+        } catch (IOException ioe) {
+            // invalid path
+            return null;
+        } catch (UnsupportedOperationException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
             throw wrapHostException(t);
