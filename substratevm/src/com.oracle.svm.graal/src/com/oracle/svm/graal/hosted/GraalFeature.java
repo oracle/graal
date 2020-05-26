@@ -910,7 +910,7 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
     }
 
     @Override
-    public boolean canConstantFoldDynamicAllocation(JavaType type) {
+    public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
         return ((AnalysisType) type).isInstantiated();
     }
 }

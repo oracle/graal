@@ -22,8 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.core.classinitialization;
 
+// Checkstyle: stop
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -33,9 +34,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 
-// Checkstyle: stop
 import sun.misc.Unsafe;
 // Checkstyle: resume
 
@@ -137,7 +138,7 @@ public final class ClassInitializationInfo {
         this.initLock = new ReentrantLock();
     }
 
-    boolean isInitialized() {
+    public boolean isInitialized() {
         return initState == InitState.FullyInitialized;
     }
 
@@ -160,15 +161,15 @@ public final class ClassInitializationInfo {
      * Steps refer to the JVM specification for class initialization:
      * https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-5.html#jvms-5.5
      */
-    @NeverInline("Class initialization slow path, for example do not inline into Truffle compilations")
-    void initialize(DynamicHub hub) {
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void initialize(ClassInitializationInfo info, DynamicHub hub) {
         Thread self = Thread.currentThread();
 
         /*
          * Step 1: Synchronize on the initialization lock, LC, for C. This involves waiting until
          * the current thread can acquire LC
          */
-        initLock.lock();
+        info.initLock.lock();
         try {
             /*
              * Step 2: If the Class object for C indicates that initialization is in progress for C
@@ -178,15 +179,15 @@ public final class ClassInitializationInfo {
              *
              * Thread interrupt status is unaffected by execution of the initialization procedure.
              */
-            while (isBeingInitialized() && !isReentrantInitialization(self)) {
-                if (initCondition == null) {
+            while (info.isBeingInitialized() && !info.isReentrantInitialization(self)) {
+                if (info.initCondition == null) {
                     /*
                      * We are holding initLock, so there cannot be any races installing the
                      * initCondition.
                      */
-                    initCondition = initLock.newCondition();
+                    info.initCondition = info.initLock.newCondition();
                 }
-                initCondition.awaitUninterruptibly();
+                info.initCondition.awaitUninterruptibly();
             }
 
             /*
@@ -194,7 +195,7 @@ public final class ClassInitializationInfo {
              * by the current thread, then this must be a recursive request for initialization.
              * Release LC and complete normally.
              */
-            if (isBeingInitialized() && isReentrantInitialization(self)) {
+            if (info.isBeingInitialized() && info.isReentrantInitialization(self)) {
                 return;
             }
 
@@ -202,7 +203,7 @@ public final class ClassInitializationInfo {
              * Step 4: If the Class object for C indicates that C has already been initialized, then
              * no further action is required. Release LC and complete normally.
              */
-            if (isInitialized()) {
+            if (info.isInitialized()) {
                 return;
             }
 
@@ -210,7 +211,7 @@ public final class ClassInitializationInfo {
              * Step 5: If the Class object for C is in an erroneous state, then initialization is
              * not possible. Release LC and throw a NoClassDefFoundError.
              */
-            if (isInErrorState()) {
+            if (info.isInErrorState()) {
                 throw new NoClassDefFoundError("Could not initialize class " + hub.getName());
             }
 
@@ -218,11 +219,11 @@ public final class ClassInitializationInfo {
              * Step 6: Record the fact that initialization of the Class object for C is in progress
              * by the current thread, and release LC.
              */
-            initState = InitState.BeingInitialized;
-            initThread = self;
+            info.initState = InitState.BeingInitialized;
+            info.initThread = self;
 
         } finally {
-            initLock.unlock();
+            info.initLock.unlock();
         }
 
         /*
@@ -251,7 +252,7 @@ public final class ClassInitializationInfo {
                  * threads, release LC, and complete abruptly, throwing the same exception that
                  * resulted from initializing SC.
                  */
-                setInitializationStateAndNotify(InitState.InitializationError);
+                info.setInitializationStateAndNotify(InitState.InitializationError);
                 throw ex;
             }
         }
@@ -267,7 +268,7 @@ public final class ClassInitializationInfo {
         Throwable exception = null;
         try {
             /* Step 9: Next, execute the class or interface initialization method of C. */
-            invokeClassInitializer();
+            info.invokeClassInitializer();
         } catch (Throwable ex) {
             exception = ex;
         }
@@ -278,7 +279,7 @@ public final class ClassInitializationInfo {
              * normally, then acquire LC, label the Class object for C as fully initialized, notify
              * all waiting threads, release LC, and complete this procedure normally.
              */
-            setInitializationStateAndNotify(InitState.FullyInitialized);
+            info.setInitializationStateAndNotify(InitState.FullyInitialized);
         } else {
             /*
              * Step 11: Otherwise, the class or interface initialization method must have completed
@@ -294,7 +295,7 @@ public final class ClassInitializationInfo {
              * threads, release LC, and complete this procedure abruptly with reason E or its
              * replacement as determined in the previous step.
              */
-            setInitializationStateAndNotify(InitState.InitializationError);
+            info.setInitializationStateAndNotify(InitState.InitializationError);
             throw (Error) exception;
         }
     }

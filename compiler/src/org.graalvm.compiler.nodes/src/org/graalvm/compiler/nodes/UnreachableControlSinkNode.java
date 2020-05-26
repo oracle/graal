@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package org.graalvm.compiler.nodes;
 
-package com.oracle.svm.core.graal.code;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+/**
+ * See also {@link org.graalvm.compiler.nodes.UnreachableBeginNode}.
+ */
+@NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
+public final class UnreachableControlSinkNode extends ControlSinkNode {
 
-import com.oracle.svm.core.meta.SharedType;
+    public static final NodeClass<UnreachableControlSinkNode> TYPE = NodeClass.create(UnreachableControlSinkNode.class);
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
-public class SubstrateMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
-
-    @Override
-    public JavaKind getStorageKind(JavaType type) {
-        return ((SharedType) type).getStorageKind();
-    }
-
-    @Override
-    public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
-        return ((SharedType) type).getHub().isInstantiated();
+    public UnreachableControlSinkNode() {
+        super(TYPE, StampFactory.forVoid());
     }
 }

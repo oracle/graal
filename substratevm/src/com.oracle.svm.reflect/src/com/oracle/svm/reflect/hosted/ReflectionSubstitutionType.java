@@ -550,7 +550,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             graphKit.createReturn(ret, JavaKind.Object);
 
             graphKit.exceptionPart();
-            graphKit.throwInvocationTargetException();
+            graphKit.throwInvocationTargetException(graphKit.exceptionObject());
 
             graphKit.endInvokeWithException();
 
@@ -594,7 +594,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             graphKit.createReturn(ret, JavaKind.Object);
 
             graphKit.exceptionPart();
-            graphKit.throwInvocationTargetException();
+            graphKit.throwInvocationTargetException(graphKit.exceptionObject());
 
             graphKit.endInvokeWithException();
 
