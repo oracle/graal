@@ -216,6 +216,12 @@ windows-devkit-jdk11: {
   }
 }
 
+windows-devkit-jdk15: {
+  packages : {
+    "devkit:VS2019-16.5.3+1" : "==0"
+  }
+}
+
 svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${windows-devkit-jdk11} {
   timelimit: "45:00"
 }
