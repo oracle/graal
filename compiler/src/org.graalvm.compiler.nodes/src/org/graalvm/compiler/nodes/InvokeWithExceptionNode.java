@@ -245,9 +245,4 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     public InvokeNode replaceWithNonThrowing() {
         return replaceWithInvoke();
     }
-
-    @Override
-    public AbstractBeginNode createNextBegin() {
-        return KillingBeginNode.create(getKilledLocationIdentity());
-    }
 }

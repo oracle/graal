@@ -25,16 +25,17 @@
 package com.oracle.svm.hosted.phases;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -42,30 +43,18 @@ import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.SubstrateMethodCallTargetNode;
 
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class HostedGraphKit extends SubstrateGraphKit {
-
-    private static final Method dynamicHubEnsureInitialized;
-    static {
-        Method ensureInitialized = null;
-        try {
-            ensureInitialized = DynamicHub.class.getDeclaredMethod("ensureInitialized");
-        } catch (NoSuchMethodException e) {
-            VMError.shouldNotReachHere(e);
-        }
-        dynamicHubEnsureInitialized = ensureInitialized;
-    }
 
     public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
         super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier());
@@ -97,26 +86,24 @@ public class HostedGraphKit extends SubstrateGraphKit {
 
     public void emitEnsureInitializedCall(ResolvedJavaType type) {
         if (SubstrateClassInitializationPlugin.needsRuntimeInitialization(graph.method().getDeclaringClass(), type)) {
-            ResolvedJavaMethod ensureInitialized = providers.getMetaAccess().lookupJavaMethod(dynamicHubEnsureInitialized);
+            ValueNode hub = createConstant(getConstantReflection().asJavaClass(type), JavaKind.Object);
+            EnsureClassInitializedNode ensureInitializedNode = append(new EnsureClassInitializedNode(hub));
+            ensureInitializedNode.setStateAfter(getFrameState().create(bci(), ensureInitializedNode));
 
-            Constant dynamicHub = getConstantReflection().asJavaClass(type);
-            ValueNode dynamicHubNode = createConstant(dynamicHub, JavaKind.Object);
+            AbstractBeginNode noExceptionEdge = add(ensureInitializedNode.createNextBegin());
+            ensureInitializedNode.setNext(noExceptionEdge);
+            ExceptionObjectNode exceptionEdge = createExceptionObjectNode(getFrameState(), bci());
+            ensureInitializedNode.setExceptionEdge(exceptionEdge);
 
-            ValueNode[] args = new ValueNode[]{dynamicHubNode};
+            lastFixedNode = exceptionEdge;
+            throwInvocationTargetException(exceptionEdge);
 
-            createJavaCallWithException(InvokeKind.Virtual, ensureInitialized, args);
-            noExceptionPart();
-
-            exceptionPart();
-            throwInvocationTargetException();
-
-            endInvokeWithException();
+            assert lastFixedNode == null;
+            lastFixedNode = noExceptionEdge;
         }
     }
 
-    public void throwInvocationTargetException() {
-        ValueNode exception = exceptionObject();
-
+    public void throwInvocationTargetException(ValueNode exception) {
         ResolvedJavaType exceptionType = getMetaAccess().lookupJavaType(InvocationTargetException.class);
         ValueNode ite = append(new NewInstanceNode(exceptionType, true));
 

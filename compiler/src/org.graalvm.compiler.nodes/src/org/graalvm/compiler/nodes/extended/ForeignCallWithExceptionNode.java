@@ -29,23 +29,30 @@ import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import java.util.Arrays;
+
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.KillingBeginNode;
+import org.graalvm.compiler.nodes.MultiKillingBeginNode;
+import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Node for a {@linkplain ForeignCallDescriptor foreign} call with an {@linkplain WithExceptionNode
@@ -59,7 +66,7 @@ import jdk.vm.ci.meta.JavaKind;
           size = SIZE_2,
           sizeRationale = "Rough estimation of the call operation itself.")
 // @formatter:on
-public class ForeignCallWithExceptionNode extends WithExceptionNode implements ForeignCall {
+public class ForeignCallWithExceptionNode extends WithExceptionNode implements ForeignCall, Simplifiable {
     public static final NodeClass<ForeignCallWithExceptionNode> TYPE = NodeClass.create(ForeignCallWithExceptionNode.class);
 
     @Input protected NodeInputList<ValueNode> arguments;
@@ -68,6 +75,10 @@ public class ForeignCallWithExceptionNode extends WithExceptionNode implements F
 
     protected final ForeignCallDescriptor descriptor;
     protected int bci = BytecodeFrame.UNKNOWN_BCI;
+
+    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod targetMethod, @InjectedNodeParameter Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+        return ForeignCallNode.doIntrinsify(b, targetMethod, returnStamp, descriptor, arguments, true);
+    }
 
     public ForeignCallWithExceptionNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
         this(TYPE, descriptor, arguments);
@@ -138,16 +149,26 @@ public class ForeignCallWithExceptionNode extends WithExceptionNode implements F
     }
 
     @Override
-    public FixedNode replaceWithNonThrowing() {
-        ForeignCallNode foreignCall = this.asNode().graph().add(new ForeignCallNode(descriptor, stamp, arguments));
-        AbstractBeginNode oldException = this.exceptionEdge;
-        graph().replaceSplitWithFixed(this, foreignCall, this.next());
-        GraphUtil.killCFG(oldException);
-        return foreignCall;
+    public void simplify(SimplifierTool tool) {
+        if (exceptionEdge instanceof UnreachableBeginNode) {
+            FixedNode replacement = replaceWithNonThrowing();
+            tool.addToWorkList(replacement);
+        }
     }
 
     @Override
-    public AbstractBeginNode createNextBegin() {
-        return KillingBeginNode.create(LocationIdentity.any());
+    public FixedNode replaceWithNonThrowing() {
+        ForeignCallNode foreignCall = this.asNode().graph().add(new ForeignCallNode(descriptor, stamp, arguments));
+        foreignCall.setStateAfter(stateAfter());
+        foreignCall.setStateDuring(stateDuring());
+
+        AbstractBeginNode nextBegin = this.next;
+        AbstractBeginNode oldException = this.exceptionEdge;
+        graph().replaceSplitWithFixed(this, foreignCall, nextBegin);
+        GraphUtil.killCFG(oldException);
+        if (nextBegin instanceof MultiKillingBeginNode && Arrays.equals(((MultiKillingBeginNode) nextBegin).getKilledLocationIdentities(), this.getKilledLocationIdentities())) {
+            foreignCall.graph().removeFixed(nextBegin);
+        }
+        return foreignCall;
     }
 }

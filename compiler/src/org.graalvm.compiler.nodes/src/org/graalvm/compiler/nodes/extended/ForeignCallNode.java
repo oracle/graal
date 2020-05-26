@@ -73,12 +73,21 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
     public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod targetMethod, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter ForeignCallsProvider foreignCalls,
                     ForeignCallSignature signature, ValueNode... arguments) {
         ForeignCallDescriptor descriptor = foreignCalls.getDescriptor(signature);
-        return intrinsify(b, targetMethod, returnStamp, descriptor, arguments);
+        return doIntrinsify(b, targetMethod, returnStamp, descriptor, arguments, false);
     }
 
     public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod targetMethod, @InjectedNodeParameter Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        ForeignCallNode node = new ForeignCallNode(descriptor, arguments);
-        node.setStamp(returnStamp);
+        return doIntrinsify(b, targetMethod, returnStamp, descriptor, arguments, false);
+    }
+
+    static boolean doIntrinsify(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode[] arguments, boolean withException) {
+        ForeignCall node;
+        if (withException) {
+            node = new ForeignCallWithExceptionNode(descriptor, arguments);
+        } else {
+            node = new ForeignCallNode(descriptor, arguments);
+        }
+        node.asNode().setStamp(returnStamp);
 
         assert verifyDescriptor(b, targetMethod, descriptor);
 
@@ -94,9 +103,9 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
 
         JavaKind returnKind = targetMethod.getSignature().getReturnKind();
         if (returnKind == JavaKind.Void) {
-            b.add(node);
+            b.add(node.asNode());
         } else {
-            b.addPush(returnKind, node);
+            b.addPush(returnKind, node.asNode());
         }
 
         return true;

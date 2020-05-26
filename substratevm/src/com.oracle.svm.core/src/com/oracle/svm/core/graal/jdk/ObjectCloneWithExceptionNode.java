@@ -35,7 +35,6 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
@@ -133,10 +132,5 @@ public class ObjectCloneWithExceptionNode extends WithExceptionNode implements O
         graph().replaceSplitWithFixed(this, plainObjectClone, this.next());
         GraphUtil.killCFG(oldException);
         return plainObjectClone;
-    }
-
-    @Override
-    public AbstractBeginNode createNextBegin() {
-        return KillingBeginNode.create(getKilledLocationIdentity());
     }
 }
