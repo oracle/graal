@@ -135,10 +135,10 @@ builds += [
   ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} {
     run: [
       ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}, build]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
+      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ] ${collect_profiles} [
-      ${mx_vm_common} ${vm_profiles} ["--disable-installables=true", build]
-      ${mx_vm_common} ${vm_profiles} ["--disable-installables=true"] ${maven_deploy_sdk}
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     logs: ${common_vm.logs}
