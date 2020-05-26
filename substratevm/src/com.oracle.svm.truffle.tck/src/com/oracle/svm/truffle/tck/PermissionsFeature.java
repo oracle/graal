@@ -196,25 +196,25 @@ public class PermissionsFeature implements Feature {
                 UserError.abort("Cannot load ReflectionProxy type");
             }
             whiteList = parser.getLoadedWhiteList();
-            Set<AnalysisMethod> importantMethods = new HashSet<>();
-            importantMethods.addAll(findMethods(bigbang, SecurityManager.class, (m) -> m.getName().startsWith("check")));
-            importantMethods.addAll(findMethods(bigbang, sun.misc.Unsafe.class, (m) -> m.isPublic()));
+            Set<AnalysisMethod> deniedMethods = new HashSet<>();
+            deniedMethods.addAll(findMethods(bigbang, SecurityManager.class, (m) -> m.getName().startsWith("check")));
+            deniedMethods.addAll(findMethods(bigbang, sun.misc.Unsafe.class, (m) -> m.isPublic()));
             // The type of the host Java NIO FileSystem.
             // The FileSystem obtained from the FileSystem.newDefaultFileSystem() is in the Truffle
             // package but
-            // can be directly used by a language. We need to include it into importantMethods.
-            importantMethods.addAll(findMethods(bigbang, FileSystem.newDefaultFileSystem().getClass(), (m) -> m.isPublic()));
-            if (!importantMethods.isEmpty()) {
-                Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(bigbang, importantMethods, debugContext);
+            // can be directly used by a language. We need to include it into deniedMethods.
+            deniedMethods.addAll(findMethods(bigbang, FileSystem.newDefaultFileSystem().getClass(), (m) -> m.isPublic()));
+            if (!deniedMethods.isEmpty()) {
+                Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(bigbang, deniedMethods, debugContext);
                 List<List<AnalysisMethod>> report = new ArrayList<>();
                 Set<CallGraphFilter> contextFilters = new HashSet<>();
                 Collections.addAll(contextFilters, new SafeInterruptRecognizer(bigbang), new SafePrivilegedRecognizer(bigbang),
                                 new SafeServiceLoaderRecognizer(bigbang, accessImpl.getImageClassLoader()));
                 int maxStackDepth = Options.TruffleTCKPermissionsMaxStackTraceDepth.getValue();
                 maxStackDepth = maxStackDepth == -1 ? Integer.MAX_VALUE : maxStackDepth;
-                for (AnalysisMethod importantMethod : importantMethods) {
-                    if (cg.containsKey(importantMethod)) {
-                        collectViolations(report, importantMethod,
+                for (AnalysisMethod deniedMethod : deniedMethods) {
+                    if (cg.containsKey(deniedMethod)) {
+                        collectViolations(report, deniedMethod,
                                         maxStackDepth,
                                         Options.TruffleTCKPermissionsMaxErrors.getValue(),
                                         cg, contextFilters,
@@ -386,11 +386,11 @@ public class PermissionsFeature implements Feature {
             return useNoReports;
         }
         if (depth > 1) {
-            // The important method can be a compiler method
+            // The denied method can be a compiler method
             if (isCompilerClass(m)) {
                 return useNoReports;
             }
-            // The important method cannot be excluded by a white list
+            // The denied method cannot be excluded by a white list
             if (isExcludedClass(m)) {
                 return useNoReports;
             }
