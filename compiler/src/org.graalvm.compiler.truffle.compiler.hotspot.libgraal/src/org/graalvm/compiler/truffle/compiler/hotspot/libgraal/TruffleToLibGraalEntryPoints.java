@@ -47,6 +47,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetTotalFrameSize;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetTruffleCompilationId;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetTruffleCompilationTruffleAST;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetVersionProperties;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InitializeCompiler;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InitializeRuntime;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InstallTruffleCallBoundaryMethods;
@@ -646,6 +647,33 @@ final class TruffleToLibGraalEntryPoints {
             JNIExceptionWrapper.throwInHotSpot(env, t);
             return 0;
         }
+    }
+
+    @TruffleToLibGraal(GetVersionProperties)
+    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_getVersionProperties")
+    @SuppressWarnings({"unused", "try"})
+    public static JByteArray getVersionProperties(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
+        JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(GetVersionProperties, env);
+        try (JNILibGraalScope<TruffleToLibGraal.Id> s = scope) {
+            Map<String, Object> versionProperties = new HashMap<>();
+            for (Map.Entry<Object, Object> e : DebugContext.addVersionProperties(null).entrySet()) {
+                Object key = e.getKey();
+                Object value = e.getValue();
+                assert key instanceof String;
+                assert value instanceof String;
+                versionProperties.put((String) key, value);
+            }
+            byte[] serializedProperties = OptionsEncoder.encode(versionProperties);
+            JByteArray hsSerializedOptions = NewByteArray(env, serializedProperties.length);
+            CCharPointer cdata = GetByteArrayElements(env, hsSerializedOptions, WordFactory.nullPointer());
+            CTypeConversion.asByteBuffer(cdata, serializedProperties.length).put(serializedProperties);
+            ReleaseByteArrayElements(env, hsSerializedOptions, cdata, JArray.MODE_WRITE_RELEASE);
+            scope.setObjectResult(hsSerializedOptions);
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            scope.setObjectResult(WordFactory.nullPointer());
+        }
+        return scope.getObjectResult();
     }
 
     @TruffleToLibGraal(IsDumpChannelOpen)
