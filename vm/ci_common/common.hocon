@@ -290,7 +290,7 @@ builds += [
   # Deploy GraalVM Base and Installables
   #
   # Linux
-  ${vm_java_8} ${scan_malware} ${malware_definition_archived} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+  ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
@@ -299,8 +299,8 @@ builds += [
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
       [set-export, GRAALVM_HOME, ${mx_vm_common} [--no-warning, graalvm-home]]
-    ] ${scan_malware.run}
-    logs: ${common_vm.logs} ${scan_malware.logs}
+    ]
+    logs: ${common_vm.logs}
     timelimit: "1:30:00"
     name: deploy-vm-java8-linux-amd64
   }
