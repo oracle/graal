@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
@@ -11,45 +11,28 @@ import * as fs from 'fs';
 import * as net from 'net';
 import * as path from 'path';
 import { TextEncoder } from 'util';
+import { registerLanguageServer } from './graalVMLanguageServer';
 
+export const R_LANGUAGE_SERVER_PACKAGE_NAME: string = 'languageserver';
 const INSTALL_GRAALVM_R_COMPONENT: string = 'Install GraalVM R Component';
 const INSTALL_R_LANGUAGE_SERVER: string = 'Install R Language Server';
-const R_LANGUAGE_SERVER_PACKAGE_NAME: string = 'languageserver';
 
-export function activate(context: vscode.ExtensionContext) {
-	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm-r.installRLanguageServer', () => {
-		installRPackage(R_LANGUAGE_SERVER_PACKAGE_NAME);
-	}));
-	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('graalvm', new GraalVMRConfigurationProvider()));
-	context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
-		if (e.affectsConfiguration('graalvm.home')) {
-			config();
-		}
-	}));
-	config();
-}
-
-export function deactivate() {}
-
-function config() {
-	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
-	if (graalVMHome) {
-		const executable: string = path.join(graalVMHome, 'bin', 'R');
-		if (!fs.existsSync(executable)) {
-			vscode.window.showInformationMessage('R component is not installed in your GraalVM.', INSTALL_GRAALVM_R_COMPONENT).then(value => {
-				switch (value) {
-					case INSTALL_GRAALVM_R_COMPONENT:
-						vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent', 'R');
-						const watcher:fs.FSWatcher = fs.watch(path.join(graalVMHome, 'bin'), () => {
-							setConfig(executable);
-							watcher.close();
-						});
-						break;
-				}
-			});
-		} else {
-			setConfig(executable);
-		}
+export function rConfig(graalVMHome: string) {
+	const executable: string = path.join(graalVMHome, 'bin', 'R');
+	if (!fs.existsSync(executable)) {
+		vscode.window.showInformationMessage('R component is not installed in your GraalVM.', INSTALL_GRAALVM_R_COMPONENT).then(value => {
+			switch (value) {
+				case INSTALL_GRAALVM_R_COMPONENT:
+					vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent', 'R');
+					const watcher:fs.FSWatcher = fs.watch(path.join(graalVMHome, 'bin'), () => {
+						setConfig(executable);
+						watcher.close();
+					});
+					break;
+			}
+		});
+	} else {
+		setConfig(executable);
 	}
 }
 
@@ -82,10 +65,7 @@ function setConfig(path: string) {
 				}
 			});
 		} else {
-			const graalVMExtension = vscode.extensions.getExtension('oracle-labs-graalvm.graalvm');
-			if (graalVMExtension) {
-				graalVMExtension.exports.registerLanguageServer(() => startRLanguageServer());
-			}
+			registerLanguageServer(() => startRLanguageServer());
 		}
 	}
 }
@@ -104,7 +84,7 @@ function isRPackageInstalled(name: string): boolean {
 	return false;
 }
 
-function installRPackage(name: string) {
+export function installRPackage(name: string) {
 	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
 	if (graalVMHome) {
 		const executable: string = path.join(graalVMHome, 'bin', 'R');
@@ -176,15 +156,4 @@ function startRLanguageServer(): Thenable<string> {
 			reject(new Error("Cannot find your GraalVM installation."));
 		}
 	});
-}
-
-class GraalVMRConfigurationProvider implements vscode.DebugConfigurationProvider {
-
-	resolveDebugConfiguration(_folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration, _token?: vscode.CancellationToken): vscode.ProviderResult<vscode.DebugConfiguration> {
-		if (config.request === 'launch' && config.name === 'Launch R Term') {
-			vscode.commands.executeCommand('r.createRTerm');
-			config.request = 'attach';
-		}
-		return config;
-	}
 }
