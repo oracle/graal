@@ -46,6 +46,7 @@ import org.graalvm.util.OptionsEncoder;
 final class IgvSupport extends LibGraalObject implements TruffleDebugContext {
 
     private static volatile Map<Object, Object> versionProperties;
+    private static volatile String executionId;
 
     private final LibGraalHotSpotTruffleCompiler owner;
     private final LibGraalScope scope;
@@ -69,7 +70,7 @@ final class IgvSupport extends LibGraalObject implements TruffleDebugContext {
         if (sharedChannel == null) {
             sharedChannel = new IgvDumpChannel(TruffleToLibGraalCalls.getDumpChannel(getIsolateThread(), getHandle()));
         }
-        final GraphOutput<G, M> res = builder.embedded(true).build(sharedChannel);
+        final GraphOutput<G, M> res = builder.attr(GraphOutput.ATTR_VM_ID, getExecutionID()).embedded(true).build(sharedChannel);
         parentOutput = res;
         return res;
     }
@@ -121,6 +122,15 @@ final class IgvSupport extends LibGraalObject implements TruffleDebugContext {
 
     @Override
     public void closeDebugChannels() {
+    }
+
+    private static String getExecutionID() {
+        String res = executionId;
+        if (res == null) {
+            res = TruffleToLibGraalCalls.getExecutionID(getIsolateThread());
+            executionId = res;
+        }
+        return res;
     }
 
     static IgvSupport create(LibGraalHotSpotTruffleCompiler compiler, Map<String, Object> options, LibGraalTruffleCompilation compilation) {

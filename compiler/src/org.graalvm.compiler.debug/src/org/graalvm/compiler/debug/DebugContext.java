@@ -133,6 +133,7 @@ public final class DebugContext implements AutoCloseable {
             if (sharedChannel == null) {
                 sharedChannel = new IgvDumpChannel(() -> getDumpPath(".bgv", false), immutable.options);
             }
+            builder.attr(GraphOutput.ATTR_VM_ID, GraalServices.getExecutionID());
             final GraphOutput<G, M> output = builder.build(sharedChannel);
             parentOutput = output;
             return output;
