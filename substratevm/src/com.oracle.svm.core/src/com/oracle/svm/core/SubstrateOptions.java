@@ -490,4 +490,8 @@ public class SubstrateOptions {
             throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot " + DebugInfoSourceCacheRoot.getValue());
         }
     }
+
+    /** Command line option to disable image build server. */
+    public static final String NO_SERVER = "--no-server";
+
 }

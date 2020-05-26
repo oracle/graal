@@ -411,7 +411,7 @@ public final class SVMHost implements HostVM {
             message += "This can happen when using the image build server. ";
             message += "To fix the issue you must reset all static state from the bootclasspath and application classpath that points to the application objects. ";
             message += "If the offending code is in JDK code please file a bug with GraalVM. ";
-            message += "As an workaround you can disable the image build server by adding --no-server to the command line. ";
+            message += "As an workaround you can disable the image build server by adding " + SubstrateOptions.NO_SERVER + " to the command line. ";
 
             throw new UnsupportedFeatureException(message);
         }
