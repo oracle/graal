@@ -1577,14 +1577,28 @@ public final class TruffleFile {
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 19.0
+     * @deprecated use {@link #detectMimeType()}
      */
     @TruffleBoundary
+    @Deprecated
     public String getMimeType() throws IOException {
-        return getMimeType(null);
+        return detectMimeType(null);
+    }
+
+    /**
+     * Detects the {@link TruffleFile file} MIME type.
+     *
+     * @return the MIME type or {@code null} if the MIME type is not recognized
+     * @throws SecurityException if the {@link FileSystem} denied the operation
+     * @since 22.2
+     */
+    @TruffleBoundary
+    public String detectMimeType() {
+        return detectMimeType(null);
     }
 
     @TruffleBoundary
-    String getMimeType(Set<String> validMimeTypes) throws IOException {
+    String detectMimeType(Set<String> validMimeTypes) {
         try {
             checkFileOperationPreconditions();
             String result = fileSystemContext.fileSystem.getMimeType(normalizedPath);
@@ -1612,7 +1626,7 @@ public final class TruffleFile {
         }
     }
 
-    Charset getEncoding(String mimeType) {
+    Charset detectEncoding(String mimeType) {
         try {
             assert mimeType != null;
             checkFileOperationPreconditions();
@@ -1921,7 +1935,7 @@ public final class TruffleFile {
      * The implementations are registered using
      * {@link TruffleLanguage.Registration#fileTypeDetectors() TruffleLanguage registration}.
      *
-     * @see TruffleFile#getMimeType()
+     * @see TruffleFile#detectMimeType()
      * @see TruffleLanguage.Registration#fileTypeDetectors()
      * @since 19.0
      */

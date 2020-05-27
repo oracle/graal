@@ -15,6 +15,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Improved `AssumedValue` utility class: Code that reads the value but can not constant fold it does not need to deopt when the value changes.
 * A `TruffleFile` for an empty path is no more resolved to the current working directory.
 * Added [`SourceBuilder.canonicalizePath(boolean)`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.SourceBuilder.html) to control whether the `Source#getPath()` should be canonicalized.
+* Deprecated and renamed `TruffleFile.getMimeType` to [TruffleFile.detectMimeType](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#detectMimeType--). The new method no longer throws `IOException` but returns `null` instead.
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.

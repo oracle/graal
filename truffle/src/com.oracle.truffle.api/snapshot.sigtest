@@ -265,7 +265,9 @@ meth public com.oracle.truffle.api.TruffleFile resolveSibling(java.lang.String)
 meth public int hashCode()
 meth public java.io.BufferedReader newBufferedReader() throws java.io.IOException
 meth public java.io.BufferedReader newBufferedReader(java.nio.charset.Charset) throws java.io.IOException
+meth public java.lang.String detectMimeType()
 meth public java.lang.String getMimeType() throws java.io.IOException
+ anno 0 java.lang.Deprecated()
 meth public java.lang.String getName()
 meth public java.lang.String getPath()
 meth public java.lang.String toString()

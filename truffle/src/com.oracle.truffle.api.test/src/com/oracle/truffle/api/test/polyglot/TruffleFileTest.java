@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static java.nio.charset.StandardCharsets.UTF_16;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -47,6 +49,8 @@ import static org.junit.Assert.assertTrue;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.test.OSUtils;
+import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage1.Language1Detector;
+import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage2.Language2Detector;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -60,7 +64,6 @@ import java.lang.reflect.TypeVariable;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
@@ -95,6 +98,12 @@ import org.junit.Test;
 
 public class TruffleFileTest extends AbstractPolyglotTest {
 
+    private static final Predicate<TruffleFile> FAILING_RECOGNIZER = (tf) -> {
+        throw silenceException(RuntimeException.class, new IOException());
+    };
+
+    private static final Predicate<TruffleFile> ALL_FILES_RECOGNIZER = (tf) -> true;
+
     @Before
     public void setUp() throws Exception {
         setupEnv();
@@ -104,7 +113,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     @After
     public void tearDown() throws Exception {
         resetLanguageHomes();
-        for (Class<? extends BaseDetector> clz : Arrays.asList(DuplicateMimeTypeLanguage1.Detector.class, DuplicateMimeTypeLanguage2.Detector.class)) {
+        for (Class<? extends BaseDetector> clz : Arrays.asList(Language1Detector.class, Language2Detector.class)) {
             BaseDetector instance = BaseDetector.getInstance(clz);
             if (instance != null) {
                 instance.reset();
@@ -168,137 +177,92 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testGetMimeType() throws IOException {
+    public void testDetectMimeType() {
         TruffleFile file = languageEnv.getPublicTruffleFile("/folder/filename.duplicate");
-        String result = file.getMimeType();
+        String result = file.detectMimeType();
         assertNull(result);
-        assertEquals(1, BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).resetFindMimeTypeCalled());
-        assertEquals(1, BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).resetFindMimeTypeCalled());
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType(null);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime");
-        result = file.getMimeType();
+        Language1Detector detector1 = Language1Detector.getInstance();
+        Language2Detector detector2 = Language2Detector.getInstance();
+        assertEquals(1, detector1.resetFindMimeTypeCalled());
+        assertEquals(1, detector2.resetFindMimeTypeCalled());
+        detector1.mimeType(null);
+        detector2.mimeType("text/x-duplicate-mime");
+        result = file.detectMimeType();
         assertEquals("text/x-duplicate-mime", result);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType(null);
-        result = file.getMimeType();
+        detector1.mimeType("text/x-duplicate-mime");
+        detector2.mimeType(null);
+        result = file.detectMimeType();
         assertEquals("text/x-duplicate-mime", result);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime");
-        result = file.getMimeType();
+        detector1.mimeType("text/x-duplicate-mime");
+        detector2.mimeType("text/x-duplicate-mime");
+        result = file.detectMimeType();
         assertEquals("text/x-duplicate-mime", result);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime-1");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime-2");
-        result = file.getMimeType();
+        detector1.mimeType("text/x-duplicate-mime-1");
+        detector2.mimeType("text/x-duplicate-mime-2");
+        result = file.detectMimeType();
         // Order is not deterministic can be either 'text/x-duplicate-mime-1' or
         // 'text/x-duplicate-mime-2'
         assertTrue("text/x-duplicate-mime-1".equals(result) || "text/x-duplicate-mime-2".equals(result));
-        Predicate<TruffleFile> failingRecognizer = (tf) -> {
-            throw silenceException(RuntimeException.class, new IOException());
-        };
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).recognizer = failingRecognizer;
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime-1");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime-2");
-        result = file.getMimeType();
+        detector1.reset().mimeType("text/x-duplicate-mime-1").recognizer(FAILING_RECOGNIZER);
+        detector2.reset().mimeType("text/x-duplicate-mime-2");
+        result = file.detectMimeType();
         assertEquals("text/x-duplicate-mime-2", result);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime-1");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).recognizer = failingRecognizer;
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime-2");
-        result = file.getMimeType();
+        detector1.reset().mimeType("text/x-duplicate-mime-1");
+        detector2.reset().mimeType("text/x-duplicate-mime-2").recognizer(FAILING_RECOGNIZER);
+        result = file.detectMimeType();
         assertEquals("text/x-duplicate-mime-1", result);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).recognizer = failingRecognizer;
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime-1");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).recognizer = failingRecognizer;
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime-2");
-        result = file.getMimeType();
+        detector1.reset().mimeType("text/x-duplicate-mime-1").recognizer(FAILING_RECOGNIZER);
+        detector2.reset().mimeType("text/x-duplicate-mime-2").recognizer(FAILING_RECOGNIZER);
+        result = file.detectMimeType();
         assertNull(result);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).recognizer = (tf) -> true;
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime-1");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).recognizer = (tf) -> true;
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime-2");
-        result = languageEnv.getInternalTruffleFile("").getMimeType();
+        detector1.reset().mimeType("text/x-duplicate-mime-1").recognizer(ALL_FILES_RECOGNIZER);
+        detector2.reset().mimeType("text/x-duplicate-mime-2").recognizer(ALL_FILES_RECOGNIZER);
+        result = languageEnv.getInternalTruffleFile("").detectMimeType();
         assertNull(result);
-        assertEquals(0, BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).resetFindMimeTypeCalled());
-        assertEquals(0, BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).resetFindMimeTypeCalled());
+        assertEquals(0, detector1.resetFindMimeTypeCalled());
+        assertEquals(0, detector2.resetFindMimeTypeCalled());
     }
 
     @Test
-    public void testGetEncoding() throws IOException {
+    public void testDetectEncoding() {
         TruffleFile file = languageEnv.getPublicTruffleFile("/folder/filename.duplicate");
-        Charset encoding = TestAPIAccessor.languageAccess().getEncoding(file, null);
+        Charset encoding = TestAPIAccessor.languageAccess().detectEncoding(file, null);
         assertNull(encoding);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType(null);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setEncoding(null);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setEncoding(null);
-        encoding = TestAPIAccessor.languageAccess().getEncoding(file, null);
+        Language1Detector detector1 = Language1Detector.getInstance();
+        Language2Detector detector2 = Language2Detector.getInstance();
+        String mimeType = "text/x-duplicate-mime";
+        detector1.reset();
+        detector2.reset().mimeType(mimeType);
+        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, null);
         assertNull(encoding);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setEncoding(null);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setEncoding(StandardCharsets.UTF_16);
-        encoding = TestAPIAccessor.languageAccess().getEncoding(file, "text/x-duplicate-mime");
-        assertEquals(StandardCharsets.UTF_16, encoding);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setEncoding(StandardCharsets.UTF_8);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setEncoding(null);
-        encoding = TestAPIAccessor.languageAccess().getEncoding(file, "text/x-duplicate-mime");
-        assertEquals(StandardCharsets.UTF_8, encoding);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setEncoding(StandardCharsets.UTF_8);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setEncoding(StandardCharsets.UTF_16);
-        encoding = TestAPIAccessor.languageAccess().getEncoding(file, "text/x-duplicate-mime");
+        detector1.reset().mimeType(mimeType);
+        detector2.reset().mimeType(mimeType).encoding(UTF_16);
+        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
+        assertEquals(UTF_16, encoding);
+        detector1.reset().mimeType(mimeType).encoding(UTF_8);
+        detector2.reset().mimeType(mimeType);
+        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
+        assertEquals(UTF_8, encoding);
+        detector1.reset().mimeType(mimeType).encoding(UTF_8);
+        detector2.reset().mimeType(mimeType).encoding(UTF_16);
+        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
         // Order is not deterministic can be either 'UTF-8' or 'UTF-16'
-        assertTrue(StandardCharsets.UTF_8.equals(encoding) || StandardCharsets.UTF_16.equals(encoding));
-        Predicate<TruffleFile> failingRecognizer = (tf) -> {
-            throw silenceException(RuntimeException.class, new IOException());
-        };
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).recognizer = failingRecognizer;
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setEncoding(StandardCharsets.UTF_8);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setEncoding(StandardCharsets.UTF_16);
-        encoding = TestAPIAccessor.languageAccess().getEncoding(file, "text/x-duplicate-mime");
-        assertEquals(StandardCharsets.UTF_16, encoding);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setEncoding(StandardCharsets.UTF_8);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).recognizer = failingRecognizer;
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setEncoding(StandardCharsets.UTF_16);
-        encoding = TestAPIAccessor.languageAccess().getEncoding(file, "text/x-duplicate-mime");
-        assertEquals(StandardCharsets.UTF_8, encoding);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).recognizer = failingRecognizer;
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setEncoding(StandardCharsets.UTF_8);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).recognizer = failingRecognizer;
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setEncoding(StandardCharsets.UTF_16);
-        encoding = TestAPIAccessor.languageAccess().getEncoding(file, "text/x-duplicate-mime");
+        assertTrue(UTF_8.equals(encoding) || UTF_16.equals(encoding));
+        detector1.reset().mimeType(mimeType).encoding(UTF_8).recognizer(FAILING_RECOGNIZER);
+        detector2.reset().mimeType(mimeType).encoding(UTF_16);
+        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
+        assertEquals(UTF_16, encoding);
+        detector1.reset().mimeType(mimeType).encoding(UTF_8);
+        detector2.reset().mimeType(mimeType).encoding(UTF_16).recognizer(FAILING_RECOGNIZER);
+        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
+        assertEquals(UTF_8, encoding);
+        detector1.reset().mimeType(mimeType).encoding(UTF_8).recognizer(FAILING_RECOGNIZER);
+        detector2.reset().mimeType(mimeType).encoding(UTF_16).recognizer(FAILING_RECOGNIZER);
+        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
         assertNull(encoding);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).recognizer = (tf) -> true;
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setEncoding(StandardCharsets.UTF_8);
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).reset();
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).recognizer = (tf) -> true;
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime");
-        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setEncoding(StandardCharsets.UTF_8);
-        encoding = TestAPIAccessor.languageAccess().getEncoding(languageEnv.getInternalTruffleFile(""), "text/x-duplicate-mime");
+        detector1.reset().mimeType(mimeType).encoding(UTF_8).recognizer(ALL_FILES_RECOGNIZER);
+        detector2.reset().mimeType(mimeType).encoding(UTF_8).recognizer(ALL_FILES_RECOGNIZER);
+        encoding = TestAPIAccessor.languageAccess().detectEncoding(languageEnv.getInternalTruffleFile(""), mimeType);
         assertNull(encoding);
     }
 
@@ -410,7 +374,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         defaultParameterValues.put(TruffleFile.class, otherFile);
         defaultParameterValues.put(Object.class, otherFile);
         defaultParameterValues.put(Set.class, Collections.emptySet());
-        defaultParameterValues.put(Charset.class, StandardCharsets.UTF_8);
+        defaultParameterValues.put(Charset.class, UTF_8);
         defaultParameterValues.put(OpenOption[].class, new OpenOption[0]);
         defaultParameterValues.put(LinkOption[].class, new LinkOption[0]);
         defaultParameterValues.put(CopyOption[].class, new CopyOption[0]);
@@ -510,7 +474,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         private int findMimeTypeCalled;
         private String mimeType;
         private Charset encoding;
-        Predicate<TruffleFile> recognizer;
+        private Predicate<? super TruffleFile> recognizer;
 
         protected BaseDetector() {
             INSTANCES.put(getClass(), this);
@@ -522,19 +486,27 @@ public class TruffleFileTest extends AbstractPolyglotTest {
             return res;
         }
 
-        void setMimeType(String value) {
+        BaseDetector mimeType(String value) {
             mimeType = value;
+            return this;
         }
 
-        void setEncoding(Charset value) {
+        BaseDetector encoding(Charset value) {
             encoding = value;
+            return this;
         }
 
-        void reset() {
+        BaseDetector recognizer(Predicate<? super TruffleFile> predicate) {
+            this.recognizer = predicate;
+            return this;
+        }
+
+        BaseDetector reset() {
             findMimeTypeCalled = 0;
             mimeType = null;
             encoding = null;
             recognizer = null;
+            return this;
         }
 
         @Override
@@ -561,7 +533,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
             return (T) INSTANCES.get(clazz);
         }
 
-        private Predicate<TruffleFile> getRecognizer() {
+        private Predicate<? super TruffleFile> getRecognizer() {
             if (recognizer == null) {
                 recognizer = (file) -> file.getName() != null && file.getName().endsWith(".duplicate");
             }
@@ -569,17 +541,24 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = "DuplicateMimeTypeLanguage1", name = "DuplicateMimeTypeLanguage1", characterMimeTypes = "text/x-duplicate-mime", fileTypeDetectors = DuplicateMimeTypeLanguage1.Detector.class)
+    @TruffleLanguage.Registration(id = "DuplicateMimeTypeLanguage1", name = "DuplicateMimeTypeLanguage1", characterMimeTypes = "text/x-duplicate-mime", fileTypeDetectors = DuplicateMimeTypeLanguage1.Language1Detector.class)
     public static final class DuplicateMimeTypeLanguage1 extends ProxyLanguage {
 
-        public static final class Detector extends BaseDetector {
+        public static final class Language1Detector extends BaseDetector {
+
+            static Language1Detector getInstance() {
+                return BaseDetector.getInstance(Language1Detector.class);
+            }
         }
     }
 
-    @TruffleLanguage.Registration(id = "DuplicateMimeTypeLanguage2", name = "DuplicateMimeTypeLanguage2", characterMimeTypes = "text/x-duplicate-mime", fileTypeDetectors = DuplicateMimeTypeLanguage2.Detector.class)
+    @TruffleLanguage.Registration(id = "DuplicateMimeTypeLanguage2", name = "DuplicateMimeTypeLanguage2", characterMimeTypes = "text/x-duplicate-mime", fileTypeDetectors = DuplicateMimeTypeLanguage2.Language2Detector.class)
     public static final class DuplicateMimeTypeLanguage2 extends ProxyLanguage {
 
-        public static final class Detector extends BaseDetector {
+        public static final class Language2Detector extends BaseDetector {
+            static Language2Detector getInstance() {
+                return BaseDetector.getInstance(Language2Detector.class);
+            }
         }
 
     }

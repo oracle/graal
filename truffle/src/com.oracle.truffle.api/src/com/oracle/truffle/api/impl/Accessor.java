@@ -573,9 +573,9 @@ public abstract class Accessor {
 
         public abstract Object getCurrentFileSystemContext();
 
-        public abstract String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException;
+        public abstract String detectMimeType(TruffleFile file, Set<String> validMimeTypes);
 
-        public abstract Charset getEncoding(TruffleFile file, String mimeType) throws IOException;
+        public abstract Charset detectEncoding(TruffleFile file, String mimeType);
 
         public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
 
