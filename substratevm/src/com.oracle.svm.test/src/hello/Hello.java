@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,10 +23,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package hello;
 
+// Checkstyle: stop
+
 public class Hello {
-    public static abstract class Greeter {
+    public abstract static class Greeter {
         static Greeter greeter(String[] args) {
             if (args.length == 0) {
                 return new DefaultGreeter();
