@@ -103,6 +103,10 @@ public final class StructureType extends AggregateType {
         return name;
     }
 
+    public boolean isNamed() {
+        return !LLVMIdentifier.UNKNOWN.equals(name);
+    }
+
     @Override
     public long getBitSize() throws TypeOverflowException {
         if (isPacked) {
@@ -191,7 +195,7 @@ public final class StructureType extends AggregateType {
     @Override
     @TruffleBoundary
     public String toString() {
-        if (LLVMIdentifier.UNKNOWN.equals(name)) {
+        if (!isNamed()) {
             return Arrays.stream(types).map(String::valueOf).collect(Collectors.joining(", ", "%{", "}"));
         } else {
             return name;
