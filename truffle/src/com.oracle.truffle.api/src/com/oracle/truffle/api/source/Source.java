@@ -1036,19 +1036,19 @@ public abstract class Source {
             useContent = useContent == CONTENT_UNSET ? null : useContent;
         } else if (useOrigin instanceof TruffleFile) {
             TruffleFile file = (TruffleFile) useOrigin;
-            if (useContent == CONTENT_NONE && !file.isAbsolute()) {
+            if (useContent == CONTENT_NONE) {
+                // Do not canonicalize the file, and use a relative URI if the file is relative
                 if (useUri == null) {
-                    useUri = file.toRelativeUri();
+                    useUri = file.isAbsolute() ? file.toUri() : file.toRelativeUri();
                 }
             } else {
+                // Canonicalize the file if it exists
                 file = file.exists() ? file.getCanonicalFile() : file;
-                if (useUri == null) {
-                    useUri = file.toUri();
-                }
             }
             useTruffleFile = file;
             useName = useName == null ? file.getName() : useName;
             usePath = usePath == null ? file.getPath() : usePath;
+            useUri = useUri == null ? file.toUri() : useUri;
             useMimeType = useMimeType == null ? SourceAccessor.getMimeType(file, getValidMimeTypes(language)) : useMimeType;
             if (legacy) {
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
