@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.processor;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.time.Year;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -239,7 +240,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     private static final String FACTORY_GETTER = "getFactory";
     private static final String COLLECTOR_GETTER = "getCollector";
 
-    private static final String COPYRIGHT = "/* Copyright (c) 2019, 2020 Oracle and/or its affiliates. All rights reserved.\n" +
+    private static final String COPYRIGHT = "/* Copyright (c) " + Year.now() + " Oracle and/or its affiliates. All rights reserved.\n" +
                     " * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.\n" +
                     " *\n" +
                     " * This code is free software; you can redistribute it and/or modify it\n" +
