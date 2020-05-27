@@ -97,7 +97,11 @@ public final class NativeMethodNode extends EspressoMethodNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    void initializeBody(VirtualFrame frame) {
+    }
+
+    @Override
+    public Object executeBody(VirtualFrame frame) {
         final JniEnv env = getContext().getJNI();
 
         int nativeFrame = env.getHandles().pushFrame();

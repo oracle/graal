@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 /**
  * Base node for all implementations of Java methods.
  */
-public abstract class EspressoMethodNode extends EspressoInstrumentableNode implements ContextAccess {
+public abstract class EspressoMethodNode extends EspressoPreludeNode implements ContextAccess {
 
     private final MethodVersion method;
 
