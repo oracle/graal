@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.impl;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
@@ -77,11 +78,13 @@ public final class BootClassRegistry extends ClassRegistry {
         return result;
     }
 
+    @TruffleBoundary
     public String getPackagePath(String pkgName) {
         String result = packageMap.get(pkgName);
         return result;
     }
 
+    @TruffleBoundary
     public String[] getPackages() {
         return packageMap.keySet().toArray(new String[0]);
     }

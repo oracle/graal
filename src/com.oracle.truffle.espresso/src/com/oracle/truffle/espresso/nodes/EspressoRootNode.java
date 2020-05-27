@@ -39,6 +39,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -176,7 +177,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     final void monitorExit(VirtualFrame frame, StaticObject monitor) {
-        InterpreterToVM.monitorExit(monitor);
+        InterpreterToVM.monitorExit(monitor, getMeta());
         unregisterMonitor(frame, monitor);
     }
 
@@ -185,7 +186,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     final void monitorEnter(VirtualFrame frame, StaticObject monitor) {
-        InterpreterToVM.monitorEnter(monitor);
+        InterpreterToVM.monitorEnter(monitor, getMeta());
         registerMonitor(frame, monitor);
     }
 
@@ -206,7 +207,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     public final void abortMonitor(VirtualFrame frame) {
         if (usesMonitors()) {
-            getMonitorStack(frame).abort();
+            getMonitorStack(frame).abort(getMeta());
         }
     }
 
@@ -309,11 +310,11 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             }
         }
 
-        private void abort() {
+        private void abort(Meta meta) {
             for (int i = 0; i < top; i++) {
                 StaticObject monitor = monitors[i];
                 try {
-                    InterpreterToVM.monitorExit(monitor);
+                    InterpreterToVM.monitorExit(monitor, meta);
                 } catch (Throwable e) {
                     /* ignore */
                 }

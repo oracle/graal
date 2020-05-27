@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import java.lang.reflect.Constructor;
 
 import com.oracle.truffle.espresso.impl.Klass;
@@ -33,7 +31,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
 public class Target_sun_reflect_NativeConstructorAccessorImpl {
-    @TruffleBoundary
     @Substitution
     public static @Host(Object.class) StaticObject newInstance0(@Host(Constructor.class) StaticObject constructor, @Host(Object[].class) StaticObject args0,
                     @InjectMeta Meta meta) {

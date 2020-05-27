@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -42,16 +42,22 @@ public final class Target_java_lang_Object {
     }
 
     @Substitution(hasReceiver = true, methodName = "<init>")
-    public static void init(@Host(Object.class) StaticObject self, @InjectMeta Meta meta) {
+    public static void init(@Host(Object.class) StaticObject self,
+                    @InjectMeta Meta meta,
+                    @InjectProfile SubstitutionProfiler profiler) {
         assert self.getKlass() instanceof ObjectKlass;
         if (((ObjectKlass) self.getKlass()).hasFinalizer()) {
-            registerFinalizer(self, meta);
+            profiler.profile(0);
+            // TODO: inject guest call.
+            /*
+             * Injecting the guest call is difficult here, as this method is called upon spawning
+             * the VM. Creation of the substitutor triggers the creation of the calltarget, which
+             * triggers initialization of j.l.ref.Finalizer too early in the boot process.
+             * 
+             * One simple solution is to lazily initialize the call node, which would be best.
+             */
+            meta.java_lang_ref_Finalizer_register.invokeDirect(null, self);
         }
-    }
-
-    @TruffleBoundary
-    public static void registerFinalizer(@Host(Object.class) StaticObject self, @InjectMeta Meta meta) {
-        meta.java_lang_ref_Finalizer_register.invokeDirect(null, self);
     }
 
     // TODO(peterssen): Substitution required, instead of calling native JVM_Clone, to avoid leaking
@@ -59,7 +65,8 @@ public final class Target_java_lang_Object {
     @Substitution(hasReceiver = true)
     @Throws(CloneNotSupportedException.class)
     public static @Host(Object.class) StaticObject clone(@Host(Object.class) StaticObject self,
+                    @GuestCall DirectCallNode java_lang_ref_Finalizer_register,
                     @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
-        return VM.JVM_Clone(self, meta, profiler);
+        return VM.JVM_Clone(self, java_lang_ref_Finalizer_register, meta, profiler);
     }
 }

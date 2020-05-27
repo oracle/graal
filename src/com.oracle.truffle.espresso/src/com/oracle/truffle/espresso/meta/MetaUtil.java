@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -73,6 +74,7 @@ public class MetaUtil {
      *            {@code "[[I"}) or in Java source code format (e.g., {@code "java.lang.Object[]"},
      *            {@code "int[][]"} ).
      */
+    @TruffleBoundary
     public static String internalNameToJava(String name, boolean qualified, boolean classForNameCompatible) {
         switch (name.charAt(0)) {
             case 'L': {

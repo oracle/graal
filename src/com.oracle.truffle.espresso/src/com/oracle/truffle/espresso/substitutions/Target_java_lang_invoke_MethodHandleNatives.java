@@ -46,7 +46,6 @@ import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -70,7 +69,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
      * @param self the memberName
      * @param ref the target. Can be either a mathod or a field.
      */
-    @TruffleBoundary
     @Substitution
     public static void init(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self, @Host(Object.class) StaticObject ref,
                     @InjectMeta Meta meta) {
@@ -97,7 +95,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             plantResolvedMethod(self, target, refKind, meta.java_lang_invoke_MemberName_flags, meta);
             self.setField(meta.java_lang_invoke_MemberName_clazz, target.getDeclaringKlass().mirror());
         } else {
-            throw EspressoError.shouldNotReachHere("invalid argument for MemberName.init: " + ref.getKlass());
+            throw EspressoError.shouldNotReachHere("invalid argument for MemberName.init: ", ref.getKlass());
         }
     }
 
@@ -229,7 +227,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
      * @param caller the class that commands the resolution
      * @return The resolved memberName. Note that it should be the same reference as self
      */
-    @TruffleBoundary
     @Substitution
     public static @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject resolve(
                     @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self,
@@ -371,7 +368,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         memberName.setIntField(flagField, getMethodFlags(target, refKind));
     }
 
-    @TruffleBoundary
     private static void plantMethodMemberName(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         Method target = defKlass.lookupMethod(name, sig, callerKlass);
         if (target == null) {
@@ -385,7 +381,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         memberName.setIntField(flagField, getMethodFlags(target, refKind));
     }
 
-    @TruffleBoundary
     private static void plantFieldMemberName(StaticObject memberName, Symbol<Type> type, Klass defKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         Field field = defKlass.lookupField(name, type);
         if (field == null) {

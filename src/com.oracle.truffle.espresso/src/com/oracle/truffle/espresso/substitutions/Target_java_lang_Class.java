@@ -100,7 +100,6 @@ public final class Target_java_lang_Class {
     }
 
     // TODO(peterssen): Remove substitution, use JVM_FindClassFromCaller.
-    @TruffleBoundary
     @Substitution
     public static @Host(Class.class) StaticObject forName0(
                     @Host(String.class) StaticObject name,
@@ -156,7 +155,6 @@ public final class Target_java_lang_Class {
         }
     }
 
-    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(String.class) StaticObject getName0(@Host(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
@@ -169,13 +167,18 @@ public final class Target_java_lang_Class {
         // (invalid) fast method accessors. See
         // sun.reflect.misc.ReflectUtil#isVMAnonymousClass(Class<?>).
         if (klass.isAnonymous()) {
-            // A small improvement over HotSpot here, which uses the class identity hash code.
-            externalName += "/" + klass.getId(); // VM.JVM_IHashCode(self);
+            externalName = appendID(klass, externalName);
         }
 
         // Class names must be interned.
         StaticObject guestString = meta.toGuestString(externalName);
         return internString(meta, guestString);
+    }
+
+    @TruffleBoundary
+    private static String appendID(Klass klass, String externalName) {
+        // A small improvement over HotSpot here, which uses the class identity hash code.
+        return externalName + "/" + klass.getId(); // VM.JVM_IHashCode(self);
     }
 
     @TruffleBoundary
@@ -188,7 +191,6 @@ public final class Target_java_lang_Class {
         return self.getMirrorKlass().getDefiningClassLoader();
     }
 
-    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(java.lang.reflect.Field[].class) StaticObject getDeclaredFields0(@Host(Class.class) StaticObject self, boolean publicOnly,
                     @InjectMeta Meta meta) {
@@ -261,7 +263,6 @@ public final class Target_java_lang_Class {
     }
 
     // TODO(tg): inject constructor calltarget.
-    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(Constructor[].class) StaticObject getDeclaredConstructors0(@Host(Class.class) StaticObject self, boolean publicOnly,
                     @InjectMeta Meta meta) {
@@ -365,7 +366,6 @@ public final class Target_java_lang_Class {
     }
 
     // TODO(tg): inject constructor calltarget.
-    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(java.lang.reflect.Method[].class) StaticObject getDeclaredMethods0(@Host(Class.class) StaticObject self, boolean publicOnly,
                     @InjectMeta Meta meta) {
@@ -566,7 +566,6 @@ public final class Target_java_lang_Class {
         return StaticObject.NULL;
     }
 
-    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(Class.class) StaticObject getDeclaringClass0(@Host(Class.class) StaticObject self) {
         // Primitives and arrays are not "enclosed".
@@ -689,7 +688,6 @@ public final class Target_java_lang_Class {
         return StaticObject.NULL;
     }
 
-    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(typeName = "Lsun/reflect/ConstantPool;") StaticObject getConstantPool(@Host(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
@@ -698,12 +696,11 @@ public final class Target_java_lang_Class {
             // No constant pool for arrays and primitives.
             return StaticObject.NULL;
         }
-        StaticObject cp = StaticObject.createNew(meta.sun_reflect_ConstantPool);
+        StaticObject cp = InterpreterToVM.newObject(meta.sun_reflect_ConstantPool, false);
         cp.setField(meta.sun_reflect_ConstantPool_constantPoolOop, self);
         return cp;
     }
 
-    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(String.class) StaticObject getGenericSignature0(@Host(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
@@ -718,7 +715,6 @@ public final class Target_java_lang_Class {
         return StaticObject.NULL;
     }
 
-    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(Class[].class) StaticObject getDeclaredClasses0(@Host(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
@@ -729,7 +725,7 @@ public final class Target_java_lang_Class {
         ObjectKlass instanceKlass = (ObjectKlass) klass;
         InnerClassesAttribute innerClasses = (InnerClassesAttribute) instanceKlass.getAttribute(InnerClassesAttribute.NAME);
 
-        if (innerClasses == null || innerClasses.entries().isEmpty()) {
+        if (innerClasses == null || innerClasses.entries().length == 0) {
             return meta.java_lang_Class.allocateReferenceArray(0);
         }
 

@@ -73,6 +73,7 @@ import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.InjectMeta;
 import com.oracle.truffle.espresso.substitutions.InjectProfile;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
@@ -1410,12 +1411,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @return the length of the Java string.
      */
     @JniImpl
-    @TruffleBoundary
-    public int GetStringLength(@Host(String.class) StaticObject string) {
+    public static int GetStringLength(@Host(String.class) StaticObject string,
+                    @GuestCall DirectCallNode java_lang_String_length) {
         if (StaticObject.isNull(string)) {
             return 0;
         }
-        return (int) getMeta().java_lang_String_length.invokeDirect(string);
+        return (int) java_lang_String_length.call(string);
     }
 
     /**
@@ -1508,6 +1509,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         return byteBufferPointer(bb);
     }
 
+    @TruffleBoundary
+    public void releasePtr(@Pointer TruffleObject ptr) {
+        long nativePtr = interopAsPointer(ptr);
+        assert nativeBuffers.containsKey(nativePtr);
+        nativeBuffers.remove(nativePtr);
+    }
+
     /**
      * <h3>void ReleaseStringChars(JNIEnv *env, jstring string, const jchar *chars);</h3>
      *
@@ -1518,27 +1526,18 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @param charsPtr a pointer to a Unicode string.
      */
     @JniImpl
-    @TruffleBoundary
     public void ReleaseStringChars(@SuppressWarnings("unused") @Host(String.class) StaticObject string, @Pointer TruffleObject charsPtr) {
-        long nativePtr = interopAsPointer(charsPtr);
-        assert nativeBuffers.containsKey(nativePtr);
-        nativeBuffers.remove(nativePtr);
+        releasePtr(charsPtr);
     }
 
     @JniImpl
-    @TruffleBoundary
     public void ReleaseStringUTFChars(@SuppressWarnings("unused") @Host(String.class) StaticObject str, @Pointer TruffleObject charsPtr) {
-        long nativePtr = interopAsPointer(charsPtr);
-        assert nativeBuffers.containsKey(nativePtr);
-        nativeBuffers.remove(nativePtr);
+        releasePtr(charsPtr);
     }
 
     @JniImpl
-    @TruffleBoundary
     public void ReleaseStringCritical(@SuppressWarnings("unused") @Host(String.class) StaticObject str, @Pointer TruffleObject criticalRegionPtr) {
-        long nativePtr = interopAsPointer(criticalRegionPtr);
-        assert nativeBuffers.containsKey(nativePtr);
-        nativeBuffers.remove(nativePtr);
+        releasePtr(criticalRegionPtr);
     }
 
     @JniImpl
@@ -1597,9 +1596,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @return JNI_TRUE when there is a pending exception; otherwise, returns JNI_FALSE.
      */
     @JniImpl
-    @TruffleBoundary
     public boolean ExceptionCheck() {
-        StaticObject ex = threadLocalPendingException.get();
+        StaticObject ex = getPendingException();
         assert ex == null || StaticObject.notNull(ex); // ex != null => ex != NULL
         return ex != null;
     }
@@ -1661,9 +1659,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *         exception is currently being thrown.
      */
     @JniImpl
-    @TruffleBoundary
     public @Host(Throwable.class) StaticObject ExceptionOccurred() {
-        StaticObject ex = threadLocalPendingException.get();
+        StaticObject ex = getPendingException();
         if (ex == null) {
             ex = StaticObject.NULL;
         }
@@ -1708,15 +1705,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region Monitors
 
     @JniImpl
-    public static int MonitorEnter(@Host(Object.class) StaticObject object) {
-        InterpreterToVM.monitorEnter(object);
+    public static int MonitorEnter(@Host(Object.class) StaticObject object, @InjectMeta Meta meta) {
+        InterpreterToVM.monitorEnter(object, meta);
         return JNI_OK;
     }
 
     @JniImpl
-    public int MonitorExit(@Host(Object.class) StaticObject object) {
+    public int MonitorExit(@Host(Object.class) StaticObject object, @InjectMeta Meta meta) {
         try {
-            InterpreterToVM.monitorExit(object);
+            InterpreterToVM.monitorExit(object, meta);
         } catch (EspressoException e) {
             assert InterpreterToVM.instanceOf(e.getExceptionObject(), getMeta().java_lang_IllegalMonitorStateException);
             setPendingException(e.getExceptionObject());
@@ -1877,7 +1874,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     // region Release*ArrayElements
 
-    @TruffleBoundary
     private void ReleasePrimitiveArrayElements(StaticObject object, @Pointer TruffleObject bufPtr, int mode) {
         if (mode == 0 || mode == JNI_COMMIT) { // Update array contents.
             StaticObject array = object;
@@ -1900,9 +1896,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             // @formatter:on
         }
         if (mode == 0 || mode == JNI_ABORT) { // Dispose copy.
-            long nativePtr = interopAsPointer(bufPtr);
-            assert nativeBuffers.containsKey(nativePtr);
-            nativeBuffers.remove(nativePtr);
+            releasePtr(bufPtr);
         }
     }
 
@@ -2497,7 +2491,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    @TruffleBoundary
     public void ReleasePrimitiveArrayCritical(@Host(Object.class) StaticObject object, @Pointer TruffleObject carrayPtr, int mode) {
         if (mode == 0 || mode == JNI_COMMIT) { // Update array contents.
             StaticObject array = object;
@@ -2520,9 +2513,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             // @formatter:on
         }
         if (mode == 0 || mode == JNI_ABORT) { // Dispose copy.
-            long nativePtr = interopAsPointer(carrayPtr);
-            assert nativeBuffers.containsKey(nativePtr);
-            nativeBuffers.remove(nativePtr);
+            releasePtr(carrayPtr);
         }
     }
 
@@ -2621,14 +2612,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
-    @TruffleBoundary
     public @Host(Class.class) StaticObject FindClass(@Pointer TruffleObject namePtr,
                     @GuestCall DirectCallNode java_lang_ClassLoader_getSystemClassLoader, @GuestCall DirectCallNode java_lang_ClassLoader$NativeLibrary_getFromClass,
                     @GuestCall DirectCallNode java_lang_Class_forName_String_boolean_ClassLoader,
                     @InjectProfile SubstitutionProfiler profiler) {
         String name = interopPointerToString(namePtr);
         Meta meta = getMeta();
-        if (name == null || name.contains(".")) {
+        if (name == null || (name.indexOf('.') > -1)) {
             profiler.profile(7);
             throw Meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, name);
         }

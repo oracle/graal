@@ -29,6 +29,8 @@ import static com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -41,7 +43,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import org.graalvm.options.OptionValues;
 
 // @formatter:off
 /**
@@ -167,7 +168,6 @@ public final class Target_java_lang_Thread {
         return meta.getContext().getCurrentThread();
     }
 
-    @TruffleBoundary
     @Substitution
     public static @Host(Thread[].class) StaticObject getThreads(@InjectMeta Meta meta) {
         return StaticObject.createArray(meta.java_lang_Thread.array(), meta.getContext().getActiveThreads());
@@ -195,10 +195,10 @@ public final class Target_java_lang_Thread {
                     @GuestCall DirectCallNode java_lang_Thread_exit,
                     // Checkstyle: resume
                     @InjectMeta Meta meta) {
-        OptionValues options = EspressoLanguage.getCurrentContext().getEnv().getOptions();
+        OptionValues options = meta.getContext().getEnv().getOptions();
         if (options.get(EspressoOptions.MultiThreaded)) {
             // Thread.start() is synchronized.
-            EspressoContext context = self.getKlass().getContext();
+            EspressoContext context = meta.getContext();
             KillStatus killStatus = getKillStatus(self);
             if (killStatus != null || context.isClosing()) {
 
