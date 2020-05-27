@@ -807,6 +807,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
                 Condition comparableCondition = null;
                 Condition conditionB = compareB.condition().asCondition();
+
+                if (conditionA.isUnsigned() != conditionB.isUnsigned()) {
+                    // Can not check disjoint condition if one is signed and the other is unsigned.
+                    return false;
+                }
+
                 if (compareB.getX() == compareA.getX() && compareB.getY() == compareA.getY()) {
                     comparableCondition = conditionB;
                 } else if (compareB.getX() == compareA.getY() && compareB.getY() == compareA.getX()) {
