@@ -2068,7 +2068,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             **kw_args)
 
 
-class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=too-many-ancestors
+class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
     def __init__(self, component, graalvm, **kw_args):
         """
         :type component: mx_sdk.GraalVmTruffleComponent
