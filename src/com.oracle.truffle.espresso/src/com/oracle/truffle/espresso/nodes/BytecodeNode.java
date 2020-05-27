@@ -245,6 +245,7 @@ import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -568,12 +569,15 @@ public final class BytecodeNode extends EspressoMethodNode {
     // region Local accessors
 
     @Override
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    public Object execute(VirtualFrame frame) {
+    void initializeBody(VirtualFrame frame) {
+        initArguments(frame);
+    }
 
+    @Override
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
+    Object executeBody(VirtualFrame frame) {
         int curBCI = 0;
         int top = 0;
-        initArguments(frame);
         InstrumentationSupport instrument = this.instrumentation;
         int statementIndex = -1;
         int nextStatementIndex = 0;
@@ -2225,8 +2229,12 @@ public final class BytecodeNode extends EspressoMethodNode {
         return result;
     }
 
-    static final class InstrumentationSupport extends Node {
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        return tag == StandardTags.RootBodyTag.class || tag == StandardTags.RootTag.class;
+    }
 
+    static final class InstrumentationSupport extends Node {
         @Children private final EspressoInstrumentableNode[] statementNodes;
         @Child private MapperBCI hookBCIToNodeIndex;
 
@@ -2372,7 +2380,5 @@ public final class BytecodeNode extends EspressoMethodNode {
             CompilerAsserts.partialEvaluationConstant(node);
             return ((EspressoInstrumentableNodeWrapper) node);
         }
-
     }
-
 }

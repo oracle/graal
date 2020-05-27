@@ -20,27 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.substitutions.Substitutor;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 
-public class IntrinsicSubstitutorRootNode extends EspressoMethodNode {
-    private final Substitutor substitution;
+@GenerateWrapper
+abstract class EspressoPreludeNode extends EspressoInstrumentableNode {
+    abstract Object executeBody(VirtualFrame frame);
 
-    public IntrinsicSubstitutorRootNode(Substitutor sub, Method method) {
-        super(method.getMethodVersion());
-        this.substitution = sub;
+    abstract void initializeBody(VirtualFrame frame);
+
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        initializeBody(frame);
+        return executeBody(frame);
     }
 
     @Override
-    void initializeBody(VirtualFrame frame) {
-    }
-
-    @Override
-    public Object executeBody(VirtualFrame frame) {
-        return substitution.invoke(frame.getArguments());
+    public WrapperNode createWrapper(ProbeNode probeNode) {
+        return new EspressoPreludeNodeWrapper(this, probeNode);
     }
 }
