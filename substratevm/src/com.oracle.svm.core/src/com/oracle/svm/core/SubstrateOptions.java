@@ -474,7 +474,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<String[]> DebugInfoSourceSearchPath = new HostedOptionKey<String[]>(null) {
     };
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
-    public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<String>("sources");
+    public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
 
     public static Path getDebugInfoSourceCacheRoot() {
         try {
