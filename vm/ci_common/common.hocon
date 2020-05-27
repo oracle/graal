@@ -237,7 +237,7 @@ weekly_vm_darwin: ${vm_darwin} {
 mx_vm_common: [mx, --strip-jars, --no-sources, --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers=env.FORCE_BASH_LAUNCHERS,"${non-product-native-launchers}]
 mx_vm_installables: ${mx_vm_common}
 
-maven_deploy_sdk: [--suite, sdk, maven-deploy, --validate, none, --all-distribution-types, "--tags=graalvm", --with-suite-revisions-metadata]
+maven_deploy_sdk: [--suite, sdk, maven-deploy, --validate, none, --all-distribution-types, --with-suite-revisions-metadata]
 maven_deploy_sdk_base:               ${maven_deploy_sdk} [--tags, graalvm,                             ${binaries-repository}]
 maven_deploy_sdk_base_dry_run:       ${maven_deploy_sdk} [--tags, graalvm,                  --dry-run, ${binaries-repository}]
 maven_deploy_sdk_components:         ${maven_deploy_sdk} [--tags, "installable,standalone",            ${binaries-repository}]
