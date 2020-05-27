@@ -29,9 +29,13 @@ import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitiga
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 import static org.graalvm.compiler.options.OptionType.User;
 
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.util.UserError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -470,13 +474,14 @@ public class SubstrateOptions {
     public static final HostedOptionKey<String[]> DebugInfoSourceSearchPath = new HostedOptionKey<String[]>(null) {
     };
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
-    public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<String>("sources") {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
-            // disallow null or empty string
-            if (newValue == null || newValue.length() == 0) {
-                DebugInfoSourceCacheRoot.update(values, oldValue);
-            }
+    public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<String>("sources");
+
+    public static Path getDebugInfoSourceCacheRoot() {
+        try {
+            Path sourceRoot = Paths.get(DebugInfoSourceCacheRoot.getValue());
+            return sourceRoot;
+        } catch (InvalidPathException ipe) {
+            throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot " + DebugInfoSourceCacheRoot.getValue());
         }
-    };
+    }
 }

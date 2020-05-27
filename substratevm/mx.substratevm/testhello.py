@@ -1,6 +1,6 @@
 # pylint: skip-file
 #
-# A test script for use from gdb. It can be sued to drive execution of
+# A test script for use from gdb. It can be used to drive execution of
 # a native image version of test app Hello and check that the debug
 # info is valid.
 #
@@ -31,12 +31,9 @@ class Checker:
     # successive lines of checked
     def __init__(self, name, regexps):
         self.name = name
-        compiled = []
         if not isinstance(regexps, list):
             regexps = [regexps]
-        for regexp in regexps:
-            compiled.append(re.compile(regexp))
-        self.rexps = compiled
+        self.rexps = [re.compile(regexp) for regexp in regexps]
 
     # Check that successive lines of a gdb command's output text
     # match the corresponding regexp patterns provided when this
@@ -48,7 +45,7 @@ class Checker:
     # corresponding pattern otherwise prints the text and returns
     # the set of matches.
     def check(self, text, skip_fails=True):
-        lines = text.split('\n')
+        lines = text.splitlines()
         rexps = self.rexps
         num_lines = len(lines)
         num_rexps = len(rexps)
@@ -101,12 +98,21 @@ execute("set listsize 1")
 
 def test():
 
+    # define some useful patterns
+    address_pattern = '0x[0-9a-f]+'
+    spaces_pattern = '[ \t]+'
+    maybe_spaces_pattern = '[ \t]*'
+    digits_pattern = '[0-9]+'
+    package_pattern = '[a-z/]+'
+    package_file_pattern = '[a-zA-Z0-9_/]+\\.java'
+    varname_pattern = '[a-zA-Z0-9_]+'
+    wildcard_pattern = '.*'
     # disable prompting to continue output
     execute("set pagination off")
     # set a break point at hello.Hello::main
     # expect "Breakpoint 1 at 0x[0-9a-f]+: file hello.Hello.java, line 64."
     exec_string = execute("break hello.Hello::main")
-    rexp = "Breakpoint 1 at 0x([0-9a-f]+): file hello/Hello\\.java, line 64\\."
+    rexp = r"Breakpoint 1 at %s: file hello/Hello\.java, line 64\."%address_pattern
     checker = Checker('break main', rexp)
     checker.check(exec_string)
 
@@ -116,7 +122,7 @@ def test():
     # list the line at the breakpoint
     # expect "64	        Greeter greeter = Greeter.greeter(args);"
     exec_string = execute("list")
-    checker = Checker("list bp 1", "64[ \t]+Greeter greeter = Greeter\\.greeter\\(args\\);")
+    checker = Checker(r"list bp 1", "64%sGreeter greeter = Greeter\.greeter\(args\);"%spaces_pattern)
     checker.check(exec_string, skip_fails=False)
 
     # run a backtrace
@@ -124,8 +130,8 @@ def test():
     # expect "#1  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub::JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
     checker = Checker("backtrace hello.Hello::main",
-                      ["#0[ \t]+hello\\.Hello::main\\(java\\.lang\\.String\\[\\]\\).* at hello/Hello\\.java:64",
-                       "#1[ \t]+0x[0-9a-f]+ in com\\.oracle\\.svm\\.core\\.code\\.IsolateEnterStub::JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper\\.java:[0-9]+"
+                      [r"#0%shello\.Hello::main\(java\.lang\.String\[\]\)%s at hello/Hello\.java:64"%(spaces_pattern, wildcard_pattern),
+                       r"#1%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern)
                       ])
     checker.check(exec_string, skip_fails=False)
 
@@ -144,13 +150,13 @@ def test():
 #                       "[ \t]*void java.io.PrintStream::println\\(java\\.lang\\.String\\)\\(void\\);",
 #                      ])
     checker = Checker("info func java.io.PrintStream::println",
-                      "[ \t]*void java.io.PrintStream::println\\(java\\.lang\\.String\\)")
+                      r"%svoid java.io.PrintStream::println\(java\.lang\.String\)"%maybe_spaces_pattern)
     checker.check(exec_string)
 
     # set a break point at PrintStream::println(String)
     # expect "Breakpoint 2 at 0x[0-9a-f]+: java.base/java/io/PrintStream.java, line [0-9]+."
     exec_string = execute("break java.io.PrintStream::println(java.lang.String)")
-    rexp = "Breakpoint 2 at 0x([0-9a-f]+): file .*java/io/PrintStream\\.java, line [0-9]+\\."
+    rexp = r"Breakpoint 2 at %s: file .*java/io/PrintStream\.java, line %s\."%(address_pattern, digits_pattern)
     checker = Checker('break println', rexp)
     checker.check(exec_string, skip_fails=False)
 
@@ -160,7 +166,7 @@ def test():
     # list current line
     # expect "31	            if (args.length == 0) {"
     exec_string = execute("list")
-    rexp = "31[ \t]+if \\(args\\.length == 0\\) {"
+    rexp = r"31%sif \(args\.length == 0\) {"%spaces_pattern
     checker = Checker('list hello.Hello.Greeter::greeter', rexp)
     checker.check(exec_string, skip_fails=False)
 
@@ -170,9 +176,9 @@ def test():
     # expect "#2  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub::JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
     checker = Checker("backtrace hello.Hello.Greeter::greeter",
-                      ["#0[ \t]+hello\\.Hello\\.Greeter::greeter\\(java\\.lang\\.String\\[\\]\\).* at hello/Hello\\.java:31",
-                       "#1[ \t]+0x[0-9a-f]+ in hello\\.Hello::main\\(java\\.lang\\.String\\[\\]\\).* at hello/Hello\\.java:64",
-                       "#2[ \t]+0x[0-9a-f]+ in com\\.oracle\\.svm\\.core\\.code\\.IsolateEnterStub::JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper\\.java:[0-9]+"
+                      [r"#0%shello\.Hello\.Greeter::greeter\(java\.lang\.String\[\]\)%s at hello/Hello\.java:31"%(spaces_pattern, wildcard_pattern),
+                       r"#1%s%s in hello\.Hello::main\(java\.lang\.String\[\]\)%s at hello/Hello\.java:64"%(spaces_pattern, address_pattern, wildcard_pattern),
+                       r"#2%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s at [a-z/]+/JavaMainWrapper\.java:%s"%(spaces_pattern, address_pattern, wildcard_pattern, digits_pattern)
                       ])
     checker.check(exec_string, skip_fails=False)
 
@@ -182,7 +188,7 @@ def test():
     # check we are still in hello.Hello.Greeter::greeter but no longer in hello.Hello.java
     exec_string = execute("backtrace 1")
     checker = Checker("backtrace inline",
-                      ["#0[ \t]+hello\\.Hello\\.Greeter::greeter\\(java\\.lang\\.String\\[\\]\\).* at ([a-zA-Z0-9/]+\\.java):[0-9]+"])
+                      [r"#0%shello\.Hello\.Greeter::greeter\(java\.lang\.String\[\]\)%s at (%s):%s"%(spaces_pattern, wildcard_pattern, package_file_pattern, digits_pattern)])
     matches = checker.check(exec_string, skip_fails=False)
     # n.b. can only get back here with one match
     match = matches[0]
@@ -199,13 +205,13 @@ def test():
     # expect "#0  java.io.PrintStream::println(java.lang.String).* at java.base/java/io/PrintStream.java:[0-9]+"
     exec_string = execute("backtrace 1")
     checker = Checker("backtrace 1 PrintStream::println",
-                      ["#0[ \t]+java\\.io\\.PrintStream::println\\(java\\.lang\\.String\\).* at .*java/io/PrintStream.java:[0-9]+"])
+                      [r"#0%sjava\.io\.PrintStream::println\(java\.lang\.String\)%s at %sjava/io/PrintStream.java:%s"%(spaces_pattern, wildcard_pattern, wildcard_pattern, digits_pattern)])
     checker.check(exec_string, skip_fails=False)
 
     # list current line
     # expect "[0-9]+        synchronized (this) {"
     exec_string = execute("list")
-    rexp = "([0-9]+)[ \t]+synchronized \\(this\\) {"
+    rexp = r"(%s)%ssynchronized \(this\) {"%(digits_pattern, spaces_pattern)
     checker = Checker('list println 1', rexp)
     matches = checker.check(exec_string, skip_fails=False)
 
@@ -217,7 +223,7 @@ def test():
     # list {prev_line_num}
     # expect "{prev_line_num}        public void println(String [a-zA-Z0-9_]+) {"
     exec_string = execute("list %d"%prev_line_num)
-    rexp = "%d[ \t]+public void println\\(String [a-zA-Z0-9_]+\\) {"%prev_line_num
+    rexp = r"%d%spublic void println\(String %s\) {"%(prev_line_num, spaces_pattern, varname_pattern)
     checker = Checker('list println 2', rexp)
     checker.check(exec_string, skip_fails=False)
 

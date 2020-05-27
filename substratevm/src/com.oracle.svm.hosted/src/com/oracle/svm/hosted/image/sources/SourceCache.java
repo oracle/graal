@@ -73,7 +73,7 @@ public abstract class SourceCache {
      * Create some flavour of source cache.
      */
     protected SourceCache() {
-        basePath = Paths.get(SOURCE_CACHE_ROOT_DIR).resolve(getType().getSubdir());
+        basePath = SOURCE_CACHE_ROOT_DIR.resolve(getType().getSubdir());
         srcRoots = new ArrayList<>();
         initSrcRoots();
     }
@@ -109,7 +109,7 @@ public abstract class SourceCache {
      * A local directory serving as the root for all source trees maintained by the different
      * available source caches.
      */
-    private static final String SOURCE_CACHE_ROOT_DIR = SubstrateOptions.DebugInfoSourceCacheRoot.getValue();
+    private static final Path SOURCE_CACHE_ROOT_DIR = SubstrateOptions.getDebugInfoSourceCacheRoot();
 
     /**
      * The top level path relative to the root directory under which files belonging to this

@@ -18,7 +18,7 @@ The GenerateDebugInfo option also enables caching of sources for any
 JDK runtime classes, GraalVM classes and application classes which can
 be located during native image generation. By default the cache is
 created under local subdirectory sources (a command line option can be
-use dot specifiy an alternative location). It is used to configure
+used to specifiy an alternative location). It is used to configure
 source file search path roots for the debugger. Files in the cache are
 located in a directory hierarchy that matches the file path
 information included in the native image debug records. The source
