@@ -245,6 +245,7 @@ class Tags(set):
 GraalTags = Tags([
     'helloworld',
     'helloworld_debug',
+    'debuginfotest',
     'test',
     'maven',
     'js',
@@ -367,6 +368,10 @@ def svm_gate_body(args, tasks):
                 helloworld(['--output-path', svmbuild_dir(), '--shared', '-H:GenerateDebugInfo=1'])  # Build and run helloworld as shared library
                 cinterfacetutorial(['-H:GenerateDebugInfo=1'])
                 clinittest([])
+
+        with Task('image debuginfotest', tasks, tags=[GraalTags.debuginfotest]) as t:
+            if t:
+                debuginfotest(['--output-path', svmbuild_dir()])
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
@@ -700,6 +705,40 @@ def _helloworld(native_image, javac_command, path, build_only, args):
         if actual_output != expected_output:
             raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
 
+def _debuginfotest(native_image, path, build_only, args):
+    mkpath(path)
+    parent = os.path.dirname(path)
+    mx.log("parent=%s"%parent)
+    sourcepath = mx.project('com.oracle.svm.test').source_dirs()[0]
+    mx.log("sourcepath=%s"%sourcepath)
+    sourcecache = join(path, 'sources')
+    mx.log("sourcecache=%s"%sourcecache)
+
+    javaProperties = {}
+    for dist in suite.dists:
+        if isinstance(dist, mx.ClasspathDependency):
+            for cpEntry in mx.classpath_entries(dist):
+                if hasattr(cpEntry, "getJavaProperties"):
+                    for key, value in cpEntry.getJavaProperties().items():
+                        javaProperties[key] = value
+    for key, value in javaProperties.items():
+        args.append("-D" + key + "=" + value)
+
+    native_image_args = ["--native-image-info", "-H:Path=" + path,
+                         '-H:+VerifyNamingConventions',
+                         '-cp', classpath('com.oracle.svm.test'),
+                         '-Dgraal.LogFile=graal.log',
+                         '-H:GenerateDebugInfo=1',
+                         '-H:DebugInfoSourceSearchPath=' + sourcepath,
+                         '-H:DebugInfoSourceCacheRoot=' + join(path, 'sources'),
+                         'hello.Hello'] + args
+    mx.log('native_image {}'.format(native_image_args))
+    native_image(native_image_args)
+
+    if mx.get_os() == 'linux' and not build_only:
+        mx.run(['gdb', '-d', join(sourcecache, 'src'), '-d', join(sourcecache, 'graal'), '-d', join(sourcecache, 'jdk'), '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
+
+
 def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
     mkpath(path)
@@ -1006,6 +1045,27 @@ def helloworld(args, config=None):
         build_if_missing=True
     )
 
+
+@mx.command(suite_name=suite.name, command_name='debuginfotest', usage_msg='[options]')
+def debuginfotest(args, config=None):
+    """
+    builds a debuginfo Hello native image and tests it with gdb.
+    """
+    parser = ArgumentParser(prog='mx debuginfotest')
+    all_args = ['--output-path', '--build-only']
+    masked_args = [_mask(arg, all_args) for arg in args]
+    parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
+    parser.add_argument(all_args[1], action='store_true', help='Only build the native image', default=False)
+    parser.add_argument('image_args', nargs='*', default=[])
+    parsed = parser.parse_args(masked_args)
+    output_path = unmask(parsed.output_path)[0]
+    build_only = parsed.build_only
+    native_image_context_run(
+        lambda native_image, a:
+            _debuginfotest(native_image, output_path, build_only, a), unmask(parsed.image_args),
+        config=config,
+        build_if_missing=True
+    )
 
 @mx.command(suite.name, 'cinterfacetutorial', 'Runs the ')
 def cinterfacetutorial(args):
