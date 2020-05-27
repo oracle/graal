@@ -354,10 +354,8 @@ public abstract class LoopTransformations {
             for (PhiNode phi : postMergeNode.phis().snapshot()) {
                 phi.safeDelete();
             }
-            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After deleting unussed phis");
-        }
+            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After deleting unused phis");
 
-        if (graph.hasValueProxies()) {
             /*
              * Fix the framestates for the pre loop exit node and the main loop exit node.
              *
@@ -372,9 +370,9 @@ public abstract class LoopTransformations {
             preLoopExitStateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
                 @Override
                 public void apply(Node from, Position p) {
-                    ValueNode usage = (ValueNode) p.get(from);
-                    if (preLoopBegin.isPhiAtMerge(usage)) {
-                        Node replacement = proxy(graph, usage, usage, preLoopBegin.loopExits().first());
+                    ValueNode to = (ValueNode) p.get(from);
+                    if (preLoopBegin.isPhiAtMerge(to)) {
+                        Node replacement = proxy(graph, to, to, preLoopBegin.loopExits().first());
                         p.set(from, replacement);
                     }
                 }
