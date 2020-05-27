@@ -87,7 +87,11 @@ public final class EspressoContext {
     private StaticObject mainThreadGroup;
 
     private final AtomicInteger klassIdProvider = new AtomicInteger();
+    private final AtomicInteger loaderIdProvider = new AtomicInteger();
+    private final int bootClassLoaderID = getNewLoaderId();
+
     public long initVMDoneMs;
+
     private boolean mainThreadCreated;
     private JDWPContextImpl jdwpContext;
     private VMListener eventListener;
@@ -97,8 +101,16 @@ public final class EspressoContext {
         return logger;
     }
 
-    public int getNewId() {
+    public int getNewKlassId() {
         return klassIdProvider.getAndIncrement();
+    }
+
+    public int getNewLoaderId() {
+        return loaderIdProvider.getAndIncrement();
+    }
+
+    public int getBootClassLoaderID() {
+        return bootClassLoaderID;
     }
 
     private boolean initialized = false;

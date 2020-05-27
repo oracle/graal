@@ -223,11 +223,11 @@ public final class Substitutions implements ContextAccess {
         MethodRef key = new MethodRef(type, methodName, signature);
 
         if (STATIC_SUBSTITUTIONS.containsKey(key)) {
-            SubstitutionsLogger.log(Level.FINE, "Runtime substitution shadowed by static one: {0}", key);
+            SubstitutionsLogger.log(Level.FINE, "Runtime substitution shadowed by static one: " + key);
         }
 
         if (throwIfPresent && runtimeSubstitutions.containsKey(key)) {
-            throw EspressoError.shouldNotReachHere("substitution already registered" + key);
+            throw EspressoError.shouldNotReachHere("substitution already registered " + key);
         }
         runtimeSubstitutions.put(key, factory);
     }

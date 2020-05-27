@@ -2138,8 +2138,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             public StaticObject apply(int value) {
                 // (String name, String type)
                 return (StaticObject) sun_management_ManagementFactory_createMemoryManager.call(
-                                /* String name */ getMeta().toGuestString("foo"),
-                                /* String type */ StaticObject.NULL);
+                                /* String name */ getMeta().toGuestString("foo"));
             }
         });
     }
@@ -2281,6 +2280,26 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
         }
         return 0;
+    }
+
+    @VmImpl
+    @JniImpl
+    @SuppressWarnings("unused")
+    public @Host(ThreadInfo[].class) StaticObject DumpThreads(@Host(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers) {
+        StaticObject threadIds = ids;
+        if (StaticObject.isNull(threadIds)) {
+            StaticObject[] activeThreads = getContext().getActiveThreads();
+            threadIds = InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length);
+            for (int j = 0; j < activeThreads.length; ++j) {
+                long tid = (long) getMeta().java_lang_Thread_tid.get(activeThreads[j]);
+                getInterpreterToVM().setArrayLong(tid, j, threadIds);
+            }
+        }
+        StaticObject result = getMeta().java_lang_management_ThreadInfo.allocateReferenceArray(threadIds.length());
+        if (GetThreadInfo(threadIds, 0, result) != JNI_OK) {
+            return StaticObject.NULL;
+        }
+        return result;
     }
 
     // endregion Management

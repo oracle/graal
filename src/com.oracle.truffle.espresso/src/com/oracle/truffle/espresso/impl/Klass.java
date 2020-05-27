@@ -250,7 +250,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         this.type = type;
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
-        this.id = context.getNewId();
+        this.id = context.getNewKlassId();
         this.modifiers = modifiers;
     }
 

@@ -199,6 +199,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getSystemClassLoader = StaticSymbols.putName("getSystemClassLoader");
         public static final Symbol<Name> loadClass = StaticSymbols.putName("loadClass");
         public static final Symbol<Name> parent = StaticSymbols.putName("parent");
+        public static final Symbol<Name> HIDDEN_CLASS_LOADER_REGISTRY = StaticSymbols.putName("0HIDDEN_CLASS_LOADER_REGISTRY");
 
         // j.l.String
         public static final Symbol<Name> hash = StaticSymbols.putName("hash");

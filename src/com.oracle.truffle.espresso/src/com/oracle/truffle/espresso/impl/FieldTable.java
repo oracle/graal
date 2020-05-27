@@ -241,6 +241,9 @@ class FieldTable {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_MIRROR_KLASS));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_PROTECTION_DOMAIN));
             return c;
+        } else if (type == Type.java_lang_ClassLoader) {
+            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_CLASS_LOADER_REGISTRY));
+            return c;
         } else {
             return c;
         }
