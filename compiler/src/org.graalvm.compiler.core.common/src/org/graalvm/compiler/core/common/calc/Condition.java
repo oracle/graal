@@ -552,7 +552,6 @@ public enum Condition {
         }
         switch (this) {
             case EQ: {
-                // 0 EQ 0 is not disjoint from 0 EQ 0
                 // 0 EQ 0 is not disjoint from 0 LE 0
                 // 0 EQ 0 is not disjoint from 0 GE 0
                 // 0 EQ 0 is not disjoint from 0 AE 0
@@ -560,7 +559,6 @@ public enum Condition {
                 return in(other, NE, LT, GT, AT, BT);
             }
             case NE: {
-                // 0 NE 1 is not disjoint from 0 NE 1
                 // 0 NE 1 is not disjoint from 0 LT 1
                 // 0 NE 1 is not disjoint from 0 LE 1
                 // 0 NE -1 is not disjoint from 0 GT -1
@@ -573,7 +571,6 @@ public enum Condition {
             }
             case LT: {
                 // 0 LT 1 is not disjoint from 0 NE 1
-                // 0 LT 1 is not disjoint from 0 LT 1
                 // 0 LT 1 is not disjoint from 0 LE 1
                 // -1 LT 0 is not disjoint from -1 AE 0
                 // 0 LT 1 is not disjoint from 0 BE 1
@@ -585,7 +582,6 @@ public enum Condition {
                 // 0 LE 0 is not disjoint from 0 EQ 0
                 // 0 LE 1 is not disjoint from 0 NE 1
                 // 0 LE 1 is not disjoint from 0 LT 1
-                // 0 LE 0 is not disjoint from 0 LE 0
                 // 0 LE 0 is not disjoint from 0 GE 0
                 // 0 LE 0 is not disjoint from 0 AE 0
                 // 0 LE 0 is not disjoint from 0 BE 0
@@ -595,7 +591,6 @@ public enum Condition {
             }
             case GT: {
                 // 0 GT -1 is not disjoint from 0 NE -1
-                // 0 GT -1 is not disjoint from 0 GT -1
                 // 0 GT -1 is not disjoint from 0 GE -1
                 // 1 GT 0 is not disjoint from 1 AE 0
                 // 0 GT -1 is not disjoint from 0 BE -1
@@ -608,7 +603,6 @@ public enum Condition {
                 // 0 GE -1 is not disjoint from 0 NE -1
                 // 0 GE 0 is not disjoint from 0 LE 0
                 // 0 GE -1 is not disjoint from 0 GT -1
-                // 0 GE 0 is not disjoint from 0 GE 0
                 // 0 GE 0 is not disjoint from 0 AE 0
                 // 0 GE 0 is not disjoint from 0 BE 0
                 // 1 GE 0 is not disjoint from 1 AT 0
@@ -622,7 +616,6 @@ public enum Condition {
                 // 0 AE 0 is not disjoint from 0 LE 0
                 // 1 AE 0 is not disjoint from 1 GT 0
                 // 0 AE 0 is not disjoint from 0 GE 0
-                // 0 AE 0 is not disjoint from 0 AE 0
                 // 0 AE 0 is not disjoint from 0 BE 0
                 // 1 AE 0 is not disjoint from 1 AT 0
                 return other == BT;
@@ -635,7 +628,6 @@ public enum Condition {
                 // 0 BE -1 is not disjoint from 0 GT -1
                 // 0 BE 0 is not disjoint from 0 GE 0
                 // 0 BE 0 is not disjoint from 0 AE 0
-                // 0 BE 0 is not disjoint from 0 BE 0
                 // 0 BE 1 is not disjoint from 0 BT 1
                 return other == AT;
             }
@@ -646,7 +638,6 @@ public enum Condition {
                 // 1 AT 0 is not disjoint from 1 GT 0
                 // 1 AT 0 is not disjoint from 1 GE 0
                 // 1 AT 0 is not disjoint from 1 AE 0
-                // 1 AT 0 is not disjoint from 1 AT 0
                 return in(other, EQ, BE, BT);
             }
             case BT: {
@@ -656,7 +647,6 @@ public enum Condition {
                 // 0 BT -1 is not disjoint from 0 GT -1
                 // 0 BT -1 is not disjoint from 0 GE -1
                 // 0 BT 1 is not disjoint from 0 BE 1
-                // 0 BT 1 is not disjoint from 0 BT 1
                 return in(other, EQ, AE, AT);
             }
         }
