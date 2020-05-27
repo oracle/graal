@@ -1,16 +1,3 @@
-x52.c2 : {
-  capabilities: [linux, x52, no_frequency_scaling]
-  environment : {
-    JVM_CONFIG   : "default"
-    JVM          : "server"
-    MACHINE_NAME : "x52"
-    }
-}
-
-x52.c2-tmpfs10g : ${x52.c2} {
-  capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
-}
-
 bench-dacapo-hwloc-forks-c2 : ${bench-dacapo-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-dacapo-hwloc.setup}

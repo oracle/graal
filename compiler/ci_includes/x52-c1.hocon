@@ -1,22 +1,9 @@
-
-x52.c1 : ${oraclejdk8} {
-  capabilities: [linux, x52, no_frequency_scaling]
-  environment : {
-    JVM_CONFIG :  "default"
-    JVM        :  "client"
-    MACHINE_NAME: "x52"
-  }
-}
-
-x52.c1-tmpfs10g : ${x52.c1} {
-  capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
-}
-
 builds += [
-  ${x52.c1-tmpfs10g} ${bench-dacapo-hwloc}        { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-x52-c1" }
-  ${x52.c1-tmpfs10g} ${bench-scala-dacapo-hwloc}  { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-x52-c1", timelimit: "1:00:00" }
-  ${x52.c1} ${bench-specjvm2008-Single}           { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-x52-c1" }
-  ${x52.c1} ${bench-specjvm2008-OneVM}            { targets: [bench, weekly], name: "bench-compiler-specjvm2008-OneVM-linux-x52-c1" }
-  ${x52.c1} ${bench-specjbb2015}                  { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-x52-c1" }
-#  ${x52.c1} ${bench-micros-graal-dist}            { targets: [bench, weekly], name: "bench-jmh-micros-graal-dist-linux-x52-c1" }
+  // JDK 8
+  ${x52.c1-tmpfs10g} ${bench-dacapo-hwloc}        ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-x52-c1" }
+  ${x52.c1-tmpfs10g} ${bench-scala-dacapo-hwloc}  ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-x52-c1", timelimit: "1:00:00" }
+  ${x52.c1} ${bench-specjvm2008-Single}           ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-x52-c1" }
+  ${x52.c1} ${bench-specjvm2008-OneVM}            ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjvm2008-OneVM-linux-x52-c1" }
+  ${x52.c1} ${bench-specjbb2015}                  ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-x52-c1" }
+#  ${x52.c1} ${bench-micros-graal-dist}           ${oraclejdk8} { targets: [bench, weekly], name: "bench-jmh-micros-graal-dist-linux-x52-c1" }
 ]

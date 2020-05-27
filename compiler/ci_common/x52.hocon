@@ -1,3 +1,29 @@
+x52.c1 : ${linux-amd64} {
+  capabilities: ${linux-amd64.capabilities} [x52, no_frequency_scaling]
+  environment : {
+    JVM_CONFIG :  "default"
+    JVM        :  "client"
+    MACHINE_NAME: "x52"
+  }
+}
+
+x52.c1-tmpfs10g : ${x52.c1} {
+  capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
+}
+
+x52.c2 : {
+  capabilities: [linux, x52, no_frequency_scaling]
+  environment : {
+    JVM_CONFIG   : "default"
+    JVM          : "server"
+    MACHINE_NAME : "x52"
+  }
+}
+
+x52.c2-tmpfs10g : ${x52.c2} {
+  capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
+}
+
 x52.default : ${linux-amd64} {
   capabilities: ${linux-amd64.capabilities} [x52, no_frequency_scaling]
   environment : {
