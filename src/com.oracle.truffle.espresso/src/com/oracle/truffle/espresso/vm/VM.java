@@ -1977,23 +1977,25 @@ public final class VM extends NativeEnv implements ContextAccess {
         return -1;
     }
 
-    private static void validateThreadIdArray(Meta meta, @Host(long[].class) StaticObject threadIds) {
+    private static void validateThreadIdArray(Meta meta, @Host(long[].class) StaticObject threadIds, SubstitutionProfiler profiler) {
         assert threadIds.isArray();
         int numThreads = threadIds.length();
         for (int i = 0; i < numThreads; ++i) {
             long tid = threadIds.<long[]> unwrap()[i];
             if (tid <= 0) {
+                profiler.profile(3);
                 throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid thread ID entry");
             }
         }
     }
 
-    private static void validateThreadInfoArray(Meta meta, @Host(ThreadInfo[].class) StaticObject infoArray) {
+    private static void validateThreadInfoArray(Meta meta, @Host(ThreadInfo[].class) StaticObject infoArray, SubstitutionProfiler profiler) {
         // check if the element of infoArray is of type ThreadInfo class
         Klass infoArrayKlass = infoArray.getKlass();
         if (infoArray.isArray()) {
             Klass component = ((ArrayKlass) infoArrayKlass).getComponentType();
             if (!meta.java_lang_management_ThreadInfo.equals(component)) {
+                profiler.profile(4);
                 throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "infoArray element type is not ThreadInfo class");
             }
         }
@@ -2014,8 +2016,8 @@ public final class VM extends NativeEnv implements ContextAccess {
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid maxDepth");
         }
 
-        validateThreadIdArray(meta, ids);
-        validateThreadInfoArray(meta, infoArray);
+        validateThreadIdArray(meta, ids, profiler);
+        validateThreadInfoArray(meta, infoArray, profiler);
 
         if (ids.length() != infoArray.length()) {
             profiler.profile(2);
@@ -2285,7 +2287,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     @SuppressWarnings("unused")
-    public @Host(ThreadInfo[].class) StaticObject DumpThreads(@Host(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers) {
+    public @Host(ThreadInfo[].class) StaticObject DumpThreads(@Host(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers,
+                    @InjectProfile SubstitutionProfiler profiler) {
         StaticObject threadIds = ids;
         if (StaticObject.isNull(threadIds)) {
             StaticObject[] activeThreads = getContext().getActiveThreads();
@@ -2296,7 +2299,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
         }
         StaticObject result = getMeta().java_lang_management_ThreadInfo.allocateReferenceArray(threadIds.length());
-        if (GetThreadInfo(threadIds, 0, result) != JNI_OK) {
+        if (GetThreadInfo(threadIds, 0, result, profiler) != JNI_OK) {
             return StaticObject.NULL;
         }
         return result;
