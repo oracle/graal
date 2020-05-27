@@ -1319,6 +1319,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 getMeta().java_security_PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getExceptionObject());
                 throw Meta.throwException(wrapper);
             }
+            profiler.profile(4);
             throw e;
         } finally {
             stack.pop();
