@@ -202,7 +202,7 @@ public class CpuLocalCounterArray<T> {
     }
 
     public Pair<FixedWithNextNode, FixedWithNextNode> createIncrementCounter(StructuredGraph graph, T key, int counterIndex) {
-        final ValueNode indexNode = graph.addOrUnique(ConstantNode.forLong(counterIndex));
+        final ValueNode indexNode = graph.addOrUniqueWithInputs(ConstantNode.forLong(counterIndex));
         return createIncrementCounter(graph, key, indexNode);
     }
 
@@ -328,7 +328,7 @@ public class CpuLocalCounterArray<T> {
         // The number 11 has been determined empirically.
         final ValueNode shiftValue = graph.addOrUniqueWithInputs(ConstantNode.forInt(11));
 
-        return graph.addOrUnique(RightShiftNode.create(thread, shiftValue, NodeView.DEFAULT));
+        return graph.addOrUniqueWithInputs(RightShiftNode.create(thread, shiftValue, NodeView.DEFAULT));
     }
 
     /**
@@ -357,7 +357,7 @@ public class CpuLocalCounterArray<T> {
         final ValueNode multiplier = graph.addOrUniqueWithInputs(ConstantNode.forLong(knuthMethodMultiplier));
         final ValueNode mulNode = graph.addOrUniqueWithInputs(MulNode.create(threadIdentifier, multiplier, NodeView.DEFAULT));
         final ValueNode mask = graph.addOrUniqueWithInputs(ConstantNode.forLong(cpuLocalsPerCounter - 1));
-        return graph.addOrUnique(AndNode.create(mulNode, mask, NodeView.DEFAULT));
+        return graph.addOrUniqueWithInputs(AndNode.create(mulNode, mask, NodeView.DEFAULT));
     }
 
     /**
