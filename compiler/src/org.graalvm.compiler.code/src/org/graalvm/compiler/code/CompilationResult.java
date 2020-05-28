@@ -706,8 +706,8 @@ public class CompilationResult {
         String getName();
 
         /**
-         * Return the object which should be used in the {@link Mark}. On some platoforms that may
-         * be different than this object.
+         * Return the object which should be used in the {@link Mark}. On some platforms that may be
+         * different than this object.
          */
         default Object getId() {
             return this;

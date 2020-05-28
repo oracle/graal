@@ -66,7 +66,7 @@ public abstract class SubstrateBackend extends Backend {
 
         @Override
         public String getName() {
-            return toString();
+            return name();
         }
 
         @Override
