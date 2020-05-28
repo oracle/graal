@@ -393,7 +393,6 @@ suite = {
       ],
       "testProject" : True,
       "defaultBuild" : False,
-      "clangFormat" : False,
     },
 
     "com.oracle.truffle.llvm.asm.amd64" : {
