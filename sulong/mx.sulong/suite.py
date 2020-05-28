@@ -759,7 +759,6 @@ suite = {
       ],
       "testProject" : True,
       "defaultBuild" : False,
-      "clangFormat" : False,
     },
     "com.oracle.truffle.llvm.tests.bitcode.other.native" : {
       "subDir" : "tests",
