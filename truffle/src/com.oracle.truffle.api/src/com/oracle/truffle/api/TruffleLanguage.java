@@ -590,10 +590,13 @@ public abstract class TruffleLanguage<C> {
      * case, the finalization order may be non-deterministic and/or not respect the order specified
      * by language dependencies.
      * <p>
-     * All threads {@link Env#createThread(Runnable) created} by a language must be stopped after
-     * finalizeContext was called. The languages are responsible for fulfilling that contract,
-     * otherwise an {@link AssertionError} is thrown. It is recommended to join all threads that
-     * were disposed.
+     * All threads {@link Env#createThread(Runnable) created} by a language must be stopped and
+     * joined after finalizeContext was called. The languages are responsible for fulfilling that
+     * contract, otherwise an {@link AssertionError} is thrown.
+     * <p>
+     * Typical implementation looks like:
+     *
+     * {@link TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext}
      *
      * @see Registration#dependentLanguages() for specifying language dependencies.
      * @param context the context created by
@@ -3216,6 +3219,7 @@ class TruffleLanguageSnippets {
         }
 
         final Assumption singleThreaded = Truffle.getRuntime().createAssumption();
+        final Collection<Thread> startedThreads = Collections.synchronizedCollection(new ArrayList<>());
 
     }
 
@@ -3359,6 +3363,60 @@ class TruffleLanguageSnippets {
         }
     }
     // END: TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread
+
+    abstract
+    // BEGIN: TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext
+    class AsyncThreadLanguage extends TruffleLanguage<Context> {
+
+        @Override
+        protected Context createContext(Env env) {
+            return new Context(env);
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread,
+                        boolean singleThreaded) {
+            // allow access from any thread instead of just one
+            return true;
+        }
+
+        @Override
+        protected void initializeContext(Context context) throws Exception {
+            // create and start a Thread for the asynchronous task
+            // remeber the Thread reference to stop and join it in
+            // the finalizeContext
+            Thread t = context.env.createThread(new Runnable() {
+                @Override
+                public void run() {
+                    // asynchronous task
+                }
+            });
+            context.startedThreads.add(t);
+            t.start();
+        }
+
+        @Override
+        protected void finalizeContext(Context context) {
+            // stop and join all the created Threads
+            Collection<Thread> threadsToJoin;
+            synchronized (context.startedThreads) {
+                threadsToJoin = new ArrayList<>(context.startedThreads);
+            }
+            boolean interrupted = false;
+            for (Thread threadToJoin : threadsToJoin) {
+                threadToJoin.interrupt();
+                try {
+                    threadToJoin.join();
+                } catch (InterruptedException ie) {
+                    interrupted = true;
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    // END: TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext
 
 
 
