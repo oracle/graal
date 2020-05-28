@@ -528,7 +528,6 @@ suite = {
         "OS" : "<os>",
       },
       "license" : "BSD-new",
-      "clangFormat" : False,
     },
     "com.oracle.truffle.llvm.libraries.mock" : {
       "subDir" : "projects",
@@ -550,7 +549,6 @@ suite = {
         "OS" : "<os>",
       },
       "license" : "BSD-new",
-      "clangFormat" : False,
     },
     "com.oracle.truffle.llvm.libraries.native" : {
       "subDir" : "projects",
@@ -572,7 +570,6 @@ suite = {
         "OS" : "<os>",
       },
       "license" : "BSD-new",
-      "clangFormat" : False,
     },
     "com.oracle.truffle.llvm.libraries.bitcode.libcxx" : {
       "subDir" : "projects",
