@@ -201,7 +201,11 @@ public class ResourceLimitsTest {
     }
 
     private static void assertTimeout(Context c, PolyglotException e) {
-        assertTrue(e.isCancelled());
+        if (!e.isCancelled()) {
+            // not expected exception
+            throw e;
+        }
+        assertTrue(e.toString(), e.isCancelled());
         assertTrue(e.getMessage(), e.getMessage().startsWith("Time resource limit"));
         try {
             c.eval(InstrumentationTestLanguage.ID, "EXPRESSION");

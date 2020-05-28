@@ -44,7 +44,7 @@ public class SubstrateTruffleGraphBuilderPlugins {
                 if (!canDelayIntrinsification && receiver.isConstant()) {
                     JavaConstant reference = (JavaConstant) receiver.get().asConstant();
                     if (reference.isNonNull()) {
-                        JavaConstant referent = b.getConstantReflection().readFieldValue(types.referenceFieldRawReferent, reference);
+                        JavaConstant referent = b.getConstantReflection().readFieldValue(types.referentField, reference);
                         b.addPush(JavaKind.Object, ConstantNode.forConstant(referent, b.getMetaAccess()));
                         return true;
                     }

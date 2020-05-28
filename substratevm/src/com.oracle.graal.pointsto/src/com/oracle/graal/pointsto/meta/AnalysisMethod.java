@@ -37,6 +37,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -45,8 +47,10 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
@@ -54,8 +58,10 @@ import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -78,6 +84,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     private final LocalVariableTable localVariableTable;
     private final String qualifiedName;
     private MethodTypeFlow typeFlow;
+    private final AnalysisType declaringClass;
 
     private boolean isRootMethod;
     private boolean isIntrinsicMethod;
@@ -98,6 +105,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         this.universe = universe;
         this.wrapped = wrapped;
         this.id = universe.nextMethodId.getAndIncrement();
+        declaringClass = universe.lookup(wrapped.getDeclaringClass());
 
         if (PointstoOptions.TrackAccessChain.getValue(universe.hostVM().options())) {
             startTrackInvocations();
@@ -238,16 +246,22 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         getDeclaringClass().registerAsInTypeCheck();
     }
 
-    public List<AnalysisMethod> getJavaInvocations() {
-        List<AnalysisMethod> result = new ArrayList<>();
-        for (InvokeTypeFlow invoke : implementationInvokedBy.keySet()) {
-            result.add((AnalysisMethod) invoke.getSource().graph().method());
-        }
-        return result;
+    /** Get the set of all callers for this method, as inferred by the static analysis. */
+    public Set<AnalysisMethod> getCallers() {
+        return getInvokeLocations().stream().map(location -> (AnalysisMethod) location.getMethod()).collect(Collectors.toSet());
     }
 
-    public Set<InvokeTypeFlow> getInvokeTypeFlows() {
-        return implementationInvokedBy.keySet();
+    /** Get the list of all invoke locations for this method, as inferred by the static analysis. */
+    public List<BytecodePosition> getInvokeLocations() {
+        List<BytecodePosition> locations = new ArrayList<>();
+        for (InvokeTypeFlow invoke : implementationInvokedBy.keySet()) {
+            if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(invoke)) {
+                locations.addAll(((AbstractVirtualInvokeTypeFlow) invoke).getInvokeLocations());
+            } else {
+                locations.add(invoke.getSource());
+            }
+        }
+        return locations;
     }
 
     public boolean isEntryPoint() {
@@ -341,7 +355,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
 
     @Override
     public AnalysisType getDeclaringClass() {
-        return universe.lookup(wrapped.getDeclaringClass());
+        return declaringClass;
     }
 
     @Override
@@ -523,4 +537,33 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     public Executable getJavaMethod() {
         return OriginalMethodProvider.getJavaMethod(universe.getOriginalSnippetReflection(), wrapped);
     }
+
+    /**
+     * Unique, per method, context insensitive invoke. The context insensitive invoke uses the
+     * receiver type of the method, i.e., its declaring class. Therefore this invoke will link with
+     * all possible callees.
+     */
+    private final AtomicReference<InvokeTypeFlow> contextInsensitiveInvoke = new AtomicReference<>();
+
+    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(BigBang bb) {
+        if (contextInsensitiveInvoke.get() == null) {
+            InvokeTypeFlow invoke = InvokeTypeFlow.createContextInsensitiveInvoke(bb, this);
+            boolean set = contextInsensitiveInvoke.compareAndSet(null, invoke);
+            if (set) {
+                /*
+                 * Only register the winning context insensitive invoke as an observer of the target
+                 * method declaring class type flow.
+                 */
+                InvokeTypeFlow.initContextInsensitiveInvoke(bb, this, invoke);
+            }
+        }
+        return contextInsensitiveInvoke.get();
+    }
+
+    public InvokeTypeFlow getContextInsensitiveInvoke() {
+        InvokeTypeFlow invoke = contextInsensitiveInvoke.get();
+        AnalysisError.guarantee(invoke != null);
+        return invoke;
+    }
+
 }

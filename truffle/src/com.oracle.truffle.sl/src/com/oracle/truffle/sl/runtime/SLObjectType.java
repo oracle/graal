@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -62,6 +63,7 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.sl.SLLanguage;
 
 /**
@@ -71,7 +73,7 @@ import com.oracle.truffle.sl.SLLanguage;
  * {@link InteropLibrary}. This has several advantages, but the primary one is that it allows SL
  * objects to be used in the interoperability message protocol, i.e. It allows other languages and
  * tools to operate on SL objects without necessarily knowing they are SL objects.
- * 
+ *
  * SL Objects are essentially instances of {@link DynamicObject} (objects whose members can be
  * dynamically added and removed). Our {@link SLObjectType} class thus extends {@link ObjectType} an
  * extensible object type descriptor for {@link DynamicObject}s. We also annotate the class with
@@ -106,6 +108,25 @@ public final class SLObjectType extends ObjectType {
     @SuppressWarnings("unused")
     static Class<? extends TruffleLanguage<?>> getLanguage(DynamicObject receiver) {
         return SLLanguage.class;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static final class IsIdenticalOrUndefined {
+        @Specialization
+        static TriState doSLObject(DynamicObject receiver, DynamicObject other) {
+            return TriState.valueOf(receiver == other);
+        }
+
+        @Fallback
+        static TriState doOther(DynamicObject receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    static int identityHashCode(DynamicObject receiver) {
+        return System.identityHashCode(receiver);
     }
 
     @ExportMessage

@@ -26,6 +26,7 @@ package com.oracle.svm.truffle.api;
 
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
+import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -33,7 +34,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
 
-    public final ResolvedJavaField referenceFieldRawReferent = findField(lookupType(Target_java_lang_ref_Reference.class), "rawReferent");
+    public final ResolvedJavaField referentField = findField(lookupType(Target_java_lang_ref_Reference.class), ReferenceInternals.REFERENT_FIELD_NAME);
 
     public SubstrateKnownTruffleTypes(MetaAccessProvider metaAccess) {
         super(metaAccess);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -242,6 +242,15 @@ public final class GraalServices {
      */
     @SuppressWarnings("unused")
     public static VirtualObject createVirtualObject(ResolvedJavaType type, int id, boolean isAutoBox) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Gets the update-release counter for the current Java runtime.
+     *
+     * @see "https://download.java.net/java/GA/jdk14/docs/api/java.base/java/lang/Runtime.Version.html"
+     */
+    public static int getJavaUpdateVersion() {
         throw shouldNotReachHere();
     }
 }

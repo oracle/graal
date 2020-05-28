@@ -60,6 +60,24 @@
 		]
 	},
 	{
+		"name": "python-standalone-svm-java8",
+		"core": true,
+		"jdk": "jdk_8",
+		"override_name":"graalpython",
+		"artifacts": [
+			{
+				"os": "linux",
+				"arch": "amd64",
+				"name_template": "{name}-{version}-{os}-{arch}"
+			},
+			{
+				"os": "darwin",
+				"arch": "amd64",
+				"name_template": "{name}-{version}-macos-{arch}"
+			}
+		]
+	},
+	{
 		"name": "llvm-toolchain-installable-java8",
 		"core": false,
 		"jdk": "jdk_8",

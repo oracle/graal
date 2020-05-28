@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,17 +42,18 @@ package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 
 public final class AddToSetVisitor extends DepthFirstTraversalRegexASTVisitor {
 
-    private final StateSet<RegexASTNode> set;
+    private final StateSet<RegexAST, RegexASTNode> set;
 
-    private AddToSetVisitor(StateSet<RegexASTNode> set) {
+    private AddToSetVisitor(StateSet<RegexAST, RegexASTNode> set) {
         this.set = set;
     }
 
-    public static void addCharacterClasses(StateSet<RegexASTNode> set, RegexASTNode runRoot) {
+    public static void addCharacterClasses(StateSet<RegexAST, RegexASTNode> set, RegexASTNode runRoot) {
         new AddToSetVisitor(set).run(runRoot);
     }
 

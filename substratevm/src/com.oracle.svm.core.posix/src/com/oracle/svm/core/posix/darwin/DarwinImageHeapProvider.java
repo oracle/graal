@@ -80,13 +80,13 @@ public class DarwinImageHeapProvider implements ImageHeapProvider {
             assert imageHeapOffsetInAddressSpace == 0;
             WordPointer targetPointer = StackValue.get(WordPointer.class);
             if (DarwinVirtualMemory.vm_allocate(task, targetPointer, imageHeapSizeInFile, true) != 0) {
-                return CEntryPointErrors.MAP_HEAP_FAILED;
+                return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
             }
             heap = allocatedMemory = targetPointer.read();
         } else {
             Word requiredReservedSize = imageHeapSizeInFile.add(imageHeapOffsetInAddressSpace);
             if (reservedSize.belowThan(requiredReservedSize)) {
-                return CEntryPointErrors.MAP_HEAP_FAILED;
+                return CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE;
             }
             // Virtual memory must be committed for vm_copy() below
             PointerBase mappedImageHeapBegin = reservedAddressSpace.add(imageHeapOffsetInAddressSpace);
@@ -131,7 +131,7 @@ public class DarwinImageHeapProvider implements ImageHeapProvider {
             assert Heap.getHeap().getImageHeapOffsetInAddressSpace() == 0;
             UnsignedWord imageHeapSizeInFile = IMAGE_HEAP_END.get().subtract(IMAGE_HEAP_BEGIN.get());
             if (DarwinVirtualMemory.vm_deallocate(DarwinVirtualMemory.mach_task_self(), imageHeap, imageHeapSizeInFile) != 0) {
-                return CEntryPointErrors.MAP_HEAP_FAILED;
+                return CEntryPointErrors.FREE_IMAGE_HEAP_FAILED;
             }
         }
         return CEntryPointErrors.NO_ERROR;

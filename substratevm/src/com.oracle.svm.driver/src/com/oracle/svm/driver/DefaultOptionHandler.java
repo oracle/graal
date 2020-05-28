@@ -132,11 +132,16 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--expert-options":
                 args.poll();
-                nativeImage.setQueryOption(OptionType.User.name());
+                nativeImage.setPrintFlagsOptionQuery(OptionType.User.name());
                 return true;
             case "--expert-options-all":
                 args.poll();
-                nativeImage.setQueryOption("");
+                nativeImage.setPrintFlagsOptionQuery("");
+                return true;
+            case "--expert-options-detail":
+                args.poll();
+                String optionNames = args.poll();
+                nativeImage.setPrintFlagsWithExtraHelpOptionQuery(optionNames);
                 return true;
             case noServerOption:
             case verboseServerOption:
@@ -163,6 +168,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
             /* Using agentlib to allow interoperability with other agents */
             nativeImage.addImageBuilderJavaArgs("-agentlib:jdwp=transport=dt_socket,server=y,address=" + debugPort + ",suspend=y");
+            /* Disable watchdog mechanism */
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHDeadlockWatchdogInterval + "0");
             return true;
         }
 

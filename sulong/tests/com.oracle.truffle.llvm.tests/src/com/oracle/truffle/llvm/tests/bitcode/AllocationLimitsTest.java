@@ -103,7 +103,7 @@ public class AllocationLimitsTest {
 
     @BeforeClass
     public static void setup() {
-        library = loadTestBitcodeValue("allocation_limits");
+        library = loadTestBitcodeValue("allocation_limits.ll.dir");
     }
 
     @Test

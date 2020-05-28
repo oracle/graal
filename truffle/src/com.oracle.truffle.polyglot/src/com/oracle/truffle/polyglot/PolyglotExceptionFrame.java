@@ -62,7 +62,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
 
     private PolyglotExceptionFrame(PolyglotExceptionImpl source, PolyglotLanguage language,
                     SourceSection sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace) {
-        super(source.getImpl());
+        super(source.polyglot);
         this.language = language;
         this.sourceLocation = sourceLocation;
         this.rootName = rootName;
@@ -138,28 +138,31 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             return null;
         }
 
-        PolyglotEngineImpl engine = exception.getEngine();
-        PolyglotLanguage language = engine.idToLanguage.get(info.getId());
+        PolyglotEngineImpl engine = exception.engine;
+        PolyglotLanguage language = null;
+        SourceSection location = null;
         String rootName = targetRoot.getName();
+        if (engine != null) {
+            language = engine.idToLanguage.get(info.getId());
 
-        SourceSection location;
-        Node callNode = frame.getLocation();
-        if (callNode != null) {
-            com.oracle.truffle.api.source.SourceSection section = callNode.getEncapsulatingSourceSection();
-            if (section != null) {
-                Source source = engine.getAPIAccess().newSource(language.getId(), section.getSource());
-                location = engine.getAPIAccess().newSourceSection(source, section);
+            Node callNode = frame.getLocation();
+            if (callNode != null) {
+                com.oracle.truffle.api.source.SourceSection section = callNode.getEncapsulatingSourceSection();
+                if (section != null) {
+                    Source source = engine.getAPIAccess().newSource(language.getId(), section.getSource());
+                    location = engine.getAPIAccess().newSourceSection(source, section);
+                } else {
+                    location = null;
+                }
             } else {
-                location = null;
+                location = first ? exception.getSourceLocation() : null;
             }
-        } else {
-            location = first ? exception.getSourceLocation() : null;
         }
         return new PolyglotExceptionFrame(exception, language, location, rootName, false, null);
     }
 
     static PolyglotExceptionFrame createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
-        PolyglotLanguage language = exception.getEngine().hostLanguage;
+        PolyglotLanguage language = exception.engine != null ? exception.engine.hostLanguage : null;
 
         // source section for the host language is currently null
         // we should potentially in the future create a source section for the host language

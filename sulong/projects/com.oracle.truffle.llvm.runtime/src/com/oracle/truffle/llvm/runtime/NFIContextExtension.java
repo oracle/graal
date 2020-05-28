@@ -32,11 +32,11 @@ package com.oracle.truffle.llvm.runtime;
 import java.nio.file.Path;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -48,8 +48,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapper;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -62,6 +60,7 @@ public final class NFIContextExtension implements ContextExtension {
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     @CompilerDirectives.CompilationFinal private TruffleObject defaultLibraryHandle;
+    private boolean internalLibrariesAdded = false;
     private final ExternalLibrary defaultLibrary;
     // we use an EconomicMap because iteration order must match the insertion order
     private final EconomicMap<ExternalLibrary, TruffleObject> libraryHandles = EconomicMap.create();
@@ -132,9 +131,9 @@ public final class NFIContextExtension implements ContextExtension {
 
     private void addLibraries(LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        context.addInternalLibrary("libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>");
-        if (context.getEnv().getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES)) {
-            context.addInternalLibrary(getLibCxxName(), "<default nfi library>");
+        if (!internalLibrariesAdded) {
+            context.addInternalLibrary("libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>");
+            internalLibrariesAdded = true;
         }
         List<ExternalLibrary> libraries = context.getExternalLibraries(lib -> lib.isNative());
         for (ExternalLibrary l : libraries) {
@@ -177,10 +176,6 @@ public final class NFIContextExtension implements ContextExtension {
         } else {
             return false;
         }
-    }
-
-    private static String getLibCxxName() {
-        return LLVMInfo.SYSNAME.toLowerCase().contains("mac") ? "libc++.dylib" : "libc++.so.1";
     }
 
     private TruffleObject loadLibrary(ExternalLibrary lib, LLVMContext context) {
@@ -269,10 +264,10 @@ public final class NFIContextExtension implements ContextExtension {
         throw new UnsupportedNativeTypeException(type);
     }
 
-    private String[] getNativeTypes(Type[] argTypes, int skipArguments) throws UnsupportedNativeTypeException {
-        String[] types = new String[argTypes.length - skipArguments];
-        for (int i = skipArguments; i < argTypes.length; i++) {
-            types[i - skipArguments] = getNativeType(argTypes[i]);
+    private String[] getNativeArgumentTypes(FunctionType functionType, int skipArguments) throws UnsupportedNativeTypeException {
+        String[] types = new String[functionType.getNumberOfArguments() - skipArguments];
+        for (int i = skipArguments; i < functionType.getNumberOfArguments(); i++) {
+            types[i - skipArguments] = getNativeType(functionType.getArgumentType(i));
         }
         return types;
     }
@@ -358,7 +353,7 @@ public final class NFIContextExtension implements ContextExtension {
         // TODO varargs
         CompilerAsserts.neverPartOfCompilation();
         String nativeRet = getNativeType(type.getReturnType());
-        String[] argTypes = getNativeTypes(type.getArgumentTypes(), skipArguments);
+        String[] argTypes = getNativeArgumentTypes(type, skipArguments);
         StringBuilder sb = new StringBuilder();
         sb.append("(");
         for (String a : argTypes) {

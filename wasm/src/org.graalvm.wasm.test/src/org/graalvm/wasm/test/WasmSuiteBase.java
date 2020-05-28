@@ -144,9 +144,11 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             // Execute the main function (exported as "_main").
             // Then, optionally save memory and globals, and compare them.
             // Execute a special function, which resets memory and globals to their default values.
-            Value mainFunction = context.getBindings("wasm").getMember("_main");
+            Value mainFunction = context.getBindings("wasm").getMember("_start");
+            if (mainFunction == null) {
+                mainFunction = context.getBindings("wasm").getMember("_main");
+            }
             Value resetContext = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_CONTEXT);
-            Value customInitialize = context.getBindings("wasm").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
             Value saveContext = context.getBindings("wasm").getMember(TestutilModule.Names.SAVE_CONTEXT);
             Value compareContexts = context.getBindings("wasm").getMember(TestutilModule.Names.COMPARE_CONTEXTS);
 
@@ -158,11 +160,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 try {
                     capturedStdout = new ByteArrayOutputStream();
                     System.setOut(new PrintStream(capturedStdout));
-
-                    // Run custom initialization.
-                    if (testCase.initialization() != null) {
-                        customInitialize.execute(testCase.initialization());
-                    }
 
                     // Execute benchmark.
                     final Value result = mainFunction.execute();
@@ -236,12 +233,17 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     private WasmTestStatus runTestCase(WasmCase testCase) {
         try {
             Context.Builder contextBuilder = Context.newBuilder("wasm");
+            contextBuilder.allowExperimentalOptions(true);
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
             }
 
-            contextBuilder.allowExperimentalOptions(true);
+            if (WasmTestOptions.STORE_CONSTANTS_POLICY != null && !WasmTestOptions.STORE_CONSTANTS_POLICY.equals("")) {
+                contextBuilder.option("wasm.StoreConstantsPolicy", WasmTestOptions.STORE_CONSTANTS_POLICY);
+                System.out.println("wasm.StoreConstantsPolicy: " + WasmTestOptions.STORE_CONSTANTS_POLICY);
+            }
+
             contextBuilder.option("wasm.Builtins", includedExternalModules());
             String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {

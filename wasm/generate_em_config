@@ -1,18 +1,13 @@
 #!/bin/sh
 
 CONFIG_PATH="$1"
-LLVM_ROOT="$2"
-BINARYEN_ROOT="$3"
-EMSCRIPTEN_ROOT="$4"
-NODE_JS="$5"
+EMSDK_DIR="$2"
 
 {
-echo "import os"
-echo ""
-echo "LLVM_ROOT='$LLVM_ROOT'"
-echo "BINARYEN_ROOT='$BINARYEN_ROOT'"
-echo "EMSCRIPTEN_ROOT='$EMSCRIPTEN_ROOT'"
-echo "NODE_JS='$NODE_JS'"
+echo "LLVM_ROOT='$EMSDK_DIR/llvm/git/build_master_64/bin'"
+echo "BINARYEN_ROOT='$EMSDK_DIR/binaryen/master_64bit_binaryen'"
+echo "EMSCRIPTEN_ROOT='$EMSDK_DIR/emscripten/master'"
+echo "NODE_JS='$EMSDK_DIR/node/12.9.1_64bit/bin/node'"
 echo "COMPILER_ENGINE=NODE_JS"
 echo "JS_ENGINES=[NODE_JS]"
 } > "$CONFIG_PATH"
@@ -24,6 +19,6 @@ echo "--------"
 
 echo "Triggering cache generation."
 echo "int main() { return 0; }" > test.c
-$EMSCRIPTEN_ROOT/emcc test.c
+$EMSDK_DIR/emscripten/master/emcc test.c
 echo "Cache generation completed."
 

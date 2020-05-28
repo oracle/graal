@@ -33,7 +33,6 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -56,11 +55,6 @@ public final class ComputeObjectAddressNode extends FixedWithNextNode implements
 
     @NodeIntrinsic
     public static native long get(Object array, long offset);
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
 
     public ValueNode getObject() {
         return object;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,28 +49,29 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
  */
 public abstract class TwoCharMatcher extends InvertibleCharMatcher {
 
-    private final char c1;
-    private final char c2;
+    private final int c1;
+    private final int c2;
 
     /**
      * Constructs a new {@link TwoCharMatcher}.
-     * 
+     *
      * @param invert see {@link InvertibleCharMatcher}.
      * @param c1 first character to match.
      * @param c2 second character to match.
      */
-    TwoCharMatcher(boolean invert, char c1, char c2) {
+    TwoCharMatcher(boolean invert, int c1, int c2) {
         super(invert);
+        assert c1 != c2;
         this.c1 = c1;
         this.c2 = c2;
     }
 
-    public static TwoCharMatcher create(boolean invert, char c1, char c2) {
+    public static TwoCharMatcher create(boolean invert, int c1, int c2) {
         return TwoCharMatcherNodeGen.create(invert, c1, c2);
     }
 
     @Specialization
-    public boolean match(char m, boolean compactString) {
+    public boolean match(int m, boolean compactString) {
         return result((!compactString || c1 < 256) && m == c1 || (!compactString || c2 < 256) && m == c2);
     }
 

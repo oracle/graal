@@ -31,6 +31,7 @@ import mx_unittest
 import mx_sdk_vm_impl
 
 import functools
+import re
 from mx_gate import Task
 
 from os import environ, listdir, remove
@@ -57,6 +58,7 @@ class VmGateTasks:
     integration = 'integration'
     tools = 'tools'
     libgraal = 'libgraal'
+    svm_sl_tck = 'svm_sl_tck'
     svm_truffle_tck_js = 'svm-truffle-tck-js'
 
 
@@ -118,9 +120,10 @@ def gate_body(args, tasks):
                     unittest_args = unittest_args + ["--enable-timing", "--verbose"]
                     compiler_log_file = "graal-compiler.log"
                     mx_unittest.unittest(unittest_args + extra_vm_arguments + [
-                        "-Dgraal.TruffleCompileImmediately=true",
-                        "-Dgraal.TruffleBackgroundCompilation=false",
-                        "-Dgraal.TraceTruffleCompilation=true",
+                        "-Dpolyglot.engine.AllowExperimentalOptions=true",
+                        "-Dpolyglot.engine.CompileImmediately=true",
+                        "-Dpolyglot.engine.BackgroundCompilation=false",
+                        "-Dpolyglot.engine.TraceCompilation=true",
                         "-Dgraalvm.locatorDisabled=true",
                         "-Dgraal.PrintCompilation=true",
                         "-Dgraal.LogFile={0}".format(compiler_log_file),
@@ -132,8 +135,8 @@ def gate_body(args, tasks):
 
     gate_substratevm(tasks)
     gate_sulong(tasks)
-    gate_ruby(tasks)
     gate_python(tasks)
+    gate_svm_sl_tck(tasks)
     gate_svm_truffle_tck_js(tasks)
 
 def graalvm_svm():
@@ -156,14 +159,7 @@ def gate_substratevm(tasks):
             tests = ['ValueHostInteropTest', 'ValueHostConversionTest']
             truffle_no_compilation = ['--initialize-at-build-time', '--macro:truffle',
                                       '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime']
-            truffle_dir = mx.suite('truffle').dir
-            args = ['--build-args'] + truffle_no_compilation + [
-                '-H:Features=com.oracle.truffle.api.test.polyglot.RegisterTestClassesForReflectionFeature',
-                '-H:ReflectionConfigurationFiles=' + truffle_dir + '/src/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test/polyglot/reflection.json',
-                '-H:DynamicProxyConfigurationFiles=' + truffle_dir + '/src/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test/polyglot/proxys.json',
-                '--'
-            ] + tests
-
+            args = ['--build-args'] + truffle_no_compilation + ['--'] + tests
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 svm._native_unittest(native_image, args)
@@ -190,13 +186,6 @@ def gate_sulong(tasks):
                 mx_subst.path_substitutions.register_with_arg('path', distribution_paths)
                 sulong.extensions.runLLVMUnittests(functools.partial(svm._native_unittest, native_image))
 
-def gate_ruby(tasks):
-    with Task('Ruby', tasks, tags=[VmGateTasks.ruby]) as t:
-        if t:
-            ruby = join(mx_sdk_vm_impl.graalvm_output(), 'jre', 'languages', 'ruby', 'bin', 'truffleruby')
-            truffleruby_suite = mx.suite('truffleruby')
-            truffleruby_suite.extensions.ruby_testdownstream_aot([ruby, 'spec', 'release'])
-
 def gate_python(tasks):
     with Task('Python', tasks, tags=[VmGateTasks.python]) as t:
         if t:
@@ -222,11 +211,13 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
         report_file = join(svmbuild, "language_permissions.log")
         options = [
             '--language:{}'.format(language_id),
+            '--features=com.oracle.svm.truffle.tck.PermissionsFeature',
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
             '-cp',
             cp,
             '--no-server',
+            '-H:+TruffleCheckBlackListedMethods',
             '-H:-FoldSecurityManagerGetter',
             '-H:TruffleTCKPermissionsReportFile={}'.format(report_file),
             '-H:Path={}'.format(svmbuild),
@@ -254,3 +245,36 @@ def gate_svm_truffle_tck_js(tasks):
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 _svm_truffle_tck(native_image, svm.suite, js_suite, 'js')
+
+def gate_svm_sl_tck(tasks):
+    with Task('SVM Truffle TCK', tasks, tags=[VmGateTasks.svm_sl_tck]) as t:
+        if t:
+            tools_suite = mx.suite('tools')
+            if not tools_suite:
+                mx.abort("Cannot resolve tools suite.")
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                svmbuild = mkdtemp()
+                try:
+                    import mx_compiler
+                    unittest_deps = []
+                    unittest_file = join(svmbuild, 'truffletck.tests')
+                    mx_unittest._run_tests([], lambda deps, vm_launcher, vm_args: unittest_deps.extend(deps), mx_unittest._VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, [], [re.compile('com.oracle.truffle.tck.tests')], None, mx.suite('truffle'))
+                    if not exists(unittest_file):
+                        mx.abort('TCK tests not found.')
+                    unittest_deps.append(mx.dependency('truffle:TRUFFLE_SL_TCK'))
+                    unittest_deps.append(mx.dependency('truffle:TRUFFLE_TCK_INSTRUMENTATION'))
+                    vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
+                    options = [
+                        '--macro:truffle',
+                        '--tool:all',
+                        '-H:Path={}'.format(svmbuild),
+                        '-H:+TruffleCheckBlackListedMethods',
+                        '-H:Class=org.junit.runner.JUnitCore',
+                    ]
+                    tests_image = native_image(vm_image_args + options)
+                    with open(unittest_file) as f:
+                        test_classes = [l.rstrip() for l in f.readlines()]
+                    mx.run([tests_image] + test_classes)
+                finally:
+                    mx.rmtree(svmbuild)

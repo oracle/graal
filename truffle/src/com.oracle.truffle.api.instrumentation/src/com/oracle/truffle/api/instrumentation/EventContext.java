@@ -43,13 +43,19 @@ package com.oracle.truffle.api.instrumentation;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -91,11 +97,12 @@ public final class EventContext {
             return true;
         }
         if (object != null) {
-            assert InstrumentAccessor.interopAccess().isValidNodeObject(object);
+            assert isValidNodeObject(object);
         }
         boolean foundStandardTag = false;
         for (Class<?> clazz : StandardTags.ALL_TAGS) {
             if (hasTag((Class<? extends Tag>) clazz)) {
+                assert languageDeclaresTag(probeNode.getRootNode(), clazz);
                 foundStandardTag = true;
             }
         }
@@ -106,6 +113,21 @@ public final class EventContext {
             }
         }
 
+        return true;
+    }
+
+    private static boolean languageDeclaresTag(RootNode root, Class<?> tag) {
+        Object polyglotEngine = InstrumentAccessor.nodesAccess().getPolyglotEngine(root);
+        if (polyglotEngine == null) {
+            return true;
+        }
+        InstrumentationHandler handler = (InstrumentationHandler) InstrumentAccessor.engineAccess().getInstrumentationHandler(polyglotEngine);
+        Set<Class<?>> providedTags = handler.getProvidedTags(root);
+        if (!providedTags.contains(tag)) {
+            TruffleLanguage<?> language = InstrumentAccessor.nodesAccess().getLanguage(root);
+            throw new AssertionError("An instrumentable node returned true for a tag that was not provided by the language '" + root.getLanguageInfo().getId() + "'.\n" +
+                            "Add @ProvidedTags with tag  " + tag + " to " + language.getClass().getName() + ".");
+        }
         return true;
     }
 
@@ -128,7 +150,9 @@ public final class EventContext {
         }
         Node node = getInstrumentedNode();
         if (node instanceof InstrumentableNode) {
-            return ((InstrumentableNode) node).hasTag(tag);
+            boolean has = ((InstrumentableNode) node).hasTag(tag);
+            assert !has || languageDeclaresTag(probeNode.getRootNode(), tag);
+            return has;
         } else {
             return false;
         }
@@ -156,7 +180,7 @@ public final class EventContext {
             if (object == null) {
                 object = InstrumentAccessor.interopAccess().createDefaultNodeObject(node);
             } else {
-                assert InstrumentAccessor.interopAccess().isValidNodeObject(object);
+                assert isValidNodeObject(object);
             }
             this.nodeObject = object;
         }
@@ -337,6 +361,129 @@ public final class EventContext {
     @Override
     public String toString() {
         return "EventContext[source=" + getInstrumentedSourceSection() + "]";
+    }
+
+    private boolean isValidNodeObject(Object obj) {
+        CompilerAsserts.neverPartOfCompilation();
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
+
+        if (!interop.hasMembers(obj)) {
+            throw new AssertionError("Invalid node object: must return true for the hasMembers message.");
+        }
+        Object members;
+        try {
+            members = interop.getMembers(obj);
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError("Invalid node object: must support the getMembers message.", e);
+        }
+        InteropLibrary membersInterop = InteropLibrary.getFactory().getUncached(members);
+        if (!membersInterop.hasArrayElements(members)) {
+            throw new AssertionError("Invalid node object: the returned members object must support hasArrayElements.");
+        }
+        long size;
+        try {
+            size = membersInterop.getArraySize(members);
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError("Invalid node object: the returned members object must have a size.");
+        }
+        for (long i = 0; i < size; i++) {
+            Object key;
+            try {
+                key = membersInterop.readArrayElement(members, i);
+            } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
+                throw new AssertionError("Invalid node object: the returned members object must be readable at number index " + i);
+            }
+            InteropLibrary keyInterop = InteropLibrary.getFactory().getUncached(key);
+            if (!keyInterop.isString(key)) {
+                throw new AssertionError("Invalid node object: the returned member must return a string at index " + i + ". But was " + key.getClass().getName() + ".");
+            }
+            String member;
+            try {
+                member = keyInterop.asString(key);
+            } catch (UnsupportedMessageException e1) {
+                throw new AssertionError("Invalid node object: the returned member must return a string  ");
+            }
+            try {
+                interop.readMember(obj, member);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                throw new AssertionError("Invalid node object: the returned member must be readable with identifier " + member);
+            }
+
+            if (interop.isMemberWritable(obj, member)) {
+                throw new AssertionError("Invalid node object: The member " + member + " is marked as writable but node objects must not be writable.");
+            }
+        }
+        if (interop.hasArrayElements(obj)) {
+            throw new AssertionError("Invalid node object: the node object must not return true for hasArrayElements.");
+        }
+
+        return isValidTaggedNodeObject(obj);
+    }
+
+    private boolean isValidTaggedNodeObject(Object obj) {
+        if (hasTag(StandardTags.ReadVariableTag.class)) {
+            isValidVarsNodeObject(obj, StandardTags.ReadVariableTag.NAME);
+        }
+        if (hasTag(StandardTags.WriteVariableTag.class)) {
+            isValidVarsNodeObject(obj, StandardTags.WriteVariableTag.NAME);
+        }
+        return true;
+    }
+
+    private static void isValidVarsNodeObject(Object obj, String varNameProperty) {
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
+        if (!interop.isMemberReadable(obj, varNameProperty)) {
+            throw new AssertionError("Invalid node object " + obj + ", does not have " + varNameProperty + " member.");
+        }
+        Object varName;
+        try {
+            varName = interop.readMember(obj, varNameProperty);
+        } catch (UnsupportedMessageException | UnknownIdentifierException ex) {
+            throw new AssertionError("Invalid node object " + obj + ", can not read " + varNameProperty + " member.", ex);
+        }
+        if (varName instanceof String) {
+            return;
+        }
+        interop = InteropLibrary.getFactory().getUncached(varName);
+        if (interop.hasArrayElements(varName)) {
+            long size;
+            try {
+                size = interop.getArraySize(varName);
+            } catch (UnsupportedMessageException e) {
+                throw new AssertionError("Invalid node object: the returned variable name object must have a size when it's an array.");
+            }
+            for (long i = 0; i < size; i++) {
+                Object var;
+                try {
+                    var = interop.readArrayElement(varName, i);
+                } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
+                    throw new AssertionError("Invalid node object: the returned variable name object must be readable at number index " + i);
+                }
+                isValidVarObject(var);
+            }
+        } else {
+            isValidVarObject(varName);
+        }
+    }
+
+    private static void isValidVarObject(Object var) {
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(var);
+        if (!interop.isString(var)) {
+            throw new AssertionError("Invalid variable object " + var + ", must be interop String.");
+        }
+        try {
+            interop.asString(var);
+        } catch (UnsupportedMessageException ex) {
+            throw new AssertionError("Invalid variable object " + var + ", must be interop String.", ex);
+        }
+        // May have location:
+        boolean hasLocation = interop.hasSourceLocation(var);
+        try {
+            interop.getSourceLocation(var);
+            assert hasLocation : String.format("Invalid variable object %s, provides source location that should not have.", var);
+        } catch (UnsupportedMessageException ex) {
+            assert !hasLocation : String.format("Invalid variable object %s, missing source location.", var);
+        }
     }
 
 }

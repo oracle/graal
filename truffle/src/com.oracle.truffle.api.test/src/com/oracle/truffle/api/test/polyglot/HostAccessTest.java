@@ -71,10 +71,11 @@ import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.After;
-import org.junit.Test;
 import org.junit.Ignore;
+import org.junit.Test;
 
-import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
+import com.oracle.truffle.tck.tests.ValueAssert;
+import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
 public class HostAccessTest {
     public static class OK {
@@ -970,6 +971,33 @@ public class HostAccessTest {
                 assertTrue(e.asHostException() instanceof StackOverflowError);
             }
         }
+    }
+
+    public static class TestIdentity {
+        public void foo() {
+        }
+    }
+
+    public interface TestIdentityMapping {
+        void foo();
+    }
+
+    @Test
+    public void testIdentity() {
+        setupEnv(HostAccess.EXPLICIT);
+
+        Context c1 = this.context;
+        Context c2 = Context.create();
+
+        TestIdentity v0 = new TestIdentity();
+        TestIdentity v1 = new TestIdentity();
+
+        assertFalse(c1.asValue(v0).equals(c1.asValue(v1)));
+        assertFalse(c1.asValue(v0).equals(c2.asValue(v1)));
+        assertTrue(c1.asValue(v0).equals(c1.asValue(v0)));
+        assertTrue(c1.asValue(v1).equals(c2.asValue(v1)));
+
+        c2.close();
     }
 
     public static class MyClassLoader extends URLClassLoader {

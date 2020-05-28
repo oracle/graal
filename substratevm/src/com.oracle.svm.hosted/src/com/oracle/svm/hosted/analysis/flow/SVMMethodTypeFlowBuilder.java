@@ -60,8 +60,8 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
     }
 
     @Override
-    public void registerUsedElements() {
-        super.registerUsedElements();
+    public void registerUsedElements(boolean registerEmbeddedRoots) {
+        super.registerUsedElements(registerEmbeddedRoots);
 
         for (Node n : graph.getNodes()) {
             if (n instanceof ConstantNode) {

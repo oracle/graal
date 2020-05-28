@@ -119,13 +119,13 @@ public final class RawStructureLayoutPlanner extends NativeInfoTreeVisitor {
         if (info.isObject()) {
             declaredSize = ConfigurationValues.getObjectLayout().getReferenceSize();
         } else {
-            /**
+            /*
              * Resolve field size using the declared type in its accessors. Note that the field
              * offsets are not calculated before visiting all StructFieldInfos and collecting all
              * field types.
              */
             final ResolvedJavaType fieldType;
-            AccessorInfo accessor = info.getAccessorInfo();
+            AccessorInfo accessor = info.getAccessorInfoWithSize();
             switch (accessor.getAccessorKind()) {
                 case GETTER:
                     fieldType = accessor.getReturnType();

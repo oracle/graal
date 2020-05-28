@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -196,6 +196,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
                     masm.setx(stackpointerChange, scratch, false);
                     masm.save(sp, scratch, sp);
                 }
+            }
+            if (config.MARKID_FRAME_COMPLETE != -1) {
+                crb.recordMark(config.MARKID_FRAME_COMPLETE);
             }
 
             if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,7 +59,7 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
     @Specialization
     boolean matchManaged(LLVMManagedPointer object,
                     @Cached("createOptional()") LLVMAsForeignNode asForeign,
-                    @Cached("createBinaryProfile()") ConditionProfile isForeign,
+                    @Cached ConditionProfile isForeign,
                     @CachedLibrary(limit = "3") InteropLibrary interop) {
         Object foreign = asForeign.execute(object);
         if (isForeign.profile(foreign != null)) {

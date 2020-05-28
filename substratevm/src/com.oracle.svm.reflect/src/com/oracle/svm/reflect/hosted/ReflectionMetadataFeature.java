@@ -36,6 +36,11 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import sun.reflect.generics.repository.ClassRepository;
+import sun.reflect.generics.repository.ConstructorRepository;
+import sun.reflect.generics.repository.FieldRepository;
+import sun.reflect.generics.repository.GenericDeclRepository;
+import sun.reflect.generics.repository.MethodRepository;
 
 /** Pre-load reflection metadata. */
 @AutomaticFeature
@@ -65,6 +70,7 @@ public class ReflectionMetadataFeature implements Feature {
             executable.getGenericParameterTypes();
             executable.getGenericExceptionTypes();
             executable.getParameters();
+            executable.getTypeParameters();
         }
 
         if (original instanceof Field) {
@@ -80,6 +86,33 @@ public class ReflectionMetadataFeature implements Feature {
         if (original instanceof Parameter) {
             Parameter parameter = (Parameter) original;
             parameter.getType();
+        }
+
+        if (original instanceof FieldRepository) {
+            FieldRepository fieldRepository = (FieldRepository) original;
+            fieldRepository.getGenericType();
+        }
+
+        if (original instanceof MethodRepository) {
+            MethodRepository methodRepository = (MethodRepository) original;
+            methodRepository.getReturnType();
+        }
+
+        if (original instanceof ConstructorRepository) {
+            ConstructorRepository constructorRepository = (ConstructorRepository) original;
+            constructorRepository.getExceptionTypes();
+            constructorRepository.getParameterTypes();
+        }
+
+        if (original instanceof GenericDeclRepository) {
+            GenericDeclRepository<?> methodRepository = (GenericDeclRepository<?>) original;
+            methodRepository.getTypeParameters();
+        }
+
+        if (original instanceof ClassRepository) {
+            ClassRepository classRepository = (ClassRepository) original;
+            classRepository.getSuperclass();
+            classRepository.getSuperInterfaces();
         }
 
         return original;

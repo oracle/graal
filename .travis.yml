@@ -18,15 +18,16 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-20.0-b02"
-    - JDK8_UPDATE_VERSION="242"
-    - JDK8_UPDATE_VERSION_SUFFIX=""
+    - JVMCI_VERSION="jvmci-20.1-b02"
+    - JDK8_UPDATE_VERSION="252"
+    - JDK8_UPDATE_VERSION_SUFFIX="+09"
 
 matrix:
   include:
   - env: JDK="jdk8" GATE="style,fullbuild" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk8" GATE="build,test,helloworld" PRIMARY="substratevm"
+  - env: JDK="jdk8" GATE="build,test,helloworld_debug" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
   - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong"
     addons:
@@ -43,6 +44,12 @@ matrix:
         packages:
           - libc++1
           - libc++abi1
+  - os: linux
+    env: JDK="jdk8" GATE="build,debuginfotest" PRIMARY="substratevm"
+    addons:
+      apt:
+        packages:
+          - gdb
   - env: JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
@@ -83,14 +90,14 @@ install:
         if [ "${JDK}" == "jdk8" ]
         then
           export JDT=${MX_PATH}/ecj.jar
-          wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O ${JDT}
+          wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/ecj-4.14.jar -O ${JDT}
         fi
       fi
   - |
       if [ "${JDK}" == "jdk8" ]
       then
         JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
+        wget https://github.com/graalvm/graal-jvmci-8/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
       fi

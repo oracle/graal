@@ -298,8 +298,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     try {
                         Iterable<Scope> scopes = LANGUAGE.findTopScopes(env);
                         this.hostBindings = this.asValue(PolyglotLanguageBindings.create(scopes));
-                    } catch (Throwable t) {
-                        throw PolyglotImpl.wrapGuestException(this, t);
                     } finally {
                         context.engine.leaveIfNeeded(prev, context);
                     }
@@ -352,6 +350,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         Env localEnv = this.env;
         if (localEnv != null) {
             if (!lazy.activePolyglotThreads.isEmpty()) {
+                // this should show up as internal error so it does not use PolyglotEngineException
                 throw new IllegalStateException("The language did not complete all polyglot threads but should have: " + lazy.activePolyglotThreads);
             }
             for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
@@ -413,7 +412,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void ensureCreated(PolyglotLanguage accessingLanguage) {
         if (creatingThread == Thread.currentThread()) {
-            throw new PolyglotIllegalStateException(String.format("Cyclic access to language context for language %s. " +
+            throw PolyglotEngineException.illegalState(String.format("Cyclic access to language context for language %s. " +
                             "The context is currently being created.", language.getId()));
         } else if (creatingThread != null) {
             // Wait for creation
@@ -469,7 +468,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
                             String errorMessage = verifyServices(language.info, languageServicesCollector, language.cache.getServices());
                             if (errorMessage != null) {
-                                throw new IllegalStateException(errorMessage);
+                                throw PolyglotEngineException.illegalState(errorMessage);
                             }
                             this.languageServices = languageServicesCollector;
                             lang.language.profile.notifyContextCreate(this, localEnv);
@@ -495,6 +494,12 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 }
             }
         }
+    }
+
+    void close() {
+        assert Thread.holdsLock(context);
+        lazy = null;
+        env = null;
     }
 
     private static String verifyServices(LanguageInfo info, List<Object> registeredServices, Collection<String> expectedServices) {
@@ -573,17 +578,17 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     void checkAccess(PolyglotLanguage accessingLanguage) {
-        context.engine.checkState();
+        // Always check context first, as it might be invalidated.
         context.checkClosed();
         if (context.disposing) {
-            throw new PolyglotIllegalStateException("The Context is already closed.");
+            throw PolyglotEngineException.illegalState("The Context is already closed.");
         }
         if (!context.config.isAccessPermitted(accessingLanguage, language)) {
-            throw new PolyglotIllegalArgumentException(String.format("Access to language '%s' is not permitted. ", language.getId()));
+            throw PolyglotEngineException.illegalArgument(String.format("Access to language '%s' is not permitted. ", language.getId()));
         }
         RuntimeException initError = language.initError;
         if (initError != null) {
-            throw new PolyglotIllegalStateException(String.format("Initialization error: %s", initError.getMessage()), initError);
+            throw PolyglotEngineException.illegalState(String.format("Initialization error: %s", initError.getMessage(), initError));
         }
     }
 
@@ -612,7 +617,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     throw t;
                 }
                 LOG.log(Level.FINE, "Exception during patching context of language: {0}", this.language.getId());
-                throw PolyglotImpl.wrapGuestException(this, t);
+                throw PolyglotImpl.guestToHostException(this, t);
             }
         } else {
             return true;
@@ -898,9 +903,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             return value;
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw PolyglotImpl.engineError(new IllegalArgumentException(String.format("The value '%s' cannot be passed from one context to another. " +
+            throw PolyglotEngineException.illegalArgument(String.format("The value '%s' cannot be passed from one context to another. " +
                             "The current context is 0x%x and the argument value originates from context 0x%x.",
-                            PolyglotValue.getValueInfo(null, value), context.hashCode(), valueContext.hashCode())));
+                            PolyglotValue.getValueInfo(null, value), context.hashCode(), valueContext.hashCode()));
         }
     }
 
@@ -962,7 +967,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (lib.hasLanguage(receiver)) {
             try {
                 if (!this.isCreated()) {
-                    throw new IllegalStateException("Language not yet created. Initialize the language first to request a language view.");
+                    throw PolyglotEngineException.illegalState("Language not yet created. Initialize the language first to request a language view.");
                 }
                 if (lib.getLanguage(receiver) == this.lazy.languageInstance.spi.getClass()) {
                     return receiver;
@@ -1020,20 +1025,20 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     private static void validateLocationAndFrame(LanguageInfo viewLanguage, Node location, Frame frame) {
         RootNode rootNode = location.getRootNode();
         if (rootNode == null) {
-            throw new IllegalArgumentException(String.format("The location '%s' does not have a RootNode.", location));
+            throw PolyglotEngineException.illegalArgument(String.format("The location '%s' does not have a RootNode.", location));
         }
         LanguageInfo nodeLocation = rootNode.getLanguageInfo();
         if (nodeLocation == null) {
-            throw new IllegalArgumentException(String.format("The location '%s' does not have a language associated.", location));
+            throw PolyglotEngineException.illegalArgument(String.format("The location '%s' does not have a language associated.", location));
         }
         if (nodeLocation != viewLanguage) {
-            throw new IllegalArgumentException(String.format("The view language '%s' must match the language of the location %s.", viewLanguage, nodeLocation));
+            throw PolyglotEngineException.illegalArgument(String.format("The view language '%s' must match the language of the location %s.", viewLanguage, nodeLocation));
         }
         if (!EngineAccessor.INSTRUMENT.isInstrumentable(location)) {
-            throw new IllegalArgumentException(String.format("The location '%s' is not instrumentable but must be to request scoped views.", location));
+            throw PolyglotEngineException.illegalArgument(String.format("The location '%s' is not instrumentable but must be to request scoped views.", location));
         }
         if (!rootNode.getFrameDescriptor().equals(frame.getFrameDescriptor())) {
-            throw new IllegalArgumentException(String.format("The frame provided does not originate from the location. " +
+            throw PolyglotEngineException.illegalArgument(String.format("The frame provided does not originate from the location. " +
                             "Expected frame descriptor '%s' but was '%s'.", rootNode.getFrameDescriptor(), frame.getFrameDescriptor()));
         }
     }

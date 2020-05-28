@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,7 +85,7 @@ public class NodeCostDumpUtil {
             System.err.printf("NodeCostDumpUtil does not support JDK versions greater than 1.8, current version is %s.\n", version);
             System.exit(-1);
         }
-        String[] jvmciCP = System.getProperty("jvmci.class.path.append").split(File.pathSeparator);
+        String[] jvmciCP = System.getProperty("sun.boot.class.path").split(File.pathSeparator);
         String[] primarySuiteCP = System.getProperty("primary.suite.cp").split(File.pathSeparator);
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         HashSet<Class<?>> classes = new HashSet<>();

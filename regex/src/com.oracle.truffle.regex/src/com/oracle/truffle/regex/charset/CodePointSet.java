@@ -43,16 +43,17 @@ package com.oracle.truffle.regex.charset;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public final class CodePointSet implements ImmutableSortedListOfRanges, Comparable<CodePointSet>, JsonConvertible {
+public final class CodePointSet extends ImmutableSortedListOfIntRanges implements Comparable<CodePointSet>, JsonConvertible {
 
+    public static final int MIN_VALUE = Character.MIN_CODE_POINT;
+    public static final int MAX_VALUE = Character.MAX_CODE_POINT;
     private static final CodePointSet CONSTANT_EMPTY = new CodePointSet(new int[0]);
-    private static final CodePointSet CONSTANT_FULL = new CodePointSet(new int[]{Character.MIN_CODE_POINT, Character.MAX_CODE_POINT});
+    private static final CodePointSet CONSTANT_FULL = new CodePointSet(new int[]{MIN_VALUE, MAX_VALUE});
 
     private static final CodePointSet[] CONSTANT_ASCII = new CodePointSet[128];
     private static final CodePointSet[] CONSTANT_INVERSE_ASCII = new CodePointSet[128];
@@ -70,12 +71,9 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
         }
     }
 
-    private final int[] ranges;
-
     private CodePointSet(int[] ranges) {
-        this.ranges = ranges;
-        assert (ranges.length & 1) == 0 : "ranges array must have an even length!";
-        assert rangesAreSortedAndDisjoint();
+        super(ranges);
+        assert ranges.length == 0 || ranges[0] >= MIN_VALUE && ranges[ranges.length - 1] <= MAX_VALUE;
     }
 
     public int[] getRanges() {
@@ -88,6 +86,17 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
 
     public static CodePointSet getFull() {
         return CONSTANT_FULL;
+    }
+
+    public static CodePointSet createNoDedup(int... ranges) {
+        return new CodePointSet(ranges);
+    }
+
+    public static CodePointSet create(int single) {
+        if (single < 128) {
+            return CONSTANT_ASCII[single];
+        }
+        return new CodePointSet(new int[]{single, single});
     }
 
     public static CodePointSet create(int... ranges) {
@@ -104,10 +113,6 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
             return new CodePointSet(buf.toArray());
         }
         return constant;
-    }
-
-    public static CodePointSet createNoDedup(int... ranges) {
-        return new CodePointSet(ranges);
     }
 
     private static CodePointSet checkConstants(int[] ranges, int length) {
@@ -138,15 +143,6 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
         return null;
     }
 
-    private static boolean rangesEqual(int[] a, int[] b, int length) {
-        for (int i = 0; i < length; i++) {
-            if (a[i] != b[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public CodePointSet createEmpty() {
@@ -167,109 +163,20 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
     }
 
     @Override
-    public int getMinValue() {
-        return Character.MIN_CODE_POINT;
-    }
-
-    @Override
-    public int getMaxValue() {
-        return Character.MAX_CODE_POINT;
-    }
-
-    @Override
-    public int getLo(int i) {
-        return ranges[i * 2];
-    }
-
-    @Override
-    public int getHi(int i) {
-        return ranges[(i * 2) + 1];
-    }
-
-    /**
-     * Get the number of ranges in this set, interpreted as a set of {@code char} / 16-bit values.
-     * This interpretation is valid iff the set contains either none or all code points above
-     * {@link Character#MAX_VALUE}.
-     */
-    public int size16() {
-        if (isEmpty()) {
-            return 0;
-        }
-        if (getLo(size() - 1) > Character.MAX_VALUE) {
-            assert getLo(size() - 1) == Character.MAX_VALUE + 1 && getHi(size() - 1) == Character.MAX_CODE_POINT;
-            return size() - 1;
-        } else {
-            return size();
-        }
-    }
-
-    /**
-     * Get the lower bound of range {@code i} in this set, interpreted as a set of {@code char} /
-     * 16-bit values. This interpretation is valid iff the set contains either none or all code
-     * points above {@link Character#MAX_VALUE}.
-     */
-    public char getLo16(int i) {
-        int lo = getLo(i);
-        assert lo <= Character.MAX_VALUE : this;
-        return (char) lo;
-    }
-
-    /**
-     * Get the upper bound of range {@code i} in this set, interpreted as a set of {@code char} /
-     * 16-bit values. This interpretation is valid iff the set contains either none or all code
-     * points above {@link Character#MAX_VALUE}.
-     */
-    public char getHi16(int i) {
-        int hi = getHi(i);
-        assert hi <= Character.MAX_VALUE || hi == Character.MAX_CODE_POINT : this;
-        return (char) hi;
-    }
-
-    @Override
-    public int size() {
-        return ranges.length / 2;
-    }
-
-    @Override
-    public IntRangesBuffer getBuffer1(CompilationBuffer compilationBuffer) {
-        return compilationBuffer.getIntRangesBuffer1();
-    }
-
-    @Override
-    public IntRangesBuffer getBuffer2(CompilationBuffer compilationBuffer) {
-        return compilationBuffer.getIntRangesBuffer2();
-    }
-
-    @Override
-    public IntRangesBuffer getBuffer3(CompilationBuffer compilationBuffer) {
-        return compilationBuffer.getIntRangesBuffer3();
-    }
-
-    @Override
-    public IntRangesBuffer createTempBuffer() {
-        return new IntRangesBuffer();
-    }
-
-    @Override
-    public void appendRangesTo(RangesBuffer buffer, int startIndex, int endIndex) {
-        int bulkLength = (endIndex - startIndex) * 2;
-        if (bulkLength == 0) {
-            return;
-        }
-        assert buffer instanceof IntRangesBuffer;
-        IntRangesBuffer buf = (IntRangesBuffer) buffer;
-        int newSize = buf.length() + bulkLength;
-        buf.ensureCapacity(newSize);
-        assert buf.isEmpty() || rightOf(startIndex, buf, buf.size() - 1);
-        System.arraycopy(ranges, startIndex * 2, buf.getBuffer(), buf.length(), bulkLength);
-        buf.setLength(newSize);
-    }
-
-    @Override
     public boolean equalsBuffer(RangesBuffer buffer) {
         assert buffer instanceof IntRangesBuffer;
         IntRangesBuffer buf = (IntRangesBuffer) buffer;
         return ranges.length == buf.length() && rangesEqual(ranges, buf.getBuffer(), ranges.length);
+    }
+
+    @Override
+    public int getMinValue() {
+        return MIN_VALUE;
+    }
+
+    @Override
+    public int getMaxValue() {
+        return MAX_VALUE;
     }
 
     @SuppressWarnings("unchecked")
@@ -285,25 +192,9 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
             return getFull();
         }
         if (src.matchesSingleAscii()) {
-            return CONSTANT_INVERSE_ASCII[src.getLo(0)];
+            return CONSTANT_INVERSE_ASCII[src.getMin()];
         }
-        int[] invRanges = new int[src.sizeOfInverse() * 2];
-        int i = 0;
-        if (src.getLo(0) > src.getMinValue()) {
-            setRange(invRanges, i++, src.getMinValue(), src.getLo(0) - 1);
-        }
-        for (int ia = 1; ia < src.size(); ia++) {
-            setRange(invRanges, i++, src.getHi(ia - 1) + 1, src.getLo(ia) - 1);
-        }
-        if (src.getHi(src.size() - 1) < src.getMaxValue()) {
-            setRange(invRanges, i++, src.getHi(src.size() - 1) + 1, src.getMaxValue());
-        }
-        return new CodePointSet(invRanges);
-    }
-
-    private static void setRange(int[] arr, int i, int lo, int hi) {
-        arr[i * 2] = lo;
-        arr[i * 2 + 1] = hi;
+        return new CodePointSet(createInverseArray(src));
     }
 
     @Override
@@ -378,11 +269,16 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
         StringBuilder sb = new StringBuilder(size() * 20);
         for (int i = 0; i < size(); i++) {
             if (i > 0) {
-                sb.append(", ");
+                sb.append(",");
             }
             sb.append(String.format("0x%06x, 0x%06x", getLo(i), getHi(i)));
         }
         return sb.toString();
+    }
+
+    @Override
+    public int[] toArray() {
+        return getRanges();
     }
 
     public char[] inverseToCharArray() {

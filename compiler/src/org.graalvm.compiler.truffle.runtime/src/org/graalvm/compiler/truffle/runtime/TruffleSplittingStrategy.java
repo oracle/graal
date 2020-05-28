@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,9 +36,13 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.logging.Level;
 
 final class TruffleSplittingStrategy {
 
@@ -49,8 +53,8 @@ final class TruffleSplittingStrategy {
         final EngineData engineData = currentTarget.engine;
         if (engineData.traceSplittingSummary) {
             if (currentTarget.getCallCount() == 0) {
-                synchronized (engineData.reporter) {
-                    engineData.reporter.totalExecutedNodeCount += currentTarget.getUninitializedNodeCount();
+                synchronized (engineData.splittingStatistics) {
+                    engineData.splittingStatistics.totalExecutedNodeCount += currentTarget.getUninitializedNodeCount();
                 }
             }
         }
@@ -62,16 +66,16 @@ final class TruffleSplittingStrategy {
 
     private static void doSplit(EngineData engineData, OptimizedDirectCallNode call) {
         if (engineData.traceSplittingSummary) {
-            synchronized (engineData.reporter) {
+            synchronized (engineData.splittingStatistics) {
                 calculateSplitWasteImpl(call.getCurrentCallTarget());
             }
         }
         call.split();
         if (engineData.traceSplittingSummary) {
-            synchronized (engineData.reporter) {
-                engineData.reporter.splitNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
-                engineData.reporter.splitCount++;
-                engineData.reporter.splitTargets.put(call.getCallTarget(), engineData.reporter.splitTargets.getOrDefault(call.getCallTarget(), 0) + 1);
+            synchronized (engineData.splittingStatistics) {
+                engineData.splittingStatistics.splitNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
+                engineData.splittingStatistics.splitCount++;
+                engineData.splittingStatistics.splitTargets.put(call.getCallTarget(), engineData.splittingStatistics.splitTargets.getOrDefault(call.getCallTarget(), 0) + 1);
             }
         }
     }
@@ -133,8 +137,8 @@ final class TruffleSplittingStrategy {
             engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
             doSplit(engineData, call);
             if (engineData.traceSplittingSummary) {
-                synchronized (engineData.reporter) {
-                    engineData.reporter.forcedSplitCount++;
+                synchronized (engineData.splittingStatistics) {
+                    engineData.splittingStatistics.forcedSplitCount++;
                 }
             }
         }
@@ -197,8 +201,8 @@ final class TruffleSplittingStrategy {
             engineData.splitLimit = Math.min(newLimit, engineData.splittingMaxNumberOfSplitNodes);
         }
         if (engineData.traceSplittingSummary) {
-            synchronized (engineData.reporter) {
-                engineData.reporter.totalCreatedNodeCount += callTarget.getUninitializedNodeCount();
+            synchronized (engineData.splittingStatistics) {
+                engineData.splittingStatistics.totalCreatedNodeCount += callTarget.getUninitializedNodeCount();
             }
         }
     }
@@ -210,8 +214,8 @@ final class TruffleSplittingStrategy {
             final OptimizedCallTarget clonedCallTarget = node.getClonedCallTarget();
             if (waste.add(clonedCallTarget)) {
                 final EngineData engineData = clonedCallTarget.engine;
-                engineData.reporter.wastedTargetCount++;
-                engineData.reporter.wastedNodeCount += clonedCallTarget.getUninitializedNodeCount();
+                engineData.splittingStatistics.wastedTargetCount++;
+                engineData.splittingStatistics.wastedNodeCount += clonedCallTarget.getUninitializedNodeCount();
                 calculateSplitWasteImpl(clonedCallTarget);
             }
         }
@@ -219,22 +223,17 @@ final class TruffleSplittingStrategy {
 
     static void newPolymorphicSpecialize(Node node, EngineData engineData) {
         if (engineData.traceSplittingSummary) {
-            synchronized (engineData.reporter) {
-                final Map<Class<? extends Node>, Integer> polymorphicNodes = engineData.reporter.polymorphicNodes;
+            synchronized (engineData.splittingStatistics) {
+                final Map<Class<? extends Node>, Integer> polymorphicNodes = engineData.splittingStatistics.polymorphicNodes;
                 final Class<? extends Node> aClass = node.getClass();
                 polymorphicNodes.put(aClass, polymorphicNodes.getOrDefault(aClass, 0) + 1);
             }
         }
     }
 
-    static class SplitStatisticsReporter extends Thread {
-        static final String D_FORMAT = "[truffle] %-40s: %10d";
-        static final String D_LONG_FORMAT = "[truffle] %-120s: %10d";
-        static final String P_FORMAT = "[truffle] %-40s: %9.2f%%";
-        static final String DELIMITER_FORMAT = "%n[truffle] --- %s";
+    static class SplitStatisticsData {
         final Map<Class<? extends Node>, Integer> polymorphicNodes = new HashMap<>();
         final Map<OptimizedCallTarget, Integer> splitTargets = new HashMap<>();
-        private final EngineData engineData;
         int splitCount;
         int forcedSplitCount;
         int splitNodeCount;
@@ -243,14 +242,55 @@ final class TruffleSplittingStrategy {
         int wastedNodeCount;
         int wastedTargetCount;
 
-        SplitStatisticsReporter(EngineData engineData) {
-            this.engineData = engineData;
+        SplitStatisticsData() {
+        }
+    }
+
+    private static final class SplitStatisticsReporter implements GraalTruffleRuntimeListener {
+
+        private static final String D_FORMAT = "%n%-40s: %10d";
+        private static final String D_LONG_FORMAT = "%n%-120s: %10d";
+        private static final String P_FORMAT = "%n%-40s: %9.2f%%";
+        private static final String DELIMITER_FORMAT = "%n--- %s";
+
+        SplitStatisticsReporter() {
+        }
+
+        @Override
+        public void onEngineClosed(EngineData engineData) {
             if (engineData.traceSplittingSummary) {
-                Runtime.getRuntime().addShutdownHook(this);
+                SplitStatisticsData stat = engineData.splittingStatistics;
+                StringWriter messageBuilder = new StringWriter();
+                try (PrintWriter out = new PrintWriter(messageBuilder)) {
+                    out.print("Splitting Statistics");
+                    out.printf(D_FORMAT, "Split count", engineData.splitCount);
+                    out.printf(D_FORMAT, "Split limit", engineData.splitLimit);
+                    out.printf(D_FORMAT, "Splits", stat.splitCount);
+                    out.printf(D_FORMAT, "Forced splits", stat.forcedSplitCount);
+                    out.printf(D_FORMAT, "Nodes created through splitting", stat.splitNodeCount);
+                    out.printf(D_FORMAT, "Nodes created without splitting", stat.totalCreatedNodeCount);
+                    out.printf(P_FORMAT, "Increase in nodes", (stat.splitNodeCount * 100.0) / (stat.totalCreatedNodeCount));
+                    out.printf(D_FORMAT, "Split nodes wasted", stat.wastedNodeCount);
+                    out.printf(P_FORMAT, "Percent of split nodes wasted", (stat.wastedNodeCount * 100.0) / (stat.splitNodeCount));
+                    out.printf(D_FORMAT, "Targets wasted due to splitting", stat.wastedTargetCount);
+                    out.printf(D_FORMAT, "Total nodes executed", stat.totalExecutedNodeCount);
+
+                    out.printf(DELIMITER_FORMAT, "SPLIT TARGETS");
+                    for (Map.Entry<OptimizedCallTarget, Integer> entry : sortByIntegerValue(stat.splitTargets).entrySet()) {
+                        out.printf(D_FORMAT, entry.getKey(), entry.getValue());
+                    }
+
+                    out.printf(DELIMITER_FORMAT, "NODES");
+                    for (Map.Entry<Class<? extends Node>, Integer> entry : sortByIntegerValue(stat.polymorphicNodes).entrySet()) {
+                        out.printf(D_LONG_FORMAT, entry.getKey(), entry.getValue());
+                    }
+                }
+                final TruffleLogger log = engineData.getLogger();
+                log.log(Level.INFO, messageBuilder.toString());
             }
         }
 
-        public static <K, T> Map<K, Integer> sortByIntegerValue(Map<K, Integer> map) {
+        private static <K, T> Map<K, Integer> sortByIntegerValue(Map<K, Integer> map) {
             List<Entry<K, Integer>> list = new ArrayList<>(map.entrySet());
             list.sort((x, y) -> y.getValue().compareTo(x.getValue()));
 
@@ -261,32 +301,9 @@ final class TruffleSplittingStrategy {
 
             return result;
         }
-
-        @Override
-        public void run() {
-            final GraalTruffleRuntime rt = GraalTruffleRuntime.getRuntime();
-            rt.log(String.format(D_FORMAT, "Split count", engineData.splitCount));
-            rt.log(String.format(D_FORMAT, "Split limit", engineData.splitLimit));
-            rt.log(String.format(D_FORMAT, "Splits", splitCount));
-            rt.log(String.format(D_FORMAT, "Forced splits", forcedSplitCount));
-            rt.log(String.format(D_FORMAT, "Nodes created through splitting", splitNodeCount));
-            rt.log(String.format(D_FORMAT, "Nodes created without splitting", totalCreatedNodeCount));
-            rt.log(String.format(P_FORMAT, "Increase in nodes", (splitNodeCount * 100.0) / (totalCreatedNodeCount)));
-            rt.log(String.format(D_FORMAT, "Split nodes wasted", wastedNodeCount));
-            rt.log(String.format(P_FORMAT, "Percent of split nodes wasted", (wastedNodeCount * 100.0) / (splitNodeCount)));
-            rt.log(String.format(D_FORMAT, "Targets wasted due to splitting", wastedTargetCount));
-            rt.log(String.format(D_FORMAT, "Total nodes executed", totalExecutedNodeCount));
-
-            rt.log(String.format(DELIMITER_FORMAT, "SPLIT TARGETS"));
-            for (Map.Entry<OptimizedCallTarget, Integer> entry : sortByIntegerValue(splitTargets).entrySet()) {
-                rt.log(String.format(D_FORMAT, entry.getKey(), entry.getValue()));
-            }
-
-            rt.log(String.format(DELIMITER_FORMAT, "NODES"));
-            for (Map.Entry<Class<? extends Node>, Integer> entry : sortByIntegerValue(polymorphicNodes).entrySet()) {
-                rt.log(String.format(D_LONG_FORMAT, entry.getKey(), entry.getValue()));
-            }
-        }
     }
 
+    static void installListener(GraalTruffleRuntime runtime) {
+        runtime.addListener(new SplitStatisticsReporter());
+    }
 }

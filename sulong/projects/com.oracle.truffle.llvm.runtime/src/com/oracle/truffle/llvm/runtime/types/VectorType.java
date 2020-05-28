@@ -49,7 +49,7 @@ public final class VectorType extends AggregateType {
     public VectorType(Type elementType, int length) {
         if (elementType != null && !(elementType instanceof PrimitiveType || elementType instanceof PointerType)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new AssertionError("Invalid ElementType of Vector: " + elementType);
+            throw new AssertionError("Invalid ElementType of Vector: " + elementType.getClass().getSimpleName());
         }
         this.elementTypeAssumption = Truffle.getRuntime().createAssumption("VectorType.elementType");
         this.elementType = elementType;
@@ -79,8 +79,8 @@ public final class VectorType extends AggregateType {
 
     public void setElementType(Type elementType) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        if (elementType == null || !(elementType instanceof PrimitiveType || elementType instanceof PointerType)) {
-            throw new AssertionError("Invalid ElementType of Vector: " + elementType);
+        if (!(elementType instanceof PrimitiveType || elementType instanceof PointerType)) {
+            throw new AssertionError("Invalid ElementType of Vector: " + (elementType == null ? "null" : elementType.getClass().getSimpleName()));
         }
         this.elementTypeAssumption.invalidate();
         this.elementType = elementType;

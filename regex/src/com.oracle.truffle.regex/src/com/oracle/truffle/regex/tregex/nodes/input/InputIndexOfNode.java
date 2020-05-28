@@ -61,9 +61,9 @@ public abstract class InputIndexOfNode extends Node {
 
     @Specialization
     public int indexOf(TruffleObject input, int fromIndex, int maxIndex, char[] chars,
-                    @Cached("create()") InputCharAtNode charAtNode) {
+                    @Cached("create()") InputReadNode charAtNode) {
         for (int i = fromIndex; i < maxIndex; i++) {
-            char c = charAtNode.execute(input, i);
+            int c = charAtNode.execute(input, i);
             for (char v : chars) {
                 if (c == v) {
                     return i;

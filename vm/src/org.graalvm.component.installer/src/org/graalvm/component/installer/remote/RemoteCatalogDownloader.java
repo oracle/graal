@@ -37,6 +37,7 @@ import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.CommandInput;
+import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.Feedback;
@@ -219,7 +220,7 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
             return mergedStorage;
         }
         mergedStorage = new MergeStorage(input.getLocalRegistry(), feedback);
-
+        mergedStorage.setIgnoreCatalogErrors(input.hasOption(Commands.OPTION_IGNORE_CATALOG_ERRORS));
         for (SoftwareChannelSource spec : getChannelSources()) {
             SoftwareChannel ch = null;
             for (SoftwareChannel.Factory f : factories) {
@@ -229,7 +230,7 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
                 }
             }
             if (ch != null) {
-                mergedStorage.addChannel(ch);
+                mergedStorage.addChannel(spec, ch);
             }
         }
         return mergedStorage;

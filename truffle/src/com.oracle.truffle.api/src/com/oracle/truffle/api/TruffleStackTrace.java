@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.polyglot.PolyglotException;
 
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 import sun.misc.Unsafe;
 
@@ -203,6 +205,32 @@ public final class TruffleStackTrace extends Exception {
             return stack.frames;
         }
         return null;
+    }
+
+    /**
+     * Returns asynchronous guest language stack frames that led to the execution of given
+     * {@link CallTarget} on the given {@link Frame}. Returns <code>null</code> if no asynchronous
+     * stack is known. Call this with a context entered only.
+     * <p>
+     * Languages might not provide asynchronous stack frames by default for performance reasons.
+     * Instruments might need to instruct languages to provide the asynchronous stacks.
+     *
+     * @return a list of asynchronous frames, or <code>null</code>.
+     * @since 20.1.0
+     */
+    @TruffleBoundary
+    public static List<TruffleStackTraceElement> getAsynchronousStackTrace(CallTarget target, Frame frame) {
+        Objects.requireNonNull(target, "CallTarget must not be null");
+        Objects.requireNonNull(frame, "Frame must not be null");
+        assert hasContext(target);
+        return LanguageAccessor.ACCESSOR.nodeSupport().findAsynchronousFrames(target, frame);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean hasContext(CallTarget target) {
+        RootNode root = ((RootCallTarget) target).getRootNode();
+        Object polyglotLanguage = LanguageAccessor.ACCESSOR.nodeSupport().getPolyglotLanguage(root.getLanguageInfo());
+        return LanguageAccessor.ACCESSOR.engineSupport().getCurrentContextReference(polyglotLanguage).get() != null;
     }
 
     static void materializeHostFrames(Throwable t) {

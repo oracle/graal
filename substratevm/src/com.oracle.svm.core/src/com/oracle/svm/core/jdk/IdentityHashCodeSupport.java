@@ -42,6 +42,14 @@ public final class IdentityHashCodeSupport {
 
     private static final FastThreadLocalObject<SplittableRandom> hashCodeGeneratorTL = FastThreadLocalFactory.createObject(SplittableRandom.class);
 
+    /**
+     * Initialization can require synchronization which is not allowed during safepoints, so this
+     * method can be called before using identity hash codes during a safepoint operation.
+     */
+    public static void ensureInitialized() {
+        new SplittableRandom().nextInt();
+    }
+
     public static int generateIdentityHashCode(Object obj, int hashCodeOffset) {
         UnsignedWord hashCodeOffsetWord = WordFactory.unsigned(hashCodeOffset);
 

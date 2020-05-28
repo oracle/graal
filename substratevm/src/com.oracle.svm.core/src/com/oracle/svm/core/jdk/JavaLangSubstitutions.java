@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,7 +59,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -76,6 +75,7 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -112,24 +112,24 @@ final class Target_java_lang_Object {
     @Substitute
     @TargetElement(name = "wait")
     private void waitSubst(long timeoutMillis) throws InterruptedException {
-        ImageSingletons.lookup(MonitorSupport.class).wait(this, timeoutMillis);
+        MonitorSupport.singleton().wait(this, timeoutMillis);
     }
 
     @Substitute
     @TargetElement(name = "notify")
     private void notifySubst() {
-        ImageSingletons.lookup(MonitorSupport.class).notify(this, false);
+        MonitorSupport.singleton().notify(this, false);
     }
 
     @Substitute
     @TargetElement(name = "notifyAll")
     private void notifyAllSubst() {
-        ImageSingletons.lookup(MonitorSupport.class).notify(this, true);
+        MonitorSupport.singleton().notify(this, true);
     }
 }
 
-@TargetClass(className = "java.lang.ClassLoaderHelper")
-final class Target_java_lang_ClassLoaderHelper {
+@TargetClass(classNameProvider = Package_jdk_internal_loader_helper.class, className = "ClassLoaderHelper")
+final class Target_jdk_internal_loader_ClassLoaderHelper {
     @Alias
     static native File mapAlternativeName(File lib);
 }

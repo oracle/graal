@@ -52,7 +52,7 @@ final class ObjectPreview {
         DebugValue metaObject = RemoteObject.getMetaObject(debugValue, language, err);
         String metaType = null;
         if (metaObject != null) {
-            metaType = RemoteObject.toString(metaObject, allowToStringSideEffects, err);
+            metaType = RemoteObject.toMetaName(metaObject, err);
             if (isArray) {
                 metaType += "(" + debugValue.getArray().size() + ")";
             }

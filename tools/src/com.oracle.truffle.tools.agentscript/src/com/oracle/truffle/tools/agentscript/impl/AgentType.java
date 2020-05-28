@@ -34,7 +34,7 @@ enum AgentType {
         try {
             return valueOf(str.toUpperCase());
         } catch (IllegalArgumentException missingType) {
-            throw AgentException.unknownType(missingType, str, AgentType.values());
+            throw InsightException.unknownType(missingType, str, AgentType.values());
         }
     }
 }

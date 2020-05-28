@@ -46,8 +46,10 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueTransformer;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.ReadableJavaField;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -250,7 +252,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 try {
                     Constructor<?>[] constructors = targetClass.getDeclaredConstructors();
                     if (constructors.length != 1) {
-                        throw shouldNotReachHere("The " + CustomFieldValueComputer.class.getSimpleName() + " class " + targetClass.getName() + " has more than one constructor");
+                        throw UserError.abort("The custom field value computer class " + targetClass.getName() + " has more than one constructor");
                     }
                     Constructor<?> constructor = constructors[0];
 
@@ -259,10 +261,27 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                         constructorArgs[i] = configurationValue(constructor.getParameterTypes()[i]);
                     }
                     constructor.setAccessible(true);
-                    CustomFieldValueComputer computer = (CustomFieldValueComputer) constructor.newInstance(constructorArgs);
+                    Object instance = constructor.newInstance(constructorArgs);
 
                     Object receiverValue = receiver == null ? null : originalSnippetReflection.asObject(Object.class, receiver);
-                    result = originalSnippetReflection.forBoxed(annotated.getJavaKind(), computer.compute(hMetaAccess, original, annotated, receiverValue));
+                    Object newValue;
+                    if (instance instanceof CustomFieldValueComputer) {
+                        newValue = ((CustomFieldValueComputer) instance).compute(hMetaAccess, original, annotated, receiverValue);
+                    } else if (instance instanceof CustomFieldValueTransformer) {
+                        JavaConstant originalValueConstant = ReadableJavaField.readFieldValue(GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
+                        Object originalValue;
+                        if (originalValueConstant.getJavaKind().isPrimitive()) {
+                            originalValue = originalValueConstant.asBoxedPrimitive();
+                        } else {
+                            originalValue = originalSnippetReflection.asObject(Object.class, originalValueConstant);
+                        }
+                        newValue = ((CustomFieldValueTransformer) instance).transform(hMetaAccess, original, annotated, receiverValue, originalValue);
+                    } else {
+                        throw UserError.abort("The custom field value computer class " + targetClass.getName() + " does not implement " + CustomFieldValueComputer.class.getSimpleName() + " or " +
+                                        CustomFieldValueTransformer.class.getSimpleName());
+                    }
+
+                    result = originalSnippetReflection.forBoxed(annotated.getJavaKind(), newValue);
                     assert result.getJavaKind() == annotated.getJavaKind();
                 } catch (InvocationTargetException | InstantiationException | IllegalAccessException ex) {
                     throw shouldNotReachHere("Error performing field recomputation for alias " + annotated.format("%H.%n"), ex);

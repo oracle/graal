@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
@@ -46,18 +47,52 @@ public final class StructureType extends AggregateType {
     @CompilationFinal(dimensions = 1) private final Type[] types;
     private long size = -1;
 
-    public StructureType(String name, boolean isPacked, Type[] types) {
+    private StructureType(String name, boolean isPacked, Type[] types) {
         this.name = name;
         this.isPacked = isPacked;
         this.types = types;
     }
 
-    public StructureType(boolean isPacked, Type[] types) {
-        this(LLVMIdentifier.UNKNOWN, isPacked, types);
+    /**
+     * Creates a named structure type with known element types.
+     *
+     * <b>Attention!</b> the {@code types} array will be copied. Modifications to the original array
+     * are not propagated. Use {@link #setElementType} to modify the types. If you want create a
+     * structure with unknown element types use {@link #StructureType(String, boolean, int)}
+     * instead.
+     */
+    public static StructureType createNamedByCopy(String name, boolean isPacked, Type[] types) {
+        return new StructureType(name, isPacked, types.clone());
     }
 
-    public Type[] getElementTypes() {
-        return types;
+    /**
+     * @see #createNamedByCopy(String, boolean, Type[])
+     */
+    public static StructureType createNamedByCopy(String name, boolean isPacked, ArrayList<Type> types) {
+        return new StructureType(name, isPacked, types.toArray(Type.EMPTY_ARRAY));
+    }
+
+    /**
+     * Creates an unnamed structure type with known element types.
+     *
+     * <b>Attention!</b> the {@code types} array will be copied. Modifications to the original array
+     * are not propagated. Use {@link #setElementType} to modify the types. If you want create a
+     * structure with unknown element types use {@link #StructureType(boolean, int)} instead.
+     */
+    public static StructureType createUnnamedByCopy(boolean isPacked, Type[] types) {
+        return new StructureType(LLVMIdentifier.UNKNOWN, isPacked, types.clone());
+    }
+
+    public StructureType(String name, boolean isPacked, int numElements) {
+        this(name, isPacked, new Type[numElements]);
+    }
+
+    public StructureType(boolean isPacked, int numElements) {
+        this(LLVMIdentifier.UNKNOWN, isPacked, new Type[numElements]);
+    }
+
+    public void setElementType(int idx, Type type) {
+        types[idx] = type;
     }
 
     public boolean isPacked() {

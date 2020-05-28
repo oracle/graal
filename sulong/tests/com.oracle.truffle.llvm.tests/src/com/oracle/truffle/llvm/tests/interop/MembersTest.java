@@ -44,7 +44,7 @@ public class MembersTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeValue("stringTest");
+        testLibrary = loadTestBitcodeValue("stringTest.c");
     }
 
     @Test

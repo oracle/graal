@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -135,12 +135,12 @@ public abstract class NFATraversalRegexASTVisitor {
      * infinite loop, which causes us to backtrack and choose the second alternative in the inner
      * loop, leading us to the CharacterClass node [a].
      */
-    private final StateSet<Group> insideLoops;
+    private final StateSet<RegexAST, Group> insideLoops;
     /**
      * This set is needed to make sure that a quantified term cannot match the empty string, as is
      * specified in step 2a of RepeatMatcher from ECMAScript draft 2018, chapter 21.2.2.5.1.
      */
-    private final StateSet<Group> insideEmptyGuardGroup;
+    private final StateSet<RegexAST, Group> insideEmptyGuardGroup;
     private RegexASTNode cur;
     private Set<LookBehindAssertion> traversableLookBehindAssertions;
     private boolean canTraverseCaret = false;
@@ -153,10 +153,10 @@ public abstract class NFATraversalRegexASTVisitor {
      * {@link PositionAssertion dollar-assertions} and {@link LookAroundAssertion}s, and their final
      * {@link CharacterClass} / {@link MatchFound} node is the same.
      */
-    private final EconomicMap<StateSet<RegexASTNode>, StateSet<RegexASTNode>> targetDeduplicationMap = EconomicMap.create();
-    private final StateSet<RegexASTNode> lookAroundsOnPath;
-    private final StateSet<RegexASTNode> dollarsOnPath;
-    private final StateSet<RegexASTNode> targetsVisited;
+    private final EconomicMap<StateSet<RegexAST, RegexASTNode>, StateSet<RegexAST, RegexASTNode>> targetDeduplicationMap = EconomicMap.create();
+    private final StateSet<RegexAST, RegexASTNode> lookAroundsOnPath;
+    private final StateSet<RegexAST, RegexASTNode> dollarsOnPath;
+    private final StateSet<RegexAST, RegexASTNode> targetsVisited;
     private final int[] nodeVisitCount;
     private int deduplicatedTargets = 0;
 
@@ -359,15 +359,18 @@ public abstract class NFATraversalRegexASTVisitor {
             if (pathIsGroup(element)) {
                 Group group = (Group) pathGetNode(element);
                 if (group.isCapturing()) {
-                    captureGroupUpdates.set(pathIsGroupEnter(element) ? group.getBoundaryIndexStart() : group.getBoundaryIndexEnd());
+                    int b = pathIsGroupEnter(element) ? group.getBoundaryIndexStart() : group.getBoundaryIndexEnd();
+                    captureGroupUpdates.set(b);
+                    captureGroupClears.clear(b);
                 }
                 if (pathIsGroupEnter(element) && group.hasQuantifier() && group.hasEnclosedCaptureGroups()) {
-                    captureGroupClears.setRange(Group.groupNumberToBoundaryIndexStart(group.getEnclosedCaptureGroupsLow()),
-                                    Group.groupNumberToBoundaryIndexEnd(group.getEnclosedCaptureGroupsHigh() - 1));
+                    int lo = Group.groupNumberToBoundaryIndexStart(group.getEnclosedCaptureGroupsLow());
+                    int hi = Group.groupNumberToBoundaryIndexEnd(group.getEnclosedCaptureGroupsHigh() - 1);
+                    captureGroupUpdates.clearRange(lo, hi);
+                    captureGroupClears.setRange(lo, hi);
                 }
             }
         }
-        captureGroupClears.subtract(captureGroupUpdates);
         return ast.createGroupBoundaries(captureGroupUpdates, captureGroupClears);
     }
 
@@ -461,7 +464,7 @@ public abstract class NFATraversalRegexASTVisitor {
         return !curPath.isEmpty() && pathIsGroupExit(curPath.peek()) && pathGetNode(curPath.peek()) == group;
     }
 
-    private void addToVisitedSet(StateSet<RegexASTNode> visitedSet) {
+    private void addToVisitedSet(StateSet<RegexAST, RegexASTNode> visitedSet) {
         nodeVisitCount[cur.getId()]++;
         visitedSet.add(cur);
     }
@@ -556,7 +559,7 @@ public abstract class NFATraversalRegexASTVisitor {
         return false;
     }
 
-    private void removeFromVisitedSet(long pathElement, StateSet<RegexASTNode> visitedSet) {
+    private void removeFromVisitedSet(long pathElement, StateSet<RegexAST, RegexASTNode> visitedSet) {
         if (--nodeVisitCount[pathGetNodeId(pathElement)] == 0) {
             visitedSet.remove(pathGetNode(pathElement));
         }
@@ -575,12 +578,12 @@ public abstract class NFATraversalRegexASTVisitor {
         if (dollarsOnPath.isEmpty() && lookAroundsOnPath.isEmpty()) {
             isDuplicate = !targetsVisited.add(cur);
         } else if (canTraverseLookArounds()) {
-            StateSet<RegexASTNode> key = lookAroundsOnPath.copy();
+            StateSet<RegexAST, RegexASTNode> key = lookAroundsOnPath.copy();
             key.addAll(dollarsOnPath);
             key.add(cur);
             isDuplicate = targetDeduplicationMap.put(key, key) != null;
         } else {
-            StateSet<RegexASTNode> key = dollarsOnPath.copy();
+            StateSet<RegexAST, RegexASTNode> key = dollarsOnPath.copy();
             key.add(cur);
             isDuplicate = targetDeduplicationMap.put(key, key) != null;
         }

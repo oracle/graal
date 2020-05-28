@@ -36,7 +36,7 @@ import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 
 /**
- * References from the runtime compiled code to the Java heap must be consider as either strong or
+ * References from the runtime compiled code to the Java heap must be considered either strong or
  * weak references, depending on whether the code is currently on the execution stack. Otherwise,
  * constant folding could create memory leaks as it can make heap objects reachable from code.
  * <p>
@@ -44,7 +44,7 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
  * objects. Based on that information, it determines which parts of the code cache can be freed and
  * it makes sure that the GC visits all object references of code that may stay alive.
  */
-public class RuntimeCodeCacheWalker implements CodeInfoVisitor {
+final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
     private final RuntimeCodeCacheReachabilityAnalyzer checkForUnreachableObjectsVisitor;
     private final ObjectReferenceVisitor greyToBlackObjectVisitor;
 

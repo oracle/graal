@@ -55,23 +55,24 @@ import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTDebugDumpVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
+import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
-public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
+public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
 
     /**
      * Original pattern as seen by the parser.
@@ -79,6 +80,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     private final RegexSource source;
     private final RegexFlags flags;
     private final RegexOptions options;
+    private final Encoding encoding;
     private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexParserTreeMaxSize, "parse tree explosion");
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final Counter quantifierCount = new Counter();
@@ -97,8 +99,8 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     private final LookAroundIndex lookArounds = new LookAroundIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
-    private StateSet<PositionAssertion> nfaAnchoredInitialStates;
-    private StateSet<RegexASTNode> hardPrefixNodes;
+    private StateSet<RegexAST, PositionAssertion> nfaAnchoredInitialStates;
+    private StateSet<RegexAST, RegexASTNode> hardPrefixNodes;
     private final EconomicMap<GroupBoundaries, GroupBoundaries> groupBoundariesDeduplicationMap = EconomicMap.create();
 
     private int negativeLookaheads = 0;
@@ -106,10 +108,11 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
 
     private final EconomicMap<RegexASTNode, List<SourceSection>> sourceSections;
 
-    public RegexAST(RegexSource source, RegexFlags flags, RegexOptions options) {
+    public RegexAST(RegexSource source, RegexFlags flags, RegexOptions options, Encoding encoding) {
         this.source = source;
         this.flags = flags;
         this.options = options;
+        this.encoding = encoding;
         sourceSections = options.isDumpAutomata() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
     }
 
@@ -123,6 +126,10 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
 
     public RegexOptions getOptions() {
         return options;
+    }
+
+    public Encoding getEncoding() {
+        return encoding;
     }
 
     public Group getRoot() {
@@ -246,11 +253,11 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return reachableDollars;
     }
 
-    public StateSet<PositionAssertion> getNfaAnchoredInitialStates() {
+    public StateSet<RegexAST, PositionAssertion> getNfaAnchoredInitialStates() {
         return nfaAnchoredInitialStates;
     }
 
-    public StateSet<RegexASTNode> getHardPrefixNodes() {
+    public StateSet<RegexAST, RegexASTNode> getHardPrefixNodes() {
         return hardPrefixNodes;
     }
 
@@ -316,13 +323,23 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
 
     public CharacterClass register(CharacterClass characterClass) {
         nodeCount.inc();
+        updatePropsCC(characterClass);
+        return characterClass;
+    }
+
+    public void updatePropsCC(CharacterClass characterClass) {
         if (!characterClass.getCharSet().matchesSingleChar()) {
             if (!characterClass.getCharSet().matches2CharsWith1BitDifference()) {
                 properties.unsetCharClassesCanBeMatchedWithMask();
             }
+            if (!encoding.isFixedCodePointWidth(characterClass.getCharSet())) {
+                properties.setFixedCodePointWidth(false);
+            }
             properties.setCharClasses();
         }
-        return characterClass;
+        if (Constants.SURROGATES.intersects(characterClass.getCharSet())) {
+            properties.setLoneSurrogates();
+        }
     }
 
     public Group register(Group group) {
@@ -356,7 +373,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     public void invertNegativeLookAround(LookAroundAssertion assertion) {
         assert assertion.isNegated();
         assertion.setNegated(false);
-        if (assertion instanceof LookAheadAssertion) {
+        if (assertion.isLookAheadAssertion()) {
             assert negativeLookaheads > 0;
             if (--negativeLookaheads == 0) {
                 properties.setNegativeLookAheadAssertions(false);
@@ -593,22 +610,21 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return sections;
     }
 
-    public InnerLiteral extractInnerLiteral(CompilationBuffer compilationBuffer) {
+    public InnerLiteral extractInnerLiteral() {
         assert properties.hasInnerLiteral();
         int literalEnd = properties.getInnerLiteralEnd();
         int literalStart = properties.getInnerLiteralStart();
-        CharArrayBuffer literal = compilationBuffer.getCharRangesBuffer1();
-        CharArrayBuffer mask = compilationBuffer.getCharRangesBuffer2();
-        literal.ensureCapacity(literalEnd - literalStart);
-        mask.ensureCapacity(literalEnd - literalStart);
+        AbstractStringBuffer literal = encoding.createStringBuffer(literalEnd - literalStart);
+        AbstractStringBuffer mask = encoding.createStringBuffer(literalEnd - literalStart);
         boolean hasMask = false;
         for (int i = literalStart; i < literalEnd; i++) {
             CharacterClass cc = root.getFirstAlternative().getTerms().get(i).asCharacterClass();
             assert cc.getCharSet().matchesSingleChar() || cc.getCharSet().matches2CharsWith1BitDifference();
+            assert encoding.isFixedCodePointWidth(cc.getCharSet());
             cc.extractSingleChar(literal, mask);
             hasMask |= cc.getCharSet().matches2CharsWith1BitDifference();
         }
-        return new InnerLiteral(new String(literal.toArray()), hasMask ? new String(mask.toArray()) : null, root.getFirstAlternative().get(literalStart).getMaxPath() - 1);
+        return new InnerLiteral(literal.materialize(), hasMask ? mask.materialize() : null, root.getFirstAlternative().get(literalStart).getMaxPath() - 1);
     }
 
     @TruffleBoundary

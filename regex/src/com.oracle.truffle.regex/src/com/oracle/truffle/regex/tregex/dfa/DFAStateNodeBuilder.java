@@ -48,6 +48,7 @@ import com.oracle.truffle.regex.tregex.automaton.BasicState;
 import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
+import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
@@ -67,14 +68,14 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
     private static final DFAStateTransitionBuilder[] NODE_SPLIT_TAINTED = new DFAStateTransitionBuilder[0];
     private static final String NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG = "this state node builder was altered by the node splitter and does not have valid information about preceding transitions!";
 
-    private TransitionSet<NFAState, NFAStateTransition> nfaTransitionSet;
+    private TransitionSet<NFA, NFAState, NFAStateTransition> nfaTransitionSet;
     private short backwardPrefixState = -1;
     private NFAStateTransition anchoredFinalStateTransition;
     private NFAStateTransition unAnchoredFinalStateTransition;
     private byte preCalculatedUnAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
     private byte preCalculatedAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
 
-    DFAStateNodeBuilder(int id, TransitionSet<NFAState, NFAStateTransition> nfaStateSet, boolean isBackwardPrefixState, boolean isInitialState, boolean forward) {
+    DFAStateNodeBuilder(int id, TransitionSet<NFA, NFAState, NFAStateTransition> nfaStateSet, boolean isBackwardPrefixState, boolean isInitialState, boolean forward) {
         super(id, EMPTY_TRANSITIONS);
         assert id <= Short.MAX_VALUE;
         this.nfaTransitionSet = nfaStateSet;
@@ -119,11 +120,11 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
         }
     }
 
-    public void setNfaTransitionSet(TransitionSet<NFAState, NFAStateTransition> nfaTransitionSet) {
+    public void setNfaTransitionSet(TransitionSet<NFA, NFAState, NFAStateTransition> nfaTransitionSet) {
         this.nfaTransitionSet = nfaTransitionSet;
     }
 
-    public TransitionSet<NFAState, NFAStateTransition> getNfaTransitionSet() {
+    public TransitionSet<NFA, NFAState, NFAStateTransition> getNfaTransitionSet() {
         return nfaTransitionSet;
     }
 
@@ -188,28 +189,28 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
         indicesBuf.ensureCapacity(getSuccessors().length);
         int[] indices = indicesBuf.getBuffer();
         Arrays.fill(indices, 0, getSuccessors().length, 0);
-        int nextLo = Character.MIN_CODE_POINT;
+        int nextLo = CodePointSet.MIN_VALUE;
         while (true) {
             int i = findNextLo(indices, nextLo);
             if (i < 0) {
                 return false;
             }
-            CodePointSet mb = getSuccessors()[i].getMatcherBuilder();
-            if (mb.getHi(indices[i]) == Character.MAX_CODE_POINT) {
+            CodePointSet ranges = getSuccessors()[i].getMatcherBuilder();
+            if (ranges.getHi(indices[i]) == CodePointSet.MAX_VALUE) {
                 return true;
             }
-            nextLo = mb.getHi(indices[i]) + 1;
+            nextLo = ranges.getHi(indices[i]) + 1;
             indices[i]++;
         }
     }
 
     private int findNextLo(int[] indices, int findLo) {
         for (int i = 0; i < getSuccessors().length; i++) {
-            CodePointSet mb = getSuccessors()[i].getMatcherBuilder();
-            if (indices[i] == mb.size()) {
+            CodePointSet ranges = getSuccessors()[i].getMatcherBuilder();
+            if (indices[i] == ranges.size()) {
                 continue;
             }
-            if (mb.getLo(indices[i]) == findLo) {
+            if (ranges.getLo(indices[i]) == findLo) {
                 return i;
             }
         }

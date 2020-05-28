@@ -86,7 +86,8 @@ public class DownloadURLIterable extends AbstractIterable {
 
         @Override
         protected MetadataLoader metadataFromLocal(Path localFile) throws IOException {
-            FileComponent fc = new FileComponent(localFile.toFile(), isVerifyJars(), getFeedback());
+            FileComponent fc = new FileComponent(localFile.toFile(), isVerifyJars(),
+                            SystemUtils.fingerPrint(getDownloader().getReceivedDigest(), false), getFeedback());
             return fc.createFileLoader();
         }
 

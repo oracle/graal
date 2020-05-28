@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -76,7 +76,9 @@
     i64.and
     global.set 0
     local.get 2)
+  (memory (;0;) 4)
   (global (;0;) (mut i64) (i64.const 2768))
   (global (;1;) (mut i64) (i64.const 1))
+  (export "memory" (memory 0))
   (export "_main" (func 1))
   (export "stackAlloc" (func 2)))

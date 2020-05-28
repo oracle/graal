@@ -49,6 +49,7 @@ public abstract class WasmBuiltinRootNode extends WasmRootNode {
 
     public WasmBuiltinRootNode(WasmLanguage language, WasmModule module) {
         super(language, null);
+
         this.module = module;
     }
 

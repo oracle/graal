@@ -42,12 +42,10 @@ package com.oracle.truffle.regex.tregex.nfa;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.charset.RangesAccumulator;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -57,13 +55,13 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * Contains a full mapping of every {@link RegexASTSubtreeRootNode} in a {@link RegexAST} to a
  * {@link PureNFA}.
  */
-public class PureNFAMap {
+public final class PureNFAMap {
 
     private final RegexAST ast;
     private final PureNFA root;
     private final PureNFAIndex lookArounds;
     private int prefixLength = 0;
-    private StateSet<PureNFA>[] prefixLookbehindEntries;
+    private StateSet<PureNFAIndex, PureNFA>[] prefixLookbehindEntries;
 
     public PureNFAMap(RegexAST ast, PureNFA root, PureNFAIndex lookArounds) {
         this.ast = ast;
@@ -99,14 +97,14 @@ public class PureNFAMap {
      * match state}, {@code null} is returned.
      */
     public CodePointSet getMergedInitialStateCharSet(CompilationBuffer compilationBuffer) {
-        RangesAccumulator<IntRangesBuffer> acc = compilationBuffer.getIntRangesAccumulator();
+        CodePointSetAccumulator acc = compilationBuffer.getCodePointSetAccumulator1();
         if (mergeInitialStateMatcher(root, acc)) {
-            return CodePointSet.create(acc.get());
+            return acc.toCodePointSet();
         }
         return null;
     }
 
-    private boolean mergeInitialStateMatcher(PureNFA nfa, RangesAccumulator<IntRangesBuffer> acc) {
+    private boolean mergeInitialStateMatcher(PureNFA nfa, CodePointSetAccumulator acc) {
         for (PureNFATransition t : nfa.getUnAnchoredInitialState().getSuccessors()) {
             PureNFAState target = t.getTarget();
             switch (target.getKind()) {
@@ -124,7 +122,6 @@ public class PureNFAMap {
                     acc.addSet(target.getCharSet());
                     break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
                     throw new IllegalStateException();
             }
         }

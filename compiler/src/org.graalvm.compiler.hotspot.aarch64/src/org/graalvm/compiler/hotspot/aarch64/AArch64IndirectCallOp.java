@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,11 +69,14 @@ final class AArch64IndirectCallOp extends IndirectCallOp {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        crb.recordMark(config.MARKID_INLINE_INVOKE);
-        Register callReg = asRegister(targetAddress);
-        assert !callReg.equals(METHOD);
-        AArch64Call.indirectCall(crb, masm, callReg, callTarget, state);
+        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(false)) {
+            crb.recordMark(config.MARKID_INLINE_INVOKE);
+            Register callReg = asRegister(targetAddress);
+            assert !callReg.equals(METHOD);
+            AArch64Call.indirectCall(crb, masm, callReg, callTarget, state);
+        }
     }
 
     @Override

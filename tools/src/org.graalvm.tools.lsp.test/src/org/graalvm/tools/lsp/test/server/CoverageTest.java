@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,17 +26,12 @@ package org.graalvm.tools.lsp.test.server;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.net.URI;
-import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
-import org.graalvm.tools.lsp.server.types.Diagnostic;
-import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
+import org.graalvm.tools.lsp.server.types.Coverage;
 import org.junit.Test;
 
 public class CoverageTest extends TruffleLSPTest {
@@ -47,45 +42,25 @@ public class CoverageTest extends TruffleLSPTest {
         Future<?> futureOpen = truffleAdapter.parse(PROG_OBJ_NOT_CALLED, "sl", uri);
         futureOpen.get();
 
-        Future<?> showCoverage = truffleAdapter.showCoverage(uri);
-        try {
-            showCoverage.get();
-            fail();
-        } catch (ExecutionException e) {
-            DiagnosticsNotification diagnosticsNotification = getDiagnosticsNotification(e);
-            Collection<PublishDiagnosticsParams> diagnosticParamsCollection = diagnosticsNotification.getDiagnosticParamsCollection();
-            assertEquals(1, diagnosticParamsCollection.size());
-            PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
-            assertEquals(uri.toString(), diagnosticsParams.getUri());
-            List<Diagnostic> diagnostics = diagnosticsParams.getDiagnostics();
-            assertEquals(7, diagnostics.size());
-            assertTrue(rangeCheck(1, 4, 1, 13, diagnostics.get(0).getRange()));
-            assertTrue(rangeCheck(2, 4, 2, 12, diagnostics.get(1).getRange()));
-            assertTrue(rangeCheck(6, 2, 6, 13, diagnostics.get(2).getRange()));
-            assertTrue(rangeCheck(7, 2, 7, 11, diagnostics.get(3).getRange()));
-            assertTrue(rangeCheck(8, 2, 8, 12, diagnostics.get(4).getRange()));
-            assertTrue(rangeCheck(12, 2, 12, 7, diagnostics.get(5).getRange()));
-            assertTrue(rangeCheck(13, 2, 13, 14, diagnostics.get(6).getRange()));
-        }
+        Coverage coverage = truffleAdapter.getCoverage(uri).get();
+        assertTrue(coverage != null);
+        assertEquals(7, coverage.getUncovered().size());
+        assertTrue(rangeCheck(1, 4, 1, 13, coverage.getUncovered().get(0)));
+        assertTrue(rangeCheck(2, 4, 2, 12, coverage.getUncovered().get(1)));
+        assertTrue(rangeCheck(6, 2, 6, 13, coverage.getUncovered().get(2)));
+        assertTrue(rangeCheck(7, 2, 7, 11, coverage.getUncovered().get(3)));
+        assertTrue(rangeCheck(8, 2, 8, 12, coverage.getUncovered().get(4)));
+        assertTrue(rangeCheck(12, 2, 12, 7, coverage.getUncovered().get(5)));
+        assertTrue(rangeCheck(13, 2, 13, 14, coverage.getUncovered().get(6)));
 
         Future<Boolean> future = truffleAdapter.runCoverageAnalysis(uri);
         Boolean result = future.get();
         assertTrue(result);
 
-        showCoverage = truffleAdapter.showCoverage(uri);
-        try {
-            showCoverage.get();
-            fail();
-        } catch (ExecutionException e) {
-            DiagnosticsNotification diagnosticsNotification = getDiagnosticsNotification(e);
-            Collection<PublishDiagnosticsParams> diagnosticParamsCollection = diagnosticsNotification.getDiagnosticParamsCollection();
-            assertEquals(1, diagnosticParamsCollection.size());
-            PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
-            assertEquals(uri.toString(), diagnosticsParams.getUri());
-            List<Diagnostic> diagnostics = diagnosticsParams.getDiagnostics();
-            assertEquals(2, diagnostics.size());
-            assertTrue(rangeCheck(12, 2, 12, 7, diagnostics.get(0).getRange()));
-            assertTrue(rangeCheck(13, 2, 13, 14, diagnostics.get(1).getRange()));
-        }
+        coverage = truffleAdapter.getCoverage(uri).get();
+        assertTrue(coverage != null);
+        assertEquals(2, coverage.getUncovered().size());
+        assertTrue(rangeCheck(12, 2, 12, 7, coverage.getUncovered().get(0)));
+        assertTrue(rangeCheck(13, 2, 13, 14, coverage.getUncovered().get(1)));
     }
 }

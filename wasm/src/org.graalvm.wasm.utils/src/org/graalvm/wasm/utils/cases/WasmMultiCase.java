@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,13 +47,12 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.graalvm.wasm.utils.WasmBinaryTools;
-import org.graalvm.wasm.utils.WasmInitialization;
 
 public class WasmMultiCase extends WasmCase {
     private final Map<String, Object> fileContents;
 
-    public WasmMultiCase(String name, WasmCaseData data, Map<String, Object> fileContents, WasmInitialization initialization, Properties options) {
-        super(name, data, initialization, options);
+    public WasmMultiCase(String name, WasmCaseData data, Map<String, Object> fileContents, Properties options) {
+        super(name, data, options);
         this.fileContents = fileContents;
     }
 

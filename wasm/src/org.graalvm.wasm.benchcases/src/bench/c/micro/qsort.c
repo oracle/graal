@@ -54,7 +54,7 @@ int compare_ints(const void* a, const void* b) {
   return (*da > *db) - (*db > *da);
 }
 
-int benchmarkWarmupCount() {
+int benchmarkIterationsCount() {
   return 10;
 }
 
@@ -68,7 +68,7 @@ void benchmarkSetupEach() {
   }
 }
 
-void benchmarkTeardownEach() {
+void benchmarkTeardownEach(char* outputFile) {
 }
 
 int benchmarkRun() {

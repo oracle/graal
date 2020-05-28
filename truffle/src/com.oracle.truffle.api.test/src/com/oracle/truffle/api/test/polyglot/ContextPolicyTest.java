@@ -689,17 +689,13 @@ public class ContextPolicyTest {
                     }
                     Object[] args = frame.getArguments();
 
-                    assertSame(expectedLanguage, lookupLanguageReference0(accessor).get());
-                    assertSame(expectedEnvironment, lookupContextReference0(accessor).get());
-                    assertSame(cachedLanguageReference, lookupLanguageReference0(accessor));
-                    assertSame(cachedContextReference, lookupContextReference0(accessor));
-                    assertSame(expectedLanguage, cachedLanguageReference.get());
-                    assertSame(expectedEnvironment, cachedContextReference.get());
+                    doAssertions(accessor, cachedLanguageReference, cachedContextReference);
 
                     if (args.length > 0) {
                         try {
                             return library.execute(args[0], Arrays.copyOfRange(args, 1, args.length));
                         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                            CompilerDirectives.transferToInterpreter();
                             throw new AssertionError();
                         }
                     } else {
@@ -753,13 +749,18 @@ public class ContextPolicyTest {
         @TruffleBoundary
         private void doAssertions(SupplierAccessor accessor, LanguageReference<? extends Object> cachedLanguageSupplier, ContextReference<? extends Object> cachedContextSupplier,
                         ContextReference<Env> contextReference) {
+            doAssertions(accessor, cachedLanguageSupplier, cachedContextSupplier);
+            assertSame(expectedEnvironment, contextReference.get());
+        }
+
+        @TruffleBoundary
+        private void doAssertions(SupplierAccessor accessor, LanguageReference<? extends Object> cachedLanguageSupplier, ContextReference<? extends Object> cachedContextSupplier) {
             assertSame(expectedLanguage, lookupLanguageReference0(accessor).get());
             assertSame(expectedEnvironment, lookupContextReference0(accessor).get());
             assertSame(expectedLanguage, cachedLanguageSupplier.get());
             assertSame(expectedEnvironment, cachedContextSupplier.get());
             assertSame(cachedLanguageSupplier, lookupLanguageReference0(accessor));
             assertSame(cachedContextSupplier, lookupContextReference0(accessor));
-            assertSame(expectedEnvironment, contextReference.get());
         }
 
         @TruffleBoundary
@@ -781,13 +782,18 @@ public class ContextPolicyTest {
             return prev;
         }
 
+        @TruffleBoundary
+        private void doAssertions(LanguageReference<?> languageSupplier) {
+            assertSame(expectedLanguage, ExclusiveLanguage0.getCurrentLanguage(expectedLanguage.getClass()));
+            assertSame(languageSupplier.get(), expectedLanguage);
+        }
+
         @SuppressWarnings("rawtypes")
         LanguageReference<? extends Object> lookupLanguageReference0(SupplierAccessor node) {
             Object prev = enterInner();
             try {
                 LanguageReference<?> o = node.getLanguageReference0(expectedLanguage.getClass());
-                assertSame(expectedLanguage, ExclusiveLanguage0.getCurrentLanguage(expectedLanguage.getClass()));
-                assertSame(o.get(), expectedLanguage);
+                doAssertions(o);
                 return o;
             } finally {
                 leaveInner(prev);

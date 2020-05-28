@@ -1,5 +1,12 @@
 # Change Log
 
+## Version 0.0.8
+* Support Python, R, and Ruby languages added
+* Code coverage support added
+
+## Version 0.0.7
+* Security: updated dependencies
+
 ## Version 0.0.6
 * Documentation enhanced
 

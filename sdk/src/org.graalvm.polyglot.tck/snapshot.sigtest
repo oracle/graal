@@ -131,6 +131,7 @@ fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE_ANY
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor HOST_OBJECT
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor INSTANTIABLE
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor INSTANTIABLE_ANY
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor META_OBJECT
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor NATIVE_POINTER
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor NULL
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor NUMBER

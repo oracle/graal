@@ -137,7 +137,7 @@ public class VMMutex implements AutoCloseable {
         assert isOwner() : message;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void assertNotOwner(String message) {
         assert !isOwner() : message;
     }
@@ -146,17 +146,17 @@ public class VMMutex implements AutoCloseable {
      * This method is potentially racy and must only be called in places where we can guarantee that
      * no incorrect {@link AssertionError}s are thrown because of potential races.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void assertIsNotLocked(String message) {
         assert owner.isNull() : message;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void guaranteeIsOwner(String message) {
         VMError.guarantee(isOwner(), message);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void guaranteeNotOwner(String message) {
         VMError.guarantee(!isOwner(), message);
     }

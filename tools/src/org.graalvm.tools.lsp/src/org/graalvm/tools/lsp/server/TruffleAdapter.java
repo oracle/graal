@@ -33,7 +33,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,10 +43,13 @@ import java.util.logging.Level;
 
 import org.graalvm.tools.lsp.server.types.CompletionContext;
 import org.graalvm.tools.lsp.server.types.CompletionList;
+import org.graalvm.tools.lsp.server.types.CompletionOptions;
+import org.graalvm.tools.lsp.server.types.Coverage;
 import org.graalvm.tools.lsp.server.types.DocumentHighlight;
 import org.graalvm.tools.lsp.server.types.Hover;
-import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
+import org.graalvm.tools.lsp.server.types.ServerCapabilities;
 import org.graalvm.tools.lsp.server.types.SignatureHelp;
+import org.graalvm.tools.lsp.server.types.SignatureHelpOptions;
 import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
@@ -70,10 +72,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
-
-import org.graalvm.tools.lsp.server.types.CompletionOptions;
-import org.graalvm.tools.lsp.server.types.ServerCapabilities;
-import org.graalvm.tools.lsp.server.types.SignatureHelpOptions;
 
 /**
  * This class delegates LSP requests of {@link LanguageServerImpl} to specific implementations of
@@ -108,15 +106,12 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     public void register(Env environment, ContextAwareExecutor executor) {
         this.envInternal = environment;
         this.contextAwareExecutor = executor;
+        initSurrogateMap();
+        createLSPRequestHandlers();
     }
 
     public TruffleLogger getLogger() {
         return logger;
-    }
-
-    public void initialize() {
-        initSurrogateMap();
-        createLSPRequestHandlers();
     }
 
     private void createLSPRequestHandlers() {
@@ -226,10 +221,6 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
 
         sourceCodeEvaluator.parse(surrogate);
 
-        if (surrogate.hasCoverageData()) {
-            showCoverage(uri);
-        }
-
         return surrogate;
     }
 
@@ -272,10 +263,19 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
         if (doc != null) {
             return doc.getLanguageId();
         }
+
+        Future<String> future = contextAwareExecutor.executeWithDefaultContext(() -> {
+            try {
+                return Source.findLanguage(envInternal.getTruffleFile(uri));
+            } catch (IOException ex) {
+                return null;
+            }
+        });
+
         try {
-            return Source.findLanguage(envInternal.getTruffleFile(uri));
-        } catch (IOException ex) {
-            return null;
+            return future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -383,56 +383,9 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
         return future;
     }
 
-    public Future<?> showCoverage(URI uri) {
+    public Future<Coverage> getCoverage(URI uri) {
         return contextAwareExecutor.executeWithDefaultContext(() -> {
-            coverageHandler.showCoverageWithEnteredContext(uri);
-            return null;
-        });
-    }
-
-    /**
-     * Clears all collected coverage data for all files. See {@link #clearCoverage(URI)} for
-     * details.
-     *
-     * @return a future
-     */
-    public Future<?> clearCoverage() {
-        return contextAwareExecutor.executeWithDefaultContext(() -> {
-            logger.fine("Clearing and re-parsing all files with coverage data...");
-            List<PublishDiagnosticsParams> params = new ArrayList<>();
-            surrogateMap.getSurrogates().stream().forEach(surrogate -> {
-                surrogate.clearCoverage();
-                try {
-                    sourceCodeEvaluator.parse(surrogate);
-                    params.add(PublishDiagnosticsParams.create(surrogate.getUri().toString(), Collections.emptyList()));
-                } catch (DiagnosticsNotification e) {
-                    params.addAll(e.getDiagnosticParamsCollection());
-                }
-            });
-            logger.fine("Clearing and re-parsing done.");
-
-            throw new DiagnosticsNotification(params);
-        });
-    }
-
-    /**
-     * Clears the coverage data for a specific URI. Clearing means removing all Diagnostics used to
-     * highlight covered code. To avoid hiding syntax errors, the URIs source is parsed again. If
-     * errors occur during parsing, a {@link DiagnosticsNotification} is thrown. If not, we still
-     * have to clear all Diagnostics by throwing an empty {@link DiagnosticsNotification}
-     * afterwards.
-     *
-     * @param uri to source to clear coverage data for
-     * @return a future
-     */
-    public Future<?> clearCoverage(URI uri) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> {
-            TextDocumentSurrogate surrogate = surrogateMap.get(uri);
-            if (surrogate != null) {
-                surrogate.clearCoverage();
-                sourceCodeEvaluator.parse(surrogate);
-            }
-            throw new DiagnosticsNotification(PublishDiagnosticsParams.create(uri.toString(), Collections.emptyList()));
+            return coverageHandler.getCoverageWithEnteredContext(uri);
         });
     }
 

@@ -34,15 +34,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadStringNodeGen.ForeignReadStringNodeGen;
@@ -67,10 +65,11 @@ public abstract class LLVMReadStringNode extends LLVMNode {
         return (String) foreign.getObject();
     }
 
-    @Specialization(guards = "isForeign(foreign)")
-    String readForeign(LLVMManagedPointer foreign,
+    @Specialization(guards = "foreigns.isForeign(pointer)")
+    String readForeign(LLVMManagedPointer pointer,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
                     @Cached("create()") ForeignReadStringNode read) {
-        return read.execute(foreign);
+        return read.execute(pointer, foreigns.asForeign(pointer));
     }
 
     @Fallback
@@ -86,20 +85,14 @@ public abstract class LLVMReadStringNode extends LLVMNode {
         return pointer.getOffset() == 0 && pointer.getObject() instanceof String;
     }
 
-    protected static boolean isForeign(LLVMManagedPointer pointer) {
-        return pointer.getOffset() == 0 && pointer.getObject() instanceof LLVMTypedForeignObject;
-    }
-
     abstract static class Dummy extends LLVMNode {
 
         protected abstract LLVMManagedPointer execute();
     }
 
-    @NodeChild(value = "object", type = Dummy.class)
-    @NodeChild(value = "foreign", type = LLVMAsForeignNode.class, executeWith = "object")
     abstract static class ForeignReadStringNode extends LLVMNode {
 
-        protected abstract String execute(LLVMManagedPointer foreign);
+        protected abstract String execute(LLVMManagedPointer pointer, Object foreign);
 
         @Specialization(limit = "3")
         String doDefault(@SuppressWarnings("unused") LLVMManagedPointer object, Object foreign,
@@ -115,7 +108,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
         }
 
         public static ForeignReadStringNode create() {
-            return ForeignReadStringNodeGen.create(null, LLVMAsForeignNode.createOptional());
+            return ForeignReadStringNodeGen.create();
         }
     }
 
@@ -135,7 +128,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
             }
         }
 
-        @Specialization(guards = {"cachedAddress.equals(address)", "isReadOnlyMemory(cachedAddress)"})
+        @Specialization(guards = {"cachedAddress.isSame(address)", "isReadOnlyMemory(cachedAddress)"})
         String doCachedPointer(@SuppressWarnings("unused") LLVMPointer address,
                         @Cached("address") @SuppressWarnings("unused") LLVMPointer cachedAddress,
                         @Cached("doReadString(cachedAddress)") String result) {

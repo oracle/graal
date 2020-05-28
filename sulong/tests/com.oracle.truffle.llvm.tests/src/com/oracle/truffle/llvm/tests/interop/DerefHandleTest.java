@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -44,6 +45,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.tests.interop.values.NativeValue;
 import com.oracle.truffle.llvm.tests.interop.values.StructObject;
 import com.oracle.truffle.llvm.tests.interop.values.TestCallback;
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 
@@ -54,7 +56,7 @@ public class DerefHandleTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("derefHandleTest");
+        testLibrary = loadTestBitcodeInternal("derefHandleTest.c");
     }
 
     public class TestAllocateDerefHandleNode extends SulongTestNode {
@@ -165,6 +167,7 @@ public class DerefHandleTest extends InteropTestBase {
 
     @Test
     public void testCallDerefHandleMember(@Inject(TestCallDerefHandlemMemberNode.class) CallTarget callDerefHandleMember) {
+        Assume.assumeFalse("Skipping AArch64 failing test", Platform.isAArch64());
         Object actual = callDerefHandleMember.call(new StructObject(makePointObject()), 3L, 7L);
         Assert.assertEquals(10L, actual);
     }

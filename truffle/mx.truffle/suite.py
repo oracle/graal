@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "5.247.0",
   "name" : "truffle",
-  "version" : "20.1.0",
+  "version" : "20.2.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -85,10 +85,8 @@ suite = {
     "LIBFFI_SOURCES" : {
       "resource" : True,
       "version" : "3.2.1",
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-{version}.tar.gz",
-        "https://sourceware.org/pub/libffi/libffi-{version}.tar.gz",
-      ],
+      # original: https://sourceware.org/pub/libffi/libffi-{version}.tar.gz
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-{version}.tar.gz"],
       "sha1" : "280c265b789e041c02e5c97815793dfc283fb1e6",
     },
 
@@ -102,10 +100,8 @@ suite = {
     },
 
     "ANTLR4_COMPLETE": {
-      "urls": [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7.2-complete.jar",
-        "https://www.antlr.org/download/antlr-4.7.2-complete.jar"
-      ],
+      # original: https://www.antlr.org/download/antlr-4.7.2-complete.jar
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7.2-complete.jar"],
       "sha1": "34fc363424d3b060b660f84974a82d6bdc7ebe0c",
     },
   },
@@ -178,6 +174,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "TRUFFLE_TCK_TESTS",
         "TRUFFLE_API",
         "TRUFFLE_SL",
         "mx:JUNIT",
@@ -198,8 +195,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.truffle.api.instrumentation.test",
         "TRUFFLE_API",
-        "TRUFFLE_INSTRUMENT_TEST",
         "mx:JMH_1_21",
       ],
       "requiresConcealed" : {
@@ -1029,25 +1026,6 @@ suite = {
       "maven" : False
     },
 
-    "TRUFFLE_INSTRUMENT_TEST" : {
-      "subDir" : "src",
-      "javaCompliance" : "8+",
-      "dependencies" : [
-        "com.oracle.truffle.api.instrumentation.test",
-      ],
-      "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
-      "distDependencies" : [
-        "TRUFFLE_API",
-        "TRUFFLE_SL",
-        "TRUFFLE_TCK",
-        "sdk:POLYGLOT_TCK",
-        "TRUFFLE_DSL_PROCESSOR",
-      ],
-      "description" : "Instrumentation tests including InstrumentationTestLanguage.",
-      "allowsJavadocWarnings": True,
-      "maven" : False,
-    },
-
      "TRUFFLE_TEST" : {
        "subDir" : "src",
        "javaCompliance" : "8+",
@@ -1065,9 +1043,11 @@ suite = {
        "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
        "distDependencies" : [
          "TRUFFLE_API",
+         "TRUFFLE_SL",
+         "TRUFFLE_TCK_COMMON",
+         "TRUFFLE_TCK_TESTS",
          "TRUFFLE_NFI",
          "TRUFFLE_DSL_PROCESSOR",
-         "TRUFFLE_INSTRUMENT_TEST",
          "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
       ],

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,11 +69,14 @@ final class SPARCIndirectCallOp extends IndirectCallOp {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        crb.recordMark(config.MARKID_INLINE_INVOKE);
-        Register callReg = asRegister(targetAddress);
-        assert !callReg.equals(METHOD);
-        SPARCCall.indirectCall(crb, masm, callReg, callTarget, state);
+        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(false)) {
+            crb.recordMark(config.MARKID_INLINE_INVOKE);
+            Register callReg = asRegister(targetAddress);
+            assert !callReg.equals(METHOD);
+            SPARCCall.indirectCall(crb, masm, callReg, callTarget, state);
+        }
     }
 
     @Override

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.virtual;
 
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -108,9 +109,9 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     }
 
     @Override
-    public JavaKind entryKind(int index) {
+    public JavaKind entryKind(MetaAccessExtensionProvider metaAccessExtensionProvider, int index) {
         assert index >= 0 && index < fields.length;
-        return fields[index].getJavaKind();
+        return metaAccessExtensionProvider.getStorageKind(fields[index].getType());
     }
 
     @Override

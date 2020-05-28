@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -202,6 +202,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                         masm.sub(64, sp, sp, rscratch1);
                     }
                 }
+            }
+            if (config.MARKID_FRAME_COMPLETE != -1) {
+                crb.recordMark(config.MARKID_FRAME_COMPLETE);
             }
             if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
                 try (ScratchRegister sc = masm.getScratchRegister()) {

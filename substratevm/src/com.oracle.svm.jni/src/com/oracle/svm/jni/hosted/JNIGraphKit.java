@@ -26,6 +26,7 @@ package com.oracle.svm.jni.hosted;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
@@ -50,16 +51,16 @@ class JNIGraphKit extends HostedGraphKit {
         return createInvokeWithExceptionAndUnwind(findMethod(JNIGeneratedMethodSupport.class, name, true), InvokeKind.Static, getFrameState(), bci(), bci(), args);
     }
 
-    private InvokeWithExceptionNode createStaticInvokeRetainException(String name, ValueNode... args) {
+    private FixedWithNextNode createStaticInvokeRetainException(String name, ValueNode... args) {
         ResolvedJavaMethod method = findMethod(JNIGeneratedMethodSupport.class, name, true);
         int invokeBci = bci();
         int exceptionEdgeBci = bci();
-        InvokeWithExceptionNode invoke = startInvokeWithException(method, InvokeKind.Static, getFrameState(), invokeBci, exceptionEdgeBci, args);
+        startInvokeWithException(method, InvokeKind.Static, getFrameState(), invokeBci, exceptionEdgeBci, args);
         exceptionPart();
         ExceptionObjectNode exception = exceptionObject();
         setPendingException(exception);
         endInvokeWithException();
-        return invoke;
+        return lastFixedNode;
     }
 
     public InvokeWithExceptionNode nativeCallAddress(ValueNode linkage) {
@@ -124,12 +125,12 @@ class JNIGraphKit extends HostedGraphKit {
         return createStaticInvoke("unpinArrayByAddress", address);
     }
 
-    public InvokeWithExceptionNode getPrimitiveArrayRegionRetainException(JavaKind elementKind, ValueNode array, ValueNode start, ValueNode count, ValueNode buffer) {
+    public FixedWithNextNode getPrimitiveArrayRegionRetainException(JavaKind elementKind, ValueNode array, ValueNode start, ValueNode count, ValueNode buffer) {
         assert elementKind.isPrimitive();
         return createStaticInvokeRetainException("getPrimitiveArrayRegion", createObject(elementKind), array, start, count, buffer);
     }
 
-    public InvokeWithExceptionNode setPrimitiveArrayRegionRetainException(JavaKind elementKind, ValueNode array, ValueNode start, ValueNode count, ValueNode buffer) {
+    public FixedWithNextNode setPrimitiveArrayRegionRetainException(JavaKind elementKind, ValueNode array, ValueNode start, ValueNode count, ValueNode buffer) {
         assert elementKind.isPrimitive();
         return createStaticInvokeRetainException("setPrimitiveArrayRegion", createObject(elementKind), array, start, count, buffer);
     }

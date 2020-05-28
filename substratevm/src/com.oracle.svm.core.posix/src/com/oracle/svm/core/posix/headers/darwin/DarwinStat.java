@@ -26,6 +26,7 @@ package com.oracle.svm.core.posix.headers.darwin;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
@@ -40,9 +41,16 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 public class DarwinStat {
 
     @CStruct(addStructKeyword = true)
-    public interface stat extends PointerBase {
+    public interface stat64 extends PointerBase {
+        @CField
+        long st_size();
     }
 
-    @CFunction("fstat$INODE64")
-    public static native int fstat(int fd, stat buf);
+    @CFunction("fstat64")
+    public static native int fstat64(int fd, stat64 buf);
+
+    public static class NoTransitions {
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        public static native int fstat64(int fd, stat64 buf);
+    }
 }

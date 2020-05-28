@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,9 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -65,7 +67,7 @@ import com.oracle.truffle.tools.chromeinspector.client.InspectWSClient;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 import com.oracle.truffle.tools.chromeinspector.server.WSInterceptorServer;
-import com.oracle.truffle.tools.chromeinspector.server.WebSocketServer;
+import com.oracle.truffle.tools.chromeinspector.server.InspectorServer;
 import com.oracle.truffle.tools.chromeinspector.server.InspectorServerConnection;
 
 /**
@@ -148,7 +150,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             }
         }
         if (jarFile != null) {
-            StringBuilder ssp = new StringBuilder("file://").append(jarFile.getAbsolutePath());
+            StringBuilder ssp = new StringBuilder("file://").append(jarFile.toPath().toUri().getPath());
             if (index < path.length()) {
                 if (path.charAt(index) != '!') {
                     ssp.append('!');
@@ -182,7 +184,8 @@ public final class InspectorInstrument extends TruffleInstrument {
     @com.oracle.truffle.api.Option(help = "Hide internal errors that can occur as a result of debugger inspection. (default:false)", category = OptionCategory.EXPERT) //
     static final OptionKey<Boolean> HideErrors = new OptionKey<>(false);
 
-    @com.oracle.truffle.api.Option(help = "Path to the chrome inspect. (default: randomly generated)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @com.oracle.truffle.api.Option(help = "Path to the chrome inspect. This path should be unpredictable. Do note that any website opened in your browser that has knowledge of the URL can connect to the debugger. A predictable path can thus be " +
+                    "abused by a malicious website to execute arbitrary code on your computer, even if you are behind a firewall. (default: randomly generated)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> Path = new OptionKey<>("");
 
     @com.oracle.truffle.api.Option(help = "Inspect internal sources. (default:false)", category = OptionCategory.INTERNAL) //
@@ -379,8 +382,8 @@ public final class InspectorInstrument extends TruffleInstrument {
     private static final class Server {
 
         private InspectorWSConnection wss;
-        private final String wsspath;
-        private final String wsURL;
+        private final Token token;
+        private final String urlContainingToken;
         private final InspectorExecutionContext executionContext;
 
         Server(final Env env, final String contextName, final HostAndPort hostAndPort, final boolean attach, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
@@ -388,28 +391,30 @@ public final class InspectorInstrument extends TruffleInstrument {
                         final KeyStoreOptions keyStoreOptions, final List<URI> sourcePath, final ConnectionWatcher connectionWatcher) throws IOException {
             InetSocketAddress socketAddress = hostAndPort.createSocket();
             PrintWriter info = new PrintWriter(env.err(), true);
+            final String pathContainingToken;
             if (pathOrNull == null || pathOrNull.isEmpty()) {
-                wsspath = "/" + Long.toHexString(System.identityHashCode(env)) + "-" + Long.toHexString(System.nanoTime() ^ System.identityHashCode(env));
+                pathContainingToken = "/" + generateSecureToken();
             } else {
                 String head = pathOrNull.startsWith("/") ? "" : "/";
-                wsspath = head + pathOrNull;
+                pathContainingToken = head + pathOrNull;
             }
+            token = Token.createHashedTokenFromString(pathContainingToken);
             boolean secure = (!secureHasBeenSet && socketAddress.getAddress().isLoopbackAddress()) ? false : secureValue;
 
             PrintWriter err = (hideErrors) ? null : info;
             executionContext = new InspectorExecutionContext(contextName, inspectInternal, inspectInitialization, env, sourcePath, err);
             if (attach) {
-                wss = new InspectWSClient(socketAddress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, info);
-                wsURL = ((InspectWSClient) wss).getURI().toString();
+                wss = new InspectWSClient(socketAddress, pathContainingToken, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, info);
+                urlContainingToken = ((InspectWSClient) wss).getURI().toString();
             } else {
-                URI wsuri;
+                final URI wsuri;
                 try {
-                    wsuri = new URI(secure ? "wss" : "ws", null, socketAddress.getAddress().getHostAddress(), socketAddress.getPort(), wsspath, null, null);
+                    wsuri = new URI(secure ? "wss" : "ws", null, socketAddress.getAddress().getHostAddress(), socketAddress.getPort(), pathContainingToken, null, null);
                 } catch (URISyntaxException ex) {
                     throw new IOException(ex);
                 }
                 InspectServerSession iss = InspectServerSession.create(executionContext, debugBreak, connectionWatcher);
-                WSInterceptorServer interceptor = new WSInterceptorServer(wsuri, iss, connectionWatcher);
+                WSInterceptorServer interceptor = new WSInterceptorServer(socketAddress.getPort(), token, iss, connectionWatcher);
                 MessageEndpoint serverEndpoint;
                 try {
                     serverEndpoint = env.startServer(wsuri, iss);
@@ -417,11 +422,11 @@ public final class InspectorInstrument extends TruffleInstrument {
                     throw new IOException(vex.getLocalizedMessage());
                 }
                 if (serverEndpoint == null) {
-                    interceptor.close(wsspath);
-                    wss = WebSocketServer.get(socketAddress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
-                    String wsStr = buildAddress(socketAddress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
+                    interceptor.close(token);
+                    wss = InspectorServer.get(socketAddress, token, pathContainingToken, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
+                    String wsStr = buildAddress(socketAddress.getAddress().getHostAddress(), wss.getPort(), pathContainingToken, secure);
                     String address = DEV_TOOLS_PREFIX + wsStr;
-                    wsURL = wsStr.replace("=", "://");
+                    urlContainingToken = wsStr.replace("=", "://");
                     info.println("Debugger listening on port " + wss.getPort() + ".");
                     info.println("To start debugging, open the following URL in Chrome:");
                     info.println("    " + address);
@@ -430,7 +435,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                     restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, iss, interceptor);
                     interceptor.opened(serverEndpoint);
                     wss = interceptor;
-                    wsURL = wsuri.toString();
+                    urlContainingToken = wsuri.toString();
                 }
             }
             if (debugBreak || waitAttached) {
@@ -487,6 +492,20 @@ public final class InspectorInstrument extends TruffleInstrument {
             }
         }
 
+        private static String generateSecureToken() {
+            final byte[] tokenRaw = generateSecureRawToken();
+            // base64url (see https://tools.ietf.org/html/rfc4648 ) without padding
+            // For a fixed-length token, there is no ambiguity in paddingless
+            return Base64.getEncoder().withoutPadding().encodeToString(tokenRaw).replace('/', '_').replace('+', '-');
+        }
+
+        private static byte[] generateSecureRawToken() {
+            // 256 bits of entropy ought to be enough for everybody
+            final byte[] tokenRaw = new byte[32];
+            new SecureRandom().nextBytes(tokenRaw);
+            return tokenRaw;
+        }
+
         private static final String DEV_TOOLS_PREFIX = "chrome-devtools://devtools/bundled/js_app.html?";
         private static final String WS_PREFIX = "ws=";
         private static final String WS_PREFIX_SECURE = "wss=";
@@ -517,7 +536,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
         public void close() throws IOException {
             if (wss != null) {
-                wss.close(wsspath);
+                wss.close(token);
                 wss = null;
             }
         }
@@ -526,13 +545,8 @@ public final class InspectorInstrument extends TruffleInstrument {
             return new InspectorServerConnection() {
 
                 @Override
-                public String getWSPath() {
-                    return wsspath;
-                }
-
-                @Override
                 public String getURL() {
-                    return wsURL;
+                    return urlContainingToken;
                 }
 
                 @Override
@@ -548,7 +562,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                 @Override
                 public void consoleAPICall(String type, Object text) {
                     if (wss != null) {
-                        wss.consoleAPICall(getWSPath(), type, text);
+                        wss.consoleAPICall(token, type, text);
                     }
                 }
             };

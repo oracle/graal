@@ -205,7 +205,7 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
             case "dotAll":
                 return isDotAll();
             default:
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);
         }
     }

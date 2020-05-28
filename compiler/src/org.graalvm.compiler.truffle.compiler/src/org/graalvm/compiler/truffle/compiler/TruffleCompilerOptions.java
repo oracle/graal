@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,14 +30,8 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeS
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningCutoffCountPenalty;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpandAllProximityBonus;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpandAllProximityFactor;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpansionBudget;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpansionCounterPressure;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningInliningBudget;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningInliningCounterPressure;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningNodeCountPenalty;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningPolicy;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningRecursionDepth;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBoundaries;
@@ -111,7 +105,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.truffle.common.SharedTruffleOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -247,42 +240,6 @@ public final class TruffleCompilerOptions {
      */
     @Option(help = "The base inlining budget for language-agnostic inlining", type = OptionType.Expert)
     static final OptionKey<Integer> TruffleInliningInliningBudget = new OptionKey<>(InliningInliningBudget.getDefaultValue());
-
-    /**
-     * Deprecated by {@link PolyglotCompilerOptions#InliningCutoffCountPenalty}.
-     */
-    @Option(help = "Controls how impactful many cutoff nodes is on exploration decision in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    static final OptionKey<Double> TruffleInliningCutoffCountPenalty = new OptionKey<>(InliningCutoffCountPenalty.getDefaultValue());
-
-    /**
-     * Deprecated by {@link PolyglotCompilerOptions#InliningNodeCountPenalty}.
-     */
-    @Option(help = "Controls how impactful the size of the subtree is on exploration decision in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    static final OptionKey<Double> TruffleInliningNodeCountPenalty = new OptionKey<>(InliningNodeCountPenalty.getDefaultValue());
-
-    /**
-     * Deprecated by {@link PolyglotCompilerOptions#InliningExpandAllProximityFactor}.
-     */
-    @Option(help = "Controls how impactful few cutoff nodes are on exploration decisions in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    static final OptionKey<Double> TruffleInliningExpandAllProximityFactor = new OptionKey<>(InliningExpandAllProximityFactor.getDefaultValue());
-
-    /**
-     * Deprecated by {@link PolyglotCompilerOptions#InliningExpandAllProximityBonus}.
-     */
-    @Option(help = "Controls at what point few cutoff nodes are impactful on exploration decisions in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    static final OptionKey<Integer> TruffleInliningExpandAllProximityBonus = new OptionKey<>(InliningExpandAllProximityBonus.getDefaultValue());
-
-    /**
-     * Deprecated by {@link PolyglotCompilerOptions#InliningExpansionCounterPressure}.
-     */
-    @Option(help = "Controls how steep the exploration limit curve grows in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    static final OptionKey<Integer> TruffleInliningExpansionCounterPressure = new OptionKey<>(InliningExpansionCounterPressure.getDefaultValue());
-
-    /**
-     * Deprecated by {@link PolyglotCompilerOptions#InliningInliningCounterPressure}.
-     */
-    @Option(help = "Controls how steep the inlining limit curve grows in language-agnostic inlining", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    static final OptionKey<Integer> TruffleInliningInliningCounterPressure = new OptionKey<>(InliningInliningCounterPressure.getDefaultValue());
     // @formatter:on
 
     private TruffleCompilerOptions() {
@@ -414,12 +371,6 @@ public final class TruffleCompilerOptions {
             result.put(InliningPolicy, identity(TruffleInliningPolicy));
             result.put(InliningExpansionBudget, identity(TruffleInliningExpansionBudget));
             result.put(InliningInliningBudget, identity(TruffleInliningInliningBudget));
-            result.put(InliningCutoffCountPenalty, identity(TruffleInliningCutoffCountPenalty));
-            result.put(InliningNodeCountPenalty, identity(TruffleInliningNodeCountPenalty));
-            result.put(InliningExpandAllProximityFactor, identity(TruffleInliningExpandAllProximityFactor));
-            result.put(InliningExpandAllProximityBonus, identity(TruffleInliningExpandAllProximityBonus));
-            result.put(InliningExpansionCounterPressure, identity(TruffleInliningExpansionCounterPressure));
-            result.put(InliningInliningCounterPressure, identity(TruffleInliningInliningCounterPressure));
             result.put(CompilationExceptionsAreFatal, identity(SharedTruffleCompilerOptions.TruffleCompilationExceptionsAreFatal));
             result.put(PerformanceWarningsAreFatal, booleanToPerformanceWarningKind(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal));
             result.put(TraceInlining, identity(SharedTruffleCompilerOptions.TraceTruffleInlining));

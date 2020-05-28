@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -130,6 +130,15 @@ public class ProcessUtil {
         }
     }
 
+    public static final class TimeoutError extends AssertionError {
+
+        private static final long serialVersionUID = 1L;
+
+        TimeoutError(String command) {
+            super("timeout running command: " + command);
+        }
+    }
+
     public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws IOException {
         if (TestOptions.TEST_AOT_IMAGE == null) {
             org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.ID, bitcodeFile).build();
@@ -206,7 +215,7 @@ public class ProcessUtil {
             StreamReader readOutput = StreamReader.read(process.getInputStream());
             boolean success = process.waitFor(PROCESS_WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
             if (!success) {
-                throw new AssertionError("timeout running command: " + command);
+                throw new TimeoutError(command);
             }
             int llvmResult = process.exitValue();
             return new ProcessResult(command, llvmResult, readError.getResult(), readOutput.getResult());

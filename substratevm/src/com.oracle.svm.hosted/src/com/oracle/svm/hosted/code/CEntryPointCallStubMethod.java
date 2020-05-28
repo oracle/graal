@@ -34,8 +34,10 @@ import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -501,7 +503,9 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
     private void generateExceptionHandler(HostedProviders providers, SubstrateGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
         if (entryPointData.getExceptionHandler() == CEntryPoint.FatalExceptionHandler.class) {
-            kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception));
+            kit.appendStateSplitProxy(exception.stateAfter());
+            CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception);
+            kit.append(leave);
             kit.append(new DeadEndNode());
         } else {
             ResolvedJavaType throwable = providers.getMetaAccess().lookupJavaType(Throwable.class);
@@ -564,7 +568,9 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             ConstantNode enumExceptionMessage = kit.createConstant(kit.getConstantReflection().forString("null return value cannot be converted to a C enum value"), JavaKind.Object);
             kit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, enumExceptionCtor.next(), enumException, enumExceptionMessage);
             assert !enumExceptionCtor.hasNext();
-            kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, enumException));
+            kit.appendStateSplitProxy(kit.getFrameState());
+            CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, enumException);
+            kit.append(leave);
             kit.append(new DeadEndNode());
             kit.endIf();
 
@@ -603,7 +609,20 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
     private static void inlinePrologueAndEpilogue(SubstrateGraphKit kit, InvokeNode prologueInvoke, InvokeNode epilogueInvoke, JavaKind returnKind) {
         if (prologueInvoke != null) {
+            FixedNode next = prologueInvoke.next();
+            FrameState stateAfterPrologue = prologueInvoke.stateAfter();
+            if (stateAfterPrologue == null) {
+                stateAfterPrologue = kit.getFrameState().create(prologueInvoke.bci(), null);
+            } else {
+                stateAfterPrologue = stateAfterPrologue.duplicateWithVirtualState();
+            }
             kit.inline(prologueInvoke, "Inline prologue.", "GraphBuilding");
+            if (next.isAlive() && next.predecessor() instanceof AbstractMergeNode) {
+                AbstractMergeNode merge = (AbstractMergeNode) next.predecessor();
+                if (merge.stateAfter() == null) {
+                    merge.setStateAfter(stateAfterPrologue);
+                }
+            }
             NodeIterable<CEntryPointPrologueBailoutNode> bailoutNodes = kit.getGraph().getNodes().filter(CEntryPointPrologueBailoutNode.class);
             for (CEntryPointPrologueBailoutNode node : bailoutNodes) {
                 ValueNode result = node.getResult();

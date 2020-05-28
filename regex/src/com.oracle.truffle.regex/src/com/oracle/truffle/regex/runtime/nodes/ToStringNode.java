@@ -90,7 +90,7 @@ public abstract class ToStringNode extends Node {
             }
             return stringBuilderToString(sb);
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnsupportedTypeException.create(new Object[]{input});
         }
     }

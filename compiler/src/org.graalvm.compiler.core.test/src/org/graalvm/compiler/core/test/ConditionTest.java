@@ -108,4 +108,27 @@ public class ConditionTest {
         }
     }
 
+    static int[] intBoundaryValues = new int[]{-1, 0, 1, Integer.MIN_VALUE, Integer.MIN_VALUE + 1, Integer.MAX_VALUE - 1, Integer.MAX_VALUE};
+
+    @Test
+    public void testTrueIsDisjoint() {
+        for (Condition c1 : Condition.values()) {
+            for (Condition c2 : Condition.values()) {
+                if (c1.trueIsDisjoint(c2)) {
+                    for (int v1 : intBoundaryValues) {
+                        for (int v2 : intBoundaryValues) {
+                            JavaConstant a = JavaConstant.forInt(v1);
+                            JavaConstant b = JavaConstant.forInt(v2);
+                            boolean result1 = c1.foldCondition(a, b, null, false);
+                            boolean result2 = c2.foldCondition(a, b, null, false);
+                            // If these conditions are disjoint then both conditions can't evaluate
+                            // to true for the same inputs.
+                            assertFalse(String.format("%s %s %s (%s) is not disjoint from %s %s %s (%s)", a, c1, b, result1, a, c2, b, result2), result1 && result2);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 }

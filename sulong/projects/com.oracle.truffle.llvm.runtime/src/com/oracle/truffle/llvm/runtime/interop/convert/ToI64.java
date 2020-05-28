@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,7 +38,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class ToI64 extends ForeignToLLVM {
@@ -93,24 +93,26 @@ public abstract class ToI64 extends ForeignToLLVM {
         return value;
     }
 
-    @Specialization(limit = "5", guards = {"notLLVM(obj)", "interop.isNumber(obj)"})
+    @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "interop.isNumber(foreigns.asForeign(obj))"})
     protected long fromForeign(Object obj,
-                    @CachedLibrary("obj") InteropLibrary interop,
+                    @CachedLibrary("obj") LLVMAsForeignLibrary foreigns,
+                    @CachedLibrary(limit = "3") InteropLibrary interop,
                     @Cached BranchProfile exception) {
         try {
-            return interop.asLong(obj);
+            return interop.asLong(foreigns.asForeign(obj));
         } catch (UnsupportedMessageException ex) {
             exception.enter();
             throw new LLVMPolyglotException(this, "Polyglot number can't be converted to long.");
         }
     }
 
-    @Specialization(limit = "5", guards = {"notLLVM(obj)", "!interop.isNumber(obj)"})
+    @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "!interop.isNumber(obj)"})
     @SuppressWarnings("unused")
-    protected long fromForeignPointer(Object obj,
+    protected Object fromForeignPointer(Object obj,
                     @CachedLibrary("obj") InteropLibrary interop,
-                    @CachedLibrary("obj") LLVMNativeLibrary nativeLib) {
-        return nativeLib.toNativePointer(obj).asNative();
+                    @Cached ToPointer toPointer,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
+        return toPointer.executeWithTarget(obj);
     }
 
     @TruffleBoundary

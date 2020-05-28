@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,7 +59,7 @@ public final class TraceCallTreeListener extends AbstractGraalTruffleRuntimeList
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
         if (target.getOptionValue(PolyglotCompilerOptions.TraceCompilationCallTree)) {
-            runtime.logEvent(0, "opt call tree", target.toString(), target.getDebugProperties(inliningDecision));
+            runtime.logEvent(target, 0, "opt call tree", target.getDebugProperties(inliningDecision));
             logTruffleCallTree(target, inliningDecision);
         }
     }
@@ -80,10 +80,10 @@ public final class TraceCallTreeListener extends AbstractGraalTruffleRuntimeList
                     Map<String, Object> properties = new LinkedHashMap<>();
                     GraalTruffleRuntimeListener.addASTSizeProperty(callNode.getCurrentCallTarget(), inliningDecision, properties);
                     properties.putAll(callNode.getCurrentCallTarget().getDebugProperties(inliningDecision));
-                    runtime.logEvent(depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties);
+                    runtime.logEvent(compilable, depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties, null);
                 } else if (node instanceof OptimizedIndirectCallNode) {
                     int depth = decisionStack == null ? 0 : decisionStack.size() - 1;
-                    runtime.logEvent(depth, "opt call tree", "<indirect>", new LinkedHashMap<>());
+                    runtime.logEvent(compilable, depth, "opt call tree", "<indirect>", null, null);
                 }
                 return true;
             }

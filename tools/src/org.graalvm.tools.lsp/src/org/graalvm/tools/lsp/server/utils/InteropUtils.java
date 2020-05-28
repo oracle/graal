@@ -30,8 +30,13 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 
 public final class InteropUtils {
 
@@ -68,22 +73,68 @@ public final class InteropUtils {
                         clazz == String.class);
     }
 
-    public static String getNodeObjectName(InstrumentableNode node, TruffleLogger logger) {
+    public static VariableInfo[] getNodeObjectVariables(InstrumentableNode node) {
         Object nodeObject = node.getNodeObject();
-        if (nodeObject instanceof TruffleObject) {
-            try {
-                if (INTEROP.isMemberReadable(nodeObject, ReadVariableTag.NAME)) {
-                    return INTEROP.readMember(nodeObject, ReadVariableTag.NAME).toString();
-                }
-                if (INTEROP.isMemberReadable(nodeObject, WriteVariableTag.NAME)) {
-                    return INTEROP.readMember(nodeObject, WriteVariableTag.NAME).toString();
-                }
-            } catch (ThreadDeath td) {
-                throw td;
-            } catch (Throwable t) {
-                logger.log(Level.INFO, node.getClass().getCanonicalName(), t);
-            }
+        if (nodeObject == null) {
+            return VariableInfo.EMPTY;
         }
-        return null;
+        try {
+            if (node.hasTag(ReadVariableTag.class) && INTEROP.isMemberReadable(nodeObject, ReadVariableTag.NAME)) {
+                return getNodeObjectVariables(node, INTEROP.readMember(nodeObject, ReadVariableTag.NAME));
+            }
+            if (node.hasTag(WriteVariableTag.class) && INTEROP.isMemberReadable(nodeObject, WriteVariableTag.NAME)) {
+                return getNodeObjectVariables(node, INTEROP.readMember(nodeObject, WriteVariableTag.NAME));
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (InteropException ex) {
+            throw new AssertionError("Unexpected interop exception", ex);
+        }
+        return VariableInfo.EMPTY;
     }
+
+    private static VariableInfo[] getNodeObjectVariables(InstrumentableNode node, Object namesObject) throws UnsupportedMessageException, InvalidArrayIndexException {
+        if (INTEROP.hasArrayElements(namesObject)) {
+            int size = (int) INTEROP.getArraySize(namesObject);
+            VariableInfo[] infos = new VariableInfo[size];
+            for (int i = 0; i < size; i++) {
+                Object element = INTEROP.readArrayElement(namesObject, i);
+                infos[i] = new VariableInfo(node, element);
+            }
+            return infos;
+        } else {
+            return new VariableInfo[]{new VariableInfo(node, namesObject)};
+        }
+    }
+
+    public static final class VariableInfo {
+
+        private static final VariableInfo[] EMPTY = new VariableInfo[0];
+
+        private final InstrumentableNode node;
+        private final Object nameObject;
+        private final String name;
+
+        VariableInfo(InstrumentableNode node, Object nameObject) throws UnsupportedMessageException {
+            this.node = node;
+            this.nameObject = nameObject;
+            assert INTEROP.isString(nameObject);
+            this.name = INTEROP.asString(nameObject);
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public SourceSection getSourceSection() {
+            if (INTEROP.hasSourceLocation(nameObject)) {
+                try {
+                    return INTEROP.getSourceLocation(nameObject);
+                } catch (UnsupportedMessageException ex) {
+                }
+            }
+            return ((Node) node).getSourceSection();
+        }
+    }
+
 }

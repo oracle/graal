@@ -88,12 +88,16 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(this);
+        return HostWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public boolean equals(Object o) {
-        return HostWrapper.equals(this, o);
+        if (o instanceof PolyglotFunction) {
+            return HostWrapper.equals(languageContext, guestObject, ((PolyglotFunction<?, ?>) o).guestObject);
+        } else {
+            return false;
+        }
     }
 
     @TruffleBoundary

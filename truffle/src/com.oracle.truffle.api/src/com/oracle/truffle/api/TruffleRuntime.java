@@ -167,6 +167,10 @@ public interface TruffleRuntime {
      * every {@link FrameInstance}, returns null. Any non-null result of the visitor indicates that
      * frame iteration should stop.
      *
+     * To get possible asynchronous stack frames, use
+     * {@link TruffleStackTrace#getAsynchronousStackTrace(CallTarget, Frame)} and provide call
+     * target and frame from the last {@link FrameInstance}.
+     *
      * @param visitor the visitor that is called for every matching frame.
      * @return the last result returned by the visitor (which is non-null to indicate that iteration
      *         should stop), or null if the whole stack was iterated.

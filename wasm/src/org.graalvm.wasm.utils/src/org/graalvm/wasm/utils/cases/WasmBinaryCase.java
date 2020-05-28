@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,13 +44,11 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 
-import org.graalvm.wasm.utils.WasmInitialization;
-
 public class WasmBinaryCase extends WasmCase {
     private final byte[] binary;
 
-    public WasmBinaryCase(String name, WasmCaseData data, byte[] binary, WasmInitialization initialization, Properties options) {
-        super(name, data, initialization, options);
+    public WasmBinaryCase(String name, WasmCaseData data, byte[] binary, Properties options) {
+        super(name, data, options);
         this.binary = binary;
     }
 

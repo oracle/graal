@@ -47,6 +47,7 @@ import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibC;
 import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
 import com.oracle.svm.core.windows.headers.Process;
+import com.oracle.svm.core.windows.headers.SysinfoAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 
 @Platforms(Platform.WINDOWS.class)
@@ -77,7 +78,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     @Override
     protected String userHomeValue() {
         WinBase.LPHANDLE tokenHandle = StackValue.get(WinBase.LPHANDLE.class);
-        if (Process.OpenProcessToken(Process.GetCurrentProcess(), Process.TOKEN_QUERY, tokenHandle) == 0) {
+        if (Process.OpenProcessToken(Process.GetCurrentProcess(), Process.TOKEN_QUERY(), tokenHandle) == 0) {
             return "C:\\"; // matches openjdk
         }
 
@@ -124,7 +125,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     @Override
     protected String osVersionValue() {
         ByteBuffer versionBytes = ByteBuffer.allocate(4);
-        versionBytes.putInt(WinBase.GetVersion());
+        versionBytes.putInt(SysinfoAPI.GetVersion());
         int majorVersion = versionBytes.get(3);
         int minorVersion = versionBytes.get(2);
         return majorVersion + "." + minorVersion;

@@ -24,14 +24,10 @@
  */
 package com.oracle.svm.core.image;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 /**
  * A native image heap consist of multiple {@link ImageHeapPartition}s. Every object in the native
  * image heap, is assigned to a position within a {@link ImageHeapPartition}.
  */
-@Platforms(value = Platform.HOSTED_ONLY.class)
 public interface ImageHeapPartition {
     /** Returns the name of the partition. */
     String getName();

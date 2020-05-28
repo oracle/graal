@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,11 @@
 
 package com.oracle.truffle.regex.tregex.buffer;
 
+import java.util.Iterator;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.RangesBuffer;
 
 /**
@@ -69,12 +73,12 @@ public class IntRangesBuffer extends IntArrayBuffer implements RangesBuffer {
 
     @Override
     public int getMinValue() {
-        return Character.MIN_CODE_POINT;
+        return CodePointSet.MIN_VALUE;
     }
 
     @Override
     public int getMaxValue() {
-        return Character.MAX_CODE_POINT;
+        return CodePointSet.MAX_VALUE;
     }
 
     @Override
@@ -95,6 +99,12 @@ public class IntRangesBuffer extends IntArrayBuffer implements RangesBuffer {
     @Override
     public void appendRange(int lo, int hi) {
         assert isEmpty() || leftOf(size() - 1, lo, hi) && !adjacent(size() - 1, lo, hi);
+        add(lo);
+        add(hi);
+    }
+
+    public void appendRangeAllowAdjacent(int lo, int hi) {
+        assert isEmpty() || leftOf(size() - 1, lo, hi);
         add(lo);
         add(hi);
     }
@@ -144,6 +154,32 @@ public class IntRangesBuffer extends IntArrayBuffer implements RangesBuffer {
     @Override
     public IntRangesBuffer create() {
         return new IntRangesBuffer(buf.length);
+    }
+
+    public Iterator<Range> rangesIterator() {
+        return new IntRangesBufferRangesIterator(this);
+    }
+
+    private static final class IntRangesBufferRangesIterator implements Iterator<Range> {
+        private final IntRangesBuffer buf;
+        private int i = 0;
+
+        private IntRangesBufferRangesIterator(IntRangesBuffer buf) {
+            this.buf = buf;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return i < buf.size();
+        }
+
+        @Override
+        public Range next() {
+            Range ret = new Range(buf.getLo(i), buf.getHi(i));
+            i++;
+            return ret;
+        }
+
     }
 
     @TruffleBoundary

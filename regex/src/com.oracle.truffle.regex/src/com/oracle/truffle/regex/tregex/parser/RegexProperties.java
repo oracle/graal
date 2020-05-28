@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class RegexProperties implements JsonConvertible {
 
@@ -63,6 +63,7 @@ public class RegexProperties implements JsonConvertible {
     private boolean negativeLookBehindAssertions = false;
     private boolean largeCountedRepetitions = false;
     private boolean charClassesCanBeMatchedWithMask = true;
+    private boolean fixedCodePointWidth = true;
     private int innerLiteralStart = -1;
     private int innerLiteralEnd = -1;
 
@@ -196,6 +197,18 @@ public class RegexProperties implements JsonConvertible {
 
     public void unsetCharClassesCanBeMatchedWithMask() {
         charClassesCanBeMatchedWithMask = false;
+    }
+
+    /**
+     * Returns {@code true} iff no {@link CharacterClass} node in the expression may match a
+     * variable amount of array slots in an encoded string.
+     */
+    public boolean isFixedCodePointWidth() {
+        return fixedCodePointWidth;
+    }
+
+    public void setFixedCodePointWidth(boolean fixedCodePointWidth) {
+        this.fixedCodePointWidth = fixedCodePointWidth;
     }
 
     public void setInnerLiteral(int start, int end) {

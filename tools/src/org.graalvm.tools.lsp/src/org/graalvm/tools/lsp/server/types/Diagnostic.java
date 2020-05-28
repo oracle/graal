@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,12 +35,10 @@ import java.util.Objects;
  * Represents a diagnostic, such as a compiler error or warning. Diagnostic objects are only valid
  * in the scope of a resource.
  */
-public class Diagnostic {
-
-    final JSONObject jsonData;
+public class Diagnostic extends JSONBase {
 
     Diagnostic(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -106,6 +104,32 @@ public class Diagnostic {
     }
 
     /**
+     * Additional metadata about the diagnostic.
+     */
+    public List<DiagnosticTag> getTags() {
+        final JSONArray json = jsonData.optJSONArray("tags");
+        if (json == null) {
+            return null;
+        }
+        final List<DiagnosticTag> list = new ArrayList<>(json.length());
+        for (int i = 0; i < json.length(); i++) {
+            list.add(DiagnosticTag.get(json.getInt(i)));
+        }
+        return Collections.unmodifiableList(list);
+    }
+
+    public Diagnostic setTags(List<DiagnosticTag> tags) {
+        if (tags != null) {
+            final JSONArray json = new JSONArray();
+            for (DiagnosticTag diagnosticTag : tags) {
+                json.put(diagnosticTag.getIntValue());
+            }
+            jsonData.put("tags", json);
+        }
+        return this;
+    }
+
+    /**
      * An array of related diagnostic information, e.g. when symbol-names within a scope collide all
      * definitions can be marked via this property.
      */
@@ -159,6 +183,9 @@ public class Diagnostic {
         if (!Objects.equals(this.getMessage(), other.getMessage())) {
             return false;
         }
+        if (!Objects.equals(this.getTags(), other.getTags())) {
+            return false;
+        }
         if (!Objects.equals(this.getRelatedInformation(), other.getRelatedInformation())) {
             return false;
         }
@@ -168,19 +195,22 @@ public class Diagnostic {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 11 * hash + Objects.hashCode(this.getRange());
+        hash = 83 * hash + Objects.hashCode(this.getRange());
         if (this.getSeverity() != null) {
-            hash = 11 * hash + Objects.hashCode(this.getSeverity());
+            hash = 83 * hash + Objects.hashCode(this.getSeverity());
         }
         if (this.getCode() != null) {
-            hash = 11 * hash + Objects.hashCode(this.getCode());
+            hash = 83 * hash + Objects.hashCode(this.getCode());
         }
         if (this.getSource() != null) {
-            hash = 11 * hash + Objects.hashCode(this.getSource());
+            hash = 83 * hash + Objects.hashCode(this.getSource());
         }
-        hash = 11 * hash + Objects.hashCode(this.getMessage());
+        hash = 83 * hash + Objects.hashCode(this.getMessage());
+        if (this.getTags() != null) {
+            hash = 83 * hash + Objects.hashCode(this.getTags());
+        }
         if (this.getRelatedInformation() != null) {
-            hash = 11 * hash + Objects.hashCode(this.getRelatedInformation());
+            hash = 83 * hash + Objects.hashCode(this.getRelatedInformation());
         }
         return hash;
     }

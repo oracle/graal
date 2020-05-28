@@ -85,6 +85,7 @@ final class PolyglotContextConfig {
     private volatile Map<String, String> configuredEnvironement;
     private volatile ZoneId timeZone;
     final PolyglotLimits limits;
+    final ClassLoader hostClassLoader;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
@@ -92,7 +93,7 @@ final class PolyglotContextConfig {
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, FileSystem internalFileSystem, Handler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
-                    ZoneId timeZone, PolyglotLimits limits) {
+                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader) {
         assert out != null;
         assert err != null;
         assert in != null;
@@ -134,6 +135,7 @@ final class PolyglotContextConfig {
         this.processHandler = processHandler;
         this.environmentAccess = environmentAccess;
         this.environment = environment == null ? Collections.emptyMap() : environment;
+        this.hostClassLoader = hostClassLoader;
     }
 
     public ZoneId getTimeZone() {
@@ -208,7 +210,7 @@ final class PolyglotContextConfig {
                             result = Collections.unmodifiableMap(result);
                         }
                     } else {
-                        throw new IllegalStateException(String.format("Unsupported EnvironmentAccess: %s", environmentAccess));
+                        throw PolyglotEngineException.unsupported(String.format("Unsupported EnvironmentAccess: %s", environmentAccess));
                     }
                     configuredEnvironement = result;
                 }
@@ -224,8 +226,9 @@ final class PolyglotContextConfig {
                 // Test that "engine options" are not present among the options designated for
                 // this context
                 if (engine.getAllOptions().get(optionKey) != null) {
-                    throw new IllegalArgumentException("Option " + optionKey + " is an engine option. Engine level options can only be configured for contexts without a shared engine set." +
-                                    " To resolve this, configure the option when creating the Engine or create a context without a shared engine.");
+                    throw PolyglotEngineException.illegalArgument(
+                                    "Option " + optionKey + " is an engine option. Engine level options can only be configured for contexts without a shared engine set." +
+                                                    " To resolve this, configure the option when creating the Engine or create a context without a shared engine.");
                 }
             }
             throw OptionValuesImpl.failNotFound(engine.getAllOptions(), optionKey);

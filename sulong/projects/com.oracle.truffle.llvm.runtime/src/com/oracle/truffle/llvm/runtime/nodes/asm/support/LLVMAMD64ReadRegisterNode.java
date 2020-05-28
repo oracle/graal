@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.support;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -49,12 +47,7 @@ public abstract class LLVMAMD64ReadRegisterNode extends LLVMExpressionNode {
 
     @Specialization(replaces = {"readI64"}, rewriteOn = FrameSlotTypeException.class)
     protected Object readAddress(VirtualFrame frame) throws FrameSlotTypeException {
-        if (frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Object) {
-            return frame.getObject(getSlot());
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new FrameSlotTypeException();
-        }
+        return frame.getObject(getSlot());
     }
 
     @Specialization(replaces = {"readI64", "readAddress"})

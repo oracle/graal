@@ -24,17 +24,12 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.windows.headers.WinBase;
-import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -43,10 +38,13 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.windows.headers.MemoryAPI;
+import com.oracle.svm.core.windows.headers.SysinfoAPI;
 
 @AutomaticFeature
-@Platforms(Platform.WINDOWS.class)
 class WindowsVirtualMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -61,19 +59,15 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void initCaches() {
-        WinBase.SYSTEM_INFO sysInfo = StackValue.get(WinBase.SYSTEM_INFO.class);
-        WinBase.GetSystemInfo(sysInfo);
-        int pageSize = sysInfo.dwPageSize();
-        Word value = WordFactory.unsigned(pageSize);
-        CACHED_PAGE_SIZE.get().write(value);
-        int granularity = sysInfo.dwAllocationGranularity();
-        value = WordFactory.unsigned(granularity);
-        CACHED_ALLOC_GRAN.get().write(value);
+        SysinfoAPI.SYSTEM_INFO sysInfo = StackValue.get(SysinfoAPI.SYSTEM_INFO.class);
+        SysinfoAPI.GetSystemInfo(sysInfo);
+        CACHED_PAGE_SIZE.get().write(WordFactory.unsigned(sysInfo.dwPageSize()));
+        CACHED_ALLOC_GRAN.get().write(WordFactory.unsigned(sysInfo.dwAllocationGranularity()));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getPageSize() {
-        Word value = CACHED_PAGE_SIZE.get().read();
+    private static UnsignedWord getPageSize() {
+        UnsignedWord value = CACHED_PAGE_SIZE.get().read();
         if (value.equal(WordFactory.zero())) {
             initCaches();
             value = CACHED_PAGE_SIZE.get().read();
@@ -81,10 +75,9 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
         return value;
     }
 
-    @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
-    public UnsignedWord getGranularity() {
-        Word value = CACHED_ALLOC_GRAN.get().read();
+    private static UnsignedWord getAllocationGranularity() {
+        UnsignedWord value = CACHED_ALLOC_GRAN.get().read();
         if (value.equal(WordFactory.zero())) {
             initCaches();
             value = CACHED_ALLOC_GRAN.get().read();
@@ -92,107 +85,96 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
         return value;
     }
 
+    @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
-    private static int accessAsProt(int access) {
-        if (access == Access.NONE) {
-            return WinBase.PAGE_NOACCESS();
-        }
+    public UnsignedWord getGranularity() {
+        return getPageSize();
+    }
 
-        if ((access & Access.EXECUTE) != 0) {
-            if ((access & Access.READ) != 0) {
-                if ((access & Access.WRITE) != 0) {
-                    return WinBase.PAGE_EXECUTE_READWRITE();
-                } else {
-                    return WinBase.PAGE_EXECUTE_READ();
-                }
-            }
-            if ((access & Access.WRITE) != 0) {
-                return WinBase.PAGE_EXECUTE_READWRITE();
-            }
-            return WinBase.PAGE_EXECUTE();
-        } else {
-            if ((access & Access.READ) != 0) {
-                if ((access & Access.WRITE) != 0) {
-                    return WinBase.PAGE_READWRITE();
-                } else {
-                    return WinBase.PAGE_READONLY();
-                }
-            }
-            if ((access & Access.WRITE) != 0) {
-                return WinBase.PAGE_READWRITE();
-            }
-            return WinBase.PAGE_NOACCESS();
-        }
+    @Override
+    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    public UnsignedWord getAlignment() {
+        return getAllocationGranularity();
     }
 
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
-    private static int accessForMap(int access) {
-        int prot = 0;
+    private static int accessAsProt(int access) {
+        if (access == Access.NONE) {
+            return MemoryAPI.PAGE_NOACCESS();
+        }
 
         if ((access & Access.EXECUTE) != 0) {
-            prot |= WinBase.FILE_MAP_EXECUTE();
+            if ((access & Access.READ) != 0) {
+                if ((access & Access.WRITE) != 0) {
+                    return MemoryAPI.PAGE_EXECUTE_READWRITE();
+                } else {
+                    return MemoryAPI.PAGE_EXECUTE_READ();
+                }
+            }
+            if ((access & Access.WRITE) != 0) {
+                return MemoryAPI.PAGE_EXECUTE_READWRITE();
+            }
+            return MemoryAPI.PAGE_EXECUTE();
+        } else {
+            if ((access & Access.READ) != 0) {
+                if ((access & Access.WRITE) != 0) {
+                    return MemoryAPI.PAGE_READWRITE();
+                } else {
+                    return MemoryAPI.PAGE_READONLY();
+                }
+            }
+            if ((access & Access.WRITE) != 0) {
+                return MemoryAPI.PAGE_READWRITE();
+            }
+            return MemoryAPI.PAGE_NOACCESS();
         }
-        if ((access & Access.WRITE) != 0) {
-            prot |= WinBase.FILE_MAP_WRITE();
-        }
-        if ((access & Access.READ) != 0) {
-            prot |= WinBase.FILE_MAP_READ();
-        }
-
-        return prot;
     }
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public Pointer reserve(UnsignedWord nbytes) {
-        return WinBase.VirtualAlloc(WordFactory.nullPointer(), nbytes, WinBase.MEM_RESERVE(), WinBase.PAGE_READWRITE());
+        return MemoryAPI.VirtualAlloc(WordFactory.nullPointer(), nbytes, MemoryAPI.MEM_RESERVE(), MemoryAPI.PAGE_NOACCESS());
     }
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access) {
-        long fHandle = fileHandle.rawValue();
-        int prot = accessAsProt(access);
-        int sizeHi = (int) (nbytes.rawValue() >>> 32);
-        int sizeLo = (int) (nbytes.rawValue() & 0xFFFFFFFF);
-
-        Pointer fileMapping = WinBase.CreateFileMapping(fHandle, null, prot, sizeHi, sizeLo, null);
-        if (fileMapping.isNull()) {
-            return WordFactory.nullPointer();
-        }
-
-        int offsetHi = (int) (offset.rawValue() >>> 32);
-        int offsetLo = (int) (offset.rawValue() & 0xFFFFFFFF);
-        Pointer addr = WinBase.MapViewOfFile(fileMapping, accessForMap(access), offsetHi, offsetLo, nbytes);
-
-        return fileMapping.isNull() ? WordFactory.nullPointer() : addr;
+        return WordFactory.nullPointer();
     }
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {
-        Pointer addr = WinBase.VirtualAlloc(start, nbytes, WinBase.MEM_COMMIT(), accessAsProt(access));
-        return addr.isNull() ? WordFactory.nullPointer() : addr;
+        return MemoryAPI.VirtualAlloc(start, nbytes, MemoryAPI.MEM_COMMIT(), accessAsProt(access));
     }
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public int protect(PointerBase start, UnsignedWord nbytes, int access) {
         CIntPointer oldProt = StackValue.get(CIntPointer.class);
-        int result = WinBase.VirtualProtect(start, nbytes, accessAsProt(access), oldProt);
+        int result = MemoryAPI.VirtualProtect(start, nbytes, accessAsProt(access), oldProt);
         return (result != 0) ? 0 : -1;
     }
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public int uncommit(PointerBase start, UnsignedWord nbytes) {
-        int result = WinBase.VirtualFree(start, nbytes, WinBase.MEM_DECOMMIT());
+        int result = MemoryAPI.VirtualFree(start, nbytes, MemoryAPI.MEM_DECOMMIT());
         return (result != 0) ? 0 : -1;
     }
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public int free(PointerBase start, UnsignedWord nbytes) {
-        return WinBase.VirtualFree(start, nbytes, WinBase.MEM_RELEASE());
+        assert isValid(start) : "Invalid address range start";
+        int result = MemoryAPI.VirtualFree(start, WordFactory.zero(), MemoryAPI.MEM_RELEASE());
+        return result != 0 ? 0 : -1;
+    }
+
+    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    private static boolean isValid(PointerBase start) {
+        MemoryAPI.MEMORY_BASIC_INFORMATION memoryInfo = StackValue.get(MemoryAPI.MEMORY_BASIC_INFORMATION.class);
+        MemoryAPI.VirtualQuery(start, memoryInfo, SizeOf.unsigned(MemoryAPI.MEMORY_BASIC_INFORMATION.class));
+        return start.equal(memoryInfo.AllocationBase());
     }
 }

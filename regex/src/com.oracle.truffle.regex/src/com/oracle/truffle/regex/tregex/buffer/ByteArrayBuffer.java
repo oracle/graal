@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,6 +86,10 @@ public class ByteArrayBuffer extends AbstractArrayBuffer {
 
     public byte get(int i) {
         return buf[i];
+    }
+
+    public void set(int i, byte b) {
+        buf[i] = b;
     }
 
     public void add(byte b) {

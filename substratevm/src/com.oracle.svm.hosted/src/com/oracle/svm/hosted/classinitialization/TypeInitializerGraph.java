@@ -30,28 +30,18 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
-import org.graalvm.compiler.nodes.java.AccessFieldNode;
 
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
-
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Keeps a type-hierarchy dependency graph for {@link AnalysisType}s from {@code universe}. Each
@@ -65,16 +55,13 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * {@link #computeInitializerSafety}.
  *
  * NOTE: the dependency between methods and type initializers is maintained by the
- * {@link SubstrateClassInitializationPlugin} that emits calls to
- * {@link DynamicHub#ensureInitialized()} for every load, store, call, and instantiation in the
- * bytecode. We extract those dependencies here by using the
- * {@link #getInitializerType(InvokeTypeFlow)} method.
- *
+ * {@link SubstrateClassInitializationPlugin} that emits {@link EnsureClassInitializedNode} for
+ * every load, store, call, and instantiation in the bytecode. These dependencies are collected in
+ * {@link SVMHost#getInitializedClasses}.
  */
 public class TypeInitializerGraph {
     private final SVMHost hostVM;
     private ClassInitializationSupport classInitializationSupport;
-    private AnalysisMethod ensureInitializedMethod;
 
     private enum Safety {
         SAFE,
@@ -87,10 +74,7 @@ public class TypeInitializerGraph {
     private final Map<AnalysisMethod, Safety> methodSafety = new HashMap<>();
     private final Collection<AnalysisMethod> methods;
 
-    TypeInitializerGraph(AnalysisUniverse universe, AnalysisMethod ensureInitializedMethod) {
-        assert universe.getMethods().contains(ensureInitializedMethod);
-
-        this.ensureInitializedMethod = ensureInitializedMethod;
+    TypeInitializerGraph(AnalysisUniverse universe) {
         hostVM = ((SVMHost) universe.hostVM());
         classInitializationSupport = hostVM.getClassInitializationSupport();
 
@@ -171,48 +155,8 @@ public class TypeInitializerGraph {
      */
     private Safety initialMethodSafety(AnalysisMethod m) {
         return m.getTypeFlow().getInvokes().stream().anyMatch(this::isInvokeInitiallyUnsafe) ||
-                        hasStaticFieldAccess(m) ||
+                        hostVM.hasClassInitializerSideEffect(m) ||
                         isSubstitutedMethod(m) ? Safety.UNSAFE : Safety.SAFE;
-    }
-
-    /**
-     * Classes are only safe for automatic initialization if the class initializer has no side
-     * effect on other classes and cannot be influenced by other classes. Otherwise there would be
-     * observable side effects. For example, if a class initializer of class A writes a static field
-     * B.f in class B, then someone could rely on reading the old value of B.f before triggering
-     * initialization of A. Similarly, if a class initializer of class A reads a static field B.f,
-     * then an early automatic initialization of class A could read a non-yet-set value of B.f.
-     *
-     * Note that it is not necessary to disallow instance field accesses: Objects allocated by the
-     * class initializer itself can always be accessed because they are independent from other
-     * initializers; all other objects must be loaded transitively from a static field.
-     *
-     * Currently, we are conservative and mark all methods that access static fields as unsafe for
-     * automatic class initialization (unless the class initializer itself accesses a static field
-     * of its own class - the common way of initializing static fields). The check could be relaxed
-     * by tracking the call chain, i.e., allowing static field accesses when the root method of the
-     * call chain is the class initializer. But this does not fit well into the current approach
-     * where each method has a `Safety` flag.
-     */
-    private static boolean hasStaticFieldAccess(AnalysisMethod m) {
-        StructuredGraph graph = m.getTypeFlow().getGraph();
-        if (graph != null) {
-            for (Node n : graph.getNodes()) {
-                if (n instanceof AccessFieldNode) {
-                    ResolvedJavaField field = ((AccessFieldNode) n).field();
-                    if (field.isStatic() && (!m.isClassInitializer() || !field.getDeclaringClass().equals(m.getDeclaringClass()))) {
-                        return true;
-                    }
-                } else if (n instanceof UnsafeAccessNode) {
-                    /*
-                     * Unsafe memory access nodes are rare, so it does not pay off to check what
-                     * kind of field they are accessing.
-                     */
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private boolean isSubstitutedMethod(AnalysisMethod m) {
@@ -220,14 +164,11 @@ public class TypeInitializerGraph {
     }
 
     /**
-     * Unsafe invokes (1) call native methods, (2) can't be statically bound, and/or (3) initialize
-     * unknown classes programmatically.
+     * Unsafe invokes (1) call native methods, and/or (2) can't be statically bound.
      */
     private boolean isInvokeInitiallyUnsafe(InvokeTypeFlow i) {
-        assert !ensureInitializedMethod.isNative();
         return i.getTargetMethod().isNative() ||
-                        !i.canBeStaticallyBound() ||
-                        (i.getTargetMethod().equals(ensureInitializedMethod) && !getInitializerType(i).isPresent());
+                        !i.canBeStaticallyBound();
     }
 
     /**
@@ -245,8 +186,8 @@ public class TypeInitializerGraph {
     }
 
     /**
-     * A method is unsafe if any of it's invokes (1) are unsafe or (2) they depend on an unsafe
-     * class initializer.
+     * A method is unsafe if (1) any of it's invokes are unsafe or (2) the method depends on an
+     * unsafe class initializer.
      */
     private boolean updateMethodSafety(AnalysisMethod m) {
         assert methodSafety.get(m) == Safety.SAFE;
@@ -255,36 +196,19 @@ public class TypeInitializerGraph {
             methodSafety.put(m, Safety.UNSAFE);
             return true;
         }
+        if (hostVM.getInitializedClasses(m).stream().anyMatch(this::isUnsafe)) {
+            methodSafety.put(m, Safety.UNSAFE);
+            return true;
+        }
         return false;
     }
 
     /**
-     * Invoke becomes unsafe if (1) it calls unsafe static initialization, or (2) it calls other
-     * unsafe methods.
+     * Invoke becomes unsafe if it calls other unsafe methods.
      */
     private boolean isInvokeUnsafeIterative(InvokeTypeFlow i) {
         assert i.getTargetMethod() != null : "All methods can be statically bound.";
-        return getInitializerType(i)
-                        .map(this::isUnsafe)
-                        .orElseGet(() -> methodSafety.get(i.getTargetMethod()) == Safety.UNSAFE);
-    }
-
-    /**
-     * Gets a type that is being initalized with Class.ensureInitialized when {@code i} calls
-     * {@link DynamicHub#ensureInitialized} and the argument is constant. Otherwise, this is a
-     * regular call and we return an empty option.
-     */
-    private Optional<AnalysisType> getInitializerType(InvokeTypeFlow i) {
-        if (i.getTargetMethod().equals(ensureInitializedMethod)) {
-            assert i.getActualParameters().length == 1 : "ensureInitialized should have only one parameter, found " + i.getActualParameters().length;
-            if (i.getActualParameters()[0].getSource() instanceof ConstantNode) {
-                assert SubstrateObjectConstant
-                                .asObject(((ConstantNode) i.getActualParameters()[0].getSource()).asConstant()) instanceof DynamicHub : "ensureInitialized must receive a constant dynamic hub";
-                DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(((ConstantNode) i.getActualParameters()[0].getSource()).asConstant());
-                return Optional.of(hostVM.lookupType(hub));
-            }
-        }
-        return Optional.empty();
+        return methodSafety.get(i.getTargetMethod()) == Safety.UNSAFE;
     }
 
     private void addInitializer(AnalysisType t) {

@@ -25,9 +25,9 @@
 package com.oracle.truffle.tools.chromeinspector.server;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.tools.chromeinspector.instrument.Token;
 import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
 
@@ -38,13 +38,15 @@ import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection
  */
 public final class WSInterceptorServer implements InspectorWSConnection, MessageEndpoint {
 
-    private final URI uri;
+    private final int port;
+    private final Token token;
     private final ConnectionWatcher connectionWatcher;
     private InspectServerSession iss;
     private MessageEndpoint inspectEndpoint;
 
-    public WSInterceptorServer(URI uri, InspectServerSession iss, ConnectionWatcher connectionWatcher) {
-        this.uri = uri;
+    public WSInterceptorServer(int port, Token token, InspectServerSession iss, ConnectionWatcher connectionWatcher) {
+        this.port = port;
+        this.token = token;
         this.connectionWatcher = connectionWatcher;
         this.iss = iss;
         iss.setMessageListener(this);
@@ -64,21 +66,21 @@ public final class WSInterceptorServer implements InspectorWSConnection, Message
 
     @Override
     public int getPort() {
-        return uri.getPort();
+        return port;
     }
 
     @Override
-    public void close(String path) throws IOException {
+    public void close(Token tokenToClose) throws IOException {
         iss.setMessageListener(null);
         if (inspectEndpoint != null) {
-            if (path.equals(uri.getPath())) {
+            if (tokenToClose.equals(this.token)) {
                 inspectEndpoint.sendClose();
             }
         }
     }
 
     @Override
-    public void consoleAPICall(String wsspath, String type, Object text) {
+    public void consoleAPICall(Token tokenToCall, String type, Object text) {
         iss.consoleAPICall(type, text);
     }
 

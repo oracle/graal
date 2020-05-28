@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -153,7 +153,7 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
         @Specialization
         protected long doFloat(float from,
-                        @Cached("createBinaryProfile()") ConditionProfile profile) {
+                        @Cached ConditionProfile profile) {
             if (profile.profile(fitsIntoSignedLong(from))) {
                 return (long) from;
             } else {
@@ -163,7 +163,7 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
         @Specialization
         protected long doDouble(double from,
-                        @Cached("createBinaryProfile()") ConditionProfile profile) {
+                        @Cached ConditionProfile profile) {
             if (profile.profile(fitsIntoSignedLong(from))) {
                 return (long) from;
             } else {

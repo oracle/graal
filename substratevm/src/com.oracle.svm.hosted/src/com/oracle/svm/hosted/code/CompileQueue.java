@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -98,6 +99,8 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.nodes.MacroNode;
 import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -341,7 +344,7 @@ public class CompileQueue {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
-            UninterruptibleAnnotationChecker.check(debug, universe.getMethods());
+            new UninterruptibleAnnotationChecker(universe.getMethods()).check();
             // Checking @RestrictHeapAccess annotations does not take long enough to justify a
             // timer.
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
@@ -389,6 +392,10 @@ public class CompileQueue {
         phaseSuite.appendPhase(new StrengthenStampsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
         return phaseSuite;
+    }
+
+    public Collection<CompileTask> getCompilationTasks() {
+        return compilations.values();
     }
 
     private void printMethodHistogram() {
@@ -481,8 +488,8 @@ public class CompileQueue {
                         .forEach(method -> ensureParsed(method, new EntryPointReason()));
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
-        foreignCallsProvider.getForeignCalls().keySet().stream()
-                        .map(descriptor -> (HostedMethod) descriptor.findMethod(runtimeConfig.getProviders().getMetaAccess()))
+        foreignCallsProvider.getForeignCalls().values().stream()
+                        .map(linkage -> (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess()))
                         .filter(method -> method.wrapped.isRootMethod())
                         .forEach(method -> ensureParsed(method, new EntryPointReason()));
     }
@@ -687,7 +694,9 @@ public class CompileQueue {
     @SuppressWarnings("try")
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config) {
         if ((!NativeImageOptions.AllowFoldMethods.getValue() && method.getAnnotation(Fold.class) != null) || method.getAnnotation(NodeIntrinsic.class) != null) {
-            throw VMError.shouldNotReachHere("Parsing method annotated with @Fold or @NodeIntrinsic: " + method.format("%H.%n(%p)"));
+            throw VMError.shouldNotReachHere("Parsing method annotated with @" + Fold.class.getSimpleName() + " or " + NodeIntrinsic.class.getSimpleName() + ": " +
+                            method.format("%H.%n(%p)") +
+                            ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
         }
 
         HostedProviders providers = (HostedProviders) config.lookupBackend(method).getProviders();
@@ -732,28 +741,17 @@ public class CompileQueue {
                         invoke.setUseForInlining(false);
                     }
                     CallTargetNode targetNode = invoke.callTarget();
-                    HostedMethod invokeTarget = (HostedMethod) targetNode.targetMethod();
-                    if (targetNode.invokeKind().isIndirect() || targetNode instanceof IndirectCallTargetNode) {
-                        for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
-                            handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
-                            ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
-                        }
-                    } else {
+                    ensureParsed(method, reason, targetNode, (HostedMethod) targetNode.targetMethod(), targetNode.invokeKind().isIndirect() || targetNode instanceof IndirectCallTargetNode);
+                }
+                for (Node n : graph.getNodes()) {
+                    if (n instanceof MacroNode) {
                         /*
-                         * Direct calls to instance methods (invokespecial bytecode or devirtualized
-                         * calls) can go to methods that are unreachable if the receiver is always
-                         * null. At this time, we do not know the receiver types, so we filter such
-                         * invokes by looking at the reachability status from the point of view of
-                         * the static analysis. Note that we cannot use "isImplementationInvoked"
-                         * because (for historic reasons) it also returns true if a method has a
-                         * graph builder plugin registered. All graph builder plugins are already
-                         * applied during parsing before we reach this point, so we look at the
-                         * "simple" implementation invoked status.
+                         * A MacroNode might be lowered back to a regular invoke. At this point we
+                         * do not know if that happens, but we need to prepared and have the graph
+                         * of the potential callee parsed as if the MacroNode was an Invoke.
                          */
-                        if (invokeTarget.wrapped.isSimplyImplementationInvoked()) {
-                            handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
-                            ensureParsed(invokeTarget, new DirectCallReason(method, reason));
-                        }
+                        MacroNode macroNode = (MacroNode) n;
+                        ensureParsed(method, reason, null, (HostedMethod) macroNode.getTargetMethod(), macroNode.getInvokeKind().isIndirect());
                     }
                 }
 
@@ -765,6 +763,30 @@ public class CompileQueue {
 
         } catch (Throwable e) {
             throw debug.handle(e);
+        }
+    }
+
+    private void ensureParsed(HostedMethod method, CompileReason reason, CallTargetNode targetNode, HostedMethod invokeTarget, boolean isIndirect) {
+        if (isIndirect) {
+            for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
+                handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
+                ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
+            }
+        } else {
+            /*
+             * Direct calls to instance methods (invokespecial bytecode or devirtualized calls) can
+             * go to methods that are unreachable if the receiver is always null. At this time, we
+             * do not know the receiver types, so we filter such invokes by looking at the
+             * reachability status from the point of view of the static analysis. Note that we
+             * cannot use "isImplementationInvoked" because (for historic reasons) it also returns
+             * true if a method has a graph builder plugin registered. All graph builder plugins are
+             * already applied during parsing before we reach this point, so we look at the "simple"
+             * implementation invoked status.
+             */
+            if (invokeTarget.wrapped.isSimplyImplementationInvoked()) {
+                handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
+                ensureParsed(invokeTarget, new DirectCallReason(method, reason));
+            }
         }
     }
 
@@ -793,6 +815,10 @@ public class CompileQueue {
         return gbConf;
     }
 
+    protected boolean containsStackValueNode(HostedMethod method) {
+        return universe.getBigBang().getHostVM().containsStackValueNode(method.wrapped);
+    }
+
     protected boolean canBeUsedForInlining(Invoke invoke) {
         HostedMethod caller = (HostedMethod) invoke.asNode().graph().method();
         HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
@@ -804,7 +830,7 @@ public class CompileQueue {
              */
             return false;
         }
-        if (canDeoptForTesting(caller) && universe.getMethodsWithStackValues().contains(callee.wrapped)) {
+        if (canDeoptForTesting(caller) && containsStackValueNode(callee)) {
             /*
              * We must not inline a method that has stack values and can be deoptimized.
              */
@@ -1105,7 +1131,7 @@ public class CompileQueue {
             /* Deoptimization runtime cannot fill the callee saved registers. */
             return false;
         }
-        if (universe.getMethodsWithStackValues().contains(method.wrapped)) {
+        if (containsStackValueNode(method)) {
             return false;
         }
 
@@ -1155,6 +1181,11 @@ public class CompileQueue {
                 fixedWithNext.setNext(null);
                 testNode.setNext(next);
                 fixedWithNext.setNext(testNode);
+                if (((StateSplit) node).hasSideEffect() && ((StateSplit) node).stateAfter() != null) {
+                    testNode.setStateAfter(((StateSplit) node).stateAfter().duplicateWithVirtualState());
+                } else {
+                    testNode.setStateAfter(SnippetTemplate.findLastFrameState((FixedNode) node).duplicateWithVirtualState());
+                }
             }
         }
     }

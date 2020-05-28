@@ -96,6 +96,8 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
 
     public abstract LLVMBasicBlockNode initialize();
 
+    public abstract LLVMStatementNode[] getStatements();
+
     @Override
     public abstract void execute(VirtualFrame frame);
 
@@ -157,6 +159,11 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
         public LLVMBasicBlockNode initialize() {
             // this block is already initialized
             return this;
+        }
+
+        @Override
+        public final LLVMStatementNode[] getStatements() {
+            return statements;
         }
 
         @Specialization
@@ -254,6 +261,11 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
             replace(materializedBlock, "Lazily Inserting LLVM Basic Block");
             notifyInserted(materializedBlock);
             return materializedBlock;
+        }
+
+        @Override
+        public final LLVMStatementNode[] getStatements() {
+            return statements;
         }
 
         @Specialization

@@ -152,6 +152,10 @@ final class LibGraalMemoryPoolMBean implements DynamicMBean {
         }
     }
 
+    void update() {
+        updateMemStat();
+    }
+
     private CompositeData getUsage() {
         try {
             return new CompositeDataSupport(USAGE_TYPE, USAGE_TYPE_ATTRS, updateMemStat());

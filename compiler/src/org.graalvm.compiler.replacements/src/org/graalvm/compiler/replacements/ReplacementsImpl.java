@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,8 @@
 package org.graalvm.compiler.replacements;
 
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.UseSnippetGraphCache;
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineIntrinsicsDuringParsing;
@@ -36,8 +36,6 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.Compi
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -56,6 +54,7 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
@@ -83,6 +82,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -136,11 +136,13 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     @Override
     public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
-        if (method.getAnnotation(Node.NodeIntrinsic.class) != null || method.getAnnotation(Fold.class) != null) {
-            return GeneratedInvocationPlugin.class;
-        }
-        if (method.getAnnotation(Word.Operation.class) != null) {
-            return WordOperationPlugin.class;
+        if (!IS_IN_NATIVE_IMAGE) {
+            if (method.getAnnotation(Node.NodeIntrinsic.class) != null || method.getAnnotation(Fold.class) != null) {
+                return GeneratedInvocationPlugin.class;
+            }
+            if (method.getAnnotation(Word.Operation.class) != null) {
+                return WordOperationPlugin.class;
+            }
         }
         return null;
     }
@@ -221,8 +223,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         if (DebugStubsAndSnippets.getValue(options)) {
             DebugContext outer = DebugContext.forCurrentThread();
             Description description = new Description(method, idPrefix + nextDebugContextId.incrementAndGet());
-            List<DebugHandlersFactory> factories = debugHandlersFactory == null ? Collections.emptyList() : Collections.singletonList(debugHandlersFactory);
-            return DebugContext.create(options, description, outer.getGlobalMetrics(), DEFAULT_LOG_STREAM, factories);
+            return new Builder(options, debugHandlersFactory).globalMetrics(outer.getGlobalMetrics()).description(description).build();
         }
         return DebugContext.disabled(options);
     }
@@ -254,6 +255,16 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         }
         assert !trackNodeSourcePosition || graph.trackNodeSourcePosition();
         return graph;
+    }
+
+    @Override
+    public SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method) {
+        return new SnippetParameterInfo(method);
+    }
+
+    @Override
+    public boolean isSnippet(ResolvedJavaMethod method) {
+        return method.getAnnotation(Snippet.class) != null;
     }
 
     @Override
@@ -504,6 +515,9 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
             @Override
             public boolean isDeferredInvoke(StateSplit stateSplit) {
+                if (IS_IN_NATIVE_IMAGE) {
+                    throw GraalError.shouldNotReachHere("unused in libgraal");
+                }
                 if (stateSplit instanceof Invoke) {
                     Invoke invoke = (Invoke) stateSplit;
                     ResolvedJavaMethod method = invoke.callTarget().targetMethod();
@@ -550,8 +564,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 }
 
                 IntrinsicContext initialIntrinsicContext = null;
-                Snippet snippetAnnotation = method.getAnnotation(Snippet.class);
-                MethodSubstitution methodAnnotation = method.getAnnotation(MethodSubstitution.class);
+                Snippet snippetAnnotation = null;
+                MethodSubstitution methodAnnotation = null;
+                if (!IS_IN_NATIVE_IMAGE) {
+                    snippetAnnotation = method.getAnnotation(Snippet.class);
+                    methodAnnotation = method.getAnnotation(MethodSubstitution.class);
+                }
                 if (methodAnnotation == null && snippetAnnotation == null) {
                     // Post-parse inlined intrinsic
                     initialIntrinsicContext = new EncodedIntrinsicContext(substitutedMethod, method, bytecodeProvider, context, false);

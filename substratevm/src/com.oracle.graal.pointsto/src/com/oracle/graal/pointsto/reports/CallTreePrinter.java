@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.reports;
 
-import static com.oracle.graal.pointsto.reports.CallTreePrinter.SourceReference.UNKNOWN_SOURCE_REFERENCE;
 import static com.oracle.graal.pointsto.reports.ReportUtils.CHILD;
 import static com.oracle.graal.pointsto.reports.ReportUtils.CONNECTING_INDENT;
 import static com.oracle.graal.pointsto.reports.ReportUtils.EMPTY_INDENT;
@@ -46,13 +45,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.FrameState;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class CallTreePrinter {
@@ -120,12 +117,12 @@ public final class CallTreePrinter {
     static class InvokeNode {
         private final AnalysisMethod targetMethod;
         private final List<Node> callees;
-        private final InvokeKind kind;
+        private final boolean isDirectInvoke;
         private final SourceReference[] sourceReferences;
 
-        InvokeNode(AnalysisMethod targetMethod, InvokeKind kind, SourceReference[] sourceReferences) {
+        InvokeNode(AnalysisMethod targetMethod, boolean isDirectInvoke, SourceReference[] sourceReferences) {
             this.targetMethod = targetMethod;
-            this.kind = kind;
+            this.isDirectInvoke = isDirectInvoke;
             this.sourceReferences = sourceReferences;
             this.callees = new ArrayList<>();
         }
@@ -179,7 +176,7 @@ public final class CallTreePrinter {
 
     private void processInvoke(InvokeTypeFlow invokeFlow, MethodNode callerNode, Deque<MethodNode> workList) {
 
-        InvokeNode invokeNode = new InvokeNode(invokeFlow.getTargetMethod(), invokeFlow.invoke().getInvokeKind(), sourceReference(invokeFlow));
+        InvokeNode invokeNode = new InvokeNode(invokeFlow.getTargetMethod(), invokeFlow.isDirectInvoke(), sourceReference(invokeFlow));
         callerNode.addInvoke(invokeNode);
 
         invokeFlow.getCallees().stream().sorted(methodComparator).forEach(callee -> {
@@ -209,14 +206,10 @@ public final class CallTreePrinter {
 
     private static SourceReference[] sourceReference(InvokeTypeFlow invoke) {
         List<SourceReference> sourceReference = new ArrayList<>();
-        FrameState state = invoke.getSource().invoke().stateAfter();
+        BytecodePosition state = invoke.getSource();
         while (state != null) {
-            if (state.getCode() != null) {
-                sourceReference.add(new SourceReference(state.bci, state.getCode().asStackTraceElement(state.bci)));
-            } else {
-                sourceReference.add(UNKNOWN_SOURCE_REFERENCE);
-            }
-            state = state.outerFrameState();
+            sourceReference.add(new SourceReference(state.getBCI(), state.getMethod().asStackTraceElement(state.getBCI())));
+            state = state.getCaller();
         }
         return sourceReference.toArray(new SourceReference[sourceReference.size()]);
     }
@@ -240,7 +233,7 @@ public final class CallTreePrinter {
         for (int invokeIdx = 0; invokeIdx < node.invokes.size(); invokeIdx++) {
             InvokeNode invoke = node.invokes.get(invokeIdx);
             boolean lastInvoke = invokeIdx == node.invokes.size() - 1;
-            if (invoke.kind == InvokeKind.Static || invoke.kind == InvokeKind.Special) {
+            if (invoke.isDirectInvoke) {
                 if (invoke.callees.size() > 0) {
                     Node calleeNode = invoke.callees.get(0);
                     out.format("%s%s%s %s @bci=%s %n", prefix, (lastInvoke ? LAST_CHILD : CHILD),
@@ -249,15 +242,14 @@ public final class CallTreePrinter {
                         printCallTreeNode(out, prefix + (lastInvoke ? EMPTY_INDENT : CONNECTING_INDENT), (MethodNode) calleeNode);
                     }
                 }
-            } else if (invoke.kind == InvokeKind.Virtual || invoke.kind == InvokeKind.Interface) {
+            } else {
                 out.format("%s%s%s %s @bci=%s%n", prefix, (lastInvoke ? LAST_CHILD : CHILD),
-                                invoke.kind == InvokeKind.Virtual ? "virtually calls" : "interfacially calls",
-                                invoke.formatTarget(), invoke.formatLocation());
+                                "virtually calls", invoke.formatTarget(), invoke.formatLocation());
                 for (int calleeIdx = 0; calleeIdx < invoke.callees.size(); calleeIdx++) {
                     boolean lastCallee = calleeIdx == invoke.callees.size() - 1;
                     Node calleeNode = invoke.callees.get(calleeIdx);
                     out.format("%s%s%s %s %n", prefix + (lastInvoke ? EMPTY_INDENT : CONNECTING_INDENT), (lastCallee ? LAST_CHILD : CHILD),
-                                    invoke.kind == InvokeKind.Virtual ? "is overridden by" : "is implemented by", calleeNode.format());
+                                    "is overridden by", calleeNode.format());
                     if (calleeNode instanceof MethodNode) {
                         printCallTreeNode(out, prefix + (lastInvoke ? EMPTY_INDENT : CONNECTING_INDENT) + (lastCallee ? EMPTY_INDENT : CONNECTING_INDENT), (MethodNode) calleeNode);
                     }

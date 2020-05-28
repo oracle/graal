@@ -43,10 +43,11 @@ package com.oracle.truffle.api.utilities;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 
 /**
  * A value that the compiler can assume is constant, but can be changed by invalidation.
@@ -75,6 +76,7 @@ public class AssumedValue<T> {
     }
 
     /** @since 0.8 or earlier */
+    @TruffleBoundary
     public AssumedValue(String name, T initialValue) {
         this.name = name;
         value = initialValue;
@@ -88,10 +90,21 @@ public class AssumedValue<T> {
      * @since 0.8 or earlier
      */
     public T get() {
-        try {
-            assumption.check();
-        } catch (InvalidAssumptionException e) {
-            // No need to rewrite anything - just pick up the new values
+        if (CompilerDirectives.isPartialEvaluationConstant(assumption)) {
+            /*
+             * Only check the assumption if we actually constant-fold the value. Otherwise, we might
+             * deoptimize for no reason.
+             *
+             * Note that it's important that the first if condition in this method does a volatile
+             * read on the assumption variable. That acts as a memory barrier, preventing the value
+             * read from floating above in the case where the value is not constant folded and in
+             * the interpreter code. That makes the value field effectively volatile, making this
+             * class thread-safe.
+             */
+            CompilerAsserts.partialEvaluationConstant(value);
+            if (!assumption.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
         }
 
         return value;
@@ -102,8 +115,8 @@ public class AssumedValue<T> {
      *
      * @since 0.8 or earlier
      */
+    @TruffleBoundary
     public void set(T newValue) {
-        CompilerDirectives.transferToInterpreter();
         value = newValue;
 
         Assumption newAssumption = Truffle.getRuntime().createAssumption(name);

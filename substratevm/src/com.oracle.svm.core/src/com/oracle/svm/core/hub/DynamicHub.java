@@ -32,6 +32,7 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Inherited;
+import java.lang.ref.Reference;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
@@ -48,12 +49,8 @@ import java.net.URL;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.security.cert.Certificate;
-import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
 
@@ -78,7 +75,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK15OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.Resources;
@@ -115,6 +115,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * Used to quickly determine in which category a certain hub falls (e.g., instance or array).
      */
     private int hubType;
+
+    /**
+     * Used to quickly determine if this class is a subclass of {@link Reference}.
+     */
+    private byte referenceType;
 
     /**
      * Encoding of the object or array size. Decode using {@link LayoutEncoding}.
@@ -162,6 +167,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * Boolean value or exception that happend at image-build time.
      */
     private Object isAnonymousClass;
+
+    /**
+     * Is this a Hidden Class (Since JDK 15).
+     */
+    private boolean isHidden;
 
     /**
      * The {@link Modifier modifiers} of this class.
@@ -323,10 +333,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private final LazyFinalReference<String> packageNameReference = new LazyFinalReference<>(this::computePackageName);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(String name, HubType hubType, boolean isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName,
-                    int modifiers, ClassLoader classLoader) {
+    public DynamicHub(String name, HubType hubType, ReferenceType referenceType, boolean isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName,
+                    int modifiers, ClassLoader classLoader, boolean isHidden) {
         this.name = name;
         this.hubType = hubType.getValue();
+        this.referenceType = referenceType.getValue();
         this.isLocalClass = isLocalClass;
         this.isAnonymousClass = isAnonymousClass;
         this.superHub = superType;
@@ -334,6 +345,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.sourceFileName = sourceFileName;
         this.modifiers = modifiers;
         this.classLoader = classLoader;
+        this.isHidden = isHidden;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -492,9 +504,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     public void ensureInitialized() {
-        if (!classInitializationInfo.isInitialized()) {
-            classInitializationInfo.initialize(this);
-        }
+        EnsureClassInitializedNode.ensureClassInitialized(toClass(this));
     }
 
     public SharedType getMetaType() {
@@ -753,6 +763,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    public boolean isHidden() {
+        return isHidden;
+    }
+
+    @Substitute
     private boolean isLocalClass() {
         return isLocalClass;
     }
@@ -869,7 +885,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return AnnotationsEncoding.decodeAnnotation(annotationsEncoding, annotationClass);
+        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding).getAnnotation(annotationClass);
     }
 
     @Substitute
@@ -881,7 +897,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @Override
     public Annotation[] getAnnotations() {
-        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding);
+        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding).getAnnotations();
     }
 
     @Substitute
@@ -912,20 +928,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        Map<Annotation, Void> superAnnotations = new IdentityHashMap<>();
-        if (getSuperHub() != null) {
-            for (Annotation annotation : getSuperHub().getAnnotations()) {
-                superAnnotations.put(annotation, null);
-            }
-        }
-
-        ArrayList<Annotation> annotations = new ArrayList<>();
-        for (Annotation annotation : getAnnotations()) {
-            if (!superAnnotations.containsKey(annotation)) {
-                annotations.add(annotation);
-            }
-        }
-        return annotations.toArray(new Annotation[annotations.size()]);
+        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding).getDeclaredAnnotations();
     }
 
     /**
@@ -943,18 +946,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @Override
     public <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
-        Objects.requireNonNull(annotationClass);
-
-        T annotation = AnnotationsEncoding.decodeAnnotation(annotationsEncoding, annotationClass);
-        /*
-         * superclass has the same annotation instance as the base class => annotation comes from
-         * the super class
-         */
-        if (annotation != null && getSuperHub() != null && getSuperHub().getAnnotation(annotationClass) == annotation) {
-            return null;
-        }
-
-        return annotation;
+        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding).getDeclaredAnnotation(annotationClass);
     }
 
     /**

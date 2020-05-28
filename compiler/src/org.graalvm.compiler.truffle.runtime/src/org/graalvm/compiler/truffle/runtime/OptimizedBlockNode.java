@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -604,7 +604,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 }
 
                 PartialBlockRootNode<T> partialRootNode = new PartialBlockRootNode<>(new FrameDescriptor(), block, startIndex, endIndex, blockIndex);
-                runtime.getTvmci().applyPolyglotEngine(rootNode, partialRootNode);
+                GraalRuntimeAccessor.NODES.applyPolyglotEngine(rootNode, partialRootNode);
 
                 targets[i] = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(partialRootNode);
                 targets[i].setNonTrivialNodeCount(blockSizes[i]);

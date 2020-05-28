@@ -305,6 +305,7 @@ class NFIContext {
 
     private static native long loadLibrary(long nativeContext, String name, int flags);
 
+    @TruffleBoundary
     private static native long lookup(long nativeContext, long library, String name);
 
     static native void freeLibrary(long library);

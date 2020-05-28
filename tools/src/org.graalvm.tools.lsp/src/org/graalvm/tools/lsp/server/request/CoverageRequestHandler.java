@@ -26,15 +26,14 @@ package org.graalvm.tools.lsp.server.request;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
+import org.graalvm.tools.lsp.server.types.Coverage;
 import org.graalvm.tools.lsp.server.types.Diagnostic;
 import org.graalvm.tools.lsp.server.types.DiagnosticSeverity;
 import org.graalvm.tools.lsp.server.types.Range;
@@ -155,38 +154,32 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
         surrogateMap.getSurrogates().stream().forEach(surrogate -> surrogate.clearCoverage(runScriptUri));
     }
 
-    public void showCoverageWithEnteredContext(URI uri) throws DiagnosticsNotification {
+    public Coverage getCoverageWithEnteredContext(URI uri) {
         final TextDocumentSurrogate surrogate = surrogateMap.get(uri);
         if (surrogate != null && surrogate.getSourceWrapper() != null && surrogate.getSourceWrapper().isParsingSuccessful()) {
-            SourceSectionFilter filter = SourceSectionFilter.newBuilder() //
+            final SourceSectionFilter filter = SourceSectionFilter.newBuilder() //
                             .sourceIs(surrogate.getSourceWrapper().getSource()) //
                             .tagIs(StatementTag.class) //
                             .build();
-            Set<SourceSection> duplicateFilter = new HashSet<>();
-            Map<URI, List<Diagnostic>> mapDiagnostics = new HashMap<>();
+            final Set<SourceSection> duplicateFilter = new HashSet<>();
+            final List<Range> covered = new ArrayList<>();
+            final List<Range> uncovered = new ArrayList<>();
             env.getInstrumenter().attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
 
                 @Override
                 public void onLoad(LoadSourceSectionEvent event) {
                     SourceSection section = event.getSourceSection();
-                    if (!surrogate.isLocationCovered(SourceSectionReference.from(section)) && !duplicateFilter.contains(section)) {
-                        duplicateFilter.add(section);
-                        Diagnostic diag = Diagnostic.create(SourceUtils.sourceSectionToRange(section),
-                                        "Not covered",
-                                        DiagnosticSeverity.Warning,
-                                        null,
-                                        "Coverage Analysis",
-                                        null);
-                        List<Diagnostic> params = mapDiagnostics.computeIfAbsent(uri, _uri -> new ArrayList<>());
-                        params.add(diag);
+                    if (duplicateFilter.add(section)) {
+                        if (surrogate.isLocationCovered(SourceSectionReference.from(section))) {
+                            covered.add(SourceUtils.sourceSectionToRange(section));
+                        } else {
+                            uncovered.add(SourceUtils.sourceSectionToRange(section));
+                        }
                     }
                 }
             }, true).dispose();
-            throw new DiagnosticsNotification(mapDiagnostics);
-        } else {
-            throw DiagnosticsNotification.create(uri,
-                            Diagnostic.create(Range.create(0, 0, 0, 0),
-                                            "No coverage information available", DiagnosticSeverity.Error, null, "Coverage Analysis", null));
+            return Coverage.create(covered, uncovered);
         }
+        return null;
     }
 }

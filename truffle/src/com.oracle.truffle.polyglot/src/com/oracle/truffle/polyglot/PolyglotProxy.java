@@ -67,6 +67,8 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -78,6 +80,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 
 @SuppressWarnings("deprecation")
 @ExportLibrary(InteropLibrary.class)
@@ -105,6 +108,19 @@ final class PolyglotProxy implements TruffleObject {
     PolyglotProxy(PolyglotLanguageContext context, Proxy proxy) {
         this.languageContext = context;
         this.proxy = proxy;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof PolyglotProxy)) {
+            return false;
+        }
+        return proxy == ((PolyglotProxy) obj).proxy;
+    }
+
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(proxy);
     }
 
     @ExportMessage
@@ -414,7 +430,7 @@ final class PolyglotProxy implements TruffleObject {
 
     @TruffleBoundary
     RuntimeException illegalProxy(String message, Object... parameters) {
-        throw PolyglotImpl.wrapHostException(languageContext, new IllegalStateException(
+        throw PolyglotImpl.hostToGuestException(languageContext, new IllegalStateException(
                         String.format(message, parameters)));
     }
 
@@ -789,11 +805,12 @@ final class PolyglotProxy implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean config) {
         try {
             return this.proxy.toString();
         } catch (Throwable t) {
-            throw PolyglotImpl.wrapHostException(languageContext, t);
+            throw PolyglotImpl.hostToGuestException(languageContext, t);
         }
     }
 
@@ -807,6 +824,26 @@ final class PolyglotProxy implements TruffleObject {
     Object getMetaObject() {
         Class<?> javaObject = this.proxy.getClass();
         return HostObject.forClass(javaObject, languageContext);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static final class IsIdenticalOrUndefined {
+        @Specialization
+        static TriState doHostObject(PolyglotProxy receiver, PolyglotProxy other) {
+            return receiver.proxy == other.proxy ? TriState.TRUE : TriState.FALSE;
+        }
+
+        @Fallback
+        static TriState doOther(PolyglotProxy receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static int identityHashCode(PolyglotProxy receiver) {
+        return System.identityHashCode(receiver.proxy);
     }
 
     public static boolean isProxyGuestObject(TruffleObject value) {

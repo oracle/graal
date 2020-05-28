@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,10 @@ public abstract class TestWithPolyglotOptions {
         for (int i = 0; i < keyValuePairs.length; i += 2) {
             builder.option(keyValuePairs[i], keyValuePairs[i + 1]);
         }
+        return setupContext(builder);
+    }
+
+    protected final Context setupContext(Context.Builder builder) {
         cleanup();
         Context newContext = builder.build();
         newContext.enter();

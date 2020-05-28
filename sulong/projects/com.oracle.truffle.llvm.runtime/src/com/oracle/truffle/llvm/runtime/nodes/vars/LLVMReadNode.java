@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,16 +33,18 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.ForeignAttachInteropTypeNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 public abstract class LLVMReadNode extends LLVMExpressionNode {
 
@@ -119,7 +121,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         @Specialization
         protected Object readGeneric(VirtualFrame frame) {
-            if (frame.getFrameDescriptor().getFrameSlotKind(slot) == FrameSlotKind.Long) {
+            if (frame.isLong(slot)) {
                 return FrameUtil.getLongSafe(frame, slot);
             } else {
                 return FrameUtil.getObjectSafe(frame, slot);
@@ -206,9 +208,11 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
             return ForeignAttachInteropTypeNodeGen.create();
         }
 
-        @Specialization(guards = "object.getType() == null")
-        protected Object doForeign(LLVMTypedForeignObject object, LLVMInteropType.Structured type) {
-            return LLVMTypedForeignObject.create(object.getForeign(), type);
+        @Specialization(guards = {"foreigns.isForeign(object)", "!nativeTypes.hasNativeType(object)"})
+        protected Object doForeignNoNativeType(Object object, LLVMInteropType.Structured type,
+                        @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes) {
+            return LLVMTypedForeignObject.create(foreigns.asForeign(object), type);
         }
 
         @Fallback

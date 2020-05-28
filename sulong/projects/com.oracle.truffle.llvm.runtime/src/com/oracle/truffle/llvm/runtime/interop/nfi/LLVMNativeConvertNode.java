@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.I1FromNativeToLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.IdNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.NativeToAddressNodeGen;
@@ -81,7 +80,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
 
         @Override
         public TruffleObject executeConvert(Object arg) {
-            assert arg == null;
+            assert LLVMPointer.isInstance(arg) && LLVMPointer.cast(arg).isNull();
             return LLVMNativePointer.createNull();
         }
     }
@@ -118,8 +117,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
              * In that case, don't eagerly force TO_NATIVE. If we just call it immediately, we
              * shouldn't throw away the NFI signature just to re-construct it immediately.
              */
-            LLVMTypedForeignObject object = LLVMTypedForeignObject.createUnknown(address);
-            return LLVMManagedPointer.create(object);
+            return LLVMManagedPointer.create(address);
         }
 
         @Specialization(limit = "3", replaces = {"doPointer", "doFunction"})

@@ -1,33 +1,70 @@
+# Version 20.2.0
+
+Changes:
+
+New features:
+
+* The [Java API of the Toolchain](projects/com.oracle.truffle.llvm.api/src/com/oracle/truffle/llvm/api/Toolchain.java)
+  now supports requesting locations via the `#getPaths()` method. For example
+  the location of the toolchain executables or libraries. See the JavaDoc for
+  more details.
+
+* Added `llvm/api/toolchain.h` header for accessing the [Toolchain](docs/TOOLCHAIN.md)
+  from C code.
+
+Removed:
+
+* Removed the `--llvm.sourcePath` option (deprecated since 19.0), use
+  `--inspect.SourcePath` instead.
+
 # Version 20.1.0
 
 Changes:
+
+* `libc++` and `libc++abi` are now shipped as bitcode libraries. For building
+  those `cmake` is required to be installed.
+
+* C++ support (libsulong++) is no longer loaded by default. Instead, it is
+  enabled if `libc++` is loaded. Executables (ELF, Mach-O) compiled with
+  the toolchain usually have a dependency on this library and will continue
+  to work.  Plain bitcode files, which do not allow to specify dependencies,
+  may fail with an error similar to the following:
+  ```
+  Global variable _ZNSt3__15ctypeIcE2idE is declared but not defined.
+  ```
+  This can be solved by either compiling it into a proper executable, or by
+  specifying the dependency on the command line (e.g., `lli --lib libc++.so.1 ...`
+  on Linux or `lli --lib libc++.1.dylib` on macOS).
 
 * Module initialization order is now only based on the dependencies recorded in the
   ELF/Mach-O file instead of looking at imported symbols. Consequently, the order
   plain bitcode files are initialized might change since they do not allow recording
   dependencies. If the initialization order is important, the suggested approach to
-  use ELF/Mach-O files. The [Toolchain](docs/TOOLCHAIN.md) can help creating those.
+  use ELF/Mach-O files. The [Toolchain](docs/contributor/TOOLCHAIN.md) can help creating those.
 
 * Cover more cases when calling functions that receive structs by value across interop
   boundaries.
+
+* Bitcode execution now supports on-stack-replacement of loops, i.e., compiling
+  long-running loops before the surrounding function is compiled.
 
 # Version 20.0.0
 
 Changes:
 
-* The [Toolchain](docs/TOOLCHAIN.md) is now based on LLVM 9.0.0.
+* The [Toolchain](docs/contributor/TOOLCHAIN.md) is now based on LLVM 9.0.0.
 
 New features:
 
 * Support accessing `llvm-ar`, `llvm-nm`, `llvm-objcopy`,
   `llvm-objdump`, `llvm-ranlib`, `llvm-readelf`, `llvm-readobj` and
-  `llvm-strip` via the [toolchain](docs/TOOLCHAIN.md).
+  `llvm-strip` via the [toolchain](docs/contributor/TOOLCHAIN.md).
 
 # Version 19.3.0
 
 Changes:
 
-* The [Toolchain](docs/TOOLCHAIN.md) is no longer experimental.
+* The [Toolchain](docs/contributor/TOOLCHAIN.md) is no longer experimental.
 
 New features:
 
@@ -55,7 +92,7 @@ Improvements:
 
 * Clang and other LLVM tools are no longer required to be installed for building
   the GraalVM LLVM runtime. Instead, the LLVM distribution bundled with the
-  [Toolchain](docs/TOOLCHAIN.md) is used.
+  [Toolchain](docs/contributor/TOOLCHAIN.md) is used.
 
 # Version 19.2.0
 
@@ -63,7 +100,7 @@ New features:
 
 * Support locating dynamic libraries relatively using (`rpath`).
 * Preliminary support for compiling to bitcode using the LLVM toolchain.
-  See [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) for more details.
+  See [docs/contributor/TOOLCHAIN.md](docs/contributor/TOOLCHAIN.md) for more details.
   *WARNING*: The toolchain is experimental. Functionality may be added,
   changed or removed without prior notice.
 * Support for simple pointer arithmetics with foreign objects.

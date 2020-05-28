@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,12 +27,13 @@ package org.graalvm.tools.lsp.server.types;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
-public class DocumentLinkParams {
-
-    final JSONObject jsonData;
+/**
+ * The parameters of a [DocumentLinkRequest](#DocumentLinkRequest).
+ */
+public class DocumentLinkParams extends WorkDoneProgressParams {
 
     DocumentLinkParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -44,6 +45,19 @@ public class DocumentLinkParams {
 
     public DocumentLinkParams setTextDocument(TextDocumentIdentifier textDocument) {
         jsonData.put("textDocument", textDocument.jsonData);
+        return this;
+    }
+
+    /**
+     * An optional token that a server can use to report partial results (e.g. streaming) to the
+     * client.
+     */
+    public Object getPartialResultToken() {
+        return jsonData.opt("partialResultToken");
+    }
+
+    public DocumentLinkParams setPartialResultToken(Object partialResultToken) {
+        jsonData.putOpt("partialResultToken", partialResultToken);
         return this;
     }
 
@@ -62,13 +76,25 @@ public class DocumentLinkParams {
         if (!Objects.equals(this.getTextDocument(), other.getTextDocument())) {
             return false;
         }
+        if (!Objects.equals(this.getPartialResultToken(), other.getPartialResultToken())) {
+            return false;
+        }
+        if (!Objects.equals(this.getWorkDoneToken(), other.getWorkDoneToken())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 31 * hash + Objects.hashCode(this.getTextDocument());
+        int hash = 5;
+        hash = 29 * hash + Objects.hashCode(this.getTextDocument());
+        if (this.getPartialResultToken() != null) {
+            hash = 29 * hash + Objects.hashCode(this.getPartialResultToken());
+        }
+        if (this.getWorkDoneToken() != null) {
+            hash = 29 * hash + Objects.hashCode(this.getWorkDoneToken());
+        }
         return hash;
     }
 

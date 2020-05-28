@@ -38,11 +38,9 @@ import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.ForceFixedRegisterReads;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -195,14 +193,7 @@ public class VMThreadMTFeature implements GraalFeature {
          */
         boolean isDeoptTarget = b.getMethod() instanceof SharedMethod && ((SharedMethod) b.getMethod()).isDeoptTarget();
 
-        /*
-         * Due to the fact that the LLVM backend handles reading the thread pointer in entry point
-         * methods as a stack slot load instead of a direct register access, a ReadRegisterFixedNode
-         * should be emitted in those cases so that the register read doesn't get hoisted above
-         * where the thread pointer gets stored in the stack slot.
-         */
-        boolean forceFixedReads = GuardedAnnotationAccess.isAnnotationPresent(b.getMethod(), ForceFixedRegisterReads.class);
-        if (isDeoptTarget || usedForAddress || forceFixedReads) {
+        if (isDeoptTarget || usedForAddress) {
             return b.add(new ReadIsolateThreadFixedNode());
         } else {
             return b.add(new ReadIsolateThreadFloatingNode());
@@ -226,7 +217,9 @@ public class VMThreadMTFeature implements GraalFeature {
         if (isVolatile) {
             b.add(new MembarNode(MemoryBarriers.JMM_PRE_VOLATILE_WRITE));
         }
-        b.add(new StoreVMThreadLocalNode(threadLocalInfo, threadNode, valueNode, BarrierType.NONE));
+        StoreVMThreadLocalNode store = new StoreVMThreadLocalNode(threadLocalInfo, threadNode, valueNode, BarrierType.NONE);
+        b.add(store);
+        assert store.stateAfter() != null : store + " has no state after with graph builder context " + b;
         if (isVolatile) {
             b.add(new MembarNode(MemoryBarriers.JMM_POST_VOLATILE_WRITE));
         }
@@ -235,7 +228,9 @@ public class VMThreadMTFeature implements GraalFeature {
 
     private boolean handleCompareAndSet(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode, ValueNode expect, ValueNode update) {
         VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get());
-        b.addPush(targetMethod.getSignature().getReturnKind(), new CompareAndSetVMThreadLocalNode(threadLocalInfo, threadNode, expect, update));
+        CompareAndSetVMThreadLocalNode cas = new CompareAndSetVMThreadLocalNode(threadLocalInfo, threadNode, expect, update);
+        b.addPush(targetMethod.getSignature().getReturnKind(), cas);
+        assert cas.stateAfter() != null : cas + " has no state after with graph builder context " + b;
         return true;
     }
 

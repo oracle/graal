@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,8 +62,8 @@ final class GraphNode implements Comparable<GraphNode> {
     private DFAAbstractStateNode dfaNode;
     private boolean dfaNodeCopied = false;
     private final short[] successorSet;
-    private final StateSet<GraphNode> predecessorSet;
-    private final StateSet<GraphNode> backEdges;
+    private final StateSet<DFANodeSplit, GraphNode> predecessorSet;
+    private final StateSet<DFANodeSplit, GraphNode> backEdges;
 
     private int[] domChildren;
     private int nDomChildren;
@@ -78,7 +78,7 @@ final class GraphNode implements Comparable<GraphNode> {
     GraphNode(DFANodeSplit graph, DFAAbstractStateNode dfaNode, short[] successorSet) {
         this.dfaNode = dfaNode;
         this.successorSet = successorSet;
-        predecessorSet = StateSet.createWithBackingSortedArray(graph);
+        predecessorSet = StateSet.create(graph);
         backEdges = StateSet.create(graph);
         domChildren = NO_DOM_CHILDREN;
     }
@@ -164,20 +164,13 @@ final class GraphNode implements Comparable<GraphNode> {
         return predecessorSet.contains(pre);
     }
 
-    void addPredecessorUnsorted(GraphNode pre) {
-        predecessorSet.addBatch(pre);
-    }
-
-    void sortPredecessors() {
-        predecessorSet.addBatchFinish();
-    }
-
     void addPredecessor(GraphNode pre) {
         predecessorSet.add(pre);
     }
 
     void replacePredecessor(GraphNode pre) {
-        predecessorSet.replace(pre, pre.copy);
+        predecessorSet.remove(pre);
+        predecessorSet.add(pre.copy);
     }
 
     void removePredecessor(GraphNode pre) {

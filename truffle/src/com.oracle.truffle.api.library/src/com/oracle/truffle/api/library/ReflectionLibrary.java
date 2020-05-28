@@ -126,6 +126,7 @@ public abstract class ReflectionLibrary extends Library {
      */
     @Abstract
     @SuppressWarnings("unused")
+    @TruffleBoundary
     public Object send(Object receiver, Message message, Object... args) throws Exception {
         throw new AbstractMethodError();
     }
@@ -152,10 +153,10 @@ final class ReflectionLibraryDefault {
     static class Send {
 
         @Specialization(guards = {"message == cachedMessage", "cachedLibrary.accepts(receiver)"}, limit = "LIMIT")
-        static Object doSendCached(Object receiver, Message message, Object[] args,
+        static Object doSendCached(Object receiver, @SuppressWarnings("unused") Message message, Object[] args,
                         @Cached("message") Message cachedMessage,
                         @Cached("createLibrary(message, receiver)") Library cachedLibrary) throws Exception {
-            return message.getFactory().genericDispatch(cachedLibrary, receiver, cachedMessage, args, 0);
+            return cachedMessage.getFactory().genericDispatch(cachedLibrary, receiver, cachedMessage, args, 0);
         }
 
         static Library createLibrary(Message message, Object receiver) {

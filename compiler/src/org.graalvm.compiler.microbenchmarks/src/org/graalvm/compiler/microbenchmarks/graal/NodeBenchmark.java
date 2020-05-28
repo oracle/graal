@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
 import org.graalvm.compiler.microbenchmarks.graal.util.NodesState;
 import org.graalvm.compiler.microbenchmarks.graal.util.NodesState.NodePair;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -44,6 +45,27 @@ public class NodeBenchmark extends GraalBenchmark {
 
     @MethodSpec(declaringClass = String.class, name = "equals")
     public static class StringEquals extends NodesState {
+    }
+
+    /**
+     * Variation of {@link StringEquals} that calls {@link StructuredGraph#maybeCompress()} after
+     * every N iterations. The prevents benchmarks that mutate the graph by adding and removing
+     * nodes from causing {@link OutOfMemoryError}s.
+     */
+    @MethodSpec(declaringClass = String.class, name = "equals")
+    public static class StringEqualsWithGraphCompression extends NodesState {
+        private static final int N = 100_000;
+
+        private int latch = N;
+
+        @Override
+        public void afterInvocation() {
+            super.afterInvocation();
+            if (--latch == 0) {
+                graph.maybeCompress();
+                latch = N;
+            }
+        }
     }
 
     @Benchmark
@@ -101,7 +123,7 @@ public class NodeBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
-    public void createAndDeleteAdd(StringEquals s, Blackhole bh) {
+    public void createAndDeleteAdd(StringEqualsWithGraphCompression s, Blackhole bh) {
         AddNode addNode = new AddNode(ConstantNode.forInt(40), ConstantNode.forInt(2));
         s.graph.addOrUniqueWithInputs(addNode);
         GraphUtil.killWithUnusedFloatingInputs(addNode);
@@ -109,7 +131,7 @@ public class NodeBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
-    public void createAndDeleteConstant(StringEquals s, Blackhole bh) {
+    public void createAndDeleteConstant(StringEqualsWithGraphCompression s, Blackhole bh) {
         ConstantNode constantNode = ConstantNode.forInt(42);
         s.graph.addOrUnique(constantNode);
         GraphUtil.killWithUnusedFloatingInputs(constantNode);

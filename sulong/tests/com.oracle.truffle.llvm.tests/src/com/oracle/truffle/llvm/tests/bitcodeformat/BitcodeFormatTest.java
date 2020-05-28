@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,12 +33,16 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil;
@@ -66,32 +70,6 @@ public class BitcodeFormatTest {
 
     private static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "bitcodeformat");
 
-    enum OS {
-        Darwin,
-        Linux,
-        Solaris;
-
-        private static OS findCurrent() {
-            final String name = System.getProperty("os.name");
-            if (name.equals("Linux")) {
-                return Linux;
-            }
-            if (name.equals("SunOS")) {
-                return Solaris;
-            }
-            if (name.equals("Mac OS X") || name.equals("Darwin")) {
-                return Darwin;
-            }
-            throw new IllegalArgumentException("unknown OS: " + name);
-        }
-
-        private static final OS current = findCurrent();
-
-        public static OS getCurrent() {
-            return current;
-        }
-    }
-
     protected Map<String, String> getContextOptions() {
         return Collections.emptyMap();
     }
@@ -115,16 +93,29 @@ public class BitcodeFormatTest {
 
     @Parameters(name = "{0}")
     public static Collection<Object[]> data() throws IOException {
-        return Files.list(testBase).map(f -> new Object[]{f.getFileName()}).collect(Collectors.toList());
+        Set<String> blacklist = getBlacklist();
+        Collection<Object[]> testlist = Files.list(testBase).map(f -> new Object[]{f.getFileName()}).collect(Collectors.toList());
+        testlist.removeIf(t -> blacklist.contains(t[0].toString()));
+        return testlist;
+    }
+
+    protected static Set<String> getBlacklist() {
+        Set<String> blacklist = new HashSet<>();
+
+        if (Platform.isAArch64()) {
+            blacklist.addAll(Arrays.asList(
+                            "hello-linux-link-fembed-bitcode", "hello-linux-link-fembed-bitcode.so"));
+        }
+
+        return blacklist;
     }
 
     @Parameter(0) public Path value;
 
     @Before
     public void checkOS() {
-        OS os = OS.getCurrent();
-        Assume.assumeTrue("Linux only test", os != OS.Darwin || !value.toString().contains("linux-link"));
-        Assume.assumeTrue("Darwin only test", os == OS.Darwin || !value.toString().contains("darwin-link"));
+        Assume.assumeTrue("Linux only test", !Platform.isDarwin() || !value.toString().contains("linux-link"));
+        Assume.assumeTrue("Darwin only test", Platform.isDarwin() || !value.toString().contains("darwin-link"));
     }
 
     @Test

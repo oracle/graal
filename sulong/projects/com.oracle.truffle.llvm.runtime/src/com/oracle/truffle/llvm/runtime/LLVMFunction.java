@@ -42,13 +42,14 @@ public final class LLVMFunction extends LLVMSymbol {
 
     private final FunctionType type;
     private final Function function;
+    public static final LLVMFunction[] EMPTY = {};
 
-    public static LLVMFunction create(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex) {
-        return new LLVMFunction(name, library, function, type, bitcodeID, symbolIndex);
+    public static LLVMFunction create(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex, boolean exported) {
+        return new LLVMFunction(name, library, function, type, bitcodeID, symbolIndex, exported);
     }
 
-    public LLVMFunction(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex) {
-        super(name, library, bitcodeID, symbolIndex);
+    public LLVMFunction(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex, boolean exported) {
+        super(name, library, bitcodeID, symbolIndex, exported);
         this.type = type;
         this.function = function;
     }

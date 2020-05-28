@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -147,10 +147,10 @@ public class DFAExport {
             System.out.print("EmptyByteMatcher.create()");
         }
         if (matcher instanceof SingleCharMatcher) {
-            System.out.printf("SingleByteMatcher.create(0x%02x)", (int) ((SingleCharMatcher) matcher).getChar());
+            System.out.printf("SingleByteMatcher.create(0x%02x)", ((SingleCharMatcher) matcher).getChar());
         }
         if (matcher instanceof SingleRangeMatcher) {
-            System.out.printf("RangeByteMatcher.create(0x%02x, 0x%02x)", (int) ((SingleRangeMatcher) matcher).getLo(), (int) ((SingleRangeMatcher) matcher).getHi());
+            System.out.printf("RangeByteMatcher.create(0x%02x, 0x%02x)", ((SingleRangeMatcher) matcher).getLo(), ((SingleRangeMatcher) matcher).getHi());
         }
         if (matcher instanceof BitSetMatcher) {
             long[] words = ((BitSetMatcher) matcher).getBitSet().toLongArray();

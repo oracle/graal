@@ -81,6 +81,10 @@ public final class ModuleSupport {
         return ResourceBundle.getBundle(bundleName, locale, loader);
     }
 
+    public static boolean hasSystemModule(String moduleName) {
+        return ModuleFinder.ofSystem().find(moduleName).isPresent();
+    }
+
     public static List<String> getModuleResources(Collection<String> names) {
         List<String> result = new ArrayList<>();
         for (String name : names) {

@@ -59,7 +59,7 @@ public abstract class DebugExprObjectMemberNode extends LLVMExpressionNode imple
             Object baseMember = ((MemberAccessible) baseNode).getMember();
             return findMemberAndType(baseMember).getRight();
         }
-        throw DebugExprException.create(this, "member access not possible for " + baseNode + "." + fieldName);
+        throw DebugExprException.create(this, "member access not possible for %s.%s", baseNode, fieldName);
     }
 
     @Override
@@ -68,7 +68,7 @@ public abstract class DebugExprObjectMemberNode extends LLVMExpressionNode imple
             Object baseMember = ((MemberAccessible) baseNode).getMember();
             return findMemberAndType(baseMember).getLeft();
         }
-        throw DebugExprException.create(this, "member access not possible for " + baseNode + "." + fieldName);
+        throw DebugExprException.create(this, "member access not possible for %s.%s", baseNode, fieldName);
     }
 
     public String getFieldName() {

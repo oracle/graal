@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,6 @@ import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
@@ -66,7 +65,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill, MemoryAccess, Canonicalizable {
+public final class ArrayCopyCallNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill, MemoryAccess, Canonicalizable {
 
     public static final NodeClass<ArrayCopyCallNode> TYPE = NodeClass.create(ArrayCopyCallNode.class);
     @Input protected ValueNode src;
@@ -166,8 +165,7 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
             if (len.stamp(NodeView.DEFAULT).getStackKind() != JavaKind.Long) {
                 len = IntegerConvertNode.convert(len, StampFactory.forKind(JavaKind.Long), graph(), NodeView.DEFAULT);
             }
-            ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, desc, srcAddr, destAddr, len));
-            call.setStateAfter(stateAfter());
+            ForeignCallNode call = graph.add(new ForeignCallNode(desc, srcAddr, destAddr, len));
             graph.replaceFixedWithFixed(this, call);
         }
     }
@@ -263,7 +261,7 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
     public Node canonical(CanonicalizerTool tool) {
         if (getLength().isConstant() && getLength().asConstant().isDefaultForKind()) {
             if (lastLocationAccess != null) {
-                replaceAtUsages(InputType.Memory, lastLocationAccess.asNode());
+                replaceAtUsages(lastLocationAccess.asNode(), InputType.Memory);
             }
             return null;
         }

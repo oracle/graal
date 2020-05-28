@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,25 +49,25 @@ import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 
-public final class ASTTransitionCanonicalizer extends StateTransitionCanonicalizer<Term, ASTTransition, TransitionBuilder<Term, ASTTransition>> {
+public final class ASTTransitionCanonicalizer extends StateTransitionCanonicalizer<RegexAST, Term, ASTTransition, TransitionBuilder<RegexAST, Term, ASTTransition>> {
 
     public ASTTransitionCanonicalizer(RegexAST stateIndex, boolean forward, boolean prioritySensitive) {
         super(stateIndex, forward, prioritySensitive);
     }
 
     @Override
-    protected boolean canMerge(TransitionBuilder<Term, ASTTransition> a, TransitionBuilder<Term, ASTTransition> b) {
+    protected boolean canMerge(TransitionBuilder<RegexAST, Term, ASTTransition> a, TransitionBuilder<RegexAST, Term, ASTTransition> b) {
         return Arrays.equals(a.getTransitionSet().getTransitions(), b.getTransitionSet().getTransitions());
     }
 
     @Override
-    protected TransitionBuilder<Term, ASTTransition> createTransitionBuilder(ASTTransition[] transitions, StateSet<Term> targetStateSet, CodePointSet matcherBuilder) {
+    protected TransitionBuilder<RegexAST, Term, ASTTransition> createTransitionBuilder(ASTTransition[] transitions, StateSet<RegexAST, Term> targetStateSet, CodePointSet matcherBuilder) {
         return new TransitionBuilder<>(transitions, targetStateSet, matcherBuilder);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    protected TransitionBuilder<Term, ASTTransition>[] createResultArray(int size) {
+    protected TransitionBuilder<RegexAST, Term, ASTTransition>[] createResultArray(int size) {
         return new TransitionBuilder[size];
     }
 

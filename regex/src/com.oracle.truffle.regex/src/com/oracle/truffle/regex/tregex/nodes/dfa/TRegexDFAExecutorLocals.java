@@ -41,16 +41,18 @@
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 
 /**
  * Container for all local variables used in {@link TRegexDFAExecutorNode}.
  */
 public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
 
-    private int curMaxIndex;
+    private int curMinIndex;
     private int successorIndex;
     private int result;
     private short lastTransition;
+    private int lastIndex;
     private final DFACaptureGroupTrackingData cgData;
 
     public TRegexDFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, DFACaptureGroupTrackingData cgData) {
@@ -60,22 +62,21 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
     }
 
     /**
-     * The maximum index as checked by
-     * {@link TRegexDFAExecutorNode#hasNext(TRegexDFAExecutorLocals)}. In most cases this value is
-     * equal to {@link #getMaxIndex()}, but backward matching nodes change this value while
-     * matching.
+     * The minimum index as checked by
+     * {@link TRegexExecutorNode#inputHasNext(TRegexExecutorLocals)}. In most cases this value is
+     * {@code 0}, but backward matching nodes change this value while matching.
      *
-     * @return the maximum index as checked by
-     *         {@link TRegexDFAExecutorNode#hasNext(TRegexDFAExecutorLocals)}.
+     * @return the minimum index as checked by
+     *         {@link TRegexExecutorNode#inputHasNext(TRegexExecutorLocals)}.
      *
      * @see BackwardDFAStateNode
      */
-    public int getCurMaxIndex() {
-        return curMaxIndex;
+    public int getCurMinIndex() {
+        return curMinIndex;
     }
 
-    public void setCurMaxIndex(int curMaxIndex) {
-        this.curMaxIndex = curMaxIndex;
+    public void setCurMinIndex(int curMinIndex) {
+        this.curMinIndex = curMinIndex;
     }
 
     public short getLastTransition() {
@@ -83,6 +84,7 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
     }
 
     public void setLastTransition(short lastTransition) {
+        lastIndex = getIndex();
         this.lastTransition = lastTransition;
     }
 
@@ -92,6 +94,14 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
 
     public void setSuccessorIndex(int successorIndex) {
         this.successorIndex = successorIndex;
+    }
+
+    public int getLastIndex() {
+        return lastIndex;
+    }
+
+    public void setLastIndex(int lastIndex) {
+        this.lastIndex = lastIndex;
     }
 
     public int getResultInt() {
@@ -106,11 +116,7 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
         return cgData;
     }
 
-    public static int backwardMaxIndex(int fromIndex, int prefixLength) {
-        return Math.max(-1, fromIndex - 1 - prefixLength);
-    }
-
-    public TRegexDFAExecutorLocals toInnerLiteralBackwardLocals(int prefixLength) {
-        return new TRegexDFAExecutorLocals(getInput(), getFromIndex(), getIndex() - 1, backwardMaxIndex(getFromIndex(), prefixLength), cgData);
+    public TRegexDFAExecutorLocals toInnerLiteralBackwardLocals() {
+        return new TRegexDFAExecutorLocals(getInput(), getFromIndex(), getIndex(), getMaxIndex(), cgData);
     }
 }

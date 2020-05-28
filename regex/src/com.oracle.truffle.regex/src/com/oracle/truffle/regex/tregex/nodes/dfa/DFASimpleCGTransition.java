@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -125,7 +125,7 @@ public final class DFASimpleCGTransition implements JsonConvertible {
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return Json.obj(DFACaptureGroupPartialTransition.indexManipulationToProp("indexUpdates", indexUpdates, false),
-                        DFACaptureGroupPartialTransition.indexManipulationToProp("indexClears", indexClears, false));
+        return Json.obj(Json.prop("indexUpdates", DFACaptureGroupPartialTransition.IndexOperation.groupBoundariesToJsonObject(indexUpdates)),
+                        Json.prop("indexClears", DFACaptureGroupPartialTransition.IndexOperation.groupBoundariesToJsonObject(indexClears)));
     }
 }

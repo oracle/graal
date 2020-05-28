@@ -30,9 +30,12 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
-public final class DynamicNewInstanceTypeFlow extends TypeFlow<ValueNode> {
+import jdk.vm.ci.code.BytecodePosition;
+
+public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition> {
 
     protected final BytecodeLocation allocationSite;
 
@@ -44,8 +47,8 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<ValueNode> {
      */
     protected final AnalysisContext allocationContext;
 
-    public DynamicNewInstanceTypeFlow(TypeFlow<?> newTypeFlow, ValueNode node, BytecodeLocation allocationLabel) {
-        super(node, null);
+    public DynamicNewInstanceTypeFlow(TypeFlow<?> newTypeFlow, AnalysisType type, ValueNode node, BytecodeLocation allocationLabel) {
+        super(node.getNodeSourcePosition(), type);
         this.allocationSite = allocationLabel;
         this.allocationContext = null;
         this.newTypeFlow = newTypeFlow;
@@ -66,7 +69,7 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<ValueNode> {
     }
 
     @Override
-    public TypeFlow<ValueNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         AnalysisContext enclosingContext = methodFlows.context();
         AnalysisContext allocContext = bb.contextPolicy().allocationContext(enclosingContext, PointstoOptions.MaxHeapContextDepth.getValue(bb.getOptions()));
 
@@ -91,7 +94,7 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<ValueNode> {
         /* Generate a heap object for every new incoming type. */
         TypeState resultState = newTypeState.typesStream()
                         .filter(t -> !currentTypeState.containsType(t))
-                        .map(type -> TypeState.forAllocation(bb, source, allocationSite, type, allocationContext))
+                        .map(type -> TypeState.forAllocation(bb, allocationSite, type, allocationContext))
                         .reduce(TypeState.forEmpty(), (s1, s2) -> TypeState.forUnion(bb, s1, s2));
 
         assert !resultState.canBeNull();
@@ -109,6 +112,24 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<ValueNode> {
 
     public AnalysisContext allocationContext() {
         return allocationContext;
+    }
+
+    @Override
+    public void setObserved(TypeFlow<?> declaredTypeFlow) {
+        this.newTypeFlow = declaredTypeFlow;
+    }
+
+    @Override
+    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+        assert this.isClone();
+        /* When the new-type flow saturates start observing the flow of the declared type. */
+        replaceObservedWith(bb, declaredType);
+    }
+
+    @Override
+    public boolean canSaturate() {
+        /* The dynamic new instance tracks all of its input types. */
+        return false;
     }
 
     @Override

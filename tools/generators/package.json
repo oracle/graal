@@ -1,0 +1,22 @@
+{
+  "name": "type-gen",
+  "version": "0.0.1",
+  "description": "Generates Java classes from TypeScript interface files.",
+  "main": "generator.ts",
+  "author": {
+    "name": "Oracle Labs"
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "dependencies": {
+    "minimist": "^1.2.5",
+    "seedrandom": "3.0.5",
+    "typescript": "^3.7.5"
+  },
+  "devDependencies": {
+    "@types/node": "^12.6.2"
+  }
+}

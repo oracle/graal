@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.regex.tregex.nodes.input.InputRegionMatchesNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputStartsWithNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
+import com.oracle.truffle.regex.tregex.string.AbstractString;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -158,8 +159,8 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
     abstract static class NonEmptyLiteralRegexExecRootNode extends LiteralRegexExecRootNode {
 
-        protected final String literal;
-        protected final String mask;
+        protected final AbstractString literal;
+        protected final AbstractString mask;
 
         NonEmptyLiteralRegexExecRootNode(RegexLanguage language, RegexAST ast, PreCalcResultVisitor preCalcResultVisitor) {
             super(language, ast, preCalcResultVisitor);
@@ -169,7 +170,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected String getLiteral() {
-            return literal;
+            return literal.toString();
         }
     }
 
@@ -221,10 +222,12 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
     public static final class EndsWith extends NonEmptyLiteralRegexExecRootNode {
 
+        private final boolean sticky;
         @Child InputEndsWithNode endsWithNode = InputEndsWithNode.create();
 
         public EndsWith(RegexLanguage language, RegexAST ast, PreCalcResultVisitor preCalcResultVisitor) {
             super(language, ast, preCalcResultVisitor);
+            this.sticky = ast.getFlags().isSticky();
         }
 
         @Override
@@ -234,7 +237,8 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            if (fromIndex <= inputLength(input) - literal.length() && endsWithNode.execute(input, literal, mask)) {
+            int matchStart = inputLength(input) - literal.encodedLength();
+            if ((sticky ? fromIndex == matchStart : fromIndex <= matchStart) && endsWithNode.execute(input, literal, mask)) {
                 return resultFactory.createFromEnd(inputLength(input));
             } else {
                 return NoMatchResult.getInstance();
@@ -280,7 +284,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            if (regionMatchesNode.execute(input, fromIndex, literal, 0, literal.length(), mask)) {
+            if (regionMatchesNode.execute(input, fromIndex, literal, 0, literal.encodedLength(), mask)) {
                 return resultFactory.createFromStart(fromIndex);
             } else {
                 return NoMatchResult.getInstance();

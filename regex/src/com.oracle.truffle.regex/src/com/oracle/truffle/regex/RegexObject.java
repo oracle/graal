@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -186,7 +186,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
             case PROP_GROUPS:
                 return getNamedCaptureGroups();
             default:
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);
         }
     }
@@ -206,11 +206,11 @@ public final class RegexObject extends AbstractConstantKeysObject {
                     @Cached ToLongNode toLongNode,
                     @Cached ExecCompiledRegexNode execNode) throws UnknownIdentifierException, ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (!isExecPropNode.execute(member, PROP_EXEC)) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnknownIdentifierException.create(member);
         }
         if (args.length != 2) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw ArityException.create(2, args.length);
         }
         Object input = expectStringOrTruffleObjectNode.execute(args[0]);
@@ -247,7 +247,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
                         @Cached ToLongNode toLongNode,
                         @Cached ExecCompiledRegexNode execNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             if (args.length != 2) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw ArityException.create(2, args.length);
             }
             Object input = expectStringOrTruffleObjectNode.execute(args[0]);
@@ -258,7 +258,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
             try {
                 return execNode.execute(getCompiledRegexNode.execute(getRegexObject()), input, (int) fromIndex);
             } catch (UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new RuntimeException(e);
             }
         }

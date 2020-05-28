@@ -60,4 +60,6 @@ public interface LinkerInvocation {
     List<String> getCommand();
 
     void addAdditionalPreOption(String option);
+
+    List<String> getImageSymbols(boolean onlyGlobal);
 }
