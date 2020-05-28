@@ -814,9 +814,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
 
                 if (comparableCondition != null) {
-                    Condition combined = conditionA.join(comparableCondition);
-                    if (combined == null) {
-                        // The two conditions are disjoint => can reorder.
+                    if (conditionA.trueIsDisjoint(comparableCondition)) {
+                        // The truth of the two conditions is disjoint => can reorder.
                         debug.log("Can swap disjoint coditions on same values: %s and %s", conditionA, comparableCondition);
                         return true;
                     }
