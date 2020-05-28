@@ -22,17 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c.libc;
+package com.oracle.svm.core.posix.linux.libc;
+
+import com.oracle.svm.core.c.libc.LibCBase;
 
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
-public class GLibc implements LibCBase {
+public class GLibC implements LibCBase {
 
     @Override
-    public String getJDKStaticLibsPath() {
-        return LibCBase.PATH_DEFAULT;
+    public String getName() {
+        return "glibc";
     }
 
     @Override

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c.libc;
+package com.oracle.svm.core.posix.linux.libc;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -37,11 +37,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-public class MuslLibc implements LibCBase {
+public class MuslLibC implements LibCBase {
 
     private Path specFilePath;
 
@@ -50,17 +52,20 @@ public class MuslLibc implements LibCBase {
     private static final String PATH_PLACEHOLDER = "__BASE_PATH__";
 
     @Override
-    public String getJDKStaticLibsPath() {
+    public String getName() {
         return "musl";
     }
 
     @Override
     public void prepare(Path directory) {
+        String useMuslCFlag = SubstrateOptionsParser.commandArgument(AlternativeLibCFeature.LibCOptions.UseMuslC, "+");
         if (!SubstrateOptions.StaticExecutable.getValue()) {
-            String useMuslCFlag = SubstrateOptionsParser.commandArgument(SubstrateOptions.UseMuslC, "+");
             String staticExecutableFlag = SubstrateOptionsParser.commandArgument(SubstrateOptions.StaticExecutable, "+");
             UserError.abort(useMuslCFlag + " can only be used when producing a static executable. Please add " + staticExecutableFlag + " to the command line arguments, or remove " +
                             useMuslCFlag + ".");
+        }
+        if (JavaVersionUtil.JAVA_SPEC != 11) {
+            UserError.abort(useMuslCFlag + " can only be used with JDK 11.");
         }
         setUpSpecFile(directory);
     }
@@ -80,10 +85,10 @@ public class MuslLibc implements LibCBase {
         VMError.guarantee(specFilePath == null);
         specFilePath = directory.resolve(GCC_MUSL_SPEC_PATH);
 
-        InputStream stream = MuslLibc.class.getResourceAsStream(GCC_MUSL_TEMPLATE_PATH);
+        InputStream stream = MuslLibC.class.getResourceAsStream(GCC_MUSL_TEMPLATE_PATH);
         BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
         String content = reader.lines().collect(Collectors.joining(System.lineSeparator()));
-        String muslPath = Paths.get(SubstrateOptions.UseMuslC.getValue()).toAbsolutePath().toString();
+        String muslPath = Paths.get(AlternativeLibCFeature.LibCOptions.UseMuslC.getValue()).toAbsolutePath().toString();
 
         content = content.replaceAll(PATH_PLACEHOLDER, muslPath);
         try {

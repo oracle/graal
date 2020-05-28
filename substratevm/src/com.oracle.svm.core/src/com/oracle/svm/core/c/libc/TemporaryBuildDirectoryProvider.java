@@ -22,17 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.c.libc;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD, ElementType.TYPE, ElementType.PACKAGE})
-public @interface Libc {
+import java.nio.file.Path;
 
-    Class<? extends LibCBase>[] value();
+@Platforms(Platform.HOSTED_ONLY.class)
+public interface TemporaryBuildDirectoryProvider {
+
+    Path getTemporaryBuildDirectory();
 
 }
