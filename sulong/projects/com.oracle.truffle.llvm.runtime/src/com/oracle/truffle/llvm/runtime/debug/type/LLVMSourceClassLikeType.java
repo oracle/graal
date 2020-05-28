@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,40 +37,31 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class LLVMSourceStructLikeType extends LLVMSourceType {
+public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
 
-    protected final List<LLVMSourceMemberType> dynamicMembers;
-
-    protected final LLVMSourceStaticMemberType.CollectionType staticMembers;
+    private final List<LLVMSourceFunctionType> methods;
 
     @TruffleBoundary
-    public LLVMSourceStructLikeType(String name, long size, long align, long offset, LLVMSourceLocation location) {
-        super(() -> name, size, align, offset, location);
-        this.dynamicMembers = new ArrayList<>();
-        this.staticMembers = new LLVMSourceStaticMemberType.CollectionType();
-    }
-
-    protected LLVMSourceStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> dynamicMembers, LLVMSourceStaticMemberType.CollectionType staticMembers,
-                    LLVMSourceLocation location) {
+    public LLVMSourceClassLikeType(String name, long size, long align, long offset, LLVMSourceLocation location) {
         super(name, size, align, offset, location);
-        this.dynamicMembers = dynamicMembers;
-        this.staticMembers = staticMembers;
+        this.methods = new ArrayList<>();
+    }
+
+    private LLVMSourceClassLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> dynamicMembers, LLVMSourceStaticMemberType.CollectionType staticMembers,
+                    List<LLVMSourceFunctionType> methods, LLVMSourceLocation location) {
+        super(name, size, align, offset, dynamicMembers, staticMembers, location);
+        this.methods = methods;
     }
 
     @TruffleBoundary
-    public void addDynamicMember(LLVMSourceMemberType member) {
+    public void addMethod(LLVMSourceFunctionType method) {
         CompilerAsserts.neverPartOfCompilation();
-        dynamicMembers.add(member);
-    }
-
-    public void addStaticMember(LLVMSourceStaticMemberType member) {
-        CompilerAsserts.neverPartOfCompilation();
-        staticMembers.addMember(member);
+        methods.add(method);
     }
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceStructLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, getLocation());
+        return new LLVMSourceClassLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, methods, getLocation());
     }
 
     @Override
@@ -78,18 +69,18 @@ public class LLVMSourceStructLikeType extends LLVMSourceType {
         return true;
     }
 
-    public int getDynamicElementCount() {
-        return dynamicMembers.size();
+    public int getMethodCount() {
+        return methods.size();
     }
 
-    public LLVMSourceMemberType getDynamicElement(int i) {
-        return dynamicMembers.get(i);
+    public LLVMSourceFunctionType getMethod(int i) {
+        return methods.get(i);
     }
 
     @Override
     @TruffleBoundary
     public int getElementCount() {
-        int elementCount = dynamicMembers.size();
+        int elementCount = dynamicMembers.size() + methods.size();
         if (staticMembers.getElementCount() != 0) {
             elementCount++;
         }
@@ -109,15 +100,26 @@ public class LLVMSourceStructLikeType extends LLVMSourceType {
         }
         if (0 <= index && index < dynamicMembers.size()) {
             return dynamicMembers.get(index).getName();
+        } else {
+            index -= dynamicMembers.size();
+        }
+        if (0 <= index && index < methods.size()) {
+            return methods.get(index).getName();
         }
         return null;
     }
 
+    @Override
     @TruffleBoundary
     public String getElementNameByOffset(long offset) {
         for (LLVMSourceMemberType member : dynamicMembers) {
             if (member.getOffset() == offset) {
                 return member.getName();
+            }
+        }
+        for (LLVMSourceFunctionType method : methods) {
+            if (method.getOffset() == offset) {
+                return method.getName();
             }
         }
         return null;
@@ -136,6 +138,11 @@ public class LLVMSourceStructLikeType extends LLVMSourceType {
         }
         if (0 <= index && index < dynamicMembers.size()) {
             return dynamicMembers.get(index).getOffsetElementType();
+        } else {
+            index -= dynamicMembers.size();
+        }
+        if (0 <= index && index < methods.size()) {
+            // TODO (pichristoph)
         }
         return null;
     }
@@ -170,6 +177,11 @@ public class LLVMSourceStructLikeType extends LLVMSourceType {
         }
         if (0 <= index && index < dynamicMembers.size()) {
             return dynamicMembers.get(index).getLocation();
+        } else {
+            index -= dynamicMembers.size();
+        }
+        if (0 <= index && index < methods.size()) {
+            return methods.get(index).getLocation();
         }
         return null;
     }
@@ -183,6 +195,11 @@ public class LLVMSourceStructLikeType extends LLVMSourceType {
         for (final LLVMSourceMemberType member : dynamicMembers) {
             if (name.equals(member.getName())) {
                 return member.getLocation();
+            }
+        }
+        for (final LLVMSourceFunctionType method : methods) {
+            if (name.equals(method.getName())) {
+                return method.getLocation();
             }
         }
         if (LLVMSourceStaticMemberType.CollectionType.MEMBERNAME.equals(name)) {
