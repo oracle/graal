@@ -52,4 +52,9 @@ public class EconomyCompilerConfigurationFactory extends CompilerConfigurationFa
         // the economy configuration only differs in the frontend, it reuses the "community" backend
         return new DefaultBackendMap(CommunityCompilerConfigurationFactory.NAME);
     }
+
+    @Override
+    public InstrumentationFactory getInstrumentationFactory() {
+        return new DefaultInstrumentationFactory();
+    }
 }

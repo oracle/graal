@@ -50,4 +50,9 @@ public class CommunityCompilerConfigurationFactory extends CompilerConfiguration
     public CompilerConfiguration createCompilerConfiguration() {
         return new CommunityCompilerConfiguration();
     }
+
+    @Override
+    public InstrumentationFactory getInstrumentationFactory() {
+        return new DefaultInstrumentationFactory();
+    }
 }
