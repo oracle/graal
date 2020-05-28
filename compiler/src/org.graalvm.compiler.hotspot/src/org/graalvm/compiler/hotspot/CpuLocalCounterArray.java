@@ -251,13 +251,8 @@ public class CpuLocalCounterArray<T> {
         }
     }
 
-    public String getStatistics() {
-        final StringBuilder statistics = new StringBuilder();
-        statistics.append("Counter '").append(name).append("'").append(System.lineSeparator());
-        statistics.append("---------------").append(System.lineSeparator());
-
+    public Statistics<T> computeStatistics() {
         final long numberOfAllocatedCounters = (nextCounterAddress - counterArrayAddress) / bytesPerCounter;
-        statistics.append("Number of counters allocated: ").append(numberOfAllocatedCounters).append(System.lineSeparator());
 
         double averageNumberOfCountersPerKey;
         int maxNumberOfCountersPerKey = 0;
@@ -275,13 +270,8 @@ public class CpuLocalCounterArray<T> {
         } else {
             averageNumberOfCountersPerKey = numberOfAllocatedCounters / (double) keys.size();
         }
-        statistics.append("Average number of counters per key: ").append(averageNumberOfCountersPerKey).append(System.lineSeparator());
-        statistics.append("Max number of counters allocated for a key: ").append(maxNumberOfCountersPerKey).append("(key: ").append(keyWithMaxNumberOfCounters).append(")").append(System.lineSeparator());
 
-        statistics.append("Number of keys: ").append(keys.size()).append(System.lineSeparator());
-        statistics.append(System.lineSeparator());
-
-        return statistics.toString();
+        return new Statistics<>(numberOfAllocatedCounters, averageNumberOfCountersPerKey, maxNumberOfCountersPerKey, keyWithMaxNumberOfCounters, keys.size());
     }
 
     /**
@@ -407,5 +397,54 @@ public class CpuLocalCounterArray<T> {
         y |= y >> 16;
         y += 1;
         return y;
+    }
+
+    public class Statistics<T> {
+        private final long numberOfAllocatedCounters;
+        private final double averageNumberOfCountersPerKey;
+        private final int maxNumberOfCountersPerKey;
+        private final T keyWithMaxNumberOfCounters;
+        private final int numberOfKeys;
+
+        public Statistics(long numberOfAllocatedCounters, double averageNumberOfCountersPerKey, int maxNumberOfCountersPerKey, T keyWithMaxNumberOfCounters, int numberOfKeys) {
+            this.numberOfAllocatedCounters = numberOfAllocatedCounters;
+            this.averageNumberOfCountersPerKey = averageNumberOfCountersPerKey;
+            this.maxNumberOfCountersPerKey = maxNumberOfCountersPerKey;
+            this.keyWithMaxNumberOfCounters = keyWithMaxNumberOfCounters;
+            this.numberOfKeys = numberOfKeys;
+        }
+
+        public long getNumberOfAllocatedCounters() {
+            return numberOfAllocatedCounters;
+        }
+
+        public double getAverageNumberOfCountersPerKey() {
+            return averageNumberOfCountersPerKey;
+        }
+
+        public int getMaxNumberOfCountersPerKey() {
+            return maxNumberOfCountersPerKey;
+        }
+
+        public T getKeyWithMaxNumberOfCounters() {
+            return keyWithMaxNumberOfCounters;
+        }
+
+        public int getNumberOfKeys() {
+            return numberOfKeys;
+        }
+
+        public String dump() {
+            final StringBuilder dump = new StringBuilder();
+            dump.append("Counter '").append(name).append("'").append(System.lineSeparator());
+            dump.append("---------------").append(System.lineSeparator());
+            dump.append("Number of counters allocated: ").append(numberOfAllocatedCounters).append(System.lineSeparator());
+            dump.append("Average number of counters per key: ").append(averageNumberOfCountersPerKey).append(System.lineSeparator());
+            dump.append("Max number of counters allocated for a key: ").append(maxNumberOfCountersPerKey).append("(key: ").append(keyWithMaxNumberOfCounters).append(")").append(System.lineSeparator());
+            dump.append("Number of keys: ").append(keys.size()).append(System.lineSeparator());
+            dump.append(System.lineSeparator());
+
+            return dump.toString();
+        }
     }
 }
