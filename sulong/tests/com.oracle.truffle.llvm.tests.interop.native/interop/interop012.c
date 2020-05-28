@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,6 @@
 
 int main() {
   void *obj = polyglot_import("foreign");
-  double (*fn)(double, double) = (double (*)(double, double)) obj;
-  return (int) fn(40.5, 1.5);
+  double (*fn)(double, double) = (double (*)(double, double))obj;
+  return (int)fn(40.5, 1.5);
 }

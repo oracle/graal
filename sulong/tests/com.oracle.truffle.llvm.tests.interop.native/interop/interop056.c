@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,17 +36,17 @@ void *global;
 int bar = 5;
 
 int main() {
-	
-	void *p = polyglot_import("object");
 
-	global = &bar;
-	global = p;
-	global = &bar;
-	global = p;
-	global = &bar;
-	global = p;
+  void *p = polyglot_import("object");
 
-	void (*returnObject)(void *) = polyglot_import("returnObject");
-        returnObject(global);
-	return 0;
+  global = &bar;
+  global = p;
+  global = &bar;
+  global = p;
+  global = &bar;
+  global = p;
+
+  void (*returnObject)(void *) = polyglot_import("returnObject");
+  returnObject(global);
+  return 0;
 }

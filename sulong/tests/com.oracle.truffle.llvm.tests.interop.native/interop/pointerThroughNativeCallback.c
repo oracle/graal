@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,15 +30,15 @@
 int callbackPointerArgTest(int (*callback)(struct test *), struct test *arg);
 
 struct test {
-    int x;
+  int x;
 };
 
 int callback(struct test *test) {
-    return test->x;
+  return test->x;
 }
 
 int main() {
-    struct test t;
-    t.x = 42;
-    return callbackPointerArgTest(callback, &t);
+  struct test t;
+  t.x = 42;
+  return callbackPointerArgTest(callback, &t);
 }

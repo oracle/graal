@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,14 +31,14 @@
 #include <truffle.h>
 
 long add(long x, long y) {
-    return x + y;
+  return x + y;
 }
 
 double half(long x) {
-    return x / 2.0;
+  return x / 2.0;
 }
 
 double test_decorate_function(long x, long y) {
-    double(*wrapped)(long,long) = truffle_decorate_function(add, half);
-    return wrapped(x, y);
+  double (*wrapped)(long, long) = truffle_decorate_function(add, half);
+  return wrapped(x, y);
 }

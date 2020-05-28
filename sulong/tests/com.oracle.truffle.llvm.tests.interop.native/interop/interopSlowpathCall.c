@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,8 +38,18 @@ struct Foreign {
   int e;
 };
 
-int get_a(struct Foreign *f) { return f->a; }
-int get_b(struct Foreign *f) { return f->b; }
-int get_c(struct Foreign *f) { return f->c; }
-int get_d(struct Foreign *f) { return f->d; }
-int get_e(struct Foreign *f) { return f->e; }
+int get_a(struct Foreign *f) {
+  return f->a;
+}
+int get_b(struct Foreign *f) {
+  return f->b;
+}
+int get_c(struct Foreign *f) {
+  return f->c;
+}
+int get_d(struct Foreign *f) {
+  return f->d;
+}
+int get_e(struct Foreign *f) {
+  return f->e;
+}
