@@ -53,6 +53,8 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.antlr.v4.runtime.ParserRuleContext;
+
 public final class LLVMParser {
     private final Source source;
     private final LLVMParserRuntime runtime;
@@ -128,7 +130,7 @@ public final class LLVMParser {
         LLVMFunction llvmFunction = LLVMFunction.create(functionSymbol.getName(), library, function, functionSymbol.getType(), runtime.getBitcodeID(), functionSymbol.getIndex(),
                         functionDefinition.isExported());
         runtime.getFileScope().register(llvmFunction);
-        final boolean cxxInterop = LLVMLanguage.getContext().getEnv().getOptions().get(SulongEngineOption.CXX_INTEROP);
+        final boolean cxxInterop = runtime.getContext().getEnv().getOptions().get(SulongEngineOption.CXX_INTEROP);
         if (cxxInterop) {
             model.getFunctionParser(functionDefinition).parseLinkageName(runtime);
         }
