@@ -117,6 +117,7 @@ public class CxxMethodsTest extends InteropTestBase {
             // calculate distance
             Value distanceResult1 = squaredEuclideanDistance.execute(point, point2);
             Value distanceResult2 = squaredEuclideanDistance.execute(point2, point);
+
             Value distanceResult3 = point2.invokeMember("squaredEuclideanDistance", point);
             Value distanceResult4 = point.invokeMember("squaredEuclideanDistance", point2);
 

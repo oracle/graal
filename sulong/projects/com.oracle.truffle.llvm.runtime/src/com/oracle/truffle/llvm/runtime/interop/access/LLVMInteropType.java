@@ -439,8 +439,10 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     }
 
-    // TODO (chaeubl): Interop types contain less information than the source type so that different
-    // source types can result in the creation of the same interop type. Therefore, we would need to
+    // TODO (chaeubl): Interop types contain less information than the source type so that
+    // different
+    // source types can result in the creation of the same interop type. Therefore, we would
+    // need to
     // deduplicate the created interop types.
     public static final class InteropTypeRegistry {
         private final EconomicMap<LLVMSourceType, LLVMInteropType> typeCache = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
@@ -518,6 +520,8 @@ public abstract class LLVMInteropType implements TruffleObject {
                 return convertClass((LLVMSourceClassLikeType) type);
             } else if (type instanceof LLVMSourceStructLikeType) {
                 return convertStruct((LLVMSourceStructLikeType) type);
+            } else if (type instanceof LLVMSourceClassLikeType) {
+                return convertClass((LLVMSourceClassLikeType) type);
             } else if (type instanceof LLVMSourceFunctionType) {
                 return convertFunction((LLVMSourceFunctionType) type);
             } else {
@@ -544,7 +548,9 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
 
         private Clazz convertClass(LLVMSourceClassLikeType type) {
+
             Clazz ret = new Clazz(type.getName(), new StructMember[type.getDynamicElementCount()], new Method[type.getMethodCount()], type.getSize() / 8);
+
             typeCache.put(type, ret);
             for (int i = 0; i < ret.members.length; i++) {
                 LLVMSourceMemberType member = type.getDynamicElement(i);
