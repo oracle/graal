@@ -391,7 +391,9 @@ def svm_gate_body(args, tasks):
             if t:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
                 native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--language:nfi',
-                                        '-H:MaxRuntimeCompileMethods=1700', '--run-args', testlib, '--very-verbose', '--enable-timing']
+                                        '-H:MaxRuntimeCompileMethods=1700',
+                                        '-H:+RemoveSaturatedTypeFlows', '-H:+TruffleCheckBlackListedMethods',
+                                        '--run-args', testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
 
         with Task('Relocations in generated object file on Linux', tasks, tags=[GraalTags.relocations]) as t:
