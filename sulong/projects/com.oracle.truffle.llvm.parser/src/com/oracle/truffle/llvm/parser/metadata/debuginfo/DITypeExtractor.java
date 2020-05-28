@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceClassLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceDecoratorType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceEnumLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
@@ -189,7 +190,27 @@ final class DITypeExtractor implements MetadataVisitor {
                 break;
             }
 
-            case DW_TAG_CLASS_TYPE:
+            case DW_TAG_CLASS_TYPE: {
+                String name = MDNameExtractor.getName(mdType.getName());
+                name = String.format("class %s", name);
+
+                final LLVMSourceClassLikeType type = new LLVMSourceClassLikeType(name, size, align, offset, location);
+                parsedTypes.put(mdType, type);
+
+                final List<LLVMSourceType> members = new ArrayList<>();
+                getElements(mdType.getMembers(), members, false);
+                for (final LLVMSourceType member : members) {
+                    if (member instanceof LLVMSourceMemberType) {
+                        type.addDynamicMember((LLVMSourceMemberType) member);
+
+                    } else if (member instanceof LLVMSourceStaticMemberType) {
+                        type.addStaticMember((LLVMSourceStaticMemberType) member);
+                    } else if (member instanceof LLVMSourceFunctionType) {
+                        type.addMethod((LLVMSourceFunctionType) member);
+                    }
+                }
+                break;
+            }
             case DW_TAG_UNION_TYPE:
             case DW_TAG_STRUCTURE_TYPE: {
                 String name = MDNameExtractor.getName(mdType.getName());
