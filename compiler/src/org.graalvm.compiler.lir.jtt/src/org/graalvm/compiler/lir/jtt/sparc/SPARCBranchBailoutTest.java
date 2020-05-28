@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.lir.jtt;
+package org.graalvm.compiler.lir.jtt.sparc;
+
+import org.graalvm.compiler.lir.jtt.LIRTest;
+import org.graalvm.compiler.lir.jtt.LIRTestSpecification;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
@@ -40,7 +43,6 @@ import org.junit.Test;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.sparc.SPARC;
 
 /**
  * Tests the {@link BailoutException} thrown, when trying to compile huge methods, which have branch
@@ -82,7 +84,7 @@ public class SPARCBranchBailoutTest extends LIRTest {
     @SuppressWarnings("try")
     @Test(expected = BranchTargetOutOfBoundsException.class)
     public void testBailoutOnBranchOverflow() throws Throwable {
-        Assume.assumeTrue(getBackend().getTarget().arch instanceof SPARC);
+        Assume.assumeTrue(isSPARC(getBackend().getTarget().arch));
         ResolvedJavaMethod m = getResolvedJavaMethod("testBranch");
         DebugContext debug = getDebugContext();
         try (Scope s = debug.disable()) {

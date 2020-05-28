@@ -187,6 +187,9 @@ def updategraalinopenjdk(args):
                 if str(mx_compiler.jdk.javaCompliance) not in p.javaCompliance:
                     mx.log('  skipping {} since its compliance ({}) is not compatible with {}'.format(p, repr(p.javaCompliance), mx_compiler.jdk.javaCompliance))
                     continue
+                if args.version >= 15 and "sparc" in p.name:
+                    # Filter SPARC port for JDK 15
+                    continue
                 if any(inc in p.name for inc in info.includes) and not any(ex in p.name for ex in info.excludes):
                     assert len(p.source_dirs()) == 1, p
                     version = 0
@@ -222,6 +225,9 @@ def updategraalinopenjdk(args):
                 src_files = run_output(['git', 'ls-files'], cwd=source_dir).split('\n')
                 for rel_src_file in src_files:
                     if not len(rel_src_file):
+                        continue
+                    if args.version >= 15 and "sparc" in rel_src_file:
+                        # Skip SPARC files for JDK 15
                         continue
                     filename = os.path.basename(rel_src_file)
                     src_file = join(source_dir, rel_src_file)
