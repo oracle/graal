@@ -105,7 +105,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.graph.MergeableState;
 import org.graalvm.compiler.phases.graph.PostOrderNodeIterator;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.compiler.replacements.nodes.ArrayCopy;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;

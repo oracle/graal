@@ -737,6 +737,7 @@ public class SnippetTemplate {
         // Copy snippet graph, replacing constant parameters with given arguments
         final StructuredGraph snippetCopy = new StructuredGraph.Builder(options, debug).name(snippetGraph.name).method(snippetGraph.method()).trackNodeSourcePosition(
                         snippetGraph.trackNodeSourcePosition()).setIsSubstitution(true).build();
+        snippetCopy.setGuardsStage(snippetGraph.getGuardsStage());
         assert !GraalOptions.TrackNodeSourcePosition.getValue(options) || snippetCopy.trackNodeSourcePosition();
         try (DebugContext.Scope scope = debug.scope("SpecializeSnippet", snippetCopy)) {
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
