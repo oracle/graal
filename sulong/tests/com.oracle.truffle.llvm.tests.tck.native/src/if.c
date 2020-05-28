@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,11 +30,11 @@
 #include "polyglot.h"
 #include <stdlib.h>
 
-bool if_statement(bool flag) { 
+bool if_statement(bool flag) {
 
-	if (flag) {
-		return true;
-	} else {
-		return false;
-	}
+  if (flag) {
+    return true;
+  } else {
+    return false;
+  }
 }

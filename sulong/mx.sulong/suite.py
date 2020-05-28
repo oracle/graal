@@ -226,7 +226,6 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "jacoco" : "exclude",
-      "clangFormat" : False,
     },
     "com.oracle.truffle.llvm.api" : {
       "subDir" : "projects",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,4 +30,6 @@
 #include "polyglot.h"
 #include <stdlib.h>
 
-char val() { return 'a'; }
+char val() {
+  return 'a';
+}
