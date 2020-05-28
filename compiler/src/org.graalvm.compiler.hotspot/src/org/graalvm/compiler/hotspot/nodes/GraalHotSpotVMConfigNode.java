@@ -38,13 +38,16 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerator;
 import org.graalvm.compiler.hotspot.HotSpotMarkId;
+import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -104,6 +107,18 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
 
     public static int logOfHeapRegionGrainBytes() {
         return loadIntConfigValue(HotSpotMarkId.LOG_OF_HEAP_REGION_GRAIN_BYTES);
+    }
+
+    @SuppressWarnings("unused")
+    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter GraalHotSpotVMConfig config,
+                    HotSpotMarkId mark) {
+        HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) b.getReplacements();
+        if (replacements.isEncodingSnippets()) {
+            // This plugin must be deferred so that these constants aren't embedded in libgraal
+            return false;
+        }
+        b.addPush(returnStamp.getStackKind(), new GraalHotSpotVMConfigNode(returnStamp, config, mark));
+        return true;
     }
 
     @Override
