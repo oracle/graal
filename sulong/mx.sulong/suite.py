@@ -177,7 +177,6 @@ suite = {
       },
       "license" : "BSD-new",
       "testProject" : True,
-      "clangFormat" : False,
     },
     "com.oracle.truffle.llvm.tests.types" : {
       "subDir" : "tests",
