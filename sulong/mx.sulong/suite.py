@@ -841,7 +841,6 @@ suite = {
       ],
       "testProject" : True,
       "defaultBuild" : False,
-      "clangFormat" : False,
     },
     "inlineassemblytests" : {
       "subDir" : "tests",
