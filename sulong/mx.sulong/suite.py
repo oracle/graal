@@ -473,7 +473,6 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "defaultBuild" : False,
-      "clangFormat" : False,
     },
 
     "com.oracle.truffle.llvm.tests.pipe.native" : {
