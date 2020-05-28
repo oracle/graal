@@ -17,7 +17,7 @@ bench-jvmci : {
   mx-renaissance-legacy: ${bench-jvmci.mx-benchmark} ["renaissance-legacy:*"]
   mx-spark-sql-perf: ${bench-jvmci.mx-benchmark} ["spark-sql-perf"]
   mx-micros-graal-whitebox: ${bench-jvmci.mx-benchmark} ["jmh-whitebox:*"]
-  mx-micros-graal-dist: ${bench-jvmci.mx-benchmark} ["jmh-dist:*"]
+  mx-micros-graal-dist: ${bench-jvmci.mx-benchmark} ["jmh-dist:GRAAL_COMPILER_MICRO_BENCHMARKS"]
   mx-teardown : ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"]
 }
 
