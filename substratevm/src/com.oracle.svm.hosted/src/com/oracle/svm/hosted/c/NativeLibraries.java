@@ -121,12 +121,6 @@ public final class NativeLibraries {
     public final Path tempDirectory;
     public final DebugContext debug;
 
-    /*
-     * Static JDK libraries compiled with different LibCBase versions are placed inside of <GraalVM
-     * Root>/lib/<this path>
-     */
-    private static final Path CUSTOM_LIBC_STATIC_DIST_PATH = Paths.get("svm", "static-libs");
-
     public static final class DependencyGraph {
 
         private static final class Dependency {

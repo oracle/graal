@@ -872,7 +872,7 @@ public class NativeImageGenerator {
         }
     }
 
-    private void setDefaultLibCIfMissing() {
+    private static void setDefaultLibCIfMissing() {
         if (!ImageSingletons.contains(LibCBase.class)) {
             ImageSingletons.add(LibCBase.class, new NoLibC());
         }

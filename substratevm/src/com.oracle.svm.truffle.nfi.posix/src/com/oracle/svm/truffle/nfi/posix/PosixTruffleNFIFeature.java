@@ -66,10 +66,12 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     private static final int ISOLATED_NAMESPACE_FLAG = 0x10000;
     private static final int ISOLATED_NAMESPACE_NOT_SUPPORTED_FLAG = 0;
 
-    static int isolatedNamespaceFlag;
+    static int isolatedNamespaceFlag = ISOLATED_NAMESPACE_NOT_SUPPORTED_FLAG;
 
     static void initialize() {
-        isolatedNamespaceFlag = LibCBase.singleton().hasIsolatedNamespaces() ? ISOLATED_NAMESPACE_FLAG : ISOLATED_NAMESPACE_NOT_SUPPORTED_FLAG;
+        if (Platform.includedIn(Platform.LINUX.class)) {
+            isolatedNamespaceFlag = LibCBase.singleton().hasIsolatedNamespaces() ? ISOLATED_NAMESPACE_FLAG : ISOLATED_NAMESPACE_NOT_SUPPORTED_FLAG;
+        }
         ImageSingletons.add(TruffleNFISupport.class, new PosixTruffleNFISupport());
     }
 
