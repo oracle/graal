@@ -196,7 +196,7 @@ public class CpuLocalCounterArray<T> {
         final ValueNode increment = graph.addOrUniqueWithInputs(ConstantNode.forLong(1L));
         final ReadNode memoryRead = graph.add(new ReadNode(counterAddress, LocationIdentity.any(), StampFactory.forKind(JavaKind.Long), OnHeapMemoryAccess.BarrierType.NONE));
         final ValueNode addNode = graph.addOrUniqueWithInputs(AddNode.create(memoryRead, increment, NodeView.DEFAULT));
-        final WriteNode memoryWrite = graph.add(new WriteNode(counterAddress, LocationIdentity.any(), addNode, OnHeapMemoryAccess.BarrierType.NONE, false));
+        final WriteNode memoryWrite = graph.add(new WriteNode(counterAddress, LocationIdentity.any(), addNode, OnHeapMemoryAccess.BarrierType.NONE));
         graph.addAfterFixed(memoryRead, memoryWrite);
         return Pair.create(memoryRead, memoryWrite);
     }
