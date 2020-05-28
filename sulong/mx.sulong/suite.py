@@ -659,7 +659,6 @@ suite = {
       ],
       "testProject" : True,
       "defaultBuild" : False,
-      "clangFormat" : False,
     },
     "com.oracle.truffle.llvm.tests.interop.native" : {
       "subDir" : "tests",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,16 @@
  */
 
 void bar() {
-    return;
+  return;
 }
 
 void foo() {
-    bar();
-    bar();
-    bar();
+  bar();
+  bar();
+  bar();
 }
 
 __attribute__((constructor)) int test() {
-    foo();
-    return 0;
+  foo();
+  return 0;
 }
