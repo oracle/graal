@@ -51,16 +51,27 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public abstract class SubstrateBackend extends Backend {
 
     public enum SubstrateMarkId implements CompilationResult.MarkId {
-        PROLOGUE_DECD_RSP,
-        PROLOGUE_SAVED_REGS,
-        PROLOGUE_END,
-        EPILOGUE_START,
-        EPILOGUE_INCD_RSP,
-        EPILOGUE_END;
+        PROLOGUE_DECD_RSP(true),
+        PROLOGUE_SAVED_REGS(true),
+        PROLOGUE_END(true),
+        EPILOGUE_START(false),
+        EPILOGUE_INCD_RSP(true),
+        EPILOGUE_END(true);
+
+        final boolean isMarkAfter;
+
+        SubstrateMarkId(boolean isMarkAfter) {
+            this.isMarkAfter = isMarkAfter;
+        }
 
         @Override
         public String getName() {
             return toString();
+        }
+
+        @Override
+        public boolean isMarkAfter() {
+            return isMarkAfter;
         }
     }
 

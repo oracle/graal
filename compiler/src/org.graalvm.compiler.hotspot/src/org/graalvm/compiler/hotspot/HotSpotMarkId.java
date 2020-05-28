@@ -37,38 +37,41 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
  * code.
  */
 public enum HotSpotMarkId implements CompilationResult.MarkId {
-    VERIFIED_ENTRY("VERIFIED_ENTRY"),
-    UNVERIFIED_ENTRY("UNVERIFIED_ENTRY"),
-    OSR_ENTRY("OSR_ENTRY"),
-    EXCEPTION_HANDLER_ENTRY("EXCEPTION_HANDLER_ENTRY"),
-    DEOPT_HANDLER_ENTRY("DEOPT_HANDLER_ENTRY"),
-    FRAME_COMPLETE("FRAME_COMPLETE", true),
-    INVOKEINTERFACE("INVOKEINTERFACE"),
-    INVOKEVIRTUAL("INVOKEVIRTUAL"),
-    INVOKESTATIC("INVOKESTATIC"),
-    INVOKESPECIAL("INVOKESPECIAL"),
-    INLINE_INVOKE("INLINE_INVOKE"),
-    POLL_NEAR("POLL_NEAR"),
-    POLL_RETURN_NEAR("POLL_RETURN_NEAR"),
-    POLL_FAR("POLL_FAR"),
-    POLL_RETURN_FAR("POLL_RETURN_FAR"),
-    CARD_TABLE_ADDRESS("CARD_TABLE_ADDRESS"),
-    NARROW_KLASS_BASE_ADDRESS("NARROW_KLASS_BASE_ADDRESS"),
-    NARROW_OOP_BASE_ADDRESS("NARROW_OOP_BASE_ADDRESS"),
-    CRC_TABLE_ADDRESS("CRC_TABLE_ADDRESS"),
-    LOG_OF_HEAP_REGION_GRAIN_BYTES("LOG_OF_HEAP_REGION_GRAIN_BYTES");
+    VERIFIED_ENTRY("VERIFIED_ENTRY", false),
+    UNVERIFIED_ENTRY("UNVERIFIED_ENTRY", false),
+    OSR_ENTRY("OSR_ENTRY", false),
+    EXCEPTION_HANDLER_ENTRY("EXCEPTION_HANDLER_ENTRY", false),
+    DEOPT_HANDLER_ENTRY("DEOPT_HANDLER_ENTRY", false),
+    FRAME_COMPLETE("FRAME_COMPLETE", true, true),
+    INVOKEINTERFACE("INVOKEINTERFACE", true),
+    INVOKEVIRTUAL("INVOKEVIRTUAL", true),
+    INVOKESTATIC("INVOKESTATIC", true),
+    INVOKESPECIAL("INVOKESPECIAL", true),
+    INLINE_INVOKE("INLINE_INVOKE", true),
+    POLL_NEAR("POLL_NEAR", true),
+    POLL_RETURN_NEAR("POLL_RETURN_NEAR", true),
+    POLL_FAR("POLL_FAR", true),
+    POLL_RETURN_FAR("POLL_RETURN_FAR", true),
+    CARD_TABLE_ADDRESS("CARD_TABLE_ADDRESS", true),
+    NARROW_KLASS_BASE_ADDRESS("NARROW_KLASS_BASE_ADDRESS", true),
+    NARROW_OOP_BASE_ADDRESS("NARROW_OOP_BASE_ADDRESS", true),
+    CRC_TABLE_ADDRESS("CRC_TABLE_ADDRESS", true),
+    LOG_OF_HEAP_REGION_GRAIN_BYTES("LOG_OF_HEAP_REGION_GRAIN_BYTES", true);
 
     private final String name;
+    private final boolean isMarkAfter;
     @NativeImageReinitialize private Integer value;
     private final boolean optional;
 
-    HotSpotMarkId(String name) {
+    HotSpotMarkId(String name, boolean isMarkAfter) {
         this.name = name;
+        this.isMarkAfter = isMarkAfter;
         this.optional = false;
     }
 
-    HotSpotMarkId(String name, boolean optional) {
+    HotSpotMarkId(String name, boolean isMarkAfter, boolean optional) {
         this.name = name;
+        this.isMarkAfter = isMarkAfter;
         this.optional = optional;
     }
 
@@ -93,6 +96,11 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
     public Object getId() {
         assert isAvailable() : this;
         return getValue();
+    }
+
+    @Override
+    public boolean isMarkAfter() {
+        return isMarkAfter;
     }
 
     public boolean isAvailable() {

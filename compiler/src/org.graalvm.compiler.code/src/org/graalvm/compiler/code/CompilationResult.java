@@ -712,6 +712,13 @@ public class CompilationResult {
         default Object getId() {
             return this;
         }
+
+        /**
+         * Indicates whether the mark is intended to identify the end of the last instruction or the
+         * beginning of the next instruction. This information is necessary if the backend needs to
+         * insert instructions after the normal assembly step.
+         */
+        boolean isMarkAfter();
     }
 
     /**
@@ -885,6 +892,14 @@ public class CompilationResult {
     private static <T extends Site> void iterateAndReplace(List<T> sites, int pos, Function<T, T> replacement) {
         for (int i = 0; i < sites.size(); i++) {
             T site = sites.get(i);
+            if (pos == site.pcOffset && site instanceof CodeMark) {
+                CodeMark mark = (CodeMark) site;
+                if (mark.id.isMarkAfter()) {
+                    // The insert point is exactly on the mark but the mark is annotating the end of
+                    // the last instruction, so leave it alone.
+                    continue;
+                }
+            }
             if (pos <= site.pcOffset) {
                 sites.set(i, replacement.apply(site));
             }
