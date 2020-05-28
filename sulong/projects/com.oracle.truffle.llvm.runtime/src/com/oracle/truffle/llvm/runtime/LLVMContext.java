@@ -481,6 +481,11 @@ public final class LLVMContext {
 
     private CallTarget freeGlobalBlocks;
 
+    @TruffleBoundary(allowInlining = true)
+    private static LLVMPointer getElement(ArrayList<LLVMPointer> list, int idx) {
+        return list.get(idx);
+    }
+
     private void initFreeGlobalBlocks(NodeFactory nodeFactory) {
         // lazily initialized, this is not necessary if there are no global blocks allocated
         if (freeGlobalBlocks == null) {
@@ -492,12 +497,14 @@ public final class LLVMContext {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     // Executed in dispose(), therefore can read unsynchronized
-                    for (LLVMPointer store : globalsReadOnlyStore) {
+                    for (int i = 0; i < globalsReadOnlyStore.size(); i++) {
+                        LLVMPointer store = getElement(globalsReadOnlyStore, i);
                         if (store != null) {
                             freeRo.execute(store);
                         }
                     }
-                    for (LLVMPointer store : globalsNonPointerStore) {
+                    for (int i = 0; i < globalsNonPointerStore.size(); i++) {
+                        LLVMPointer store = getElement(globalsNonPointerStore, i);
                         if (store != null) {
                             freeRw.execute(store);
                         }
