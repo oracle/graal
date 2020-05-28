@@ -656,6 +656,32 @@ __POLYGLOT_DECLARE_GENERIC_ARRAY(double, double)
 #define POLYGLOT_DECLARE_STRUCT(type) __POLYGLOT_DECLARE_GENERIC_TYPE(struct type, type)
 
 /**
+ * Declare polyglot conversion functions for a user-defined class type.
+ *
+ * Given this class definition:
+ * \code
+ * class MyClass {
+ *   int someMember;
+ *   int someMethod();
+ *   ...
+ * };
+ *
+ * POLYGLOT_DECLARE_CLASS(MyStruct)
+ * \endcode
+ *
+ * This macro will generate the following functions:
+ *
+ * \code
+ * polyglot_typeid polyglot_MyClass_typeid();
+ * MyClass *polyglot_as_MyClass(void *value);
+ * MyClass *polyglot_as_MyClass_array(void *value);
+ * void *polyglot_from_MyClass(MyClass *s);
+ * void *polyglot_from_MyClass_array(MyClass *arr, uint64_t len);
+ * \endcode
+ */
+#define POLYGLOT_DECLARE_CLASS(type) __POLYGLOT_DECLARE_GENERIC_TYPE(type, type)
+
+/**
  * Declare polyglot conversion functions for a user-defined anonymous struct type.
  *
  * Given this type definition:
