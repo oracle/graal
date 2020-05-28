@@ -281,21 +281,42 @@ def build_llvm_org(args=None):
 
 def clangformatcheck(args=None):
     """ Performs a format check on the include/truffle.h file """
-    for f in clangFormatCheckPaths:
-        checkCFiles(f)
+    clangformat(extra_paths=clangFormatCheckPaths)
 
-def checkCFiles(targetDir):
+
+@mx.command("mx_sulong", "clangformat")
+def clangformat(args=None, extra_paths=None):
+    if not extra_paths:
+        extra_paths = []
     error = False
-    for path, _, files in os.walk(targetDir):
-        for f in files:
-            if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
-                if not checkCFile(path + '/' + f):
-                    error = True
+
+    nativeProjects = [p.dir for p in mx.projects(limit_to_primary=True) if p.isNativeProject() and getattr(p, "clangFormat", True)]
+    for f in extra_paths + nativeProjects:
+        if not checkCFiles(f):
+            error = True
     if error:
         mx.log_error("found formatting errors!")
         exit(-1)
 
+
+def checkCFiles(targetDir):
+    error = False
+    files_to_check = []
+    for path, _, files in os.walk(targetDir):
+        for f in files:
+            if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
+                files_to_check.append(join(path, f))
+    if not files_to_check:
+        # no files found
+        return True
+    mx.logv("clang-format: checking directory {} ({} files)".format(targetDir, len(files_to_check)))
+    for f in files_to_check:
+        if not checkCFile(f):
+            error = True
+    return not error
+
 def checkCFile(targetFile):
+    mx.logvv("  checking file " + targetFile)
     """ Checks the formatting of a C file and returns True if the formatting is okay """
     clangFormat = findBundledLLVMProgram('clang-format')
     formatCommand = [clangFormat, targetFile]
