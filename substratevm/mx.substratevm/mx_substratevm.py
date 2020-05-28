@@ -1185,6 +1185,9 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
             if mx.is_linux():
                 # Assume we are running under glibc by default for now.
                 staticlib_path = staticlib_path + ['glibc']
+            # Allow older labsjdk versions to work
+            if not exists(join(mx_compiler.jdk.home, *staticlib_path)):
+                staticlib_path = ['lib']
 
         staticlib_wildcard = staticlib_path + [mx_subst.path_substitutions.substitute('<staticlib:*>')]
         staticlib_wildcard_path = join(mx_compiler.jdk.home, *staticlib_wildcard)

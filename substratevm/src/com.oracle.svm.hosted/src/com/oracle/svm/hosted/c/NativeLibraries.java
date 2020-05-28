@@ -281,13 +281,16 @@ public final class NativeLibraries {
     private static Path getPlatformDependentJDKStaticLibraryPath() throws IOException {
         Path baseSearchPath = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            baseSearchPath = baseSearchPath.resolve("static");
+            Path staticLibPath = baseSearchPath.resolve("static");
             SubstrateTargetDescription target = ConfigurationValues.getTarget();
-            Path platformDependentPath = baseSearchPath.resolve((OS.getCurrent().className + "-" + target.arch.getName()).toLowerCase());
+            Path platformDependentPath = staticLibPath.resolve((OS.getCurrent().className + "-" + target.arch.getName()).toLowerCase());
             if (OS.getCurrent() == OS.LINUX) {
                 platformDependentPath = platformDependentPath.resolve(LibCBase.singleton().getName());
             }
-            return platformDependentPath;
+            // Fallback for older JDK versions
+            if (Files.exists(platformDependentPath)) {
+                return platformDependentPath;
+            }
         }
         return baseSearchPath;
     }
@@ -329,8 +332,8 @@ public final class NativeLibraries {
                 }
                 UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
                                 "Building images for %s%s requires static JDK libraries.%nUse JDK from %s or %s%s",
-                                libCMessage,
                                 ImageSingletons.lookup(Platform.class).getClass().getName(),
+                                libCMessage,
                                 "https://github.com/graalvm/openjdk8-jvmci-builder/releases",
                                 "https://github.com/graalvm/labs-openjdk-11/releases",
                                 hint);
