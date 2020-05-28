@@ -1,7 +1,23 @@
-# GraalVM Support for VS Code
+# GraalVM Support for VS Code <!-- omit in toc -->
 
-A VS Code extension providing the basic support for editing and debugging programs running on [GraalVM](http://www.graalvm.org).
+A VS Code extension providing the basic support for editing and debugging programs running on [GraalVM](http://www.graalvm.org). As of version 0.0.8 this extension replaces the original [GraalVM Python](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-python), [GraalVM R](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-r), [GraalVM Ruby](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-ruby), and [GraalVM Extension Pack](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-complete) extensions so those can be safely uninstalled from your VS Code. 
 The extension is Technology Preview.
+
+#### Table of contents  <!-- omit in toc -->
+- [Features](#features)
+  - [GraalVM Installation and Setup](#graalvm-installation-and-setup)
+  - [JavaScript and Node.js Debugging](#javascript-and-nodejs-debugging)
+  - [Polyglot Applications Debugging](#polyglot-applications-debugging)
+  - [Python Debugging](#python-debugging)
+  - [R Debugging](#r-debugging)
+  - [Ruby Debugging](#ruby-debugging)
+  - [Language Server Integration](#language-server-integration)
+  - [R Language Server](#r-language-server)
+  - [Ruby Language Server](#ruby-language-server)
+  - [Additional Editor Features](#additional-editor-features)
+- [Extension Settings](#extension-settings)
+- [Requirements](#requirements)
+- [Privacy Policy](#privacy-policy)
 
 ## Features
 
@@ -54,7 +70,6 @@ To debug a JavaScript or Node.js application running on GraalVM, creating a laun
 The GraalVM extension provides the following debug configurations that can be used to debug an applications running on GraalVM:
 * __Launch Node.js Application__ - Launches a Node.js Application using GraalVM in a debug mode.
 * __Launch JavaScript__ - Launches a JavaScript using GraalVM in a debug mode.
-* __Launch Polyglot Application__ - Launches a Polyglot Application in debug mode.
 * __Attach__ - Attaches debugger to a locally running GraalVM.
 * __Attach to Remote__ - Attaches debugger to the debug port of a remote GraalVM.
 
@@ -65,6 +80,24 @@ Note that the attributes available in launch configurations vary from configurat
 ![Image Select Debug Configuration](images/select-debug-config.png)
 
 In order to start a debug session, first select the proper configuration using the Configuration drop-down in the Debug view. Once you have your launch configuration set, start your debug session with F5. Alternatively you can run your configuration through the Command Palette (Ctrl+Shift+P), by filtering on Debug: Select and Start Debugging or typing 'debug ', and selecting the configuration you want to debug.
+
+### Polyglot Applications Debugging
+
+To run a polyglot application using the GraalVM, user has to either pass the `--polyglot` option to any of the existing application lauchers (e.g. `js --polyglot`, `node --polyglot`) or use an experimental launcher called `polyglot` that runs code for JavaScript, Ruby, and R without requiring the selection of a primary language. The `polyglot` launcher does not require the `--polyglot` option, it is enabled by default. For more information see the [GraalVM polyglot documentation](https://www.graalvm.org/docs/reference-manual/polyglot/).
+
+To debug a polyglot application using the GraalVM, creating a launch configuration for the application is necessary. To do so, open the applicarion project folder in VS Code (File > Open Folder) and then select the Configure gear icon on the Debug view top bar. If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets. Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
+* Use IntelliSense if your cursor is located inside the configurations array.
+* Press the Add Configuration button to invoke snippet IntelliSense at the start of the array.
+* Choose Add Configuration option in the Debug menu.
+
+![Image Debug Configurations](images/debug-config-polyglot.png)
+
+The GraalVM extension provides the following debug configuration that can be used to debug an applications running on GraalVM using the `polyglot` launcher:
+* __Launch Polyglot Application__ - Launches a Polyglot Application in debug mode.
+
+Alternatively, to pass the `--polyglot` option to any of the existing application lauchers, add the `runtimeArgs` attribute containing the `--polyglot` value to their respective debug configurations. Note that in some cases (polyglot application calls Java or R, or native launcher accesses languages installed with `gu` without [rebuilding images](https://www.graalvm.org/docs/reference-manual/install-components/#rebuilding-images)), passing also the `--jvm` option is necessary.
+
+![Image Debug Configuration for Python](images/polyglot-debug-config.png)
 
 ### Python Debugging
 
