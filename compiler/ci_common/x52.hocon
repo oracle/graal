@@ -20,8 +20,8 @@ x52.c2 : {
   }
 }
 
-x52.c2-tmpfs10g : ${x52.c2} {
-  capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
+x52.tmpfs10g-c2 : ${x52.c2} {
+  capabilities: ${x52.c2.capabilities} [tmpfs10g]
 }
 
 x52.default : ${linux-amd64} {
