@@ -161,7 +161,7 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
                     absPath = os.path.join(path, f)
                     relPath = os.path.relpath(absPath, root)
                     _, ext = os.path.splitext(relPath)
-                    if ext in ['.c', '.cpp', '.ll']:
+                    if ext in getattr(self, "fileExts", ['.c', '.cpp', '.ll']):
                         self._tests.append(relPath + ".dir")
         return self._tests
 
