@@ -4,6 +4,7 @@
     "openjdk8":        {"name": "openjdk",   "version": "8u252+09-jvmci-20.1-b02", "platformspecific": true },
     "oraclejdk8Debug": {"name": "oraclejdk", "version": "8u251+08-jvmci-20.1-b02-fastdebug", "platformspecific": true },
     "oraclejdk11":     {"name": "oraclejdk", "version": "11.0.6+8", "platformspecific": true },
+    "oraclejdk15":     {"name": "oraclejdk", "version": "15+24", "platformspecific": true },
     "openjdk11":       {"name": "openjdk",   "version": "11.0.3+7", "platformspecific": true },
     "labsjdk-ce-11":   {"name": "labsjdk",   "version": "ce-11.0.7+10-jvmci-20.1-b02", "platformspecific": true },
     "labsjdk-ee-11":   {"name": "labsjdk",   "version": "ee-11.0.7+8-jvmci-20.1-b02", "platformspecific": true }
