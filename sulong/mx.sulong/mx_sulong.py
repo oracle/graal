@@ -108,13 +108,6 @@ clangFormatCheckPaths = [
     join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "src"),
     join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "include"),
     join(_testDir, "com.oracle.truffle.llvm.tests.pipe.native", "src"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.sulong.native"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp.native"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.linker.native"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.debugexpr.native"),
-    join(_testDir, "interoptests"),
-    join(_testDir, "inlineassemblytests"),
-    join(_testDir, "other")
 ]
 
 # the clang-format versions that can be used for formatting the test case C and C++ files
