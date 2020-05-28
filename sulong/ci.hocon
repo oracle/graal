@@ -34,6 +34,7 @@ sulong-gateTest-darwin: ${sulong-gateCommon} ${darwin-amd64} ${sulong.deps.darwi
 sulong-gateTest-default-tools {
     environment: {
         CLANG_LLVM_AS: "llvm-as"
+        CLANG_LLVM_LINK: "llvm-link"
         CLANG_LLVM_DIS: "llvm-dis"
         CLANG_LLVM_OPT: "opt"
     }
