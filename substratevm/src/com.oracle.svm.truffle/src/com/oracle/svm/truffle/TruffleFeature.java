@@ -339,6 +339,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
         }
         initializeTruffleReflectively(Thread.currentThread().getContextClassLoader());
+
+        // reinitialize language cache
+        invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "reinitializeNativeImageState", Collections.emptyList());
     }
 
     @Override

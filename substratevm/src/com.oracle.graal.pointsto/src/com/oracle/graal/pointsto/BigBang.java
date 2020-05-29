@@ -519,8 +519,6 @@ public abstract class BigBang {
         return executor;
     }
 
-    public abstract boolean isValidClassLoader(Object valueObj);
-
     public void checkUserLimitations() {
     }
 

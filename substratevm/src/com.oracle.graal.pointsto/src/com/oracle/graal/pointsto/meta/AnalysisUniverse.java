@@ -224,6 +224,9 @@ public class AnalysisUniverse implements Universe {
             throw AnalysisError.typeNotFound(type);
         }
 
+        /* Run additional checks on the type. */
+        hostVM.checkType(type, this);
+
         /*
          * We do not want multiple threads to create the AnalysisType simultaneously, because we
          * want a unique id number per type. So claim the type first, and only when the claim
