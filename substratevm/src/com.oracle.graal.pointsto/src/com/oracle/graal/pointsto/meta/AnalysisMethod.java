@@ -545,9 +545,9 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
      */
     private final AtomicReference<InvokeTypeFlow> contextInsensitiveInvoke = new AtomicReference<>();
 
-    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(BigBang bb) {
+    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(BigBang bb, BytecodePosition originalLocation) {
         if (contextInsensitiveInvoke.get() == null) {
-            InvokeTypeFlow invoke = InvokeTypeFlow.createContextInsensitiveInvoke(bb, this);
+            InvokeTypeFlow invoke = InvokeTypeFlow.createContextInsensitiveInvoke(bb, this, originalLocation);
             boolean set = contextInsensitiveInvoke.compareAndSet(null, invoke);
             if (set) {
                 /*
