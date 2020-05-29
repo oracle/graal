@@ -179,9 +179,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
         compilerConfigurationName = compilerConfigurationFactory.getName();
 
-
-        final InstrumentationFactory instrumentationFactory = compilerConfigurationFactory.getInstrumentationFactory();
-        this.instrumentation = instrumentationFactory.createInstrumentation(options);
+        this.instrumentation = compilerConfigurationFactory.createInstrumentation(options);
 
         if (IS_AOT) {
             management = AOT_INJECTED_MANAGEMENT == null ? null : AOT_INJECTED_MANAGEMENT.get();

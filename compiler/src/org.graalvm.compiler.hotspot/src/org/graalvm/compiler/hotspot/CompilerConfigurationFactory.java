@@ -96,7 +96,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
 
     public abstract CompilerConfiguration createCompilerConfiguration();
 
-    public abstract InstrumentationFactory getInstrumentationFactory();
+    public abstract Instrumentation createInstrumentation(OptionValues options);
 
     /**
      * Collect the set of available {@linkplain HotSpotBackendFactory backends} for this compiler
