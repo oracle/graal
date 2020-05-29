@@ -723,7 +723,21 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
         lib_directory = join(jdk.home, 'lib', 'static')
         if exists(lib_directory):
             dst_lib_directory = join(dst_jdk_dir, 'lib', 'static')
-            mx.copytree(lib_directory, dst_lib_directory)
+            mx.log("Copying from " + lib_directory + " to " + dst_lib_directory)
+            try:
+                mx.copytree(lib_directory, dst_lib_directory)
+            except shutil.Error as e:
+                for root, _, lib_files in os.walk(lib_directory):
+                    relative_root = os.path.relpath(root, dst_lib_directory)
+                    for lib in lib_files:
+                        src_lib_path = join(root, lib)
+                        dst_lib_path = join(dst_lib_directory, relative_root, lib)
+                        if not exists(dst_lib_path):
+                            mx.abort('Failed to copy static libraries. A library has not been copied. Original error: ' + str(e))
+                        src_lib_hash = mx.sha1OfFile(src_lib_path)
+                        dst_lib_hash = mx.sha1OfFile(dst_lib_path)
+                        if src_lib_hash != dst_lib_hash:
+                            mx.abort('Failed to copy static libraries. A library does not have the original SHA1 hash. Original error: ' + str(e))
         # Allow older JDK versions to work
         else:
             lib_prefix = mx.add_lib_prefix('')
