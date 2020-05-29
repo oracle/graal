@@ -253,8 +253,7 @@ public class AllocationReporterTest {
             fail();
         } catch (PolyglotException ex) {
             // O.K.
-            assertTrue(ex.getMessage(), ex.getMessage().contains("OutOfMemoryError") &&
-                            ex.getMessage().contains("Denied allocation of 8 bytes."));
+            assertTrue(ex.getMessage(), ex.getMessage().contains("Denied allocation of 8 bytes."));
         }
         assertEquals(1, consumerCalls.get());
         consumerCalls.set(0);
@@ -278,8 +277,7 @@ public class AllocationReporterTest {
             fail();
         } catch (PolyglotException ex) {
             // O.K.
-            assertTrue(ex.getMessage(), ex.getMessage().contains("OutOfMemoryError") &&
-                            ex.getMessage().contains("Denied an unknown reallocation."));
+            assertTrue(ex.getMessage(), ex.getMessage().contains("Denied an unknown reallocation."));
         }
         assertEquals(1, consumerCalls.get());
     }

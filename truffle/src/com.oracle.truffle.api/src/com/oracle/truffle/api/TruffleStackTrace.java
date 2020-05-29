@@ -261,10 +261,7 @@ public final class TruffleStackTrace extends Exception {
             }
             lastException = parentCause;
         }
-        if (lastException != null && !(lastException instanceof StackOverflowError)) {
-            return lastException;
-        }
-        return null;
+        return lastException;
     }
 
     private static void insert(Throwable t, LazyStackTrace trace) {
@@ -292,7 +289,6 @@ public final class TruffleStackTrace extends Exception {
         if (throwable instanceof ControlFlowException) {
             return EMPTY;
         }
-
         LazyStackTrace lazy = findImpl(throwable);
         if (lazy == null) {
             Throwable insertCause = findInsertCause(throwable);

@@ -490,6 +490,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract SourceSection getSourceLocation();
 
+        public abstract boolean isResourceExhausted();
+
     }
 
     public abstract static class AbstractStackFrameImpl {
