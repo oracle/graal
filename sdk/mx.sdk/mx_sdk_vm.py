@@ -43,6 +43,7 @@ from __future__ import print_function
 from abc import ABCMeta
 
 import mx
+import mx_javamodules
 import mx_subst
 import os
 import shutil
@@ -112,10 +113,27 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
     def __repr__(self):
         return str(self)
 
+    @staticmethod
+    def get_add_exports_list(required_exports, custom_target_module_str=None):
+        add_exports = []
+        for required in required_exports:
+            target_modules = required_exports[required]
+            target_modules_str = custom_target_module_str or ','.join(sorted(target_module.name for target_module in target_modules))
+            required_module_name, required_package_name = required
+            add_exports.append('--add-exports=' + required_module_name + '/' + required_package_name + "=" + target_modules_str)
+        return sorted(add_exports)
+
+    def get_add_exports(self):
+        distributions = self.jar_distributions
+        distributions_transitive = mx.classpath_entries(distributions)
+        required_exports = mx_javamodules.requiredExports(distributions_transitive, base_jdk())
+        return ' '.join(AbstractNativeImageConfig.get_add_exports_list(required_exports))
+
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
-                 default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None, **kwargs):
+                 default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None,
+                 option_vars=None, **kwargs):
         """
         :param str main_class
         :param bool is_main_launcher
@@ -130,6 +148,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         self.is_sdk_launcher = is_sdk_launcher
         self.custom_launcher_script = custom_launcher_script
         self.extra_jvm_args = [] if extra_jvm_args is None else extra_jvm_args
+        self.option_vars = [] if option_vars is None else option_vars
 
         self.relative_home_paths = {}
 
@@ -309,8 +328,6 @@ class GraalVmTool(GraalVmTruffleComponent):
 class GraalVMSvmMacro(GraalVmComponent):
     pass
 
-class GraalVMSvmStaticLib(GraalVmComponent):
-    pass
 
 class GraalVmJdkComponent(GraalVmComponent):
     pass
@@ -699,23 +716,21 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
                 zf.writestr(name, contents)
 
         mx.logv('[Copying static libraries]')
-        lib_prefix = mx.add_lib_prefix('')
-        lib_suffix = '.lib' if mx.is_windows() else '.a'
-        lib_directory = join(jdk.home, 'lib')
-        dst_lib_directory = join(dst_jdk_dir, 'lib')
-        for f in os.listdir(lib_directory):
-            if f.startswith(lib_prefix) and f.endswith(lib_suffix):
-                lib_path = join(lib_directory, f)
-                if isfile(lib_path):
-                    shutil.copy2(lib_path, dst_lib_directory)
-
-        # Build the list of modules whose classes might have annotations
-        # to be processed by native-image (GR-15192).
-        with open(join(dst_jdk_dir, 'lib', 'native-image-modules.list'), 'w') as fp:
-            print('# Modules whose classes might have annotations processed by native-image', file=fp)
-            for m in modules:
-                print(m.name, file=fp)
-
+        lib_directory = join(jdk.home, 'lib', 'static')
+        if exists(lib_directory):
+            dst_lib_directory = join(dst_jdk_dir, 'lib', 'static')
+            mx.copytree(lib_directory, dst_lib_directory)
+        # Allow older JDK versions to work
+        else:
+            lib_prefix = mx.add_lib_prefix('')
+            lib_suffix = '.lib' if mx.is_windows() else '.a'
+            lib_directory = join(jdk.home, 'lib')
+            dst_lib_directory = join(dst_jdk_dir, 'lib')
+            for f in os.listdir(lib_directory):
+                if f.startswith(lib_prefix) and f.endswith(lib_suffix):
+                    lib_path = join(lib_directory, f)
+                    if isfile(lib_path):
+                        shutil.copy2(lib_path, dst_lib_directory)
     finally:
         if not mx.get_opts().verbose:
             # Preserve build directory so that javac command can be re-executed

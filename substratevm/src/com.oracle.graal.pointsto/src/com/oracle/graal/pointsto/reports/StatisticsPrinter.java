@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.reports;
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
@@ -41,8 +42,14 @@ public final class StatisticsPrinter {
 
     public static void print(BigBang bigbang, String path, String reportName) {
         StatisticsPrinter printer = new StatisticsPrinter(bigbang);
-        ReportUtils.report("analysis results stats", path + File.separatorChar + "reports", "analysis_stats_" + reportName, "txt",
-                        writer -> printer.printStats(writer));
+        Consumer<PrintWriter> consumer = writer -> printer.printStats(writer);
+        String description = "analysis results stats";
+        if (AnalysisReportsOptions.AnalysisStatisticsFile.hasBeenSet(bigbang.getOptions())) {
+            final File file = new File(AnalysisReportsOptions.AnalysisStatisticsFile.getValue(bigbang.getOptions())).getAbsoluteFile();
+            ReportUtils.report(description, file.toPath(), consumer);
+        } else {
+            ReportUtils.report(description, path + File.separatorChar + "reports", "analysis_stats_" + reportName, "json", consumer);
+        }
     }
 
     private final BigBang bigbang;
@@ -51,21 +58,50 @@ public final class StatisticsPrinter {
         this.bigbang = bigbang;
     }
 
+    /** Print analysis statistics as JSON formatted String. */
     private void printStats(PrintWriter out) {
-        out.println("Analysis Results Statistics");
+
         int[] reachableTypes = getNumReachableTypes(bigbang);
         int[] reachableMethods = getNumReachableMethods(bigbang);
         long[] typeChecksStats = getTypeCheckStats(bigbang);
 
-        out.format("Total reachable types          %8s %n", reachableTypes[0]);
-        out.format("App reachable types            %8s %n", reachableTypes[1]);
-        out.format("Total reachable methods        %8s %n", reachableMethods[0]);
-        out.format("App reachable methods          %8s %n", reachableMethods[1]);
-        out.format("Total type checks              %8s %n", typeChecksStats[0]);
-        out.format("Total removable type checks    %8s %n", typeChecksStats[1]);
-        out.format("App type checks                %8s %n", typeChecksStats[2]);
-        out.format("App removable type checks      %8s %n", typeChecksStats[3]);
-        out.println();
+        beginObject(out);
+
+        print(out, "total_reachable_types", reachableTypes[0]);
+        print(out, "app_reachable_types", reachableTypes[1]);
+        print(out, "total_reachable_methods", reachableMethods[0]);
+        print(out, "app_reachable_methods", reachableMethods[1]);
+        print(out, "total_type_checks", typeChecksStats[0]);
+        print(out, "total_removable_type_checks", typeChecksStats[1]);
+        print(out, "app_type_checks", typeChecksStats[2]);
+        print(out, "app_removable_type_checks", typeChecksStats[3]);
+
+        print(out, "typeflow_time_ms", bigbang.typeFlowTimer.getTotalTime());
+        print(out, "objects_time_ms", bigbang.checkObjectsTimer.getTotalTime());
+        print(out, "features_time_ms", bigbang.processFeaturesTimer.getTotalTime());
+        print(out, "total_analysis_time_ms", bigbang.analysisTimer.getTotalTime());
+
+        print(out, "total_memory_bytes", bigbang.analysisTimer.getTotalMemory());
+
+        endObject(out);
+    }
+
+    static final String INDENT = "   ";
+
+    private static PrintWriter endObject(PrintWriter out) {
+        return out.format("}%n");
+    }
+
+    private static PrintWriter beginObject(PrintWriter out) {
+        return out.format("{%n");
+    }
+
+    private static void print(PrintWriter out, String key, long value) {
+        out.format("%s%s: %d,%n", INDENT, key, value);
+    }
+
+    private static void print(PrintWriter out, String key, double value) {
+        out.format("%s%s: %.2f,%n", INDENT, key, value);
     }
 
     private static int[] getNumReachableTypes(BigBang bb) {

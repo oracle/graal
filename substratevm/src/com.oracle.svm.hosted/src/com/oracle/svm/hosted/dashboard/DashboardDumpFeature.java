@@ -24,18 +24,20 @@
  */
 package com.oracle.svm.hosted.dashboard;
 
-import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.shadowed.com.google.gson.Gson;
-import com.oracle.shadowed.com.google.gson.GsonBuilder;
-import com.oracle.shadowed.com.google.gson.JsonObject;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import java.io.File;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-
-import java.io.File;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @AutomaticFeature
 public class DashboardDumpFeature implements Feature {
+
     private static boolean isHeapBreakdownDumped() {
         return DashboardOptions.DashboardAll.getValue() || DashboardOptions.DashboardHeap.getValue();
     }
@@ -48,53 +50,74 @@ public class DashboardDumpFeature implements Feature {
         return DashboardOptions.DashboardAll.getValue() || DashboardOptions.DashboardCode.getValue();
     }
 
-    private static void dumpToFile(String dumpContent, String dumpPath) {
-        final File file = new File(dumpPath).getAbsoluteFile();
-        ReportUtils.report("Dashboard dump output", file.toPath(), writer -> writer.write(dumpContent));
+    private final ToJson dumper;
+
+    private static ToJson prepareDumper() {
+        try {
+            Path file = new File(DashboardOptions.DashboardDump.getValue()).getAbsoluteFile().toPath();
+            Path folder = file.getParent();
+            Path fileName = file.getFileName();
+            if (folder == null || fileName == null) {
+                throw new IllegalArgumentException("File parameter must be a file, got: " + file);
+            }
+            Files.createDirectories(folder);
+            Files.deleteIfExists(file);
+            Files.createFile(file);
+            System.out.println("Printing Dashboard dump output to " + file);
+            return new ToJson(new PrintWriter(new FileWriter(file.toFile())), DashboardOptions.DashboardPretty.getValue());
+        } catch (Exception e) {
+            System.out.println("Dashboard Dumper initialization failed with: " + e);
+            return null;
+        }
     }
 
-    private final JsonObject dumpRoot;
-
     public DashboardDumpFeature() {
-        dumpRoot = new JsonObject();
+        if (isSane()) {
+            dumper = prepareDumper();
+        } else {
+            dumper = null;
+        }
     }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return DashboardOptions.DashboardDump.getValue() != null;
+        return isSane();
+    }
+
+    private static boolean isSane() {
+        return DashboardOptions.DashboardDump.getValue() != null && (isHeapBreakdownDumped() || isPointsToDumped() || isCodeBreakdownDumped());
     }
 
     @Override
     public void onAnalysisExit(OnAnalysisExitAccess access) {
-        if (isPointsToDumped()) {
-            final PointsToDumper pointsToDumper = new PointsToDumper();
-            final JsonObject pointsTo = pointsToDumper.dump(access);
-            dumpRoot.add("points-to", pointsTo);
+        if (dumper != null && isPointsToDumped()) {
+            dumper.put("points-to", new PointsToJsonObject(access));
         }
     }
 
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
-        if (isCodeBreakdownDumped()) {
-            final CodeBreakdownDumper codeBreakdownDumper = new CodeBreakdownDumper();
-            final JsonObject breakdown = codeBreakdownDumper.dump(access);
-            dumpRoot.add("code-breakdown", breakdown);
+        if (dumper != null && isCodeBreakdownDumped()) {
+            dumper.put("code-breakdown", new CodeBreakdownJsonObject(access));
         }
     }
 
     @Override
     public void afterHeapLayout(AfterHeapLayoutAccess access) {
-        if (isHeapBreakdownDumped()) {
-            final HeapBreakdownDumper heapBreakdownDumper = new HeapBreakdownDumper();
-            final JsonObject breakdown = heapBreakdownDumper.dump(access);
-            dumpRoot.add("heap-breakdown", breakdown);
+        if (dumper != null && isHeapBreakdownDumped()) {
+            dumper.put("heap-breakdown", new HeapBreakdownJsonObject(access));
         }
     }
 
     @Override
     public void cleanup() {
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        final String dump = gson.toJson(dumpRoot);
-        dumpToFile(dump, DashboardOptions.DashboardDump.getValue());
+        if (dumper != null) {
+            try {
+                System.out.println("Print of Dashboard dump output ended.");
+                dumper.close();
+            } catch (Exception ex) {
+                Logger.getLogger(DashboardDumpFeature.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
     }
 }

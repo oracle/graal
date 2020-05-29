@@ -25,7 +25,6 @@
 package org.graalvm.compiler.hotspot.amd64;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.stubs.SnippetStub;
@@ -34,8 +33,8 @@ import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfNode;
 
 public class AMD64ArrayIndexOfStub extends SnippetStub {
 
-    public AMD64ArrayIndexOfStub(ForeignCallDescriptor foreignCallDescriptor, OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super(foreignCallDescriptor.getName(), options, providers, linkage);
+    public AMD64ArrayIndexOfStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        super(linkage.getDescriptor().getName(), options, providers, linkage);
     }
 
     @Snippet

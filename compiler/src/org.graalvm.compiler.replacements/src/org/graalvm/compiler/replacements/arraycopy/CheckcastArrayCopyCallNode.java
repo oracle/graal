@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -139,7 +139,7 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
             if (len.stamp(NodeView.DEFAULT).getStackKind() != wordKind) {
                 len = IntegerConvertNode.convert(len, StampFactory.forKind(wordKind), graph(), NodeView.DEFAULT);
             }
-            ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, desc, srcAddr, destAddr, len, superCheckOffset, destElemKlass));
+            ForeignCallNode call = graph.add(new ForeignCallNode(desc, srcAddr, destAddr, len, superCheckOffset, destElemKlass));
             call.setStateAfter(stateAfter());
             graph.replaceFixedWithFixed(this, call);
         }

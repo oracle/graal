@@ -57,7 +57,7 @@ public final class ToolchainImpl implements Toolchain {
             return null;
         }
 
-        final TruffleFile binPrefix = getRoot().resolve("bin");
+        final TruffleFile binPrefix = getWrappersRoot().resolve("bin");
         switch (tool) {
             case "PATH":
                 return binPrefix;
@@ -92,23 +92,33 @@ public final class ToolchainImpl implements Toolchain {
 
         switch (pathName) {
             case "PATH":
-                return Collections.unmodifiableList(Arrays.asList(getRoot().resolve("bin")));
+                return Collections.unmodifiableList(Arrays.asList(getWrappersRoot().resolve("bin")));
             case "LD_LIBRARY_PATH":
-                return Collections.unmodifiableList(Arrays.asList(getLLVMHome().resolve("lib")));
+                return Collections.unmodifiableList(Arrays.asList(getSysroot().resolve("lib")));
             default:
                 return null;
         }
     }
 
-    protected TruffleFile getRoot() {
+    /**
+     * Returns the directory where the toolchain wrappers live.
+     *
+     * Usually this is the same as {@link #getSysroot}, but for the bootstrap toolchain the wrappers
+     * are in a different location.
+     */
+    private TruffleFile getWrappersRoot() {
         TruffleLanguage.Env env = LLVMLanguage.getContext().getEnv();
         String toolchainRoot = toolchainConfig.getToolchainRootOverride();
         return toolchainRoot != null //
                         ? env.getInternalTruffleFile(toolchainRoot)
-                        : getLLVMHome();
+                        : getSysroot();
     }
 
-    private TruffleFile getLLVMHome() {
+    /**
+     * Returns the "sysroot" of the toolchain. That is the directory where the toolchain specific
+     * header files an libraries are located.
+     */
+    private TruffleFile getSysroot() {
         TruffleLanguage.Env env = LLVMLanguage.getContext().getEnv();
         return env.getInternalTruffleFile(language.getLLVMLanguageHome()).resolve(toolchainConfig.getToolchainSubdir());
     }

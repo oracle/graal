@@ -1,11 +1,13 @@
-# overlay version
-overlay = 342aa921cb7cc26612d0be82f6141a6d6ff8e41d
+specVersion = "2"
 
 # oraclejdk* are released OracleJDK binaries
 # oraclejdk* are JDKs based on OracleJDK binaries
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 include "common.json"
+
+# overlay version
+overlay = ${ci.overlay}
 
 # This must always point to HEAD in the master branch but can be used to point
 # to another branch/commit in a Graal PR when mx changes are required for the PR.
@@ -29,6 +31,7 @@ oraclejdk8OnlyDebug : { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug} }}
 openjdk8 :          { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
 oraclejdk11 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
+oraclejdk15 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk15} }}
 openjdk11 :         { downloads : { JAVA_HOME : ${jdks.openjdk11} }}
 
 labsjdk-ce-11 :         { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-11} }}
@@ -150,6 +153,8 @@ svm-common: ${mx} {
   }
   logs: [
     "../.native-image/*/*/*/*.log"
+    "../*/*/*.log"
+    "*/*.log"
     "*/svmbuild/*.log"
     "*/svmbuild/images/*.log"
     "*/*/stripped/*.map"
@@ -208,6 +213,12 @@ svm-common-windows: ${svm-common} ${windows-amd64} {
 windows-devkit-jdk11: {
   packages : {
     "devkit:VS2017-15.5.5+1" : "==0"
+  }
+}
+
+windows-devkit-jdk15: {
+  packages : {
+    "devkit:VS2019-16.5.3+1" : "==0"
   }
 }
 

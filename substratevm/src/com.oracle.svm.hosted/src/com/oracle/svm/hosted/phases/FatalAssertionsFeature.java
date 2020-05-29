@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
@@ -43,7 +42,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -64,13 +63,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 final class FatalAssertionsNodePlugin implements NodePlugin {
 
     private final MetaAccessProvider metaAccess;
-    private final ForeignCallsProvider foreignCalls;
     private final ResolvedJavaType assertionErrorType;
     private final HashMap<ResolvedJavaMethod, SubstrateForeignCallDescriptor> assertionConstructorReplacements;
 
-    FatalAssertionsNodePlugin(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
+    FatalAssertionsNodePlugin(MetaAccessProvider metaAccess) {
         this.metaAccess = metaAccess;
-        this.foreignCalls = foreignCalls;
 
         assertionErrorType = metaAccess.lookupJavaType(AssertionError.class);
         assertionConstructorReplacements = new HashMap<>();
@@ -105,7 +102,7 @@ final class FatalAssertionsNodePlugin implements NodePlugin {
     public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         SubstrateForeignCallDescriptor descriptor = assertionConstructorReplacements.get(method);
         if (descriptor != null && !b.parsingIntrinsic() && methodMustNotAllocate(b)) {
-            b.add(new ForeignCallNode(foreignCalls, descriptor, args));
+            b.add(new ForeignCallNode(descriptor, args));
             b.add(new DeadEndNode());
             return true;
         }
@@ -131,16 +128,14 @@ final class FatalAssertionsFeature implements GraalFeature {
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls, boolean hosted) {
-
+    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
         for (SubstrateForeignCallDescriptor descriptor : FatalAssertions.FOREIGN_CALLS.values()) {
-            foreignCalls.put(descriptor, new SubstrateForeignCallLinkage(providers, descriptor));
+            foreignCalls.register(providers, descriptor);
         }
     }
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, boolean analysis, boolean hosted) {
-        plugins.appendNodePlugin(new FatalAssertionsNodePlugin(providers.getMetaAccess(), providers.getForeignCalls()));
+        plugins.appendNodePlugin(new FatalAssertionsNodePlugin(providers.getMetaAccess()));
     }
 }

@@ -84,7 +84,7 @@ final class InsightException extends RuntimeException implements TruffleExceptio
         if (ex.getMessage() == null) {
             msg = "Unexpected " + ex.getClass().getSimpleName();
         } else {
-            msg = ex.getMessage().replace("\n", ": ");
+            msg = ex.getMessage().replace(System.lineSeparator(), ": ");
         }
         throw new InsightException(msg, ex, -1);
     }

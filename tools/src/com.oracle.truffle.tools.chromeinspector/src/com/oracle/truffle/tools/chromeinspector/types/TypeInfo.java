@@ -139,12 +139,11 @@ final class TypeInfo {
      * The type must be one of {@link TYPE}.
      */
     private static String getType(DebugValue value, String metaObject, boolean isObject) {
-        if (metaObject == null) {
-            return TYPE.OBJECT.getId();
-        }
-        for (TYPE type : TYPE.values()) {
-            if (!TYPE.OBJECT.equals(type) && metaObject.equalsIgnoreCase(type.getId())) {
-                return type.getId();
+        if (metaObject != null) {
+            for (TYPE type : TYPE.values()) {
+                if (!TYPE.OBJECT.equals(type) && metaObject.equalsIgnoreCase(type.getId())) {
+                    return type.getId();
+                }
             }
         }
         if (!isObject && value.isNumber()) {

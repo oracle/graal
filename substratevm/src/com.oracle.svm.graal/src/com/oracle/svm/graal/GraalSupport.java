@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.graal;
 
+import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
+
 import java.io.PrintStream;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -66,7 +68,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
@@ -107,6 +113,38 @@ public class GraalSupport {
     protected final List<DebugHandlersFactory> debugHandlersFactories = new ArrayList<>();
     protected final DiagnosticsOutputDirectory outputDirectory = new DiagnosticsOutputDirectory(RuntimeOptionValues.singleton());
     protected final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
+
+    private static final CGlobalData<Pointer> nextIsolateId = CGlobalDataFactory.createWord((Pointer) WordFactory.unsigned(1L));
+
+    private volatile long isolateId = 0;
+
+    /**
+     * Gets an identifier for the current isolate that is guaranteed to be unique for the first
+     * {@code 2^64 - 1} isolates in the process.
+     *
+     * @return a non-zero value
+     */
+    public long getIsolateId() {
+        if (isolateId == 0) {
+            synchronized (this) {
+                if (isolateId == 0) {
+                    Pointer p = nextIsolateId.get();
+                    long value;
+                    long nextValue;
+                    do {
+                        value = p.readLong(0);
+                        nextValue = value + 1;
+                        if (nextValue == 0) {
+                            // Avoid setting id to reserved 0 value after long integer overflow
+                            nextValue = 1;
+                        }
+                    } while (p.compareAndSwapLong(0, value, nextValue, ANY_LOCATION) != value);
+                    isolateId = value;
+                }
+            }
+        }
+        return isolateId;
+    }
 
     public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, Object compilable, PrintStream logStream) {
         Description description = new Description(compilable, compilationId.toString(CompilationIdentifier.Verbosity.ID));

@@ -111,15 +111,15 @@ import org.graalvm.polyglot.io.ByteSequence;
  *
  * <h2>Character and byte based Sources</h2>
  *
- * A source is either {@link #hasBytes() byte} or {@link #hasCharacters() character} based. For
- * literal sources it depends on whether the byte or character based factory method was used. When
- * the source was loaded from a {@link File file} or {@link URL url} then the
- * {@link Language#getDefaultMimeType() default MIME type} of the provided language will be used to
- * determine whether bytes or characters should be loaded. The behavior can be customized by
- * specifying a {@link Builder#mimeType(String) MIME type} or {@link Builder#content(ByteSequence)
- * content} explicitly. If the specified or inferred MIME type starts with <code>'text/</code> or
- * the MIME types is <code>null</code> then it will be interpreted as character based, otherwise
- * byte based.
+ * A source is {@link #hasBytes() byte} or {@link #hasCharacters() character} based, or none of
+ * those when no content is specified. For literal sources it depends on whether the byte or
+ * character based factory method was used. When the source was loaded from a {@link File file} or
+ * {@link URL url} then the {@link Language#getDefaultMimeType() default MIME type} of the provided
+ * language will be used to determine whether bytes or characters should be loaded. The behavior can
+ * be customized by specifying a {@link Builder#mimeType(String) MIME type} or
+ * {@link Builder#content(ByteSequence) content} explicitly. If the specified or inferred MIME type
+ * starts with <code>'text/</code> or the MIME types is <code>null</code> then it will be
+ * interpreted as character based, otherwise byte based.
  *
  * @see Context#eval(Source) To evaluate sources.
  * @see Source#findLanguage(File) To detect a language using a File
@@ -339,8 +339,8 @@ public final class Source {
 
     /**
      * Returns <code>true</code> if this source represents a character based source, else
-     * <code>false</code>. A source is either a byte based or a character based source, never both
-     * at the same time.
+     * <code>false</code>. A source is either a byte based, a character based, or with no content,
+     * but never both byte and character based at the same time.
      *
      * <p>
      * The following methods are only supported if {@link #hasCharacters()} is <code>true</code>:
@@ -362,8 +362,8 @@ public final class Source {
 
     /**
      * Returns <code>true</code> if this source represents a byte based source, else
-     * <code>false</code>. A source is either a byte based or a character based source, never both
-     * at the same time.
+     * <code>false</code>. A source is either a byte based, a character based, or with no content,
+     * but never both byte and character based at the same time.
      * <p>
      * The method {@link #getBytes()} is only supported if this method returns <code>true</code>.
      *

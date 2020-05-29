@@ -439,12 +439,37 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.compiler.debug",
+        "org.graalvm.libgraal.jni.annotation",
         "sdk:GRAAL_SDK",
-        "GRAAL",
+      ],
+      "annotationProcessors" : [
+        "GRAAL_LIBGRAAL_PROCESSOR",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,11+",
       "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.libgraal.jni.annotation" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8,11+",
+      "workingSets" : "Graal",
+    },
+
+    "org.graalvm.libgraal.jni.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.processor",
+        "org.graalvm.libgraal.jni.annotation",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8,11+",
+      "workingSets" : "Graal",
     },
 
     "org.graalvm.util" : {
@@ -663,17 +688,43 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
+    "org.graalvm.compiler.hotspot.management.libgraal.annotation" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.libgraal.jni.annotation",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8,11+",
+      "workingSets" : "Graal",
+    },
+
+    "org.graalvm.compiler.hotspot.management.libgraal.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot.management.libgraal.annotation",
+        "org.graalvm.libgraal.jni.processor",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8,11+",
+      "workingSets" : "Graal",
+    },
+
     "org.graalvm.compiler.hotspot.management.libgraal" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.libgraal",
         "org.graalvm.libgraal.jni",
         "org.graalvm.compiler.hotspot.management",
+        "org.graalvm.compiler.hotspot.management.libgraal.annotation",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
+        "GRAAL_LIBGRAAL_PROCESSOR",
       ],
       "javaCompliance" : "8,11+",
       "workingSets" : "Graal,HotSpot",
@@ -1919,7 +1970,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.truffle.common.hotspot",
+        "org.graalvm.libgraal.jni.annotation"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,11,13+",
@@ -1986,7 +2037,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,11+",
       "annotationProcessors" : [
-        "TRUFFLE_LIBGRAAL_PROCESSOR",
+        "GRAAL_LIBGRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Truffle",
     },
@@ -1995,7 +2046,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.processor",
+        "org.graalvm.libgraal.jni.processor",
         "org.graalvm.compiler.truffle.common.hotspot.libgraal",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -2189,19 +2240,6 @@ suite = {
       "maven": False,
     },
 
-    "GRAAL_LIBGRAAL_JNI": {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.libgraal.jni",
-      ],
-      "distDependencies" : [
-        "sdk:GRAAL_SDK",
-        "GRAAL",
-      ],
-      "maven": False,
-      "javaCompliance" : "8+",
-    },
-
     "GRAAL_TRUFFLE_COMPILER_LIBGRAAL": {
       "subDir" : "src",
       "dependencies" : [
@@ -2213,7 +2251,6 @@ suite = {
 
       "distDependencies" : [
         "GRAAL",
-        "GRAAL_LIBGRAAL_JNI",
       ],
       "maven": False,
       "javaCompliance" : "8+",
@@ -2233,10 +2270,14 @@ suite = {
       "maven": False,
     },
 
-    "TRUFFLE_LIBGRAAL_PROCESSOR" : {
+    "GRAAL_LIBGRAAL_PROCESSOR" : {
       "subDir" : "src",
-      "dependencies" : ["org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor"],
-      "distDependencies" : ["GRAAL_PROCESSOR", "GRAAL"],
+      "dependencies" : [
+        "org.graalvm.libgraal.jni.processor",
+        "org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor",
+        "org.graalvm.compiler.hotspot.management.libgraal.processor"
+      ],
+      "distDependencies" : ["GRAAL_PROCESSOR"],
       "maven": False,
     },
 
@@ -2280,6 +2321,7 @@ suite = {
           "org.graalvm.compiler.replacements           to jdk.aot",
           "org.graalvm.compiler.serviceprovider        to jdk.aot,jdk.internal.vm.compiler.management",
           "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
+          "org.graalvm.libgraal                        to jdk.internal.vm.compiler.management",
           "org.graalvm.util                            to jdk.internal.vm.compiler.management",
         ],
         "uses" : [
@@ -2307,9 +2349,12 @@ suite = {
         }
       },
       "subDir" : "src",
-      "overlaps" : ["GRAAL_GRAPHIO"],
+      "overlaps" : [
+        "GRAAL_GRAPHIO",
+        "GRAAL_LIBGRAAL_PROCESSOR"],
       "dependencies" : [
         "org.graalvm.libgraal",
+        "org.graalvm.libgraal.jni",
         "org.graalvm.compiler.options",
         "org.graalvm.compiler.nodeinfo",
         "org.graalvm.compiler.serviceprovider",
@@ -2344,7 +2389,7 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
-        "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_API"
       ],
       "exclude" : [
         "JVMCI_SERVICES",
@@ -2388,10 +2433,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.hotspot.management.libgraal",
       ],
-
+      "overlaps" : [
+        "GRAAL_LIBGRAAL_PROCESSOR"
+      ],
       "distDependencies" : [
         "GRAAL_MANAGEMENT",
-        "GRAAL_LIBGRAAL_JNI",
         "GRAAL",
       ],
       "maven": False,

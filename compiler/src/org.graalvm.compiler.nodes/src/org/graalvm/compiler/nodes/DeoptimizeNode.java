@@ -30,7 +30,6 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -87,11 +86,6 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
     @Override
     public void setReason(DeoptimizationReason reason) {
         this.reason = reason;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @SuppressWarnings("deprecation")

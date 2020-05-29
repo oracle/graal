@@ -86,6 +86,9 @@ class SubstateTruffleOptions {
     @Option(help = "Enable support for Truffle background compilation")//
     static final HostedOptionKey<Boolean> TruffleMultiThreaded = new HostedOptionKey<>(true);
 
+    @Option(help = "Propagate Truffle compilation errors")//
+    static final HostedOptionKey<Boolean> TrufflePropagateCompilationErrors = new HostedOptionKey<>(false);
+
     @Fold
     static boolean isMultiThreaded() {
         /*
@@ -290,6 +293,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
             if (TruffleRuntimeOptions.getPolyglotOptionValue(optimizedCallTarget.getOptionValues(), PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
+            }
+            if (SubstateTruffleOptions.TrufflePropagateCompilationErrors.getValue()) {
+                throw e;
             }
         }
 

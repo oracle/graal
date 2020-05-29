@@ -1,17 +1,18 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
  */
 
-import { ChromeDebugAdapter, Crdp, ErrorWithMessage, logger } from 'vscode-chrome-debug-core';
+import { ChromeDebugAdapter, ChromeDebugSession, Crdp, ErrorWithMessage, logger } from 'vscode-chrome-debug-core';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { OutputEvent } from 'vscode-debugadapter';
 
 import * as path from 'path';
 import * as fs from 'fs';
 import * as cp from 'child_process';
+import * as os from 'os';
 
 import { ILaunchRequestArguments, IAttachRequestArguments } from './graalVMDebugInterfaces';
 import * as utils from './utils';
@@ -299,3 +300,9 @@ export class GraalVMDebugAdapter extends ChromeDebugAdapter {
         }));
     }
 }
+
+ChromeDebugSession.run(ChromeDebugSession.getSession({
+    adapter: GraalVMDebugAdapter,
+    extensionName: 'graalvm',
+    logFilePath: path.resolve(os.tmpdir(), 'vscode-graalvm-debug.txt'),
+}));

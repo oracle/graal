@@ -81,6 +81,7 @@ builds += [
       ${maven_base_8_11.deploy_svm_plugin} ["lafo-maven"]
     ]
     name: deploy-vm-maven-linux-amd64
+    timelimit: "45:00"
   }
   ${deploy_vm_linux_aarch64} ${linux-deploy} ${maven_base_8_native} {
     downloads: {
@@ -134,10 +135,10 @@ builds += [
   ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} {
     run: [
       ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}, build]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
+      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ] ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [build]
-      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk}
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     logs: ${common_vm.logs}

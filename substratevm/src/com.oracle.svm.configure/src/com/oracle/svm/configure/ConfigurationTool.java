@@ -214,18 +214,19 @@ public class ConfigurationTool {
             callersFilter.removeRedundantNodes();
         }
 
+        AccessAdvisor advisor = new AccessAdvisor();
+        advisor.setHeuristicsEnabled(builtinHeuristicFilter);
+        if (callersFilter != null) {
+            advisor.setCallerFilterTree(callersFilter);
+        }
         TraceProcessor p;
         try {
-            p = new TraceProcessor(inputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
+            p = new TraceProcessor(advisor, inputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
                             inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {
             throw new RuntimeException(t);
-        }
-        p.setHeuristicsEnabled(builtinHeuristicFilter);
-        if (callersFilter != null) {
-            p.setCallerFilterTree(callersFilter);
         }
         if (traceInputs.isEmpty() && inputSet.isEmpty()) {
             throw new UsageException("No inputs specified.");

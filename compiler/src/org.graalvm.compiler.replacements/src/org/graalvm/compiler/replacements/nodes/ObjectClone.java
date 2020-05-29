@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -113,7 +113,7 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
                 return;
             }
             if (!type.isArray()) {
-                VirtualInstanceNode newVirtual = createVirtualInstanceNode(type, true);
+                VirtualInstanceNode newVirtual = new VirtualInstanceNode(type, true);
                 ResolvedJavaField[] fields = newVirtual.getFields();
 
                 ValueNode[] state = new ValueNode[fields.length];
@@ -150,10 +150,6 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
                 }
             }
         }
-    }
-
-    default VirtualInstanceNode createVirtualInstanceNode(ResolvedJavaType type, boolean hasIdentity) {
-        return new VirtualInstanceNode(type, hasIdentity);
     }
 
     @Override

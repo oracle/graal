@@ -93,11 +93,15 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
     @Override
     public void executeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
         if (searching) {
-            locals.setSuccessorIndex(executor.rewindUpTo(locals, getPrefixLength()));
+            locals.setSuccessorIndex(executor.rewindUpTo(locals, 0, getPrefixLength()));
         } else {
-            locals.setSuccessorIndex(Math.max(0, Math.min(getPrefixLength(), locals.getFromIndex() - locals.getIndex())));
+            if (executor.isForward() && locals.getIndex() < locals.getFromIndex()) {
+                locals.setSuccessorIndex(executor.countUpTo(locals, locals.getFromIndex(), getPrefixLength()));
+            } else {
+                locals.setSuccessorIndex(0);
+            }
         }
-        if (!executor.atBegin(locals)) {
+        if (!executor.inputAtBegin(locals)) {
             locals.setSuccessorIndex(locals.getSuccessorIndex() + (successors.length / 2));
         }
         if (genericCG) {

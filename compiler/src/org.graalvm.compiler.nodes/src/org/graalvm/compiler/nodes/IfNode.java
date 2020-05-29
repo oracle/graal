@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,6 +96,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     private static final CounterKey CORRECTED_PROBABILITIES = DebugContext.counter("CorrectedProbabilities");
 
+    /*
+     * Any change to successor fields (reordering, renaming, adding or removing) would need an
+     * according update to SimplifyingGraphDecoder#earlyCanonicalization.
+     */
     @Successor AbstractBeginNode trueSuccessor;
     @Successor AbstractBeginNode falseSuccessor;
     @Input(InputType.Condition) LogicNode condition;
@@ -810,9 +814,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
 
                 if (comparableCondition != null) {
-                    Condition combined = conditionA.join(comparableCondition);
-                    if (combined == null) {
-                        // The two conditions are disjoint => can reorder.
+                    if (conditionA.trueIsDisjoint(comparableCondition)) {
+                        // The truth of the two conditions is disjoint => can reorder.
                         debug.log("Can swap disjoint coditions on same values: %s and %s", conditionA, comparableCondition);
                         return true;
                     }

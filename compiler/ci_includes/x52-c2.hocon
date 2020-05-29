@@ -14,7 +14,7 @@ x52.c2-tmpfs10g : ${x52.c2} {
 bench-dacapo-hwloc-forks-c2 : ${bench-dacapo-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-dacapo-hwloc.setup}
-  timelimit: "01:45:00"
+  timelimit: "02:15:00"
   environment : ${bench-dacapo-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment}  {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/dacapo_forks.json"
   }

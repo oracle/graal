@@ -226,14 +226,6 @@ class ComputeQueueValue implements CustomFieldValueComputer {
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ComputeTrue implements CustomFieldValueComputer {
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        return true;
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
 class NotCardRememberedSetHeap implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {

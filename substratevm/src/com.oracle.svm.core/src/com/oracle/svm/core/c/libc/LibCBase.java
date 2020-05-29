@@ -25,28 +25,39 @@
 package com.oracle.svm.core.c.libc;
 
 // Checkstyle: stop
+
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
-// Checkstyle: resume
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.util.GuardedAnnotationAccess;
+
+// Checkstyle: resume
 
 public interface LibCBase {
 
-    String PATH_DEFAULT = "<default>";
-
+    @Platforms(Platform.HOSTED_ONLY.class)
     static boolean containsLibCAnnotation(AnnotatedElement element) {
-        return GuardedAnnotationAccess.getAnnotation(element, Libc.class) != null;
+        return GuardedAnnotationAccess.getAnnotation(element, LibC.class) != null;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     static boolean isProvidedInCurrentLibc(AnnotatedElement element) {
         LibCBase currentLibC = ImageSingletons.lookup(LibCBase.class);
-        Libc targetLibC = GuardedAnnotationAccess.getAnnotation(element, Libc.class);
+        LibC targetLibC = GuardedAnnotationAccess.getAnnotation(element, LibC.class);
         return targetLibC != null && Arrays.asList(targetLibC.value()).contains(currentLibC.getClass());
+    }
+
+    @Fold
+    static boolean targetLibCIs(Class<? extends LibCBase> libCBase) {
+        LibCBase currentLibC = ImageSingletons.lookup(LibCBase.class);
+        return currentLibC.getClass() == libCBase;
     }
 
     /**
@@ -61,6 +72,7 @@ public interface LibCBase {
      * @param clazz Type to check if contained in the current libc implementation.
      * @return true if contained in the current libc implementation, false otherwise.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     static boolean isTypeProvidedInCurrentLibc(Class<?> clazz) {
         Class<?> currentClazz = clazz;
         while (currentClazz != null) {
@@ -76,6 +88,7 @@ public interface LibCBase {
         return true;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     static boolean isMethodProvidedInCurrentLibc(Method method) {
         if (containsLibCAnnotation(method) && !isProvidedInCurrentLibc(method)) {
             return false;
@@ -84,20 +97,20 @@ public interface LibCBase {
         return isTypeProvidedInCurrentLibc(declaringClass);
     }
 
-    String getJDKStaticLibsPath();
+    @Platforms(Platform.HOSTED_ONLY.class)
+    String getName();
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     void prepare(Path directory);
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     List<String> getAdditionalQueryCodeCompilerOptions();
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     List<String> getCCompilerOptions();
 
     static LibCBase singleton() {
         return ImageSingletons.lookup(LibCBase.class);
-    }
-
-    default boolean isLibC(Class<? extends LibCBase> libC) {
-        return getClass().equals(libC);
     }
 
     boolean hasIsolatedNamespaces();

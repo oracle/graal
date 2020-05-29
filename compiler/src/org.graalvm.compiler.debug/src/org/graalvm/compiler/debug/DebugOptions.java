@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,7 +115,7 @@ public class DebugOptions {
     @Option(help = "file:doc-files/MetricsFileHelp.txt", type = OptionType.Debug)
      public static final OptionKey<String> MetricsFile = new OptionKey<>(null);
     @Option(help = "File to which aggregated metrics are dumped at shutdown. A CSV format is used if the file ends with .csv " +
-                    "otherwise a more human readable format is used. If not specified, metrics are dumped to the console.", type = OptionType.Debug)
+                   "otherwise a more human readable format is used. If not specified, metrics are dumped to the console.", type = OptionType.Debug)
     public static final OptionKey<String> AggregatedMetricsFile = new OptionKey<>(null);
 
     @Option(help = "Enable debug output for stub code generation and snippet preparation.", type = OptionType.Debug)

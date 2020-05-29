@@ -38,7 +38,6 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -123,17 +122,32 @@ public abstract class CCompilerInvoker {
         }
 
         @Override
-        protected CompilerInfo createCompilerInfo(Path compilerPath, Scanner scanner) {
-            try {
+        protected CompilerInfo createCompilerInfo(Path compilerPath, Scanner outerScanner) {
+            try (Scanner scanner = new Scanner(outerScanner.nextLine())) {
+                String targetArch = null;
                 /* For cl.exe the first line holds all necessary information */
-                scanner.findInLine(Pattern.quote("Microsoft (R) C/C++ Optimizing Compiler Version "));
+                if (scanner.hasNext("\u7528\u4E8E")) {
+                    /* Simplified-Chinese has targetArch first */
+                    scanner.next();
+                    targetArch = scanner.next();
+                }
+                if (scanner.findInLine("Microsoft.*\\(R\\) C/C\\+\\+") == null) {
+                    return null;
+                }
                 scanner.useDelimiter("[. ]");
+                while (!scanner.hasNextInt()) {
+                    scanner.next();
+                }
                 int major = scanner.nextInt();
                 int minor0 = scanner.nextInt();
                 int minor1 = scanner.nextInt();
-                scanner.reset(); /* back to default delimiters */
-                scanner.findInLine("for ");
-                String targetArch = scanner.next();
+                if (targetArch == null) {
+                    scanner.reset();
+                    while (scanner.hasNext()) {
+                        /* targetArch is last token in line */
+                        targetArch = scanner.next();
+                    }
+                }
                 return new CompilerInfo(compilerPath, "microsoft", "C/C++ Optimizing Compiler", "cl", major, minor0, minor1, targetArch);
             } catch (NoSuchElementException e) {
                 return null;

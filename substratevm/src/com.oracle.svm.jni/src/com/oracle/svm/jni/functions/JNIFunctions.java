@@ -351,7 +351,14 @@ final class JNIFunctions {
             if (linkage != null) {
                 linkage.setEntryPoint(fnPtr);
             } else {
-                throw new NoSuchMethodError(clazz.getName() + '.' + name + signature);
+                String message = clazz.getName() + '.' + name + signature;
+                JNINativeLinkage l = JNIReflectionDictionary.singleton().getClosestLinkage(declaringClass, name, signature);
+                if (l != null) {
+                    message += " (found closely matching JNI-accessible method: " +
+                                    MetaUtil.internalNameToJava(l.getDeclaringClassName(), true, false) +
+                                    "." + l.getName() + l.getDescriptor() + ")";
+                }
+                throw new NoSuchMethodError(message);
             }
 
             p = p.add(SizeOf.get(JNINativeMethod.class));

@@ -34,7 +34,6 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 /**
  * A node for platform dependent verification of the Java heap. Intended to be used for debugging
@@ -52,11 +51,6 @@ public final class VerifyHeapNode extends FixedWithNextNode implements Lowerable
 
     public VerifyHeapNode() {
         super(TYPE, StampFactory.forVoid());
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     public static void addBefore(FixedNode position) {

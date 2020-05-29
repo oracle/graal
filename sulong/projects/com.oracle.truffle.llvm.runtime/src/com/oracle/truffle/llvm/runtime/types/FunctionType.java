@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.runtime.types;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -48,15 +50,47 @@ public final class FunctionType extends Type {
     private final Type[] argumentTypes;
     private final boolean isVarargs;
 
-    public FunctionType(Type returnType, Type[] argumentTypes, boolean isVarargs) {
+    private FunctionType(Type returnType, Type[] argumentTypes, boolean isVarargs) {
         this.returnTypeAssumption = Truffle.getRuntime().createAssumption("FunctionType.returnType");
         this.returnType = returnType;
         this.argumentTypes = argumentTypes;
         this.isVarargs = isVarargs;
     }
 
-    public Type[] getArgumentTypes() {
-        return argumentTypes;
+    /**
+     * Creates a function type with known argument types.
+     *
+     * <b>Attention!</b> the {@code argumentTypes} array will be copied. Modifications to the
+     * original array are not propagated. Use {@link #setArgumentType} to modify the types. If you
+     * want create a function with unknown argument types use
+     * {@link #FunctionType(Type, int, boolean)} )} instead.
+     */
+    public static FunctionType createByCopy(Type returnType, Type[] argumentTypes, boolean isVarargs) {
+        return new FunctionType(returnType, argumentTypes.clone(), isVarargs);
+    }
+
+    public FunctionType(Type returnType, int numArguments, boolean isVarargs) {
+        this(returnType, new Type[numArguments], isVarargs);
+    }
+
+    public static FunctionType copy(FunctionType type) {
+        return createByCopy(type.returnType, type.argumentTypes, type.isVarargs);
+    }
+
+    public void setArgumentType(int idx, Type type) {
+        argumentTypes[idx] = type;
+    }
+
+    public List<Type> getArgumentTypes() {
+        return Collections.unmodifiableList(Arrays.asList(argumentTypes));
+    }
+
+    public Type getArgumentType(int idx) {
+        return argumentTypes[idx];
+    }
+
+    public int getNumberOfArguments() {
+        return argumentTypes.length;
     }
 
     public Type getReturnType() {

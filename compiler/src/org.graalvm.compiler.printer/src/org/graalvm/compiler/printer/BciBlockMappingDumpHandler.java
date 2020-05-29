@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,7 +66,7 @@ public class BciBlockMappingDumpHandler implements DebugDumpHandler {
                     structure = new BlockMappingStructure();
                 }
                 int id = nextId++;
-                Builder<BciBlockMapping, BciBlock, ResolvedJavaMethod> builder = GraphOutput.newBuilder(structure).elements(ELEMENTS).types(TYPES).protocolVersion(6, 1);
+                Builder<BciBlockMapping, BciBlock, ResolvedJavaMethod> builder = GraphOutput.newBuilder(structure).elements(ELEMENTS).types(TYPES).protocolVersion(7, 0);
                 GraphOutput<BciBlockMapping, ResolvedJavaMethod> output = debug.buildOutput(builder);
                 Map<Object, Object> properties = new HashMap<>();
                 properties.put("hasJsrBytecodes", ((BciBlockMapping) object).hasJsrBytecodes);
