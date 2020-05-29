@@ -946,6 +946,21 @@ final class FileSystems {
         public Path getTempDirectory() {
             throw forbidden(null);
         }
+
+        @Override
+        public void createLink(Path link, Path existing) throws IOException {
+            throw forbidden(link);
+        }
+
+        @Override
+        public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
+            throw forbidden(link);
+        }
+
+        @Override
+        public Path readSymbolicLink(Path link) throws IOException {
+            throw forbidden(link);
+        }
     }
 
     private static class LanguageHomeFileSystem extends DeniedIOFileSystem {
