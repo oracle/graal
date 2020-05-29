@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.loop.phases;
 
+import java.util.Comparator;
+import java.util.List;
+import java.util.function.ToDoubleFunction;
+import java.util.function.ToIntFunction;
+
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
@@ -43,6 +48,13 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
     }
 
     private static final CounterKey FULLY_UNROLLED_LOOPS = DebugContext.counter("FullUnrolls");
+    public static final Comparator<LoopEx> LOOP_COMPARATOR;
+    static {
+        ToDoubleFunction<LoopEx> loopFreq = e -> e.loop().getHeader().getFirstPredecessor().getRelativeFrequency();
+        ToIntFunction<LoopEx> loopDepth = e -> e.loop().getDepth();
+        LOOP_COMPARATOR = Comparator.comparingDouble(loopFreq).thenComparingInt(loopDepth).reversed();
+    }
+
     private final CanonicalizerPhase canonicalizer;
 
     public LoopFullUnrollPhase(CanonicalizerPhase canonicalizer, LoopPolicies policies) {
@@ -61,7 +73,9 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
                     peeled = false;
                     final LoopsData dataCounted = new LoopsData(graph);
                     dataCounted.detectedCountedLoops();
-                    for (LoopEx loop : dataCounted.countedLoops()) {
+                    List<LoopEx> countedLoops = dataCounted.countedLoops();
+                    countedLoops.sort(LOOP_COMPARATOR);
+                    for (LoopEx loop : countedLoops) {
                         if (getPolicies().shouldFullUnroll(loop)) {
                             debug.log("FullUnroll %s", loop);
                             LoopTransformations.fullUnroll(loop, context, canonicalizer);
