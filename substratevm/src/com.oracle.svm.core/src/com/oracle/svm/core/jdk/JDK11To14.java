@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.core.jdk;
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.MulticastSocket;
+import java.util.function.BooleanSupplier;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-/**
- * Test to ensure that the fix for #1398 works.
- */
-public class GitHub1398 {
-    public static final int PORT = 6789;
-
-    @SuppressWarnings("deprecation") // joinGroup deprecated since JDK 14
-    @Test
-    public void testMulticast() {
-        try {
-            InetAddress group = InetAddress.getByName("239.5.5.5");
-            try (MulticastSocket sock = new MulticastSocket(new InetSocketAddress(PORT))) {
-                sock.joinGroup(group);
-            }
-        } catch (IOException e) {
-            Assert.fail("Unexpected exception: " + e);
-        }
+public class JDK11To14 implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return JavaVersionUtil.JAVA_SPEC >= 11 && JavaVersionUtil.JAVA_SPEC <= 14;
     }
 }

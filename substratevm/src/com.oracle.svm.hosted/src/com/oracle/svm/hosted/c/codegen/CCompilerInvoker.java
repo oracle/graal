@@ -348,7 +348,7 @@ public abstract class CCompilerInvoker {
         return new String[]{arch, vendor, os};
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "fallthrough"})
     protected static Class<? extends Architecture> guessArchitecture(String archStr) {
         switch (archStr) {
             case "x86_64":
