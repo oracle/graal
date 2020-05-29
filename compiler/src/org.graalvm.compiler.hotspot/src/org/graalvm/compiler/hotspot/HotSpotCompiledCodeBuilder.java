@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.unmodifiableList;
 import static org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder.Options.ShowSubstitutionSourceInfo;
 import static org.graalvm.util.CollectionsUtil.anyMatch;
 
@@ -40,6 +42,7 @@ import java.util.Map;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.CodeComment;
+import org.graalvm.compiler.code.CompilationResult.CodeMark;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.code.SourceMapping;
@@ -209,6 +212,23 @@ public class HotSpotCompiledCodeBuilder {
         }
     }
 
+
+    /**
+     * @return the list of {@link Mark marks} converted from the {@link CodeMark CodeMarks}.
+     */
+    private static  List<Mark> getTranslatedMarks(List<CodeMark> codeMarks) {
+        if (codeMarks.isEmpty()) {
+            return emptyList();
+        }
+        // The HotSpot backend needs these in the exact form of a Mark so convert all the marks
+        // to that form.
+        List<Mark> translated = new ArrayList<>(codeMarks.size());
+        for (CodeMark m : codeMarks) {
+            translated.add(new Mark(m.pcOffset, m.id.getId()));
+        }
+        return unmodifiableList(translated);
+    }
+
     /**
      * HotSpot expects sites to be presented in ascending order of PC (see
      * {@code DebugInformationRecorder::add_new_pc_offset}). In addition, it expects
@@ -220,7 +240,7 @@ public class HotSpotCompiledCodeBuilder {
         sites.addAll(target.getExceptionHandlers());
         sites.addAll(target.getInfopoints());
         sites.addAll(target.getDataPatches());
-        sites.addAll(target.getTranslatedMarks());
+        sites.addAll(getTranslatedMarks(target.getMarks()));
 
         if (includeSourceInfo) {
             /*

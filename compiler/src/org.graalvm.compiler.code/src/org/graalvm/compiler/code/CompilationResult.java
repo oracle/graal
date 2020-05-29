@@ -775,22 +775,6 @@ public class CompilationResult {
     }
 
     /**
-     * @return the list of {@link Mark marks} converted from the {@link CodeMark CodeMarks}.
-     */
-    public List<Mark> getTranslatedMarks() {
-        if (marks.isEmpty()) {
-            return emptyList();
-        }
-        // The HotSpot backend needs these in the exact form of a Mark so convert all the marks
-        // to that form.
-        List<Mark> translated = new ArrayList<>(marks.size());
-        for (CompilationResult.CodeMark m : marks) {
-            translated.add(new Mark(m.pcOffset, m.id.getId()));
-        }
-        return unmodifiableList(translated);
-    }
-
-    /**
      * @return the list of {@link SourceMapping}s
      */
     public List<SourceMapping> getSourceMappings() {

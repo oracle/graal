@@ -109,7 +109,7 @@ final class MetadataBuilder {
             int codeSize = methodInfo.getCodeSize();
 
             // get code offsets
-            CodeOffsets co = CodeOffsets.buildFrom(methodInfo.getCompilationResult().getTranslatedMarks());
+            CodeOffsets co = CodeOffsets.buildFrom(methodInfo.getCompilationResult().getMarks());
             int unverifiedEntry = co.entry();
             int verifiedEntry = co.verifiedEntry();
             int exceptionHandler = co.exceptionHandler();
