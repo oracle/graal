@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,25 +54,39 @@ typedef struct values {
   bool booleanValue;
 } VALUES;
 
-int fourtyTwo(void) { return 42; }
+int fourtyTwo(void) {
+  return 42;
+}
 
-double plus(double a, double b) { return a + b; }
+double plus(double a, double b) {
+  return a + b;
+}
 
-void *identity(void *x) { return x; }
+void *identity(void *x) {
+  return x;
+}
 
-int apply(int (*f)(int a, int b)) { return f(18, 32) + 10; }
+int apply(int (*f)(int a, int b)) {
+  return f(18, 32) + 10;
+}
 
 static int cnt_value = 0;
-int count(void) { return ++cnt_value; }
+int count(void) {
+  return ++cnt_value;
+}
 
-void *returnsNull(void) { return NULL; }
+void *returnsNull(void) {
+  return NULL;
+}
 
 void complexAdd(COMPLEX *a, COMPLEX *b) {
   a->real = a->real + b->real;
   a->imaginary = a->imaginary + b->imaginary;
 }
 
-void complexAddWithMethod(COMPLEX *a, COMPLEX *b) { a->add(b); }
+void complexAddWithMethod(COMPLEX *a, COMPLEX *b) {
+  a->add(b);
+}
 
 double complexSumReal(COMPLEX *array) {
   double result = 0;
@@ -108,7 +122,9 @@ VALUES valuesObject(void) {
   return obj;
 }
 
-void addToArray(int *array, int index, int value) { array[index] += value; }
+void addToArray(int *array, int index, int value) {
+  array[index] += value;
+}
 
 void countUpWhile(int (*fn)(int)) {
   int counter = 0;
@@ -116,4 +132,6 @@ void countUpWhile(int (*fn)(int)) {
     counter++;
 }
 
-int main(void) { return 0; }
+int main(void) {
+  return 0;
+}

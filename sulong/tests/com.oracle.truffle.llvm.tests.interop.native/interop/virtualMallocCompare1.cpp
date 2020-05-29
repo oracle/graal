@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,48 +27,40 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include<stdlib.h>
-#include<stdio.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <truffle.h>
 
-
-extern "C" 
-int test1() {
-	int *p = (int*) truffle_virtual_malloc(5 * sizeof(int));
-	return p == NULL;
+extern "C" int test1() {
+  int *p = (int *)truffle_virtual_malloc(5 * sizeof(int));
+  return p == NULL;
 }
 
-extern "C" 
-int test2() {
-	int *p = (int*) truffle_virtual_malloc(5 * sizeof(int));
-	return p != NULL;
+extern "C" int test2() {
+  int *p = (int *)truffle_virtual_malloc(5 * sizeof(int));
+  return p != NULL;
 }
 
-extern "C" 
-int test3() {
-	int *p = (int*) truffle_virtual_malloc(5 * sizeof(int));
-	int *q = (int*) truffle_virtual_malloc(5 * sizeof(int));
-	return p == q;
+extern "C" int test3() {
+  int *p = (int *)truffle_virtual_malloc(5 * sizeof(int));
+  int *q = (int *)truffle_virtual_malloc(5 * sizeof(int));
+  return p == q;
 }
 
-extern "C" 
-int test4() {
-	int *p = (int*) truffle_virtual_malloc(5 * sizeof(int));
-	int *q = (int*) truffle_virtual_malloc(5 * sizeof(int));
-	return p != q;
+extern "C" int test4() {
+  int *p = (int *)truffle_virtual_malloc(5 * sizeof(int));
+  int *q = (int *)truffle_virtual_malloc(5 * sizeof(int));
+  return p != q;
 }
 
-extern "C" 
-int test5() {
-	int *p = (int*) truffle_virtual_malloc(5 * sizeof(int));
-	int *q = p;
-	return p != q;
+extern "C" int test5() {
+  int *p = (int *)truffle_virtual_malloc(5 * sizeof(int));
+  int *q = p;
+  return p != q;
 }
 
-extern "C" 
-int test6() {
-	int *p = (int*) truffle_virtual_malloc(5 * sizeof(int));
-	int *q = p;
-	return p == q;
+extern "C" int test6() {
+  int *p = (int *)truffle_virtual_malloc(5 * sizeof(int));
+  int *q = p;
+  return p == q;
 }
-

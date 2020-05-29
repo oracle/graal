@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,22 +39,22 @@ int main() {
   void *n = calloc(sizeof(char), 2);
 
   if (!truffle_is_handle_to_managed(p1)) {
-      return 1;
+    return 1;
   }
   if (!truffle_is_handle_to_managed(l_p1)) {
-      return 2;
+    return 2;
   }
   if (!truffle_is_handle_to_managed(p2)) {
-      return 3;
+    return 3;
   }
   if (!truffle_is_handle_to_managed(l_p2)) {
-      return 4;
+    return 4;
   }
   if (truffle_is_handle_to_managed(p)) {
-      return 5;
+    return 5;
   }
   if (truffle_is_handle_to_managed(n)) {
-      return 6;
+    return 6;
   }
   free(n);
 

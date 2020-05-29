@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,24 +32,24 @@
 #include <iostream>
 
 struct BigInteger {
-    BigInteger *(*pow)(int);
-    void *(*toString)();
+  BigInteger *(*pow)(int);
+  void *(*toString)();
 };
 
 struct BigInteger_class {
-    BigInteger *(*valueOf)(long);
+  BigInteger *(*valueOf)(long);
 };
 
 POLYGLOT_DECLARE_STRUCT(BigInteger_class);
 
 int main() {
-    BigInteger_class *BigIntegerClass = polyglot_as_BigInteger_class(polyglot_java_type("java.math.BigInteger"));
+  BigInteger_class *BigIntegerClass = polyglot_as_BigInteger_class(polyglot_java_type("java.math.BigInteger"));
 
-    BigInteger *bi = BigIntegerClass->valueOf(2);
-    BigInteger *result = bi->pow(255);
+  BigInteger *bi = BigIntegerClass->valueOf(2);
+  BigInteger *result = bi->pow(255);
 
-    char buffer[100];
-    polyglot_as_string(result->toString(), buffer, sizeof(buffer), "ascii");
+  char buffer[100];
+  polyglot_as_string(result->toString(), buffer, sizeof(buffer), "ascii");
 
-    std::cout << buffer << std::endl;
+  std::cout << buffer << std::endl;
 }

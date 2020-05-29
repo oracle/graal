@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -71,36 +71,35 @@ int (*get_callback_function())(int, int) {
 }
 
 void store_native_function(void *container) {
-  struct container *c = (struct container *) container;
+  struct container *c = (struct container *)container;
   c->callback = add;
 }
 
 int call_callback(void *container, int p2) {
-  struct container *c = (struct container *) container;
+  struct container *c = (struct container *)container;
   return c->callback(c->p1, p2);
 }
 
 int call_callback2(void *container) {
-  struct container *c = (struct container *) container;
+  struct container *c = (struct container *)container;
   return c->callback(20, 22);
 }
 
 int call_typecast(int (*fn)(void)) {
-  int (*fn_cast)(int) = (int (*)(int)) fn;
+  int (*fn_cast)(int) = (int (*)(int))fn;
   return fn_cast(42);
 }
 
-
 int nullPointerFunctionTest(void (*foo)()) {
-	if (foo == 0) {
-		return 42;
-	} else {
-		return 84;
-	}
+  if (foo == 0) {
+    return 42;
+  } else {
+    return 84;
+  }
 }
 
 int callbackPointerArgTest(int (*callback)(void *), void *arg) {
-    return callback(arg);
+  return callback(arg);
 }
 
 bool nativeInvert(bool value) {

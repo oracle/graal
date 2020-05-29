@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,14 +31,14 @@
 
 typedef void *VALUE;
 
-void *global = (void*) 0;
+void *global = (void *)0;
 
 int main() {
-	void *p = polyglot_import("object");
+  void *p = polyglot_import("object");
 
-	global = p;
+  global = p;
 
-        void (*returnObject)(void *) = polyglot_import("returnObject");
-        returnObject(global);
-	return 0;
+  void (*returnObject)(void *) = polyglot_import("returnObject");
+  returnObject(global);
+  return 0;
 }

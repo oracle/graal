@@ -42,7 +42,7 @@ typedef struct {
 POLYGLOT_DECLARE_TYPE(PyMemoryViewObject);
 
 PyObject *getPyObjectImplicitType() {
-  PyMemoryViewObject *obj = (PyMemoryViewObject *) malloc(sizeof(PyMemoryViewObject));
+  PyMemoryViewObject *obj = (PyMemoryViewObject *)malloc(sizeof(PyMemoryViewObject));
   obj->base.ob_refcnt = 1;
   obj->flags = 42;
   return obj;

@@ -102,28 +102,6 @@ basicLLVMDependencies = [
     mx_buildtools.Opt.OPT
 ]
 
-# the file paths that we want to check with clang-format
-clangFormatCheckPaths = [
-    join(_suite.dir, "include"),
-    join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "src"),
-    join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "include"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.pipe.native", "src"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.sulong.native"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp.native"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.linker.native"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.debugexpr.native"),
-    join(_testDir, "interoptests"),
-    join(_testDir, "inlineassemblytests"),
-    join(_testDir, "other")
-]
-
-# the clang-format versions that can be used for formatting the test case C and C++ files
-clangFormatVersions = [
-    '3.8',
-    '3.9',
-    '4.0',
-]
-
 
 def _sulong_gate_testdist(title, test_dist, tasks, args, tags=None, testClasses=None, vmArgs=None):
     if tags is None:
@@ -184,7 +162,7 @@ def _sulong_gate_runner(args, tasks):
         # needed for clang-format
         if t: build_llvm_org(args)
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
-        if t: clangformatcheck()
+        if t: clangformat()
     _sulong_gate_testsuite('Benchmarks', 'shootout', tasks, args, tags=['benchmarks', 'sulongMisc'])
     _sulong_gate_unittest('Types', 'SULONG_TEST', tasks, args, tags=['type', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.types.floating'])
     _sulong_gate_unittest('Pipe', 'SULONG_TEST', tasks, args, tags=['pipe', 'sulongMisc', 'sulongCoverage'], testClasses=['CaptureOutputTest'])
@@ -279,23 +257,40 @@ def build_llvm_org(args=None):
     mx.command_function('build')(defaultBuildArgs + ['--project', 'LLVM_TOOLCHAIN'] + args.extra_build_args)
 
 
-def clangformatcheck(args=None):
-    """ Performs a format check on the include/truffle.h file """
-    for f in clangFormatCheckPaths:
-        checkCFiles(f)
-
-def checkCFiles(targetDir):
+@mx.command(_suite.name, "clangformat")
+def clangformat(args=None, extra_paths=None):
+    """ Runs clang-format on C/C++ files in native projects of the primary suite """
+    if not extra_paths:
+        extra_paths = []
     error = False
-    for path, _, files in os.walk(targetDir):
-        for f in files:
-            if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
-                if not checkCFile(path + '/' + f):
-                    error = True
+
+    nativeProjects = [p.dir for p in mx.projects(limit_to_primary=True) if p.isNativeProject() and getattr(p, "clangFormat", True)]
+    for f in extra_paths + nativeProjects:
+        if not checkCFiles(f):
+            error = True
     if error:
         mx.log_error("found formatting errors!")
         exit(-1)
 
+
+def checkCFiles(targetDir):
+    error = False
+    files_to_check = []
+    for path, _, files in os.walk(targetDir):
+        for f in files:
+            if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
+                files_to_check.append(join(path, f))
+    if not files_to_check:
+        # no files found
+        return True
+    mx.logv("clang-format: checking directory {} ({} files)".format(targetDir, len(files_to_check)))
+    for f in files_to_check:
+        if not checkCFile(f):
+            error = True
+    return not error
+
 def checkCFile(targetFile):
+    mx.logvv("  checking file " + targetFile)
     """ Checks the formatting of a C file and returns True if the formatting is okay """
     clangFormat = findBundledLLVMProgram('clang-format')
     formatCommand = [clangFormat, targetFile]

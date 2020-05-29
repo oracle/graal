@@ -165,7 +165,7 @@ extern "C" double modifyAndCall(void *value) {
 }
 
 extern "C" struct Point *addAndSwapPoint(struct Point *point, int ix, int iy) {
-  struct Point incr = {ix, iy};
+  struct Point incr = { ix, iy };
   struct Point *ret = point->add(&incr);
   int tmp = ret->x;
   ret->x = ret->y;
@@ -206,8 +206,8 @@ struct BitFields {
 POLYGLOT_DECLARE_STRUCT(BitFields)
 
 extern "C" int accessBitFields(void *arg) {
-        struct BitFields *obj = polyglot_as_BitFields(arg);
-        return obj->x + obj->y + obj->z;
+  struct BitFields *obj = polyglot_as_BitFields(arg);
+  return obj->x + obj->y + obj->z;
 }
 
 struct FusedArray {
@@ -238,11 +238,11 @@ struct Complex {
 POLYGLOT_DECLARE_STRUCT(Complex)
 
 extern "C" long readTypeMismatch(struct Complex *c) {
-  long *ptr = (long*) c;
+  long *ptr = (long *)c;
   return *ptr;
 }
 
 extern "C" void writeTypeMismatch(struct Complex *c, long rawValue) {
-  long *ptr = (long*) c;
+  long *ptr = (long *)c;
   *ptr = rawValue;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,7 @@
  */
 
 static void store_a(volatile int *p, int x) {
-  __asm__ __volatile__("mov %1, %0" : "=m"(*p) : "r"(x) : "memory" );
+  __asm__ __volatile__("mov %1, %0" : "=m"(*p) : "r"(x) : "memory");
 }
 
 int run(int b) {

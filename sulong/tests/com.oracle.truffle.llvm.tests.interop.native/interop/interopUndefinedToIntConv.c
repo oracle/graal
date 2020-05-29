@@ -45,7 +45,7 @@ int main() {
 
   /* polyglot_from_Order(&o) should be used here for correct operation, but this test is
      about making sure we throw a PolyglotException rather than an InternalError. */
-  int price = ((int (*)(struct Order *order)) foo)(&o);
+  int price = ((int (*)(struct Order * order)) foo)(&o);
 
   return price;
 }

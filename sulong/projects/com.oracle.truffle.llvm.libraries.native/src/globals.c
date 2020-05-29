@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,7 +49,7 @@ static uint64_t align_up(uint64_t size) {
 
 void *__sulong_allocate_globals_block(uint64_t size) {
   uint64_t finalSize = align_up(size + sizeof(struct globals_header));
-  struct globals_header *page = mmap(NULL, finalSize, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+  struct globals_header *page = mmap(NULL, finalSize, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
   page->size = finalSize;
   return &page->data;
 }

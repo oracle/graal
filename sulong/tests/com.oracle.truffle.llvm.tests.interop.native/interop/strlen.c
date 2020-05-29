@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,10 @@
  */
 #include <string.h>
 
-int main() { return 0; }
+int main() {
+  return 0;
+}
 
-int func(const char *str) { return strlen(str); }
+int func(const char *str) {
+  return strlen(str);
+}

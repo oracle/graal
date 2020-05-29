@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,11 +38,11 @@ int main() {
   } else {
     return 1;
   }
-  
+
   if (boxed_false) {
     // correct
   } else {
-   return 2;
+    return 2;
   }
 
   return 0;
