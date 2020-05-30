@@ -1080,6 +1080,11 @@ final class JNIFunctions {
 
         static JNIMethodId getMethodID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig, boolean isStatic) {
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
+            if (clazz == null) {
+                Log log = Log.log().autoflush(true);
+                log.string("Can not get method ").string(CTypeConversion.toJavaString(cname))
+                   .string(" with signature ").string(CTypeConversion.toJavaString(csig)).string(" on null class").newline();
+            }
             DynamicHub.fromClass(clazz).ensureInitialized();
 
             String name = CTypeConversion.toJavaString(cname);
