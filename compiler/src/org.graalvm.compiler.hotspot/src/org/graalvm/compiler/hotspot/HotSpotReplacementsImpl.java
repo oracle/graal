@@ -42,6 +42,7 @@ import org.graalvm.compiler.hotspot.word.HotSpotOperation;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
@@ -117,7 +118,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
-    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, Cancellable cancellable) {
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, AllowAssumptions allowAssumptions, Cancellable cancellable) {
         boolean useEncodedGraphs = UseEncodedGraphs.getValue(debug.getOptions());
         if (IS_IN_NATIVE_IMAGE || useEncodedGraphs) {
             HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) providers.getReplacements();
@@ -128,17 +129,18 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                     replacements.maybeInitializeEncoder(debug.getOptions());
                     replacements.registerMethodSubstitution(msp);
                 }
-                StructuredGraph methodSubstitution = replacements.getMethodSubstitution(msp, method, ROOT_COMPILATION, StructuredGraph.AllowAssumptions.YES, cancellable, debug.getOptions());
+                StructuredGraph methodSubstitution = replacements.getMethodSubstitution(msp, method, ROOT_COMPILATION, allowAssumptions, cancellable, debug.getOptions());
                 methodSubstitution.resetDebug(debug);
                 return methodSubstitution;
             }
             return null;
         }
-        return super.getIntrinsicGraph(method, compilationId, debug, cancellable);
+        return super.getIntrinsicGraph(method, compilationId, debug, allowAssumptions, cancellable);
     }
 
     @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod targetMethod, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, OptionValues options) {
+    public StructuredGraph getSubstitution(ResolvedJavaMethod targetMethod, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
+                    AllowAssumptions allowAssumptions, OptionValues options) {
         boolean useEncodedGraphs = UseEncodedGraphs.getValue(options);
         if (IS_IN_NATIVE_IMAGE || useEncodedGraphs) {
             InvocationPlugin plugin = getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
@@ -150,12 +152,12 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                 }
                 // This assumes the normal path creates the graph using
                 // GraphBuilderConfiguration.getSnippetDefault with omits exception edges
-                StructuredGraph subst = getMethodSubstitution(msPlugin, targetMethod, INLINE_AFTER_PARSING, StructuredGraph.AllowAssumptions.NO, null, options);
+                StructuredGraph subst = getMethodSubstitution(msPlugin, targetMethod, INLINE_AFTER_PARSING, AllowAssumptions.NO, null, options);
                 return subst;
             }
         }
 
-        return super.getSubstitution(targetMethod, invokeBci, trackNodeSourcePosition, replaceePosition, options);
+        return super.getSubstitution(targetMethod, invokeBci, trackNodeSourcePosition, replaceePosition, allowAssumptions, options);
     }
 
     @Override

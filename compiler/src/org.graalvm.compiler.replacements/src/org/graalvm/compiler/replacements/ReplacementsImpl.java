@@ -70,6 +70,7 @@ import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -274,7 +275,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     @Override
     public StructuredGraph getMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context,
-                    StructuredGraph.AllowAssumptions allowAssumptions, Cancellable cancellable, OptionValues options) {
+                    AllowAssumptions allowAssumptions, Cancellable cancellable, OptionValues options) {
         // Method substitutions are parsed by the BytecodeParser.
         return null;
     }
@@ -309,7 +310,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, OptionValues options) {
+    public StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
+                    AllowAssumptions allowAssumptions, OptionValues options) {
         StructuredGraph result;
         InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
         if (plugin != null && (!plugin.inlineOnly() || invokeBci >= 0)) {
@@ -334,7 +336,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             } else {
                 Bytecode code = new ResolvedJavaMethodBytecode(method);
                 try (DebugContext debug = openDebugContext("Substitution_", method, options)) {
-                    result = new IntrinsicGraphBuilder(options, debug, providers, code, invokeBci).buildGraph(plugin);
+                    result = new IntrinsicGraphBuilder(options, debug, providers, code, invokeBci, allowAssumptions).buildGraph(plugin);
                 }
             }
         } else {
@@ -345,14 +347,14 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     @SuppressWarnings("try")
     @Override
-    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, Cancellable cancellable) {
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, AllowAssumptions allowAssumptions, Cancellable cancellable) {
         MethodSubstitutionPlugin msPlugin = getMethodSubstitution(method);
         if (msPlugin != null) {
             ResolvedJavaMethod substMethod = msPlugin.getSubstitute(providers.getMetaAccess());
             assert !substMethod.equals(method);
             BytecodeProvider bytecodeProvider = msPlugin.getBytecodeProvider();
             // @formatter:off
-            StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug, StructuredGraph.AllowAssumptions.YES).
+            StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions).
                     method(substMethod).
                     compilationId(compilationId).
                     recordInlinedMethods(bytecodeProvider.shouldRecordMethodDependencies()).
@@ -542,7 +544,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             // @formatter:off
             // Replacements cannot have optimistic assumptions since they have
             // to be valid for the entire run of the VM.
-            final StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug).
+            final StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.NO).
                             method(methodToParse).
                             trackNodeSourcePosition(trackNodeSourcePosition).
                             callerContext(replaceePosition).
