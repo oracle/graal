@@ -109,6 +109,16 @@ public interface LibCBase {
     @Platforms(Platform.HOSTED_ONLY.class)
     List<String> getCCompilerOptions();
 
+    /**
+     * Checks if static JDK libraries compiled with the target libC are mandatory for building the
+     * native-image.
+     *
+     * This exists to support building native-images on older JDK versions as well as to support
+     * special cases, like Bionic libc.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    boolean areCompatibleStaticJDKLibrariesMandatory();
+
     static LibCBase singleton() {
         return ImageSingletons.lookup(LibCBase.class);
     }

@@ -55,4 +55,9 @@ public class GLibC implements LibCBase {
     public boolean hasIsolatedNamespaces() {
         return true;
     }
+
+    @Override
+    public boolean areCompatibleStaticJDKLibrariesMandatory() {
+        return false;
+    }
 }

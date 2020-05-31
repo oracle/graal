@@ -55,4 +55,9 @@ public class BionicLibC implements LibCBase {
     public boolean hasIsolatedNamespaces() {
         return false;
     }
+
+    @Override
+    public boolean areCompatibleStaticJDKLibrariesMandatory() {
+        return false;
+    }
 }

@@ -58,4 +58,9 @@ public class NoLibC implements LibCBase {
     public boolean hasIsolatedNamespaces() {
         throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
     }
+
+    @Override
+    public boolean areCompatibleStaticJDKLibrariesMandatory() {
+        throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
+    }
 }

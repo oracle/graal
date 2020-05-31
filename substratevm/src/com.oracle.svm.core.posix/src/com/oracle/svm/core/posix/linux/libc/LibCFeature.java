@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 
 @AutomaticFeature
-public class AlternativeLibCFeature implements Feature {
+public class LibCFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -43,7 +43,7 @@ public class AlternativeLibCFeature implements Feature {
     }
 
     public static class LibCOptions {
-        @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.Expert)//
+        @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.User)//
         public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);
 
         @Option(help = "When set to true, sets the internally used libc to Bionic. Note that this does not currently download and link against Bionic libc, but serves as a workaround that makes it possible externally", type = OptionType.Expert)//
