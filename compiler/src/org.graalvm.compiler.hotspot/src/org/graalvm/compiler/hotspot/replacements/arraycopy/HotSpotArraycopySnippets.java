@@ -128,7 +128,7 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
                 ArrayCopyCallNode.arraycopyObjectKillsAny(nonNullSrc, srcPos, nonNullDest, destPos, length, heapWordSize());
             } else {
                 Pointer destElemKlass = getDestElemClass(destKlass);
-                Word superCheckOffset = getSuperCheckOffset(destKlass);
+                Word superCheckOffset = getSuperCheckOffset(destElemKlass);
 
                 counters.objectCheckcastDifferentTypeCounter.inc();
                 counters.objectCheckcastDifferentTypeCopiedCounter.add(length);
