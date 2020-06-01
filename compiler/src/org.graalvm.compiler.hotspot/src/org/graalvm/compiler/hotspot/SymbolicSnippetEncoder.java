@@ -743,6 +743,12 @@ public class SymbolicSnippetEncoder {
         protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original) {
             return new SnippetGraphMaker(this, substitute, original);
         }
+
+        @Override
+        public boolean isEncodingSnippets() {
+            return true;
+        }
+
     }
 
     class SnippetGraphMaker extends ReplacementsImpl.GraphMaker {

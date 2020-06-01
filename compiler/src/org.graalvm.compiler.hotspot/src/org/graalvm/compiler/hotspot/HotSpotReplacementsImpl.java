@@ -84,6 +84,14 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         }
     }
 
+    /**
+     * Returns true if this Replacements is being used for preparation of snippets and substitutions
+     * for libgraal.
+     */
+    public boolean isEncodingSnippets() {
+        return false;
+    }
+
     @Override
     public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
         if (!IS_IN_NATIVE_IMAGE) {
