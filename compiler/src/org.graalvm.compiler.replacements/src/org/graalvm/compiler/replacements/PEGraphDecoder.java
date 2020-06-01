@@ -797,6 +797,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             callTarget.setTargetMethod(specialCallTarget);
             callTarget.setInvokeKind(InvokeKind.Special);
         }
+        if (callTarget.invokeKind().isInterface()) {
+            Invoke invoke = invokeData.invoke;
+            ResolvedJavaType contextType = methodScope.method.getDeclaringClass();
+            MethodCallTargetNode.tryDevirtualizeInterfaceCall(callTarget.receiver(), callTarget.targetMethod(), null, graph.getAssumptions(), contextType, callTarget, invoke.asNode());
+        }
 
         if (tryInvocationPlugin(methodScope, loopScope, invokeData, callTarget)) {
             /*
