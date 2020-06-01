@@ -62,7 +62,7 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
 
     public static long testBit42Snippet(long a, long b, long c) {
         if ((a & (1L << 42)) == 0) {
-            return b;
+            return b + c;
         } else {
             return c;
         }
