@@ -308,6 +308,8 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
                 switch (kind) {
                     case DIRECT:
                         return ARM64Reloc.UNSIGNED.getValue();
+                    case PC_RELATIVE:
+                        return ARM64Reloc.BRANCH26.getValue();
                     default:
                     case UNKNOWN:
                         throw new IllegalArgumentException("unknown relocation kind: " + kind);
