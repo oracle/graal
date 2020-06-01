@@ -49,7 +49,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
  * Generates a default wrapper subclass of an annotated {@link InstrumentableNode} subclass. The
- * generated subclass is has the same class name as the original class name plus the 'Wrapper'
+ * generated subclass has the same class name as the original class name plus the 'Wrapper'
  * suffix. The generated class has default package visibility. All non-final and non-private methods
  * starting with execute are overridden by the generated wrapper. The generated overrides notifies
  * execution events as required by {@link ProbeNode probes}. Other abstract methods are directly
@@ -129,7 +129,7 @@ public @interface GenerateWrapper {
      * Annotates a method to be used as incoming value converter. The annotated method can be used
      * to convert incoming values that were introduced by instruments. Instruments may introduce new
      * values to the interpreter using the {@link EventContext#createUnwind(Object) unwind} feature.
-     * Introduced values are Interop values. If the language only supports a subset of interop
+     * Introduced values are interop values. If the language only supports a subset of interop
      * values or requires them to be wrapped then the incoming converter can be used to perform the
      * necessary conversion. The incoming converter is only invoked if a wrapper is currently
      * inserted.
