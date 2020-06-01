@@ -772,7 +772,7 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "8..14",
       "workingSets" : "Graal,HotSpot,SPARC",
     },
 
@@ -963,7 +963,7 @@ suite = {
         "org.graalvm.compiler.asm",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "8..14",
       "workingSets" : "Graal,Assembler,SPARC",
     },
 
@@ -975,7 +975,7 @@ suite = {
         "org.graalvm.compiler.asm.sparc",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "8..14",
       "workingSets" : "Graal,Assembler,SPARC,Test",
     },
 
@@ -1120,7 +1120,7 @@ suite = {
         "org.graalvm.compiler.lir",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "8..14",
       "workingSets" : "Graal,LIR,SPARC",
     },
 
@@ -1189,7 +1189,7 @@ suite = {
         "org.graalvm.compiler.replacements",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "8..14",
       "workingSets" : "Graal,Replacements,SPARC",
     },
 
@@ -1516,7 +1516,7 @@ suite = {
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "8..14",
       "workingSets" : "Graal,SPARC",
     },
 
@@ -1529,7 +1529,7 @@ suite = {
         "JVMCI_HOTSPOT"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "8..14",
       "workingSets" : "Graal,SPARC,Test",
     },
 
@@ -2125,7 +2125,7 @@ suite = {
         "org.graalvm.compiler.hotspot.sparc",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "8..14",
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "workingSets" : "Graal,Truffle,SPARC",
     },
