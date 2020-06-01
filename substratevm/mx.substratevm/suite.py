@@ -412,31 +412,6 @@ suite = {
             },
         },
 
-        "com.oracle.svm.native.strictmath": {
-            "subDir": "src",
-            "native": "static_lib",
-            "os_arch": {
-                "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
-                    },
-                },
-                "windows": {
-                    "<others>": {
-                        "cflags": ["-O1", "-D_LITTLE_ENDIAN"],
-                    },
-                },
-                "<others>": {
-                    "sparcv9": {
-                        "ignore": "sparcv9 is not supported",
-                    },
-                    "<others>": {
-                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
-                    },
-                },
-            },
-        },
-
         "com.oracle.svm.native.darwin": {
             "subDir": "src",
             "native": "static_lib",
@@ -1013,7 +988,6 @@ suite = {
             "layout": {
                 "<os>-<arch>/": [
                     "dependency:com.oracle.svm.native.libchelper/*",
-                    "dependency:com.oracle.svm.native.strictmath/*",
                     "dependency:com.oracle.svm.native.darwin/*",
                     "dependency:com.oracle.svm.native.jvm.posix/*",
                     "dependency:com.oracle.svm.native.jvm.windows/*",
