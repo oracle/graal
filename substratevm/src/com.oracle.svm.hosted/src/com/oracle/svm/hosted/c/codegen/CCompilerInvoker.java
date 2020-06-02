@@ -65,9 +65,13 @@ public abstract class CCompilerInvoker {
 
     protected CCompilerInvoker(Path tempDirectory) {
         this.tempDirectory = tempDirectory;
-        this.compilerInfo = getCCompilerInfo();
-        if (compilerInfo == null) {
-            UserError.abort(String.format("Unable to detect supported %s native software development toolchain.", OS.getCurrent().name()));
+        try {
+            this.compilerInfo = getCCompilerInfo();
+            if (this.compilerInfo == null) {
+                UserError.abort(String.format("Unable to detect supported %s native software development toolchain.", OS.getCurrent().name()));
+            }
+        } catch (UserError.UserException err) {
+            throw addSkipCheckingInfo(err);
         }
     }
 
@@ -83,6 +87,23 @@ public abstract class CCompilerInvoker {
             default:
                 throw UserError.abort("No CCompilerInvoker for operating system " + hostOS.name());
         }
+    }
+
+    public void verifyCompiler() {
+        if (SubstrateOptions.CheckToolchain.getValue()) {
+            try {
+                verify();
+            } catch (UserError.UserException err) {
+                throw addSkipCheckingInfo(err);
+            }
+        }
+    }
+
+    private static UserError.UserException addSkipCheckingInfo(UserError.UserException err) {
+        List<String> messages = new ArrayList<>();
+        err.getMessages().forEach(messages::add);
+        messages.add("To prevent native-toolchain checking provide command-line option " + SubstrateOptionsParser.commandArgument(SubstrateOptions.CheckToolchain, "-"));
+        return UserError.abort(messages);
     }
 
     private static class WindowsCCompilerInvoker extends CCompilerInvoker {
@@ -154,7 +175,7 @@ public abstract class CCompilerInvoker {
         }
 
         @Override
-        public void verifyCompiler() {
+        protected void verify() {
             if (JavaVersionUtil.JAVA_SPEC >= 11) {
                 if (compilerInfo.versionMajor < 19) {
                     UserError.abort("Java " + JavaVersionUtil.JAVA_SPEC +
@@ -203,7 +224,7 @@ public abstract class CCompilerInvoker {
         }
 
         @Override
-        public void verifyCompiler() {
+        protected void verify() {
             Class<? extends Architecture> substrateTargetArch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch.getClass();
             Class<? extends Architecture> guessed = guessArchitecture(compilerInfo.targetArch);
             if (guessed == null) {
@@ -250,7 +271,7 @@ public abstract class CCompilerInvoker {
         }
 
         @Override
-        public void verifyCompiler() {
+        protected void verify() {
             if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
                 UserError.abort(String.format("Native-image building on Darwin currently only supports target architecture: %s (%s unsupported)",
                                 AMD64.class.getSimpleName(), compilerInfo.targetArch));
@@ -299,10 +320,13 @@ public abstract class CCompilerInvoker {
         }
     }
 
-    public abstract void verifyCompiler();
+    protected abstract void verify();
 
-    public CompilerInfo getCCompilerInfo() {
+    private CompilerInfo getCCompilerInfo() {
         Path compilerPath = getCCompilerPath().toAbsolutePath();
+        if (!SubstrateOptions.CheckToolchain.getValue()) {
+            return new CompilerInfo(compilerPath, null, getClass().getSimpleName(), null, 0, 0, 0, null);
+        }
         List<String> compilerCommand = createCompilerCommand(compilerPath, getVersionInfoOptions(), null);
         ProcessBuilder pb = new ProcessBuilder()
                         .command(compilerCommand)
