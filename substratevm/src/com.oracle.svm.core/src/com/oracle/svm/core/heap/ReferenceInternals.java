@@ -76,6 +76,11 @@ public final class ReferenceInternals {
         return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset)));
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T> T getReferent(Reference<T> instance) {
+        return (T) SubstrateUtil.cast(instance, Target_java_lang_ref_Reference.class).referent;
+    }
+
     /** Barrier-less write of {@link Target_java_lang_ref_Reference#referent} as pointer. */
     public static <T> void setReferentPointer(Reference<T> instance, Pointer value) {
         ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), value.toObject());
@@ -88,6 +93,10 @@ public final class ReferenceInternals {
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered}. */
     public static <T> Reference<?> getNextDiscovered(Reference<T> instance) {
         return KnownIntrinsics.convertUnknownValue(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)), Reference.class);
+    }
+
+    public static <T> Pointer getNextDiscoveredFieldAddress(Reference<T> instance) {
+        return Word.objectToUntrackedPointer(instance).add(WordFactory.unsigned(Target_java_lang_ref_Reference.discoveredFieldOffset));
     }
 
     /** Barrier-less write of {@link Target_java_lang_ref_Reference#discovered}. */
