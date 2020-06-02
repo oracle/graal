@@ -91,11 +91,6 @@ final class SubSourceImpl extends Source {
     }
 
     @Override
-    boolean isLegacy() {
-        return key.base.isLegacy();
-    }
-
-    @Override
     public String getPath() {
         return key.base.getPath();
     }

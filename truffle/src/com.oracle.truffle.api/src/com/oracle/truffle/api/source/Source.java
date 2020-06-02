@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.source;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,26 +49,26 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemNotFoundException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import java.nio.charset.Charset;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.function.Supplier;
-import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * Representation of a source code unit and its contents that can be evaluated in a language. Each
@@ -138,7 +137,6 @@ import org.graalvm.polyglot.io.FileSystem;
  *
  * @since 0.8 or earlier
  */
-@SuppressWarnings("deprecation")
 public abstract class Source {
 
     /**
@@ -153,9 +151,7 @@ public abstract class Source {
     public static final CharSequence CONTENT_NONE = null;
     private static final CharSequence CONTENT_UNSET = new String();
 
-    private static final String UNKNOWN_MIME_TYPE = "content/unknown";
-    private static final Source EMPTY = new SourceImpl.ImmutableKey(null, null, null, null, null, null, null, false, false, false, true, null).toSourceNotInterned();
-
+    private static final Source EMPTY = new SourceImpl.ImmutableKey(null, null, null, null, null, null, null, false, false, true, null).toSourceNotInterned();
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
     private static final String URI_SCHEME = "truffle";
     private static final int MAX_BUFFER_SIZE = Integer.MAX_VALUE - 8;
@@ -413,16 +409,6 @@ public abstract class Source {
      */
     public final Reader getReader() {
         return new CharSequenceReader(getCharacters());
-    }
-
-    /**
-     * @since 0.8 or earlier
-     * @deprecated without replacement use either {@link #getBytes()} or {@link #getCharacters()}
-     *             directly.
-     */
-    @Deprecated
-    public final InputStream getInputStream() {
-        return new ByteArrayInputStream(getCharacters().toString().getBytes());
     }
 
     /**
@@ -728,8 +714,6 @@ public abstract class Source {
         return true;
     }
 
-    abstract boolean isLegacy();
-
     abstract Source copy();
 
     final TextMap getTextMap() {
@@ -880,51 +864,6 @@ public abstract class Source {
     }
 
     /**
-     * @since 0.15
-     * @deprecated use {@link #newBuilder(String, TruffleFile, String)}
-     */
-    @Deprecated
-    public static Builder<IOException, RuntimeException, RuntimeException> newBuilder(File file) {
-        return EMPTY.new Builder<>(file);
-    }
-
-    /**
-     * @since 0.15
-     * @deprecated use {@link #newBuilder(String, CharSequence, String)}
-     */
-    @Deprecated
-    public static Builder<RuntimeException, MissingMIMETypeException, MissingNameException> newBuilder(String text) {
-        return newBuilder((CharSequence) text);
-    }
-
-    /**
-     * @since 0.28
-     * @deprecated use {@link #newBuilder(String, CharSequence, String)}
-     */
-    @Deprecated
-    public static Builder<RuntimeException, MissingMIMETypeException, MissingNameException> newBuilder(CharSequence characters) {
-        return EMPTY.new Builder<>(characters);
-    }
-
-    /**
-     * @since 0.15
-     * @deprecated use {@link #newBuilder(String, URL)}
-     */
-    @Deprecated
-    public static Builder<IOException, RuntimeException, RuntimeException> newBuilder(URL url) {
-        return EMPTY.new Builder<>(url);
-    }
-
-    /**
-     * @since 0.15
-     * @deprecated use {@link #newBuilder(String, Reader, String)}
-     */
-    @Deprecated
-    public static Builder<IOException, MissingMIMETypeException, MissingNameException> newBuilder(Reader reader) {
-        return EMPTY.new Builder<>(reader);
-    }
-
-    /**
      * Returns the first language that supports evaluating the probed mime type of a given
      * {@link File file}. This method is a shortcut for:
      *
@@ -1016,7 +955,7 @@ public abstract class Source {
     private static final boolean ALLOW_IO = SourceAccessor.ACCESSOR.engineSupport().isIOAllowed();
 
     static Source buildSource(String language, Object origin, String name, String path, boolean canonicalizePath, String mimeType, Object content, URL url, URI uri, Charset encoding,
-                    boolean internal, boolean interactive, boolean cached, boolean legacy, Supplier<Object> fileSystemContext) throws IOException {
+                    boolean internal, boolean interactive, boolean cached, Supplier<Object> fileSystemContext) throws IOException {
         String useName = name;
         URI useUri = uri;
         Object useContent = content;
@@ -1051,18 +990,12 @@ public abstract class Source {
             usePath = usePath == null ? file.getPath() : usePath;
             useUri = useUri == null ? file.toUri() : useUri;
             useMimeType = useMimeType == null ? SourceAccessor.detectMimeType(file, getValidMimeTypes(language)) : useMimeType;
-            if (legacy) {
-                useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                useEncoding = useEncoding == null ? findEncoding(file, useMimeType) : useEncoding;
-                useContent = useContent == CONTENT_UNSET ? read(file, useEncoding) : useContent;
-            } else {
-                if (useContent == CONTENT_UNSET) {
-                    if (isCharacterBased(language, useMimeType)) {
-                        useEncoding = useEncoding == null ? findEncoding(file, useMimeType) : useEncoding;
-                        useContent = read(file, useEncoding);
-                    } else {
-                        useContent = ByteSequence.create(file.readAllBytes());
-                    }
+            if (useContent == CONTENT_UNSET) {
+                if (isCharacterBased(language, useMimeType)) {
+                    useEncoding = useEncoding == null ? findEncoding(file, useMimeType) : useEncoding;
+                    useContent = read(file, useEncoding);
+                } else {
+                    useContent = ByteSequence.create(file.readAllBytes());
                 }
             }
         } else if (useOrigin instanceof URL) {
@@ -1081,19 +1014,12 @@ public abstract class Source {
             try {
                 useTruffleFile = SourceAccessor.getTruffleFile(tmpUri, fileSystemContext.get());
                 useTruffleFile = useTruffleFile.exists() ? useTruffleFile.getCanonicalFile() : useTruffleFile;
-                if (legacy) {
-                    useMimeType = useMimeType == null ? SourceAccessor.detectMimeType(useTruffleFile, getValidMimeTypes(language)) : useMimeType;
-                    useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                    useEncoding = useEncoding == null ? findEncoding(useTruffleFile, useMimeType) : useEncoding;
-                    useContent = useContent == CONTENT_UNSET ? read(useTruffleFile, useEncoding) : useContent;
-                } else {
-                    if (useContent == CONTENT_UNSET) {
-                        if (isCharacterBased(language, useMimeType)) {
-                            useEncoding = useEncoding == null ? findEncoding(useTruffleFile, useMimeType) : useEncoding;
-                            useContent = read(useTruffleFile, useEncoding);
-                        } else {
-                            useContent = ByteSequence.create(useTruffleFile.readAllBytes());
-                        }
+                if (useContent == CONTENT_UNSET) {
+                    if (isCharacterBased(language, useMimeType)) {
+                        useEncoding = useEncoding == null ? findEncoding(useTruffleFile, useMimeType) : useEncoding;
+                        useContent = read(useTruffleFile, useEncoding);
+                    } else {
+                        useContent = ByteSequence.create(useTruffleFile.readAllBytes());
                     }
                 }
             } catch (FileSystemNotFoundException fsnf) {
@@ -1102,17 +1028,11 @@ public abstract class Source {
                     // IO without a custom FileSystem
                     URLConnection connection = useUrl.openConnection();
                     useEncoding = useEncoding == null ? StandardCharsets.UTF_8 : useEncoding;
-                    if (legacy) {
-                        useMimeType = useMimeType == null ? findMimeType(useUrl, connection, getValidMimeTypes(language), fileSystemContext.get()) : useMimeType;
-                        useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                        useContent = useContent == CONTENT_UNSET ? read(new InputStreamReader(connection.getInputStream(), useEncoding)) : useContent;
-                    } else {
-                        if (useContent == CONTENT_UNSET) {
-                            if (isCharacterBased(language, useMimeType)) {
-                                useContent = read(new InputStreamReader(connection.getInputStream(), useEncoding));
-                            } else {
-                                useContent = ByteSequence.create(readBytes(connection));
-                            }
+                    if (useContent == CONTENT_UNSET) {
+                        if (isCharacterBased(language, useMimeType)) {
+                            useContent = read(new InputStreamReader(connection.getInputStream(), useEncoding));
+                        } else {
+                            useContent = ByteSequence.create(readBytes(connection));
                         }
                     }
                 } else {
@@ -1128,7 +1048,7 @@ public abstract class Source {
             assert useOrigin instanceof CharSequence;
             useContent = useContent == CONTENT_UNSET ? useOrigin : useContent;
         }
-        if (!legacy && useName == null) {
+        if (useName == null) {
             useName = "Unnamed";
         }
 
@@ -1138,12 +1058,12 @@ public abstract class Source {
         if (useTruffleFile != null) {
             relativePathInLanguageHome = SourceAccessor.getRelativePathInLanguageHome(useTruffleFile);
             if (relativePathInLanguageHome != null && SourceAccessor.isPreInitialization()) {
-                key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy,
+                key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached,
                                 relativePathInLanguageHome);
             }
         }
         if (key == null) {
-            key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy, relativePathInLanguageHome);
+            key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, relativePathInLanguageHome);
         }
         Source source = SOURCES.intern(key);
         SourceAccessor.onSourceCreated(source);
@@ -1592,7 +1512,7 @@ public abstract class Source {
         public Source build() throws IOException {
             assert this.language != null;
             Source source = buildSource(this.language, this.origin, this.name, this.path, this.canonicalizePath, this.mimeType, this.content, this.url, this.uri, this.fileEncoding, this.internal,
-                            this.interactive, this.cached, false, new FileSystemContextSupplier(embedderFileSystemContext));
+                            this.interactive, this.cached, new FileSystemContextSupplier(embedderFileSystemContext));
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {
@@ -1768,160 +1688,6 @@ public abstract class Source {
                 } else {
                     throw new AssertionError("Unexpected IOException", e);
                 }
-            }
-        }
-    }
-
-    /**
-     * @since 0.15
-     * @deprecated use {@link SourceBuilder} instead.
-     */
-    @Deprecated
-    public class Builder<E1 extends Exception, E2 extends Exception, E3 extends Exception> {
-        private final Object origin;
-        private URI uri;
-        private String name;
-        private String mime;
-        private String language;
-        private CharSequence characters = CONTENT_UNSET;
-        private boolean internal;
-        private boolean interactive;
-        private boolean cached = true;
-
-        Builder(Object origin) {
-            this.origin = origin;
-        }
-
-        /**
-         * @since 0.15
-         * @deprecated see {@link SourceBuilder#name(String)}
-         */
-        @Deprecated
-        @SuppressWarnings("unchecked")
-        public Builder<E1, E2, RuntimeException> name(String newName) {
-            Objects.requireNonNull(newName);
-            this.name = newName;
-            return (Builder<E1, E2, RuntimeException>) this;
-        }
-
-        /**
-         * @since 0.15
-         * @deprecated see {@link SourceBuilder#mimeType(String)}
-         */
-        @Deprecated
-        @SuppressWarnings("unchecked")
-        public Builder<E1, RuntimeException, E3> mimeType(String newMimeType) {
-            Objects.requireNonNull(newMimeType);
-            this.mime = newMimeType;
-            return (Builder<E1, RuntimeException, E3>) this;
-        }
-
-        /**
-         * @since 19.0
-         * @deprecated see {@link SourceBuilder#cached(boolean)}
-         */
-        @Deprecated
-        public Builder<E1, E2, E3> cached(@SuppressWarnings("hiding") boolean cached) {
-            this.cached = cached;
-            return this;
-        }
-
-        /**
-         * @since 0.28
-         * @deprecated without replacement. The language is now provided when a
-         *             {@link SourceBuilder} is constructed.
-         */
-        @Deprecated
-        @SuppressWarnings("unchecked")
-        public Builder<E1, RuntimeException, E3> language(String newLanguage) {
-            Objects.requireNonNull(newLanguage);
-            if (this.mime == null) {
-                this.mime = "x-unknown";
-            }
-            this.language = newLanguage;
-            return (Builder<E1, RuntimeException, E3>) this;
-        }
-
-        /**
-         * @since 0.15
-         * @deprecated see {@link SourceBuilder#internal(boolean)}
-         */
-        @Deprecated
-        public Builder<E1, E2, E3> internal() {
-            this.internal = true;
-            return this;
-        }
-
-        /**
-         * @since 0.21
-         * @deprecated see {@link SourceBuilder#interactive(boolean)}
-         */
-        @Deprecated
-        public Builder<E1, E2, E3> interactive() {
-            this.interactive = true;
-            return this;
-        }
-
-        /**
-         * @since 0.15
-         * @deprecated see {@link SourceBuilder#uri(URI)}
-         */
-        @Deprecated
-        public Builder<E1, E2, E3> uri(URI ownUri) {
-            Objects.requireNonNull(ownUri);
-            this.uri = ownUri;
-            return this;
-        }
-
-        /**
-         * @since 0.15
-         * @deprecated see {@link SourceBuilder#content(CharSequence)}
-         */
-        @SuppressWarnings("unchecked")
-        @Deprecated
-        public Builder<RuntimeException, E2, E3> content(String code) {
-            this.characters = code;
-            return (Builder<RuntimeException, E2, E3>) this;
-        }
-
-        /**
-         * @since 0.28
-         * @deprecated see {@link SourceBuilder#content(CharSequence)}
-         */
-        @SuppressWarnings("unchecked")
-        @Deprecated
-        public Builder<RuntimeException, E2, E3> content(CharSequence code) {
-            this.characters = code;
-            return (Builder<RuntimeException, E2, E3>) this;
-        }
-
-        /**
-         * @since 0.15
-         * @throws SecurityException if the used {@link FileSystem filesystem} denied file reading
-         * @deprecated see {@link SourceBuilder#build()}
-         */
-        @SuppressWarnings("unused")
-        @Deprecated
-        public Source build() throws E1, E2, E3 {
-            try {
-                Source source = buildSource(this.language, this.origin, this.name, null, true, this.mime, this.characters, null, this.uri, null, this.internal, this.interactive, this.cached, true,
-                                new FileSystemContextSupplier(null));
-
-                // legacy sources must have character sources
-                assert source.hasCharacters();
-
-                // make sure origin is not consumed again if builder is used twice
-                this.characters = source.getCharacters();
-
-                if (source.getMimeType() == null) {
-                    throw raise(RuntimeException.class, new MissingMIMETypeException());
-                }
-                if (source.getName() == null) {
-                    throw raise(RuntimeException.class, new MissingNameException());
-                }
-                return source;
-            } catch (IOException ex) {
-                throw raise(RuntimeException.class, ex);
             }
         }
     }

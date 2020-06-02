@@ -127,11 +127,6 @@ final class SourceImpl extends Source {
     }
 
     @Override
-    boolean isLegacy() {
-        return key.legacy;
-    }
-
-    @Override
     public boolean isInteractive() {
         return key.interactive;
     }
@@ -193,10 +188,9 @@ final class SourceImpl extends Source {
         final boolean interactive;
         final boolean cached;
         // TODO remove legacy field with deprecated Source builders.
-        final boolean legacy;
         volatile Integer cachedHashCode;
 
-        Key(Object content, String mimeType, String languageId, String name, boolean internal, boolean interactive, boolean cached, boolean legacy) {
+        Key(Object content, String mimeType, String languageId, String name, boolean internal, boolean interactive, boolean cached) {
             this.content = content;
             this.mimeType = mimeType;
             this.language = languageId;
@@ -204,7 +198,6 @@ final class SourceImpl extends Source {
             this.internal = internal;
             this.interactive = interactive;
             this.cached = cached;
-            this.legacy = legacy;
         }
 
         abstract String getPath();
@@ -217,14 +210,14 @@ final class SourceImpl extends Source {
         public int hashCode() {
             Integer hashCode = cachedHashCode;
             if (hashCode == null) {
-                hashCode = hashCodeImpl(content, mimeType, language, getURL(), getURI(), name, getPath(), internal, interactive, cached, legacy);
+                hashCode = hashCodeImpl(content, mimeType, language, getURL(), getURI(), name, getPath(), internal, interactive, cached);
                 cachedHashCode = hashCode;
             }
             return hashCode;
         }
 
         static int hashCodeImpl(Object content, String mimeType, String language, URL url, URI uri, String name, String path, boolean internal, boolean interactive,
-                        boolean cached, @SuppressWarnings("unused") boolean legacy) {
+                        boolean cached) {
             int result = 31 * 1 + ((content == null) ? 0 : content.hashCode());
             result = 31 * result + (interactive ? 1231 : 1237);
             result = 31 * result + (internal ? 1231 : 1237);
@@ -320,14 +313,14 @@ final class SourceImpl extends Source {
          * path in the language home and does not include {@code url} nor {@code uri} as they
          * contain absolute paths.
          */
-        ImmutableKey(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy,
+        ImmutableKey(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached,
                         String relativePathInLanguageHome) {
-            super(content, mimeType, languageId, name, internal, interactive, cached, legacy);
+            super(content, mimeType, languageId, name, internal, interactive, cached);
             this.uri = uri;
             this.url = url;
             this.path = path;
             if (relativePathInLanguageHome != null) {
-                this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached, legacy);
+                this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached);
             }
         }
 
@@ -368,14 +361,14 @@ final class SourceImpl extends Source {
          * {@code uri} as they contain absolute paths.
          */
         ReinitializableKey(TruffleFile truffleFile, Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive,
-                        boolean cached, boolean legacy, String relativePathInLanguageHome) {
-            super(content, mimeType, languageId, name, internal, interactive, cached, legacy);
+                        boolean cached, String relativePathInLanguageHome) {
+            super(content, mimeType, languageId, name, internal, interactive, cached);
             Objects.requireNonNull(truffleFile, "TruffleFile must be non null.");
             this.truffleFile = truffleFile;
             this.uri = uri;
             this.url = url;
             this.path = path;
-            this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached, legacy);
+            this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached);
         }
 
         @Override

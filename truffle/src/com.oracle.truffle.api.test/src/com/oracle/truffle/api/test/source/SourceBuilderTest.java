@@ -930,42 +930,6 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     public static class TestTxtLanguage extends ProxyLanguage {
     }
 
-    @SuppressWarnings("deprecation")
-    @Test
-    public void testLegacyEquivalence() throws IOException, RuntimeException {
-        setupEnv();
-
-        File file = File.createTempFile("ChangeMe", ".java");
-        file.deleteOnExit();
-
-        String text;
-        try (FileWriter w = new FileWriter(file)) {
-            text = "// Hello";
-            w.write(text);
-        }
-        String path = file.getPath();
-        File compareFile = new File(path);
-
-        final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(path);
-
-        String name = "foobar";
-        String mimeType = "text/x-java";
-        String lang = "TestJava";
-        boolean internal = true;
-
-        final Source.Builder<IOException, RuntimeException, RuntimeException> builder = Source.newBuilder(compareFile).language(lang).name(name.intern()).mimeType(mimeType);
-        final Source source1;
-
-        if (internal) {
-            source1 = builder.internal().build();
-        } else {
-            source1 = builder.build();
-        }
-        final Source source2 = Source.newBuilder(lang, truffleFile).name(name.intern()).mimeType(mimeType).internal(internal).build();
-
-        assertTrue(source1.equals(source2));
-    }
-
     @Test
     public void testFindLaguage() throws IOException {
         setupEnv();

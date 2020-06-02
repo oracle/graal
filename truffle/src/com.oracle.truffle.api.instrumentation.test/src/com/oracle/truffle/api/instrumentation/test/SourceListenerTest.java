@@ -342,7 +342,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
                 env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.between(1, 2)).build(), dummySourceListener, true);
             } catch (IllegalArgumentException e) {
             }
-            SourceSection unavailable = com.oracle.truffle.api.source.Source.newBuilder("").name("a").mimeType("").build().createUnavailableSection();
+            SourceSection unavailable = com.oracle.truffle.api.source.Source.newBuilder("", "", "a").build().createUnavailableSection();
             try {
                 env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().sourceSectionEquals(unavailable).build(), dummySourceListener, true);
             } catch (IllegalArgumentException e) {

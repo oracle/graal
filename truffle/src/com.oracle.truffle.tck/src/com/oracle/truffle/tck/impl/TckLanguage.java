@@ -72,7 +72,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
         if (txt.startsWith("TCK42:")) {
             int nextColon = txt.indexOf(":", 6);
             String mimeType = txt.substring(6, nextColon);
-            Source toParse = Source.newBuilder(txt.substring(nextColon + 1)).name("src.tck").mimeType(mimeType).build();
+            Source toParse = Source.newBuilder(code.getLanguage(), txt.substring(nextColon + 1), "src.tck").mimeType(mimeType).build();
             root = new MultiplyNode(this, toParse);
         } else {
             final double value = Double.parseDouble(txt);

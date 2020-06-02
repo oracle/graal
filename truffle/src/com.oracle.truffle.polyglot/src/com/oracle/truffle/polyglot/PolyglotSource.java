@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -114,8 +115,7 @@ class PolyglotSource extends AbstractSourceImpl {
     @SuppressWarnings("deprecation")
     @Override
     public InputStream getInputStream(Object impl) {
-        com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
-        return source.getInputStream();
+        return new ByteArrayInputStream(getCharacters(impl).toString().getBytes());
     }
 
     @Override
@@ -126,14 +126,14 @@ class PolyglotSource extends AbstractSourceImpl {
     }
 
     @Override
-    public CharSequence getCode(Object impl) {
+    public CharSequence getCharacters(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
 
         return source.getCharacters();
     }
 
     @Override
-    public CharSequence getCode(Object impl, int lineNumber) {
+    public CharSequence getCharacters(Object impl, int lineNumber) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
 
         return source.getCharacters(lineNumber);

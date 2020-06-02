@@ -981,12 +981,12 @@ public final class Engine implements AutoCloseable {
             }
 
             @Override
-            public CharSequence getCode(Object impl) {
+            public CharSequence getCharacters(Object impl) {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public CharSequence getCode(Object impl, int lineNumber) {
+            public CharSequence getCharacters(Object impl, int lineNumber) {
                 throw new UnsupportedOperationException();
             }
 

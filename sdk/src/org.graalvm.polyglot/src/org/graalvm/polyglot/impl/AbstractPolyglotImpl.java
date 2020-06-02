@@ -311,9 +311,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract int getLength(Object impl);
 
-        public abstract CharSequence getCode(Object impl);
+        public abstract CharSequence getCharacters(Object impl);
 
-        public abstract CharSequence getCode(Object impl, int lineNumber);
+        public abstract CharSequence getCharacters(Object impl, int lineNumber);
 
         public abstract int getLineCount(Object impl);
 

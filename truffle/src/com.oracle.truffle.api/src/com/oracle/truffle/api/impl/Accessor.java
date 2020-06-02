@@ -188,8 +188,6 @@ public abstract class Accessor {
 
         public abstract String findMimeType(URL url, Object fileSystemContext) throws IOException;
 
-        public abstract boolean isLegacySource(Source soure);
-
         public abstract SourceBuilder newBuilder(String language, File origin);
 
         public abstract void setFileSystemContext(SourceBuilder builder, Object fileSystemContext);

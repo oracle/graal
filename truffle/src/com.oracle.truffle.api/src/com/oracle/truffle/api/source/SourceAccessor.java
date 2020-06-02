@@ -135,11 +135,6 @@ final class SourceAccessor extends Accessor {
         }
 
         @Override
-        public boolean isLegacySource(Source source) {
-            return source.isLegacy();
-        }
-
-        @Override
         public void setFileSystemContext(SourceBuilder builder, Object fileSystemContext) {
             builder.embedderFileSystemContext(fileSystemContext);
         }
