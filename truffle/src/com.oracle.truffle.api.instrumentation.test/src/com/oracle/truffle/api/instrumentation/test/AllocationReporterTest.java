@@ -253,6 +253,7 @@ public class AllocationReporterTest {
             fail();
         } catch (PolyglotException ex) {
             // O.K.
+            assertTrue(ex.isResourceExhausted());
             assertTrue(ex.getMessage(), ex.getMessage().contains("Denied allocation of 8 bytes."));
         }
         assertEquals(1, consumerCalls.get());
@@ -277,6 +278,7 @@ public class AllocationReporterTest {
             fail();
         } catch (PolyglotException ex) {
             // O.K.
+            assertTrue(ex.isResourceExhausted());
             assertTrue(ex.getMessage(), ex.getMessage().contains("Denied an unknown reallocation."));
         }
         assertEquals(1, consumerCalls.get());
