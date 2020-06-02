@@ -47,7 +47,7 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.image.AbstractImageHeapLayouter.ImageHeapLayout;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -67,10 +67,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public final class NativeImageHeapWriter {
     private final NativeImageHeap heap;
-    private final ImageHeapLayout heapLayout;
+    private final ImageHeapLayoutInfo heapLayout;
     private long sectionOffsetOfARelocatablePointer;
 
-    public NativeImageHeapWriter(NativeImageHeap heap, ImageHeapLayout heapLayout) {
+    public NativeImageHeapWriter(NativeImageHeap heap, ImageHeapLayoutInfo heapLayout) {
         this.heap = heap;
         this.heapLayout = heapLayout;
         this.sectionOffsetOfARelocatablePointer = -1;

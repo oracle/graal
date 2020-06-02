@@ -89,7 +89,7 @@ import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
-import com.oracle.svm.core.image.AbstractImageHeapLayouter.ImageHeapLayout;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -415,8 +415,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
             long roSectionSize = codeCache.getAlignedConstantsSize();
             long rwSectionSize = ConfigurationValues.getObjectLayout().alignUp(cGlobals.getSize());
-            String heapSectionName = SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat());
-            ImageHeapLayout heapLayout = layouter.layoutPartitionsAsContiguousHeap(heapSectionName, objectFile.getPageSize());
+            ImageHeapLayoutInfo heapLayout = layouter.layout(heap, objectFile.getPageSize());
             // after this point, the layout is final and must not be changed anymore
             assert !hasDuplicatedObjects(heap.getObjects()) : "heap.getObjects() must not contain any duplicates";
 
@@ -482,11 +481,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
             defineDataSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
             defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, heapSize);
-            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffsetInSection());
-            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffsetInSection() + heapLayout.getReadOnlyRelocatableSize());
+            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset());
+            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset() + heapLayout.getReadOnlyRelocatableSize());
             defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, sectionOffsetOfARelocatablePointer);
-            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffsetInSection());
-            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffsetInSection() + heapLayout.getWritableSize());
+            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset());
+            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize());
 
             // Mark the sections with the relocations from the maps.
             markRelocationSitesFromMaps(textBuffer, textImpl);
@@ -603,20 +602,14 @@ public abstract class NativeBootImage extends AbstractBootImage {
     // TODO: read-only data section.
 
     // A reference to data. Mark the relocation using the section and addend in the relocation info.
-    private static void markDataRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info, final ObjectInfo targetObjectInfo) {
-        // References to objects are via relocations to offsets from the symbol
-        // for the section the symbol is in.
-        // Use the target object to find the partition and offset, and from the
-        // partition the section and the partition offset.
+    private void markDataRelocationSite(ProgbitsSectionImpl sectionImpl, int offset, RelocatableBuffer.Info info, ObjectInfo targetObjectInfo) {
+        // References to objects are via relocations to offsets in the heap section.
         assert ((info.getRelocationSize() == 4) || (info.getRelocationSize() == 8)) : "Data relocation size should be 4 or 8 bytes.";
         assert targetObjectInfo != null;
-        // Gather information about the target object.
-        ImageHeapPartition partition = targetObjectInfo.getPartition();
-        assert partition != null;
-        final String targetSectionName = partition.getSectionName();
-        final long address = targetObjectInfo.getAddress();
-        final long relocationInfoAddend = info.hasExplicitAddend() ? info.getExplicitAddend().longValue() : 0L;
-        final long relocationAddend = address + relocationInfoAddend;
+        String targetSectionName = heapSection.getName();
+        long address = targetObjectInfo.getAddress();
+        long relocationInfoAddend = info.hasExplicitAddend() ? info.getExplicitAddend() : 0L;
+        long relocationAddend = address + relocationInfoAddend;
         sectionImpl.markRelocationSite(offset, info.getRelocationSize(), info.getRelocationKind(), targetSectionName, false, relocationAddend);
     }
 
