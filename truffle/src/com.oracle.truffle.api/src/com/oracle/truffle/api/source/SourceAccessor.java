@@ -69,12 +69,8 @@ final class SourceAccessor extends Accessor {
         return ACCESSOR.languageSupport().detectEncoding(file, mimeType);
     }
 
-    static Object getCurrentFileSystemContext() {
-        return ACCESSOR.languageSupport().getCurrentFileSystemContext();
-    }
-
     static TruffleFile getTruffleFile(URI uri, Object fileSystemContext) {
-        return ACCESSOR.languageSupport().getTruffleFile(uri, fileSystemContext);
+        return ACCESSOR.languageSupport().getTruffleFile(fileSystemContext, uri);
     }
 
     static TruffleFile getTruffleFile(String path, Object fileSystemContext) {

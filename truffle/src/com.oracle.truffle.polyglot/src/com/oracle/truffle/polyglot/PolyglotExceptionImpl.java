@@ -94,7 +94,6 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     private final int exitStatus;
     private final Value guestObject;
     private final String message;
-    private Object fileSystemContext;
 
     // Exception coming from a language
     PolyglotExceptionImpl(PolyglotLanguageContext languageContext, Throwable original) {
@@ -365,13 +364,10 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     }
 
     Object getFileSystemContext() {
-        if (fileSystemContext != null) {
-            return fileSystemContext;
-        }
         if (context == null) {
             return null;
         }
-        return EngineAccessor.LANGUAGE.createFileSystemContext(context.config.fileSystem, context.engine.getFileTypeDetectorsSupplier());
+        return context.config.internalFileSystemContext;
     }
 
     /**

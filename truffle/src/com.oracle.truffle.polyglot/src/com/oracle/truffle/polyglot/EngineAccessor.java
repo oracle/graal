@@ -83,6 +83,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
@@ -96,6 +97,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystemContext;
 
 final class EngineAccessor extends Accessor {
 
@@ -242,17 +244,13 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleFile getTruffleFile(String path) {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            FileSystem fileSystem = context.config.fileSystem;
-            Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier = context.engine.getFileTypeDetectorsSupplier();
-            return EngineAccessor.LANGUAGE.getTruffleFile(path, fileSystem, fileTypeDetectorsSupplier);
+            return EngineAccessor.LANGUAGE.getTruffleFile(context.config.publicFileSystemContext, path);
         }
 
         @Override
         public TruffleFile getTruffleFile(URI uri) {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            FileSystem fileSystem = context.config.fileSystem;
-            Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier = context.engine.getFileTypeDetectorsSupplier();
-            return EngineAccessor.LANGUAGE.getTruffleFile(uri, fileSystem, fileTypeDetectorsSupplier);
+            return EngineAccessor.LANGUAGE.getTruffleFile(context.config.publicFileSystemContext, uri);
         }
 
         @Override
@@ -463,6 +461,22 @@ final class EngineAccessor extends Accessor {
         @Override
         public RuntimeException engineToInstrumentException(Throwable t) {
             return PolyglotImpl.engineToInstrumentException(t);
+        }
+
+        @Override
+        public Object getPublicFileSystemContext(Object polyglotContextImpl) {
+            return ((PolyglotContextImpl) polyglotContextImpl).config.publicFileSystemContext;
+        }
+
+        @Override
+        public Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemContext) {
+            if (engineFileSystemContext instanceof PolyglotContextConfig) {
+                return ((PolyglotContextConfig) engineFileSystemContext).engine.getFileTypeDetectorsSupplier().get();
+            } else if (engineFileSystemContext instanceof EmbedderFileSystemContext) {
+                return ((EmbedderFileSystemContext) engineFileSystemContext).fileTypeDetectors.get();
+            } else {
+                throw new AssertionError();
+            }
         }
 
         @Override
@@ -982,11 +996,6 @@ final class EngineAccessor extends Accessor {
         @Override
         public FileSystem getFileSystem(Object polyglotContext) {
             return ((PolyglotContextImpl) polyglotContext).config.fileSystem;
-        }
-
-        @Override
-        public Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object polyglotContext) {
-            return ((PolyglotContextImpl) polyglotContext).engine.getFileTypeDetectorsSupplier();
         }
 
         @Override

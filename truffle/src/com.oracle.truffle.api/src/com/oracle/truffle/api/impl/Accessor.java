@@ -85,6 +85,7 @@ import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -403,8 +404,6 @@ public abstract class Accessor {
 
         public abstract FileSystem getFileSystem(Object polyglotContext);
 
-        public abstract Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object polyglotContext);
-
         public abstract boolean isPolyglotEvalAllowed(Object polyglotLanguageContext);
 
         public abstract boolean isPolyglotBindingsAccessAllowed(Object polyglotLanguageContext);
@@ -461,6 +460,10 @@ public abstract class Accessor {
         public abstract RuntimeException engineToLanguageException(Throwable t);
 
         public abstract RuntimeException engineToInstrumentException(Throwable t);
+
+        public abstract Object getPublicFileSystemContext(Object polyglotContextImpl);
+
+        public abstract Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemContext);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -475,8 +478,7 @@ public abstract class Accessor {
 
         public abstract Env createEnv(Object polyglotLanguageContext, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config,
                         OptionValues options,
-                        String[] applicationArguments, FileSystem fileSystem, FileSystem internalFileSystem,
-                        Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
+                        String[] applicationArguments, Object publicFileSystem, Object internalFileSystem);
 
         public abstract boolean areOptionsCompatible(TruffleLanguage<?> language, OptionValues firstContextOptions, OptionValues newContextOptions);
 
@@ -547,7 +549,7 @@ public abstract class Accessor {
         public abstract Iterable<Scope> findTopScopes(Env env);
 
         public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                        FileSystem fileSystem, FileSystem internalFileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
+                        Object publicFileSystem, Object internalFileSystem);
 
         public abstract boolean initializeMultiContext(TruffleLanguage<?> language);
 
@@ -569,7 +571,7 @@ public abstract class Accessor {
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
 
-        public abstract Object createFileSystemContext(FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
+        public abstract Object createFileSystemContext(Object engineObject, FileSystem fileSystem);
 
         public abstract Object getCurrentFileSystemContext();
 
@@ -579,13 +581,11 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
 
-        public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
-
         public abstract boolean hasAllAccess(Object fileSystemContext);
 
-        public abstract TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
+        public abstract TruffleFile getTruffleFile(Object context, String path);
 
-        public abstract TruffleFile getTruffleFile(URI uri, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
+        public abstract TruffleFile getTruffleFile(Object context, URI uri);
 
         public abstract SecurityException throwSecurityException(String message);
 

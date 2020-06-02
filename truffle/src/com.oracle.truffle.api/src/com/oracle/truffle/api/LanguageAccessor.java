@@ -47,12 +47,10 @@ import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptor;
@@ -192,10 +190,8 @@ final class LanguageAccessor extends Accessor {
 
         @Override
         public TruffleLanguage.Env createEnv(Object polyglotLanguageContext, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config,
-                        OptionValues options, String[] applicationArguments, FileSystem fileSystem, FileSystem internalFileSystem,
-                        Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
-            TruffleLanguage.Env env = new TruffleLanguage.Env(polyglotLanguageContext, language, stdOut, stdErr, stdIn, config, options, applicationArguments, fileSystem, internalFileSystem,
-                            fileTypeDetectors);
+                        OptionValues options, String[] applicationArguments, Object publicFileSystem, Object internalFileSystem) {
+            TruffleLanguage.Env env = new TruffleLanguage.Env(polyglotLanguageContext, language, stdOut, stdErr, stdIn, config, options, applicationArguments, publicFileSystem, internalFileSystem);
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             LanguageInfo info = language.languageInfo;
             instrumentAccess().collectEnvServices(collectedServices, ACCESSOR.nodeSupport().getPolyglotLanguage(info), language);
@@ -398,8 +394,7 @@ final class LanguageAccessor extends Accessor {
 
         @Override
         public TruffleLanguage.Env patchEnvContext(TruffleLanguage.Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
-                        String[] applicationArguments, FileSystem fileSystem, FileSystem internalFileSystem,
-                        Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
+                        String[] applicationArguments, Object publicFileSystem, Object internalFileSystem) {
             assert env.spi != null;
             final TruffleLanguage.Env newEnv = createEnv(
                             env.polyglotLanguageContext,
@@ -409,7 +404,9 @@ final class LanguageAccessor extends Accessor {
                             stdIn,
                             config,
                             options,
-                            applicationArguments, fileSystem, internalFileSystem, fileTypeDetectors);
+                            applicationArguments,
+                            publicFileSystem,
+                            internalFileSystem);
 
             newEnv.initialized = env.initialized;
             newEnv.context = env.context;
@@ -418,8 +415,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object createFileSystemContext(FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
-            return new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectors);
+        public Object createFileSystemContext(Object engineFileSystemContext, FileSystem fileSystem) {
+            return new TruffleFile.FileSystemContext(engineFileSystemContext, fileSystem);
         }
 
         @Override
@@ -428,9 +425,7 @@ final class LanguageAccessor extends Accessor {
             if (polyglotContextImpl == null) {
                 throw new IllegalStateException("No current context");
             }
-            FileSystem fileSystem = engineAccess().getFileSystem(polyglotContextImpl);
-            Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier = engineAccess().getFileTypeDetectorsSupplier(polyglotContextImpl);
-            return new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectorsSupplier);
+            return engineAccess().getPublicFileSystemContext(polyglotContextImpl);
         }
 
         @Override
@@ -472,7 +467,7 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public TruffleFile getTruffleFile(URI uri, Object fileSystemContext) {
+        public TruffleFile getTruffleFile(Object fileSystemContext, URI uri) {
             TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
             try {
                 return new TruffleFile(ctx, ctx.fileSystem.parsePath(uri));
@@ -488,15 +483,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier) {
-            TruffleFile.FileSystemContext ctx = new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectorsSupplier);
-            return getTruffleFile(path, ctx);
-        }
-
-        @Override
-        public TruffleFile getTruffleFile(URI uri, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier) {
-            TruffleFile.FileSystemContext ctx = new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectorsSupplier);
-            return getTruffleFile(uri, ctx);
+        public TruffleFile getTruffleFile(Object context, String path) {
+            return getTruffleFile(path, context);
         }
 
         @Override

@@ -995,7 +995,7 @@ public abstract class Source {
      * @since 19.0
      */
     public static String findMimeType(URL url) throws IOException {
-        return findMimeType(url, url.openConnection(), null, SourceAccessor.getCurrentFileSystemContext());
+        return findMimeType(url, url.openConnection(), null, SourceAccessor.ACCESSOR.languageSupport().getCurrentFileSystemContext());
     }
 
     /**
@@ -1936,7 +1936,7 @@ public abstract class Source {
 
         @Override
         public Object get() {
-            return fileSystemContext == null ? SourceAccessor.getCurrentFileSystemContext() : fileSystemContext;
+            return fileSystemContext == null ? SourceAccessor.ACCESSOR.languageSupport().getCurrentFileSystemContext() : fileSystemContext;
         }
     }
 
