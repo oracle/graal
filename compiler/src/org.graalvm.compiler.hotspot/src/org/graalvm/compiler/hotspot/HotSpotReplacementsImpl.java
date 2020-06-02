@@ -152,7 +152,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                 }
                 // This assumes the normal path creates the graph using
                 // GraphBuilderConfiguration.getSnippetDefault with omits exception edges
-                StructuredGraph subst = getMethodSubstitution(msPlugin, targetMethod, INLINE_AFTER_PARSING, AllowAssumptions.NO, null, options);
+                StructuredGraph subst = getMethodSubstitution(msPlugin, targetMethod, INLINE_AFTER_PARSING, allowAssumptions, null, options);
                 return subst;
             }
         }
