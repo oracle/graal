@@ -436,8 +436,8 @@ public class SubstrateOptions {
     @Option(help = "Show native-toolchain information and image-build settings", type = User)//
     public static final HostedOptionKey<Boolean> DumpTargetInfo = new HostedOptionKey<>(false);
 
-    @Option(help = "Skip checking if native-toolchain is known to work with native-image", type = Expert)//
-    public static final HostedOptionKey<Boolean> SkipToolchainCheck = new HostedOptionKey<>(false);
+    @Option(help = "Check if native-toolchain is known to work with native-image", type = Expert)//
+    public static final HostedOptionKey<Boolean> CheckToolchain = new HostedOptionKey<>(true);
 
     @APIOption(name = "install-exit-handlers")//
     @Option(help = "Provide java.lang.Terminator exit handlers for executable images", type = User)//

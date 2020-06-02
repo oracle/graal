@@ -91,7 +91,7 @@ public abstract class CCompilerInvoker {
     }
 
     public void verifyCompiler() {
-        if (!SubstrateOptions.SkipToolchainCheck.getValue()) {
+        if (SubstrateOptions.CheckToolchain.getValue()) {
             try {
                 verify();
             } catch (UserError.UserException err) {
@@ -103,7 +103,7 @@ public abstract class CCompilerInvoker {
     private static UserError.UserException addSkipCheckingInfo(UserError.UserException err) {
         List<String> messages = new ArrayList<>();
         err.getMessages().forEach(messages::add);
-        messages.add("To prevent native-toolchain checking provide command-line option " + SubstrateOptionsParser.commandArgument(SubstrateOptions.SkipToolchainCheck, "+"));
+        messages.add("To prevent native-toolchain checking provide command-line option " + SubstrateOptionsParser.commandArgument(SubstrateOptions.CheckToolchain, "-"));
         return UserError.abort(messages);
     }
 
@@ -320,7 +320,7 @@ public abstract class CCompilerInvoker {
 
     private CompilerInfo getCCompilerInfo() {
         Path compilerPath = getCCompilerPath().toAbsolutePath();
-        if (SubstrateOptions.SkipToolchainCheck.getValue()) {
+        if (!SubstrateOptions.CheckToolchain.getValue()) {
             return new CompilerInfo(compilerPath, null, getClass().getSimpleName(), null, 0, 0, 0, null);
         }
         List<String> compilerCommand = createCompilerCommand(compilerPath, getVersionInfoOptions(), null);
