@@ -68,11 +68,11 @@ public abstract class CCompilerInvoker {
         this.tempDirectory = tempDirectory;
         try {
             this.compilerInfo = getCCompilerInfo();
+            if (this.compilerInfo == null) {
+                UserError.abort(String.format("Unable to detect supported %s native software development toolchain.", OS.getCurrent().name()));
+            }
         } catch (UserError.UserException err) {
             throw addSkipCheckingInfo(err);
-        }
-        if (this.compilerInfo == null) {
-            UserError.abort(String.format("Unable to detect supported %s native software development toolchain.", OS.getCurrent().name()));
         }
     }
 
