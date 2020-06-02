@@ -27,6 +27,7 @@ package com.oracle.svm.core;
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.None;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
+import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
 import java.nio.file.InvalidPathException;
@@ -35,7 +36,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Predicate;
 
-import com.oracle.svm.core.util.UserError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -56,6 +56,7 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
+import com.oracle.svm.core.util.UserError;
 
 public class SubstrateOptions {
 
@@ -434,6 +435,9 @@ public class SubstrateOptions {
     @APIOption(name = "native-image-info")//
     @Option(help = "Show native-toolchain information and image-build settings", type = User)//
     public static final HostedOptionKey<Boolean> DumpTargetInfo = new HostedOptionKey<>(false);
+
+    @Option(help = "Skip checking if native-toolchain is known to work with native-image", type = Expert)//
+    public static final HostedOptionKey<Boolean> SkipToolchainCheck = new HostedOptionKey<>(false);
 
     @APIOption(name = "install-exit-handlers")//
     @Option(help = "Provide java.lang.Terminator exit handlers for executable images", type = User)//
