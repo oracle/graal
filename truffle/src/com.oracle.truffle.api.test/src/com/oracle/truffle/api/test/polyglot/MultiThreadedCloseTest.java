@@ -138,7 +138,6 @@ public class MultiThreadedCloseTest {
             executor.shutdownNow();
             assertTrue(executor.isShutdown());
             try {
-                // assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
                 joinThreads();
             } catch (InterruptedException ie) {
                 throw new RuntimeException(ie);

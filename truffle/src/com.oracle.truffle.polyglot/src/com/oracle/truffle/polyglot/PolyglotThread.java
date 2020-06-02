@@ -72,7 +72,16 @@ final class PolyglotThread extends Thread {
 
     @Override
     public void run() {
-        Object prev = languageContext.enterThread(this);
+        Object prev;
+        try {
+            prev = languageContext.enterThread(this);
+        } catch (PolyglotEngineException polyglotException) {
+            if (polyglotException.e instanceof ClosingContextException) {
+                return;
+            } else {
+                throw polyglotException;
+            }
+        }
         assert prev == null;
         try {
             super.run();
@@ -82,5 +91,13 @@ final class PolyglotThread extends Thread {
     }
 
     private static final AtomicInteger THREAD_INIT_NUMBER = new AtomicInteger(0);
+
+    @SuppressWarnings("serial")
+    static final class ClosingContextException extends IllegalStateException {
+
+        ClosingContextException(String message) {
+            super(message);
+        }
+    }
 
 }

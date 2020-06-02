@@ -487,7 +487,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             Thread closing = this.closingThread;
             if (needsInitialization) {
                 if (closing != null && closing != current) {
-                    throw PolyglotEngineException.illegalState("Can not create new threads in closing context.");
+                    throw PolyglotEngineException.illegalState(new PolyglotThread.ClosingContextException("Can not create new threads in closing context."));
                 }
                 threads.put(current, threadInfo);
             }

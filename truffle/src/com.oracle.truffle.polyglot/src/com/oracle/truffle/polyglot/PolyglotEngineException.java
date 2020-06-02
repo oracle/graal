@@ -122,6 +122,10 @@ final class PolyglotEngineException extends RuntimeException {
         return new PolyglotEngineException(new IllegalArgumentException(message));
     }
 
+    static PolyglotEngineException illegalState(IllegalStateException e) {
+        return new PolyglotEngineException(e);
+    }
+
     static PolyglotEngineException illegalState(String message) {
         return new PolyglotEngineException(new IllegalStateException(message));
     }
