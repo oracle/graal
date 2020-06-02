@@ -24,21 +24,22 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.nodes.Node;
 
 @GenerateWrapper
-public abstract class EspressoInstrumentableNode extends Node implements InstrumentableNode {
+abstract class EspressoPreludeNode extends EspressoInstrumentableNode {
+    abstract Object executeBody(VirtualFrame frame);
 
-    public abstract Object execute(VirtualFrame frame);
+    abstract void initializeBody(VirtualFrame frame);
 
-    public final boolean isInstrumentable() {
-        return true;
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        initializeBody(frame);
+        return executeBody(frame);
     }
 
     @Override
     public WrapperNode createWrapper(ProbeNode probeNode) {
-        return new EspressoInstrumentableNodeWrapper(this, probeNode);
+        return new EspressoPreludeNodeWrapper(this, probeNode);
     }
 }

@@ -59,7 +59,12 @@ public class IntrinsicSubstitutorNode extends EspressoMethodNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    void initializeBody(VirtualFrame frame) {
+
+    }
+
+    @Override
+    public Object executeBody(VirtualFrame frame) {
         if (CompilerDirectives.inInterpreter() && callState <= 1) {
             callState++;
         }
