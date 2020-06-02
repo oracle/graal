@@ -1032,7 +1032,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return AllowAssumptions.ifNonNull(assumptions);
     }
 
-
     /**
      * Checks that any method referenced from a {@link FrameState} is also in the set of methods
      * parsed while building this graph.
