@@ -37,10 +37,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import com.oracle.svm.hosted.NativeImageOptions;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
@@ -402,17 +404,26 @@ public class ClassInitializationFeature implements GraalFeature {
             /* Only interfaces can declare default methods. */
             return false;
         }
-        /*
-         * We call getDeclaredMethods() directly on the wrapped type. We avoid calling it on the
-         * AnalysisType because it resolves all the methods in the AnalysisUniverse.
-         */
-        for (ResolvedJavaMethod method : Inflation.toWrappedType(type).getDeclaredMethods()) {
-            if (method.isDefault()) {
-                assert !Modifier.isStatic(method.getModifiers()) : "Default method that is static?";
-                return true;
+
+        try {
+            /*
+             * We call getDeclaredMethods() directly on the wrapped type. We avoid calling it on the
+             * AnalysisType because it resolves all the methods in the AnalysisUniverse.
+             */
+            for (ResolvedJavaMethod method : Inflation.toWrappedType(type).getDeclaredMethods()) {
+                if (method.isDefault()) {
+                    assert !Modifier.isStatic(method.getModifiers()) : "Default method that is static?";
+                    return true;
+                }
             }
+            return false;
+        } catch (NoClassDefFoundError e) {
+            if (!NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+                return false;
+            }
+
+            throw new GraalError(e, "Missing classes when looking up default methods in %s. Consider adding them to the classpath.", type.toClassName());
         }
-        return false;
     }
 
 }
