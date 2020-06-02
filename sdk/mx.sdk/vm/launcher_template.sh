@@ -102,7 +102,8 @@ process_arg() {
 for var in <option_vars>; do
     read -ra opts <<< "${!var}"
     for opt in ${opts[@]}; do
-        [[ "$opt" == --vm.* ]] && process_vm_arg "${opt#--vm.}"
+        [[ "$opt" == --vm.* ]] && process_vm_arg vm "${opt#--vm.}"
+        [[ "$opt" == --jvm.* ]] && process_vm_arg jvm "${opt#--jvm.}"
     done
 done
 
