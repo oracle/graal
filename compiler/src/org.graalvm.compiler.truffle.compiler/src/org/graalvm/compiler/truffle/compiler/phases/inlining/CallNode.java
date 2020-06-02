@@ -30,9 +30,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import jdk.vm.ci.code.BailoutException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSuccessorList;
@@ -214,7 +214,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         GraphManager.Entry entry;
         try {
             entry = getCallTree().getGraphManager().pe(truffleAST);
-        } catch (BailoutException e) {
+        } catch (PermanentBailoutException e) {
             state = State.BailedOut;
             return;
         }
