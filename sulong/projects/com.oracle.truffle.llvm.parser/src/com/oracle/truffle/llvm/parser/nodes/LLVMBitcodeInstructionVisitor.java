@@ -89,6 +89,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.StoreInstructio
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
@@ -364,6 +365,14 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         LLVMExpressionNode rhsNode = resolveOptimized(rhs, lhs);
         LLVMExpressionNode lhsNode = resolveOptimized(lhs, rhs);
         LLVMExpressionNode result = LLVMBitcodeTypeHelper.createArithmeticInstruction(lhsNode, rhsNode, operation.getOperator(), operation.getType(), nodeFactory);
+        createFrameWrite(result, operation);
+    }
+
+    @Override
+    public void visit(UnaryOperationInstruction operation) {
+        SymbolImpl operand = operation.getOperand();
+        LLVMExpressionNode operandNode = resolveOptimized(operand);
+        LLVMExpressionNode result = LLVMBitcodeTypeHelper.createUnaryInstruction(operandNode, operation.getOperator(), operation.getType(), nodeFactory);
         createFrameWrite(result, operation);
     }
 
