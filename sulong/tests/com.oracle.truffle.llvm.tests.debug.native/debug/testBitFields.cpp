@@ -55,6 +55,7 @@ NAME.h = H;
 
 __attribute__((constructor)) int test()
 {
+    // clang-format off
     TestDefine(unsigned int, 1, , uiBool)
     TestDefine(signed int, 1, , siBool)
     TestDefine(unsigned int, 1, __attribute__ ((packed)), uiPackedBool)
@@ -86,4 +87,5 @@ __attribute__((constructor)) int test()
     TestAssign(siPacked48Long, 140737488355328, 1, 0, 211106232532992, 150119987579016, 18764998447377, 900719925474102, 1351079888211145)
 
     return 0;
+    // clang-format on
 }
