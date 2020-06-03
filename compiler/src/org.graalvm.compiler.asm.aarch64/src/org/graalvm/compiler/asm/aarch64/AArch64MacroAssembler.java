@@ -879,6 +879,42 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
     }
 
+    /* exclusive access */
+    /**
+     * Load exclusive. Natural alignment of address is required.
+     *
+     * @param size size of memory read in bits. Must be 8, 16, 32 or 64.
+     * @param rt general purpose register. May not be null or stackpointer.
+     * @param rn general purpose register.
+     * @param acquire memory model flag. Decide whether the load has acquire semantics.
+     */
+    public void loadExclusive(int size, Register rt, Register rn, boolean acquire) {
+        if (acquire) {
+            ldaxr(size, rt, rn);
+        } else {
+            ldxr(size, rt, rn);
+        }
+    }
+
+    /**
+     * Store exclusive. Natural alignment of address is required. rs and rt may not point to the
+     * same register.
+     *
+     * @param size size of bits written to memory. Must be 8, 16, 32 or 64.
+     * @param rs general purpose register. Set to exclusive access status. 0 means success,
+     *            everything else failure. May not be null, or stackpointer.
+     * @param rt general purpose register. May not be null or stackpointer.
+     * @param rn general purpose register.
+     * @param release memory model flag. Decide whether the store has release semantics.
+     */
+    public void storeExclusive(int size, Register rs, Register rt, Register rn, boolean release) {
+        if (release) {
+            stlxr(size, rs, rt, rn);
+        } else {
+            stxr(size, rs, rt, rn);
+        }
+    }
+
     /**
      * Conditional move. dst = src1 if condition else src2.
      *

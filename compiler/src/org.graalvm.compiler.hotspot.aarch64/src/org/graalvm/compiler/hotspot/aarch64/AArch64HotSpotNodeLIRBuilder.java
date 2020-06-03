@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,6 +70,7 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.Value;
+import org.graalvm.word.LocationIdentity;
 
 /**
  * LIR generator specialized for AArch64 HotSpot.
@@ -189,5 +190,12 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
 
         Value[] parameters = visitInvokeArguments(gen.getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCall, null, sig, gen), node.arguments());
         append(new AArch64BreakpointOp(parameters));
+    }
+
+    @Override
+    @SuppressWarnings("unused")
+    public boolean useConservativeAtomics(LocationIdentity location) {
+        // TODO Handle cases that the atomics applied on the location needs conservative barriers.
+        return false;
     }
 }

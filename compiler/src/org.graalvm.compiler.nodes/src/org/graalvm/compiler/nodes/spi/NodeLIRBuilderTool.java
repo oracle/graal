@@ -49,6 +49,7 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.word.LocationIdentity;
 
 public interface NodeLIRBuilderTool extends NodeValueMap {
 
@@ -95,5 +96,10 @@ public interface NodeLIRBuilderTool extends NodeValueMap {
     @SuppressWarnings("unused")
     default ForeignCallLinkage lookupGraalStub(ValueNode valueNode) {
         return null;
+    }
+
+    @SuppressWarnings("unused")
+    default boolean useConservativeAtomics(LocationIdentity location) {
+        return false;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,13 +62,17 @@ public class AArch64AtomicMove {
         @Alive protected AllocatableValue addressValue;
         @Temp protected AllocatableValue scratchValue;
 
-        public CompareAndSwapOp(AllocatableValue result, Value expectedValue, AllocatableValue newValue, AllocatableValue addressValue, AllocatableValue scratch) {
+        private final boolean useBarriers;
+
+        public CompareAndSwapOp(AllocatableValue result, Value expectedValue, AllocatableValue newValue,
+                        AllocatableValue addressValue, AllocatableValue scratch, boolean useBarriers) {
             super(TYPE);
             this.resultValue = result;
             this.expectedValue = expectedValue;
             this.newValue = newValue;
             this.addressValue = addressValue;
             this.scratchValue = scratch;
+            this.useBarriers = useBarriers;
         }
 
         @Override
@@ -80,10 +84,20 @@ public class AArch64AtomicMove {
             Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
             Register newVal = asRegister(newValue);
+            if (useBarriers) {
+                masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
+                emitCompareAndSwap(masm, size, address, result, newVal, false, false);
+                masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
+            } else {
+                emitCompareAndSwap(masm, size, address, result, newVal, true, true);
+            }
+        }
+
+        private void emitCompareAndSwap(AArch64MacroAssembler masm, int size, Register address, Register result, Register newVal, boolean acquire, boolean release) {
             if (AArch64LIRFlagsVersioned.useLSE(masm.target.arch)) {
                 Register expected = asRegister(expectedValue);
                 masm.mov(size, result, expected);
-                masm.cas(size, result, newVal, address, true /* acquire */, true /* release */);
+                masm.cas(size, result, newVal, address, acquire, release);
                 AArch64Compare.gpCompare(masm, resultValue, expectedValue);
             } else {
                 // We could avoid using a scratch register here, by reusing resultValue for the
@@ -93,10 +107,10 @@ public class AArch64AtomicMove {
                 Label retry = new Label();
                 Label fail = new Label();
                 masm.bind(retry);
-                masm.ldaxr(size, result, address);
+                masm.loadExclusive(size, result, address, acquire);
                 AArch64Compare.gpCompare(masm, resultValue, expectedValue);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
-                masm.stlxr(size, scratch, newVal, address);
+                masm.storeExclusive(size, scratch, newVal, address, release);
                 // if scratch == 0 then write successful, else retry.
                 masm.cbnz(32, scratch, retry);
                 masm.bind(fail);
