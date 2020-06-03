@@ -44,6 +44,7 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.tck.DebuggerTester;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -268,24 +269,27 @@ public abstract class LLVMDebugTestBase {
         return Breakpoint.newBuilder(source.getURI()).lineIs(line).build();
     }
 
-    private void runTest(Source source, Source bitcode, Trace trace) {
-        try (DebuggerSession session = tester.startSession()) {
-            trace.requestedBreakpoints().forEach(line -> session.install(buildBreakPoint(source, line)));
-            if (trace.suspendOnEntry()) {
-                session.suspendNextExecution();
+    @SuppressWarnings("try")
+    private void runTest(Source source, Source bitcode, Trace trace) throws IOException {
+        try (CaptureNativeOutput out = new CaptureNativeOutput()) {
+            try (DebuggerSession session = tester.startSession()) {
+                trace.requestedBreakpoints().forEach(line -> session.install(buildBreakPoint(source, line)));
+                if (trace.suspendOnEntry()) {
+                    session.suspendNextExecution();
+                }
+
+                tester.startEval(bitcode);
+
+                final BreakInfo info = new BreakInfo();
+                for (StopRequest bpr : trace) {
+                    final TestCallback expectedEvent = new TestCallback(info, bpr);
+                    do {
+                        tester.expectSuspended(expectedEvent);
+                    } while (!expectedEvent.isDone());
+                }
+
+                tester.expectDone();
             }
-
-            tester.startEval(bitcode);
-
-            final BreakInfo info = new BreakInfo();
-            for (StopRequest bpr : trace) {
-                final TestCallback expectedEvent = new TestCallback(info, bpr);
-                do {
-                    tester.expectSuspended(expectedEvent);
-                } while (!expectedEvent.isDone());
-            }
-
-            tester.expectDone();
         }
     }
 
