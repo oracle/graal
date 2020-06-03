@@ -43,11 +43,19 @@ local graal_suite_root = root_ci.graal_suite_root;
       llvm: '==8.0.1',
       nodejs: '==8.9.4',
     },
-    capabilities+: ['linux', 'amd64'],
+    capabilities+: ['linux'],
   },
 
   windows: self.common + {
-    capabilities+: ['windows', 'amd64'],
+    capabilities+: ['windows'],
+  },
+
+  amd64: {
+    capabilities+: ['amd64'],
+  },
+
+  aarch64: {
+    capabilities+: ['aarch64'],
   },
 
   eclipse: {
