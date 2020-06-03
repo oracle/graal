@@ -2578,13 +2578,6 @@ final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                Object thisValue = frame.getThisValue();
-
-                if (thisValue == CallFrame.INVALID_VALUE) {
-                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
-                    return new CommandResult(reply);
-                }
-
                 try {
                     for (int i = 0; i < slots; i++) {
                         int slot = input.readInt();
@@ -2625,13 +2618,6 @@ final class JDWP {
                 CallFrame frame = verifyCallFrame(frameId, reply, context);
 
                 if (frame == null) {
-                    return new CommandResult(reply);
-                }
-
-                Object thisValue = frame.getThisValue();
-
-                if (thisValue == CallFrame.INVALID_VALUE) {
-                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
                     return new CommandResult(reply);
                 }
 
