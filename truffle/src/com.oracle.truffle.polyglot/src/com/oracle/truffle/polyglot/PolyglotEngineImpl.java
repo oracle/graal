@@ -1380,7 +1380,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             final FileSystem internalFs;
             if (!ALLOW_IO) {
                 if (fileSystem == null) {
-                    throw PolyglotEngineException.illegalArgument("A FileSystem must be provided when the allowIO() privilege is removed at image build time");
+                    fileSystem = FileSystems.newNoIOFileSystem();
                 }
                 fs = fileSystem;
                 internalFs = fileSystem;
