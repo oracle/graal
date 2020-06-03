@@ -49,6 +49,7 @@ import org.graalvm.compiler.core.match.ComplexMatchValue;
 import org.graalvm.compiler.core.match.MatchPattern;
 import org.graalvm.compiler.core.match.MatchRuleRegistry;
 import org.graalvm.compiler.core.match.MatchStatement;
+import org.graalvm.compiler.core.match.SharedMatchValue;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -137,6 +138,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     private final NodeMatchRules nodeMatchRules;
     private EconomicMap<Class<? extends Node>, List<MatchStatement>> matchRules;
+    private EconomicMap<Node, SharedMatchValue> sharedMatchValues;
 
     public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, NodeMatchRules nodeMatchRules) {
         this.gen = (LIRGenerator) gen;
@@ -146,6 +148,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         OptionValues options = graph.getOptions();
         if (MatchExpressions.getValue(options)) {
             matchRules = MatchRuleRegistry.lookup(nodeMatchRules.getClass(), options, graph.getDebug());
+            sharedMatchValues = EconomicMap.create();
         }
         traceLIRGeneratorLevel = TTY.isSuppressed() ? 0 : Options.TraceLIRGeneratorLevel.getValue(options);
 
@@ -224,6 +227,19 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         assert nodeOperands != null && nodeOperands.get(x) == null : "operand cannot be set twice";
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
+    }
+
+    public void setSharedMatchResult(Node node) {
+        assert nodeOperands != null && nodeOperands.get(node) == null : "operand cannot be set twice";
+        SharedMatchValue matchValue = sharedMatchValues.get(node);
+        if (matchValue == null) {
+            matchValue = new SharedMatchValue();
+        }
+        matchValue.incrementUsageCount();
+        sharedMatchValues.put(node, matchValue);
+        if (node.getUsageCount() == matchValue.getUsageCount()) {
+            nodeOperands.set(node, matchValue);
+        }
     }
 
     public LabelRef getLIRBlock(FixedNode b) {
@@ -387,6 +403,9 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                     } else if (ComplexMatchValue.INTERIOR_MATCH.equals(operand)) {
                         // Doesn't need to be evaluated
                         debug.log("interior match for %s", valueNode);
+                    } else if (operand instanceof SharedMatchValue) {
+                        // Doesn't need to be evaluated.
+                        debug.log("shared match value for %s", valueNode);
                     } else if (operand instanceof ComplexMatchValue) {
                         debug.log("complex match for %s", valueNode);
                         // Set current position to the position of the root matched node.
