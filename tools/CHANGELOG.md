@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 20.2.0
+
+* [GraalVM Insight](docs/Insight-Manual.md#modifying-local-variables) can modify values of local variables
+
 ## Version 20.1.0
 
 * [GraalVM Insight](docs/Insight-Manual.md#hack-into-the-c-code) can access local variables in C, C++ and other LLVM languages
