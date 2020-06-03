@@ -803,7 +803,6 @@ suite = {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
           "jdk.vm.ci.code",
-          "jdk.vm.ci.amd64"
         ],
       },
       "checkstyle": "org.graalvm.compiler.graph",

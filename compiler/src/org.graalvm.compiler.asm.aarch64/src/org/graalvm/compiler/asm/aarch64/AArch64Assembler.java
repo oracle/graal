@@ -56,6 +56,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CSIN
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CSNEG;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.DC;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.DMB;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.DSB;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.EON;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.EOR;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.EXTR;
@@ -673,6 +674,7 @@ public abstract class AArch64Assembler extends Assembler {
         CLREX(0xd5033f5f),
         HINT(0xD503201F),
         DMB(0x000000A0),
+        DSB(0x00000080),
 
         MRS(0xD5300000),
         MSR(0xD5100000),
@@ -3010,6 +3012,15 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void dmb(BarrierKind barrierKind) {
         emitInt(DMB.encoding | BarrierOp | barrierKind.encoding << BarrierKindOffset);
+    }
+
+    /**
+     * Data Synchronization Barrier.
+     *
+     * @param barrierKind barrier that is issued. May not be null.
+     */
+    public void dsb(BarrierKind barrierKind) {
+        emitInt(DSB.encoding | BarrierOp | barrierKind.encoding << BarrierKindOffset);
     }
 
     /**
