@@ -111,6 +111,24 @@ public class MethodHandlePlugin implements NodePlugin {
                 }
 
                 b.handleReplacedInvoke(invoke.getInvokeKind(), targetMethod, argumentsList.toArray(new ValueNode[argumentsList.size()]), inlineEverything);
+
+                /*
+                 * After handleReplacedInvoke, a return type according to the signature of
+                 * targetMethod has been pushed. That can be different than the type expected by the
+                 * method handle invoke. Since there cannot be any implicit type conversion, the
+                 * only safe option actually is that the return type is not used at all. If there is
+                 * any other expected return type, the bytecodes are wrong. The JavaDoc of
+                 * MethodHandle.invokeBasic states that this "could crash the JVM", so bailing out
+                 * of compilation seems like a good idea.
+                 */
+                JavaKind invokeReturnKind = invokeReturnStamp.getTrustedStamp().getStackKind();
+                JavaKind targetMethodReturnKind = targetMethod.getSignature().getReturnKind().getStackKind();
+                if (invokeReturnKind != targetMethodReturnKind) {
+                    b.pop(targetMethodReturnKind);
+                    if (invokeReturnKind != JavaKind.Void) {
+                        throw b.bailout("Cannot do any type conversion when invoking method handle, so return value must remain popped");
+                    }
+                }
             }
             return true;
         }
