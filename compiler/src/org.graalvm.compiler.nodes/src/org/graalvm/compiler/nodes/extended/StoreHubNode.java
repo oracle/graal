@@ -33,7 +33,6 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public final class StoreHubNode extends AbstractStateSplit implements Lowerable {
@@ -54,11 +53,6 @@ public final class StoreHubNode extends AbstractStateSplit implements Lowerable 
         super(TYPE, StampFactory.forVoid());
         this.value = value;
         this.object = object;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @NodeIntrinsic

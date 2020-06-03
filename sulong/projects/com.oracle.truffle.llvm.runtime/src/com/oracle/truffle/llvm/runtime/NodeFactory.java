@@ -131,6 +131,8 @@ public interface NodeFactory {
 
     LLVMExpressionNode createArithmeticOp(ArithmeticOperation op, Type type, LLVMExpressionNode left, LLVMExpressionNode right);
 
+    LLVMExpressionNode createUnaryOp(UnaryOperation op, Type type, LLVMExpressionNode operand);
+
     /*
      * Stack allocations with type
      */

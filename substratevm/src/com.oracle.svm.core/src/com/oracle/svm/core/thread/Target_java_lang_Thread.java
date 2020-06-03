@@ -363,7 +363,7 @@ final class Target_java_lang_Thread {
     @Substitute
     private static boolean holdsLock(Object obj) {
         Objects.requireNonNull(obj);
-        return MonitorSupport.singleton().holdsLock(obj);
+        return MonitorSupport.singleton().isLockedByCurrentThread(obj);
     }
 
     @Substitute

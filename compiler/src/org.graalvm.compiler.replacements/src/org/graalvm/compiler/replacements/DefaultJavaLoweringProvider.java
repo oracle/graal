@@ -48,6 +48,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -131,6 +132,7 @@ import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.ValueCompareAndSwapNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.SideEffectFreeWrite;
 import org.graalvm.compiler.nodes.memory.VolatileReadNode;
 import org.graalvm.compiler.nodes.memory.VolatileWriteNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
@@ -179,6 +181,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected final MetaAccessProvider metaAccess;
     protected final ForeignCallsProvider foreignCalls;
     protected final BarrierSet barrierSet;
+    protected final MetaAccessExtensionProvider metaAccessExtensionProvider;
     protected final TargetDescription target;
     private final boolean useCompressedOops;
     protected Replacements replacements;
@@ -186,11 +189,13 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     private BoxingSnippets.Templates boxingSnippets;
     private ConstantStringIndexOfSnippets.Templates indexOfSnippets;
 
-    public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig, TargetDescription target,
-                    boolean useCompressedOops) {
+    public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
+                    MetaAccessExtensionProvider metaAccessExtensionProvider,
+                    TargetDescription target, boolean useCompressedOops) {
         this.metaAccess = metaAccess;
         this.foreignCalls = foreignCalls;
         this.barrierSet = platformConfig.getBarrierSet();
+        this.metaAccessExtensionProvider = metaAccessExtensionProvider;
         this.target = target;
         this.useCompressedOops = useCompressedOops;
     }
@@ -212,6 +217,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     public BarrierSet getBarrierSet() {
         return barrierSet;
+    }
+
+    public MetaAccessExtensionProvider getMetaAccessExtensionProvider() {
+        return metaAccessExtensionProvider;
     }
 
     public Replacements getReplacements() {
@@ -407,7 +416,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
         StructuredGraph graph = math.graph();
-        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallDescriptor, math.getX(), math.getY()));
+        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallSignature, math.getX(), math.getY()));
         graph.addAfterFixed(tool.lastFixedNode(), call);
         math.replaceAtUsages(call);
     }
@@ -425,7 +434,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
         StructuredGraph graph = math.graph();
-        ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallDescriptor, math.getValue()));
+        ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls.getDescriptor(math.getOperation().foreignCallSignature), math.getValue()));
         graph.addAfterFixed(tool.lastFixedNode(), call);
         math.replaceAtUsages(call);
     }
@@ -448,7 +457,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
     }
 
-    public abstract JavaKind getStorageKind(ResolvedJavaField field);
+    public final JavaKind getStorageKind(ResolvedJavaField field) {
+        return metaAccessExtensionProvider.getStorageKind(field.getType());
+    }
 
     protected void lowerLoadFieldNode(LoadFieldNode loadField, LoweringTool tool) {
         assert loadField.getStackKind() != JavaKind.Illegal;
@@ -847,7 +858,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected void lowerJavaWriteNode(JavaWriteNode write) {
         StructuredGraph graph = write.graph();
         ValueNode value = implicitStoreConvert(graph, write.getWriteKind(), write.value(), write.isCompressible());
-        WriteNode memoryWrite = graph.add(new WriteNode(write.getAddress(), write.getKilledLocationIdentity(), value, write.getBarrierType()));
+        WriteNode memoryWrite = null;
+        if (write.hasSideEffect()) {
+            memoryWrite = graph.add(new WriteNode(write.getAddress(), write.getKilledLocationIdentity(), value, write.getBarrierType()));
+        } else {
+            memoryWrite = graph.add(new SideEffectFreeWrite(write.getAddress(), write.getKilledLocationIdentity(), value, write.getBarrierType()));
+        }
         memoryWrite.setStateAfter(write.stateAfter());
         graph.replaceFixedWithFixed(write, memoryWrite);
         memoryWrite.setGuard(write.getGuard());
@@ -868,10 +884,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     int entryCount = virtual.entryCount();
                     AbstractNewObjectNode newObject;
                     if (virtual instanceof VirtualInstanceNode) {
-                        newObject = graph.add(createNewInstanceFromVirtual(virtual));
+                        newObject = graph.add(new NewInstanceNode(virtual.type(), true));
                     } else {
                         assert virtual instanceof VirtualArrayNode;
-                        newObject = graph.add(createNewArrayFromVirtual(virtual, ConstantNode.forInt(entryCount, graph)));
+                        newObject = graph.add(new NewArrayNode(((VirtualArrayNode) virtual).componentType(), ConstantNode.forInt(entryCount, graph), true));
                     }
                     // The final STORE_STORE barrier will be emitted by finishAllocatedObjects
                     newObject.clearEmitMemoryBarrier();
@@ -889,7 +905,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                         } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
                             // Constant.illegal is always the defaultForKind, so it is skipped
                             JavaKind valueKind = value.getStackKind();
-                            JavaKind storageKind = virtual.entryKind(i);
+                            JavaKind storageKind = virtual.entryKind(tool.getProviders().getMetaAccessExtensionProvider(), i);
 
                             // Truffle requires some leniency in terms of what can be put where:
                             assert valueKind.getStackKind() == storageKind.getStackKind() ||
@@ -931,7 +947,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                             assert value instanceof VirtualObjectNode;
                             ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
                             if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
-                                assert virtual.entryKind(i) == JavaKind.Object && allocValue.getStackKind() == JavaKind.Object;
+                                assert virtual.entryKind(metaAccessExtensionProvider, i) == JavaKind.Object && allocValue.getStackKind() == JavaKind.Object;
                                 AddressNode address;
                                 BarrierType barrierType;
                                 if (virtual instanceof VirtualInstanceNode) {
@@ -941,8 +957,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                     barrierType = barrierSet.fieldStoreBarrierType(field, getStorageKind(field));
                                 } else {
                                     assert virtual instanceof VirtualArrayNode;
-                                    address = createArrayAddress(graph, newObject, virtual.entryKind(i), ConstantNode.forInt(i, graph));
-                                    barrierType = barrierSet.arrayStoreBarrierType(virtual.entryKind(i));
+                                    address = createArrayAddress(graph, newObject, virtual.entryKind(metaAccessExtensionProvider, i), ConstantNode.forInt(i, graph));
+                                    barrierType = barrierSet.arrayStoreBarrierType(virtual.entryKind(metaAccessExtensionProvider, i));
                                 }
                                 if (address != null) {
                                     WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType);
@@ -963,14 +979,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
 
-    }
-
-    public NewInstanceNode createNewInstanceFromVirtual(VirtualObjectNode virtual) {
-        return new NewInstanceNode(virtual.type(), true);
-    }
-
-    protected NewArrayNode createNewArrayFromVirtual(VirtualObjectNode virtual, ValueNode length) {
-        return new NewArrayNode(((VirtualArrayNode) virtual).componentType(), length, true);
     }
 
     public void finishAllocatedObjects(LoweringTool tool, FixedWithNextNode insertAfter, CommitAllocationNode commit, ValueNode[] allocations) {
@@ -1135,7 +1143,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     CommitAllocationNode commit,
                     VirtualObjectNode virtual,
                     int valuePos) {
-        if (!virtual.isVirtualByteArray()) {
+        if (!virtual.isVirtualByteArray(metaAccessExtensionProvider)) {
             return implicitStoreConvert(graph, entryKind, value);
         }
         // A virtual entry in a byte array can span multiple bytes. This shortens the entry to fit

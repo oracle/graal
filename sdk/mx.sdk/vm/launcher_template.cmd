@@ -52,6 +52,19 @@ for /f "delims=" %%i in ("%relcp:;=!newline!%") do (
 set "jvm_args=-Dorg.graalvm.launcher.shell=true "-Dorg.graalvm.launcher.executablename=%executablename%""
 set "launcher_args="
 
+:: Check option-holding variables.
+:: Those can be specified as the `option_vars` argument of the LauncherConfig constructor.
+for %%v in (<option_vars>) do (
+    if "!%%v:~0,5!"=="--vm.*" (
+        call :escape_args !%%v!
+        for %%o in (!args!) do (
+            call :unescape_arg %%o
+            call :process_arg !arg!
+            if errorlevel 1 exit /b 1
+        )
+    )
+)
+
 call :escape_args %*
 for %%a in (%args%) do (
   call :unescape_arg %%a

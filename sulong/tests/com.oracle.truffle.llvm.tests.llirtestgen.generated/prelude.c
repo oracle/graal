@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -67,8 +67,8 @@ void fill(void *_input, void *_output, long start, long increment) {
 }
 
 int main(void) {
-  char _input[256 / 8 * 2] = {0};
-  char _output[256 / 8] = {0};
+  char _input[256 / 8 * 2] = { 0 };
+  char _output[256 / 8] = { 0 };
 
   void *input = _input;
   void *output = _output;

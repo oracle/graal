@@ -1,6 +1,5 @@
 # Build targets
 
 builds += [
-  ${gateJAOTC}         ${labsjdk-ce-11} ${gateLinuxAMD64}   {name: "gate-compiler-jaotc-labsjdk-ce-11-linux-amd64"}
-  ${gateJAOTC}         ${labsjdk-ce-11} ${gateLinuxAArch64} {name: "gate-compiler-jaotc-labsjdk-ce-11-linux-aarch64",                     timelimit: "1:30:00"}
+# GR-23776 ${gateJAOTC} ${oraclejdk15}  ${gateLinuxAMD64}   {name: "gate-compiler-jaotc-openjdk-15-linux-amd64"}
 ]

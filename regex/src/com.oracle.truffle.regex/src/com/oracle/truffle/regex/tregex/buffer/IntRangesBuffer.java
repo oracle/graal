@@ -103,6 +103,12 @@ public class IntRangesBuffer extends IntArrayBuffer implements RangesBuffer {
         add(hi);
     }
 
+    public void appendRangeAllowAdjacent(int lo, int hi) {
+        assert isEmpty() || leftOf(size() - 1, lo, hi);
+        add(lo);
+        add(hi);
+    }
+
     @Override
     public void insertRange(int index, int lo, int hi) {
         assert index >= 0 && index < size();

@@ -75,7 +75,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK15OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.Resources;
@@ -164,6 +167,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * Boolean value or exception that happend at image-build time.
      */
     private Object isAnonymousClass;
+
+    /**
+     * Is this a Hidden Class (Since JDK 15).
+     */
+    private boolean isHidden;
 
     /**
      * The {@link Modifier modifiers} of this class.
@@ -326,7 +334,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, HubType hubType, ReferenceType referenceType, boolean isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName,
-                    int modifiers, ClassLoader classLoader) {
+                    int modifiers, ClassLoader classLoader, boolean isHidden) {
         this.name = name;
         this.hubType = hubType.getValue();
         this.referenceType = referenceType.getValue();
@@ -337,6 +345,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.sourceFileName = sourceFileName;
         this.modifiers = modifiers;
         this.classLoader = classLoader;
+        this.isHidden = isHidden;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -495,9 +504,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     public void ensureInitialized() {
-        if (!classInitializationInfo.isInitialized()) {
-            classInitializationInfo.initialize(this);
-        }
+        EnsureClassInitializedNode.ensureClassInitialized(toClass(this));
     }
 
     public SharedType getMetaType() {
@@ -753,6 +760,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         } else {
             throw VMError.shouldNotReachHere();
         }
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    public boolean isHidden() {
+        return isHidden;
     }
 
     @Substitute

@@ -98,7 +98,8 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
             features.add(AArch64.CPUFeature.A53MAC);
         }
         if (cpuFeatures.fDMBATOMICS()) {
-            features.add(AArch64.CPUFeature.DMB_ATOMICS);
+            // JDK-8243339
+            features.add(AArch64.CPUFeature.valueOf("DMB_ATOMICS"));
         }
 
         return features;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,17 +31,17 @@
 
 int main() {
   uint32_t *foreign = polyglot_import("foreign");
-  
+
   if (foreign[0] != 0) {
     return 100 + foreign[0];
   }
-  
+
   if (foreign[1] != 1) {
     return 200 + foreign[1];
   }
-  
+
   foreign[0] = 101;
   foreign[1] = 102;
-  
+
   return 0;
 }

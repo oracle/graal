@@ -53,7 +53,7 @@ import com.oracle.truffle.regex.charset.Constants;
  */
 public final class AllTransitionsInOneTreeMatcher {
 
-    @CompilationFinal(dimensions = 1) private final char[] sortedRanges;
+    @CompilationFinal(dimensions = 1) private final int[] sortedRanges;
     @CompilationFinal(dimensions = 1) private final short[] rangeTreeSuccessors;
 
     /**
@@ -70,20 +70,20 @@ public final class AllTransitionsInOneTreeMatcher {
      *            list of ranges. every entry in this array is an index of
      *            {@link DFAStateNode#getSuccessors()}.
      */
-    public AllTransitionsInOneTreeMatcher(char[] sortedRanges, short[] rangeTreeSuccessors) {
+    public AllTransitionsInOneTreeMatcher(int[] sortedRanges, short[] rangeTreeSuccessors) {
         assert sortedRanges.length > 0 : "This class should never be used for trivial transitions, use a list of CharMatchers instead!";
         assert rangeTreeSuccessors.length == sortedRanges.length + 1;
         this.sortedRanges = sortedRanges;
         this.rangeTreeSuccessors = rangeTreeSuccessors;
     }
 
-    public int checkMatchTree(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, DFAStateNode stateNode, char c) {
+    public int checkMatchTree(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, DFAStateNode stateNode, int c) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(stateNode);
         return checkMatchTree(locals, executor, stateNode, 0, sortedRanges.length - 1, c);
     }
 
-    private int checkMatchTree(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, DFAStateNode stateNode, int fromIndex, int toIndex, char c) {
+    private int checkMatchTree(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, DFAStateNode stateNode, int fromIndex, int toIndex, int c) {
         CompilerAsserts.partialEvaluationConstant(stateNode);
         CompilerAsserts.partialEvaluationConstant(fromIndex);
         CompilerAsserts.partialEvaluationConstant(toIndex);
@@ -108,16 +108,16 @@ public final class AllTransitionsInOneTreeMatcher {
     public String toString() {
         StringBuilder sb = new StringBuilder("AllTransitionsInOneTreeMatcher: [");
         boolean first = true;
-        for (char c : sortedRanges) {
+        for (int c : sortedRanges) {
             if (first) {
                 first = false;
             } else {
                 sb.append(", ");
             }
             if (c > 0xff) {
-                sb.append(String.format("%04x", (int) c));
+                sb.append(String.format("%04x", c));
             } else {
-                sb.append(String.format("%02x", (int) c));
+                sb.append(String.format("%02x", c));
             }
         }
         sb.append("]");

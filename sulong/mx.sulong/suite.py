@@ -602,6 +602,7 @@ suite = {
         "SULONG_BOOTSTRAP_TOOLCHAIN",
         "sdk:LLVM_TOOLCHAIN",
       ],
+      "clangFormat" : False,
     },
 
     "com.oracle.truffle.llvm.tests.debug.native" : {
@@ -621,6 +622,7 @@ suite = {
       ],
       "testProject" : True,
       "defaultBuild" : False,
+      "clangFormat" : False,
     },
     "com.oracle.truffle.llvm.tests.debugexpr.native" : {
       "subDir" : "tests",

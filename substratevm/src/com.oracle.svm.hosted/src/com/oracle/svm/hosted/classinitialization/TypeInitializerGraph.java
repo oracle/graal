@@ -30,23 +30,18 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
-import com.oracle.graal.pointsto.flow.SourceTypeFlowBase;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
-
-import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Keeps a type-hierarchy dependency graph for {@link AnalysisType}s from {@code universe}. Each
@@ -60,16 +55,13 @@ import jdk.vm.ci.meta.JavaConstant;
  * {@link #computeInitializerSafety}.
  *
  * NOTE: the dependency between methods and type initializers is maintained by the
- * {@link SubstrateClassInitializationPlugin} that emits calls to
- * {@link DynamicHub#ensureInitialized()} for every load, store, call, and instantiation in the
- * bytecode. We extract those dependencies here by using the
- * {@link #getInitializerType(InvokeTypeFlow)} method.
- *
+ * {@link SubstrateClassInitializationPlugin} that emits {@link EnsureClassInitializedNode} for
+ * every load, store, call, and instantiation in the bytecode. These dependencies are collected in
+ * {@link SVMHost#getInitializedClasses}.
  */
 public class TypeInitializerGraph {
     private final SVMHost hostVM;
     private ClassInitializationSupport classInitializationSupport;
-    private AnalysisMethod ensureInitializedMethod;
 
     private enum Safety {
         SAFE,
@@ -82,10 +74,7 @@ public class TypeInitializerGraph {
     private final Map<AnalysisMethod, Safety> methodSafety = new HashMap<>();
     private final Collection<AnalysisMethod> methods;
 
-    TypeInitializerGraph(AnalysisUniverse universe, AnalysisMethod ensureInitializedMethod) {
-        assert universe.getMethods().contains(ensureInitializedMethod);
-
-        this.ensureInitializedMethod = ensureInitializedMethod;
+    TypeInitializerGraph(AnalysisUniverse universe) {
         hostVM = ((SVMHost) universe.hostVM());
         classInitializationSupport = hostVM.getClassInitializationSupport();
 
@@ -175,14 +164,11 @@ public class TypeInitializerGraph {
     }
 
     /**
-     * Unsafe invokes (1) call native methods, (2) can't be statically bound, and/or (3) initialize
-     * unknown classes programmatically.
+     * Unsafe invokes (1) call native methods, and/or (2) can't be statically bound.
      */
     private boolean isInvokeInitiallyUnsafe(InvokeTypeFlow i) {
-        assert !ensureInitializedMethod.isNative();
         return i.getTargetMethod().isNative() ||
-                        !i.canBeStaticallyBound() ||
-                        (i.getTargetMethod().equals(ensureInitializedMethod) && !getInitializerType(i).isPresent());
+                        !i.canBeStaticallyBound();
     }
 
     /**
@@ -200,8 +186,8 @@ public class TypeInitializerGraph {
     }
 
     /**
-     * A method is unsafe if any of it's invokes (1) are unsafe or (2) they depend on an unsafe
-     * class initializer.
+     * A method is unsafe if (1) any of it's invokes are unsafe or (2) the method depends on an
+     * unsafe class initializer.
      */
     private boolean updateMethodSafety(AnalysisMethod m) {
         assert methodSafety.get(m) == Safety.SAFE;
@@ -210,38 +196,19 @@ public class TypeInitializerGraph {
             methodSafety.put(m, Safety.UNSAFE);
             return true;
         }
+        if (hostVM.getInitializedClasses(m).stream().anyMatch(this::isUnsafe)) {
+            methodSafety.put(m, Safety.UNSAFE);
+            return true;
+        }
         return false;
     }
 
     /**
-     * Invoke becomes unsafe if (1) it calls unsafe static initialization, or (2) it calls other
-     * unsafe methods.
+     * Invoke becomes unsafe if it calls other unsafe methods.
      */
     private boolean isInvokeUnsafeIterative(InvokeTypeFlow i) {
         assert i.getTargetMethod() != null : "All methods can be statically bound.";
-        return getInitializerType(i)
-                        .map(this::isUnsafe)
-                        .orElseGet(() -> methodSafety.get(i.getTargetMethod()) == Safety.UNSAFE);
-    }
-
-    /**
-     * Gets a type that is being initalized with Class.ensureInitialized when {@code i} calls
-     * {@link DynamicHub#ensureInitialized} and the argument is constant. Otherwise, this is a
-     * regular call and we return an empty option.
-     */
-    private Optional<AnalysisType> getInitializerType(InvokeTypeFlow i) {
-        if (i.getTargetMethod().equals(ensureInitializedMethod)) {
-            assert i.getActualParameters().length == 1 : "ensureInitialized should have only one parameter, found " + i.getActualParameters().length;
-            if (i.getActualParameters()[0] instanceof SourceTypeFlowBase) {
-                JavaConstant value = ((SourceTypeFlowBase) i.getActualParameters()[0]).getConstantValue();
-                if (value != null) {
-                    assert SubstrateObjectConstant.asObject(value) instanceof DynamicHub : "ensureInitialized must receive a constant dynamic hub";
-                    DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(value);
-                    return Optional.of(hostVM.lookupType(hub));
-                }
-            }
-        }
-        return Optional.empty();
+        return methodSafety.get(i.getTargetMethod()) == Safety.UNSAFE;
     }
 
     private void addInitializer(AnalysisType t) {

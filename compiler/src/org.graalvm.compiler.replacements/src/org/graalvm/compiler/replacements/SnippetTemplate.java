@@ -87,6 +87,7 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.DeoptBciSupplier;
@@ -111,13 +112,17 @@ import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
+import org.graalvm.compiler.nodes.UnreachableControlSinkNode;
+import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.AbstractBoxingNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
@@ -732,6 +737,7 @@ public class SnippetTemplate {
         // Copy snippet graph, replacing constant parameters with given arguments
         final StructuredGraph snippetCopy = new StructuredGraph.Builder(options, debug).name(snippetGraph.name).method(snippetGraph.method()).trackNodeSourcePosition(
                         snippetGraph.trackNodeSourcePosition()).setIsSubstitution(true).build();
+        snippetCopy.setGuardsStage(snippetGraph.getGuardsStage());
         assert !GraalOptions.TrackNodeSourcePosition.getValue(options) || snippetCopy.trackNodeSourcePosition();
         try (DebugContext.Scope scope = debug.scope("SpecializeSnippet", snippetCopy)) {
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
@@ -839,6 +845,26 @@ public class SnippetTemplate {
             }
 
             explodeLoops(snippetCopy, providers);
+
+            List<UnwindNode> unwindNodes = snippetCopy.getNodes().filter(UnwindNode.class).snapshot();
+            if (unwindNodes.size() == 0) {
+                unwindPath = null;
+            } else if (unwindNodes.size() > 1) {
+                throw GraalError.shouldNotReachHere("Graph has more than one UnwindNode");
+            } else {
+                UnwindNode unwindNode = unwindNodes.get(0);
+                GraalError.guarantee(unwindNode.predecessor() instanceof ExceptionObjectNode, "Currently only a single direct exception unwind path is supported in snippets");
+                ExceptionObjectNode exceptionObjectNode = (ExceptionObjectNode) unwindNode.predecessor();
+
+                /*
+                 * Replace the path to the UnwindNode with a stub to avoid any optimizations or
+                 * lowerings to modify it. Also removes the FrameState of the ExceptionObjectNode.
+                 */
+                unwindPath = snippetCopy.add(new BeginNode());
+                exceptionObjectNode.replaceAtPredecessor(unwindPath);
+                GraphUtil.killCFG(exceptionObjectNode);
+                unwindPath.setNext(snippetCopy.add(new UnreachableControlSinkNode()));
+            }
 
             CanonicalizerPhase canonicalizer;
             if (GraalOptions.ImmutableCode.getValue(snippetCopy.getOptions())) {
@@ -1184,6 +1210,12 @@ public class SnippetTemplate {
      * The return node (if any) of the snippet.
      */
     private final ReturnNode returnNode;
+
+    /**
+     * The node that will be replaced with the exception handler of the replacee node, or null if
+     * the snippet does not have an exception handler path.
+     */
+    private final FixedWithNextNode unwindPath;
 
     /**
      * The memory anchor (if any) of the snippet.
@@ -1587,9 +1619,27 @@ public class SnippetTemplate {
                         FixedWithNextNode fwn = (FixedWithNextNode) replacee;
                         next = fwn.next();
                         fwn.setNext(null);
+                    } else if (replacee instanceof WithExceptionNode) {
+                        WithExceptionNode withExceptionNode = (WithExceptionNode) replacee;
+                        next = withExceptionNode.next();
+                        withExceptionNode.setNext(null);
                     }
                     returnDuplicate.replaceAndDelete(next);
                 }
+            }
+            if (unwindPath != null) {
+                GraalError.guarantee(!replacee.graph().isAfterFloatingReadPhase(), "Using a snippet with an UnwindNode after floating reads would require support for the memory graph");
+                GraalError.guarantee(replacee instanceof WithExceptionNode, "Snippet has an UnwindNode, but replacee is not a node with an exception handler");
+
+                FixedWithNextNode unwindPathDuplicate = (FixedWithNextNode) duplicates.get(unwindPath);
+                WithExceptionNode withExceptionNode = (WithExceptionNode) replacee;
+                AbstractBeginNode exceptionEdge = withExceptionNode.exceptionEdge();
+                withExceptionNode.setExceptionEdge(null);
+                unwindPathDuplicate.replaceAtPredecessor(exceptionEdge);
+                GraphUtil.killCFG(unwindPathDuplicate);
+
+            } else {
+                GraalError.guarantee(!(replacee instanceof WithExceptionNode), "Snippet does not have an UnwindNode, but replacee is a node with an exception handler");
             }
 
             if (killReplacee) {

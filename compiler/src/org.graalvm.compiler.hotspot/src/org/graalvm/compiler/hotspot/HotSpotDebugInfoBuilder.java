@@ -65,7 +65,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
     private HotSpotCodeCacheProvider codeCacheProvider;
 
     public HotSpotDebugInfoBuilder(NodeValueMap nodeValueMap, HotSpotLockStack lockStack, HotSpotLIRGenerator gen) {
-        super(nodeValueMap, gen.getResult().getLIR().getDebug());
+        super(nodeValueMap, gen.getProviders().getMetaAccessExtensionProvider(), gen.getResult().getLIR().getDebug());
         this.lockStack = lockStack;
         this.codeCacheProvider = gen.getProviders().getCodeCache();
     }
@@ -100,7 +100,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
         if (node instanceof ForeignCallNode) {
             ForeignCallNode call = (ForeignCallNode) node;
             ForeignCallDescriptor descriptor = call.getDescriptor();
-            if (DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.containsValue(descriptor)) {
+            if (DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.containsValue(descriptor.getSignature())) {
                 return true;
             }
         }

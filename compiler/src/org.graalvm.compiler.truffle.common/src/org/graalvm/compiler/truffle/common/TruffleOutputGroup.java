@@ -47,7 +47,7 @@ public final class TruffleOutputGroup implements Closeable {
         String name = "Truffle::" + compilable.getName();
         GraphOutput<Void, ?> out = null;
         try {
-            out = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 1));
+            out = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(7, 0));
             Map<Object, Object> effectiveProperties;
             if (properties != null) {
                 effectiveProperties = new HashMap<>(properties);

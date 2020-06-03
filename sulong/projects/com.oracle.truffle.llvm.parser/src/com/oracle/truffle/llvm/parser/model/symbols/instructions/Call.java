@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,8 +36,8 @@ import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 public interface Call extends SymbolImpl {
 
@@ -48,18 +48,22 @@ public interface Call extends SymbolImpl {
             return;
         }
 
-        final Type[] paramTypes;
+        final int numParams;
+        final FunctionType type;
         if (callTarget instanceof FunctionDefinition) {
-            paramTypes = ((FunctionDefinition) (callTarget)).getType().getArgumentTypes();
+            type = ((FunctionDefinition) (callTarget)).getType();
+            numParams = type.getNumberOfArguments();
         } else if (callTarget instanceof FunctionDeclaration) {
-            paramTypes = ((FunctionDeclaration) (callTarget)).getType().getArgumentTypes();
+            type = ((FunctionDeclaration) (callTarget)).getType();
+            numParams = type.getNumberOfArguments();
         } else {
-            paramTypes = Type.EMPTY_ARRAY;
+            type = null;
+            numParams = 0;
         }
 
         final SymbolTable symbols = scope.getSymbols();
-        for (int i = Math.min(paramTypes.length, src.length) - 1; i >= 0; i--) {
-            if (paramTypes[i] == MetaType.METADATA) {
+        for (int i = Math.min(numParams, src.length) - 1; i >= 0; i--) {
+            if (type.getArgumentType(i) == MetaType.METADATA) {
                 target[i] = MetadataSymbol.create(scope.getMetadata(), src[i]);
             } else {
                 target[i] = symbols.getForwardReferenced(src[i], inst);
@@ -67,7 +71,7 @@ public interface Call extends SymbolImpl {
         }
 
         // parse varargs
-        for (int i = paramTypes.length; i < src.length; i++) {
+        for (int i = numParams; i < src.length; i++) {
             target[i] = symbols.getForwardReferenced(src[i], inst);
         }
     }

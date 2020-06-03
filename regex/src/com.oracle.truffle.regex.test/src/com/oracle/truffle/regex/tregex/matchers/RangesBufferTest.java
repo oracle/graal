@@ -107,10 +107,10 @@ public class RangesBufferTest {
     }
 
     private static void checkAddRange(RangesBuffer buf, int lo, int hi, int[] expected) {
-        Assert.assertTrue(buf.rangesAreSortedAndDisjoint());
+        Assert.assertTrue(buf.rangesAreSortedNonAdjacentAndDisjoint());
         buf.addRange(lo, hi);
         Assert.assertTrue(matchError("addRange(" + buf + ", " + lo + ", " + hi + ")", buf, expected), equals(buf, expected));
-        Assert.assertTrue(buf.rangesAreSortedAndDisjoint());
+        Assert.assertTrue(buf.rangesAreSortedNonAdjacentAndDisjoint());
     }
 
     private static void checkAddRange(int[] buf, int lo, int hi, int[] expected) {

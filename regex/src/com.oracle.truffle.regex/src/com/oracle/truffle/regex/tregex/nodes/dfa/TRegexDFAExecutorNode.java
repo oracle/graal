@@ -92,6 +92,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return !getInitialState().hasUnAnchoredEntry();
     }
 
+    @Override
     public boolean isForward() {
         return props.isForward();
     }
@@ -168,22 +169,22 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         if (isGenericCG()) {
             initResultOrder(locals);
             locals.setLastTransition((short) -1);
+            Arrays.fill(locals.getCGData().results, -1);
         } else if (isSimpleCG()) {
             CompilerDirectives.ensureVirtualized(locals.getCGData());
             Arrays.fill(locals.getCGData().results, -1);
         }
         // check if input is long enough for a match
-        if (props.getMinResultLength() > 0 && (isForward() ? locals.getMaxIndex() - locals.getIndex() : locals.getIndex() - locals.getMaxIndex()) < props.getMinResultLength()) {
+        if (props.getMinResultLength() > 0 &&
+                        (isForward() ? locals.getMaxIndex() - locals.getIndex() : locals.getIndex() - Math.max(0, locals.getFromIndex() - getPrefixLength())) < props.getMinResultLength()) {
             // no match possible, break immediately
             return isGenericCG() || isSimpleCG() ? null : TRegexDFAExecutorNode.NO_MATCH;
         }
         if (recordExecution()) {
             debugRecorder.startRecording(locals);
         }
-        if (isBackward() && locals.getFromIndex() - 1 > locals.getMaxIndex()) {
-            locals.setCurMaxIndex(locals.getFromIndex() - 1);
-        } else {
-            locals.setCurMaxIndex(locals.getMaxIndex());
+        if (isBackward()) {
+            locals.setCurMinIndex(locals.getFromIndex());
         }
         int ip = 0;
         outer: while (true) {
@@ -250,36 +251,9 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         }
     }
 
-    public void advance(TRegexDFAExecutorLocals locals) {
-        locals.setIndex(props.isForward() ? locals.getIndex() + 1 : locals.getIndex() - 1);
-    }
-
-    public boolean hasNext(TRegexDFAExecutorLocals locals) {
-        return props.isForward() ? Integer.compareUnsigned(locals.getIndex(), locals.getCurMaxIndex()) < 0 : locals.getIndex() > locals.getCurMaxIndex();
-    }
-
-    public boolean atBegin(TRegexDFAExecutorLocals locals) {
-        return locals.getIndex() == (props.isForward() ? 0 : getInputLength(locals) - 1);
-    }
-
-    public boolean atEnd(TRegexDFAExecutorLocals locals) {
-        final int i = locals.getIndex();
-        if (props.isForward()) {
-            return i == getInputLength(locals);
-        } else {
-            return i < 0;
-        }
-    }
-
-    public int rewindUpTo(TRegexDFAExecutorLocals locals, int length) {
-        if (props.isForward()) {
-            final int offset = Math.min(locals.getIndex(), length);
-            locals.setIndex(locals.getIndex() - offset);
-            return offset;
-        } else {
-            assert length == 0;
-            return 0;
-        }
+    @Override
+    public int getMinIndex(TRegexExecutorLocals locals) {
+        return isForward() ? super.getMinIndex(locals) : ((TRegexDFAExecutorLocals) locals).getCurMinIndex();
     }
 
     private boolean validArgs(TRegexDFAExecutorLocals locals) {
@@ -287,19 +261,10 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         final int inputLength = getInputLength(locals);
         final int fromIndex = locals.getFromIndex();
         final int maxIndex = locals.getMaxIndex();
-        if (props.isForward()) {
-            return inputLength >= 0 && inputLength < Integer.MAX_VALUE - 20 &&
-                            fromIndex >= 0 && fromIndex <= inputLength &&
-                            initialIndex >= 0 && initialIndex <= inputLength &&
-                            maxIndex >= 0 && maxIndex <= inputLength &&
-                            initialIndex <= maxIndex;
-        } else {
-            return inputLength >= 0 && inputLength < Integer.MAX_VALUE - 20 &&
-                            fromIndex >= 0 && fromIndex <= inputLength &&
-                            initialIndex >= -1 && initialIndex < inputLength &&
-                            maxIndex >= -1 && maxIndex < inputLength &&
-                            initialIndex >= maxIndex;
-        }
+        return inputLength >= 0 && inputLength < Integer.MAX_VALUE - 20 &&
+                        fromIndex >= 0 && fromIndex <= inputLength &&
+                        initialIndex >= 0 && initialIndex <= maxIndex &&
+                        maxIndex >= fromIndex && maxIndex <= inputLength;
     }
 
     @ExplodeLoop

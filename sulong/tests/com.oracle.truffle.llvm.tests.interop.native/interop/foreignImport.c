@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,11 +49,11 @@ int main() {
     return 200 + polyglot_as_i32(foreign->b);
   }
 
-  if (polyglot_as_i16(foreign->a) != (short) 0) {
+  if (polyglot_as_i16(foreign->a) != (short)0) {
     return 110 + polyglot_as_i32(foreign->a);
   }
 
-  if (polyglot_as_i16(foreign->b) != (short) 1) {
+  if (polyglot_as_i16(foreign->b) != (short)1) {
     return 220 + polyglot_as_i32(foreign->b);
   }
 

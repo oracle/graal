@@ -1041,6 +1041,100 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         }
     }
 
+    @Test
+    public void testCanonicalizedSourcePathByDefault() throws IOException {
+        Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
+        setupEnv();
+        TruffleFile tempDir = languageEnv.createTempDirectory(null, "sourcePathCanonicalizationDefault").getCanonicalFile();
+        try {
+            TruffleFile sourceFile = tempDir.resolve("sourceFile");
+            sourceFile.createFile();
+
+            TruffleFile symlink = tempDir.resolve("symlink");
+            symlink.createSymbolicLink(sourceFile);
+
+            Source source = Source.newBuilder("TestJava", symlink).content("hello").build();
+            assertEquals(sourceFile.getPath(), source.getPath());
+        } finally {
+            for (TruffleFile f : tempDir.list()) {
+                f.delete();
+            }
+            tempDir.delete();
+        }
+    }
+
+    @Test
+    public void testNotCanonicalizedSymlinkSourcePath() throws IOException {
+        Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
+        setupEnv();
+        TruffleFile tempDir = languageEnv.createTempDirectory(null, "sourcePathCanonicalizationSymlink").getCanonicalFile();
+        try {
+            TruffleFile sourceFile = tempDir.resolve("sourceFile");
+            sourceFile.createFile();
+
+            TruffleFile symlink = tempDir.resolve("symlink");
+            symlink.createSymbolicLink(sourceFile);
+
+            Source source = Source.newBuilder("TestJava", symlink).canonicalizePath(false).content("hello").build();
+            assertEquals(symlink.getPath(), source.getPath());
+        } finally {
+            for (TruffleFile f : tempDir.list()) {
+                f.delete();
+            }
+            tempDir.delete();
+        }
+    }
+
+    @Test
+    public void testNotCanonicalizedSymlinkRelativeSourcePath() throws IOException {
+        Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
+        setupEnv();
+        TruffleFile oldCWD = languageEnv.getCurrentWorkingDirectory();
+        TruffleFile tempDir = languageEnv.createTempDirectory(null, "sourcePathCanonicalizationRelative").getCanonicalFile();
+        try {
+            languageEnv.setCurrentWorkingDirectory(tempDir);
+
+            TruffleFile sourceFile = languageEnv.getInternalTruffleFile("sourceFile");
+            sourceFile.createFile();
+
+            TruffleFile symlink = languageEnv.getInternalTruffleFile("symlink");
+            symlink.createSymbolicLink(sourceFile);
+
+            Source source = Source.newBuilder("TestJava", symlink).canonicalizePath(false).content("hello").build();
+            assertEquals("symlink", source.getPath());
+        } finally {
+            languageEnv.setCurrentWorkingDirectory(oldCWD);
+            for (TruffleFile f : tempDir.list()) {
+                f.delete();
+            }
+            tempDir.delete();
+        }
+    }
+
+    @Test
+    public void testNotCanonicalizedNotExistingSourcePath() throws IOException {
+        Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
+        setupEnv();
+        TruffleFile tempDir = languageEnv.createTempDirectory(null, "sourcePathCanonicalizationNotExist").getCanonicalFile();
+        try {
+            TruffleFile sourceFile = tempDir.resolve("sourceFile");
+
+            TruffleFile symlink = tempDir.resolve("symlink");
+            symlink.createSymbolicLink(sourceFile);
+
+            Assert.assertFalse(sourceFile.exists());
+            Assert.assertFalse(symlink.exists());
+
+            Source source = Source.newBuilder("TestJava", symlink).canonicalizePath(false).content("hello").build();
+            assertEquals(symlink.getPath(), source.getPath());
+        } finally {
+            for (TruffleFile f : tempDir.list()) {
+                f.delete();
+            }
+            tempDir.delete();
+        }
+    }
+
     private static URL queryURL(URI uri) throws MalformedURLException {
         return new URL(uri.toString() + "?query");
     }

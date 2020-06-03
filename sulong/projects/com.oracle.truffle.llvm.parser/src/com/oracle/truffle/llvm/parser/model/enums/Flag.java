@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -92,6 +92,10 @@ public enum Flag {
             default:
                 return create(flagbits, INT_EXACT);
         }
+    }
+
+    public static Flag[] decode(@SuppressWarnings("unused") UnaryOperator opcode, int flagbits) {
+        return create(flagbits);
     }
 
     private static Flag[] create(long flagbits, Flag... options) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,13 +32,13 @@
 int main() {
   bool boxed_true = polyglot_as_boolean(polyglot_import("boxed_true"));
   bool boxed_false = polyglot_as_boolean(polyglot_import("boxed_false"));
-  
+
   if (boxed_true) {
     // correct
   } else {
     return 1;
   }
-  
+
   if (boxed_false) {
     return 2;
   } else {

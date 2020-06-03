@@ -25,17 +25,17 @@
 
 package jdk.tools.jaotc;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
+
+import jdk.tools.jaotc.AOTCompiledClass.AOTKlassData;
 import jdk.tools.jaotc.binformat.BinaryContainer;
 import jdk.tools.jaotc.binformat.ReadOnlyDataContainer;
-import jdk.tools.jaotc.AOTCompiledClass.AOTKlassData;
 import jdk.vm.ci.code.site.Call;
-import org.graalvm.compiler.code.CompilationResult;
-
-import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 
@@ -306,11 +306,11 @@ final class CompiledMethodInfo {
         return null;
     }
 
-    boolean hasMark(Call call, MarkId id) {
-        assert id == MarkId.INVOKESTATIC || id == MarkId.INVOKESPECIAL;
-        Mark mark = compilationResult.getAssociatedMark(call);
+    boolean hasMark(Call call, HotSpotMarkId id) {
+        assert id == HotSpotMarkId.INVOKESTATIC || id == HotSpotMarkId.INVOKESPECIAL;
+        CompilationResult.CodeMark mark = compilationResult.getAssociatedMark(call);
         if (mark != null) {
-            return MarkId.getEnum((int) mark.id) == id;
+            return mark.id == id;
         }
         return false;
     }

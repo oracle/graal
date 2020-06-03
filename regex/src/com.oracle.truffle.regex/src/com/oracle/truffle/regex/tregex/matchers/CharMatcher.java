@@ -47,22 +47,22 @@ public abstract class CharMatcher extends Node {
     public static final CharMatcher[] EMPTY = {};
 
     /**
-     * Check if a given character matches this {@link CharMatcher}.
-     * 
-     * @param c any character.
+     * Check if a given code point matches this {@link CharMatcher}.
+     *
+     * @param c any code point.
      * @param compactString {@code true} if {@code c} was read from a compact string and can
      *            therefore be treated as a {@code byte}. This parameter must always be partial
      *            evaluation constant!
      * @return {@code true} if the character matches.
      * @see com.oracle.truffle.api.CompilerDirectives#isPartialEvaluationConstant(Object)
      */
-    public abstract boolean execute(char c, boolean compactString);
+    public abstract boolean execute(int c, boolean compactString);
 
     /**
      * Conservatively estimate the equivalent number of integer comparisons of calling
-     * {@link #execute(char, boolean)}.
-     * 
-     * @return the number of integer comparisons one call to {@link #execute(char, boolean)} is
+     * {@link #execute(int, boolean)}.
+     *
+     * @return the number of integer comparisons one call to {@link #execute(int, boolean)} is
      *         roughly equivalent to. Array loads are treated as two comparisons.
      */
     public abstract int estimatedCost();

@@ -1240,6 +1240,7 @@ CLSS public final com.oracle.truffle.api.source.Source$LiteralBuilder
  outer com.oracle.truffle.api.source.Source
 meth public com.oracle.truffle.api.source.Source build()
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder cached(boolean)
+meth public com.oracle.truffle.api.source.Source$LiteralBuilder canonicalizePath(boolean)
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder content(java.lang.CharSequence)
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder content(org.graalvm.polyglot.io.ByteSequence)
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder encoding(java.nio.charset.Charset)
@@ -1257,6 +1258,7 @@ meth public com.oracle.truffle.api.source.Source build() throws java.io.IOExcept
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder content(java.lang.CharSequence)
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder content(org.graalvm.polyglot.io.ByteSequence)
 meth public com.oracle.truffle.api.source.Source$SourceBuilder cached(boolean)
+meth public com.oracle.truffle.api.source.Source$SourceBuilder canonicalizePath(boolean)
 meth public com.oracle.truffle.api.source.Source$SourceBuilder encoding(java.nio.charset.Charset)
 meth public com.oracle.truffle.api.source.Source$SourceBuilder interactive(boolean)
 meth public com.oracle.truffle.api.source.Source$SourceBuilder internal(boolean)
@@ -1264,7 +1266,7 @@ meth public com.oracle.truffle.api.source.Source$SourceBuilder mimeType(java.lan
 meth public com.oracle.truffle.api.source.Source$SourceBuilder name(java.lang.String)
 meth public com.oracle.truffle.api.source.Source$SourceBuilder uri(java.net.URI)
 supr java.lang.Object
-hfds cached,content,embedderFileSystemContext,fileEncoding,interactive,internal,language,mimeType,name,origin,path,uri,url
+hfds cached,canonicalizePath,content,embedderFileSystemContext,fileEncoding,interactive,internal,language,mimeType,name,origin,path,uri,url
 
 CLSS public abstract com.oracle.truffle.api.source.SourceSection
 meth public abstract boolean equals(java.lang.Object)

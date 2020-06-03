@@ -75,7 +75,6 @@ import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
-import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.InvokeTarget;
 import jdk.vm.ci.meta.JavaConstant;
@@ -247,8 +246,8 @@ public class CompilationResultBuilder {
         compilationResult.setMaxInterpreterFrameSize(maxInterpreterFrameSize);
     }
 
-    public Mark recordMark(Object id) {
-        Mark mark = compilationResult.recordMark(asm.position(), id);
+    public CompilationResult.CodeMark recordMark(CompilationResult.MarkId id) {
+        CompilationResult.CodeMark mark = compilationResult.recordMark(asm.position(), id);
         if (currentCallContext != null) {
             currentCallContext.recordMark(mark);
         }
@@ -700,7 +699,7 @@ public class CompilationResultBuilder {
     private CallContext currentCallContext;
 
     public final class CallContext implements AutoCloseable {
-        private Mark mark;
+        private CompilationResult.CodeMark mark;
         private Call call;
 
         @Override
@@ -714,7 +713,7 @@ public class CompilationResultBuilder {
             this.call = c;
         }
 
-        void recordMark(Mark m) {
+        void recordMark(CompilationResult.CodeMark m) {
             assert this.mark == null : "Recording mark twice";
             this.mark = m;
         }

@@ -132,7 +132,8 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
-                 default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None, **kwargs):
+                 default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None,
+                 option_vars=None, **kwargs):
         """
         :param str main_class
         :param bool is_main_launcher
@@ -147,6 +148,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         self.is_sdk_launcher = is_sdk_launcher
         self.custom_launcher_script = custom_launcher_script
         self.extra_jvm_args = [] if extra_jvm_args is None else extra_jvm_args
+        self.option_vars = [] if option_vars is None else option_vars
 
         self.relative_home_paths = {}
 
@@ -326,8 +328,6 @@ class GraalVmTool(GraalVmTruffleComponent):
 class GraalVMSvmMacro(GraalVmComponent):
     pass
 
-class GraalVMSvmStaticLib(GraalVmComponent):
-    pass
 
 class GraalVmJdkComponent(GraalVmComponent):
     pass
@@ -716,16 +716,21 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
                 zf.writestr(name, contents)
 
         mx.logv('[Copying static libraries]')
-        lib_prefix = mx.add_lib_prefix('')
-        lib_suffix = '.lib' if mx.is_windows() else '.a'
-        lib_directory = join(jdk.home, 'lib')
-        dst_lib_directory = join(dst_jdk_dir, 'lib')
-        for f in os.listdir(lib_directory):
-            if f.startswith(lib_prefix) and f.endswith(lib_suffix):
-                lib_path = join(lib_directory, f)
-                if isfile(lib_path):
-                    shutil.copy2(lib_path, dst_lib_directory)
-
+        lib_directory = join(jdk.home, 'lib', 'static')
+        if exists(lib_directory):
+            dst_lib_directory = join(dst_jdk_dir, 'lib', 'static')
+            mx.copytree(lib_directory, dst_lib_directory)
+        # Allow older JDK versions to work
+        else:
+            lib_prefix = mx.add_lib_prefix('')
+            lib_suffix = '.lib' if mx.is_windows() else '.a'
+            lib_directory = join(jdk.home, 'lib')
+            dst_lib_directory = join(dst_jdk_dir, 'lib')
+            for f in os.listdir(lib_directory):
+                if f.startswith(lib_prefix) and f.endswith(lib_suffix):
+                    lib_path = join(lib_directory, f)
+                    if isfile(lib_path):
+                        shutil.copy2(lib_path, dst_lib_directory)
     finally:
         if not mx.get_opts().verbose:
             # Preserve build directory so that javac command can be re-executed

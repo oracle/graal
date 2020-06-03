@@ -31,6 +31,7 @@ oraclejdk8OnlyDebug : { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug} }}
 openjdk8 :          { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
 oraclejdk11 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
+oraclejdk15 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk15} }}
 openjdk11 :         { downloads : { JAVA_HOME : ${jdks.openjdk11} }}
 
 labsjdk-ce-11 :         { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-11} }}
@@ -212,6 +213,12 @@ svm-common-windows: ${svm-common} ${windows-amd64} {
 windows-devkit-jdk11: {
   packages : {
     "devkit:VS2017-15.5.5+1" : "==0"
+  }
+}
+
+windows-devkit-jdk15: {
+  packages : {
+    "devkit:VS2019-16.5.3+1" : "==0"
   }
 }
 
