@@ -1,3 +1,9 @@
+local root_ci = import '../ci.jsonnet';
+
+local wasm_suite_root = root_ci.wasm_suite_root;
+
+local graal_suite_root = root_ci.graal_suite_root;
+
 {
   local jdks = (import "../../common.json").jdks,
   local labsjdk8 = jdks.oraclejdk8,
@@ -79,11 +85,11 @@
   },
 
   local gate_cmd       = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
-  local gate_cmd_jvmci = ['mx', '--strict-compliance', '--dynamicimports', '/compiler', '--jdk', 'jvmci', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+  local gate_cmd_jvmci = ['mx', '--strict-compliance', '--dynamicimports', graal_suite_root, '--jdk', 'jvmci', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
 
   setup_common: {
     setup+: [
-      ['cd', '$SUITE'],
+      ['cd', wasm_suite_root],
       ['mx', 'sversions'],
     ],
   },
@@ -105,7 +111,7 @@
 
   gate_graalwasm_jvmci: {
     setup+: [
-      ['cd', 'wasm'],
+      ['cd', wasm_suite_root],
       ['mx', 'sversions'],
     ],
     run+: [
@@ -126,7 +132,7 @@
       BENCH_RESULTS_FILE_PATH : 'bench-results.json',
     },
     setup+: [
-      ['mx', '--dy', '/compiler', 'build', '--all'],
+      ['mx', '--dy', graal_suite_root, 'build', '--all'],
     ],
     run+: [
       [
