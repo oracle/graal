@@ -32,4 +32,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(value = {TYPE_USE})
 public @interface GuestCall {
+    String target() default "";
 }

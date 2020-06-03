@@ -1412,11 +1412,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public static int GetStringLength(@Host(String.class) StaticObject string,
-                    @GuestCall DirectCallNode java_lang_String_length) {
+                    @GuestCall(target = "java_lang_String_length") DirectCallNode stringLength) {
         if (StaticObject.isNull(string)) {
             return 0;
         }
-        return (int) java_lang_String_length.call(string);
+        return (int) stringLength.call(string);
     }
 
     /**
@@ -2613,8 +2613,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Host(Class.class) StaticObject FindClass(@Pointer TruffleObject namePtr,
-                    @GuestCall DirectCallNode java_lang_ClassLoader_getSystemClassLoader, @GuestCall DirectCallNode java_lang_ClassLoader$NativeLibrary_getFromClass,
-                    @GuestCall DirectCallNode java_lang_Class_forName_String_boolean_ClassLoader,
+                    @GuestCall(target = "java_lang_ClassLoader_getSystemClassLoader") DirectCallNode getSystemClassLoader,
+                    @GuestCall(target = "java_lang_ClassLoader$NativeLibrary_getFromClass") DirectCallNode nativeLibraryGetFromClass,
+                    @GuestCall(target = "java_lang_Class_forName_String_boolean_ClassLoader") DirectCallNode classForName,
                     @InjectProfile SubstitutionProfiler profiler) {
         String name = interopPointerToString(namePtr);
         Meta meta = getMeta();
@@ -2641,18 +2642,18 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             Klass callerKlass = caller.getMirrorKlass();
             loader = callerKlass.getDefiningClassLoader();
             if (StaticObject.isNull(loader) && Type.java_lang_ClassLoader$NativeLibrary.equals(callerKlass.getType())) {
-                StaticObject result = (StaticObject) java_lang_ClassLoader$NativeLibrary_getFromClass.call();
+                StaticObject result = (StaticObject) nativeLibraryGetFromClass.call();
                 loader = result.getMirrorKlass().getDefiningClassLoader();
                 protectionDomain = Target_java_lang_Class.getProtectionDomain0(result, getMeta());
             }
         } else {
-            loader = (StaticObject) java_lang_ClassLoader_getSystemClassLoader.call();
+            loader = (StaticObject) getSystemClassLoader.call();
         }
 
         StaticObject guestClass = StaticObject.NULL;
         try {
             String dotName = name.replace('/', '.');
-            guestClass = (StaticObject) java_lang_Class_forName_String_boolean_ClassLoader.call(meta.toGuestString(dotName), false, loader);
+            guestClass = (StaticObject) classForName.call(meta.toGuestString(dotName), false, loader);
             EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null");
         } catch (EspressoException e) {
             profiler.profile(5);

@@ -192,7 +192,7 @@ public final class Target_java_lang_Thread {
     @Substitution(hasReceiver = true)
     public static void start0(@Host(Thread.class) StaticObject self,
                     // Checkstyle: stop
-                    @GuestCall DirectCallNode java_lang_Thread_exit,
+                    @GuestCall(target = "java_lang_Thread_exit") DirectCallNode threadExit,
                     // Checkstyle: resume
                     @InjectMeta Meta meta) {
         OptionValues options = meta.getContext().getEnv().getOptions();
@@ -230,7 +230,7 @@ public final class Target_java_lang_Thread {
                         dispatchUncaughtException.invokeDirect(self, uncaught.getExceptionObject());
                     } finally {
                         setThreadStop(self, KillStatus.EXITING);
-                        java_lang_Thread_exit.call(self);
+                        threadExit.call(self);
                         self.getLock().lock();
                         try {
                             self.setIntField(meta.java_lang_Thread_threadStatus, State.TERMINATED.value);
@@ -291,10 +291,10 @@ public final class Target_java_lang_Thread {
     @Substitution(hasReceiver = true)
     public static @Host(typeName = "Ljava/lang/Thread$State;") StaticObject getState(@Host(Thread.class) StaticObject self,
                     // Checkstyle: stop
-                    @GuestCall DirectCallNode sun_misc_VM_toThreadState,
+                    @GuestCall(target = "sun_misc_VM_toThreadState") DirectCallNode toThreadState,
                     // Checkstyle: resume
                     @InjectMeta Meta meta) {
-        return (StaticObject) sun_misc_VM_toThreadState.call(self.getIntField(meta.java_lang_Thread_threadStatus));
+        return (StaticObject) toThreadState.call(self.getIntField(meta.java_lang_Thread_threadStatus));
     }
 
     @SuppressWarnings("unused")

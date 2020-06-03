@@ -41,6 +41,7 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -226,6 +227,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
     // Special annotations
     TypeElement guestCall;
+    ExecutableElement guestCallTarget;
     private static final String GUEST_CALL = "com.oracle.truffle.espresso.substitutions.GuestCall";
 
     TypeElement injectMeta;
@@ -348,6 +350,13 @@ public abstract class EspressoProcessor extends AbstractProcessor {
             return false;
         }
         guestCall = processingEnv.getElementUtils().getTypeElement(GUEST_CALL);
+        for (Element e : guestCall.getEnclosedElements()) {
+            if (e.getKind() == ElementKind.METHOD) {
+                if (e.getSimpleName().contentEquals("target")) {
+                    this.guestCallTarget = (ExecutableElement) e;
+                }
+            }
+        }
         injectMeta = processingEnv.getElementUtils().getTypeElement(INJECT_META);
         injectProfile = processingEnv.getElementUtils().getTypeElement(INJECT_PROFILE);
         processImpl(roundEnv);
@@ -678,11 +687,23 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     List<String> getGuestCalls(ExecutableElement method) {
         ArrayList<String> guestCalls = new ArrayList<>();
         for (VariableElement param : method.getParameters()) {
-            if (getAnnotation(param.asType(), guestCall) != null) {
-                guestCalls.add(param.getSimpleName().toString());
+            AnnotationMirror g = getAnnotation(param.asType(), guestCall);
+            if (g != null) {
+                guestCalls.add(getMetaField(g, param));
             }
         }
         return guestCalls;
+    }
+
+    private String getMetaField(AnnotationMirror g, VariableElement param) {
+        Map<? extends ExecutableElement, ? extends AnnotationValue> members = g.getElementValues();
+        AnnotationValue targetAnnotation = members.get(guestCallTarget);
+        if (targetAnnotation != null) {
+            return (String) targetAnnotation.getValue();
+        } else {
+            return param.getSimpleName().toString();
+        }
+
     }
 
     static boolean getGuestCallsForInvoke(StringBuilder str, List<String> guestCalls, boolean wasFirst) {

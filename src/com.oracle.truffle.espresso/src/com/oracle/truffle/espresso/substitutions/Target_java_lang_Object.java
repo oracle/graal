@@ -65,8 +65,8 @@ public final class Target_java_lang_Object {
     @Substitution(hasReceiver = true)
     @Throws(CloneNotSupportedException.class)
     public static @Host(Object.class) StaticObject clone(@Host(Object.class) StaticObject self,
-                    @GuestCall DirectCallNode java_lang_ref_Finalizer_register,
+                    @GuestCall(target = "java_lang_ref_Finalizer_register") DirectCallNode finalizerRegister,
                     @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
-        return VM.JVM_Clone(self, java_lang_ref_Finalizer_register, meta, profiler);
+        return VM.JVM_Clone(self, finalizerRegister, meta, profiler);
     }
 }
