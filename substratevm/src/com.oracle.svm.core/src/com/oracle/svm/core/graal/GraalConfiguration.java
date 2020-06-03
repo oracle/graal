@@ -32,6 +32,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.aarch64.AArch64NodeMatchRules;
 import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.MatchRuleRegistry;
 import org.graalvm.compiler.core.match.MatchStatement;
@@ -76,8 +77,10 @@ public class GraalConfiguration {
         }
     }
 
-    public LoweringProvider createLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig) {
-        return ImageSingletons.lookup(SubstrateLoweringProviderFactory.class).newLoweringProvider(metaAccess, foreignCalls, platformConfig, ConfigurationValues.getTarget());
+    public LoweringProvider createLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
+                    MetaAccessExtensionProvider metaAccessExtensionProvider) {
+        return ImageSingletons.lookup(SubstrateLoweringProviderFactory.class).newLoweringProvider(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider,
+                        ConfigurationValues.getTarget());
     }
 
     public Suites createSuites(OptionValues options, @SuppressWarnings("unused") boolean hosted) {

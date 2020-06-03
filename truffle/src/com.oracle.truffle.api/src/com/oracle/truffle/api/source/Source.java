@@ -126,15 +126,15 @@ import org.graalvm.polyglot.io.FileSystem;
  *
  * <h2>Character and binary based Sources</h2>
  *
- * A source is either {@link #hasBytes() byte} or {@link #hasCharacters() character} based. For
- * literal sources it depends on whether the byte or character based factory method was used. When
- * the source was loaded from a {@link File file} or {@link URL url} then the
- * {@link LanguageInfo#getDefaultMimeType() default MIME type} of the provided language will be used
- * to determine whether bytes or characters should be loaded. The behavior can be customized by
- * specifying a {@link SourceBuilder#mimeType(String) MIME type} or
- * {@link SourceBuilder#content(ByteSequence) content} explicitly. If the specified or inferred MIME
- * type starts with <code>'text/</code> or the MIME types is <code>null</code> then it will be
- * interpreted as character based, otherwise byte based.
+ * A source is {@link #hasBytes() byte} or {@link #hasCharacters() character} based, or none of
+ * those when {@link #CONTENT_NONE no content} is specified. For literal sources it depends on
+ * whether the byte or character based factory method was used. When the source was loaded from a
+ * {@link File file} or {@link URL url} then the {@link LanguageInfo#getDefaultMimeType() default
+ * MIME type} of the provided language will be used to determine whether bytes or characters should
+ * be loaded. The behavior can be customized by specifying a {@link SourceBuilder#mimeType(String)
+ * MIME type} or {@link SourceBuilder#content(ByteSequence) content} explicitly. If the specified or
+ * inferred MIME type starts with <code>'text/</code> or the MIME types is <code>null</code> then it
+ * will be interpreted as character based, otherwise byte based.
  *
  * @since 0.8 or earlier
  */
@@ -143,7 +143,10 @@ public abstract class Source {
 
     /**
      * Constant to be used as an argument to {@link SourceBuilder#content(CharSequence)} to set no
-     * content to the Source built.
+     * content to the Source built. The created sections will contain location information only and
+     * no characters. That's useful mainly when the source code is not available, but there are
+     * relative file paths, like in Java bytecode or LLVM bitcode. It's up to tools to resolve those
+     * relative paths and use the section location in resolved sources.
      *
      * @since 19.0
      */
@@ -192,8 +195,9 @@ public abstract class Source {
     /**
      * The fully qualified name of the source. In case this source originates from a {@link File} or
      * {@link TruffleFile}, then the path is the normalized, {@link File#getCanonicalPath()
-     * canonical path} for absolute files, or the relative path otherwise. If the source originates
-     * from an {@link URL}, then it's the path component of the URL.
+     * canonical path}. If {@link SourceBuilder#canonicalizePath(boolean) canonicalizePath(false)}
+     * is used when building the source then {@link TruffleFile#getPath()} is used instead. If the
+     * source originates from an {@link URL}, then it's the path component of the URL.
      *
      * @since 0.8 or earlier
      */
@@ -304,8 +308,8 @@ public abstract class Source {
 
     /**
      * Returns <code>true</code> if this source represents a byte based source, else
-     * <code>false</code>. A source is either a byte based or a character based source, never both
-     * at the same time.
+     * <code>false</code>. A source is either a byte based, a character based, or with
+     * {@link #CONTENT_NONE no content}, but never both byte and character based at the same time.
      * <p>
      * The method {@link #getBytes()} is only supported if this method returns <code>true</code>.
      *
@@ -316,8 +320,8 @@ public abstract class Source {
 
     /**
      * Returns <code>true</code> if this source represents a character based source, else
-     * <code>false</code>. A source is either a byte based or a character based source, never both
-     * at the same time.
+     * <code>false</code>. A source is either a byte based, a character based, or with
+     * {@link #CONTENT_NONE no content}, but never both byte and character based at the same time.
      *
      * <p>
      * The following methods are only supported if {@link #hasCharacters()} is <code>true</code>:
@@ -1011,7 +1015,7 @@ public abstract class Source {
 
     private static final boolean ALLOW_IO = SourceAccessor.ACCESSOR.engineSupport().isIOAllowed();
 
-    static Source buildSource(String language, Object origin, String name, String path, String mimeType, Object content, URL url, URI uri, Charset encoding,
+    static Source buildSource(String language, Object origin, String name, String path, boolean canonicalizePath, String mimeType, Object content, URL url, URI uri, Charset encoding,
                     boolean internal, boolean interactive, boolean cached, boolean legacy, Supplier<Object> fileSystemContext) throws IOException {
         String useName = name;
         URI useUri = uri;
@@ -1033,19 +1037,19 @@ public abstract class Source {
             useContent = useContent == CONTENT_UNSET ? null : useContent;
         } else if (useOrigin instanceof TruffleFile) {
             TruffleFile file = (TruffleFile) useOrigin;
-            if (!file.isAbsolute() && useContent == CONTENT_NONE) {
+            if (!canonicalizePath || useContent == CONTENT_NONE) {
+                // Do not canonicalize the file, and use a relative URI if the file is relative
                 if (useUri == null) {
-                    useUri = file.toRelativeUri();
+                    useUri = file.isAbsolute() ? file.toUri() : file.toRelativeUri();
                 }
             } else {
+                // Canonicalize the file if it exists
                 file = file.exists() ? file.getCanonicalFile() : file;
-                if (useUri == null) {
-                    useUri = file.toUri();
-                }
             }
             useTruffleFile = file;
             useName = useName == null ? file.getName() : useName;
             usePath = usePath == null ? file.getPath() : usePath;
+            useUri = useUri == null ? file.toUri() : useUri;
             useMimeType = useMimeType == null ? SourceAccessor.getMimeType(file, getValidMimeTypes(language)) : useMimeType;
             if (legacy) {
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
@@ -1381,6 +1385,7 @@ public abstract class Source {
         URL url;
         private String name;
         String path;
+        private boolean canonicalizePath = true;
         private String mimeType;
         private Object content = CONTENT_UNSET;
         private boolean internal;
@@ -1542,6 +1547,21 @@ public abstract class Source {
         }
 
         /**
+         * Whether the {@link Source#getPath()} (from the {@link TruffleFile}) should be
+         * canonicalized. By default the path is canonicalized to improve Source caching. If set to
+         * {@code false}, then {@link Source#getPath()} will be the same as the passed TruffleFile
+         * {@link TruffleFile#getPath()}.
+         *
+         * @param canonicalize whether to canonicalize the path from the the TruffleFile
+         * @return the instance of this builder
+         * @since 20.2
+         */
+        public SourceBuilder canonicalizePath(boolean canonicalize) {
+            this.canonicalizePath = canonicalize;
+            return this;
+        }
+
+        /**
          * Explicitly assigns an encoding used to read the file content. If the encoding is
          * {@code null} then the file contained encoding information is used. If the file doesn't
          * provide an encoding information the default {@code UTF-8} encoding is used.
@@ -1571,8 +1591,8 @@ public abstract class Source {
          */
         public Source build() throws IOException {
             assert this.language != null;
-            Source source = buildSource(this.language, this.origin, this.name, this.path, this.mimeType, this.content, this.url, this.uri, this.fileEncoding, this.internal, this.interactive,
-                            this.cached, false, new FileSystemContextSupplier(embedderFileSystemContext));
+            Source source = buildSource(this.language, this.origin, this.name, this.path, this.canonicalizePath, this.mimeType, this.content, this.url, this.uri, this.fileEncoding, this.internal,
+                            this.interactive, this.cached, false, new FileSystemContextSupplier(embedderFileSystemContext));
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {
@@ -1714,6 +1734,16 @@ public abstract class Source {
         /**
          * {@inheritDoc}
          *
+         * @since 20.2
+         */
+        @Override
+        public LiteralBuilder canonicalizePath(boolean canonicalize) {
+            return (LiteralBuilder) super.canonicalizePath(canonicalize);
+        }
+
+        /**
+         * {@inheritDoc}
+         *
          * @since 19.0
          */
         @Override
@@ -1834,7 +1864,7 @@ public abstract class Source {
 
         /**
          * @since 0.15
-         * @deprecated see {@link SourceBuilder#content(CharSequence)}
+         * @deprecated see {@link SourceBuilder#uri(URI)}
          */
         @Deprecated
         public Builder<E1, E2, E3> uri(URI ownUri) {
@@ -1874,7 +1904,7 @@ public abstract class Source {
         @Deprecated
         public Source build() throws E1, E2, E3 {
             try {
-                Source source = buildSource(this.language, this.origin, this.name, null, this.mime, this.characters, null, this.uri, null, this.internal, this.interactive, this.cached, true,
+                Source source = buildSource(this.language, this.origin, this.name, null, true, this.mime, this.characters, null, this.uri, null, this.internal, this.interactive, this.cached, true,
                                 new FileSystemContextSupplier(null));
 
                 // legacy sources must have character sources

@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 /**
  * Used for pre-calculating and finding the result of tree-like regular expressions. A regular
@@ -229,27 +230,28 @@ public final class NFATraceFinderGenerator {
                         NFAState lastCopied = copy(entry.getTarget(), resultID);
                         PreCalculatedResultFactory result = resultFactory();
                         // create a copy of the graph path
-                        int i = 0;
-                        for (; i < graphPath.size(); i++) {
+                        int iResult = 0;
+                        for (int i = 0; i < graphPath.size(); i++) {
                             final NFAStateTransition pathTransition = graphPath.get(i).getTransition();
                             NFAState copy = copy(pathTransition.getTarget(), resultID);
-                            createTransition(lastCopied, copy, pathTransition, result, i);
+                            createTransition(lastCopied, copy, pathTransition, result, iResult);
+                            iResult += getEncodedSize(copy);
                             lastCopied = copy;
                         }
                         // link the copied path to the existing tree
-                        createTransition(lastCopied, duplicate, curElement.getTransition(), result, i);
+                        createTransition(lastCopied, duplicate, curElement.getTransition(), result, iResult);
                         // traverse the existing tree to the root to complete the pre-calculated
                         // result.
                         NFAState treeNode = duplicate;
                         while (!treeNode.isFinalState()) {
-                            i++;
+                            iResult += getEncodedSize(treeNode);
                             assert treeNode.getSuccessors().length == 1;
                             treeNode.addPossibleResult(resultID);
-                            treeNode.getSuccessors()[0].getGroupBoundaries().applyToResultFactory(result, i);
+                            treeNode.getSuccessors()[0].getGroupBoundaries().applyToResultFactory(result, iResult);
                             treeNode = treeNode.getSuccessors()[0].getTarget();
                         }
                         treeNode.addPossibleResult(resultID);
-                        result.setLength(i);
+                        result.setLength(iResult);
                         PreCalculatedResultFactory existingResult = resultDeDuplicationMap.get(result);
                         if (existingResult == null) {
                             resultDeDuplicationMap.put(result, result);
@@ -317,5 +319,11 @@ public final class NFATraceFinderGenerator {
         duplicatedStatesMap[original.getId()].add(copy);
         states.add(copy);
         assert states.get(copy.getId()) == copy;
+    }
+
+    private int getEncodedSize(NFAState s) {
+        Encoding encoding = originalNFA.getAst().getEncoding();
+        assert encoding.isFixedCodePointWidth(s.getCharSet());
+        return encoding.getEncodedSize(s.getCharSet().getMin());
     }
 }

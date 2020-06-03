@@ -59,6 +59,7 @@ import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.UnaryOperation;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
@@ -83,6 +84,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMSignedCastToLLVM80BitFloatNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToDoubleNodeGen.LLVMSignedCastToDoubleNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMDispatchBasicBlockNode;
@@ -261,7 +264,12 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMI1
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMI32ArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMI8ArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMIVarBitArithmeticNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNodeFactory.LLVMDoubleUnaryNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNodeFactory.LLVMFP80UnaryNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNodeFactory.LLVMFloatUnaryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorArithmeticNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorUnaryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVM80BitFloatSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVMDoubleSelectNodeGen;
@@ -1148,11 +1156,12 @@ public class BasicNodeFactory implements NodeFactory {
             assemblyRoot = getLazyUnsupportedInlineRootNode(asmExpression, e);
         }
         LLVMIRFunction function = new LLVMIRFunction(Truffle.getRuntime().createCallTarget(assemblyRoot), null);
-        LLVMFunction functionDetail = LLVMFunction.create("<asm>", library, function, new FunctionType(MetaType.UNKNOWN, Type.EMPTY_ARRAY, false), LLVMSymbol.INVALID_INDEX, LLVMSymbol.INVALID_INDEX);
+        LLVMFunction functionDetail = LLVMFunction.create("<asm>", library, function, new FunctionType(MetaType.UNKNOWN, 0, false), LLVMSymbol.INVALID_INDEX, LLVMSymbol.INVALID_INDEX,
+                        false);
         LLVMFunctionDescriptor asm = context.createFunctionDescriptor(functionDetail);
         LLVMManagedPointerLiteralNode asmFunction = LLVMManagedPointerLiteralNodeGen.create(LLVMManagedPointer.create(asm));
 
-        return LLVMCallNode.create(new FunctionType(MetaType.UNKNOWN, argTypes, false), asmFunction, args, false);
+        return LLVMCallNode.create(FunctionType.createByCopy(MetaType.UNKNOWN, argTypes, false), asmFunction, args, false);
     }
 
     private LLVMInlineAssemblyRootNode getLazyUnsupportedInlineRootNode(String asmExpression, AsmParseException e) {
@@ -1243,7 +1252,7 @@ public class BasicNodeFactory implements NodeFactory {
                 // Inline Sulong intrinsics directly at their call site, to avoid the overhead of a
                 // call node and extra argument nodes.
                 LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-                return intrinsicProvider.generateIntrinsicNode(name, args, argsTypes, this);
+                return intrinsicProvider.generateIntrinsicNode(name, args, Arrays.asList(argsTypes), this);
             }
         }
         return null;
@@ -1366,6 +1375,10 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMPowNodeGen.create(args[1], args[2]);
                 case "llvm.powi.f80":
                     return LLVMPowNodeGen.create(args[1], args[2]);
+                case "llvm.round.f32":
+                case "llvm.round.f64":
+                case "llvm.round.f80":
+                    return LLVMCMathsIntrinsicsFactory.LLVMRoundNodeGen.create(args[1]);
                 case "llvm.fabs.f32":
                 case "llvm.fabs.f64":
                 case "llvm.fabs.f80":
@@ -1532,6 +1545,12 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMX86_Pmovmskb128NodeGen.create(args[1]);
                 case "llvm.x86.sse2.movmsk.pd":
                     return LLVMX86_MovmskpdNodeGen.create(args[1]);
+                case "llvm.experimental.constrained.fpext.f64":
+                case "llvm.experimental.constrained.fpext.f64.f32":
+                    return LLVMSignedCastToDoubleNodeGen.create(args[1]);
+                case "llvm.experimental.constrained.fpext.f80":
+                case "llvm.experimental.constrained.fpext.f80.f64":
+                    return LLVMSignedCastToLLVM80BitFloatNodeGen.create(args[1]);
                 default:
                     break;
             }
@@ -1595,6 +1614,35 @@ public class BasicNodeFactory implements NodeFactory {
             }
         } else if (type instanceof VariableBitWidthType) {
             return LLVMIVarBitArithmeticNodeGen.create(op, left, right);
+        } else {
+            throw new AssertionError("Unknown type: " + type);
+        }
+    }
+
+    @Override
+    public LLVMExpressionNode createUnaryOp(UnaryOperation op, Type type, LLVMExpressionNode operand) {
+        if (type instanceof VectorType) {
+            VectorType vectorType = (VectorType) type;
+            LLVMUnaryNode unaryNode = createScalarUnaryOp(op, vectorType.getElementType(), null);
+            return LLVMVectorUnaryNodeGen.create(vectorType.getNumberOfElementsInt(), unaryNode, operand);
+        } else {
+            return createScalarUnaryOp(op, type, operand);
+        }
+    }
+
+    protected LLVMUnaryNode createScalarUnaryOp(UnaryOperation op, Type type, LLVMExpressionNode operand) {
+        assert !(type instanceof VectorType);
+        if (type instanceof PrimitiveType) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
+                case FLOAT:
+                    return LLVMFloatUnaryNodeGen.create(op, operand);
+                case DOUBLE:
+                    return LLVMDoubleUnaryNodeGen.create(op, operand);
+                case X86_FP80:
+                    return LLVMFP80UnaryNodeGen.create(op, operand);
+                default:
+                    throw new UnsupportedOperationException("Type is unsupported for scalar unary operation: " + type);
+            }
         } else {
             throw new AssertionError("Unknown type: " + type);
         }

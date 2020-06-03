@@ -35,14 +35,6 @@ public interface GC {
     /** Cause a full collection. */
     void collectCompletely(GCCause cause);
 
-    /*
-     * Registered collection watchers.
-     */
-
-    void registerCollectionWatcher(CollectionWatcher watcher);
-
-    void unregisterCollectionWatcher(CollectionWatcher watcher);
-
     /** Get the list of GarbageCollectorMXBeans for this collector. */
     List<GarbageCollectorMXBean> getGarbageCollectorMXBeanList();
 }

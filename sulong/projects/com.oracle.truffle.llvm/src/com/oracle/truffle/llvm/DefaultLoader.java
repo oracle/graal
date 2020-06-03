@@ -29,26 +29,20 @@
  */
 package com.oracle.truffle.llvm;
 
-import java.nio.file.Path;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DefaultLoader extends Loader {
 
     private volatile List<LLVMParserResult> cachedDefaultDependencies;
     private volatile ExternalLibrary[] cachedSulongLibraries;
-
-    @Override
-    public void loadDefaults(LLVMContext context, Path internalLibraryPath) {
-        Runner.loadDefaults(context, this, context.getLanguage().getRawRunnerID(), internalLibraryPath);
-    }
 
     @Override
     public CallTarget load(LLVMContext context, Source source, AtomicInteger id) {

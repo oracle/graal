@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,10 @@
 #include <polyglot.h>
 #include <stdlib.h>
 
-void *val() {     
-	int* ret = (int *)malloc(sizeof(int)*10);
-	for (int i = 0; i < 10; i++) {
-    	ret[i] = 3;
-	}     
-	return ret; 
+void *val() {
+  int *ret = (int *)malloc(sizeof(int) * 10);
+  for (int i = 0; i < 10; i++) {
+    ret[i] = 3;
+  }
+  return ret;
 }

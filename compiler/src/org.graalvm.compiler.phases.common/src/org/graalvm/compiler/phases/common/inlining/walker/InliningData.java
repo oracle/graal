@@ -146,7 +146,7 @@ public class InliningData {
         if (method == null) {
             return "the method is not resolved";
         } else if (method.isNative() && !(Intrinsify.getValue(options) &&
-                        context.getReplacements().getSubstitution(method, invokeBci, rootGraph.trackNodeSourcePosition(), null, options) != null)) {
+                        context.getReplacements().getSubstitution(method, invokeBci, rootGraph.trackNodeSourcePosition(), null, rootGraph.allowAssumptions(), options) != null)) {
             // We have conditional intrinsic, e.g., String.intern, which may not have inlineable
             // graph depending on the context. The getSubstitution test ensures the inlineable
             // graph is present.

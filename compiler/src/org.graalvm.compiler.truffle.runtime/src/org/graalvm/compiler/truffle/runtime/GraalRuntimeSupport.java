@@ -38,6 +38,8 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import jdk.vm.ci.services.Services;
+
 final class GraalRuntimeSupport extends RuntimeSupport {
 
     GraalRuntimeSupport(Object permission) {
@@ -112,6 +114,11 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
+    public String getSavedProperty(String key) {
+        return Services.getSavedProperties().get(key);
+    }
+
+    @Override
     public void reportPolymorphicSpecialize(Node source) {
         final RootNode rootNode = source.getRootNode();
         final OptimizedCallTarget callTarget = rootNode == null ? null : (OptimizedCallTarget) rootNode.getCallTarget();
@@ -126,10 +133,11 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     @Override
     public Object callInlined(Node callNode, CallTarget target, Object... arguments) {
+        final OptimizedCallTarget optimizedCallTarget = (OptimizedCallTarget) target;
         try {
-            return ((OptimizedCallTarget) target).inlinedPERoot(arguments);
+            return optimizedCallTarget.callInlined(callNode, arguments);
         } catch (Throwable t) {
-            GraalRuntimeAccessor.LANGUAGE.onThrowable(callNode, ((OptimizedCallTarget) target), t, null);
+            GraalRuntimeAccessor.LANGUAGE.onThrowable(callNode, optimizedCallTarget, t, null);
             throw OptimizedCallTarget.rethrow(t);
         }
     }

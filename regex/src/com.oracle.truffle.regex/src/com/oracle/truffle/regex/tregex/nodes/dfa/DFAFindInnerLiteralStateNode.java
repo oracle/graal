@@ -68,30 +68,31 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
 
     @Override
     public void executeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
+        assert executor.isForward();
         while (true) {
-            if (!executor.hasNext(locals)) {
+            if (!executor.inputHasNext(locals)) {
                 locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
                 return;
             }
-            locals.setIndex(indexOfNode.execute(locals.getInput(), locals.getIndex(), locals.getCurMaxIndex(), innerLiteral.getLiteral(), innerLiteral.getMask()));
+            locals.setIndex(indexOfNode.execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteral(), innerLiteral.getMask()));
             if (locals.getIndex() < 0) {
                 locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
                 return;
             }
-            if (prefixMatcher == null || prefixMatcherMatches(locals, executor, compactString)) {
+            if (prefixMatcher == null || prefixMatcherMatches(locals, compactString)) {
                 if (prefixMatcher == null && executor.isSimpleCG()) {
                     locals.getCGData().results[0] = locals.getIndex();
                 }
-                locals.setIndex(locals.getIndex() + innerLiteral.getLiteral().length());
+                executor.inputIncRaw(locals, innerLiteral.getLiteral().encodedLength());
                 locals.setSuccessorIndex(0);
                 return;
             }
-            executor.advance(locals);
+            executor.inputIncRaw(locals);
         }
     }
 
-    private boolean prefixMatcherMatches(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
-        Object result = prefixMatcher.execute(locals.toInnerLiteralBackwardLocals(executor.getPrefixLength()), compactString);
+    private boolean prefixMatcherMatches(TRegexDFAExecutorLocals locals, boolean compactString) {
+        Object result = prefixMatcher.execute(locals.toInnerLiteralBackwardLocals(), compactString);
         return prefixMatcher.isSimpleCG() ? result != null : (int) result != TRegexDFAExecutorNode.NO_MATCH;
     }
 

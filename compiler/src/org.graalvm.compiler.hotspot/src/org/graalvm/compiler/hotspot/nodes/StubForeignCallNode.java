@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,15 +56,15 @@ public final class StubForeignCallNode extends FixedWithNextNode implements LIRL
 
     public static final NodeClass<StubForeignCallNode> TYPE = NodeClass.create(StubForeignCallNode.class);
     @Input NodeInputList<ValueNode> arguments;
-    protected final ForeignCallsProvider foreignCalls;
+    private final ForeignCallsProvider foreignCalls;
 
     protected final ForeignCallDescriptor descriptor;
 
     public StubForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, @InjectedNodeParameter Stamp stamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(TYPE, stamp);
+        this.foreignCalls = foreignCalls;
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
-        this.foreignCalls = foreignCalls;
     }
 
     public ForeignCallDescriptor getDescriptor() {
@@ -73,7 +73,7 @@ public final class StubForeignCallNode extends FixedWithNextNode implements LIRL
 
     @Override
     public LocationIdentity[] getKilledLocationIdentities() {
-        LocationIdentity[] killedLocations = foreignCalls.getKilledLocations(descriptor);
+        LocationIdentity[] killedLocations = descriptor.getKilledLocations();
         killedLocations = Arrays.copyOf(killedLocations, killedLocations.length + 1);
         killedLocations[killedLocations.length - 1] = HotSpotReplacementsUtil.PENDING_EXCEPTION_LOCATION;
         return killedLocations;

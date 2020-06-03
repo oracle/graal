@@ -263,7 +263,7 @@ public class NativeImageMojo extends AbstractMojo {
             } catch (NativeImage.NativeImageError e) {
                 throw new MojoExecutionException("Error creating native image:", e);
             } catch (IllegalAccessError e) {
-                throw new MojoExecutionException("Image building on Java 11+ without native-image requires MAVEN_OPTS='--add-exports=java.base/jdk.internal.module=ALL-UNNAMED'");
+                throw new MojoExecutionException("Image building on Java 11+ without native-image requires MAVEN_OPTS='--add-exports=java.base/jdk.internal.module=ALL-UNNAMED'", e);
             }
         }
     }

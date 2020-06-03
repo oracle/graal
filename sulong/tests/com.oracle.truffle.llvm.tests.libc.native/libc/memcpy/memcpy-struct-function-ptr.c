@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,11 +34,17 @@ struct test {
   int (*func)(int);
 };
 
-int incr(int val) { return val + 1; }
+int incr(int val) {
+  return val + 1;
+}
 
-int decr(int val) { return val - 1; }
+int decr(int val) {
+  return val - 1;
+}
 
-int twice(int val) { return val * 2; }
+int twice(int val) {
+  return val * 2;
+}
 
 int main() {
   struct test t1 = { &incr };

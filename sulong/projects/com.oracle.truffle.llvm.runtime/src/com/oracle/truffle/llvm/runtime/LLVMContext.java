@@ -61,13 +61,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.UnresolvedFunction;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -75,7 +73,6 @@ import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.instruments.trace.LLVMTracerInstrument;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.HandleContainer;
@@ -84,18 +81,17 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMPrintToolchainPath;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.options.TargetStream;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class LLVMContext {
+
+    public static final String SULONG_INIT_CONTEXT = "__sulong_init_context";
+    public static final String SULONG_DISPOSE_CONTEXT = "__sulong_dispose_context";
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
@@ -126,11 +122,13 @@ public final class LLVMContext {
 
     private final LLVMSourceContext sourceContext;
 
+    @CompilationFinal private List<ContextExtension> contextExtensions;
     @CompilationFinal private Env env;
     private final LLVMScope globalScope;
     private final ArrayList<LLVMLocalScope> localScopes;
 
     private final DynamicLinkChain dynamicLinkChain;
+    private final DynamicLinkChain dynamicLinkChainForScopes;
     private final List<RootCallTarget> destructorFunctions;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
     private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry;
@@ -148,6 +146,9 @@ public final class LLVMContext {
 
     // pThread state
     private final LLVMPThreadContext pThreadContext;
+
+    private LLVMFunction sulongInitContext;
+    private LLVMFunction sulongDisposeContext;
 
     private boolean initialized;
     private boolean cleanupNecessary;
@@ -201,6 +202,7 @@ public final class LLVMContext {
         this.globalScope = new LLVMScope();
         this.localScopes = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
+        this.dynamicLinkChainForScopes = new DynamicLinkChain();
 
         this.mainArguments = getMainArguments(env);
 
@@ -226,6 +228,14 @@ public final class LLVMContext {
         return mainArgs == null ? environment.getApplicationArguments() : (Object[]) mainArgs;
     }
 
+    public void setSulongInitContext(LLVMFunction function) {
+        this.sulongInitContext = function;
+    }
+
+    public void setSulongDisposeContext(LLVMFunction function) {
+        this.sulongDisposeContext = function;
+    }
+
     abstract static class InitializeContextNode extends LLVMStatementNode {
 
         @CompilationFinal private ContextReference<LLVMContext> ctxRef;
@@ -233,14 +243,8 @@ public final class LLVMContext {
 
         @Child DirectCallNode initContext;
 
-        InitializeContextNode(LLVMContext ctx, FrameDescriptor rootFrame) {
+        InitializeContextNode(LLVMFunctionDescriptor initContextDescriptor, FrameDescriptor rootFrame) {
             this.stackPointer = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
-
-            LLVMFunction function = ctx.globalScope.getFunction("__sulong_init_context");
-            if (function == null) {
-                throw new IllegalStateException("Context cannot be initialized: _sulong_init_context was not found");
-            }
-            LLVMFunctionDescriptor initContextDescriptor = ctx.createFunctionDescriptor(function);
             RootCallTarget initContextFunction = initContextDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
             this.initContext = DirectCallNode.create(initContextFunction);
         }
@@ -265,9 +269,10 @@ public final class LLVMContext {
     }
 
     @SuppressWarnings("unchecked")
-    void initialize() {
+    void initialize(List<ContextExtension> contextExtens) {
         this.initializeContextCalled = true;
         assert this.threadingStack == null;
+        this.contextExtensions = contextExtens;
 
         final String traceOption = env.getOptions().get(SulongEngineOption.TRACE_IR);
         if (SulongEngineOption.optionEnabled(traceOption)) {
@@ -278,7 +283,7 @@ public final class LLVMContext {
         }
 
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), parseStackSize(env.getOptions().get(SulongEngineOption.STACK_SIZE)));
-        for (ContextExtension ext : language.getLanguageContextExtension()) {
+        for (ContextExtension ext : getContextExtensions()) {
             ext.initialize();
         }
         String languageHome = language.getLLVMLanguageHome();
@@ -289,24 +294,43 @@ public final class LLVMContext {
             // add internal library location also to the external library lookup path
             addLibraryPath(internalLibraryPath.toString());
         }
-        Loader loader = getLanguage().getCapability(Loader.class);
-        loader.loadDefaults(this, internalLibraryPath);
-        if (env.getOptions().get(SulongEngineOption.PRINT_TOOLCHAIN_PATH)) {
-            Function function = new UnresolvedFunction();
-            // This function currently has the index 0, as it is the first function defined in the
-            // table reserved for misc functions
-            LLVMFunction functionDetail = LLVMFunction.create(LLVMPrintToolchainPath.NAME, null, function, new FunctionType(VoidType.INSTANCE, new Type[0], false), LLVMSymbol.MISCFUNCTION_ID,
-                            LLVMSymbol.getMiscSymbolIndex());
-            LLVMFunctionDescriptor functionDescriptor = createFunctionDescriptor(functionDetail);
-            functionDescriptor.getFunctionCode().define(getLanguage().getCapability(LLVMIntrinsicProvider.class), null);
-            registerSymbolTable(0, new AssumedValue[5]);
-            AssumedValue<LLVMPointer>[] symbols = symbolStorage[functionDetail.getBitcodeID(false)];
-            symbols[functionDetail.getSymbolIndex(false)] = new AssumedValue<>(LLVMManagedPointer.create(functionDescriptor));
-            globalScope.register(functionDetail);
-            LLVMLocalScope localScope = new LLVMLocalScope();
-            localScope.register(functionDetail);
-            localScope.addID(LLVMSymbol.MISCFUNCTION_ID);
-            this.addLocalScope(localScope);
+        try {
+            CallTarget libpolyglotMock = env.parseInternal(Source.newBuilder("llvm",
+                            env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()).toUri())).internal(true).build());
+            libpolyglotMock.call();
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private List<ContextExtension> getContextExtensions() {
+        verifyContextExtensionsInitialized();
+        return contextExtensions;
+    }
+
+    public <T extends ContextExtension> T getContextExtension(Class<T> type) {
+        T result = getContextExtensionOrNull(type);
+        if (result != null) {
+            return result;
+        }
+        throw new IllegalStateException("No context extension for: " + type);
+    }
+
+    public <T extends ContextExtension> T getContextExtensionOrNull(Class<T> type) {
+        CompilerAsserts.neverPartOfCompilation();
+        verifyContextExtensionsInitialized();
+        for (ContextExtension ce : contextExtensions) {
+            if (ce.extensionClass() == type) {
+                return type.cast(ce);
+            }
+        }
+        return null;
+    }
+
+    private void verifyContextExtensionsInitialized() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (contextExtensions == null) {
+            throw new IllegalStateException("LLVMContext is not yet initialized");
         }
     }
 
@@ -353,7 +377,10 @@ public final class LLVMContext {
         // we can't do the initialization in the LLVMContext constructor nor in
         // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
         // do it in a delayed way.
-        return InitializeContextNodeGen.create(this, rootFrame);
+        if (sulongInitContext == null) {
+            throw new IllegalStateException("Context cannot be initialized:" + SULONG_INIT_CONTEXT + " was not found");
+        }
+        return InitializeContextNodeGen.create(createFunctionDescriptor(sulongInitContext), rootFrame);
     }
 
     public Toolchain getToolchain() {
@@ -394,7 +421,7 @@ public final class LLVMContext {
         return new SecureRandom();
     }
 
-    private static LLVMManagedPointer toTruffleObjects(String[] values) {
+    public static LLVMManagedPointer toTruffleObjects(String[] values) {
         LLVMArgumentBuffer[] result = new LLVMArgumentBuffer[values.length];
         for (int i = 0; i < values.length; i++) {
             result[i] = new LLVMArgumentBuffer(values[i]);
@@ -403,7 +430,7 @@ public final class LLVMContext {
     }
 
     private static LLVMManagedPointer toManagedPointer(Object value) {
-        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(value));
+        return LLVMManagedPointer.create(value);
     }
 
     public void addLibsulongDataLayout(DataLayout datalayout) {
@@ -431,12 +458,11 @@ public final class LLVMContext {
         // - _exit(), _Exit(), or abort(): no cleanup necessary
         if (cleanupNecessary) {
             try {
-                LLVMFunction function = globalScope.getFunction("__sulong_dispose_context");
-                if (function == null) {
-                    throw new IllegalStateException("Context cannot be disposed: _sulong_dispose_context was not found");
+                if (sulongDisposeContext == null) {
+                    throw new IllegalStateException("Context cannot be disposed: " + SULONG_DISPOSE_CONTEXT + " was not found");
                 }
-                AssumedValue<LLVMPointer>[] functions = findSymbolTable(function.getBitcodeID(false));
-                int index = function.getSymbolIndex(false);
+                AssumedValue<LLVMPointer>[] functions = findSymbolTable(sulongDisposeContext.getBitcodeID(false));
+                int index = sulongDisposeContext.getSymbolIndex(false);
                 LLVMPointer pointer = functions[index].get();
                 if (LLVMManagedPointer.isInstance(pointer)) {
                     LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
@@ -445,7 +471,7 @@ public final class LLVMContext {
                         disposeContext.call(stackPointer);
                     }
                 } else {
-                    throw new IllegalStateException("Context cannot be disposed: _sulong_dispose_context is not a function or enclosed inside a LLVMManagedPointer");
+                    throw new IllegalStateException("Context cannot be disposed: " + SULONG_DISPOSE_CONTEXT + " is not a function or enclosed inside a LLVMManagedPointer");
                 }
             } catch (ControlFlowException e) {
                 // nothing needs to be done as the behavior is not defined
@@ -844,6 +870,16 @@ public final class LLVMContext {
     @TruffleBoundary
     public void registerScope(LLVMScope scope) {
         dynamicLinkChain.addScope(scope);
+    }
+
+    @TruffleBoundary
+    public boolean isScopeLoadedForScopes(LLVMScope scope) {
+        return dynamicLinkChainForScopes.containsScope(scope);
+    }
+
+    @TruffleBoundary
+    public void registerScopeForScopes(LLVMScope scope) {
+        dynamicLinkChainForScopes.addScope(scope);
     }
 
     public synchronized void registerThread(LLVMThread thread) {

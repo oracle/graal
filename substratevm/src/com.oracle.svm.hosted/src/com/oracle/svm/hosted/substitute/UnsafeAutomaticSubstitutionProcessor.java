@@ -670,7 +670,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (xValueNode.isJavaConstant() && xValueNode.asJavaConstant().getJavaKind() == JavaKind.Int) {
             PrimitiveConstant xValueConstant = (PrimitiveConstant) xValueNode.asJavaConstant();
             if (xValueConstant.asInt() == 31) {
-                assert yValueNode.equals(numberOfLeadingZerosInvokeNode);
+                assert yValueNode.equals(numberOfLeadingZerosInvokeNode.asNode());
                 return true;
             }
         }
@@ -678,7 +678,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (yValueNode.isJavaConstant() && yValueNode.asJavaConstant().getJavaKind() == JavaKind.Int) {
             PrimitiveConstant yValueConstant = (PrimitiveConstant) yValueNode.asJavaConstant();
             if (yValueConstant.asInt() == 31) {
-                assert xValueNode.equals(numberOfLeadingZerosInvokeNode);
+                assert xValueNode.equals(numberOfLeadingZerosInvokeNode.asNode());
                 return true;
             }
         }

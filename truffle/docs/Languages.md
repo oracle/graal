@@ -10,8 +10,9 @@ This page is intended to keep track of the growing number of Truffle language im
 * [TruffleSOM](https://github.com/SOM-st/TruffleSOM), a SOM Smalltalk implementation.
 * [SOMns](https://github.com/smarr/SOMns), a Newspeak implementation for Concurrency Research.
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language implementation to demonstrate Truffle features.
-* [GraalSqueak](https://github.com/hpi-swa/graalsqueak/), a Squeak/Smalltalk bytecode interpreter with support for the Smalltalk programming environment.
-* [TRegex](https://github.com/oracle/graal/tree/master/regex), an implementation of a subset of ECMAScript regular expressions (internal, for use by other languages only). *
+* [TruffleSqueak](https://github.com/hpi-swa/trufflesqueak/), a Squeak/Smalltalk bytecode interpreter with support for the Smalltalk programming environment.
+* [TRegex](https://github.com/oracle/graal/tree/master/regex), a generic regular expression engine (internal, for use by other languages only). * 
+* [Yatta](https://yatta-lang.org/), the reference implementation of a minimalistic, strongly dynamically typed, parallel and non-blocking, polyglot, strict, functional programming language.
 
 \* Shipped as part of [GraalVM](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 

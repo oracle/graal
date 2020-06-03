@@ -26,13 +26,6 @@
 
 package com.oracle.svm.hosted.image.sources;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.option.OptionUtils;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ImageClassLoader;
-import org.graalvm.nativeimage.hosted.Feature;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -42,6 +35,14 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
 
 /**
  * An abstract cache manager for some subspace of the JDK, GraalVM or application source file space.
@@ -57,7 +58,7 @@ public abstract class SourceCache {
     /**
      * A list of all entries in the classpath used by the native image classloader.
      */
-    protected static final List<String> classPathEntries = new ArrayList<>();
+    protected static final List<Path> classPathEntries = new ArrayList<>();
     /**
      * A list of all entries in the classpath used by the native image classloader.
      */
@@ -72,9 +73,30 @@ public abstract class SourceCache {
      * Create some flavour of source cache.
      */
     protected SourceCache() {
-        basePath = Paths.get(SOURCE_CACHE_ROOT_DIR).resolve(getType().getSubdir());
+        basePath = SubstrateOptions.getDebugInfoSourceCacheRoot().resolve(getType().getSubdir());
         srcRoots = new ArrayList<>();
+        initSrcRoots();
     }
+
+    /** Add dirs or jars found in the classpath. */
+    protected void initSrcRoots() {
+        for (Path classPathEntry : classPathEntries) {
+            trySourceRoot(classPathEntry, true);
+        }
+        for (String sourcePathEntry : sourcePathEntries) {
+            trySourceRoot(sourcePathEntry, false);
+        }
+    }
+
+    /**
+     * Implementing this method allows to add to the {@link SourceCache#srcRoots} based on the given
+     * sourceRoot path (jar-file or directory). Different subclasses might implement different
+     * strategies how to extract {@link SourceCache#srcRoots} entries from the given sourceRoot.
+     * 
+     * @param sourceRoot path {@link SourceCache#srcRoots} entries should be added for.
+     * @param fromClassPath true, if the given sourceRoot is a classpath entry.
+     */
+    protected abstract void trySourceRoot(Path sourceRoot, boolean fromClassPath);
 
     /**
      * Identify the specific type of this source cache.
@@ -84,15 +106,17 @@ public abstract class SourceCache {
     protected abstract SourceCacheType getType();
 
     /**
-     * A local directory serving as the root for all source trees maintained by the different
-     * available source caches.
-     */
-    private static final String SOURCE_CACHE_ROOT_DIR = "sources";
-    /**
      * The top level path relative to the root directory under which files belonging to this
      * specific cache are located.
      */
     private final Path basePath;
+
+    /**
+     * Fallback for trySourceRoot that accepts Stings instead of Paths.
+     */
+    private void trySourceRoot(String sourceRoot, boolean fromClassPath) {
+        trySourceRoot(Paths.get(sourceRoot), fromClassPath);
+    }
 
     /**
      * Cache the source file identified by the supplied prototype path if a legitimate candidate for
@@ -297,7 +321,7 @@ public abstract class SourceCache {
      * 
      * @param path The path to add.
      */
-    private static void addClassPathEntry(String path) {
+    private static void addClassPathEntry(Path path) {
         classPathEntries.add(path);
     }
 
@@ -321,7 +345,7 @@ public abstract class SourceCache {
         public void afterAnalysis(AfterAnalysisAccess access) {
             FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
             ImageClassLoader loader = accessImpl.getImageClassLoader();
-            for (String entry : loader.getClasspath()) {
+            for (Path entry : loader.classpath()) {
                 addClassPathEntry(entry);
             }
             // also add any necessary source path entries

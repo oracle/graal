@@ -43,14 +43,14 @@ package com.oracle.truffle.regex;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
+import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 
 public abstract class RegexExecRootNode extends RegexBodyNode {
 
     private final boolean mustCheckUnicodeSurrogates;
     private @Child InputLengthNode lengthNode;
-    private @Child InputCharAtNode charAtNode;
+    private @Child InputReadNode charAtNode;
 
     public RegexExecRootNode(RegexLanguage language, RegexSource source, boolean mustCheckUnicodeSurrogates) {
         super(language, source);
@@ -68,7 +68,7 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
 
     private int adjustFromIndex(int fromIndex, Object input) {
         if (mustCheckUnicodeSurrogates && fromIndex > 0 && fromIndex < inputLength(input)) {
-            if (Character.isLowSurrogate(inputCharAt(input, fromIndex)) && Character.isHighSurrogate(inputCharAt(input, fromIndex - 1))) {
+            if (Character.isLowSurrogate((char) inputRead(input, fromIndex)) && Character.isHighSurrogate((char) inputRead(input, fromIndex - 1))) {
                 return fromIndex - 1;
             }
         }
@@ -83,10 +83,10 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
         return lengthNode.execute(input);
     }
 
-    public char inputCharAt(Object input, int i) {
+    public int inputRead(Object input, int i) {
         if (charAtNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            charAtNode = insert(InputCharAtNode.create());
+            charAtNode = insert(InputReadNode.create());
         }
         return charAtNode.execute(input, i);
     }

@@ -40,14 +40,12 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import java.util.Arrays;
-import java.util.Iterator;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.ImmutableSortedListOfIntRanges;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
@@ -69,14 +67,12 @@ public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
         MATCH_ALL.invert();
     }
 
-    public static MultiBitSetMatcher fromCodePointSet(boolean inverse, CodePointSet cps) {
+    public static MultiBitSetMatcher fromRanges(boolean inverse, ImmutableSortedListOfIntRanges cps) {
         CompilationFinalBitSet[] bitSets = new CompilationFinalBitSet[BYTE_RANGE];
         Arrays.fill(bitSets, MATCH_NONE);
         CompilationFinalBitSet cur = new CompilationFinalBitSet(BYTE_RANGE);
-        Iterator<Range> it = cps.iterator16Bit();
         int curByte = -1;
-        while (it.hasNext()) {
-            Range r = it.next();
+        for (Range r : cps) {
             if (curByte == -1) {
                 curByte = highByte(r.lo);
             }
@@ -110,7 +106,7 @@ public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
     }
 
     @Specialization
-    protected boolean match(char c, boolean compactString) {
+    protected boolean match(int c, boolean compactString) {
         return result(bitSets[compactString ? 0 : highByte(c)].get(lowByte(c)));
     }
 

@@ -32,10 +32,10 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 
 /**
- * The image heap consists of multiple partitions that don't necessarily form a contiguous block of
- * memory (there can be holes in between).
+ * Information on the multiple partitions that make up the image heap, which don't necessarily form
+ * a contiguous block of memory (there can be holes in between), and their boundaries.
  */
-public class ImageHeapInfo {
+public final class ImageHeapInfo {
     @UnknownObjectField(types = Object.class) public Object firstReadOnlyPrimitiveObject;
     @UnknownObjectField(types = Object.class) public Object lastReadOnlyPrimitiveObject;
 
@@ -90,43 +90,27 @@ public class ImageHeapInfo {
      */
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isInReadOnlyPrimitivePartition(final Pointer ptr) {
+    public boolean isInReadOnlyPrimitivePartition(Pointer ptr) {
         assert ptr.isNonNull();
         return Word.objectToUntrackedPointer(firstReadOnlyPrimitiveObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyPrimitiveObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isInWritablePrimitivePartition(final Pointer ptr) {
+    public boolean isInWritablePrimitivePartition(Pointer ptr) {
         assert ptr.isNonNull();
         return Word.objectToUntrackedPointer(firstWritablePrimitiveObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritablePrimitiveObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isInReadOnlyReferencePartition(final Pointer ptr) {
+    public boolean isInReadOnlyReferencePartition(Pointer ptr) {
         assert ptr.isNonNull();
         return Word.objectToUntrackedPointer(firstReadOnlyReferenceObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyReferenceObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isInWritableReferencePartition(final Pointer ptr) {
+    public boolean isInWritableReferencePartition(Pointer ptr) {
         assert ptr.isNonNull();
         return Word.objectToUntrackedPointer(firstWritableReferenceObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritableReferenceObject));
-    }
-
-    public boolean isObjectInReadOnlyPrimitivePartition(Object obj) {
-        return isInReadOnlyPrimitivePartition(Word.objectToUntrackedPointer(obj));
-    }
-
-    public boolean isObjectInWritablePrimitivePartition(Object obj) {
-        return isInWritablePrimitivePartition(Word.objectToUntrackedPointer(obj));
-    }
-
-    public boolean isObjectInReadOnlyReferencePartition(Object obj) {
-        return isInReadOnlyReferencePartition(Word.objectToUntrackedPointer(obj));
-    }
-
-    public boolean isObjectInWritableReferencePartition(Object obj) {
-        return isInWritableReferencePartition(Word.objectToUntrackedPointer(obj));
     }
 
     /**

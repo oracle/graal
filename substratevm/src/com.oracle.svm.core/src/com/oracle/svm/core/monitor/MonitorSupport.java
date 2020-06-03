@@ -72,10 +72,11 @@ public abstract class MonitorSupport {
     @Uninterruptible(reason = "called during deoptimization")
     public abstract void doRelockObject(Object obj, Object lockData);
 
-    /**
-     * Implements the semantics of {@link Thread#holdsLock}.
-     */
-    public abstract boolean holdsLock(Object obj);
+    /** Implements the semantics of {@link Thread#holdsLock}. */
+    public abstract boolean isLockedByCurrentThread(Object obj);
+
+    /** Determines whether the object's monitor is locked by the current or any other thread. */
+    public abstract boolean isLockedByAnyThread(Object obj);
 
     /**
      * Implements the semantics of {@link Object#wait}.

@@ -179,7 +179,7 @@ public final class TRegexCompilationRequest {
         for (int i = 0; i < pureNFA.getLookArounds().size(); i++) {
             PureNFA lookAround = pureNFA.getLookArounds().get(i);
             if (pureNFA.getASTSubtree(lookAround).asLookAroundAssertion().isLiteral()) {
-                lookAroundExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA.getASTSubtree(lookAround).asLookAroundAssertion(), compilationBuffer);
+                lookAroundExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA.getASTSubtree(lookAround).asLookAroundAssertion(), ast.getEncoding(), compilationBuffer);
             } else {
                 lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, lookAround, lookAroundExecutors, compilationBuffer);
             }
@@ -194,11 +194,10 @@ public final class TRegexCompilationRequest {
         this.root = rootNode;
         RegexProperties properties = ast.getProperties();
         PreCalculatedResultFactory[] preCalculatedResults = null;
-        if (!(properties.hasAlternations() || properties.hasLookAroundAssertions())) {
+        if (!(properties.hasAlternations() || properties.hasLookAroundAssertions()) && properties.isFixedCodePointWidth()) {
             preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
-        if (allowSimpleCG && preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops() &&
-                        properties.isFixedCodePointWidthUTF16() && properties.isFixedCodePointWidthUTF8()) {
+        if (allowSimpleCG && preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops() && properties.isFixedCodePointWidth()) {
             try {
                 phaseStart("TraceFinder NFA");
                 traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);

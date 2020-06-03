@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -70,7 +70,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
     @TruffleBoundary
     protected TruffleObject identityFunction() {
         LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-        NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtension(NFIContextExtension.class);
+        NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
         String signature;
         try {
             signature = nfiContextExtension.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
@@ -98,9 +98,9 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     @ExplodeLoop
     protected LLVMNativeConvertNode[] createToNativeNodes() {
-        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET];
-        for (int i = LLVMCallNode.USER_ARGUMENT_OFFSET; i < type.getArgumentTypes().length; i++) {
-            ret[i - LLVMCallNode.USER_ARGUMENT_OFFSET] = LLVMNativeConvertNode.createToNative(type.getArgumentTypes()[i]);
+        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getNumberOfArguments() - LLVMCallNode.USER_ARGUMENT_OFFSET];
+        for (int i = LLVMCallNode.USER_ARGUMENT_OFFSET; i < type.getNumberOfArguments(); i++) {
+            ret[i - LLVMCallNode.USER_ARGUMENT_OFFSET] = LLVMNativeConvertNode.createToNative(type.getArgumentType(i));
         }
         return ret;
     }

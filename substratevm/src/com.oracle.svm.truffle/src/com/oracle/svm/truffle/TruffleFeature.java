@@ -122,6 +122,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.option.RuntimeOptionFeature;
+import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
 import com.oracle.svm.truffle.api.SubstratePartialEvaluator;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
@@ -241,11 +242,16 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         }
 
         public BackgroundCompileQueue createBackgroundCompileQueue(@SuppressWarnings("unused") SubstrateTruffleRuntime runtime) {
-            return new BackgroundCompileQueue();
+            return new BackgroundCompileQueue(runtime);
         }
 
         public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
             return (CompilableTruffleAST) KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(OptimizedCallTarget.class, constant), Object.class);
+        }
+
+        @SuppressWarnings("unused")
+        public boolean tryLog(SubstrateTruffleRuntime runtime, CompilableTruffleAST compilable, String message) {
+            return false;
         }
     }
 
@@ -333,6 +339,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
         }
         initializeTruffleReflectively(Thread.currentThread().getContextClassLoader());
+
+        // reinitialize language cache
+        invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "reinitializeNativeImageState", Collections.emptyList());
     }
 
     @Override
@@ -373,6 +382,16 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 return true;
             }
         });
+
+        if (analysis || hosted) {
+            /*
+             * For AOT compilation and static analysis, we intrinsify CompilerDirectives.castExact
+             * with explicit exception edges. For runtime compilation, TruffleGraphBuilderPlugins
+             * registers a plugin that uses deoptimization.
+             */
+            r = new Registration(invocationPlugins, CompilerDirectives.class);
+            SubstrateGraphBuilderPlugins.registerCastExact(r);
+        }
     }
 
     private void registerNeverPartOfCompilation(InvocationPlugins plugins) {
@@ -457,7 +476,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                             partialEvaluator.getProviders().getStampProvider(),
                             snippetReflection,
                             graalFeature.getHostedProviders().getWordTypes(),
-                            graalFeature.getHostedProviders().getPlatformConfigurationProvider());
+                            graalFeature.getHostedProviders().getPlatformConfigurationProvider(),
+                            graalFeature.getHostedProviders().getMetaAccessExtensionProvider());
             newHostedProviders.setGraphBuilderPlugins(graphBuilderConfig.getPlugins());
 
             graalFeature.initializeRuntimeCompilationConfiguration(newHostedProviders, graphBuilderConfig, this::includeCallee, this::deoptimizeOnException);
@@ -880,32 +900,16 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 @TargetClass(className = "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", onlyWith = TruffleFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget {
 
-    /**
-     * Truffle code can run during image generation. Discard the profiling information collected and
-     * start with a fresh profile at run time.
+    /*
+     * Retry compilation when they failed during image generation.
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    int callCount;
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    int callAndLoopCount;
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     boolean compilationFailed;
+    /*
+     * The initialized time stamp is not useful when collected during image generation.
+     */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     long initializedTimestamp;
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget_ArgumentsProfile argumentsProfile;
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget_ReturnProfile returnProfile;
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    Class<? extends Throwable> profiledExceptionType;
-}
-
-@TargetClass(className = "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget$ArgumentsProfile", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget_ArgumentsProfile {
-}
-
-@TargetClass(className = "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget$ReturnProfile", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget_ReturnProfile {
 }
 
 // Checkstyle: stop

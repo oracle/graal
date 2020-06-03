@@ -26,6 +26,8 @@
 
 package com.oracle.svm.hosted.image.sources;
 
+import static com.oracle.svm.hosted.image.sources.SourceCacheType.JDK;
+
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemNotFoundException;
@@ -33,15 +35,9 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static com.oracle.svm.hosted.image.sources.SourceCacheType.JDK;
+import com.oracle.svm.core.util.VMError;
 
 public class JDKSourceCache extends SourceCache {
-    /**
-     * Create a JDK runtime class source cache..
-     */
-    protected JDKSourceCache() {
-        initSrcRoots();
-    }
 
     @Override
     protected final SourceCacheType getType() {
@@ -54,14 +50,19 @@ public class JDKSourceCache extends SourceCache {
     private static final String JAVA_HOME_PROP = "java.home";
     private static final String JAVA_SPEC_VERSION_PROP = "java.specification.version";
 
-    private void initSrcRoots() {
+    @Override
+    protected void initSrcRoots() {
         String javaHome = System.getProperty(JAVA_HOME_PROP);
         assert javaHome != null;
         Path javaHomePath = Paths.get("", javaHome);
         Path srcZipPath;
         String javaSpecVersion = System.getProperty(JAVA_SPEC_VERSION_PROP);
         if (javaSpecVersion.equals("1.8")) {
-            srcZipPath = javaHomePath.resolve("src.zip");
+            Path srcZipDir = javaHomePath.getParent();
+            if (srcZipDir == null) {
+                VMError.shouldNotReachHere("Cannot resolve parent directory of " + javaHome);
+            }
+            srcZipPath = srcZipDir.resolve("src.zip");
         } else {
             assert javaSpecVersion.matches("[1-9][0-9]");
             srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
@@ -76,5 +77,10 @@ public class JDKSourceCache extends SourceCache {
                 /* ignore this entry */
             }
         }
+    }
+
+    @Override
+    protected void trySourceRoot(Path sourceRoot, boolean fromClassPath) {
+        VMError.shouldNotReachHere();
     }
 }

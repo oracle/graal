@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,6 +133,7 @@ public final class DebugContext implements AutoCloseable {
             if (sharedChannel == null) {
                 sharedChannel = new IgvDumpChannel(() -> getDumpPath(".bgv", false), immutable.options);
             }
+            builder.attr(GraphOutput.ATTR_VM_ID, GraalServices.getExecutionID());
             final GraphOutput<G, M> output = builder.build(sharedChannel);
             parentOutput = output;
             return output;

@@ -40,8 +40,8 @@ public class LLVMAlias extends LLVMSymbol {
 
     @CompilationFinal private LLVMSymbol target;
 
-    public LLVMAlias(ExternalLibrary library, String name, LLVMSymbol target) {
-        super(name, library, LLVMSymbol.INVALID_ID, LLVMSymbol.INVALID_ID);
+    public LLVMAlias(ExternalLibrary library, String name, LLVMSymbol target, boolean exported) {
+        super(name, library, LLVMSymbol.INVALID_ID, LLVMSymbol.INVALID_ID, exported);
         setTarget(target);
     }
 

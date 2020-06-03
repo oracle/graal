@@ -136,7 +136,25 @@ public final class Target_java_lang_ref_Reference<T> {
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     @SuppressWarnings("unused")
     static boolean tryHandlePending(boolean waitForNotify) {
-        throw VMError.unimplemented();
+        /*
+         * This method in JDK 8 was replaced by waitForReferenceProcessing in JDK 11. On JDK 8, it
+         * helped with reference handling by handling a single reference (if one is available). The
+         * only caller (apart from the reference handling thread itself) in the JDK is
+         * `Bits.reserveMemory`, which passes `false` as the parameter `waitForNotify`. So our
+         * substitution, which always waits, is a considerable change in semantics. However, since
+         * `Bits.reserveMemory` did not change much between JDK 8 and JDK 11, this is OK.
+         */
+        try {
+            return ReferenceInternals.waitForReferenceProcessing();
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            /*
+             * The caller might loop until "there is no more progress", i.e., until this method
+             * returns false. So returning true could lead to an infinite loop in the caller that is
+             * not interruptible.
+             */
+            return false;
+        }
     }
 
     /** May be used by {@code JavaLangRefAccess} via {@code SharedSecrets}. */
@@ -204,14 +222,6 @@ class ComputeQueueValue implements CustomFieldValueComputer {
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ComputeTrue implements CustomFieldValueComputer {
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        return true;
     }
 }
 

@@ -48,8 +48,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -149,35 +149,16 @@ public class CharacterClass extends QuantifiableTerm {
         return lookBehindEntries;
     }
 
-    public void extractSingleChar(CharArrayBuffer literal, CharArrayBuffer mask) {
+    public void extractSingleChar(AbstractStringBuffer literal, AbstractStringBuffer mask) {
         if (charSet.matchesSingleChar()) {
-            int first = charSet.getMin();
-            assert first <= Character.MAX_VALUE;
-            literal.add((char) first);
-            mask.add((char) 0);
+            literal.append(charSet.getMin());
+            mask.append(0);
         } else {
             assert charSet.matches2CharsWith1BitDifference();
             int c1 = charSet.getMin();
             int c2 = charSet.getMax();
-            assert c2 <= Character.MAX_VALUE;
-            literal.add((char) (c1 | c2));
-            mask.add((char) (c1 ^ c2));
-        }
-    }
-
-    public void extractSingleChar(char[] literal, char[] mask, int i) {
-        if (charSet.matchesSingleChar()) {
-            int first = charSet.getMin();
-            assert first <= Character.MAX_VALUE;
-            literal[i] = (char) first;
-            mask[i] = (char) 0;
-        } else {
-            assert charSet.matches2CharsWith1BitDifference();
-            int c1 = charSet.getMin();
-            int c2 = charSet.getMax();
-            assert c2 <= Character.MAX_VALUE;
-            literal[i] = (char) (c1 | c2);
-            mask[i] = (char) (c1 ^ c2);
+            literal.appendOR(c1, c2);
+            mask.appendXOR(c1, c2);
         }
     }
 

@@ -102,7 +102,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
         static PanicLocType create(DataLayout dataLayout) {
             CompilerAsserts.neverPartOfCompilation();
             StrSliceType strslice = StrSliceType.create(dataLayout);
-            Type type = new PointerType((new StructureType(false, new Type[]{strslice.getType(), strslice.getType(), PrimitiveType.I32})));
+            Type type = new PointerType((StructureType.createUnnamedByCopy(false, new Type[]{strslice.getType(), strslice.getType(), PrimitiveType.I32})));
             return new PanicLocType(dataLayout, type, strslice);
         }
     }
@@ -139,7 +139,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
         }
 
         static StrSliceType create(DataLayout dataLayout) {
-            Type type = new StructureType(false, new Type[]{new PointerType(PrimitiveType.I8), PrimitiveType.I64});
+            Type type = StructureType.createUnnamedByCopy(false, new Type[]{new PointerType(PrimitiveType.I8), PrimitiveType.I64});
             return new StrSliceType(dataLayout, type);
         }
     }

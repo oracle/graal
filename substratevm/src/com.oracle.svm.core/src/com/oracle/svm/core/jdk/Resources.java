@@ -64,6 +64,21 @@ public final class Resources {
         public void afterRegistration(AfterRegistrationAccess access) {
             ImageSingletons.add(ResourcesSupport.class, new ResourcesSupport());
         }
+
+        @Override
+        public void afterCompilation(AfterCompilationAccess access) {
+            /*
+             * The resources embedded in the image heap are read-only at run time. Note that we do
+             * not mark the collection data structures as read-only because Java collections have
+             * all sorts of lazily initialized fields. Only the byte[] arrays themselves can be
+             * safely made read-only.
+             */
+            for (List<byte[]> resourceList : ImageSingletons.lookup(ResourcesSupport.class).resources.values()) {
+                for (byte[] resource : resourceList) {
+                    access.registerAsImmutable(resource);
+                }
+            }
+        }
     }
 
     private Resources() {
@@ -101,6 +116,24 @@ public final class Resources {
             support.resources.put(name, list);
         }
         list.add(res);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerDirectoryResource(String dir, String content) {
+        /*
+         * A directory content represents the names of all files and subdirectories located in the
+         * specified directory, separated with new line delimiter and joined into one string which
+         * is later converted into a byte array and placed into the resources map.
+         */
+        ResourcesSupport support = ImageSingletons.lookup(ResourcesSupport.class);
+
+        byte[] arr = content.getBytes();
+        List<byte[]> list = support.resources.get(dir);
+        if (list == null) {
+            list = new ArrayList<>();
+            support.resources.put(dir, list);
+        }
+        list.add(arr);
     }
 
     public static List<byte[]> get(String name) {

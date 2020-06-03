@@ -86,6 +86,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.ModuleSupport;
 
@@ -156,6 +157,7 @@ public class NativeImage {
     static final String oR = "-R:";
 
     final String enablePrintFlags = SubstrateOptions.PrintFlags.getName() + "=";
+    final String enablePrintFlagsWithExtraHelp = SubstrateOptions.PrintFlagsWithExtraHelp.getName() + "=";
 
     private static <T> String oH(OptionKey<T> option) {
         return oH + option.getName() + "=";
@@ -193,6 +195,7 @@ public class NativeImage {
     private final LinkedHashSet<String> imageBuilderArgs = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderBootClasspath = new LinkedHashSet<>();
+    private final LinkedHashSet<String> imageIncludeBuiltinModules = new LinkedHashSet<>();
     private final ArrayList<String> imageBuilderJavaArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageProvidedClasspath = new LinkedHashSet<>();
@@ -209,7 +212,8 @@ public class NativeImage {
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
     private boolean jarOptionMode = false;
     private boolean dryRun = false;
-    private String queryOption = null;
+    private String printFlagsOptionQuery = null;
+    private String printFlagsWithExtraHelpOptionQuery = null;
 
     final Registry optionRegistry;
     private LinkedHashSet<EnabledOption> enabledLanguages;
@@ -1027,13 +1031,16 @@ public class NativeImage {
 
         completeOptionArgs();
 
-        if (queryOption != null) {
-            addPlainImageBuilderArg(NativeImage.oH + enablePrintFlags + queryOption);
-            addPlainImageBuilderArg(NativeImage.oR + enablePrintFlags + queryOption);
+        if (printFlagsOptionQuery != null) {
+            addPlainImageBuilderArg(NativeImage.oH + enablePrintFlags + printFlagsOptionQuery);
+            addPlainImageBuilderArg(NativeImage.oR + enablePrintFlags + printFlagsOptionQuery);
+        } else if (printFlagsWithExtraHelpOptionQuery != null) {
+            addPlainImageBuilderArg(NativeImage.oH + enablePrintFlagsWithExtraHelp + printFlagsWithExtraHelpOptionQuery);
+            addPlainImageBuilderArg(NativeImage.oR + enablePrintFlagsWithExtraHelp + printFlagsWithExtraHelpOptionQuery);
         }
 
         /* If no customImageClasspath was specified put "." on classpath */
-        if (!config.buildFallbackImage() && customImageClasspath.isEmpty() && queryOption == null) {
+        if (!config.buildFallbackImage() && customImageClasspath.isEmpty() && printFlagsOptionQuery == null && printFlagsWithExtraHelpOptionQuery == null) {
             addImageClasspath(Paths.get("."));
         } else {
             imageClasspath.addAll(customImageClasspath);
@@ -1051,6 +1058,9 @@ public class NativeImage {
         // The following two are for backwards compatibility reasons. They should be removed.
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
         imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
+        if (!imageIncludeBuiltinModules.isEmpty()) {
+            imageBuilderJavaArgs.add("-D" + ImageClassLoader.PROPERTY_IMAGEINCLUDEBUILTINMODULES + "=" + String.join(",", imageIncludeBuiltinModules));
+        }
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
@@ -1075,7 +1085,7 @@ public class NativeImage {
         consolidateArgs(imageBuilderArgs, oHName, Function.identity(), Function.identity(), () -> null, takeLast);
         mainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
         boolean buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.contains(enableSharedLibraryFlag));
-        boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
+        boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags) || arg.contains(enablePrintFlagsWithExtraHelp));
 
         if (!printFlags) {
             List<String> extraImageArgs = new ArrayList<>();
@@ -1140,7 +1150,6 @@ public class NativeImage {
         }
 
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageBuilderBootClasspath);
-        finalImageClasspath.addAll(imageBuilderClasspath);
         finalImageClasspath.addAll(imageProvidedClasspath);
         finalImageClasspath.addAll(imageClasspath);
 
@@ -1339,6 +1348,10 @@ public class NativeImage {
         imageBuilderBootClasspath.add(canonicalize(classpath));
     }
 
+    public void addImageIncludeBuiltinModules(String moduleName) {
+        imageIncludeBuiltinModules.add(moduleName);
+    }
+
     void addImageBuilderJavaArgs(String... javaArgs) {
         addImageBuilderJavaArgs(Arrays.asList(javaArgs));
     }
@@ -1481,8 +1494,12 @@ public class NativeImage {
         return dryRun;
     }
 
-    public void setQueryOption(String val) {
-        this.queryOption = val;
+    public void setPrintFlagsOptionQuery(String val) {
+        this.printFlagsOptionQuery = val;
+    }
+
+    public void setPrintFlagsWithExtraHelpOptionQuery(String val) {
+        this.printFlagsWithExtraHelpOptionQuery = val;
     }
 
     void showVerboseMessage(boolean show, String message) {
@@ -1585,6 +1602,7 @@ public class NativeImage {
         return "1g";
     }
 
+    @SuppressWarnings("deprecation") // getTotalPhysicalMemorySize deprecated since JDK 14
     private static long getPhysicalMemorySize() {
         OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
         long totalPhysicalMemorySize = ((com.sun.management.OperatingSystemMXBean) osMXBean).getTotalPhysicalMemorySize();

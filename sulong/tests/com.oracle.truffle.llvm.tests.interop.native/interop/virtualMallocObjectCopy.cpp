@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,177 +27,168 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <truffle.h>
 
 class Test {
 
-	public:
-		void setA(long a);
-		void setB(double b);
-		void setC(float c);
-		void setD(int d);
-		void setE(unsigned char e);
-		void setF(bool f);
-		
-		long getA(void);
-		double getB(void);
-		float getC(void);
-		int getD(void);
-		unsigned char getE(void);
-		bool getF(void);
+public:
+  void setA(long a);
+  void setB(double b);
+  void setC(float c);
+  void setD(int d);
+  void setE(unsigned char e);
+  void setF(bool f);
 
-		void * operator new(size_t size) {
-			return truffle_virtual_malloc(size);
-		} 
+  long getA(void);
+  double getB(void);
+  float getC(void);
+  int getD(void);
+  unsigned char getE(void);
+  bool getF(void);
 
-		void operator delete(void * p) {
-			// free(p);
-		}
+  void *operator new(size_t size) {
+    return truffle_virtual_malloc(size);
+  }
 
-	private:
-		long a;
-		double b;
-		float c;
-		int d;
-		unsigned char e;
-		bool f;
+  void operator delete(void *p) {
+    // free(p);
+  }
+
+private:
+  long a;
+  double b;
+  float c;
+  int d;
+  unsigned char e;
+  bool f;
 };
 
-
-void Test::setA(long v ) {
-	a = v;
+void Test::setA(long v) {
+  a = v;
 }
 
-void Test::setB(double v ) {
-	b = v;
+void Test::setB(double v) {
+  b = v;
 }
 
-void Test::setC(float v ) {
-	c = v;
+void Test::setC(float v) {
+  c = v;
 }
 
-void Test::setD(int v ) {
-	d = v;
+void Test::setD(int v) {
+  d = v;
 }
 
-void Test::setE(unsigned char v ) {
-	e = v;
+void Test::setE(unsigned char v) {
+  e = v;
 }
 
-void Test::setF(bool v ) {
-	f = v;
+void Test::setF(bool v) {
+  f = v;
 }
 
-
-long Test::getA( void ) {
-	return a;
+long Test::getA(void) {
+  return a;
 }
 
-double Test::getB( void ) {
-	return b;
+double Test::getB(void) {
+  return b;
 }
 
-float Test::getC( void ) {
-	return c;
+float Test::getC(void) {
+  return c;
 }
 
-int Test::getD( void ) {
-	return d;
+int Test::getD(void) {
+  return d;
 }
 
-unsigned char Test::getE( void ) {
-	return e;
+unsigned char Test::getE(void) {
+  return e;
 }
 
-bool Test::getF( void ) {
-	return f;
+bool Test::getF(void) {
+  return f;
 }
 
 // test functions
-extern "C" 
-long testGetA( void ) {
-	Test* t = new Test();
+extern "C" long testGetA(void) {
+  Test *t = new Test();
 
-	t->setA(42);
-	t->setB(13.4);
-	t->setC(13.5f);
-	t->setD(56);
-	t->setE(5);
-	t->setF(true);
-	Test t2 = *t;
-	return t2.getA();
+  t->setA(42);
+  t->setB(13.4);
+  t->setC(13.5f);
+  t->setD(56);
+  t->setE(5);
+  t->setF(true);
+  Test t2 = *t;
+  return t2.getA();
 }
 
-extern "C" 
-double testGetB( void ) {
-	Test* t = new Test();
+extern "C" double testGetB(void) {
+  Test *t = new Test();
 
-	t->setA(42);
-	t->setB(13.4);
-	t->setC(13.5f);
-	t->setD(56);
-	t->setE(5);
-	t->setF(true);
-	Test t2 = *t;
-	return t2.getB();
+  t->setA(42);
+  t->setB(13.4);
+  t->setC(13.5f);
+  t->setD(56);
+  t->setE(5);
+  t->setF(true);
+  Test t2 = *t;
+  return t2.getB();
 }
 
-extern "C" 
-float testGetC( void ) {
-	Test* t = new Test();
+extern "C" float testGetC(void) {
+  Test *t = new Test();
 
-	t->setA(42);
-	t->setB(13.4);
-	t->setC(13.5f);
-	t->setD(56);
-	t->setE(5);
-	t->setF(true);
-	Test t2 = *t;
-	return t2.getC();
+  t->setA(42);
+  t->setB(13.4);
+  t->setC(13.5f);
+  t->setD(56);
+  t->setE(5);
+  t->setF(true);
+  Test t2 = *t;
+  return t2.getC();
 }
 
-extern "C" 
-int testGetD( void ) {
-	Test* t = new Test();
+extern "C" int testGetD(void) {
+  Test *t = new Test();
 
-	t->setA(42);
-	t->setB(13.4);
-	t->setC(13.5f);
-	t->setD(56);
-	t->setE(5);
-	t->setF(true);
-	Test t2 = *t;
-	return t2.getD();
+  t->setA(42);
+  t->setB(13.4);
+  t->setC(13.5f);
+  t->setD(56);
+  t->setE(5);
+  t->setF(true);
+  Test t2 = *t;
+  return t2.getD();
 }
 
-extern "C" 
-unsigned char testGetE( void ) {
-	Test* t = new Test();
+extern "C" unsigned char testGetE(void) {
+  Test *t = new Test();
 
-	t->setA(42);
-	t->setB(13.4);
-	t->setC(13.5f);
-	t->setD(56);
-	t->setE(5);
-	t->setF(true);
-	Test t2 = *t;
-	return t2.getE();
+  t->setA(42);
+  t->setB(13.4);
+  t->setC(13.5f);
+  t->setD(56);
+  t->setE(5);
+  t->setF(true);
+  Test t2 = *t;
+  return t2.getE();
 }
 
-extern "C" 
-bool testGetF( void ) {
-	Test* t = new Test();
+extern "C" bool testGetF(void) {
+  Test *t = new Test();
 
-	t->setA(42);
-	t->setB(13.4);
-	t->setC(13.5f);
-	t->setD(56);
-	t->setE(5);
-	t->setF(true);
+  t->setA(42);
+  t->setB(13.4);
+  t->setC(13.5f);
+  t->setD(56);
+  t->setE(5);
+  t->setF(true);
 
-	Test t2 = *t;
-	return t2.getF();
+  Test t2 = *t;
+  return t2.getF();
 }
-

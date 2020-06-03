@@ -65,13 +65,10 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
 
     /**
      * The {@link #source} is used for all sorts of call stack printing (for error messages and
-     * diagnostics), so we must have a non-null {@BytecodePosition}.
+     * diagnostics), so we must have a non-null {@link BytecodePosition}.
      */
-    private static BytecodePosition findBytecodePosition(Invoke invoke) {
-        if (invoke == null) {
-            /* The context insensitive invoke flow doesn't have an invoke node. */
-            return null;
-        }
+    public static BytecodePosition findBytecodePosition(Invoke invoke) {
+        assert invoke != null;
         BytecodePosition result = invoke.asFixedNode().getNodeSourcePosition();
         if (result == null) {
             result = new BytecodePosition(null, invoke.asFixedNode().graph().method(), invoke.bci());
@@ -79,9 +76,9 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
         return result;
     }
 
-    protected InvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+    protected InvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(findBytecodePosition(invoke), null);
+        super(invokeLocation, null);
         this.originalInvoke = null;
         this.location = location;
         this.receiverType = receiverType;
@@ -313,7 +310,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
      * the receiver type of the method, i.e., its declaring class. Therefore this invoke will link
      * with all possible callees.
      */
-    public static AbstractVirtualInvokeTypeFlow createContextInsensitiveInvoke(BigBang bb, AnalysisMethod method) {
+    public static AbstractVirtualInvokeTypeFlow createContextInsensitiveInvoke(BigBang bb, AnalysisMethod method, BytecodePosition originalLocation) {
         /*
          * The context insensitive invoke has actual parameters and return flows that will be linked
          * to the original actual parameters and return flows at each call site where it will be
@@ -338,7 +335,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
             actualReturn = new ActualReturnTypeFlow(returnType);
         }
 
-        AbstractVirtualInvokeTypeFlow invoke = bb.analysisPolicy().createVirtualInvokeTypeFlow(null, receiverType, method,
+        AbstractVirtualInvokeTypeFlow invoke = bb.analysisPolicy().createVirtualInvokeTypeFlow(originalLocation, receiverType, method,
                         actualParameters, actualReturn, BytecodeLocation.UNKNOWN_BYTECODE_LOCATION);
         invoke.markAsContextInsensitive();
 
@@ -367,9 +364,9 @@ abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
      */
     protected AnalysisContext callerContext;
 
-    protected DirectInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+    protected DirectInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         callerContext = null;
     }
 
@@ -398,9 +395,9 @@ final class StaticInvokeTypeFlow extends DirectInvokeTypeFlow {
 
     private AnalysisContext calleeContext;
 
-    protected StaticInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+    protected StaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         calleeContext = null;
     }
 

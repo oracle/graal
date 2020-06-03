@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.259.0",
+    "mxversion": "5.263.7",
     "name": "substratevm",
     "version" : "20.2.0",
     "release" : False,
@@ -48,11 +48,6 @@ suite = {
             "sha1" : "5d534f0b7aa9124d9797a180688468d2f126039a",
         },
 
-        "JDK11_LIBMUSL_STATIC_LIBS" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jdk-static-libs/labsjdk-ce-11.0.6-jvmci-20.0-b02-musl-static-libs.tar.gz"],
-            "sha1" : "59082db9e4c5a3e1fff58c9c4d7870ace5410bdb",
-        },
-
         "XERCES_IMPL" : {
             "sha1" : "006898f2bdfeca5ac996cfff1b76ef98af5aa6f2",
             "maven" : {
@@ -61,13 +56,6 @@ suite = {
                 "version" : "2.6.2-jaxb-1.0.6",
            },
         },
-    	"GSON_SHADOWED": {
-      		"sha1": "b304ee4a635a313ea49552d8afe8bc5218752d64",
-      		"sourceSha1": "47c5969e5a9c4b3d0abb4ca8d80b43acf8f18b5f",
-      		"urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps",
-      		"urls": ["{urlbase}/gson-shadowed-2.8.5.jar"],
-      		"sourceUrls": ["{urlbase}/gson-shadowed-2.8.5-sources.jar"],
-    	},
         "LLVM_WRAPPER_SHADOWED": {
             "sha1" : "f2d365a8d432d6b2127acda19c5d3418126db9b0",
             "sourceSha1" : "0801daf22b189bbd9d515614a2b79c92af225d56",
@@ -330,7 +318,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.util",
-                "GSON_SHADOWED",
             ],
             "checkstyle": "com.oracle.graal.pointsto",
             "javaCompliance": "8+",
@@ -425,31 +412,6 @@ suite = {
             },
         },
 
-        "com.oracle.svm.native.strictmath": {
-            "subDir": "src",
-            "native": "static_lib",
-            "os_arch": {
-                "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
-                    },
-                },
-                "windows": {
-                    "<others>": {
-                        "cflags": ["-O1", "-D_LITTLE_ENDIAN"],
-                    },
-                },
-                "<others>": {
-                    "sparcv9": {
-                        "ignore": "sparcv9 is not supported",
-                    },
-                    "<others>": {
-                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
-                    },
-                },
-            },
-        },
-
         "com.oracle.svm.native.darwin": {
             "subDir": "src",
             "native": "static_lib",
@@ -492,6 +454,9 @@ suite = {
                     },
                 },
             },
+            "dependencies": [
+                "svm-jvmfuncs-fallback-builder",
+            ],
         },
 
         "com.oracle.svm.native.jvm.windows": {
@@ -511,6 +476,13 @@ suite = {
                     },
                 },
             },
+            "dependencies": [
+                "svm-jvmfuncs-fallback-builder",
+            ],
+        },
+
+        "svm-jvmfuncs-fallback-builder": {
+            "class" : "SubstrateJvmFuncsFallbacksBuilder",
         },
 
         "com.oracle.svm.jni": {
@@ -545,6 +517,13 @@ suite = {
             ],
             "javaCompliance": "8+",
             "spotbugs": "false",
+        },
+
+        "svm-compiler-flags-builder": {
+            "class" : "SubstrateCompilerFlagsBuilder",
+            "dependencies" : [
+                "SVM",
+            ],
         },
 
         "com.oracle.svm.junit": {
@@ -1009,7 +988,6 @@ suite = {
             "layout": {
                 "<os>-<arch>/": [
                     "dependency:com.oracle.svm.native.libchelper/*",
-                    "dependency:com.oracle.svm.native.strictmath/*",
                     "dependency:com.oracle.svm.native.darwin/*",
                     "dependency:com.oracle.svm.native.jvm.posix/*",
                     "dependency:com.oracle.svm.native.jvm.windows/*",
@@ -1033,6 +1011,7 @@ suite = {
             "mainClass": "com.oracle.svm.driver.NativeImage",
             "dependencies": [
                 "com.oracle.svm.driver",
+                "svm-compiler-flags-builder",
             ],
             "distDependencies": [
                 "LIBRARY_SUPPORT",
@@ -1167,30 +1146,6 @@ suite = {
             "description" : "Native-image based junit testing support",
             "layout" : {
                 "native-image.properties" : "file:mx.substratevm/macro-junit.properties",
-            },
-        },
-
-        "JDK11_NATIVE_IMAGE_MUSL_SUPPORT_CE" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "Static JDK11 libraries required for building images with musl",
-            "javaCompliance" : "11",
-            "os_arch" : {
-                "linux" : {
-                    "amd64" : {
-                        "layout" : {
-                            "musl/" : ["extracted-dependency:substratevm:JDK11_LIBMUSL_STATIC_LIBS"],
-                        },
-                    },
-                    "<others>" : {
-                        "ignore" : "only linux-amd64 is supported",
-                    },
-                },
-                "<others>" : {
-                    "<others>" : {
-                        "ignore" : "only linux-amd64 is supported",
-                    },
-                },
             },
         },
 

@@ -33,17 +33,16 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
-import org.graalvm.compiler.replacements.nodes.ObjectClone;
+import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
+import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -130,19 +129,13 @@ public class ObjectCloneWithExceptionNode extends WithExceptionNode implements O
     public FixedNode replaceWithNonThrowing() {
         SubstrateObjectCloneNode plainObjectClone = this.asNode().graph().add(new SubstrateObjectCloneNode(macroParams()));
         plainObjectClone.setStateAfter(stateAfter());
+        AbstractBeginNode nextBegin = this.next;
         AbstractBeginNode oldException = this.exceptionEdge;
         graph().replaceSplitWithFixed(this, plainObjectClone, this.next());
         GraphUtil.killCFG(oldException);
+        if (nextBegin instanceof KillingBeginNode && ((KillingBeginNode) nextBegin).getKilledLocationIdentity().equals(plainObjectClone.getKilledLocationIdentity())) {
+            plainObjectClone.graph().removeFixed(nextBegin);
+        }
         return plainObjectClone;
-    }
-
-    @Override
-    public AbstractBeginNode createNextBegin() {
-        return KillingBeginNode.create(getKilledLocationIdentity());
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 }

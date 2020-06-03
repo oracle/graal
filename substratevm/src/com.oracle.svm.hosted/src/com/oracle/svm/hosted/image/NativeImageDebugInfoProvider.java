@@ -43,11 +43,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 
-import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -186,16 +186,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public List<DebugFrameSizeChange> getFrameSizeChanges() {
             List<DebugFrameSizeChange> frameSizeChanges = new LinkedList<>();
-            for (Mark mark : compilation.getMarks()) {
+            for (CompilationResult.CodeMark mark : compilation.getMarks()) {
                 // we only need to observe stack increment or decrement points
-                if (mark.id.equals("PROLOGUE_DECD_RSP")) {
+                if (mark.id.equals(SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP)) {
                     NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, EXTEND);
                     frameSizeChanges.add(sizeChange);
                     // } else if (mark.id.equals("PROLOGUE_END")) {
                     // can ignore these
                     // } else if (mark.id.equals("EPILOGUE_START")) {
                     // can ignore these
-                } else if (mark.id.equals("EPILOGUE_INCD_RSP")) {
+                } else if (mark.id.equals(SubstrateBackend.SubstrateMarkId.EPILOGUE_INCD_RSP)) {
                     NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, CONTRACT);
                     frameSizeChanges.add(sizeChange);
                     // } else if(mark.id.equals("EPILOGUE_END")) {

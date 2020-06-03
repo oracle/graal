@@ -35,59 +35,43 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * Apply an ObjectVisitor to all the new Object in a Space since a snapshot.
+ * Apply an ObjectVisitor to all the new Objects in a Space since a snapshot.
  *
  * This knows that allocations take place from the last HeapChunks of the Space. And it knows (too
  * much about) that AlignedChunks have a top pointer.
  */
-/* TODO: Does this know too much about the internals of AlignedChunks? */
-/* TODO: Should there be a corresponding class in AlignedChunk? */
-public final class GreyObjectsWalker {
-    /* The Space that is snapshot. */
+final class GreyObjectsWalker {
+    /** The Space that is being captured. */
     private Space space;
-    /* The top of the Space, as Pointers rather than HeapChunks. */
+
+    /* The top of the Space during capture. */
     private AlignedHeapChunk.AlignedHeader alignedHeapChunk;
     private Pointer alignedTop;
     private UnalignedHeapChunk.UnalignedHeader unalignedHeapChunk;
 
-    /** A factory for an instance that will be initialized lazily. */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static GreyObjectsWalker factory() {
-        return new GreyObjectsWalker();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private GreyObjectsWalker() {
-        /* Nothing to do. */
+    GreyObjectsWalker() {
     }
 
     /**
-     * Take a snapshot of a Space, such that all Object in the Space are now black, and any new
+     * Take a snapshot of a Space, such that all Objects in the Space are now black, and any new
      * Objects in the Space will be grey, and can have an ObjectVisitor applied to them.
-     *
-     * @param s The Space to snapshot.
      */
-    void setScanStart(final Space s) {
-        final Log trace = Log.noopLog().string("[Space.GreyObjectsWalker.setScanStart:").string("  s: ").string(s.getName());
-        /* Remember the snapshot "constants". */
+    void setScanStart(Space s) {
+        Log trace = Log.noopLog().string("[Space.GreyObjectsWalker.setScanStart:").string("  s: ").string(s.getName());
         space = s;
-        final AlignedHeapChunk.AlignedHeader aChunk = s.getLastAlignedHeapChunk();
+        AlignedHeapChunk.AlignedHeader aChunk = s.getLastAlignedHeapChunk();
         alignedHeapChunk = aChunk;
         trace.string("  alignedHeapChunk: ").hex(alignedHeapChunk).string("  isNull: ").bool(aChunk.isNull());
         alignedTop = (aChunk.isNonNull() ? aChunk.getTop() : WordFactory.nullPointer());
         trace.string("  alignedTop: ").hex(alignedTop);
-        final UnalignedHeapChunk.UnalignedHeader uChunk = s.getLastUnalignedHeapChunk();
-        unalignedHeapChunk = uChunk;
+        unalignedHeapChunk = s.getLastUnalignedHeapChunk();
         trace.string("  unalignedChunkPointer: ").hex(unalignedHeapChunk).string("]").newline();
     }
 
-    /**
-     * Compare the snapshot to the current state of the Space to see if there are grey Objects.
-     *
-     * @return True if the snapshot updated, false otherwise.
-     */
+    /** Compare the snapshot to the current state of the Space to see if there are grey Objects. */
     @AlwaysInline("GC performance")
-    protected boolean haveGreyObjects() {
+    boolean haveGreyObjects() {
         return alignedHeapChunk.notEqual(space.getLastAlignedHeapChunk()) || alignedHeapChunk.isNonNull() && alignedTop.notEqual(alignedHeapChunk.getTop()) ||
                         unalignedHeapChunk.notEqual(space.getLastUnalignedHeapChunk());
     }
@@ -102,17 +86,13 @@ public final class GreyObjectsWalker {
 
     @AlwaysInline("GC performance")
     private void walkAlignedGreyObjects() {
-        /* Locals that start from the snapshot. */
-        AlignedHeapChunk.AlignedHeader aChunk = WordFactory.nullPointer();
-        Pointer aOffset = WordFactory.nullPointer();
+        AlignedHeapChunk.AlignedHeader aChunk;
         if (alignedHeapChunk.isNull() && alignedTop.isNull()) {
             /* If the snapshot is empty, then I have to walk from the beginning of the Space. */
             aChunk = space.getFirstAlignedHeapChunk();
-            aOffset = (aChunk.isNonNull() ? AlignedHeapChunk.getAlignedHeapChunkStart(aChunk) : WordFactory.nullPointer());
         } else {
             /* Otherwise walk Objects that arrived after the snapshot. */
             aChunk = alignedHeapChunk;
-            aOffset = alignedTop;
         }
         /* Visit Objects in the AlignedChunks. */
         GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
@@ -120,11 +100,10 @@ public final class GreyObjectsWalker {
             AlignedHeapChunk.AlignedHeader lastChunk;
             do {
                 lastChunk = aChunk;
-                if (!AlignedHeapChunk.walkObjectsFromInline(aChunk, aOffset, visitor)) {
+                if (!AlignedHeapChunk.walkObjectsInline(aChunk, visitor)) {
                     throw VMError.shouldNotReachHere();
                 }
                 aChunk = aChunk.getNext();
-                aOffset = (aChunk.isNonNull() ? AlignedHeapChunk.getAlignedHeapChunkStart(aChunk) : WordFactory.nullPointer());
             } while (aChunk.isNonNull());
 
             /* Move the scan point. */
@@ -147,7 +126,7 @@ public final class GreyObjectsWalker {
             UnalignedHeapChunk.UnalignedHeader lastChunk;
             do {
                 lastChunk = uChunk;
-                if (!UnalignedHeapChunk.walkObjectsFromInline(uChunk, UnalignedHeapChunk.getUnalignedHeapChunkStart(uChunk), visitor)) {
+                if (!UnalignedHeapChunk.walkObjectsInline(uChunk, visitor)) {
                     throw VMError.shouldNotReachHere();
                 }
                 uChunk = uChunk.getNext();

@@ -36,51 +36,38 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.thread.JavaVMOperation;
 
-public class MemoryWalkerImpl extends MemoryWalker {
-
+/** Walker to visit different memory regions with a {@link MemoryWalker}. */
+final class MemoryWalkerImpl extends MemoryWalker {
     @Platforms(Platform.HOSTED_ONLY.class)
-    public MemoryWalkerImpl() {
-        super();
+    MemoryWalkerImpl() {
     }
 
-    /** Visit all the memory regions. */
     @Override
-    public boolean visitMemory(MemoryWalker.Visitor memoryWalkerVisitor) {
-        MemoryWalkerVMOperation vmOperation = new MemoryWalkerVMOperation(memoryWalkerVisitor);
-        vmOperation.enqueue();
-        return vmOperation.getResult();
+    public boolean visitMemory(MemoryWalker.Visitor visitor) {
+        MemoryWalkerVMOperation op = new MemoryWalkerVMOperation(visitor);
+        op.enqueue();
+        return op.getResult();
     }
 
-    /** A VMOperation that walks memory. */
-    protected static final class MemoryWalkerVMOperation extends JavaVMOperation {
+    static final class MemoryWalkerVMOperation extends JavaVMOperation {
+        private final MemoryWalker.Visitor visitor;
+        private boolean result = false;
 
-        private MemoryWalker.Visitor memoryWalkerVisitor;
-        private boolean result;
-
-        protected MemoryWalkerVMOperation(MemoryWalker.Visitor memoryVisitor) {
+        MemoryWalkerVMOperation(MemoryWalker.Visitor memoryVisitor) {
             super("MemoryWalkerImpl.visitMemory", SystemEffect.SAFEPOINT);
-            this.memoryWalkerVisitor = memoryVisitor;
-            this.result = false;
+            this.visitor = memoryVisitor;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Allocation would change the memory being visited.")
         public void operate() {
-            ThreadLocalAllocation.disableThreadLocalAllocation();
-            boolean continueVisiting = true;
-            if (continueVisiting) {
-                continueVisiting = HeapImpl.getHeapImpl().walkMemory(memoryWalkerVisitor);
-            }
-            if (continueVisiting) {
-                continueVisiting = CodeInfoTable.getImageCodeCache().walkImageCode(memoryWalkerVisitor);
-            }
-            if (continueVisiting) {
-                continueVisiting = CodeInfoTable.getRuntimeCodeCache().walkRuntimeMethods(memoryWalkerVisitor);
-            }
-            result = continueVisiting;
+            ThreadLocalAllocation.disableAndFlushForAllThreads();
+            result = HeapImpl.getHeapImpl().walkMemory(visitor) &&
+                            CodeInfoTable.getImageCodeCache().walkImageCode(visitor) &&
+                            CodeInfoTable.getRuntimeCodeCache().walkRuntimeMethods(visitor);
         }
 
-        protected boolean getResult() {
+        boolean getResult() {
             return result;
         }
     }

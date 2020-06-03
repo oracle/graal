@@ -27,12 +27,17 @@ package com.oracle.truffle.tools.agentscript.impl;
 import com.oracle.truffle.api.CompilerDirectives;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 final class RegexNameFilter implements Predicate<String> {
     private final Pattern regex;
 
     RegexNameFilter(String fn) {
-        this.regex = Pattern.compile(fn);
+        try {
+            this.regex = Pattern.compile(fn);
+        } catch (PatternSyntaxException ex) {
+            throw InsightException.raise(ex);
+        }
     }
 
     @CompilerDirectives.TruffleBoundary

@@ -403,7 +403,7 @@ public final class NativeImageBuildServer {
             final ImageBuildTask task = loadCompilationTask(arguments, imageClassLoader);
             try {
                 tasks.add(task);
-                return task.build(arguments.toArray(new String[arguments.size()]), classpath, imageClassLoader);
+                return task.build(arguments.toArray(new String[arguments.size()]), imageClassLoader);
             } finally {
                 tasks.remove(task);
             }

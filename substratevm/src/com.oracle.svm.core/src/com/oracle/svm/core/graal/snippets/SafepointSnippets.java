@@ -48,9 +48,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.thread.Safepoint;
 
 final class SafepointSnippets extends SubstrateTemplates implements Snippets {
@@ -63,7 +62,7 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
         }
     }
 
-    private SafepointSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
+    SafepointSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, factories, providers, snippetReflection);
         lowerings.put(SafepointNode.class, new SafepointLowering());
@@ -85,23 +84,20 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
             }
         }
     }
+}
 
-    @AutomaticFeature
-    static class SafepointFeature implements GraalFeature {
+@AutomaticFeature
+class SafepointFeature implements GraalFeature {
 
-        @Override
-        public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
-                        Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls, boolean hosted) {
-            for (SubstrateForeignCallDescriptor descriptor : Safepoint.FOREIGN_CALLS) {
-                foreignCalls.put(descriptor, new SubstrateForeignCallLinkage(providers, descriptor));
-            }
-        }
+    @Override
+    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+        foreignCalls.register(providers, Safepoint.FOREIGN_CALLS);
+    }
 
-        @Override
-        @SuppressWarnings("unused")
-        public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                        SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-            new SafepointSnippets(options, factories, providers, snippetReflection, lowerings);
-        }
+    @Override
+    @SuppressWarnings("unused")
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
+                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        new SafepointSnippets(options, factories, providers, snippetReflection, lowerings);
     }
 }

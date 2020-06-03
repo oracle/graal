@@ -1,8 +1,7 @@
 common_vm: ${common} ${vm_setup} {
   logs: [
     "*/mxbuild/dists/stripped/*.map"
-    "../fastr/libdownloads/*/gnur_configure.log"
-    "../fastr/libdownloads/*/gnur_make.log"
+    "**/install.packages.R.log"
   ]
 }
 
@@ -120,7 +119,7 @@ fastr_darwin: ${fastr} {
     FASTR_FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
     TZDIR: "/usr/share/zoneinfo"
     FASTR_LIBZ_VER: "1.2.11"
-    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1.8.3.0/lib/R/"
+    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1.8.3.0.3/lib/R/"
     PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"
     PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/8.3.0/lib -L/usr/lib"
   }
@@ -168,6 +167,10 @@ gate_vm_linux: ${vm_linux} {
 }
 
 gate_vm_darwin: ${vm_darwin} {
+  targets: [gate]
+}
+
+gate_vm_windows: ${vm_windows} {
   targets: [gate]
 }
 
@@ -233,9 +236,12 @@ weekly_vm_darwin: ${vm_darwin} {
 
 mx_vm_common: [mx, --strip-jars, --no-sources, --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers=env.FORCE_BASH_LAUNCHERS,"${non-product-native-launchers}]
 mx_vm_installables: ${mx_vm_common}
-maven_deploy_sdk_base: [--suite, sdk, maven-deploy, --validate, none, --all-distribution-types, "--tags=graalvm", --with-suite-revisions-metadata]
-maven_deploy_sdk: ${maven_deploy_sdk_base} [${binaries-repository}]
-maven_deploy_dry_run_sdk: ${maven_deploy_sdk_base} [--dry-run, ${binaries-repository}]
+
+maven_deploy_sdk: [--suite, sdk, maven-deploy, --validate, none, --all-distribution-types, --with-suite-revisions-metadata]
+maven_deploy_sdk_base:               ${maven_deploy_sdk} [--tags, graalvm,                             ${binaries-repository}]
+maven_deploy_sdk_base_dry_run:       ${maven_deploy_sdk} [--tags, graalvm,                  --dry-run, ${binaries-repository}]
+maven_deploy_sdk_components:         ${maven_deploy_sdk} [--tags, "installable,standalone",            ${binaries-repository}]
+maven_deploy_sdk_components_dry_run: ${maven_deploy_sdk} [--tags, "installable,standalone", --dry-run, ${binaries-repository}]
 
 full_vm_build_linux: ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${custom_vm_linux}
 full_vm_build_linux_aarch64: ${svm-common-linux-aarch64} ${sulong_linux} ${custom_vm_linux}
@@ -257,7 +263,7 @@ builds += [
       [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa", "--extra-image-builder-argument=-ea", build]
       [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Compiler"]
     ]
-    timelimit: "45:00"
+    timelimit: "1:00:00"
     targets: [gate]
     name: gate-vm-libgraal-compiler
   }
@@ -284,27 +290,27 @@ builds += [
   # Deploy GraalVM Base and Installables
   #
   # Linux
-  ${vm_java_8} ${scan_malware} ${malware_definition_archived} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+  ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ] ${collect_profiles} [
-      ${mx_vm_common} ${vm_profiles} ["--disable-installables=true", build]
-      ${mx_vm_common} ${vm_profiles} ["--disable-installables=true"] ${maven_deploy_sdk}
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
       [set-export, GRAALVM_HOME, ${mx_vm_common} [--no-warning, graalvm-home]]
-    ] ${scan_malware.run}
-    logs: ${common_vm.logs} ${scan_malware.logs}
+    ]
+    logs: ${common_vm.logs}
     timelimit: "1:30:00"
     name: deploy-vm-java8-linux-amd64
   }
   ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ] ${collect_profiles} [
-      ${mx_vm_common} ${vm_profiles} ["--disable-installables=true", build]
-      ${mx_vm_common} ${vm_profiles} ["--disable-installables=true"] ${maven_deploy_sdk}
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     logs: ${common_vm.logs}
@@ -314,8 +320,8 @@ builds += [
   # Darwin
   ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: ${collect_profiles} [
-      ${mx_vm_common} ${vm_profiles} ["--disable-installables=true", build]
-      ${mx_vm_common} ${vm_profiles} ["--disable-installables=true"] ${maven_deploy_sdk}
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
       ${notify-releaser}
     ]
@@ -325,7 +331,7 @@ builds += [
   ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
       ${notify-nexus-deploy}
     ]
     timelimit: "2:00:00"
@@ -333,8 +339,8 @@ builds += [
   }
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: ${collect_profiles} [
-      ${mx_vm_common} ${vm_profiles} ["--disable-installables=true", build]
-      ${mx_vm_common} ${vm_profiles} ["--disable-installables=true"] ${maven_deploy_sdk}
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:45:00"
@@ -343,7 +349,7 @@ builds += [
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
       ${notify-nexus-deploy}
     ]
     timelimit: "2:00:00"
@@ -353,8 +359,8 @@ builds += [
   ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${svm-common-windows} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
-      ${mx_vm_common} ["--disable-installables=true", build]
-      ${mx_vm_common} ["--disable-installables=true"] ${maven_deploy_sdk}
+      ${mx_vm_common} [build]
+      ${mx_vm_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
@@ -363,8 +369,8 @@ builds += [
   ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
-      ${mx_vm_common} ["--disable-installables=true", build]
-      ${mx_vm_common} ["--disable-installables=true"] ${maven_deploy_sdk}
+      ${mx_vm_common} [build]
+      ${mx_vm_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
@@ -374,7 +380,7 @@ builds += [
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}, build]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk}
+      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk_components}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
@@ -384,7 +390,7 @@ builds += [
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}, build]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk}
+      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk_components}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
@@ -398,7 +404,7 @@ builds += [
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
       ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_sdk}
+      ${mx_vm_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
@@ -408,7 +414,7 @@ builds += [
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
       ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_sdk}
+      ${mx_vm_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
@@ -419,7 +425,7 @@ builds += [
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
       ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_sdk}
+      ${mx_vm_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "2:30:00"
@@ -429,7 +435,7 @@ builds += [
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
       ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_sdk}
+      ${mx_vm_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "2:30:00"

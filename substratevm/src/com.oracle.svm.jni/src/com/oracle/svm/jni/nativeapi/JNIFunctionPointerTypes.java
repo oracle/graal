@@ -204,7 +204,7 @@ public final class JNIFunctionPointerTypes {
     public interface ReleaseByteArrayElementsFunctionPointer extends CFunctionPointer {
         // isCopy is actually a boolean
         @InvokeCFunctionPointer
-        CCharPointer invoke(JNIEnvironment env, JNIObjectHandle byteArray, int mode);
+        CCharPointer invoke(JNIEnvironment env, JNIObjectHandle byteArray, CCharPointer elements, int mode);
     }
 
     private JNIFunctionPointerTypes() {

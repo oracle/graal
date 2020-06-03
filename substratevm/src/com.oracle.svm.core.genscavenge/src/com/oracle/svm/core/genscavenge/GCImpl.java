@@ -30,19 +30,10 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointe
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.management.GarbageCollectorMXBean;
-import java.lang.management.ManagementFactory;
 import java.lang.ref.Reference;
-import java.util.ArrayList;
 import java.util.List;
 
-import javax.management.MBeanNotificationInfo;
-import javax.management.NotificationEmitter;
-import javax.management.NotificationFilter;
-import javax.management.NotificationListener;
-import javax.management.ObjectName;
-
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -77,10 +68,7 @@ import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.heap.AllocationFreeList;
-import com.oracle.svm.core.heap.AllocationFreeList.PreviouslyRegisteredElementException;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
-import com.oracle.svm.core.heap.CollectionWatcher;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
@@ -89,7 +77,6 @@ import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaStackWalk;
@@ -103,107 +90,46 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
-import com.sun.management.GcInfo;
-
-import sun.management.Util;
 
 //Checkstyle: resume
 
 /**
- * Most of the GC state is preallocated at image build time.
+ * Garbage collector (incremental or complete) for {@link HeapImpl}.
  */
-public class GCImpl implements GC {
-    static final class Options {
-        @Option(help = "How much history to maintain about garbage collections.")//
-        public static final HostedOptionKey<Integer> GCHistory = new HostedOptionKey<>(1);
-    }
+public final class GCImpl implements GC {
+    private final RememberedSetConstructor rememberedSetConstructor = new RememberedSetConstructor();
+    private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
+    private final GreyToBlackObjectVisitor greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
+    private final CollectionPolicy collectOnlyCompletelyPolicy = new CollectionPolicy.OnlyCompletely();
+    private final BlackenImageHeapRootsVisitor blackenImageHeapRootsVisitor = new BlackenImageHeapRootsVisitor();
+    private final RuntimeCodeCacheWalker runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
+    private final RuntimeCodeCacheCleaner runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
 
-    private static final int DECIMALS_IN_TIME_PRINTING = 7;
+    private final Accounting accounting = new Accounting();
+    private final Timers timers = new Timers();
 
-    private final RememberedSetConstructor rememberedSetConstructor;
-    private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor;
-    private final GreyToBlackObjectVisitor greyToBlackObjectVisitor;
-    private final CollectionPolicy collectOnlyCompletelyPolicy;
+    private final CollectionVMOperation collectOperation = new CollectionVMOperation();
+    private final OutOfMemoryError oldGenerationSizeExceeded = new OutOfMemoryError("Garbage-collected heap size exceeded.");
+    private final NoAllocationVerifier noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
 
-    private final Accounting accounting;
-    private final CollectionVMOperation collectOperation;
-
-    private final OutOfMemoryError oldGenerationSizeExceeded;
-
-    private final AllocationFreeList<CollectionWatcher> collectionWatcherList;
-    private final NoAllocationVerifier noAllocationVerifier;
-
-    private final GarbageCollectorManagementFactory gcManagementFactory;
-
-    private final ThreadLocalMTWalker threadLocalsWalker;
-    private final RuntimeCodeCacheWalker runtimeCodeCacheWalker;
-    private final RuntimeCodeCacheCleaner runtimeCodeCacheCleaner;
+    private final GCManagementFactory managementFactory = new GCManagementFactory();
 
     private CollectionPolicy policy;
-    private boolean completeCollection;
-    private UnsignedWord sizeBefore;
+    private boolean completeCollection = false;
+    private UnsignedWord sizeBefore = WordFactory.zero();
+    private boolean collectionInProgress = false;
+    private UnsignedWord collectionEpoch = WordFactory.zero();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected GCImpl(FeatureAccess access) {
-        this.rememberedSetConstructor = new RememberedSetConstructor();
-        this.accounting = Accounting.factory();
-        this.collectOperation = new CollectionVMOperation();
-
-        this.collectionEpoch = WordFactory.zero();
-        this.collectionWatcherList = AllocationFreeList.factory();
-        this.noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
-        this.completeCollection = false;
-        this.sizeBefore = WordFactory.zero();
-
+    GCImpl(FeatureAccess access) {
         this.policy = CollectionPolicy.getInitialPolicy(access);
-        this.greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
-        this.greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
-        this.collectOnlyCompletelyPolicy = new CollectionPolicy.OnlyCompletely();
-        this.collectionInProgress = Latch.factory("Collection in progress");
-        this.oldGenerationSizeExceeded = new OutOfMemoryError("Garbage-collected heap size exceeded.");
-        this.gcManagementFactory = new GarbageCollectorManagementFactory();
-
-        this.threadLocalsWalker = createThreadLocalsWalker();
-        this.runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
-        this.runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
-
-        this.blackenImageHeapRootsTimer = new Timer("blackenImageHeapRootsTimer");
-        this.blackenDirtyCardRootsTimer = new Timer("blackenDirtyCardRoots");
-        this.blackenStackRootsTimer = new Timer("blackenStackRoots");
-        this.cheneyScanFromRootsTimer = new Timer("cheneyScanFromRoots");
-        this.cheneyScanFromDirtyRootsTimer = new Timer("cheneyScanFromDirtyRoots");
-        this.collectionTimer = new Timer("collection");
-        this.referenceObjectsTimer = new Timer("referenceObjects");
-        this.releaseSpacesTimer = new Timer("releaseSpaces");
-        this.promotePinnedObjectsTimer = new Timer("promotePinnedObjects");
-        this.rootScanTimer = new Timer("rootScan");
-        this.scanGreyObjectsTimer = new Timer("scanGreyObject");
-        this.verifyAfterTimer = new Timer("verifyAfter");
-        this.verifyBeforeTimer = new Timer("verifyBefore");
-        this.watchersBeforeTimer = new Timer("watchersBefore");
-        this.watchersAfterTimer = new Timer("watchersAfter");
-        this.mutatorTimer = new Timer("Mutator");
-        this.walkThreadLocalsTimer = new Timer("walkThreadLocals");
-        this.walkRuntimeCodeCacheTimer = new Timer("walkRuntimeCodeCacheTimer");
-        this.cleanRuntimeCodeCacheTimer = new Timer("cleanRuntimeCodeCacheTimer");
-
         RuntimeSupport.getRuntimeSupport().addShutdownHook(this::printGCSummary);
-    }
-
-    private static ThreadLocalMTWalker createThreadLocalsWalker() {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            return new ThreadLocalMTWalker();
-        } else {
-            return null;
-        }
     }
 
     @Override
     public void collect(GCCause cause) {
-        final UnsignedWord requestingEpoch = possibleCollectionPrologue();
-        /* Collect without allocating. */
+        UnsignedWord requestingEpoch = possibleCollectionPrologue();
         collectWithoutAllocating(cause);
-        /* Do anything necessary now that allocation, etc., is allowed. */
         possibleCollectionEpilogue(requestingEpoch);
     }
 
@@ -216,7 +142,6 @@ public class GCImpl implements GC {
         data.setCauseId(cause.getId());
         data.setRequestingEpoch(getCollectionEpoch());
         collectOperation.enqueue(data);
-
         if (data.getOutOfMemory()) {
             throw oldGenerationSizeExceeded;
         }
@@ -224,7 +149,7 @@ public class GCImpl implements GC {
 
     /** The body of the VMOperation to do the collection. */
     private boolean collectOperation(GCCause cause, UnsignedWord requestingEpoch) {
-        final Log trace = Log.noopLog().string("[GCImpl.collectOperation:").newline()
+        Log trace = Log.noopLog().string("[GCImpl.collectOperation:").newline()
                         .string("  epoch: ").unsigned(getCollectionEpoch())
                         .string("  cause: ").string(cause.getName())
                         .string("  requestingEpoch: ").unsigned(requestingEpoch)
@@ -232,38 +157,22 @@ public class GCImpl implements GC {
         assert VMOperation.isGCInProgress() : "Collection should be a VMOperation.";
         assert getCollectionEpoch().equal(requestingEpoch);
 
-        /* Stop the mutator timer. */
-        mutatorTimer.close();
-
-        /* Note that a collection is in progress, or exit if one is already in progress. */
+        timers.mutator.close();
         startCollectionOrExit();
-        /* Reset things for this collection. */
-        resetTimers();
-        incrementCollectionEpoch();
+
+        timers.resetAllExceptMutator();
+        collectionEpoch = collectionEpoch.add(1);
 
         /* Flush chunks from thread-local lists to global lists. */
-        ThreadLocalAllocation.disableThreadLocalAllocation();
-        /* Report the heap before the collection. */
+        ThreadLocalAllocation.disableAndFlushForAllThreads();
+
         printGCBefore(cause.getName());
-        /* Scrub the lists I maintain, before the collection. */
-        scrubLists();
-        /* Run any collection watchers before the collection. */
-        visitWatchersBefore();
-
-        /* Collect. */
         boolean outOfMemory = collectImpl(cause.getName());
-
-        /* Run any collection watchers after the collection. */
-        visitWatchersAfter();
-        /* Reset for the next collection. */
         HeapPolicy.youngUsedBytes.set(getAccounting().getYoungChunkBytesAfter());
-        /* Print the heap after the collection. */
         printGCAfter(cause.getName());
-        /* Note that the collection is finished. */
-        finishCollection();
 
-        /* Start the mutator timer. */
-        mutatorTimer.open();
+        finishCollection();
+        timers.mutator.open();
 
         trace.string("]").newline();
         return outOfMemory;
@@ -271,24 +180,18 @@ public class GCImpl implements GC {
 
     @SuppressWarnings("try")
     private boolean collectImpl(String cause) {
-        final Log trace = Log.noopLog().string("[GCImpl.collectImpl:").newline().string("  epoch: ").unsigned(getCollectionEpoch()).string("  cause: ").string(cause).newline();
+        Log trace = Log.noopLog().string("[GCImpl.collectImpl:").newline().string("  epoch: ").unsigned(getCollectionEpoch()).string("  cause: ").string(cause).newline();
         boolean outOfMemory;
 
         precondition();
 
-        /*
-         * Disable young generation allocations *inside* the collector, and detect any that slip in.
-         */
         trace.string("  Begin collection: ");
         try (NoAllocationVerifier nav = noAllocationVerifier.open()) {
-
             trace.string("  Verify before: ");
-            try (Timer vbt = verifyBeforeTimer.open()) {
+            try (Timer vbt = timers.verifyBefore.open()) {
                 HeapImpl.getHeapImpl().verifyBeforeGC(cause, getCollectionEpoch());
             }
-
             outOfMemory = doCollectImpl(getPolicy());
-
             if (outOfMemory) {
                 // Avoid running out of memory with a full GC that reclaims softly reachable objects
                 ReferenceObjectProcessing.setSoftReferencesAreWeak(true);
@@ -299,9 +202,8 @@ public class GCImpl implements GC {
                 }
             }
         }
-
         trace.string("  Verify after: ");
-        try (Timer vat = verifyAfterTimer.open()) {
+        try (Timer vat = timers.verifyAfter.open()) {
             HeapImpl.getHeapImpl().verifyAfterGC(cause, getCollectionEpoch());
         }
 
@@ -317,7 +219,7 @@ public class GCImpl implements GC {
 
         getAccounting().beforeCollection();
 
-        try (Timer ct = collectionTimer.open()) {
+        try (Timer ct = timers.collection.open()) {
             if (appliedPolicy.collectIncrementally()) {
                 scavenge(true);
             }
@@ -328,7 +230,7 @@ public class GCImpl implements GC {
         }
         CommittedMemoryProvider.get().afterGarbageCollection(completeCollection);
 
-        getAccounting().afterCollection(completeCollection, collectionTimer);
+        getAccounting().afterCollection(completeCollection, timers.collection);
         UnsignedWord maxBytes = HeapPolicy.getMaximumHeapSize();
         UnsignedWord usedBytes = getChunkUsedBytesAfterCollection();
         boolean outOfMemory = usedBytes.aboveThan(maxBytes);
@@ -338,16 +240,11 @@ public class GCImpl implements GC {
         return outOfMemory;
     }
 
-    /*
-     * Implementation methods.
-     */
-
     private void printGCBefore(String cause) {
-        final Log verboseGCLog = Log.log();
-        final HeapImpl heap = HeapImpl.getHeapImpl();
+        Log verboseGCLog = Log.log();
+        HeapImpl heap = HeapImpl.getHeapImpl();
         sizeBefore = ((SubstrateOptions.PrintGC.getValue() || HeapOptions.PrintHeapShape.getValue()) ? heap.getUsedChunkBytes() : WordFactory.zero());
         if (SubstrateOptions.VerboseGC.getValue() && getCollectionEpoch().equal(1)) {
-            /* Print the command line options that shape the heap. */
             verboseGCLog.string("[Heap policy parameters: ").newline();
             verboseGCLog.string("  YoungGenerationSize: ").unsigned(HeapPolicy.getMaximumYoungGenerationSize()).newline();
             verboseGCLog.string("      MaximumHeapSize: ").unsigned(HeapPolicy.getMaximumHeapSize()).newline();
@@ -358,11 +255,10 @@ public class GCImpl implements GC {
                 HeapImpl.getHeapImpl().logImageHeapPartitionBoundaries(verboseGCLog).newline();
             }
         }
-
         if (SubstrateOptions.VerboseGC.getValue()) {
             verboseGCLog.string("[");
             verboseGCLog.string("[");
-            final long startTime = System.nanoTime();
+            long startTime = System.nanoTime();
             if (HeapOptions.PrintGCTimeStamps.getValue()) {
                 verboseGCLog.unsigned(TimeUtils.roundNanosToMillis(Timer.getTimeSinceFirstAllocation(startTime))).string(" msec: ");
             } else {
@@ -377,15 +273,15 @@ public class GCImpl implements GC {
     }
 
     private void printGCAfter(String cause) {
-        final Log verboseGCLog = Log.log();
-        final HeapImpl heap = HeapImpl.getHeapImpl();
+        Log verboseGCLog = Log.log();
+        HeapImpl heap = HeapImpl.getHeapImpl();
         if (SubstrateOptions.PrintGC.getValue() || SubstrateOptions.VerboseGC.getValue()) {
             if (SubstrateOptions.PrintGC.getValue()) {
-                final Log printGCLog = Log.log();
-                final UnsignedWord sizeAfter = heap.getUsedChunkBytes();
+                Log printGCLog = Log.log();
+                UnsignedWord sizeAfter = heap.getUsedChunkBytes();
                 printGCLog.string("[");
                 if (HeapOptions.PrintGCTimeStamps.getValue()) {
-                    final long finishNanos = collectionTimer.getFinish();
+                    long finishNanos = timers.collection.getFinish();
                     printGCLog.unsigned(TimeUtils.roundNanosToMillis(Timer.getTimeSinceFirstAllocation(finishNanos))).string(" msec: ");
                 }
                 printGCLog.string(completeCollection ? "Full GC" : "Incremental GC");
@@ -393,13 +289,12 @@ public class GCImpl implements GC {
                 printGCLog.unsigned(sizeBefore.unsignedDivide(1024));
                 printGCLog.string("K->");
                 printGCLog.unsigned(sizeAfter.unsignedDivide(1024)).string("K, ");
-                printGCLog.rational(collectionTimer.getCollectedNanos(), TimeUtils.nanosPerSecond, DECIMALS_IN_TIME_PRINTING).string(" secs");
-
+                printGCLog.rational(timers.collection.getMeasuredNanos(), TimeUtils.nanosPerSecond, 7).string(" secs");
                 printGCLog.string("]").newline();
             }
             if (SubstrateOptions.VerboseGC.getValue()) {
                 verboseGCLog.string(" [");
-                final long finishNanos = collectionTimer.getFinish();
+                long finishNanos = timers.collection.getFinish();
                 if (HeapOptions.PrintGCTimeStamps.getValue()) {
                     verboseGCLog.unsigned(TimeUtils.roundNanosToMillis(Timer.getTimeSinceFirstAllocation(finishNanos))).string(" msec: ");
                 } else {
@@ -414,9 +309,9 @@ public class GCImpl implements GC {
                 }
                 if (!HeapOptions.PrintGCTimes.getValue()) {
                     verboseGCLog.newline();
-                    verboseGCLog.string("  collection time: ").unsigned(collectionTimer.getCollectedNanos()).string(" nanoSeconds");
+                    verboseGCLog.string("  collection time: ").unsigned(timers.collection.getMeasuredNanos()).string(" nanoSeconds");
                 } else {
-                    logGCTimers(verboseGCLog);
+                    timers.logAfterCollection(verboseGCLog);
                 }
                 verboseGCLog.string("]");
                 verboseGCLog.string("]").newline();
@@ -425,33 +320,30 @@ public class GCImpl implements GC {
     }
 
     private static void precondition() {
-        /* Pre-condition checks things that heap verification can not check. */
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final OldGeneration oldGen = heap.getOldGeneration();
+        OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
         assert oldGen.getToSpace().isEmpty() : "oldGen.getToSpace() should be empty before a collection.";
     }
 
     private void postcondition() {
-        /* Post-condition checks things that heap verification can not check. */
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final YoungGeneration youngGen = heap.getYoungGeneration();
-        final OldGeneration oldGen = heap.getOldGeneration();
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        YoungGeneration youngGen = heap.getYoungGeneration();
+        OldGeneration oldGen = heap.getOldGeneration();
         verbosePostCondition();
         assert youngGen.getEden().isEmpty() : "youngGen.getEden() should be empty after a collection.";
         assert oldGen.getToSpace().isEmpty() : "oldGen.getToSpace() should be empty after a collection.";
     }
 
     private void verbosePostCondition() {
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final YoungGeneration youngGen = heap.getYoungGeneration();
-        final OldGeneration oldGen = heap.getOldGeneration();
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        YoungGeneration youngGen = heap.getYoungGeneration();
+        OldGeneration oldGen = heap.getOldGeneration();
         /*
          * Note to self: I can get output similar to this *all the time* by running with
          * -R:+VerboseGC -R:+PrintHeapShape -R:+TraceHeapChunks
          */
         final boolean forceForTesting = false;
         if (runtimeAssertions() || forceForTesting) {
-            final Log witness = Log.log();
+            Log witness = Log.log();
             if ((!youngGen.getEden().isEmpty()) || forceForTesting) {
                 witness.string("[GCImpl.postcondition: Eden space should be empty after a collection.").newline();
                 /* Print raw fields before trying to walk the chunk lists. */
@@ -510,14 +402,14 @@ public class GCImpl implements GC {
 
     @Fold
     public static GCImpl getGCImpl() {
-        final GCImpl gcImpl = HeapImpl.getHeapImpl().getGCImpl();
+        GCImpl gcImpl = HeapImpl.getHeapImpl().getGCImpl();
         assert gcImpl != null;
         return gcImpl;
     }
 
     @Override
-    public void collectCompletely(final GCCause cause) {
-        final CollectionPolicy oldPolicy = getPolicy();
+    public void collectCompletely(GCCause cause) {
+        CollectionPolicy oldPolicy = getPolicy();
         try {
             setPolicy(collectOnlyCompletelyPolicy);
             collect(cause);
@@ -530,17 +422,12 @@ public class GCImpl implements GC {
         return completeCollection;
     }
 
-    /**
-     * Scavenge, either just from dirty roots or from all roots.
-     *
-     * Process discovered references while scavenging.
-     */
+    /** Scavenge, either from dirty roots or from all roots, and process discovered references. */
     @SuppressWarnings("try")
     private void scavenge(boolean fromDirtyRoots) {
         try (GreyToBlackObjRefVisitor.Counters gtborv = greyToBlackObjRefVisitor.openCounters()) {
-            final Log trace = Log.noopLog().string("[GCImpl.scavenge:").string("  fromDirtyRoots: ").bool(fromDirtyRoots).newline();
-
-            try (Timer rst = rootScanTimer.open()) {
+            Log trace = Log.noopLog().string("[GCImpl.scavenge:").string("  fromDirtyRoots: ").bool(fromDirtyRoots).newline();
+            try (Timer rst = timers.rootScan.open()) {
                 trace.string("  Cheney scan: ");
                 if (fromDirtyRoots) {
                     cheneyScanFromDirtyRoots();
@@ -548,23 +435,17 @@ public class GCImpl implements GC {
                     cheneyScanFromRoots();
                 }
             }
-
             trace.string("  Discovered references: ");
-            try (Timer drt = referenceObjectsTimer.open()) {
+            try (Timer drt = timers.referenceObjects.open()) {
                 Reference<?> newlyPendingList = ReferenceObjectProcessing.processRememberedReferences();
                 HeapImpl.getHeapImpl().addToReferencePendingList(newlyPendingList);
             }
-
             trace.string("  Release spaces: ");
-            /* Release any memory in the young and from Spaces. */
-            try (Timer rst = releaseSpacesTimer.open()) {
+            try (Timer rst = timers.releaseSpaces.open()) {
                 releaseSpaces();
             }
-
             trace.string("  Swap spaces: ");
-            /* Exchange the from and to Spaces. */
             swapSpaces();
-
             trace.string("]").newline();
         }
     }
@@ -576,23 +457,23 @@ public class GCImpl implements GC {
      */
     @SuppressWarnings("try")
     private void walkRuntimeCodeCache() {
-        try (Timer wrm = walkRuntimeCodeCacheTimer.open()) {
+        try (Timer wrm = timers.walkRuntimeCodeCache.open()) {
             RuntimeCodeInfoMemory.singleton().walkRuntimeMethods(runtimeCodeCacheWalker);
         }
     }
 
     @SuppressWarnings("try")
     private void cleanRuntimeCodeCache() {
-        try (Timer wrm = cleanRuntimeCodeCacheTimer.open()) {
+        try (Timer wrm = timers.cleanRuntimeCodeCache.open()) {
             RuntimeCodeInfoMemory.singleton().walkRuntimeMethods(runtimeCodeCacheCleaner);
         }
     }
 
     @SuppressWarnings("try")
     private void cheneyScanFromRoots() {
-        final Log trace = Log.noopLog().string("[GCImpl.cheneyScanFromRoots:").newline();
+        Log trace = Log.noopLog().string("[GCImpl.cheneyScanFromRoots:").newline();
 
-        try (Timer csfrt = cheneyScanFromRootsTimer.open()) {
+        try (Timer csfrt = timers.cheneyScanFromRoots.open()) {
             /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
             /*
              * Debugging tip: I could move the taking of the snapshot and the scanning of grey
@@ -644,17 +525,15 @@ public class GCImpl implements GC {
 
     @SuppressWarnings("try")
     private void cheneyScanFromDirtyRoots() {
-        final Log trace = Log.noopLog().string("[GCImpl.cheneyScanFromDirtyRoots:").newline();
+        Log trace = Log.noopLog().string("[GCImpl.cheneyScanFromDirtyRoots:").newline();
 
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final OldGeneration oldGen = heap.getOldGeneration();
-
-        try (Timer csfdrt = cheneyScanFromDirtyRootsTimer.open()) {
+        try (Timer csfdrt = timers.cheneyScanFromDirtyRoots.open()) {
             /*
              * Move all the chunks in fromSpace to toSpace. That does not make those chunks grey, so
              * I have to use the dirty cards marks to blacken them, but that's what card marks are
              * for.
              */
+            OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
             oldGen.emptyFromSpaceIntoToSpace();
 
             /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
@@ -717,21 +596,18 @@ public class GCImpl implements GC {
 
     @SuppressWarnings("try")
     private void promoteIndividualPinnedObjects() {
-        final Log trace = Log.noopLog().string("[GCImpl.promoteIndividualPinnedObjects:").newline();
-        try (Timer ppot = promotePinnedObjectsTimer.open()) {
-            /* Capture the PinnedObject list and start a new one. */
-            final PinnedObjectImpl oldList = PinnedObjectImpl.claimPinnedObjectList();
-            /* Walk the list, dealing with the open PinnedObjects. */
-            PinnedObjectImpl rest = oldList;
+        Log trace = Log.noopLog().string("[GCImpl.promoteIndividualPinnedObjects:").newline();
+        try (Timer ppot = timers.promotePinnedObjects.open()) {
+            PinnedObjectImpl rest = PinnedObjectImpl.claimPinnedObjectList();
             while (rest != null) {
-                final PinnedObjectImpl first = rest;
-                final PinnedObjectImpl next = first.getNext();
+                PinnedObjectImpl first = rest;
+                PinnedObjectImpl next = first.getNext();
                 if (first.isOpen()) {
                     /*
-                     * Promote the chunk with the object, and put this PinnedObject on the new list.
+                     * Promote the chunk with the object, and put this PinnedObject on the new list
+                     * (which reverses the list).
                      */
                     promotePinnedObject(first);
-                    /* Pushing onto the new list reverses the order of the list. */
                     PinnedObjectImpl.pushPinnedObject(first);
                 }
                 rest = next;
@@ -746,8 +622,8 @@ public class GCImpl implements GC {
     @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.", calleeMustBe = false)
     @SuppressWarnings("try")
     private void blackenStackRoots() {
-        final Log trace = Log.noopLog().string("[GCImpl.blackenStackRoots:").newline();
-        try (Timer bsr = blackenStackRootsTimer.open()) {
+        Log trace = Log.noopLog().string("[GCImpl.blackenStackRoots:").newline();
+        try (Timer bsr = timers.blackenStackRoots.open()) {
             Pointer sp = readCallerStackPointer();
             trace.string("[blackenStackRoots:").string("  sp: ").hex(sp);
             CodePointer ip = readReturnAddress();
@@ -843,11 +719,11 @@ public class GCImpl implements GC {
 
     @SuppressWarnings("try")
     private void walkThreadLocals() {
-        final Log trace = Log.noopLog().string("[walkRegisteredObjectReferences").string(":").newline();
-        if (threadLocalsWalker != null) {
-            try (Timer wrm = walkThreadLocalsTimer.open()) {
+        Log trace = Log.noopLog().string("[walkRegisteredObjectReferences").string(":").newline();
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            try (Timer wrm = timers.walkThreadLocals.open()) {
                 trace.string("[ThreadLocalsWalker:").newline();
-                threadLocalsWalker.walk(greyToBlackObjRefVisitor);
+                ThreadLocalMTWalker.walk(greyToBlackObjRefVisitor);
                 trace.string("]").newline();
             }
         }
@@ -860,17 +736,15 @@ public class GCImpl implements GC {
         trace.string("]").newline();
     }
 
-    private final BlackenImageHeapRootsVisitor blackenImageHeapRootsVisitor = new BlackenImageHeapRootsVisitor();
-
     private class BlackenImageHeapRootsVisitor implements MemoryWalker.Visitor {
         @Override
         @SuppressWarnings("try")
         public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
             if (access.containsReferences(region) && access.isWritable(region)) {
-                try (Timer timer = blackenImageHeapRootsTimer.open()) {
+                try (Timer timer = timers.blackenImageHeapRoots.open()) {
                     ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
                     Pointer cur = Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject);
-                    final Pointer last = Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject);
+                    Pointer last = Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject);
                     while (cur.belowOrEqual(last)) {
                         Object obj = cur.toObject();
                         if (obj != null) {
@@ -896,23 +770,23 @@ public class GCImpl implements GC {
 
     @SuppressWarnings("try")
     private void blackenDirtyCardRoots() {
-        final Log trace = Log.noopLog().string("[GCImpl.blackenDirtyCardRoots:").newline();
-        try (Timer bdcrt = blackenDirtyCardRootsTimer.open()) {
+        Log trace = Log.noopLog().string("[GCImpl.blackenDirtyCardRoots:").newline();
+        try (Timer bdcrt = timers.blackenDirtyCardRoots.open()) {
             /*
              * Walk To-Space looking for dirty cards, and within those for old-to-young pointers.
              * Promote any referenced young objects.
              */
-            final HeapImpl heap = HeapImpl.getHeapImpl();
+            HeapImpl heap = HeapImpl.getHeapImpl();
             heap.getOldGeneration().walkDirtyObjects(greyToBlackObjectVisitor, true);
         }
         trace.string("]").newline();
     }
 
     private static void prepareForPromotion(boolean isIncremental) {
-        final Log trace = Log.noopLog().string("[GCImpl.prepareForPromotion:").newline();
+        Log trace = Log.noopLog().string("[GCImpl.prepareForPromotion:").newline();
 
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final OldGeneration oldGen = heap.getOldGeneration();
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        OldGeneration oldGen = heap.getOldGeneration();
         oldGen.prepareForPromotion();
         if (isIncremental) {
             heap.getYoungGeneration().prepareForPromotion();
@@ -923,10 +797,10 @@ public class GCImpl implements GC {
 
     @SuppressWarnings("try")
     private void scanGreyObjects(boolean isIncremental) {
-        final Log trace = Log.noopLog().string("[GCImpl.scanGreyObjects").newline();
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final OldGeneration oldGen = heap.getOldGeneration();
-        try (Timer sgot = scanGreyObjectsTimer.open()) {
+        Log trace = Log.noopLog().string("[GCImpl.scanGreyObjects").newline();
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        OldGeneration oldGen = heap.getOldGeneration();
+        try (Timer sgot = timers.scanGreyObjects.open()) {
             if (isIncremental) {
                 scanGreyObjectsLoop();
             } else {
@@ -937,10 +811,10 @@ public class GCImpl implements GC {
     }
 
     private static void scanGreyObjectsLoop() {
-        final Log trace = Log.noopLog().string("[GCImpl.scanGreyObjectsLoop").newline();
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final YoungGeneration youngGen = heap.getYoungGeneration();
-        final OldGeneration oldGen = heap.getOldGeneration();
+        Log trace = Log.noopLog().string("[GCImpl.scanGreyObjectsLoop").newline();
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        YoungGeneration youngGen = heap.getYoungGeneration();
+        OldGeneration oldGen = heap.getOldGeneration();
         boolean hasGrey = true;
         while (hasGrey) {
             hasGrey = youngGen.scanGreyObjects();
@@ -950,11 +824,11 @@ public class GCImpl implements GC {
     }
 
     private static void promotePinnedObject(PinnedObjectImpl pinned) {
-        final Log trace = Log.noopLog().string("[GCImpl.promotePinnedObject").string("  pinned: ").object(pinned);
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final OldGeneration oldGen = heap.getOldGeneration();
+        Log trace = Log.noopLog().string("[GCImpl.promotePinnedObject").string("  pinned: ").object(pinned);
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        OldGeneration oldGen = heap.getOldGeneration();
         /* Find the chunk the object is in, and if necessary, move it to To space. */
-        final Object referent = pinned.getObject();
+        Object referent = pinned.getObject();
         if (referent != null && !heap.isInImageHeap(referent)) {
             trace.string("  referent: ").object(referent);
             /*
@@ -967,17 +841,17 @@ public class GCImpl implements GC {
     }
 
     private static void swapSpaces() {
-        final Log trace = Log.noopLog().string("[GCImpl.swapSpaces:");
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final OldGeneration oldGen = heap.getOldGeneration();
+        Log trace = Log.noopLog().string("[GCImpl.swapSpaces:");
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        OldGeneration oldGen = heap.getOldGeneration();
         heap.getYoungGeneration().swapSpaces();
         oldGen.swapSpaces();
         trace.string("]").newline();
     }
 
     private void releaseSpaces() {
-        final Log trace = Log.noopLog().string("[GCImpl.releaseSpaces:");
-        final HeapImpl heap = HeapImpl.getHeapImpl();
+        Log trace = Log.noopLog().string("[GCImpl.releaseSpaces:");
+        HeapImpl heap = HeapImpl.getHeapImpl();
         heap.getYoungGeneration().releaseSpaces();
         if (completeCollection) {
             heap.getOldGeneration().releaseSpaces();
@@ -985,35 +859,29 @@ public class GCImpl implements GC {
         trace.string("]").newline();
     }
 
-    /* Collection in progress methods. */
-
-    /** Is a collection in progress? */
-    final Latch collectionInProgress;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    boolean isCollectionInProgress() {
+        return collectionInProgress;
+    }
 
     private void startCollectionOrExit() {
-        CollectionInProgressError.exitIf(collectionInProgress.getState());
-        collectionInProgress.open();
+        CollectionInProgressError.exitIf(collectionInProgress);
+        collectionInProgress = true;
     }
 
     private void finishCollection() {
-        collectionInProgress.close();
+        assert collectionInProgress;
+        collectionInProgress = false;
     }
 
-    /** Record that a collection is possible. */
     UnsignedWord possibleCollectionPrologue() {
         return getCollectionEpoch();
     }
 
     /**
      * Do whatever is necessary if a collection occurred since the a call to
-     * {@link #possibleCollectionPrologue()}.
-     *
-     * Note that this method may get called by several threads for the same collection. For example,
-     * if several threads arrive at {@link #possibleCollectionPrologue()} before any particular
-     * collection, they will each present the sampled epoch number to this method, and cause any
-     * collection watchers to report. That is mostly a problem for collection watchers to be aware
-     * of. For example, watchers could keep track of the collections they have run in and reported
-     * on, and only put out one report per collection.
+     * {@link #possibleCollectionPrologue()}. Note that this method may get called by several
+     * threads for the same collection.
      */
     @SuppressWarnings("try")
     void possibleCollectionEpilogue(UnsignedWord requestingEpoch) {
@@ -1046,107 +914,16 @@ public class GCImpl implements GC {
             ReferenceHandler.maybeProcessCurrentlyPending();
         }
         if (SubstrateOptions.VerboseGC.getValue() && HeapOptions.PrintGCTimes.getValue()) {
-            logOneTimer(Log.log(), "[GC epilogue reference processing: ", refsTimer);
+            Timers.logOneTimer(Log.log(), "[GC epilogue reference processing: ", refsTimer);
             Log.log().string("]");
         }
-
-        visitWatchersReport();
     }
 
-    /* Collection counting. */
-
-    /** A counter for collections. */
-    private UnsignedWord collectionEpoch;
-
-    UnsignedWord getCollectionEpoch() {
+    public UnsignedWord getCollectionEpoch() {
         return collectionEpoch;
     }
 
-    private void incrementCollectionEpoch() {
-        collectionEpoch = collectionEpoch.add(1);
-    }
-
-    /*
-     * CollectionWatcher methods.
-     */
-    @Override
-    public void registerCollectionWatcher(CollectionWatcher watcher) throws PreviouslyRegisteredElementException {
-        /* Give a reasonable error message for trying to reuse a CollectionWatcher. */
-        if (watcher.getHasBeenOnList()) {
-            throw new PreviouslyRegisteredElementException("Attempting to reuse a previously-registered CollectionWatcher.");
-        }
-        collectionWatcherList.prepend(watcher);
-    }
-
-    @Override
-    public void unregisterCollectionWatcher(final CollectionWatcher watcher) {
-        watcher.removeElement();
-    }
-
-    @SuppressWarnings("try")
-    private void visitWatchersBefore() {
-        final Log trace = Log.noopLog().string("[GCImpl.visitWatchersBefore:").newline();
-        trace.string("  Watchers before: ");
-        try (Timer wbt = watchersBeforeTimer.open()) {
-            for (CollectionWatcher watcher = collectionWatcherList.getFirst(); watcher != null; watcher = watcher.getNextElement()) {
-                try {
-                    watcher.beforeCollection();
-                } catch (Throwable t) {
-                    trace.string("[GCImpl.visitWatchersBefore: Caught: ").string(t.getClass().getName()).string("]").newline();
-                }
-            }
-        }
-        trace.string("]").newline();
-    }
-
-    @SuppressWarnings("try")
-    private void visitWatchersAfter() {
-        final Log trace = Log.noopLog().string("[GCImpl.visitWatchersAfter:").newline();
-        trace.string("  Watchers after: ");
-        try (Timer wat = watchersAfterTimer.open()) {
-            /* Run the registered collection watchers. */
-            for (CollectionWatcher watcher = collectionWatcherList.getFirst(); watcher != null; watcher = watcher.getNextElement()) {
-                try {
-                    watcher.afterCollection();
-                } catch (Throwable t) {
-                    trace.string("[GCImpl.visitWatchersAfter: Caught: ").string(t.getClass().getName()).string("]").newline();
-                }
-            }
-        }
-        trace.string("]").newline();
-    }
-
-    private void visitWatchersReport() {
-        final Log trace = Log.noopLog().string("[GCImpl.visitWatchersReport:").newline();
-        /*
-         * Run single-threaded (but not at a safepoint) so as not be bothered by concurrent
-         * scrubbing of the list due to random garbage collections. There is still window if someone
-         * has unregistered a watcher and then there is another collection, because that will scrub
-         * the list I am walking, even though I am in a VMOperation. I consider that a small-enough
-         * possibility.
-         */
-        JavaVMOperation.enqueueBlockingNoSafepoint("GCImpl.visitWatchersReport", () -> {
-            for (CollectionWatcher watcher = collectionWatcherList.getFirst(); watcher != null; watcher = watcher.getNextElement()) {
-                try {
-                    watcher.report();
-                } catch (Throwable t) {
-                    trace.string("[GCImpl.visitWatchersReport: Caught: ").string(t.getClass().getName()).string("]").newline();
-                }
-            }
-        });
-        trace.string("]").newline();
-    }
-
-    /** Scrub the allocation-free lists I maintain. */
-    private void scrubLists() {
-        collectionWatcherList.scrub();
-    }
-
-    /*
-     * Field access methods.
-     */
-
-    protected Accounting getAccounting() {
+    Accounting getAccounting() {
         return accounting;
     }
 
@@ -1154,7 +931,7 @@ public class GCImpl implements GC {
         return policy;
     }
 
-    private void setPolicy(final CollectionPolicy newPolicy) {
+    private void setPolicy(CollectionPolicy newPolicy) {
         policy = newPolicy;
     }
 
@@ -1162,479 +939,30 @@ public class GCImpl implements GC {
         return greyToBlackObjectVisitor;
     }
 
-    /*
-     * Timers.
-     */
-    private final Timer blackenImageHeapRootsTimer;
-    private final Timer blackenDirtyCardRootsTimer;
-    private final Timer blackenStackRootsTimer;
-    private final Timer cheneyScanFromRootsTimer;
-    private final Timer cheneyScanFromDirtyRootsTimer;
-    private final Timer collectionTimer;
-    private final Timer referenceObjectsTimer;
-    private final Timer promotePinnedObjectsTimer;
-    private final Timer rootScanTimer;
-    private final Timer scanGreyObjectsTimer;
-    private final Timer releaseSpacesTimer;
-    private final Timer verifyAfterTimer;
-    private final Timer verifyBeforeTimer;
-    private final Timer walkThreadLocalsTimer;
-    private final Timer walkRuntimeCodeCacheTimer;
-    private final Timer cleanRuntimeCodeCacheTimer;
-    private final Timer watchersBeforeTimer;
-    private final Timer watchersAfterTimer;
-    private final Timer mutatorTimer;
-
-    private void resetTimers() {
-        final Log trace = Log.noopLog();
-        trace.string("[GCImpl.resetTimers:");
-        watchersBeforeTimer.reset();
-        verifyBeforeTimer.reset();
-        collectionTimer.reset();
-        rootScanTimer.reset();
-        cheneyScanFromRootsTimer.reset();
-        cheneyScanFromDirtyRootsTimer.reset();
-        promotePinnedObjectsTimer.reset();
-        blackenStackRootsTimer.reset();
-        walkThreadLocalsTimer.reset();
-        walkRuntimeCodeCacheTimer.reset();
-        cleanRuntimeCodeCacheTimer.reset();
-        blackenImageHeapRootsTimer.reset();
-        blackenDirtyCardRootsTimer.reset();
-        scanGreyObjectsTimer.reset();
-        referenceObjectsTimer.reset();
-        releaseSpacesTimer.reset();
-        verifyAfterTimer.reset();
-        watchersAfterTimer.reset();
-        /* The mutator timer is *not* reset here. */
-        trace.string("]").newline();
-    }
-
-    private void logGCTimers(final Log log) {
-        if (log.isEnabled()) {
-            log.newline();
-            log.string("  [GC nanoseconds:");
-            logOneTimer(log, "    ", watchersBeforeTimer);
-            logOneTimer(log, "    ", verifyBeforeTimer);
-            logOneTimer(log, "    ", collectionTimer);
-            logOneTimer(log, "      ", rootScanTimer);
-            logOneTimer(log, "        ", cheneyScanFromRootsTimer);
-            logOneTimer(log, "        ", cheneyScanFromDirtyRootsTimer);
-            logOneTimer(log, "          ", promotePinnedObjectsTimer);
-            logOneTimer(log, "          ", blackenStackRootsTimer);
-            logOneTimer(log, "          ", walkThreadLocalsTimer);
-            logOneTimer(log, "          ", walkRuntimeCodeCacheTimer);
-            logOneTimer(log, "          ", cleanRuntimeCodeCacheTimer);
-            logOneTimer(log, "          ", blackenImageHeapRootsTimer);
-            logOneTimer(log, "          ", blackenDirtyCardRootsTimer);
-            logOneTimer(log, "          ", scanGreyObjectsTimer);
-            logOneTimer(log, "      ", referenceObjectsTimer);
-            logOneTimer(log, "      ", releaseSpacesTimer);
-            logOneTimer(log, "    ", verifyAfterTimer);
-            logOneTimer(log, "    ", watchersAfterTimer);
-            logGCLoad(log, "    ", "GCLoad", collectionTimer, mutatorTimer);
-            log.string("]");
-        }
-    }
-
-    private static void logOneTimer(final Log log, final String prefix, final Timer timer) {
-        /* If the timer has recorded some time, then print it. */
-        if (timer.getCollectedNanos() > 0) {
-            log.newline().string(prefix).string(timer.getName()).string(": ").signed(timer.getCollectedNanos());
-        }
-    }
-
-    /**
-     * Log the "GC load" for this collection as the collection time divided by the sum of the
-     * previous mutator interval plus the collection time. This method uses wall-time, and so does
-     * not take in to account that the collector is single-threaded, while the mutator might be
-     * multi-threaded.
-     */
-    private static void logGCLoad(Log log, String prefix, String label, Timer cTimer, Timer mTimer) {
-        final long collectionNanos = cTimer.getLastIntervalNanos();
-        final long mutatorNanos = mTimer.getLastIntervalNanos();
-        /* Compute a rounded percentage, since I can only log integers. */
-        final long intervalNanos = mutatorNanos + collectionNanos;
-        final long intervalGCPercent = (((100 * collectionNanos) + (intervalNanos / 2)) / intervalNanos);
-        log.newline().string(prefix).string(label).string(": ").signed(intervalGCPercent).string("%");
-    }
-
-    /**
-     * Accounting for this collector. Times are in nanoseconds. ChunkBytes refer to bytes reserved
-     * (but maybe not occupied). ObjectBytes refer to bytes occupied by objects.
-     */
-    public static class Accounting {
-
-        /* State that is available to collection policies, etc. */
-        private long incrementalCollectionCount;
-        private long incrementalCollectionTotalNanos;
-        private long completeCollectionCount;
-        private long completeCollectionTotalNanos;
-        private UnsignedWord collectedTotalChunkBytes;
-        private UnsignedWord normalChunkBytes;
-        private UnsignedWord promotedTotalChunkBytes;
-        private UnsignedWord copiedTotalChunkBytes;
-        /* Before and after measures. */
-        private UnsignedWord youngChunkBytesBefore;
-        private UnsignedWord youngChunkBytesAfter;
-        private UnsignedWord oldChunkBytesBefore;
-        private UnsignedWord oldChunkBytesAfter;
-        /* History of promotions and copies. */
-        private int history;
-        private UnsignedWord[] promotedUnpinnedChunkBytes;
-        private UnsignedWord[] copiedUnpinnedChunkBytes;
-        /*
-         * Bytes allocated in Objects, as opposed to bytes of chunks. These are only maintained if
-         * -R:+PrintGCSummary because they are expensive.
-         */
-        private UnsignedWord collectedTotalObjectBytes;
-        private UnsignedWord youngObjectBytesBefore;
-        private UnsignedWord youngObjectBytesAfter;
-        private UnsignedWord oldObjectBytesBefore;
-        private UnsignedWord oldObjectBytesAfter;
-        private UnsignedWord normalObjectBytes;
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        Accounting() {
-            this.incrementalCollectionCount = 0L;
-            this.incrementalCollectionTotalNanos = 0L;
-            this.completeCollectionCount = 0L;
-            this.completeCollectionTotalNanos = 0L;
-            this.normalChunkBytes = WordFactory.zero();
-            this.promotedTotalChunkBytes = WordFactory.zero();
-            this.collectedTotalChunkBytes = WordFactory.zero();
-            this.copiedTotalChunkBytes = WordFactory.zero();
-            this.history = 0;
-            this.youngChunkBytesBefore = WordFactory.zero();
-            this.youngChunkBytesAfter = WordFactory.zero();
-            this.oldChunkBytesBefore = WordFactory.zero();
-            this.oldChunkBytesAfter = WordFactory.zero();
-            /* Initialize histories. */
-            this.promotedUnpinnedChunkBytes = historyFactory(WordFactory.zero());
-            this.copiedUnpinnedChunkBytes = historyFactory(WordFactory.zero());
-            /* Object bytes, if requested. */
-            this.collectedTotalObjectBytes = WordFactory.zero();
-            this.youngObjectBytesBefore = WordFactory.zero();
-            this.youngObjectBytesAfter = WordFactory.zero();
-            this.oldObjectBytesBefore = WordFactory.zero();
-            this.oldObjectBytesAfter = WordFactory.zero();
-            this.normalObjectBytes = WordFactory.zero();
-        }
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        public static Accounting factory() {
-            return new Accounting();
-        }
-
-        /*
-         * Access methods.
-         */
-
-        long getIncrementalCollectionCount() {
-            return incrementalCollectionCount;
-        }
-
-        long getIncrementalCollectionTotalNanos() {
-            return incrementalCollectionTotalNanos;
-        }
-
-        UnsignedWord getNormalChunkBytes() {
-            return normalChunkBytes;
-        }
-
-        UnsignedWord getPromotedTotalChunkBytes() {
-            return promotedTotalChunkBytes;
-        }
-
-        long getCompleteCollectionCount() {
-            return completeCollectionCount;
-        }
-
-        long getCompleteCollectionTotalNanos() {
-            return completeCollectionTotalNanos;
-        }
-
-        UnsignedWord getCopiedTotalChunkBytes() {
-            return copiedTotalChunkBytes;
-        }
-
-        UnsignedWord getCollectedTotalChunkBytes() {
-            return collectedTotalChunkBytes;
-        }
-
-        UnsignedWord getCollectedTotalObjectBytes() {
-            return collectedTotalObjectBytes;
-        }
-
-        UnsignedWord getNormalObjectBytes() {
-            return normalObjectBytes;
-        }
-
-        /** Bytes held in the old generation. */
-        UnsignedWord getOldGenerationAfterChunkBytes() {
-            return oldChunkBytesAfter;
-        }
-
-        /** Bytes held in the young generation. */
-        UnsignedWord getYoungChunkBytesAfter() {
-            return youngChunkBytesAfter;
-        }
-
-        /** Average promoted unpinned chunk bytes. */
-        UnsignedWord averagePromotedUnpinnedChunkBytes() {
-            return averageOfHistory(promotedUnpinnedChunkBytes);
-        }
-
-        /* History methods. */
-
-        /** Increment the amount of history I have seen. */
-        void incrementHistory() {
-            history += 1;
-        }
-
-        /** Convert the history counter into an index into a bounded history array. */
-        int historyAsIndex() {
-            return historyAsIndex(0);
-        }
-
-        /** Convert an offset into an index into a bounded history array. */
-        int historyAsIndex(int offset) {
-            return ((history + offset) % Options.GCHistory.getValue().intValue());
-        }
-
-        UnsignedWord[] historyFactory(UnsignedWord initial) {
-            assert initial.equal(WordFactory.zero()) : "Can not initialize history to any value except WordFactory.zero().";
-            final UnsignedWord[] result = new UnsignedWord[Options.GCHistory.getValue().intValue()];
-            /* Initialization to null/WordFactory.zero() is implicit. */
-            return result;
-        }
-
-        /** Get the current element of a history array. */
-        UnsignedWord getHistoryOf(UnsignedWord[] array) {
-            return getHistoryOf(array, 0);
-        }
-
-        /** Get an offset element of a history array. */
-        UnsignedWord getHistoryOf(UnsignedWord[] array, int offset) {
-            return array[historyAsIndex(offset)];
-        }
-
-        /** Set the current element of a history array. */
-        void setHistoryOf(UnsignedWord[] array, UnsignedWord value) {
-            setHistoryOf(array, 0, value);
-        }
-
-        /** Set an offset element of a history array. */
-        void setHistoryOf(UnsignedWord[] array, int offset, UnsignedWord value) {
-            array[historyAsIndex(offset)] = value;
-        }
-
-        /** Average the non-zero elements of a history array. */
-        UnsignedWord averageOfHistory(UnsignedWord[] array) {
-            int count = 0;
-            UnsignedWord sum = WordFactory.zero();
-            UnsignedWord result = WordFactory.zero();
-            for (int offset = 0; offset < array.length; offset += 1) {
-                final UnsignedWord element = getHistoryOf(array, offset);
-                if (element.aboveThan(WordFactory.zero())) {
-                    sum = sum.add(element);
-                    count += 1;
-                }
-            }
-            if (count > 0) {
-                result = sum.unsignedDivide(count);
-            }
-            return result;
-        }
-
-        /*
-         * Methods for collectors.
-         */
-
-        void beforeCollection() {
-            final Log trace = Log.noopLog().string("[GCImpl.Accounting.beforeCollection:").newline();
-            /* Gather some space statistics. */
-            incrementHistory();
-            final HeapImpl heap = HeapImpl.getHeapImpl();
-            final YoungGeneration youngGen = heap.getYoungGeneration();
-            youngChunkBytesBefore = youngGen.getChunkUsedBytes();
-            /* This is called before the collection, so OldSpace is FromSpace. */
-            final Space oldSpace = heap.getOldGeneration().getFromSpace();
-            oldChunkBytesBefore = oldSpace.getChunkBytes();
-            /* Objects are allocated in the young generation. */
-            normalChunkBytes = normalChunkBytes.add(youngChunkBytesBefore);
-            /* Keep some aggregate metrics. */
-            if (HeapOptions.PrintGCSummary.getValue()) {
-                youngObjectBytesBefore = youngGen.getObjectBytes();
-                oldObjectBytesBefore = oldSpace.getObjectBytes();
-                normalObjectBytes = normalObjectBytes.add(youngObjectBytesBefore);
-            }
-            trace.string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
-                            .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
-            trace.string("]").newline();
-        }
-
-        void afterCollection(boolean completeCollection, Timer collectionTimer) {
-            if (completeCollection) {
-                afterCompleteCollection(collectionTimer);
-            } else {
-                afterIncrementalCollection(collectionTimer);
-            }
-        }
-
-        private void afterIncrementalCollection(Timer collectionTimer) {
-            final Log trace = Log.noopLog().string("[GCImpl.Accounting.afterIncrementalCollection:");
-            /*
-             * Aggregating collection information is needed because any given collection policy may
-             * not be called for all collections, but may want to make decisions based on the
-             * aggregate values.
-             */
-            incrementalCollectionCount += 1;
-            afterCollectionCommon();
-            /* Incremental collections only promote. */
-            setHistoryOf(promotedUnpinnedChunkBytes, oldChunkBytesAfter.subtract(oldChunkBytesBefore));
-            promotedTotalChunkBytes = promotedTotalChunkBytes.add(getHistoryOf(promotedUnpinnedChunkBytes));
-            incrementalCollectionTotalNanos += collectionTimer.getCollectedNanos();
-            trace.string("  incrementalCollectionCount: ").signed(incrementalCollectionCount)
-                            .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter)
-                            .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore)
-                            .string("  promotedUnpinnedChunkBytes: ").unsigned(getHistoryOf(promotedUnpinnedChunkBytes));
-            trace.string("]").newline();
-        }
-
-        private void afterCompleteCollection(Timer collectionTimer) {
-            final Log trace = Log.noopLog().string("[GCImpl.Accounting.afterCompleteCollection:");
-            completeCollectionCount += 1;
-            afterCollectionCommon();
-            /* Complete collections only copy, and they copy everything. */
-            setHistoryOf(copiedUnpinnedChunkBytes, oldChunkBytesAfter);
-            copiedTotalChunkBytes = copiedTotalChunkBytes.add(oldChunkBytesAfter);
-            completeCollectionTotalNanos += collectionTimer.getCollectedNanos();
-            trace.string("  completeCollectionCount: ").signed(completeCollectionCount)
-                            .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter);
-            trace.string("]").newline();
-        }
-
-        /** Shared after collection processing. */
-        void afterCollectionCommon() {
-            final HeapImpl heap = HeapImpl.getHeapImpl();
-            /*
-             * This is called after the collection, after the space flip, so OldSpace is FromSpace.
-             */
-            final YoungGeneration youngGen = heap.getYoungGeneration();
-            youngChunkBytesAfter = youngGen.getChunkUsedBytes();
-            final Space oldSpace = heap.getOldGeneration().getFromSpace();
-            oldChunkBytesAfter = oldSpace.getChunkBytes();
-            final UnsignedWord beforeChunkBytes = youngChunkBytesBefore.add(oldChunkBytesBefore);
-            final UnsignedWord afterChunkBytes = oldChunkBytesAfter.add(youngChunkBytesAfter);
-            final UnsignedWord collectedChunkBytes = beforeChunkBytes.subtract(afterChunkBytes);
-            collectedTotalChunkBytes = collectedTotalChunkBytes.add(collectedChunkBytes);
-            if (HeapOptions.PrintGCSummary.getValue()) {
-                youngObjectBytesAfter = youngGen.getObjectBytes();
-                oldObjectBytesAfter = oldSpace.getObjectBytes();
-                final UnsignedWord beforeObjectBytes = youngObjectBytesBefore.add(oldObjectBytesBefore);
-                final UnsignedWord collectedObjectBytes = beforeObjectBytes.subtract(oldObjectBytesAfter).subtract(youngObjectBytesAfter);
-                collectedTotalObjectBytes = collectedTotalObjectBytes.add(collectedObjectBytes);
-            }
-        }
-    }
-
-    /** A class for the timers kept by the collector. */
-    public static class Timer implements AutoCloseable {
-
-        public Timer open() {
-            openNanos = System.nanoTime();
-            closeNanos = 0L;
-            return this;
-        }
-
-        @Override
-        public void close() {
-            /* If a timer was not opened, pretend it was opened at the start of the VM. */
-            if (openNanos == 0L) {
-                openNanos = HeapChunkProvider.getFirstAllocationTime();
-            }
-            closeNanos = System.nanoTime();
-            collectedNanos += closeNanos - openNanos;
-        }
-
-        public void reset() {
-            openNanos = 0L;
-            closeNanos = 0L;
-            collectedNanos = 0L;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public long getStart() {
-            return openNanos;
-        }
-
-        public long getFinish() {
-            assert closeNanos > 0L : "Should have closed timer";
-            return closeNanos;
-        }
-
-        /** Get all the nanoseconds collected between open/close pairs since the last reset. */
-        long getCollectedNanos() {
-            return collectedNanos;
-        }
-
-        /** Get the nanoseconds collected by the most recent open/close pair. */
-        long getLastIntervalNanos() {
-            assert openNanos > 0L : "Should have opened timer";
-            assert closeNanos > 0L : "Should have closed timer";
-            return closeNanos - openNanos;
-        }
-
-        static long getTimeSinceFirstAllocation(final long nanos) {
-            return nanos - HeapChunkProvider.getFirstAllocationTime();
-        }
-
-        public Timer(final String name) {
-            this.name = name;
-        }
-
-        /* State. */
-        final String name;
-        long openNanos;
-        long closeNanos;
-        long collectedNanos;
-    }
-
     RememberedSetConstructor getRememberedSetConstructor() {
         return rememberedSetConstructor;
     }
 
-    /** A ObjectVisitor to build the remembered set for a chunk. */
-    protected static class RememberedSetConstructor implements ObjectVisitor {
+    static class RememberedSetConstructor implements ObjectVisitor {
+        private AlignedHeapChunk.AlignedHeader chunk;
 
-        /* Lazy-initialized state. */
-        AlignedHeapChunk.AlignedHeader chunk;
-
-        /** Constructor. */
         @Platforms(Platform.HOSTED_ONLY.class)
         RememberedSetConstructor() {
-            /* Nothing to do. */
         }
 
-        /** Lazy initializer. */
         public void initialize(AlignedHeapChunk.AlignedHeader aChunk) {
             this.chunk = aChunk;
         }
 
-        /** Visit the interior Pointers of an Object. */
         @Override
-        public boolean visitObject(final Object o) {
+        public boolean visitObject(Object o) {
             return visitObjectInline(o);
         }
 
         @Override
         @AlwaysInline("GC performance")
-        public boolean visitObjectInline(final Object o) {
-            AlignedHeapChunk.setUpRememberedSetForObjectOfAlignedHeapChunk(chunk, o);
+        public boolean visitObjectInline(Object o) {
+            AlignedHeapChunk.setUpRememberedSetForObject(chunk, o);
             return true;
         }
 
@@ -1643,15 +971,13 @@ public class GCImpl implements GC {
         }
     }
 
-    /**
-     * Throw one of these to signal that a collection is already in progress.
-     */
+    /** Signals that a collection is already in progress. */
+    @SuppressWarnings("serial")
     static final class CollectionInProgressError extends Error {
-
-        static void exitIf(final boolean state) {
+        static void exitIf(boolean state) {
             if (state) {
                 /* Throw an error to capture the stack backtrace. */
-                final Log failure = Log.log();
+                Log failure = Log.log();
                 failure.string("[CollectionInProgressError:");
                 failure.newline();
                 ThreadStackPrinter.printBacktrace();
@@ -1661,18 +987,13 @@ public class GCImpl implements GC {
         }
 
         private CollectionInProgressError() {
-            super();
         }
 
-        /** A singleton instance, to be thrown without allocation. */
         private static final CollectionInProgressError SINGLETON = new CollectionInProgressError();
-
-        /** Generated serialVersionUID. */
-        private static final long serialVersionUID = -4473303241014559591L;
     }
 
     private static class CollectionVMOperation extends NativeVMOperation {
-        protected CollectionVMOperation() {
+        CollectionVMOperation() {
             super("Garbage collection", SystemEffect.SAFEPOINT);
         }
 
@@ -1733,50 +1054,44 @@ public class GCImpl implements GC {
         void setOutOfMemory(boolean value);
     }
 
-    /* Invoked by a shutdown hook registered in the GCImpl constructor. */
     private void printGCSummary() {
         if (!HeapOptions.PrintGCSummary.getValue()) {
             return;
         }
 
-        final Log log = Log.log();
+        Log log = Log.log();
         final String prefix = "PrintGCSummary: ";
 
-        /* Print GC configuration. */
         log.string(prefix).string("YoungGenerationSize: ").unsigned(HeapPolicy.getMaximumYoungGenerationSize()).newline();
         log.string(prefix).string("MinimumHeapSize: ").unsigned(HeapPolicy.getMinimumHeapSize()).newline();
         log.string(prefix).string("MaximumHeapSize: ").unsigned(HeapPolicy.getMaximumHeapSize()).newline();
         log.string(prefix).string("AlignedChunkSize: ").unsigned(HeapPolicy.getAlignedHeapChunkSize()).newline();
 
-        /* Add in any young objects allocated since the last collection. */
-        JavaVMOperation.enqueueBlockingSafepoint("PrintGCSummaryShutdownHook", ThreadLocalAllocation::disableThreadLocalAllocation);
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final Space edenSpace = heap.getYoungGeneration().getEden();
-        final UnsignedWord youngChunkBytes = edenSpace.getChunkBytes();
-        final UnsignedWord youngObjectBytes = edenSpace.getObjectBytes();
+        JavaVMOperation.enqueueBlockingSafepoint("PrintGCSummaryShutdownHook", ThreadLocalAllocation::disableAndFlushForAllThreads);
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        Space edenSpace = heap.getYoungGeneration().getEden();
+        UnsignedWord youngChunkBytes = edenSpace.getChunkBytes();
+        UnsignedWord youngObjectBytes = edenSpace.getObjectBytes();
 
-        /* Compute updated values. */
-        final UnsignedWord allocatedNormalChunkBytes = accounting.getNormalChunkBytes().add(youngChunkBytes);
-        final UnsignedWord allocatedNormalObjectBytes = accounting.getNormalObjectBytes().add(youngObjectBytes);
+        UnsignedWord allocatedNormalChunkBytes = accounting.getNormalChunkBytes().add(youngChunkBytes);
+        UnsignedWord allocatedNormalObjectBytes = accounting.getNormalObjectBytes().add(youngObjectBytes);
 
-        /* Print the total bytes allocated and collected by chunks. */
         log.string(prefix).string("CollectedTotalChunkBytes: ").signed(accounting.getCollectedTotalChunkBytes()).newline();
         log.string(prefix).string("CollectedTotalObjectBytes: ").signed(accounting.getCollectedTotalObjectBytes()).newline();
         log.string(prefix).string("AllocatedNormalChunkBytes: ").signed(allocatedNormalChunkBytes).newline();
         log.string(prefix).string("AllocatedNormalObjectBytes: ").signed(allocatedNormalObjectBytes).newline();
 
-        /* Print the collection counts and times. */
-        final long incrementalNanos = accounting.getIncrementalCollectionTotalNanos();
+        long incrementalNanos = accounting.getIncrementalCollectionTotalNanos();
         log.string(prefix).string("IncrementalGCCount: ").signed(accounting.getIncrementalCollectionCount()).newline();
         log.string(prefix).string("IncrementalGCNanos: ").signed(incrementalNanos).newline();
-        final long completeNanos = accounting.getCompleteCollectionTotalNanos();
+        long completeNanos = accounting.getCompleteCollectionTotalNanos();
         log.string(prefix).string("CompleteGCCount: ").signed(accounting.getCompleteCollectionCount()).newline();
         log.string(prefix).string("CompleteGCNanos: ").signed(completeNanos).newline();
-        /* Compute a GC load percent. */
-        final long gcNanos = incrementalNanos + completeNanos;
-        final long mutatorNanos = mutatorTimer.getCollectedNanos();
-        final long totalNanos = gcNanos + mutatorNanos;
-        final long roundedGCLoad = (0 < totalNanos ? TimeUtils.roundedDivide(100 * gcNanos, totalNanos) : 0);
+
+        long gcNanos = incrementalNanos + completeNanos;
+        long mutatorNanos = timers.mutator.getMeasuredNanos();
+        long totalNanos = gcNanos + mutatorNanos;
+        long roundedGCLoad = (0 < totalNanos ? TimeUtils.roundedDivide(100 * gcNanos, totalNanos) : 0);
         log.string(prefix).string("GCNanos: ").signed(gcNanos).newline();
         log.string(prefix).string("TotalNanos: ").signed(totalNanos).newline();
         log.string(prefix).string("GCLoadPercent: ").signed(roundedGCLoad).newline();
@@ -1784,149 +1099,6 @@ public class GCImpl implements GC {
 
     @Override
     public List<GarbageCollectorMXBean> getGarbageCollectorMXBeanList() {
-        return gcManagementFactory.getGCBeanList();
-    }
-}
-
-final class GarbageCollectorManagementFactory {
-
-    private List<GarbageCollectorMXBean> gcBeanList;
-
-    GarbageCollectorManagementFactory() {
-        final List<GarbageCollectorMXBean> newList = new ArrayList<>();
-        /* Changing the order of this list will break assumptions we take in the object replacer. */
-        newList.add(new IncrementalGarbageCollectorMXBean());
-        newList.add(new CompleteGarbageCollectorMXBean());
-        gcBeanList = newList;
-    }
-
-    List<GarbageCollectorMXBean> getGCBeanList() {
-        return gcBeanList;
-    }
-
-    /** A GarbageCollectorMXBean for the incremental collector. */
-    private static final class IncrementalGarbageCollectorMXBean implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter {
-
-        private IncrementalGarbageCollectorMXBean() {
-            /* Nothing to do. */
-        }
-
-        @Override
-        public long getCollectionCount() {
-            return HeapImpl.getHeapImpl().getGCImpl().getAccounting().getIncrementalCollectionCount();
-        }
-
-        @Override
-        public long getCollectionTime() {
-            final long nanos = HeapImpl.getHeapImpl().getGCImpl().getAccounting().getIncrementalCollectionTotalNanos();
-            return TimeUtils.roundNanosToMillis(nanos);
-        }
-
-        @Override
-        public String[] getMemoryPoolNames() {
-            /* Return a new array each time because arrays are not immutable. */
-            return new String[]{"young generation space"};
-        }
-
-        @Override
-        public String getName() {
-            /* Changing this name will break assumptions we take in the object replacer. */
-            return "young generation scavenger";
-        }
-
-        @Override
-        public boolean isValid() {
-            return true;
-        }
-
-        @Override
-        public ObjectName getObjectName() {
-            return Util.newObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE, getName());
-        }
-
-        @Override
-        public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
-        }
-
-        @Override
-        public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
-        }
-
-        @Override
-        public void removeNotificationListener(NotificationListener listener) {
-        }
-
-        @Override
-        public MBeanNotificationInfo[] getNotificationInfo() {
-            return new MBeanNotificationInfo[0];
-        }
-
-        @Override
-        public GcInfo getLastGcInfo() {
-            return null;
-        }
-    }
-
-    /** A GarbageCollectorMXBean for the complete collector. */
-    private static final class CompleteGarbageCollectorMXBean implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter {
-
-        private CompleteGarbageCollectorMXBean() {
-            /* Nothing to do. */
-        }
-
-        @Override
-        public long getCollectionCount() {
-            return HeapImpl.getHeapImpl().getGCImpl().getAccounting().getCompleteCollectionCount();
-        }
-
-        @Override
-        public long getCollectionTime() {
-            final long nanos = HeapImpl.getHeapImpl().getGCImpl().getAccounting().getCompleteCollectionTotalNanos();
-            return TimeUtils.roundNanosToMillis(nanos);
-        }
-
-        @Override
-        public String[] getMemoryPoolNames() {
-            /* Return a new array each time because arrays are not immutable. */
-            return new String[]{"young generation space", "old generation space"};
-        }
-
-        @Override
-        public String getName() {
-            /* Changing this name will break assumptions we take in the object replacer. */
-            return "complete scavenger";
-        }
-
-        @Override
-        public boolean isValid() {
-            return true;
-        }
-
-        @Override
-        public ObjectName getObjectName() {
-            return Util.newObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE, getName());
-        }
-
-        @Override
-        public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
-        }
-
-        @Override
-        public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
-        }
-
-        @Override
-        public void removeNotificationListener(NotificationListener listener) {
-        }
-
-        @Override
-        public MBeanNotificationInfo[] getNotificationInfo() {
-            return new MBeanNotificationInfo[0];
-        }
-
-        @Override
-        public GcInfo getLastGcInfo() {
-            return null;
-        }
+        return managementFactory.getGCBeanList();
     }
 }

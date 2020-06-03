@@ -26,50 +26,27 @@
 
 package com.oracle.svm.hosted.image.sources;
 
+import static com.oracle.svm.hosted.image.sources.SourceCacheType.GRAALVM;
+import static com.oracle.svm.hosted.image.sources.SourceManager.GRAALVM_SRC_PACKAGE_PREFIXES;
+
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-
-import static com.oracle.svm.hosted.image.sources.SourceCacheType.GRAALVM;
-import static com.oracle.svm.hosted.image.sources.SourceManager.GRAALVM_SRC_PACKAGE_PREFIXES;
 
 public class GraalVMSourceCache extends SourceCache {
-    /**
-     * Create a GraalVM source cache.
-     */
-    protected GraalVMSourceCache() {
-        initSrcRoots();
-    }
 
     @Override
     protected final SourceCacheType getType() {
         return GRAALVM;
     }
 
-    private void initSrcRoots() {
-        for (String classPathEntry : classPathEntries) {
-            tryClassPathRoot(classPathEntry);
-        }
-        for (String sourcePathEntry : sourcePathEntries) {
-            trySourceRoot(sourcePathEntry);
-        }
-    }
-
-    private void tryClassPathRoot(String classPathEntry) {
-        trySourceRoot(classPathEntry, true);
-    }
-
-    private void trySourceRoot(String sourcePathEntry) {
-        trySourceRoot(sourcePathEntry, false);
-    }
-
-    private void trySourceRoot(String sourceRoot, boolean fromClassPath) {
+    @Override
+    protected void trySourceRoot(Path sourceRoot, boolean fromClassPath) {
         try {
-            Path sourcePath = Paths.get(sourceRoot);
+            Path sourcePath = sourceRoot;
             String fileNameString = sourcePath.getFileName().toString();
             if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".src.zip")) {
                 if (fromClassPath && fileNameString.endsWith(".jar")) {

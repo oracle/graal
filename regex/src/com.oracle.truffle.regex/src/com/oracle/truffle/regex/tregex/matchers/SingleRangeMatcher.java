@@ -84,7 +84,7 @@ public abstract class SingleRangeMatcher extends InvertibleCharMatcher {
     }
 
     @Specialization
-    boolean match(char c, boolean compactString) {
+    boolean match(int c, boolean compactString) {
         return result((!compactString || lo < 256) && lo <= c && hi >= c);
     }
 

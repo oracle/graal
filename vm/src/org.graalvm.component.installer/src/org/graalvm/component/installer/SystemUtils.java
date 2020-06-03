@@ -639,7 +639,7 @@ public class SystemUtils {
             case CommonConstants.ARCH_X8664:
                 return CommonConstants.ARCH_AMD64;
             default:
-                return arch;
+                return arch.toLowerCase(Locale.ENGLISH);
         }
     }
 
@@ -658,7 +658,7 @@ public class SystemUtils {
             case CommonConstants.OS_MACOS_DARWIN:
                 return CommonConstants.OS_TOKEN_MACOS;
             default:
-                return os;
+                return os.toLowerCase(Locale.ENGLISH);
         }
     }
 

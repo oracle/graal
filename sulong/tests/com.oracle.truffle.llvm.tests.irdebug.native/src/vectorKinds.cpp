@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,27 +28,27 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-typedef char v9sb __attribute__ ((vector_size(9)));
-typedef short v8ss __attribute__ ((vector_size(16)));
-typedef int v7si __attribute__ ((vector_size(28)));
-typedef long v6sl __attribute__ ((vector_size(48)));
-typedef float v5flt __attribute__ ((vector_size(20)));
-typedef double v4dbl __attribute__ ((vector_size(32)));
+typedef char v9sb __attribute__((vector_size(9)));
+typedef short v8ss __attribute__((vector_size(16)));
+typedef int v7si __attribute__((vector_size(28)));
+typedef long v6sl __attribute__((vector_size(48)));
+typedef float v5flt __attribute__((vector_size(20)));
+typedef double v4dbl __attribute__((vector_size(32)));
 
-template<typename T> void foo(T bar) {
+template <typename T> void foo(T bar) {
 }
 
-template<typename T> void doReceive(T toInspect) {
-    // call another function to ensure lifetime analysis
-    // doesn't kill the value before inspection
-    foo(toInspect);
+template <typename T> void doReceive(T toInspect) {
+  // call another function to ensure lifetime analysis
+  // doesn't kill the value before inspection
+  foo(toInspect);
 }
 
 __attribute__((constructor)) void test() {
-    doReceive((v9sb) {'0', '1', '2', '3', '4', '5', '6', '7', '8'});
-    doReceive((v8ss) {0, 1, 2, 3, 4, 5, 6, 7});
-    doReceive((v7si) {0, 1, 2, 3, 4, 5, 6});
-    doReceive((v6sl) {0L, 1L, 2L, 3L, 4L, 5L});
-    doReceive((v5flt) {0.0f, 1.1f, 2.2f, 3.3f, 4.4f});
-    doReceive((v4dbl) {0.0, 1.1, 2.2, 3.3});
+  doReceive((v9sb){ '0', '1', '2', '3', '4', '5', '6', '7', '8' });
+  doReceive((v8ss){ 0, 1, 2, 3, 4, 5, 6, 7 });
+  doReceive((v7si){ 0, 1, 2, 3, 4, 5, 6 });
+  doReceive((v6sl){ 0L, 1L, 2L, 3L, 4L, 5L });
+  doReceive((v5flt){ 0.0f, 1.1f, 2.2f, 3.3f, 4.4f });
+  doReceive((v4dbl){ 0.0, 1.1, 2.2, 3.3 });
 }

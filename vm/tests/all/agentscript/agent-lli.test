@@ -1,4 +1,4 @@
->[0?] export TOOLCHAIN_PATH=`"lli --print-toolchain-path"`
+>[0?] export TOOLCHAIN_PATH=`lli --print-toolchain-path`
 > ${TOOLCHAIN_PATH}/clang agent-sieve.c -lm -o ${TMP_DIR}/sieve
 >[1] lli --polyglot --insight=agent-limit.js --experimental-options ${TMP_DIR}/sieve
 found new prime number 2

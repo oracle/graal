@@ -87,7 +87,7 @@ public final class TraceFinderResult extends LazyResult {
     }
 
     public Object[] createArgsTraceFinder() {
-        return new Object[]{getInput(), getEnd() - 1, getFromIndex()};
+        return new Object[]{getInput(), getFromIndex(), getEnd()};
     }
 
     public void applyTraceFinderResult(int preCalcIndex) {

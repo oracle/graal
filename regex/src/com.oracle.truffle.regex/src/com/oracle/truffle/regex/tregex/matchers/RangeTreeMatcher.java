@@ -44,7 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.regex.charset.CP16BitMatchers;
+import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
 
 /**
@@ -84,25 +84,25 @@ public abstract class RangeTreeMatcher extends InvertibleCharMatcher {
      *            method.
      * @return a new {@link RangeTreeMatcher}.
      */
-    public static RangeTreeMatcher fromRanges(boolean invert, char[] ranges) {
+    public static RangeTreeMatcher fromRanges(boolean invert, int[] ranges) {
         return RangeTreeMatcherNodeGen.create(invert, ranges);
     }
 
-    @CompilationFinal(dimensions = 1) private final char[] sortedRanges;
+    @CompilationFinal(dimensions = 1) private final int[] sortedRanges;
 
-    RangeTreeMatcher(boolean invert, char[] sortedRanges) {
+    RangeTreeMatcher(boolean invert, int[] sortedRanges) {
         super(invert);
         this.sortedRanges = sortedRanges;
     }
 
     @Specialization
-    public boolean match(char c, boolean compactString) {
+    public boolean match(int c, boolean compactString) {
         assert !compactString : "this matcher should be avoided via ProfilingCharMatcher on compact strings";
         CompilerAsserts.partialEvaluationConstant(this);
         return matchTree(0, (sortedRanges.length >>> 1) - 1, c);
     }
 
-    private boolean matchTree(int fromIndex, int toIndex, char c) {
+    private boolean matchTree(int fromIndex, int toIndex, int c) {
         CompilerAsserts.partialEvaluationConstant(fromIndex);
         CompilerAsserts.partialEvaluationConstant(toIndex);
         if (fromIndex > toIndex) {
@@ -131,6 +131,6 @@ public abstract class RangeTreeMatcher extends InvertibleCharMatcher {
     @Override
     @TruffleBoundary
     public String toString() {
-        return "tree " + modifiersToString() + "[" + CP16BitMatchers.rangesToString(sortedRanges) + "]";
+        return "tree " + modifiersToString() + "[" + CharMatchers.rangesToString(sortedRanges) + "]";
     }
 }

@@ -56,8 +56,8 @@ public final class NodeEncodingTest {
     }
 
     @Test
-    public void defaultVersionTheNodeIsntDumpedWithItsID() throws Exception {
-        runTheNodeIsntDumpedWithItsID(false);
+    public void defaultVersionTheNodeIsDumpedWithItsID() throws Exception {
+        runTheNodeIsTreatedPoolEntry(false);
     }
 
     private void runTheNodeIsntDumpedWithItsID(boolean explicitVersion) throws Exception {

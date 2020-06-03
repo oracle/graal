@@ -504,25 +504,44 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     public void registerAsInHeap() {
-        assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers()));
-        isInHeap = true;
-        universe.hostVM.checkForbidden(this, UsageKind.InHeap);
+        if (!isInHeap) {
+            /* Races are not a problem because every thread is going to do the same steps. */
+            isInHeap = true;
+
+            assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers()));
+            universe.hostVM.checkForbidden(this, UsageKind.InHeap);
+        }
     }
 
     /**
      * @param node For future use and debugging
      */
     public void registerAsAllocated(Node node) {
-        assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
         if (!isAllocated) {
+            /* Races are not a problem because every thread is going to do the same steps. */
             isAllocated = true;
+
+            assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
+            universe.hostVM.checkForbidden(this, UsageKind.Allocated);
         }
-        universe.hostVM.checkForbidden(this, UsageKind.Allocated);
     }
 
     public void registerAsInTypeCheck() {
-        isInTypeCheck = true;
-        universe.hostVM.checkForbidden(this, UsageKind.InTypeCheck);
+        if (!isInTypeCheck) {
+            /* Races are not a problem because every thread is going to do the same steps. */
+            isInTypeCheck = true;
+
+            universe.hostVM.checkForbidden(this, UsageKind.InTypeCheck);
+            if (isArray()) {
+                /*
+                 * For array types, distinguishing between "used" and "instantiated" does not
+                 * provide any benefits since array types do not implement new methods. Marking all
+                 * used array types as instantiated too allows more usages of Arrays.newInstance
+                 * without the need of explicit registration of types for reflection.
+                 */
+                registerAsAllocated(null);
+            }
+        }
     }
 
     public boolean getReachabilityListenerNotified() {

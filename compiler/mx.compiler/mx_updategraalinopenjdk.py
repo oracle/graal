@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -187,6 +187,9 @@ def updategraalinopenjdk(args):
                 if str(mx_compiler.jdk.javaCompliance) not in p.javaCompliance:
                     mx.log('  skipping {} since its compliance ({}) is not compatible with {}'.format(p, repr(p.javaCompliance), mx_compiler.jdk.javaCompliance))
                     continue
+                if args.version >= 15 and "sparc" in p.name:
+                    # Filter SPARC port for JDK 15
+                    continue
                 if any(inc in p.name for inc in info.includes) and not any(ex in p.name for ex in info.excludes):
                     assert len(p.source_dirs()) == 1, p
                     version = 0
@@ -218,61 +221,72 @@ def updategraalinopenjdk(args):
                 copied_source_dirs.append(source_dir)
 
                 trailing = re.compile(r"[ \t]+\n")
-                for dirpath, _, filenames in os.walk(source_dir):
-                    for filename in filenames:
-                        src_file = join(dirpath, filename)
-                        dst_file = join(target_dir, os.path.relpath(src_file, source_dir))
-                        with open(src_file) as fp:
+
+                src_files = run_output(['git', 'ls-files'], cwd=source_dir).split('\n')
+                for rel_src_file in src_files:
+                    if not len(rel_src_file):
+                        continue
+                    if args.version >= 15 and "sparc" in rel_src_file:
+                        # Skip SPARC files for JDK 15
+                        continue
+                    filename = os.path.basename(rel_src_file)
+                    src_file = join(source_dir, rel_src_file)
+                    dst_file = join(target_dir, os.path.relpath(src_file, source_dir))
+                    binary_flag = '' if filename.endswith('.java') else 'b'
+                    with open(src_file, 'r' + binary_flag) as fp:
+                        try:
                             contents = fp.read()
+                        except Exception as ex: # pylint: disable=broad-except
+                            mx.log('Error reading {}: {}'.format(src_file, ex))
+                    if filename.endswith('.java'):
                         old_line_count = len(contents.split('\n'))
-                        if filename.endswith('.java'):
-                            for old_name, new_name in package_renamings.items():
-                                old_name_as_dir = old_name.replace('.', os.sep)
-                                if old_name_as_dir in src_file:
-                                    new_name_as_dir = new_name.replace('.', os.sep)
-                                    dst = src_file.replace(old_name_as_dir, new_name_as_dir)
-                                    dst_file = join(target_dir, os.path.relpath(dst, source_dir))
-                                contents = contents.replace(old_name, new_name)
+                        for old_name, new_name in package_renamings.items():
+                            old_name_as_dir = old_name.replace('.', os.sep)
+                            if old_name_as_dir in src_file:
+                                new_name_as_dir = new_name.replace('.', os.sep)
+                                dst = src_file.replace(old_name_as_dir, new_name_as_dir)
+                                dst_file = join(target_dir, os.path.relpath(dst, source_dir))
+                            contents = contents.replace(old_name, new_name)
 
-                            for old_line, new_line in replacements.items():
-                                contents = contents.replace(old_line, new_line)
+                        for old_line, new_line in replacements.items():
+                            contents = contents.replace(old_line, new_line)
 
-                            contents = re.sub(trailing, '\n', contents)
+                        contents = re.sub(trailing, '\n', contents)
 
-                            match = java_package_re.search(contents)
-                            if not match:
-                                mx.abort('Could not find package declaration in {}'.format(src_file))
-                            java_package = match.group('package')
-                            if any(ex in java_package for ex in info.excludes):
-                                mx.log('  excluding ' + filename)
-                                continue
+                        match = java_package_re.search(contents)
+                        if not match:
+                            mx.abort('Could not find package declaration in {}'.format(src_file))
+                        java_package = match.group('package')
+                        if any(ex in java_package for ex in info.excludes):
+                            mx.log('  excluding ' + filename)
+                            continue
 
-                            new_line_count = len(contents.split('\n'))
-                            if new_line_count > old_line_count:
-                                mx.abort('Pattern replacement caused line count to grow from {} to {} in {}'.format(old_line_count, new_line_count, src_file))
-                            else:
-                                if new_line_count < old_line_count:
-                                    contents = contents.replace('\npackage ', '\n' * (old_line_count - new_line_count) + '\npackage ')
-                            new_line_count = len(contents.split('\n'))
-                            if new_line_count != old_line_count:
-                                mx.abort('Unable to correct line count for {}'.format(src_file))
-                            for forbidden in blacklist:
-                                if forbidden in contents:
-                                    mx.abort('Found blacklisted pattern \'{}\' in {}'.format(forbidden, src_file))
-                        dst_dir = os.path.dirname(dst_file)
-                        if not exists(dst_dir):
-                            os.makedirs(dst_dir)
-                        if first_file:
-                            mx.log('  copying: ' + source_dir)
-                            mx.log('       to: ' + target_dir)
-                            if p.testProject or p.definedAnnotationProcessors:
-                                to_exclude = new_project_name
-                                jdk_internal_vm_compiler_EXCLUDES.add(to_exclude)
-                                if p.testProject:
-                                    jdk_internal_vm_compiler_test_SRC.add(to_exclude)
-                            first_file = False
-                        with open(dst_file, 'w') as fp:
-                            fp.write(contents)
+                        new_line_count = len(contents.split('\n'))
+                        if new_line_count > old_line_count:
+                            mx.abort('Pattern replacement caused line count to grow from {} to {} in {}'.format(old_line_count, new_line_count, src_file))
+                        else:
+                            if new_line_count < old_line_count:
+                                contents = contents.replace('\npackage ', '\n' * (old_line_count - new_line_count) + '\npackage ')
+                        new_line_count = len(contents.split('\n'))
+                        if new_line_count != old_line_count:
+                            mx.abort('Unable to correct line count for {}'.format(src_file))
+                        for forbidden in blacklist:
+                            if forbidden in contents:
+                                mx.abort('Found blacklisted pattern \'{}\' in {}'.format(forbidden, src_file))
+                    dst_dir = os.path.dirname(dst_file)
+                    if not exists(dst_dir):
+                        os.makedirs(dst_dir)
+                    if first_file:
+                        mx.log('  copying: ' + source_dir)
+                        mx.log('       to: ' + target_dir)
+                        if p.testProject or p.definedAnnotationProcessors:
+                            to_exclude = new_project_name
+                            jdk_internal_vm_compiler_EXCLUDES.add(to_exclude)
+                            if p.testProject:
+                                jdk_internal_vm_compiler_test_SRC.add(to_exclude)
+                        first_file = False
+                    with open(dst_file, 'w' + binary_flag) as fp:
+                        fp.write(contents)
 
     def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check, preserve_indent=False, append_mode=False):
         mx.log('Updating ' + filename + '...')

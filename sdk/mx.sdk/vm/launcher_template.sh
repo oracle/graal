@@ -51,66 +51,63 @@ launcher_args=()
 # Unfortunately, parsing of `--jvm.*` and `--vm.*` arguments has to be done blind:
 # Maybe some of those arguments where not really intended for the launcher but were application arguments
 
-for o in "$@"; do
-    if [[ "$o" == --jvm.* ]]; then
+process_vm_arg() {
+    local prefix=$1 # vm or jvm
+    local vm_arg="$2"
+    if [[ "$vm_arg" == "cp" ]]; then
+        >&2 echo "'--${prefix}.cp' argument must be of the form '--${prefix}.cp=<classpath>', not two separate arguments."
+        exit 1
+    fi
+    if [[ "$vm_arg" == "classpath" ]]; then
+        >&2 echo "'--${prefix}.classpath' argument must be of the form '--${prefix}.classpath=<classpath>', not two separate arguments."
+        exit 1
+    fi
+    if [[ "$vm_arg" == "cp="* ]]; then
+        local custom_cp=${vm_arg#cp=}
+    elif [[ "$vm_arg" == "classpath="* ]]; then
+        local custom_cp=${vm_arg#classpath=}
+    fi
+    if [[ -z "${custom_cp+x}" ]]; then
+        jvm_args+=("-$vm_arg")
+    else
+        IFS=: read -ra custom_cp_a <<< "${custom_cp}"
+        for e in "${custom_cp_a[@]}"; do
+            absolute_cp+=("$e")
+        done
+    fi
+}
+
+process_arg() {
+    if [[ "$1" == --jvm.* ]]; then
         >&2 echo "'--jvm.*' options are deprecated, use '--vm.*' instead."
-        jvm_arg="${o#--jvm.}"
-        if [[ "$jvm_arg" == "cp" ]]; then
-            >&2 echo "'--jvm.cp' argument must be of the form '--jvm.cp=<classpath>', not two separate arguments"
-            exit 1
-        fi
-        if [[ "$jvm_arg" == "classpath" ]]; then
-            >&2 echo "'--jvm.classpath' argument must be of the form '--jvm.classpath=<classpath>', not two separate arguments"
-            exit 1
-        fi
-        if [[ "$jvm_arg" == "cp="* ]]; then
-            custom_cp=${jvm_arg#cp=}
-        elif [[ "$jvm_arg" == "classpath="* ]]; then
-            custom_cp=${jvm_arg#classpath=}
-        fi
-        if [[ -z "${custom_cp+x}" ]]; then
-            jvm_args+=("-${jvm_arg}")
-        else
-            IFS=: read -ra custom_cp_a <<< "${custom_cp}"
-            for e in "${custom_cp_a[@]}"; do
-                absolute_cp+=("${e}")
-            done
-        fi
-    elif [[ "$o" == --vm.* ]]; then
-        vm_arg="${o#--vm.}"
-        if [[ "$vm_arg" == "cp" ]]; then
-            >&2 echo "'--vm.cp' argument must be of the form '--vm.cp=<classpath>', not two separate arguments"
-            exit 1
-        fi
-        if [[ "$vm_arg" == "classpath" ]]; then
-            >&2 echo "'--vm.classpath' argument must be of the form '--vm.classpath=<classpath>', not two separate arguments"
-            exit 1
-        fi
-        if [[ "$vm_arg" == "cp="* ]]; then
-            custom_cp=${vm_arg#cp=}
-        elif [[ "$vm_arg" == "classpath="* ]]; then
-            custom_cp=${vm_arg#classpath=}
-        fi
-        if [[ -z "${custom_cp+x}" ]]; then
-            jvm_args+=("-${vm_arg}")
-        else
-            IFS=: read -ra custom_cp_a <<< "${custom_cp}"
-            for e in "${custom_cp_a[@]}"; do
-                absolute_cp+=("${e}")
-            done
-        fi
-    elif [[ "$o" == --native || "$o" == --native.* ]]; then
-        >&2 echo "The native version of '$(basename "$source")' does not exist: cannot use '$o'."
+        process_vm_arg jvm "${1#--jvm.}"
+    elif [[ "$1" == --vm.* ]]; then
+        process_vm_arg vm "${1#--vm.}"
+    elif [[ "$1" == --native || "$1" == --native.* ]]; then
+        >&2 echo "The native version of '$(basename "$source")' does not exist: cannot use '$1'."
         if [[ $(basename "$source") == polyglot ]]; then
-            extra=' --language:all'
+            local extra=' --language:all'
         else
-            extra=''
+            local extra=''
         fi
         >&2 echo "If native-image is installed, you may build it with 'native-image --macro:<macro_name>$extra'."
         exit 1
     else
-        launcher_args+=("$o")
+        launcher_args+=("$1")
     fi
+}
+
+# Check option-holding variables.
+# Those can be specified as the `option_vars` argument of the LauncherConfig constructor.
+for var in <option_vars>; do
+    read -ra opts <<< "${!var}"
+    for opt in ${opts[@]}; do
+        [[ "$opt" == --vm.* ]] && process_vm_arg "${opt#--vm.}"
+    done
+done
+
+for o in "$@"; do
+    process_arg "$o"
 done
 
 cp="$(IFS=: ; echo "${absolute_cp[*]}")"

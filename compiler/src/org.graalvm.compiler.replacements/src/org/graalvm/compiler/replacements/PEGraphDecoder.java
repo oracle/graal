@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -303,7 +303,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     int count = 0;
                     PEGraphDecoder.PEMethodScope scope = methodScope;
                     while (scope != null) {
-                        if (scope.method.equals(peRootForInlining) || scope.method.equals(peRootForAgnosticInlining)) {
+                        if (scope.method.equals(peRootForInlining)) {
                             count++;
                         }
                         scope = scope.caller;
@@ -625,20 +625,18 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     private final EconomicMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
     private final EconomicMap<ResolvedJavaMethod, Object> invocationPluginCache;
     private final ResolvedJavaMethod peRootForInlining;
-    private final ResolvedJavaMethod peRootForAgnosticInlining;
     protected final SourceLanguagePositionProvider sourceLanguagePositionProvider;
 
     public PEGraphDecoder(Architecture architecture, StructuredGraph graph, CoreProviders providers, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
-                    NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, ResolvedJavaMethod peRootForAgnosticInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider) {
+                    NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider) {
         super(architecture, graph, providers, true);
         this.loopExplosionPlugin = loopExplosionPlugin;
         this.invocationPlugins = invocationPlugins;
         this.inlineInvokePlugins = inlineInvokePlugins;
         this.parameterPlugin = parameterPlugin;
         this.nodePlugins = nodePlugins;
-        this.peRootForAgnosticInlining = peRootForAgnosticInlining;
         this.specialCallTargetCache = EconomicMap.create(Equivalence.DEFAULT);
         this.invocationPluginCache = EconomicMap.create(Equivalence.DEFAULT);
         this.peRootForInlining = peRootForInlining;
@@ -657,6 +655,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     public void decode(ResolvedJavaMethod method, boolean isSubstitution, boolean trackNodeSourcePosition) {
         try (DebugContext.Scope scope = debug.scope("PEGraphDecode", graph)) {
             EncodedGraph encodedGraph = lookupEncodedGraph(method, null, null, isSubstitution, trackNodeSourcePosition);
+            recordGraphElements(encodedGraph);
             PEMethodScope methodScope = new PEMethodScope(graph, null, null, encodedGraph, method, null, 0, loopExplosionPlugin, null);
             decode(createInitialLoopScope(methodScope, null));
             cleanupGraph(methodScope);
@@ -672,6 +671,32 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             assert CFGVerifier.verify(ControlFlowGraph.compute(graph, true, true, true, true));
         } catch (Throwable ex) {
             throw GraalError.shouldNotReachHere("Control flow graph not valid after partial evaluation");
+        }
+    }
+
+    private void recordGraphElements(EncodedGraph encodedGraph) {
+        List<ResolvedJavaMethod> inlinedMethods = encodedGraph.getInlinedMethods();
+        if (inlinedMethods != null) {
+            for (ResolvedJavaMethod other : inlinedMethods) {
+                graph.recordMethod(other);
+            }
+        }
+        Assumptions assumptions = graph.getAssumptions();
+        Assumptions inlinedAssumptions = encodedGraph.getAssumptions();
+        if (assumptions != null) {
+            if (inlinedAssumptions != null) {
+                assumptions.record(inlinedAssumptions);
+            }
+        } else {
+            assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", encodedGraph, graph);
+        }
+        if (encodedGraph.getFields() != null) {
+            for (ResolvedJavaField field : encodedGraph.getFields()) {
+                graph.recordField(field);
+            }
+        }
+        if (encodedGraph.hasUnsafeAccess()) {
+            graph.markUnsafeAccess();
         }
     }
 
@@ -977,33 +1002,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             inlineLoopScope.createdNodes[firstArgumentNodeId + i] = arguments[i];
         }
 
-        // Copy assumptions from inlinee to caller
-        Assumptions assumptions = graph.getAssumptions();
-        Assumptions inlinedAssumptions = graphToInline.getAssumptions();
-        if (assumptions != null) {
-            if (inlinedAssumptions != null) {
-                assumptions.record(inlinedAssumptions);
-            }
-        } else {
-            assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", inlineMethod, graph);
-        }
-
         // Copy inlined methods from inlinee to caller
-        List<ResolvedJavaMethod> inlinedMethods = graphToInline.getInlinedMethods();
-        if (inlinedMethods != null) {
-            for (ResolvedJavaMethod other : inlinedMethods) {
-                graph.recordMethod(other);
-            }
-        }
-
-        if (graphToInline.getFields() != null) {
-            for (ResolvedJavaField field : graphToInline.getFields()) {
-                graph.recordField(field);
-            }
-        }
-        if (graphToInline.hasUnsafeAccess()) {
-            graph.markUnsafeAccess();
-        }
+        recordGraphElements(graphToInline);
 
         /*
          * Do the actual inlining by returning the initial loop scope for the inlined method scope.

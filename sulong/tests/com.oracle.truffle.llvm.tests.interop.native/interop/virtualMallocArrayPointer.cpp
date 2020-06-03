@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,36 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include<stdlib.h>
-#include<stdio.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <truffle.h>
 
-extern "C" 
-int test1() {
-	int **p = (int**) truffle_virtual_malloc(5 * sizeof(int*));
-	int *a1 = (int *) malloc(5 * sizeof(int));
-	int *a2 = (int *) malloc(5 * sizeof(int));
+extern "C" int test1() {
+  int **p = (int **)truffle_virtual_malloc(5 * sizeof(int *));
+  int *a1 = (int *)malloc(5 * sizeof(int));
+  int *a2 = (int *)malloc(5 * sizeof(int));
 
-	p[1] = a1;
-	p[2] = a2;
+  p[1] = a1;
+  p[2] = a2;
 
-	a1[2] = 42;
-	a2[3] = 43;
+  a1[2] = 42;
+  a2[3] = 43;
 
-	return p[1][2];
+  return p[1][2];
 }
 
-extern "C" 
-int test2() {
-	int **p = (int**) truffle_virtual_malloc(5 * sizeof(int*));
-	int *a1 = (int *) malloc(5 * sizeof(int));
-	int *a2 = (int *) malloc(5 * sizeof(int));
+extern "C" int test2() {
+  int **p = (int **)truffle_virtual_malloc(5 * sizeof(int *));
+  int *a1 = (int *)malloc(5 * sizeof(int));
+  int *a2 = (int *)malloc(5 * sizeof(int));
 
-	p[1] = a1;
-	p[2] = a2;
+  p[1] = a1;
+  p[2] = a2;
 
-	a1[2] = 42;
-	a2[3] = 43;
+  a1[2] = 42;
+  a2[3] = 43;
 
-	return p[2][3];
+  return p[2][3];
 }

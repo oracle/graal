@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,9 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-void test1(FILE *file, va_list args) { vfprintf(file, "%d %f %ld %c %s %% %x %X %i\n", args); }
+void test1(FILE *file, va_list args) {
+  vfprintf(file, "%d %f %ld %c %s %% %x %X %i\n", args);
+}
 
 void test2(FILE *file, ...) {
   va_list args;
