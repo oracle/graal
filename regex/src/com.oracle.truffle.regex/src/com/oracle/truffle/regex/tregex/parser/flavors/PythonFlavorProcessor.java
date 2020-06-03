@@ -100,6 +100,9 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     private static final String UNICODE_WORD_BOUNDARY_SNIPPET;
     private static final String UNICODE_WORD_NON_BOUNDARY_SNIPPET;
 
+    private static final String ASCII_WHITESPACE = "\\x09-\\x0d\\x20";
+    private static final String ASCII_NON_WHITESPACE = "\\x00-\\x08\\x0e-\\x1f\\x21-\\u{10ffff}";
+
     static {
         UNICODE_CHAR_CLASS_REPLACEMENTS = new HashMap<>();
         UNICODE_CHAR_CLASS_SETS = new HashMap<>();
@@ -895,8 +898,11 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                             emitSnippet("]");
                         }
                     }
-                } else if (getLocalFlags().isLocale() && (curChar() == 'w' || curChar() == 'W')) {
+                } else if (getLocalFlags().isLocale() && (className == 'w' || className == 'W')) {
                     bailOut("locale-specific definitions of word characters are not supported");
+                } else if ((mode == PythonREMode.Bytes || getLocalFlags().isAscii()) && (className == 's' || className == 'S')) {
+                    String snippet = className == 's' ? ASCII_WHITESPACE : ASCII_NON_WHITESPACE;
+                    emitSnippet(inCharClass ? snippet : "[" + snippet + "]");
                 } else {
                     emitSnippet("\\" + className);
                 }
