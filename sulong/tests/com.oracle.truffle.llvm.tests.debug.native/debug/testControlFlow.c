@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,23 +30,21 @@
 #include <stdio.h>
 
 void bar() {
-    printf("");
+  printf("");
 }
 
-void foo()
-{
-    bar();
-    bar();
+void foo() {
+  bar();
+  bar();
 }
 
-__attribute__((constructor)) int start()
-{
-    foo();
-    foo();
-    foo();
-    foo();
-    __builtin_debugtrap();
-    foo();
-    foo();
-    return 0;
+__attribute__((constructor)) int start() {
+  foo();
+  foo();
+  foo();
+  foo();
+  __builtin_debugtrap();
+  foo();
+  foo();
+  return 0;
 }

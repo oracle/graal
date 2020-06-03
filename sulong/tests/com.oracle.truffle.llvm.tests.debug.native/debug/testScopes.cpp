@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,59 +32,54 @@
 
 namespace MyNamespace {
 
-    int nextID = 72;
+int nextID = 72;
 
-    int getNextId()
-    {
-        int result = nextID++;
-        return result;
-    }
-};
+int getNextId() {
+  int result = nextID++;
+  return result;
+}
+}; // namespace MyNamespace
 
 using namespace MyNamespace;
 
 int globalX = 512;
 
-class MyClass
-{
+class MyClass {
 
 private:
-
-    static int lastId;
-    int id;
+  static int lastId;
+  int id;
 
 public:
+  MyClass() {
+    id = getNextId();
+    lastId = id;
+    printf("MyClass Constructor\n");
+  }
 
-    MyClass() {
-        id = getNextId();
-        lastId = id;
-        printf("MyClass Constructor\n");
-    }
-
-    int getID() {
-        return this->id;
-    }
-
+  int getID() {
+    return this->id;
+  }
 };
 
 int MyClass::lastId = -1;
 
 int getX() {
-    int x = globalX++;
-    return x;
+  int x = globalX++;
+  return x;
 }
 
 int start() __attribute__((constructor)) {
-    int x = 0;
+  int x = 0;
+  printf("x = %d\n", x);
+  x = getX();
+  printf("x = %d\n", x);
+  {
+    MyClass a;
+    int x = a.getID();
     printf("x = %d\n", x);
-    x = getX();
-    printf("x = %d\n", x);
-    {
-        MyClass a;
-        int x = a.getID();
-        printf("x = %d\n", x);
-    }
-    printf("x = %d\n", x);
+  }
+  printf("x = %d\n", x);
 
-    return 0;
+  return 0;
 }
