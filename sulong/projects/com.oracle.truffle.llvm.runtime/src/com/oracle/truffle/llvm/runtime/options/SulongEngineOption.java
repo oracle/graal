@@ -76,7 +76,7 @@ public final class SulongEngineOption {
     public static final String CXX_INTEROP_NAME = "llvm.C++Interop";
     @Option(name = CXX_INTEROP_NAME,
             category = OptionCategory.EXPERT,
-            help = "Enables using C++ code and features via interop library")
+            help = "Enables using C++ code and features via interop.")
     public static final OptionKey<Boolean> CXX_INTEROP = new OptionKey<>(false);
 
     @Option(name = "llvm.enableExternalNativeAccess",
