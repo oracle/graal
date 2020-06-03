@@ -24,19 +24,17 @@
  */
 package org.graalvm.compiler.hotspot.jdk9.test;
 
-import static org.junit.Assume.assumeTrue;
+import static org.junit.Assume.assumeFalse;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.junit.Before;
 import org.junit.Test;
 
-import jdk.vm.ci.amd64.AMD64;
-
 public final class MathFMAConstantInputTest extends GraalCompilerTest {
 
     @Before
-    public void checkAMD64() {
-        assumeTrue("skipping AMD64 specific test", getTarget().arch instanceof AMD64);
+    public void checkNotSPARC() {
+        assumeFalse("skipping test on SPARC ", isSPARC(getTarget().arch));
     }
 
     public static float floatFMA() {
