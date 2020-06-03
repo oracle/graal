@@ -2171,6 +2171,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
+    @TruffleBoundary // Lots of SVM + Windows blacklisted methods.
     public long GetLongAttribute(@SuppressWarnings("unused") @Host(Object.class) StaticObject obj,
                     /* jmmLongAttribute */ int att) {
         switch (att) {
@@ -2184,7 +2185,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 return System.currentTimeMillis() - getContext().initVMDoneMs;
             case JMM_OS_PROCESS_ID:
                 String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
-                String[] parts = boundarySplit(processName, "@");
+                String[] parts = processName.split("@");
                 return Long.parseLong(parts[0]);
             case JMM_THREAD_DAEMON_COUNT:
                 int daemonCount = 0;
@@ -2203,11 +2204,6 @@ public final class VM extends NativeEnv implements ContextAccess {
                 return getContext().getCreatedThreadCount();
         }
         throw EspressoError.unimplemented("GetLongAttribute " + att);
-    }
-
-    @TruffleBoundary
-    public static String[] boundarySplit(String processName, String regex) {
-        return processName.split(regex);
     }
 
     private boolean JMM_VERBOSE_GC_state = false;
