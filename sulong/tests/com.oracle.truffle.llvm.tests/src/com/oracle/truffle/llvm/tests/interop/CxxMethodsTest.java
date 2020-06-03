@@ -123,7 +123,7 @@ public class CxxMethodsTest extends InteropTestBase {
             checkPoint(point, -6, 8);
             // calculate distance
             Value distanceResult1 = squaredEuclideanDistance.execute(point, point2);
-            Value distanceResult2 = squaredEuclideanDistance.execute(point, point2);
+            Value distanceResult2 = squaredEuclideanDistance.execute(point2, point);
             Assert.assertEquals("distance(p, p2)", 0, Double.compare(225, distanceResult1.asDouble()));
             Assert.assertEquals("distance(p2, p)", 0, Double.compare(225, distanceResult2.asDouble()));
 
