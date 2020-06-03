@@ -730,6 +730,7 @@ suite = {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O0"],
+      "fileExts" : [".ll"],
       "buildEnv" : {
         "OS" : "<os>",
       },
@@ -750,6 +751,7 @@ suite = {
       # issue in exeuction mistmatches. Until then the Sulong behavior
       # is the more accurate one.
       "variants" : ["O0"],
+      "fileExts" : [".ll"],
       "buildEnv" : {
         "OS" : "<os>",
         "CFLAGS" : "-O0",
@@ -764,6 +766,7 @@ suite = {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O0"],
+      "fileExts" : [".ll"],
       "buildRef" : False,
       "buildEnv" : {
         "OS" : "<os>",
@@ -779,6 +782,7 @@ suite = {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O0"],
+      "fileExts" : [".ll"],
       "buildRef" : True,
       "buildEnv" : {
         "OS" : "<os>",
