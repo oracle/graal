@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,51 +29,50 @@
  */
 
 typedef struct {
-    bool a;
-    bool b;
-    bool c;
-    bool d;
-    bool e;
-    bool f;
-    bool g;
-    bool h;
+  bool a;
+  bool b;
+  bool c;
+  bool d;
+  bool e;
+  bool f;
+  bool g;
+  bool h;
 } BoolStruct;
 
 typedef struct {
-    bool a;
-    bool b;
-    bool c;
-    bool d;
-    bool e;
-    bool f;
-    bool g;
-    bool h;
-} __attribute__ ((packed)) PackedBoolStruct;
+  bool a;
+  bool b;
+  bool c;
+  bool d;
+  bool e;
+  bool f;
+  bool g;
+  bool h;
+} __attribute__((packed)) PackedBoolStruct;
 
-__attribute__((constructor)) int test()
-{
-    bool a = true;
-    bool b = false;
-    
-    BoolStruct bs;
-    bs.a = true;
-    bs.b = false;
-    bs.c = true;
-    bs.d = false;
-    bs.e = true;
-    bs.f = false;
-    bs.g = true;
-    bs.h = false;
+__attribute__((constructor)) int test() {
+  bool a = true;
+  bool b = false;
 
-    PackedBoolStruct pbs;
-    pbs.a = true;
-    pbs.b = false;
-    pbs.c = true;
-    pbs.d = false;
-    pbs.e = true;
-    pbs.f = false;
-    pbs.g = true;
-    pbs.h = false;
-    
-    return 0;
+  BoolStruct bs;
+  bs.a = true;
+  bs.b = false;
+  bs.c = true;
+  bs.d = false;
+  bs.e = true;
+  bs.f = false;
+  bs.g = true;
+  bs.h = false;
+
+  PackedBoolStruct pbs;
+  pbs.a = true;
+  pbs.b = false;
+  pbs.c = true;
+  pbs.d = false;
+  pbs.e = true;
+  pbs.f = false;
+  pbs.g = true;
+  pbs.h = false;
+
+  return 0;
 }

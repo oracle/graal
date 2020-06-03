@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,151 +29,143 @@
  */
 #include <stdio.h>
 
-struct simpleStruct
-{
-    int a;
-    float b;
-    unsigned int c[3];
+struct simpleStruct {
+  int a;
+  float b;
+  unsigned int c[3];
 };
 
-struct bitFieldsStruct
-{
-    unsigned int a : 8;
-    unsigned int b : 8;
-    unsigned int c : 8;
-    unsigned int d : 8;
-    unsigned int e : 8;
-    unsigned int f : 8;
-    int g : 8;
-    int h : 8;
+struct bitFieldsStruct {
+  unsigned int a : 8;
+  unsigned int b : 8;
+  unsigned int c : 8;
+  unsigned int d : 8;
+  unsigned int e : 8;
+  unsigned int f : 8;
+  int g : 8;
+  int h : 8;
 };
 
-struct combinableStruct
-{
-    int a;
-    int b;
+struct combinableStruct {
+  int a;
+  int b;
 };
 
-struct splittableStruct
-{
-    long int a;
-    long int b;
+struct splittableStruct {
+  long int a;
+  long int b;
 };
 
 typedef struct {
-    float a;
-    float b;
-    float c;
-    float d;
-    float e;
-    float f;
-    float g;
-    float h;
+  float a;
+  float b;
+  float c;
+  float d;
+  float e;
+  float f;
+  float g;
+  float h;
 } FloatStruct;
 
 typedef struct {
-    double a;
-    double b;
-    double c;
-    double d;
-    double e;
-    double f;
-    double g;
-    double h;
+  double a;
+  double b;
+  double c;
+  double d;
+  double e;
+  double f;
+  double g;
+  double h;
 } DoubleStruct;
 
 typedef struct {
-    void * a;
-    void * b;
-    void * c;
-    void * d;
-    void * e;
-    void * f;
-    void * g;
-    void * h;
+  void *a;
+  void *b;
+  void *c;
+  void *d;
+  void *e;
+  void *f;
+  void *g;
+  void *h;
 } PointerStruct;
 
-struct globalStruct
-{
-    int a;
-    float b;
+struct globalStruct {
+  int a;
+  float b;
 } myGlobalStruct;
 
 // opt -mem2reg will reduce the struct arg to a single i64 value
-__attribute__((noinline)) int testCombinedStructArg(struct combinableStruct str)
-{
-    printf("str.a = %d\nstr.b = %d\n", str.a, str.b);
-    return 0;
+__attribute__((noinline)) int testCombinedStructArg(struct combinableStruct str) {
+  printf("str.a = %d\nstr.b = %d\n", str.a, str.b);
+  return 0;
 }
 
 // opt -mem2reg will reduce the struct arg to two separate i64 values
-__attribute__((noinline)) int testSplittedStructArg(struct splittableStruct str)
-{
-    printf("str.a = %d\nstr.b = %d\n", str.a, str.b);
-    return 0;
+__attribute__((noinline)) int testSplittedStructArg(struct splittableStruct str) {
+  printf("str.a = %d\nstr.b = %d\n", str.a, str.b);
+  return 0;
 }
 
-int start() __attribute__((constructor))
-{
-    myGlobalStruct.a = 123;
-    myGlobalStruct.b = 124.5f;
-    
-    struct simpleStruct mySimpleStruct;
-    mySimpleStruct.a = 15;
-    mySimpleStruct.b = 17.3f;
-    mySimpleStruct.c[0] = 102;
-    mySimpleStruct.c[1] = 111;
-    mySimpleStruct.c[2] = 111;
+int start() __attribute__((constructor)) {
+  myGlobalStruct.a = 123;
+  myGlobalStruct.b = 124.5f;
 
-    struct bitFieldsStruct myBitFields;
-    myBitFields.a = 255;
-    myBitFields.b = 129;
-    myBitFields.c = 128;
-    myBitFields.d = 127;
-    myBitFields.e = 126;
-    myBitFields.f = 0;
-    myBitFields.g = -1;
-    myBitFields.h = 0;
+  struct simpleStruct mySimpleStruct;
+  mySimpleStruct.a = 15;
+  mySimpleStruct.b = 17.3f;
+  mySimpleStruct.c[0] = 102;
+  mySimpleStruct.c[1] = 111;
+  mySimpleStruct.c[2] = 111;
 
-    struct combinableStruct myCombinableStruct;
-    myCombinableStruct.a = 128;
-    myCombinableStruct.b = 256;
-    testCombinedStructArg(myCombinableStruct);
+  struct bitFieldsStruct myBitFields;
+  myBitFields.a = 255;
+  myBitFields.b = 129;
+  myBitFields.c = 128;
+  myBitFields.d = 127;
+  myBitFields.e = 126;
+  myBitFields.f = 0;
+  myBitFields.g = -1;
+  myBitFields.h = 0;
 
-    struct splittableStruct mySplittableStruct;
-    mySplittableStruct.a = 128;
-    mySplittableStruct.b = 256;
-    testSplittedStructArg(mySplittableStruct);
+  struct combinableStruct myCombinableStruct;
+  myCombinableStruct.a = 128;
+  myCombinableStruct.b = 256;
+  testCombinedStructArg(myCombinableStruct);
 
-    FloatStruct fs;
-    fs.a = 1.2f;
-    fs.b = 3.4f;
-    fs.c = -5.6f;
-    fs.d = 6.7f;
-    fs.e = 8.9f;
-    fs.f = 0.0f;
-    fs.g = -0.1f;
-    fs.h = 0.2f;
+  struct splittableStruct mySplittableStruct;
+  mySplittableStruct.a = 128;
+  mySplittableStruct.b = 256;
+  testSplittedStructArg(mySplittableStruct);
 
-    DoubleStruct ds;
-    ds.a = 1.2;
-    ds.b = 3.4;
-    ds.c = -5.6;
-    ds.d = 6.7;
-    ds.e = 8.9;
-    ds.f = 0.0;
-    ds.g = -0.1;
-    ds.h = 0.2;
+  FloatStruct fs;
+  fs.a = 1.2f;
+  fs.b = 3.4f;
+  fs.c = -5.6f;
+  fs.d = 6.7f;
+  fs.e = 8.9f;
+  fs.f = 0.0f;
+  fs.g = -0.1f;
+  fs.h = 0.2f;
 
-    PointerStruct ps;
-    ps.a = (void*) 0x1001;
-    ps.b = (void*) 0x0110;
-    ps.c = (void*) 0x10010000;
-    ps.d = (void*) 0xabcddcba;
-    ps.e = (void*) 0x10000001;
-    ps.f = (void*) 0xfedcba9876543210;
-    ps.g = (void*) 0x12345678;
-    ps.h = (void*) 0xffffffff000000ff;
+  DoubleStruct ds;
+  ds.a = 1.2;
+  ds.b = 3.4;
+  ds.c = -5.6;
+  ds.d = 6.7;
+  ds.e = 8.9;
+  ds.f = 0.0;
+  ds.g = -0.1;
+  ds.h = 0.2;
 
-    return 0;
+  PointerStruct ps;
+  ps.a = (void *)0x1001;
+  ps.b = (void *)0x0110;
+  ps.c = (void *)0x10010000;
+  ps.d = (void *)0xabcddcba;
+  ps.e = (void *)0x10000001;
+  ps.f = (void *)0xfedcba9876543210;
+  ps.g = (void *)0x12345678;
+  ps.h = (void *)0xffffffff000000ff;
+
+  return 0;
 }

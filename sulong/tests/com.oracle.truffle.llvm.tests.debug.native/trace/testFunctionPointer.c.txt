@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 71 CONTINUE "start"
+BREAK 70 CONTINUE "start"
     OPEN_SCOPE
         MEMBER any "void()*" "voidFuncNoArgsPtr"
         MEMBER any "void(...)*" "voidFuncImplicitVarArgsPtr"

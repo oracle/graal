@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 79 CONTINUE "start"
+BREAK 74 CONTINUE "start"
     OPEN_SCOPE
         MEMBER int "int" "x" "0"
     OPEN_SCOPE "<static>"
@@ -36,7 +36,7 @@ BREAK 79 CONTINUE "start"
         MEMBER int "int" "lastId" "-1"
 
 
-BREAK 74 CONTINUE "getX"
+BREAK 69 CONTINUE "getX"
     OPEN_SCOPE
         MEMBER int "int" "x" "512"
     OPEN_SCOPE "<static>"
@@ -44,7 +44,7 @@ BREAK 74 CONTINUE "getX"
         MEMBER int "int" "lastId" "-1"
 
 
-BREAK 40 CONTINUE "getNextId"
+BREAK 39 CONTINUE "getNextId"
     OPEN_SCOPE
         MEMBER int "int" "result" "72"
     OPEN_SCOPE "namespace MyNamespace"
@@ -54,7 +54,7 @@ BREAK 40 CONTINUE "getNextId"
         MEMBER int "int" "lastId" "-1"
 
 
-BREAK 61 CONTINUE "MyClass"
+BREAK 57 CONTINUE "MyClass"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -69,7 +69,7 @@ BREAK 61 CONTINUE "MyClass"
         MEMBER int "int" "lastId" "72"
 
 
-BREAK 85 CONTINUE "start"
+BREAK 80 CONTINUE "start"
     OPEN_SCOPE
         MEMBER structured "MyClass" "a"
             MEMBER structured "" "<static>"
@@ -83,7 +83,7 @@ BREAK 85 CONTINUE "start"
         MEMBER int "int" "lastId" "72"
 
 
-BREAK 89 CONTINUE "start"
+BREAK 84 CONTINUE "start"
     OPEN_SCOPE
         MEMBER int "int" "x" "512"
     OPEN_SCOPE "<static>"

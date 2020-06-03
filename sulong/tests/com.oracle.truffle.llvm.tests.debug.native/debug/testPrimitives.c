@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ char C1 = 'A';
 char C2 = 'a';
 char C3 = '0';
 char C4 = '+';
-    
+
 short S1 = SHORT_MSB_SET;
 short S2 = SHORT_LSB_SET;
 unsigned short S3 = SHORT_MSB_SET;
@@ -70,39 +70,38 @@ double D3 = -1.0;
 double D4 = 1.25;
 double D5 = -1.25;
 
-int start() __attribute__((constructor))
-{
-    char c1 = 'A';
-    char c2 = 'a';
-    char c3 = '0';
-    char c4 = '+';
-    
-    short s1 = SHORT_MSB_SET;
-    short s2 = SHORT_LSB_SET;
-    unsigned short s3 = SHORT_MSB_SET;
-    unsigned short s4 = SHORT_LSB_SET;
+int start() __attribute__((constructor)) {
+  char c1 = 'A';
+  char c2 = 'a';
+  char c3 = '0';
+  char c4 = '+';
 
-    int i1 = INT_MSB_SET;
-    int i2 = INT_LSB_SET;
-    unsigned int i3 = INT_MSB_SET;
-    unsigned int i4 = INT_LSB_SET;
+  short s1 = SHORT_MSB_SET;
+  short s2 = SHORT_LSB_SET;
+  unsigned short s3 = SHORT_MSB_SET;
+  unsigned short s4 = SHORT_LSB_SET;
 
-    long int l1 = LONG_MSB_SET;
-    long int l2 = LONG_LSB_SET;
-    long unsigned int l3 = LONG_MSB_SET;
-    long unsigned int l4 = LONG_LSB_SET;
+  int i1 = INT_MSB_SET;
+  int i2 = INT_LSB_SET;
+  unsigned int i3 = INT_MSB_SET;
+  unsigned int i4 = INT_LSB_SET;
 
-    float f1 = 0.0f;
-    float f2 = 1.0f;
-    float f3 = -1.0f;
-    float f4 = 1.25f;
-    float f5 = -1.25f;
+  long int l1 = LONG_MSB_SET;
+  long int l2 = LONG_LSB_SET;
+  long unsigned int l3 = LONG_MSB_SET;
+  long unsigned int l4 = LONG_LSB_SET;
 
-    double d1 = 0.0;
-    double d2 = 1.0;
-    double d3 = -1.0;
-    double d4 = 1.25;
-    double d5 = -1.25;
+  float f1 = 0.0f;
+  float f2 = 1.0f;
+  float f3 = -1.0f;
+  float f4 = 1.25f;
+  float f5 = -1.25f;
 
-    return 0;
+  double d1 = 0.0;
+  double d2 = 1.0;
+  double d3 = -1.0;
+  double d4 = 1.25;
+  double d5 = -1.25;
+
+  return 0;
 }
