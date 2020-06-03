@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,10 @@ typedef struct {
   double valueD;
 } CLASS;
 
-int getValueI(CLASS *c) { return c->valueI; }
+int getValueI(CLASS *c) {
+  return c->valueI;
+}
 
-int main() { return 0; }
+int main() {
+  return 0;
+}

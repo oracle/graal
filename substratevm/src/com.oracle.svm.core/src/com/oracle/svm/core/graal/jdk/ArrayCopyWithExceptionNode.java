@@ -42,7 +42,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.replacements.nodes.ArrayCopy;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -66,6 +66,9 @@ public class ArrayCopyWithExceptionNode extends WithExceptionNode implements Arr
         this.bci = bci;
         this.args = new NodeInputList<>(this, new ValueNode[]{src, srcPos, dest, destPos, length});
         this.elementKind = elementKind != JavaKind.Illegal ? elementKind : null;
+        if (this.elementKind == null) {
+            this.elementKind = ArrayCopy.selectComponentKind(this);
+        }
     }
 
     @Override
@@ -131,21 +134,16 @@ public class ArrayCopyWithExceptionNode extends WithExceptionNode implements Arr
 
     @Override
     public FixedNode replaceWithNonThrowing() {
-        /*
-         * TODO (GR-21064): Once we have VM-independent stubs for arraycopy, we will be able to just
-         * generate a plain ArrayCopyNode here and benefit from all of its optimized variants.
-         */
         SubstrateArraycopyNode plainArrayCopy = this.asNode().graph()
                         .add(new SubstrateArraycopyNode(getSource(), getSourcePosition(), getDestination(), getDestinationPosition(), getLength(), getElementKind(), getBci()));
         plainArrayCopy.setStateAfter(stateAfter);
+        AbstractBeginNode nextBegin = this.next;
         AbstractBeginNode oldException = this.exceptionEdge;
         graph().replaceSplitWithFixed(this, plainArrayCopy, this.next());
         GraphUtil.killCFG(oldException);
+        if (nextBegin instanceof KillingBeginNode && ((KillingBeginNode) nextBegin).getKilledLocationIdentity().equals(plainArrayCopy.getKilledLocationIdentity())) {
+            plainArrayCopy.graph().removeFixed(nextBegin);
+        }
         return plainArrayCopy;
-    }
-
-    @Override
-    public AbstractBeginNode createNextBegin() {
-        return KillingBeginNode.create(getKilledLocationIdentity());
     }
 }

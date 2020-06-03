@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.259.0",
+    "mxversion": "5.263.7",
     "name": "substratevm",
     "version" : "20.2.0",
     "release" : False,
@@ -46,11 +46,6 @@ suite = {
         "DACAPO_SVM" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-native-image.jar"],
             "sha1" : "5d534f0b7aa9124d9797a180688468d2f126039a",
-        },
-
-        "JDK11_LIBMUSL_STATIC_LIBS" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jdk-static-libs/labsjdk-ce-11.0.6-jvmci-20.0-b02-musl-static-libs.tar.gz"],
-            "sha1" : "59082db9e4c5a3e1fff58c9c4d7870ace5410bdb",
         },
 
         "XERCES_IMPL" : {
@@ -412,31 +407,6 @@ suite = {
                     },
                     "<others>": {
                         "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
-                    },
-                },
-            },
-        },
-
-        "com.oracle.svm.native.strictmath": {
-            "subDir": "src",
-            "native": "static_lib",
-            "os_arch": {
-                "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
-                    },
-                },
-                "windows": {
-                    "<others>": {
-                        "cflags": ["-O1", "-D_LITTLE_ENDIAN"],
-                    },
-                },
-                "<others>": {
-                    "sparcv9": {
-                        "ignore": "sparcv9 is not supported",
-                    },
-                    "<others>": {
-                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                     },
                 },
             },
@@ -1018,7 +988,6 @@ suite = {
             "layout": {
                 "<os>-<arch>/": [
                     "dependency:com.oracle.svm.native.libchelper/*",
-                    "dependency:com.oracle.svm.native.strictmath/*",
                     "dependency:com.oracle.svm.native.darwin/*",
                     "dependency:com.oracle.svm.native.jvm.posix/*",
                     "dependency:com.oracle.svm.native.jvm.windows/*",
@@ -1177,30 +1146,6 @@ suite = {
             "description" : "Native-image based junit testing support",
             "layout" : {
                 "native-image.properties" : "file:mx.substratevm/macro-junit.properties",
-            },
-        },
-
-        "JDK11_NATIVE_IMAGE_MUSL_SUPPORT_CE" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "Static JDK11 libraries required for building images with musl",
-            "javaCompliance" : "11",
-            "os_arch" : {
-                "linux" : {
-                    "amd64" : {
-                        "layout" : {
-                            "musl/" : ["extracted-dependency:substratevm:JDK11_LIBMUSL_STATIC_LIBS"],
-                        },
-                    },
-                    "<others>" : {
-                        "ignore" : "only linux-amd64 is supported",
-                    },
-                },
-                "<others>" : {
-                    "<others>" : {
-                        "ignore" : "only linux-amd64 is supported",
-                    },
-                },
             },
         },
 

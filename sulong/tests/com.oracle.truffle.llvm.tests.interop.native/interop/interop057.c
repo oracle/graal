@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,17 +38,17 @@ POLYGLOT_DECLARE_STRUCT(Foreign)
 
 int main() {
   struct Foreign *foreign = polyglot_as_Foreign(polyglot_import("foreign"));
-  
+
   if (foreign->a != 0) {
     return 100 + foreign->a;
   }
-  
+
   if (foreign->b != 1) {
     return 200 + foreign->b;
   }
-  
+
   foreign->a = 101;
   foreign->b = 102;
-  
+
   return 0;
 }

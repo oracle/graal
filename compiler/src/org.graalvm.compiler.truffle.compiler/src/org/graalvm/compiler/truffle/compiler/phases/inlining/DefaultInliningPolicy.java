@@ -120,22 +120,14 @@ final class DefaultInliningPolicy implements InliningPolicy {
         expandedCount = tree.getRoot().getIR().getNodeCount();
         final PriorityQueue<CallNode> expandQueue = getQueue(tree, CallNode.State.Cutoff);
         CallNode candidate;
-        while ((candidate = expandQueue.poll()) != null) {
-            if (expandedCount > expansionBudget) {
-                break;
+        while ((candidate = expandQueue.poll()) != null && expandedCount < expansionBudget) {
+            if (candidate.getRecursionDepth() <= maximumRecursiveInliningValue && candidate.getDepth() <= MAX_DEPTH) {
+                expand(candidate, expandQueue);
             }
-            if (candidate.isForced()) {
-                doExpand(candidate, expandQueue);
-                continue;
-            }
-            if (candidate.getRecursionDepth() > maximumRecursiveInliningValue || candidate.getDepth() > MAX_DEPTH) {
-                continue;
-            }
-            doExpand(candidate, expandQueue);
         }
     }
 
-    private void doExpand(CallNode candidate, PriorityQueue<CallNode> expandQueue) {
+    private void expand(CallNode candidate, PriorityQueue<CallNode> expandQueue) {
         candidate.expand();
         expandedCount += candidate.getIR().getNodeCount();
         updateQueue(candidate, expandQueue, CallNode.State.Cutoff);

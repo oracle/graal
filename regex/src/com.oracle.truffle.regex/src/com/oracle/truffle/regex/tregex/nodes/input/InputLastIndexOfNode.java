@@ -65,7 +65,7 @@ public abstract class InputLastIndexOfNode extends Node {
 
     @Specialization
     public int lastIndexOf(TruffleObject input, char c, int fromIndex, int maxIndex,
-                    @Cached("create()") InputCharAtNode charAtNode) {
+                    @Cached("create()") InputReadNode charAtNode) {
         for (int i = fromIndex; i >= maxIndex; i--) {
             if (charAtNode.execute(input, i) == c) {
                 return i;

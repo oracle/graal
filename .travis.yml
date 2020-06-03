@@ -44,6 +44,12 @@ matrix:
         packages:
           - libc++1
           - libc++abi1
+  - os: linux
+    env: JDK="jdk8" GATE="build,debuginfotest" PRIMARY="substratevm"
+    addons:
+      apt:
+        packages:
+          - gdb
   - env: JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"

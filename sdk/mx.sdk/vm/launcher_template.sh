@@ -55,11 +55,11 @@ process_vm_arg() {
     local prefix=$1 # vm or jvm
     local vm_arg="$2"
     if [[ "$vm_arg" == "cp" ]]; then
-        >&2 echo "'--${prefix}.cp' argument must be of the form '--${prefix}.cp=<classpath>', not two separate arguments"
+        >&2 echo "'--${prefix}.cp' argument must be of the form '--${prefix}.cp=<classpath>', not two separate arguments."
         exit 1
     fi
     if [[ "$vm_arg" == "classpath" ]]; then
-        >&2 echo "'--${prefix}.classpath' argument must be of the form '--${prefix}.classpath=<classpath>', not two separate arguments"
+        >&2 echo "'--${prefix}.classpath' argument must be of the form '--${prefix}.classpath=<classpath>', not two separate arguments."
         exit 1
     fi
     if [[ "$vm_arg" == "cp="* ]]; then
@@ -96,6 +96,15 @@ process_arg() {
         launcher_args+=("$1")
     fi
 }
+
+# Check option-holding variables.
+# Those can be specified as the `option_vars` argument of the LauncherConfig constructor.
+for var in <option_vars>; do
+    read -ra opts <<< "${!var}"
+    for opt in ${opts[@]}; do
+        [[ "$opt" == --vm.* ]] && process_vm_arg "${opt#--vm.}"
+    done
+done
 
 for o in "$@"; do
     process_arg "$o"

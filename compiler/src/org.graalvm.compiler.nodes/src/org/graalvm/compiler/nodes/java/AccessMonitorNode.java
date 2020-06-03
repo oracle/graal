@@ -108,14 +108,6 @@ public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint impleme
         return monitorId;
     }
 
-    public void disableBiasedLocking() {
-        this.biasable = false;
-    }
-
-    public boolean isBiasable() {
-        return biasable;
-    }
-
     protected boolean biasable = true;
 
 }

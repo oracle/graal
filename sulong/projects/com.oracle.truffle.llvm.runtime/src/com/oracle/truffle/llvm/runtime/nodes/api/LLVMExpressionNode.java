@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -102,9 +101,5 @@ public abstract class LLVMExpressionNode extends LLVMInstrumentableNode {
     @Override
     public final WrapperNode createWrapper(ProbeNode probe) {
         return new LLVMExpressionNodeWrapper(this, probe);
-    }
-
-    public static boolean notLLVM(Object object) {
-        return !(object instanceof LLVMInternalTruffleObject) && !LLVMPointer.isInstance(object);
     }
 }

@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -81,6 +81,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -2216,4 +2217,59 @@ public class LanguageSPITest {
             LanguageInfo findLanguage(String id);
         }
     }
+
+    static volatile boolean enableThrow = false;
+
+    @TruffleLanguage.Registration(id = ThrowInLanguageInitializer.ID, name = ThrowInLanguageInitializer.ID)
+    public static final class ThrowInLanguageInitializer extends TruffleLanguage<TruffleLanguage.Env> {
+
+        static final String ID = "LanguageSPITestThrowInLanguageInitializer";
+
+        public ThrowInLanguageInitializer() {
+            if (enableThrow) {
+                throw new AssertionError("expectedMessage");
+            }
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        }
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+    }
+
+    @Test
+    public void testThrowInClassInitializer() {
+        enableThrow = true;
+        try {
+            try (Engine engine = Engine.create()) {
+                Language language = engine.getLanguages().get(ThrowInLanguageInitializer.ID);
+                AbstractPolyglotTest.assertFails(() -> language.getOptions(), PolyglotException.class, this::assertExpectedInternalError);
+                AbstractPolyglotTest.assertFails(() -> language.getOptions(), PolyglotException.class, this::assertExpectedInternalError);
+            }
+
+            try (Context context = Context.create()) {
+                Language language = context.getEngine().getLanguages().get(ThrowInLanguageInitializer.ID);
+                AbstractPolyglotTest.assertFails(() -> language.getOptions(), PolyglotException.class, this::assertExpectedInternalError);
+                AbstractPolyglotTest.assertFails(() -> language.getOptions(), PolyglotException.class, this::assertExpectedInternalError);
+
+                AbstractPolyglotTest.assertFails(() -> context.initialize(ThrowInLanguageInitializer.ID), PolyglotException.class, this::assertExpectedInternalError);
+                AbstractPolyglotTest.assertFails(() -> context.eval(ThrowInLanguageInitializer.ID, ""), PolyglotException.class, this::assertExpectedInternalError);
+            }
+
+        } finally {
+            enableThrow = false;
+        }
+    }
+
+    void assertExpectedInternalError(PolyglotException e) {
+        assertTrue(e.isInternalError());
+        assertEquals("java.lang.AssertionError: expectedMessage", e.getMessage());
+    }
+
 }

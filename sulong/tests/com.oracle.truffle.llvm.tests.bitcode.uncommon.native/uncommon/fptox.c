@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,28 +33,30 @@
 
 #define NOINLINE __attribute__((noinline))
 
-#define FUNC(name,ty) NOINLINE int name(float f) {  \
-    ty c = f;                                       \
-    if (c) {                                        \
-      return c;                                     \
-    }                                               \
-    return 23;                                      \
+#define FUNC(name, ty)                                                                                                                               \
+  NOINLINE int name(float f) {                                                                                                                       \
+    ty c = f;                                                                                                                                        \
+    if (c) {                                                                                                                                         \
+      return c;                                                                                                                                      \
+    }                                                                                                                                                \
+    return 23;                                                                                                                                       \
   }
 
-#define STRUCT(ty) NOINLINE int ty(float f) {   \
-    struct ty c;                                \
-    c.field = f;                                \
-    if (c.field) {                              \
-      return c.field;                           \
-    }                                           \
-    return 23;                                  \
+#define STRUCT(ty)                                                                                                                                   \
+  NOINLINE int ty(float f) {                                                                                                                         \
+    struct ty c;                                                                                                                                     \
+    c.field = f;                                                                                                                                     \
+    if (c.field) {                                                                                                                                   \
+      return c.field;                                                                                                                                \
+    }                                                                                                                                                \
+    return 23;                                                                                                                                       \
   }
 
 #define PACKED __attribute__((packed))
 
 typedef unsigned char uchar;
-typedef unsigned int  uint;
-
+typedef unsigned int uint;
+// clang-format off
 struct        struct_char              {  char  field;    };
 struct PACKED struct_char_packed       {  char  field;    };
 struct        struct_char_1bit         {  char  field:1;  };
@@ -79,56 +81,59 @@ struct        struct_bool              {  bool  field;    };
 struct PACKED struct_bool_packed       {  bool  field;    };
 struct        struct_bool_1bit         {  bool  field:1;  };
 struct PACKED struct_bool_packed_1bit  {  bool  field:1;  };
+// clang-format on
 
-FUNC(char_,char);
+FUNC(char_, char);
 STRUCT(struct_char);
 STRUCT(struct_char_packed);
 STRUCT(struct_char_1bit);
 STRUCT(struct_char_packed_1bit);
 
-FUNC(uchar_,uchar);
+FUNC(uchar_, uchar);
 STRUCT(struct_uchar);
 STRUCT(struct_uchar_packed);
 STRUCT(struct_uchar_1bit);
 STRUCT(struct_uchar_packed_1bit);
 
-FUNC(int_,int);
+FUNC(int_, int);
 STRUCT(struct_int);
 STRUCT(struct_int_packed);
 STRUCT(struct_int_1bit);
 STRUCT(struct_int_packed_1bit);
 
-FUNC(uint_,uint);
+FUNC(uint_, uint);
 STRUCT(struct_uint);
 STRUCT(struct_uint_packed);
 STRUCT(struct_uint_1bit);
 STRUCT(struct_uint_packed_1bit);
 
-FUNC(bool_,bool);
+FUNC(bool_, bool);
 STRUCT(struct_bool);
 STRUCT(struct_bool_packed);
 STRUCT(struct_bool_1bit);
 STRUCT(struct_bool_packed_1bit);
 
 int main() {
-#define PRINT(name) do {                                            \
-    printf(#name " -4.0 = %2d (%0.8x)\n", name(-4.0), name(-4.0));  \
-    printf(#name " -3.0 = %2d (%0.8x)\n", name(-3.0), name(-3.0));  \
-    printf(#name " -2.0 = %2d (%0.8x)\n", name(-2.0), name(-2.0));  \
-    printf(#name " -1.0 = %2d (%0.8x)\n", name(-1.0), name(-1.0));  \
-    printf(#name " -0.8 = %2d (%0.8x)\n", name(-0.8), name(-0.8));  \
-    printf(#name " -0.5 = %2d (%0.8x)\n", name(-0.5), name(-0.5));  \
-    printf(#name " -0.3 = %2d (%0.8x)\n", name(-0.3), name(-0.3));  \
-    printf(#name "  0.0 = %2d (%0.8x)\n", name( 0.0), name( 0.0));  \
-    printf(#name "  0.3 = %2d (%0.8x)\n", name( 0.3), name( 0.3));  \
-    printf(#name "  0.5 = %2d (%0.8x)\n", name( 0.5), name( 0.5));  \
-    printf(#name "  0.8 = %2d (%0.8x)\n", name( 0.8), name( 0.8));  \
-    printf(#name "  1.0 = %2d (%0.8x)\n", name( 1.0), name( 1.0));  \
-    printf(#name "  2.0 = %2d (%0.8x)\n", name( 2.0), name( 2.0));  \
-    printf(#name "  3.0 = %2d (%0.8x)\n", name( 3.0), name( 3.0));  \
-    printf(#name "  4.0 = %2d (%0.8x)\n", name( 4.0), name( 4.0));  \
+#define PRINT(name)                                                                                                                                  \
+  do {                                                                                                                                               \
+    printf(#name " -4.0 = %2d (%0.8x)\n", name(-4.0), name(-4.0));                                                                                   \
+    printf(#name " -3.0 = %2d (%0.8x)\n", name(-3.0), name(-3.0));                                                                                   \
+    printf(#name " -2.0 = %2d (%0.8x)\n", name(-2.0), name(-2.0));                                                                                   \
+    printf(#name " -1.0 = %2d (%0.8x)\n", name(-1.0), name(-1.0));                                                                                   \
+    printf(#name " -0.8 = %2d (%0.8x)\n", name(-0.8), name(-0.8));                                                                                   \
+    printf(#name " -0.5 = %2d (%0.8x)\n", name(-0.5), name(-0.5));                                                                                   \
+    printf(#name " -0.3 = %2d (%0.8x)\n", name(-0.3), name(-0.3));                                                                                   \
+    printf(#name "  0.0 = %2d (%0.8x)\n", name(0.0), name(0.0));                                                                                     \
+    printf(#name "  0.3 = %2d (%0.8x)\n", name(0.3), name(0.3));                                                                                     \
+    printf(#name "  0.5 = %2d (%0.8x)\n", name(0.5), name(0.5));                                                                                     \
+    printf(#name "  0.8 = %2d (%0.8x)\n", name(0.8), name(0.8));                                                                                     \
+    printf(#name "  1.0 = %2d (%0.8x)\n", name(1.0), name(1.0));                                                                                     \
+    printf(#name "  2.0 = %2d (%0.8x)\n", name(2.0), name(2.0));                                                                                     \
+    printf(#name "  3.0 = %2d (%0.8x)\n", name(3.0), name(3.0));                                                                                     \
+    printf(#name "  4.0 = %2d (%0.8x)\n", name(4.0), name(4.0));                                                                                     \
   } while (0)
 
+  // clang-format off
   PRINT(char_);                    printf("\n");
   PRINT(struct_char);              printf("\n");
   PRINT(struct_char_packed);       printf("\n");
@@ -158,6 +163,7 @@ int main() {
   PRINT(struct_bool_packed);       printf("\n");
   PRINT(struct_bool_1bit);         printf("\n");
   PRINT(struct_bool_packed_1bit);
+  // clang-format on
 
   return 0;
 }

@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ from mx_updategraalinopenjdk import package_renamings, rename_packages
 def renamegraalpackages(args):
     """ rename Graal packages to match names in OpenJDK"""
     parser = ArgumentParser(prog='mx renamegraalpackages')
+    parser.add_argument('version', type=int, help='Java version of the OpenJDK')
 
     args = parser.parse_args(args)
 
@@ -50,9 +51,13 @@ def renamegraalpackages(args):
     # rename packages
     for proj_dir in [join(vc_dir, x) for x in os.listdir(vc_dir) if exists(join(vc_dir, x, 'mx.' + x, 'suite.py'))]:
         for dirpath, _, filenames in os.walk(proj_dir):
-            for filename in filenames:
-                if filename.endswith('.java') or filename == 'suite.py' or filename == 'generate_unicode_properties.py':
-                    rename_packages(join(dirpath, filename))
+            if args.version >= 15 and "sparc" in dirpath:
+                # Remove SPARC port for JDK 15
+                shutil.rmtree(dirpath)
+            else:
+                for filename in filenames:
+                    if filename.endswith('.java') or filename == 'suite.py' or filename == 'generate_unicode_properties.py':
+                        rename_packages(join(dirpath, filename))
 
         # move directories according to new package name
         for old_name, new_name in package_renamings.items():

@@ -54,9 +54,12 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
     private final LibGraalTruffleRuntime runtime;
 
-    private byte[] initialOptions = {};
+    private byte[] initialOptions;
 
     long handle() {
+        if (initialOptions == null) {
+            throw new IllegalStateException("Initial options are not yet initialized, missing call of the TruffleCompiler::initialized method.");
+        }
         try (LibGraalScope scope = new LibGraalScope()) {
             return scope.getIsolate().getSingleton(Handle.class, () -> {
                 long isolateThread = getIsolateThread();
@@ -76,6 +79,10 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     @Override
     public void initialize(Map<String, Object> options) {
         this.initialOptions = OptionsEncoder.encode(options);
+        // Force installation of the Truffle call boundary methods.
+        // See AbstractHotSpotTruffleRuntime.setDontInlineCallBoundaryMethod
+        // for further details.
+        handle();
     }
 
     @Override

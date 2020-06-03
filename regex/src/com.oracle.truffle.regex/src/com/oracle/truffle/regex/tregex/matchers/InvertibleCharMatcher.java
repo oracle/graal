@@ -51,7 +51,7 @@ public abstract class InvertibleCharMatcher extends CharMatcher {
     /**
      * Construct a new {@link InvertibleCharMatcher}.
      *
-     * @param invert if this is set to true, the result of {@link #execute(char, boolean)} is always
+     * @param invert if this is set to true, the result of {@link #execute(int, boolean)} is always
      *            inverted.
      */
     protected InvertibleCharMatcher(boolean invert) {

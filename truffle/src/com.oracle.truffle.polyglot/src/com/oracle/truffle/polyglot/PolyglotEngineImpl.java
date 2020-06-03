@@ -754,11 +754,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                                         duplicateId, className1, className2));
     }
 
-    /*
-     * Do not call this when exception wrapping is done in one of the callees. It is expected to be
-     * thrown directly to the embedder. Save to call this from within a language as the engine is
-     * never closed there.
-     */
     void checkState() {
         if (closed) {
             throw PolyglotEngineException.illegalState("Engine is already closed.");
@@ -1089,10 +1084,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     List<OptionDescriptors> allDescriptors = new ArrayList<>();
                     allDescriptors.add(engineOptions);
                     for (PolyglotLanguage language : idToLanguage.values()) {
-                        allDescriptors.add(language.getOptions());
+                        allDescriptors.add(language.getOptionsInternal());
                     }
                     for (PolyglotInstrument instrument : idToInstrument.values()) {
-                        allDescriptors.add(instrument.getOptions());
+                        allDescriptors.add(instrument.getOptionsInternal());
                     }
                     allOptions = OptionDescriptors.createUnion(allDescriptors.toArray(new OptionDescriptors[0]));
                 }

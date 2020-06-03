@@ -62,7 +62,7 @@ public abstract class NullHighByteBitSetMatcher extends InvertibleCharMatcher {
     }
 
     @Specialization
-    protected boolean match(char c, @SuppressWarnings("unused") boolean compactString) {
+    protected boolean match(int c, @SuppressWarnings("unused") boolean compactString) {
         return result(bitSet.get(c));
     }
 

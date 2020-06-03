@@ -45,7 +45,7 @@ import com.oracle.truffle.regex.chardata.CharacterSet;
 
 /**
  * A storage-agnostic implementation of a sorted list of disjoint integer ranges with inclusive
- * lower and upper bounds. Holds the invariant {@link #rangesAreSortedAndDisjoint()}.
+ * lower and upper bounds. Holds the invariant {@link #rangesAreSortedNonAdjacentAndDisjoint()}.
  */
 public interface SortedListOfRanges extends CharacterSet {
 
@@ -126,6 +126,24 @@ public interface SortedListOfRanges extends CharacterSet {
     default int getMax() {
         assert !isEmpty();
         return getHi(size() - 1);
+    }
+
+    /**
+     * Returns the smallest value contained in the inverse of this set. Must not be called on empty
+     * or full sets.
+     */
+    default int inverseGetMin() {
+        assert !isEmpty() && !matchesEverything();
+        return getMin() == getMinValue() ? getHi(0) + 1 : getMinValue();
+    }
+
+    /**
+     * Returns the largest value contained in the inverse of this set. Must not be called on empty
+     * or full sets.
+     */
+    default int inverseGetMax() {
+        assert !isEmpty() && !matchesEverything();
+        return getMax() == getMaxValue() ? getLo(size() - 1) - 1 : getMaxValue();
     }
 
     /**
@@ -417,12 +435,28 @@ public interface SortedListOfRanges extends CharacterSet {
      * Returns {@code true} if this list is sorted and all of its ranges are disjoint and
      * non-adjacent. This property must hold at all times.
      */
-    default boolean rangesAreSortedAndDisjoint() {
+    default boolean rangesAreSortedNonAdjacentAndDisjoint() {
         if (size() > 0 && getLo(0) > getHi(0)) {
             return false;
         }
         for (int i = 1; i < size(); i++) {
             if (getLo(i) > getHi(i) || (!leftOf(i - 1, this, i)) || intersects(i - 1, this, i) || adjacent(i - 1, this, i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns {@code true} if this list is sorted and all of its ranges are disjoint. This property
+     * must hold at all times.
+     */
+    default boolean rangesAreSortedAndDisjoint() {
+        if (size() > 0 && getLo(0) > getHi(0)) {
+            return false;
+        }
+        for (int i = 1; i < size(); i++) {
+            if (getLo(i) > getHi(i) || (!leftOf(i - 1, this, i)) || intersects(i - 1, this, i)) {
                 return false;
             }
         }

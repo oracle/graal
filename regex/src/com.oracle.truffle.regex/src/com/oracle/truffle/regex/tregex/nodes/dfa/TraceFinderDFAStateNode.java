@@ -53,13 +53,21 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
                     AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher, byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
         super(id, flags, loopOptimizationNode, successors, matchers, null, allTransitionsInOneTreeMatcher);
         this.preCalculatedUnAnchoredResult = preCalculatedUnAnchoredResult;
-        this.preCalculatedAnchoredResult = preCalculatedAnchoredResult;
+        this.preCalculatedAnchoredResult = initPreCalculatedAnchoredResult(preCalculatedUnAnchoredResult, preCalculatedAnchoredResult);
     }
 
     private TraceFinderDFAStateNode(TraceFinderDFAStateNode copy, short copyID) {
         super(copy, copyID);
         this.preCalculatedUnAnchoredResult = copy.preCalculatedUnAnchoredResult;
         this.preCalculatedAnchoredResult = copy.preCalculatedAnchoredResult;
+    }
+
+    private static byte initPreCalculatedAnchoredResult(byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
+        if (Byte.toUnsignedInt(preCalculatedUnAnchoredResult) < Byte.toUnsignedInt(preCalculatedAnchoredResult)) {
+            // unanchored result has higher priority, so the anchored result will never be chosen
+            return NO_PRE_CALC_RESULT;
+        }
+        return preCalculatedAnchoredResult;
     }
 
     @Override
@@ -84,14 +92,9 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
     }
 
     @Override
-    void storeResult(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, int index, boolean anchored) {
-        if (anchored) {
-            assert hasPreCalculatedAnchoredResult();
-            if (hasPreCalculatedUnAnchoredResult() && getPreCalculatedUnAnchoredResult() < getPreCalculatedAnchoredResult()) {
-                locals.setResultInt(getPreCalculatedUnAnchoredResult());
-            } else {
-                locals.setResultInt(getPreCalculatedAnchoredResult());
-            }
+    void storeResult(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean anchored) {
+        if (hasPreCalculatedAnchoredResult() && anchored) {
+            locals.setResultInt(getPreCalculatedAnchoredResult());
         } else {
             assert hasPreCalculatedUnAnchoredResult();
             locals.setResultInt(getPreCalculatedUnAnchoredResult());

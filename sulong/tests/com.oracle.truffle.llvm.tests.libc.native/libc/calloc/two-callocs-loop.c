@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,9 @@
  */
 #include <stdlib.h>
 
-int max(int a, int b) { return a > b ? a : b; }
+int max(int a, int b) {
+  return a > b ? a : b;
+}
 
 int main() {
   int *mem = calloc(sizeof(int), 1000);

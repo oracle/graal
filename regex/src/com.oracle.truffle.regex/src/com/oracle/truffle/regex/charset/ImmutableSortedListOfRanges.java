@@ -40,13 +40,15 @@
  */
 package com.oracle.truffle.regex.charset;
 
+import java.util.Iterator;
+
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 
 /**
  * Extensions of {@link SortedListOfRanges} specific to immutable implementations. Any methods of
  * this interface that return a list instance may return references to existing objects.
  */
-public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
+public interface ImmutableSortedListOfRanges extends SortedListOfRanges, Iterable<Range> {
 
     /**
      * Returns an empty list.
@@ -392,5 +394,32 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
             return o;
         }
         return create(target);
+    }
+
+    @Override
+    default Iterator<Range> iterator() {
+        return new ImmutableSortedListOfRangesIterator(this);
+    }
+
+    final class ImmutableSortedListOfRangesIterator implements Iterator<Range> {
+
+        private final ImmutableSortedListOfRanges ranges;
+        private int i = 0;
+
+        private ImmutableSortedListOfRangesIterator(ImmutableSortedListOfRanges ranges) {
+            this.ranges = ranges;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return i < ranges.size();
+        }
+
+        @Override
+        public Range next() {
+            Range ret = new Range(ranges.getLo(i), ranges.getHi(i));
+            i++;
+            return ret;
+        }
     }
 }

@@ -97,8 +97,7 @@ public abstract class LoopTransformations {
         LoopBeginNode loopBegin = loop.loopBegin();
         StructuredGraph graph = loopBegin.graph();
         int initialNodeCount = graph.getNodeCount();
-        SimplifierTool defaultSimplifier = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(),
-                        canonicalizer.getCanonicalizeReads(), graph.getAssumptions(), graph.getOptions());
+        SimplifierTool defaultSimplifier = GraphUtil.getDefaultSimplifier(context, canonicalizer.getCanonicalizeReads(), graph.getAssumptions(), graph.getOptions());
         /*
          * IMPORTANT: Canonicalizations inside the body of the remaining loop can introduce new
          * control flow that is not automatically picked up by the control flow graph computation of

@@ -109,7 +109,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
-import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
@@ -119,6 +118,7 @@ import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
@@ -182,7 +182,7 @@ public class StandardGraphBuilderPlugins {
         registerBoxingPlugins(plugins);
         registerJMHBlackholePlugins(plugins, replacements);
         registerJFRThrowablePlugins(plugins, replacements);
-        registerMethodHandleImplPlugins(plugins, snippetReflection, replacements);
+        registerMethodHandleImplPlugins(plugins, replacements);
         registerJcovCollectPlugins(plugins, replacements);
     }
 
@@ -450,18 +450,6 @@ public class StandardGraphBuilderPlugins {
         // Accesses to native memory addresses.
         r.register2("getAddress", Receiver.class, long.class, new UnsafeGetPlugin(JavaKind.Long, explicitUnsafeNullChecks));
         r.register3("putAddress", Receiver.class, long.class, long.class, new UnsafePutPlugin(JavaKind.Long, explicitUnsafeNullChecks));
-
-        r.register2("allocateInstance", Receiver.class, Class.class, new InvocationPlugin() {
-
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
-                // Emits a null-check for the otherwise unused receiver
-                unsafe.get();
-                b.addPush(JavaKind.Object, new DynamicNewInstanceNode(b.nullCheckedValue(clazz, DeoptimizationAction.None), true));
-                return true;
-            }
-
-        });
 
         r.register1("loadFence", Receiver.class, new UnsafeFencePlugin(LOAD_LOAD | LOAD_STORE));
         r.register1("storeFence", Receiver.class, new UnsafeFencePlugin(STORE_STORE | LOAD_STORE));
@@ -1410,7 +1398,7 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerMethodHandleImplPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, Replacements replacements) {
+    private static void registerMethodHandleImplPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.invoke.MethodHandleImpl", replacements);
         // In later JDKs this no longer exists and the usage is replace by Class.cast which is
         // already an intrinsic
@@ -1440,7 +1428,7 @@ public class StandardGraphBuilderPlugins {
                 }
                 if (counters.isConstant()) {
                     ValueNode newResult = result;
-                    int[] ctrs = snippetReflection.asObject(int[].class, (JavaConstant) counters.asConstant());
+                    int[] ctrs = ConstantReflectionUtil.loadIntArrayConstant(b.getConstantReflection(), (JavaConstant) counters.asConstant(), 2);
                     if (ctrs != null && ctrs.length == 2) {
                         int falseCount = ctrs[0];
                         int trueCount = ctrs[1];
@@ -1465,7 +1453,7 @@ public class StandardGraphBuilderPlugins {
                     return true;
                 }
                 b.addPush(JavaKind.Boolean,
-                                new ProfileBooleanNode(snippetReflection, MacroParams.of(b, targetMethod, result, counters)));
+                                new ProfileBooleanNode(b.getConstantReflection(), MacroParams.of(b, targetMethod, result, counters)));
                 return true;
             }
         });

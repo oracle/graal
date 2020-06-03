@@ -61,6 +61,7 @@ public abstract class SubstrateOperatingSystemMXBean implements com.sun.manageme
         return Runtime.getRuntime().availableProcessors();
     }
 
+    @SuppressWarnings("deprecation") // getTotalPhysicalMemorySize deprecated since JDK 14
     @Override
     public long getTotalPhysicalMemorySize() {
         return PhysicalMemory.size().rawValue();
@@ -93,11 +94,13 @@ public abstract class SubstrateOperatingSystemMXBean implements com.sun.manageme
         throw VMError.unsupportedFeature(MSG);
     }
 
+    @SuppressWarnings("deprecation") // getFreePhysicalMemorySize deprecated since JDK 14
     @Override
     public long getFreePhysicalMemorySize() {
         throw VMError.unsupportedFeature(MSG);
     }
 
+    @SuppressWarnings("deprecation") // getSystemCpuLoad deprecated since JDK 14
     @Override
     public double getSystemCpuLoad() {
         throw VMError.unsupportedFeature(MSG);

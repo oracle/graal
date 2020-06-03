@@ -54,6 +54,7 @@ import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.common.type.RawPointerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LabelRef;
@@ -1740,6 +1741,16 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             }
             LLVMValueRef castedAddress = builder.buildBitcast(address, builder.pointerType(valueType, LLVMIRBuilder.isObjectType(addressType), false));
             builder.buildStore(castedValue, castedAddress);
+        }
+
+        @Override
+        public Variable emitVolatileLoad(LIRKind kind, Value address, LIRFrameState state) {
+            throw GraalError.shouldNotReachHere();
+        }
+
+        @Override
+        public void emitVolatileStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state) {
+            throw GraalError.shouldNotReachHere();
         }
     }
 

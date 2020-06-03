@@ -37,7 +37,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(shortName = "%", cycles = CYCLES_32/* div */)
@@ -66,11 +65,6 @@ public class RemNode extends BinaryArithmeticNode<Rem> implements Lowerable {
     @Override
     protected BinaryOp<Rem> getOp(ArithmeticOpTable table) {
         return table.getRem();
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override

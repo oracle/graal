@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,9 +30,9 @@
 #include "polyglot.h"
 #include <stdlib.h>
 
-void while_statement(bool flag) { 
+void while_statement(bool flag) {
 
-	while (flag) {
-		break;
-	}
+  while (flag) {
+    break;
+  }
 }

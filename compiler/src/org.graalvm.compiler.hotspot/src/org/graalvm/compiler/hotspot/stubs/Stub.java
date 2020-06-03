@@ -161,7 +161,7 @@ public abstract class Stub {
 
     @Override
     public String toString() {
-        return "Stub<" + linkage.getDescriptor() + ">";
+        return "Stub<" + linkage.getDescriptor().getSignature() + ">";
     }
 
     /**

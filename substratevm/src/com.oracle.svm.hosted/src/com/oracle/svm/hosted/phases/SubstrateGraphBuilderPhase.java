@@ -34,12 +34,9 @@ import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
@@ -47,12 +44,9 @@ import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.graal.nodes.SubstrateNewArrayNode;
-import com.oracle.svm.core.graal.nodes.SubstrateNewInstanceNode;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
 
@@ -80,16 +74,6 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
         @Override
         protected boolean disableLoopSafepoint() {
             return super.disableLoopSafepoint() || method.getAnnotation(Uninterruptible.class) != null;
-        }
-
-        @Override
-        protected NewInstanceNode createNewInstance(ResolvedJavaType type, boolean fillContents) {
-            return new SubstrateNewInstanceNode(type, fillContents, null);
-        }
-
-        @Override
-        protected NewArrayNode createNewArray(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
-            return new SubstrateNewArrayNode(elementType, length, fillContents, null);
         }
 
         /**

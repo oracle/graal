@@ -31,6 +31,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
@@ -88,7 +89,7 @@ public class DelegatingReplacements implements Replacements {
 
     @Override
     public StructuredGraph getMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context,
-                    StructuredGraph.AllowAssumptions allowAssumptions, Cancellable cancellable, OptionValues options) {
+                    AllowAssumptions allowAssumptions, Cancellable cancellable, OptionValues options) {
         return delegate.getMethodSubstitution(plugin, original, context, allowAssumptions, cancellable, options);
     }
 
@@ -103,13 +104,14 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, OptionValues options) {
-        return delegate.getSubstitution(method, invokeBci, trackNodeSourcePosition, replaceePosition, options);
+    public StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, AllowAssumptions allowAssumptions,
+                    OptionValues options) {
+        return delegate.getSubstitution(method, invokeBci, trackNodeSourcePosition, replaceePosition, allowAssumptions, options);
     }
 
     @Override
-    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, Cancellable cancellable) {
-        return delegate.getIntrinsicGraph(method, compilationId, debug, cancellable);
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, AllowAssumptions allowAssumptions, Cancellable cancellable) {
+        return delegate.getIntrinsicGraph(method, compilationId, debug, allowAssumptions, cancellable);
     }
 
     @Override

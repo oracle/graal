@@ -1,8 +1,8 @@
 {
 	"name": "graalvm",
 	"displayName": "GraalVM",
-	"description": "Basic support for GraalVM",
-	"version": "0.0.7",
+	"description": "Support for GraalVM",
+	"version": "0.0.8",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "oracle-labs-graalvm",
 	"author": {
@@ -18,7 +18,7 @@
 		"url": "https://github.com/oracle/graal/issues"
 	},
 	"engines": {
-		"vscode": "^1.33.0"
+		"vscode": "^1.44.0"
 	},
 	"categories": [
 		"Programming Languages",
@@ -54,6 +54,16 @@
 					"type": "string",
 					"default": "",
 					"description": "Comma-separated list of language@[host:]port where other language servers run"
+				},
+				"graalvm.languageServer.startRLanguageServer": {
+					"type": "boolean",
+					"default": true,
+					"description": "Start R Language Server"
+				},
+				"graalvm.languageServer.startRubyLanguageServer": {
+					"type": "boolean",
+					"default": false,
+					"description": "Start Ruby Language Server"
 				}
 			}
 		},
@@ -81,6 +91,16 @@
 			{
 				"command": "extension.graalvm.toggleCodeCoverage",
 				"title": "Toggle Code Coverage",
+				"category": "GraalVM"
+			},
+			{
+				"command": "extension.graalvm.installRLanguageServer",
+				"title": "Install R Language Server",
+				"category": "GraalVM"
+			},
+			{
+				"command": "extension.graalvm.installRubyLanguageServer",
+				"title": "Install Ruby Language Server",
 				"category": "GraalVM"
 			}
 		],
@@ -145,6 +165,57 @@
 					"meta.embedded.inline.r": "r",
 					"meta.embedded.inline.ruby": "ruby"
 				}
+			},
+			{
+				"path": "./syntaxes/python-polyglot-injection.json",
+				"injectTo": [
+					"source.python",
+					"source.js",
+					"source.r",
+					"source.ruby",
+					"source.sl"
+				],
+				"scopeName": "python-inline.polyglot-langauges",
+				"embeddedLanguages": {
+					"meta.embedded.inline.js": "javascript",
+					"meta.embedded.inline.r": "r",
+					"meta.embedded.inline.ruby": "ruby",
+					"meta.embedded.inline.sl": "sl"
+				}
+			},
+			{
+				"path": "./syntaxes/r-polyglot-injection.json",
+				"injectTo": [
+					"source.r",
+					"source.js",
+					"source.ruby",
+					"source.python",
+					"source.sl"
+				],
+				"scopeName": "r-inline.polyglot-langauges",
+				"embeddedLanguages": {
+					"meta.embedded.inline.js": "javascript",
+					"meta.embedded.inline.python": "python",
+					"meta.embedded.inline.ruby": "ruby",
+					"meta.embedded.inline.sl": "sl"
+				}
+			},
+			{
+				"path": "./syntaxes/ruby-polyglot-injection.json",
+				"injectTo": [
+					"source.ruby",
+					"source.js",
+					"source.r",
+					"source.python",
+					"source.sl"
+				],
+				"scopeName": "ruby-inline.polyglot-langauges",
+				"embeddedLanguages": {
+					"meta.embedded.inline.js": "javascript",
+					"meta.embedded.inline.python": "python",
+					"meta.embedded.inline.r": "r",
+					"meta.embedded.inline.sl": "sl"
+				}
 			}
 		],
 		"snippets": [
@@ -155,6 +226,18 @@
 			{
 				"language": "sl",
 				"path": "./snippets/sl-polyglot-snippets.json"
+			},
+			{
+				"language": "python",
+				"path": "./snippets/python-polyglot-snippets.json"
+			},
+			{
+				"language": "r",
+				"path": "./snippets/r-polyglot-snippets.json"
+			},
+			{
+				"language": "ruby",
+				"path": "./snippets/ruby-polyglot-snippets.json"
 			}
 		],
 		"debuggers": [
@@ -165,7 +248,10 @@
 					"javascript",
 					"typescript",
 					"javascriptreact",
-					"typescriptreact"
+					"typescriptreact",
+					"python",
+					"r",
+					"ruby"
 				],
 				"program": "./dist/debug",
 				"runtime": "node",
@@ -309,6 +395,53 @@
 						}
 					},
 					{
+						"label": "GraalVM: Launch Python Script",
+						"description": "Launch a Python Script in debug mode",
+						"body": {
+							"type": "graalvm",
+							"request": "launch",
+							"name": "Launch Python Script",
+							"runtimeExecutable": "graalpython",
+							"program": "^\"${1:\\${file\\}}\""
+						}
+					},
+					{
+						"label": "GraalVM: Launch R Script",
+						"description": "Launch an R Script in debug mode",
+						"body": {
+							"type": "graalvm",
+							"request": "launch",
+							"name": "Launch R Script",
+							"runtimeExecutable": "Rscript",
+							"program": "^\"${1:\\${file\\}}\""
+						}
+					},
+					{
+						"label": "GraalVM: Launch R Terminal",
+						"description": "Launch an R terminal in debug mode",
+						"body": {
+							"type": "graalvm",
+							"request": "launch",
+							"name": "Launch R Term",
+							"runtimeExecutable": "R",
+							"runtimeArgs": [
+								"--inspect.Suspend=false"
+							],
+							"console": "integratedTerminal"
+						}
+					},
+					{
+						"label": "GraalVM: Launch Ruby Script",
+						"description": "Launch a Ruby Script in debug mode",
+						"body": {
+							"type": "graalvm",
+							"request": "launch",
+							"name": "Launch Ruby Script",
+							"runtimeExecutable": "ruby",
+							"program": "^\"${1:\\${file\\}}\""
+						}
+					},
+					{
 						"label": "GraalVM: Attach",
 						"description": "Attach to a running GraalVM",
 						"body": {
@@ -354,11 +487,16 @@
 		"@types/node": "^12.12.30",
 		"@types/sax": "^1.2.1",
 		"@types/tar": "^4.0.3",
-		"@types/vscode": "1.33.0",
+		"@types/vscode": "1.44.0",
 		"ts-loader": "^6.2.1",
 		"tslint": "^6.1.0",
 		"typescript": "^3.8.3",
 		"webpack": "^4.42.0",
 		"webpack-cli": "^3.3.11"
-	}
+	},
+	"extensionDependencies": [
+		"ms-python.python",
+		"Ikuyadeu.r",
+		"rebornix.Ruby"
+	]
 }
