@@ -27,33 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.interop;
+#include <stdio.h>
+#include <stdlib.h>
+#include <polyglot.h>
 
-import org.graalvm.polyglot.Value;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+void hello() {
+  printf("hello() is being called in testfile membersTest.cc");
+}
 
-import com.oracle.truffle.tck.TruffleRunner;
+void bye() {
+  printf("bye() is being called in testfile membersTest.cc");
+}
 
-@RunWith(TruffleRunner.class)
-public class MembersTest extends InteropTestBase {
-
-    private static Value testLibrary;
-
-    @BeforeClass
-    public static void loadTestBitcode() {
-        testLibrary = loadTestBitcodeValue("stringTest.c");
-    }
-
-    @Test
-    public void testMemberExists() {
-        Assert.assertTrue(testLibrary.hasMember("test_as_string_utf8"));
-    }
-
-    @Test
-    public void testMemberDoesNotExist() {
-        Assert.assertFalse(testLibrary.hasMember("abc"));
-    }
+int gcd(int a, int b) {
+  if (a == 0) {
+    return b;
+  } else if (b == 0) {
+    return a;
+  } else if (a < 0) {
+    return gcd(-a, b);
+  } else if (b < 0) {
+    return gcd(a, -b);
+  } else {
+    return gcd(b, a % b);
+  }
 }

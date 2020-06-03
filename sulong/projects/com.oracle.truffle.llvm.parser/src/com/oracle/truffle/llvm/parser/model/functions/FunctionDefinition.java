@@ -35,6 +35,8 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
+import com.oracle.truffle.llvm.parser.metadata.MDString;
+import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
@@ -89,6 +91,24 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
     public String getSourceName() {
         final String scopeName = sourceFunction.getName();
         return SourceFunction.DEFAULT_SOURCE_NAME.equals(scopeName) ? null : scopeName;
+    }
+
+    public String getDisplayName() {
+        /*
+         * For LLVM code produced from C++ sources, function.name stores the linkage name, but not
+         * 'original' C++ name.
+         */
+        if (mdAttachments != null && mdAttachments.size() > 0) {
+            for (MDAttachment mdAttachment : mdAttachments) {
+                if (mdAttachment.getValue() instanceof MDSubprogram) {
+                    MDSubprogram mdSubprogram = (MDSubprogram) mdAttachment.getValue();
+                    if (mdSubprogram.getName() instanceof MDString) {
+                        return ((MDString) mdSubprogram.getName()).getString();
+                    }
+                }
+            }
+        }
+        return getSourceName();
     }
 
     @Override
