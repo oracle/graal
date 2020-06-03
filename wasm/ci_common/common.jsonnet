@@ -105,7 +105,6 @@
 
   gate_graalwasm_jvmci: {
     setup+: [
-      ['set-export', 'WAT2WASM_BINARY', '${WABT_DIR}/wat2wasm.exe'],
       ['cd', 'wasm'],
       ['mx', 'sversions'],
     ],

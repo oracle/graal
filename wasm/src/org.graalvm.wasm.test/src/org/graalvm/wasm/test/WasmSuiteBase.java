@@ -121,7 +121,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     }
 
     private static boolean inCI() {
-        final String prid = System.getenv("PULL_REQUEST_ID");
+        final String prid = System.getenv("CONTINUOUS_INTEGRATION");
         return prid != null;
     }
 
@@ -397,7 +397,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             final int width = Integer.parseInt(output.split(" ")[1]);
             return width;
         } catch (IOException e) {
-            System.out.println("Could not retrieve terminal width: " + e.getMessage());
+            System.err.println("Could not retrieve terminal width: " + e.getMessage());
             return -1;
         } catch (InterruptedException e) {
             throw new RuntimeException(e);

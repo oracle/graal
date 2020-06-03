@@ -87,9 +87,7 @@ class GraalWasmDefaultTags:
 
 
 def wat2wasm_binary():
-    if mx.is_windows() or mx.is_cygwin():
-        return "wat2wasm.exe"
-    return "wat2wasm"
+    return mx.exe_suffix("wat2wasm")
 
 
 def graal_wasm_gate_runner(args, tasks):
