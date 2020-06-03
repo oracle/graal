@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.nodes.Node;
+package com.oracle.truffle.espresso.substitutions;
 
-@GenerateWrapper
-public abstract class EspressoInstrumentableNode extends Node implements InstrumentableNode {
+import static java.lang.annotation.ElementType.TYPE_USE;
 
-    public abstract Object execute(VirtualFrame frame);
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    public final boolean isInstrumentable() {
-        return true;
-    }
-
-    @Override
-    public WrapperNode createWrapper(ProbeNode probeNode) {
-        return new EspressoInstrumentableNodeWrapper(this, probeNode);
-    }
+@Retention(RetentionPolicy.RUNTIME)
+@Target(value = {TYPE_USE})
+public @interface InjectMeta {
 }

@@ -357,7 +357,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      * Ensure any callTarget is called immediately before a BCI is advanced, or it could violate the
      * specs on class init.
      */
-    @TruffleBoundary
     public CallTarget getCallTarget() {
         return getMethodVersion().getCallTarget();
     }
@@ -565,9 +564,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return Signatures.parameterCount(getParsedSignature(), false);
     }
 
-    public static Method getHostReflectiveMethodRoot(StaticObject seed) {
+    public static Method getHostReflectiveMethodRoot(StaticObject seed, Meta meta) {
         assert seed.getKlass().getMeta().java_lang_reflect_Method.isAssignableFrom(seed.getKlass());
-        Meta meta = seed.getKlass().getMeta();
         StaticObject curMethod = seed;
         Method target = null;
         while (target == null) {
@@ -579,9 +577,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return target;
     }
 
-    public static Method getHostReflectiveConstructorRoot(StaticObject seed) {
+    public static Method getHostReflectiveConstructorRoot(StaticObject seed, Meta meta) {
         assert seed.getKlass().getMeta().java_lang_reflect_Constructor.isAssignableFrom(seed.getKlass());
-        Meta meta = seed.getKlass().getMeta();
         StaticObject curMethod = seed;
         Method target = null;
         while (target == null) {
@@ -815,8 +812,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         // BCI slot is always the latest.
         FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
-        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor, bciSlot));
-        result.getMethodVersion().callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor, bciSlot));
+        result.getMethodVersion().callTarget = Truffle.getRuntime().createCallTarget(root);
 
         return result;
     }

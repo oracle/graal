@@ -25,9 +25,6 @@ package com.oracle.truffle.espresso.classfile.attributes;
 
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-import java.util.Arrays;
-import java.util.List;
-
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -52,8 +49,11 @@ public final class InnerClassesAttribute extends Attribute {
 
     @CompilationFinal(dimensions = 1) private final Entry[] entries;
 
-    public List<Entry> entries() {
-        return Arrays.asList(entries);
+    /**
+     * Trust the caller to not modify it.
+     */
+    public Entry[] entries() {
+        return entries;
     }
 
     public InnerClassesAttribute(Symbol<Name> name, Entry[] entries) {

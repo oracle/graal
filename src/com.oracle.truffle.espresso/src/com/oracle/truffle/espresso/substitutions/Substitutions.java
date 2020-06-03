@@ -28,21 +28,23 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.Types;
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorRootNode;
+import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -92,6 +94,20 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * </pre>
  *
  * and so on so forth.
+ * <li>Furthermore, if a substitution needs to call a known guest method, it is possible to give a
+ * {@link DirectCallNode} as an argument, annotated with {@link GuestCall}. The Espresso Processor
+ * wil generate the boilerplate to both generate the node, and pass it around. Note that the name of
+ * the parameter, or the string in {@link GuestCall#target()} must be rigorously equal to the name
+ * of the target method as declared in {@link Meta}.
+ * <li>Additionally, some substitutions may not be given a meta accessor as parameter, but may need
+ * to get the meta from somewhere. Regular meta obtention can be done through
+ * {@link EspressoLanguage#getCurrentContext()}, but this is quite a slow access. As such, it is
+ * possible to append the meta as an argument to the substitution, annotated with {@link InjectMeta}
+ * . Once again, the processor will generate all that is needed to give the meta.
+ * <p>
+ * <p>
+ * The order of arguments matter: First, the actual guest arguments, next the list of guest method
+ * nodes, and finally the meta to be injected.
  */
 public final class Substitutions implements ContextAccess {
 
@@ -120,7 +136,7 @@ public final class Substitutions implements ContextAccess {
     private final ConcurrentHashMap<MethodRef, EspressoRootNodeFactory> runtimeSubstitutions = new ConcurrentHashMap<>();
 
     static {
-        for (Substitutor substitutor : SubstitutorCollector.getInstance()) {
+        for (Substitutor.Factory substitutor : SubstitutorCollector.getCollector()) {
             registerStaticSubstitution(substitutor);
         }
     }
@@ -175,21 +191,21 @@ public final class Substitutions implements ContextAccess {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void registerStaticSubstitution(Substitutor substitutor) {
-        assert substitutor.substitutionClassName().startsWith("Target_");
+    private static void registerStaticSubstitution(Substitutor.Factory substitutorFactory) {
+        assert substitutorFactory.substitutionClassName().startsWith("Target_");
         List<Symbol<Type>> parameterTypes = new ArrayList<>();
-        for (int i = substitutor.hasReceiver() ? 1 : 0; i < substitutor.parameterTypes().length; i++) {
-            String type = substitutor.parameterTypes()[i];
+        for (int i = substitutorFactory.hasReceiver() ? 1 : 0; i < substitutorFactory.parameterTypes().length; i++) {
+            String type = substitutorFactory.parameterTypes()[i];
             parameterTypes.add(StaticSymbols.putType(type));
         }
-        Symbol<Type> returnType = StaticSymbols.putType(substitutor.returnType());
-        Symbol<Type> classType = StaticSymbols.putType("L" + substitutor.substitutionClassName().substring("Target_".length()).replace('_', '/') + ";");
-        Symbol<Name> methodName = StaticSymbols.putName(substitutor.getMethodName());
-        Symbol<Signature> signature = StaticSymbols.putSignature(returnType, parameterTypes.toArray(new Symbol[0]));
+        Symbol<Type> returnType = StaticSymbols.putType(substitutorFactory.returnType());
+        Symbol<Type> classType = StaticSymbols.putType("L" + substitutorFactory.substitutionClassName().substring("Target_".length()).replace('_', '/') + ";");
+        Symbol<Name> methodName = StaticSymbols.putName(substitutorFactory.getMethodName());
+        Symbol<Signature> signature = StaticSymbols.putSignature(returnType, parameterTypes.toArray(Symbol.EMPTY_ARRAY));
         EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode spawnNode(Method espressoMethod) {
-                return EspressoRootNode.create(null, new IntrinsicSubstitutorRootNode(substitutor, espressoMethod));
+                return EspressoRootNode.create(null, new IntrinsicSubstitutorNode(substitutorFactory, espressoMethod));
             }
         };
         registerStaticSubstitution(classType, methodName, signature, factory, true);

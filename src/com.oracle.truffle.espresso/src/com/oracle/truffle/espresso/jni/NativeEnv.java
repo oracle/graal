@@ -137,6 +137,7 @@ public abstract class NativeEnv {
         return fromUTF8Ptr(interopAsPointer(interopPtr));
     }
 
+    @TruffleBoundary
     protected static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long capacity) {
         ByteBuffer buffer = null;
         try {
@@ -149,6 +150,7 @@ public abstract class NativeEnv {
         return buffer;
     }
 
+    @TruffleBoundary
     protected static long byteBufferAddress(ByteBuffer byteBuffer) {
         try {
             return (long) addressField.get(byteBuffer);

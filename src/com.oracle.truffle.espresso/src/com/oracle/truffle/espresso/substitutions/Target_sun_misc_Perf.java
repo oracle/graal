@@ -65,11 +65,10 @@ public final class Target_sun_misc_Perf {
     }
 
     @Substitution(hasReceiver = true)
+    @SuppressWarnings("unused")
     public static @Host(ByteBuffer.class) StaticObject createLong(@Host(typeName = "Lsun/misc/Perf;") StaticObject self,
-                    @SuppressWarnings("unused") @Host(String.class) StaticObject name, int variability, int units, long value) {
-        // TODO(tg): inject meta
-        Meta meta = self.getKlass().getMeta();
-
+                    @SuppressWarnings("unused") @Host(String.class) StaticObject name, int variability, int units, long value,
+                    @InjectMeta Meta meta) {
         if (units <= 0 || units > U_Last) {
             throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }

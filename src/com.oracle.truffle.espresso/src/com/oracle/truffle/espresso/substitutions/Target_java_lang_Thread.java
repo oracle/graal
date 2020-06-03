@@ -29,7 +29,10 @@ import static com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.impl.Field;
@@ -40,7 +43,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import org.graalvm.options.OptionValues;
 
 // @formatter:off
 /**
@@ -162,26 +164,20 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution
-    public static @Host(Thread.class) StaticObject currentThread() {
-        // TODO(tg): inject meta
-        return EspressoLanguage.getCurrentContext().getCurrentThread();
-    }
-
-    @TruffleBoundary
-    @Substitution
-    public static @Host(Thread[].class) StaticObject getThreads() {
-        // TODO(tg): inject meta
-        EspressoContext context = EspressoLanguage.getCurrentContext();
-        return StaticObject.createArray(context.getMeta().java_lang_Thread.array(), context.getActiveThreads());
+    public static @Host(Thread.class) StaticObject currentThread(@InjectMeta Meta meta) {
+        return meta.getContext().getCurrentThread();
     }
 
     @Substitution
-    public static @Host(StackTraceElement[][].class) StaticObject dumpThreads(@Host(Thread[].class) StaticObject threads) {
-        // TODO(tg): inject meta
+    public static @Host(Thread[].class) StaticObject getThreads(@InjectMeta Meta meta) {
+        return StaticObject.createArray(meta.java_lang_Thread.array(), meta.getContext().getActiveThreads());
+    }
+
+    @Substitution
+    public static @Host(StackTraceElement[][].class) StaticObject dumpThreads(@Host(Thread[].class) StaticObject threads, @InjectMeta Meta meta) {
         if (StaticObject.isNull(threads)) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwNullPointerException();
+            throw meta.throwNullPointerException();
         }
-        Meta meta = threads.getKlass().getMeta();
         if (threads.length() == 0) {
             throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
@@ -194,13 +190,15 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static void start0(@Host(Thread.class) StaticObject self) {
-        // TODO(tg): inject meta
-        OptionValues options = EspressoLanguage.getCurrentContext().getEnv().getOptions();
+    public static void start0(@Host(Thread.class) StaticObject self,
+                    // Checkstyle: stop
+                    @GuestCall(target = "java_lang_Thread_exit") DirectCallNode threadExit,
+                    // Checkstyle: resume
+                    @InjectMeta Meta meta) {
+        OptionValues options = meta.getContext().getEnv().getOptions();
         if (options.get(EspressoOptions.MultiThreaded)) {
             // Thread.start() is synchronized.
-            EspressoContext context = self.getKlass().getContext();
-            Meta meta = context.getMeta();
+            EspressoContext context = meta.getContext();
             KillStatus killStatus = getKillStatus(self);
             if (killStatus != null || context.isClosing()) {
 
@@ -232,8 +230,7 @@ public final class Target_java_lang_Thread {
                         dispatchUncaughtException.invokeDirect(self, uncaught.getExceptionObject());
                     } finally {
                         setThreadStop(self, KillStatus.EXITING);
-                        meta.java_lang_Thread_exit.invokeDirect(self);
-
+                        threadExit.call(self);
                         self.getLock().lock();
                         try {
                             self.setIntField(meta.java_lang_Thread_threadStatus, State.TERMINATED.value);
@@ -292,9 +289,12 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution(hasReceiver = true)
-    public static @Host(typeName = "Ljava/lang/Thread$State;") StaticObject getState(@Host(Thread.class) StaticObject self) {
-        Meta meta = self.getKlass().getMeta();
-        return (StaticObject) meta.sun_misc_VM_toThreadState.invokeDirect(null, self.getIntField(meta.java_lang_Thread_threadStatus));
+    public static @Host(typeName = "Ljava/lang/Thread$State;") StaticObject getState(@Host(Thread.class) StaticObject self,
+                    // Checkstyle: stop
+                    @GuestCall(target = "sun_misc_VM_toThreadState") DirectCallNode toThreadState,
+                    // Checkstyle: resume
+                    @InjectMeta Meta meta) {
+        return (StaticObject) toThreadState.call(self.getIntField(meta.java_lang_Thread_threadStatus));
     }
 
     @SuppressWarnings("unused")
@@ -305,9 +305,8 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution
-    public static boolean holdsLock(@Host(Object.class) StaticObject object) {
+    public static boolean holdsLock(@Host(Object.class) StaticObject object, @InjectMeta Meta meta) {
         if (StaticObject.isNull(object)) {
-            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
             throw meta.throwNullPointerException();
         }
         return object.getLock().isHeldByCurrentThread();
@@ -315,10 +314,8 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution
-    public static void sleep(long millis) {
-        EspressoContext context = EspressoLanguage.getCurrentContext();
-        Meta meta = context.getMeta();
-        StaticObject thread = context.getCurrentThread();
+    public static void sleep(long millis, @InjectMeta Meta meta) {
+        StaticObject thread = meta.getContext().getCurrentThread();
         try {
             fromRunnable(thread, meta, State.TIMED_WAITING);
             Thread.sleep(millis);
@@ -420,7 +417,6 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void setNativeName(@Host(Object.class) StaticObject self, @Host(String.class) StaticObject name) {
-        // TODO(tg): inject meta
         Thread hostThread = getHostFromGuestThread(self);
         hostThread.setName(Meta.toHostString(name));
     }

@@ -198,6 +198,7 @@ public final class ClassRegistries {
         }
     }
 
+    @TruffleBoundary
     public long getLoadedClassesCount() {
         long result = bootClassRegistry.classes.size();
         synchronized (weakClassLoaderSet) {

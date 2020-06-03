@@ -83,7 +83,9 @@ public class SubstitutionProcessor extends EspressoProcessor {
         final String returnType;
         final boolean hasReceiver;
 
-        public SubstitutorHelper(String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType, boolean hasReceiver) {
+        public SubstitutorHelper(EspressoProcessor processor, ExecutableElement method, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
+                        boolean hasReceiver) {
+            super(processor, method);
             this.targetClassName = targetClassName;
             this.guestMethodName = guestMethodName;
             this.guestTypeNames = guestTypeNames;
@@ -96,18 +98,15 @@ public class SubstitutionProcessor extends EspressoProcessor {
         return tabulation + clazz + " " + ARG_NAME + index + " = " + castTo(ARGS_NAME + "[" + index + "]", clazz) + ";\n";
     }
 
-    private static String extractInvocation(String className, String methodName, int nParameters) {
+    private static String extractInvocation(String className, String methodName, int nParameters, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         str.append(className).append(".").append(methodName).append("(");
-        boolean notFirst = false;
+        boolean first = true;
         for (int i = 0; i < nParameters; i++) {
-            if (notFirst) {
-                str.append(", ");
-            } else {
-                notFirst = true;
-            }
+            first = checkFirst(str, first);
             str.append(ARG_NAME).append(i);
         }
+        first = appendInvocationMetaInformation(str, first, helper);
         str.append(");\n");
         return str.toString();
     }
@@ -165,7 +164,7 @@ public class SubstitutionProcessor extends EspressoProcessor {
                     boolean hasReceiver = (boolean) hasReceiverValue.getValue();
                     // Obtain the fully qualified guest return type of the method.
                     String returnType = getReturnTypeFromHost((ExecutableElement) method);
-                    SubstitutorHelper helper = new SubstitutorHelper(className, actualMethodName, guestTypes, returnType, hasReceiver);
+                    SubstitutorHelper helper = new SubstitutorHelper(this, (ExecutableElement) method, className, actualMethodName, guestTypes, returnType, hasReceiver);
                     // Create the contents of the source file
                     String classFile = spawnSubstitutor(
                                     className,
@@ -190,13 +189,15 @@ public class SubstitutionProcessor extends EspressoProcessor {
     private List<String> getGuestTypes(ExecutableElement inner) {
         ArrayList<String> parameterTypeNames = new ArrayList<>();
         for (VariableElement parameter : inner.getParameters()) {
-            AnnotationMirror mirror = getAnnotation(parameter.asType(), host);
-            if (mirror != null) {
-                parameterTypeNames.add(getClassFromHost(mirror));
-            } else {
-                // @Host annotation not found -> primitive or j.l.Object
-                String arg = getInternalName(parameter.asType().toString());
-                parameterTypeNames.add(arg);
+            if (isActualParameter(parameter)) {
+                AnnotationMirror mirror = getAnnotation(parameter.asType(), host);
+                if (mirror != null) {
+                    parameterTypeNames.add(getClassFromHost(mirror));
+                } else {
+                    // @Host annotation not found -> primitive or j.l.Object
+                    String arg = getInternalName(parameter.asType().toString());
+                    parameterTypeNames.add(arg);
+                }
             }
         }
         return parameterTypeNames;
@@ -288,14 +289,16 @@ public class SubstitutionProcessor extends EspressoProcessor {
         return "L" + className.replace('.', '/') + ";";
     }
 
-    private static List<String> getEspressoTypes(ExecutableElement inner) {
-        List<String> parameterTypeNames = new ArrayList<>();
+    private List<String> getEspressoTypes(ExecutableElement inner) {
+        List<String> espressoTypes = new ArrayList<>();
         for (VariableElement parameter : inner.getParameters()) {
-            String arg = parameter.asType().toString();
-            String result = extractSimpleType(arg);
-            parameterTypeNames.add(result);
+            if (isActualParameter(parameter)) {
+                String arg = parameter.asType().toString();
+                String result = extractSimpleType(arg);
+                espressoTypes.add(result);
+            }
         }
-        return parameterTypeNames;
+        return espressoTypes;
     }
 
     @Override
@@ -339,25 +342,26 @@ public class SubstitutionProcessor extends EspressoProcessor {
 
     @Override
     String generateImports(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+        StringBuilder str = new StringBuilder();
         if (parameterTypeName.contains("StaticObject")) {
-            return IMPORT_STATIC_OBJECT + "\n";
+            str.append(IMPORT_STATIC_OBJECT);
         }
-        return "\n";
+        str.append("\n");
+        return str.toString();
     }
 
     @Override
-    String generateConstructor(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+    String generateFactoryConstructorBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         SubstitutorHelper h = (SubstitutorHelper) helper;
-        str.append(TAB_1).append("private ").append(className).append("() {\n");
-        str.append(TAB_2).append("super(\n");
-        str.append(TAB_3).append(generateString(h.guestMethodName)).append(",\n");
-        str.append(TAB_3).append(generateString(h.targetClassName)).append(",\n");
-        str.append(TAB_3).append(generateString(h.returnType)).append(",\n");
-        str.append(TAB_3).append(generateParameterTypes(h.guestTypeNames, TAB_3)).append(",\n");
-        str.append(TAB_3).append(h.hasReceiver).append("\n");
-        str.append(TAB_2).append(");\n");
-        str.append(TAB_1).append("}\n");
+        str.append(TAB_3).append("super(\n");
+        str.append(TAB_4).append(generateString(h.guestMethodName)).append(",\n");
+        str.append(TAB_4).append(generateString(h.targetClassName)).append(",\n");
+        str.append(TAB_4).append(generateString(h.returnType)).append(",\n");
+        str.append(TAB_4).append(generateParameterTypes(h.guestTypeNames, TAB_4)).append(",\n");
+        str.append(TAB_4).append(h.hasReceiver).append("\n");
+        str.append(TAB_3).append(");\n");
+        str.append(TAB_2).append("}\n");
         return str.toString();
     }
 
@@ -371,10 +375,10 @@ public class SubstitutionProcessor extends EspressoProcessor {
             str.append(extractArg(argIndex++, argType, TAB_2));
         }
         if (h.returnType.equals("V")) {
-            str.append(TAB_2).append(extractInvocation(className, targetMethodName, argIndex));
+            str.append(TAB_2).append(extractInvocation(className, targetMethodName, argIndex, helper));
             str.append(TAB_2).append("return null;\n");
         } else {
-            str.append(TAB_2).append("return ").append(extractInvocation(className, targetMethodName, argIndex));
+            str.append(TAB_2).append("return ").append(extractInvocation(className, targetMethodName, argIndex, helper));
         }
         str.append(TAB_1).append("}\n");
         str.append("}");

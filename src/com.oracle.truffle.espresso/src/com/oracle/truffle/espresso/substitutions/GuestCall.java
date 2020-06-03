@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,26 +21,16 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.substitutions.Substitutor;
+import static java.lang.annotation.ElementType.TYPE_USE;
 
-public class IntrinsicSubstitutorRootNode extends EspressoMethodNode {
-    private final Substitutor substitution;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    public IntrinsicSubstitutorRootNode(Substitutor sub, Method method) {
-        super(method.getMethodVersion());
-        this.substitution = sub;
-    }
-
-    @Override
-    void initializeBody(VirtualFrame frame) {
-    }
-
-    @Override
-    public Object executeBody(VirtualFrame frame) {
-        return substitution.invoke(frame.getArguments());
-    }
+@Retention(RetentionPolicy.RUNTIME)
+@Target(value = {TYPE_USE})
+public @interface GuestCall {
+    String target() default "";
 }

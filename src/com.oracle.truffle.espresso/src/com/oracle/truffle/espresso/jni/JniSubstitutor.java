@@ -22,33 +22,41 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-public abstract class JniSubstitutor {
-    private final String methodName;
-    private final String jniNativeSignature;
-    private final int parameterCount;
-    private final String returnType;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 
-    public JniSubstitutor(String methodName, String jniNativeSignature, int parameterCount, String returnType) {
-        this.methodName = methodName;
-        this.jniNativeSignature = jniNativeSignature;
-        this.parameterCount = parameterCount;
-        this.returnType = returnType;
-    }
+public abstract class JniSubstitutor extends SubstitutionProfiler {
 
-    public final String methodName() {
-        return methodName;
-    }
+    public abstract static class Factory {
+        public abstract JniSubstitutor create(Meta meta);
 
-    public final String jniNativeSignature() {
-        return jniNativeSignature;
-    }
+        private final String methodName;
+        private final String jniNativeSignature;
+        private final int parameterCount;
+        private final String returnType;
 
-    public final int getParameterCount() {
-        return parameterCount;
-    }
+        public Factory(String methodName, String jniNativeSignature, int parameterCount, String returnType) {
+            this.methodName = methodName;
+            this.jniNativeSignature = jniNativeSignature;
+            this.parameterCount = parameterCount;
+            this.returnType = returnType;
+        }
 
-    public final String returnType() {
-        return returnType;
+        public final String methodName() {
+            return methodName;
+        }
+
+        public final String jniNativeSignature() {
+            return jniNativeSignature;
+        }
+
+        public final int getParameterCount() {
+            return parameterCount;
+        }
+
+        public final String returnType() {
+            return returnType;
+        }
     }
 
     public abstract Object invoke(JniEnv env, Object[] args);

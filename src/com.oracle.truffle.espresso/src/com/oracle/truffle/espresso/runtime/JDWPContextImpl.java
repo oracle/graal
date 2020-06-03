@@ -47,13 +47,13 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
-import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
@@ -614,7 +614,7 @@ public final class JDWPContextImpl implements JDWPContext {
         // exit all monitors on the current top frame
         MonitorStackInfo[] ownedMonitors = getOwnedMonitors(new CallFrame[]{topFrame});
         for (MonitorStackInfo ownedMonitor : ownedMonitors) {
-            InterpreterToVM.monitorExit((StaticObject) ownedMonitor.getMonitor());
+            InterpreterToVM.monitorExit((StaticObject) ownedMonitor.getMonitor(), context.getMeta());
         }
         eventListener.forceEarlyReturn(returnValue);
         return true;

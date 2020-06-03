@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -97,6 +98,14 @@ public abstract class EspressoMethodNode extends EspressoPreludeNode implements 
     @Override
     public final EspressoContext getContext() {
         return getMethod().getContext();
+    }
+
+    public boolean shouldSplit() {
+        return false;
+    }
+
+    public EspressoMethodNode split() {
+        throw EspressoError.shouldNotReachHere();
     }
 
 }

@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.espresso.processor;
 
+import java.util.List;
+
+import javax.lang.model.element.ExecutableElement;
+
 /**
  * passed around during espresso annotation processing. It is meant to be subclassed to serve as
  * storage for the data required during processing.
@@ -31,4 +35,13 @@ package com.oracle.truffle.espresso.processor;
  * @see com.oracle.truffle.espresso.processor.SubstitutionProcessor.SubstitutorHelper
  */
 public class SubstitutionHelper {
+    List<String> guestCalls;
+    boolean hasMetaInjection;
+    boolean hasProfileInjection;
+
+    public SubstitutionHelper(EspressoProcessor processor, ExecutableElement method) {
+        guestCalls = processor.getGuestCalls(method);
+        hasMetaInjection = processor.hasMetaInjection(method);
+        hasProfileInjection = processor.hasProfileInjection(method);
+    }
 }

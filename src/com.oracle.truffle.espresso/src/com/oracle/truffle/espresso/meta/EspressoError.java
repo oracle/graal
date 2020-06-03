@@ -39,9 +39,9 @@ public final class EspressoError extends Error {
         throw new EspressoError("unimplemented");
     }
 
-    public static RuntimeException unimplemented(String msg) {
+    public static RuntimeException unimplemented(Object... msg) {
         CompilerDirectives.transferToInterpreter();
-        throw new EspressoError("unimplemented: %s", msg);
+        throw new EspressoError("unimplemented: %s", cat(msg));
     }
 
     public static RuntimeException shouldNotReachHere() {
@@ -49,9 +49,9 @@ public final class EspressoError extends Error {
         throw new EspressoError("should not reach here");
     }
 
-    public static RuntimeException shouldNotReachHere(String msg) {
+    public static RuntimeException shouldNotReachHere(Object... msg) {
         CompilerDirectives.transferToInterpreter();
-        throw new EspressoError("should not reach here: %s", msg);
+        throw new EspressoError("should not reach here: %s", cat(msg));
     }
 
     public static RuntimeException shouldNotReachHere(Throwable cause) {
@@ -62,6 +62,14 @@ public final class EspressoError extends Error {
     public static RuntimeException unexpected(String msg, Throwable cause) {
         CompilerDirectives.transferToInterpreter();
         throw new EspressoError(msg, cause);
+    }
+
+    private static String cat(Object[] strs) {
+        StringBuilder res = new StringBuilder();
+        for (Object str : strs) {
+            res.append(str);
+        }
+        return res.toString();
     }
 
     /**

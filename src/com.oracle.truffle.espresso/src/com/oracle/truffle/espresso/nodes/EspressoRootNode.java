@@ -39,6 +39,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -64,12 +65,36 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         this.frameIdSlot = frameDescriptor.addFrameSlot("frameId", FrameSlotKind.Long);
     }
 
+    private EspressoRootNode(EspressoRootNode split, FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
+        super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
+        this.methodNode = methodNode;
+        this.monitorSlot = split.monitorSlot;
+        this.frameIdSlot = split.frameIdSlot;
+    }
+
     public final Method getMethod() {
         return getMethodNode().getMethod();
     }
 
     public final Method.MethodVersion getMethodVersion() {
         return getMethodNode().getMethodVersion();
+    }
+
+    public abstract EspressoRootNode split();
+
+    @Override
+    public boolean isCloningAllowed() {
+        return getMethodNode().shouldSplit();
+    }
+
+    @Override
+    protected boolean isCloneUninitializedSupported() {
+        return getMethodNode().shouldSplit();
+    }
+
+    @Override
+    protected EspressoRootNode cloneUninitialized() {
+        return split();
     }
 
     @Override
@@ -109,7 +134,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
     }
 
-    private EspressoMethodNode getMethodNode() {
+    protected EspressoMethodNode getMethodNode() {
         Node child = methodNode;
         if (child instanceof WrapperNode) {
             child = ((WrapperNode) child).getDelegateNode();
@@ -152,7 +177,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     final void monitorExit(VirtualFrame frame, StaticObject monitor) {
-        InterpreterToVM.monitorExit(monitor);
+        InterpreterToVM.monitorExit(monitor, getMeta());
         unregisterMonitor(frame, monitor);
     }
 
@@ -161,7 +186,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     final void monitorEnter(VirtualFrame frame, StaticObject monitor) {
-        InterpreterToVM.monitorEnter(monitor);
+        InterpreterToVM.monitorEnter(monitor, getMeta());
         registerMonitor(frame, monitor);
     }
 
@@ -182,7 +207,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     public final void abortMonitor(VirtualFrame frame) {
         if (usesMonitors()) {
-            getMonitorStack(frame).abort();
+            getMonitorStack(frame).abort(getMeta());
         }
     }
 
@@ -190,6 +215,15 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
         Synchronized(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
             super(frameDescriptor, methodNode, true);
+        }
+
+        Synchronized(Synchronized split) {
+            super(split, split.getFrameDescriptor(), split.getMethodNode());
+        }
+
+        @Override
+        public EspressoRootNode split() {
+            return new Synchronized(this);
         }
 
         @Override
@@ -223,6 +257,15 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
         Default(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
             super(frameDescriptor, methodNode, methodNode.getMethod().usesMonitors());
+        }
+
+        Default(Default split) {
+            super(split, split.getFrameDescriptor(), split.getMethodNode());
+        }
+
+        @Override
+        public EspressoRootNode split() {
+            return new Default(this);
         }
 
         @Override
@@ -267,11 +310,11 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             }
         }
 
-        private void abort() {
+        private void abort(Meta meta) {
             for (int i = 0; i < top; i++) {
                 StaticObject monitor = monitors[i];
                 try {
-                    InterpreterToVM.monitorExit(monitor);
+                    InterpreterToVM.monitorExit(monitor, meta);
                 } catch (Throwable e) {
                     /* ignore */
                 }

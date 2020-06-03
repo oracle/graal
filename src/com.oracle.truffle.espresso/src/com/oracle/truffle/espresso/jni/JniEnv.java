@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -70,7 +71,11 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.InjectMeta;
+import com.oracle.truffle.espresso.substitutions.InjectProfile;
+import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -130,10 +135,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     private final @Pointer TruffleObject popLong;
     private final @Pointer TruffleObject popObject;
 
-    private static final Map<String, JniSubstitutor> jniMethods = buildJniMethods();
+    private static final Map<String, JniSubstitutor.Factory> jniMethods = buildJniMethods();
 
     private final WeakHandles<Field> fieldIds = new WeakHandles<>();
     private final WeakHandles<Method> methodIds = new WeakHandles<>();
+
+    Method getMethod(long handle) {
+        return methodIds.getObject(handle);
+    }
 
     // Prevent cleaner threads from collecting in-use native buffers.
     private final Map<Long, ByteBuffer> nativeBuffers = new ConcurrentHashMap<>();
@@ -160,14 +169,19 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         threadLocalPendingException.set(ex);
     }
 
-    public Callback jniMethodWrapper(JniSubstitutor m) {
-        return new Callback(m.getParameterCount() + 1, new Callback.Function() {
+    public Callback jniMethodWrapper(JniSubstitutor.Factory factory) {
+        return new Callback(factory.getParameterCount() + 1, new Callback.Function() {
+            @CompilerDirectives.CompilationFinal private JniSubstitutor subst = null;
+
             @Override
-            @TruffleBoundary
             public Object call(Object... args) {
-                assert interopAsPointer((TruffleObject) args[0]) == interopAsPointer(JniEnv.this.getNativePointer()) : "Calling " + m + " from alien JniEnv";
+                assert interopAsPointer((TruffleObject) args[0]) == interopAsPointer(JniEnv.this.getNativePointer()) : "Calling " + factory + " from alien JniEnv";
                 try {
-                    return m.invoke(JniEnv.this, args);
+                    if (subst == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        subst = factory.create(getMeta());
+                    }
+                    return subst.invoke(JniEnv.this, args);
                 } catch (EspressoException | StackOverflowError | OutOfMemoryError e) {
                     // This will most likely SOE again. Nothing we can do about that
                     // unfortunately.
@@ -176,8 +190,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                                     : (e instanceof StackOverflowError)
                                                     ? getContext().getStackOverflow()
                                                     : getContext().getOutOfMemory();
-                    getThreadLocalPendingException().set(wrappedError.getExceptionObject());
-                    return defaultValue(m.returnType());
+                    setPendingException(wrappedError.getExceptionObject());
+                    return defaultValue(factory.returnType());
                 }
             }
         });
@@ -187,7 +201,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @TruffleBoundary
     public TruffleObject lookupJniImpl(String methodName) {
-        JniSubstitutor m = jniMethods.get(methodName);
+        JniSubstitutor.Factory m = jniMethods.get(methodName);
         try {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
@@ -400,10 +414,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         return handles;
     }
 
+    @TruffleBoundary
     private ByteBuffer allocateDirect(int capacity, JavaKind kind) {
         return allocateDirect(Math.multiplyExact(capacity, kind.getByteCount()));
     }
 
+    @TruffleBoundary
     private ByteBuffer allocateDirect(int capacity) {
         ByteBuffer bb = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
         long address = byteBufferAddress(bb);
@@ -438,9 +454,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         return sb.toString();
     }
 
-    private static Map<String, JniSubstitutor> buildJniMethods() {
-        Map<String, JniSubstitutor> map = new HashMap<>();
-        for (JniSubstitutor method : JniCollector.getInstance()) {
+    private static Map<String, JniSubstitutor.Factory> buildJniMethods() {
+        Map<String, JniSubstitutor.Factory> map = new HashMap<>();
+        for (JniSubstitutor.Factory method : JniCollector.getCollector()) {
             assert !map.containsKey(method.methodName()) : "JniImpl for " + method.methodName() + " already exists";
             map.put(method.methodName(), method);
         }
@@ -637,7 +653,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 // primitive java.lang.Class
                 Klass klass = clazz.getMirrorKlass();
                 if (klass.isPrimitive()) {
-                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoSuchMethodError, String.format("static %s.%s%s", klass, name, signature));
+                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoSuchMethodError, name);
                 }
 
                 klass.safeInitialize();
@@ -1395,11 +1411,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @return the length of the Java string.
      */
     @JniImpl
-    public int GetStringLength(@Host(String.class) StaticObject string) {
+    public static int GetStringLength(@Host(String.class) StaticObject string,
+                    @GuestCall(target = "java_lang_String_length") DirectCallNode stringLength) {
         if (StaticObject.isNull(string)) {
             return 0;
         }
-        return (int) getMeta().java_lang_String_length.invokeDirect(string);
+        return (int) stringLength.call(string);
     }
 
     /**
@@ -1492,6 +1509,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         return byteBufferPointer(bb);
     }
 
+    @TruffleBoundary
+    public void releasePtr(@Pointer TruffleObject ptr) {
+        long nativePtr = interopAsPointer(ptr);
+        assert nativeBuffers.containsKey(nativePtr);
+        nativeBuffers.remove(nativePtr);
+    }
+
     /**
      * <h3>void ReleaseStringChars(JNIEnv *env, jstring string, const jchar *chars);</h3>
      *
@@ -1503,23 +1527,17 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public void ReleaseStringChars(@SuppressWarnings("unused") @Host(String.class) StaticObject string, @Pointer TruffleObject charsPtr) {
-        long nativePtr = interopAsPointer(charsPtr);
-        assert nativeBuffers.containsKey(nativePtr);
-        nativeBuffers.remove(nativePtr);
+        releasePtr(charsPtr);
     }
 
     @JniImpl
     public void ReleaseStringUTFChars(@SuppressWarnings("unused") @Host(String.class) StaticObject str, @Pointer TruffleObject charsPtr) {
-        long nativePtr = interopAsPointer(charsPtr);
-        assert nativeBuffers.containsKey(nativePtr);
-        nativeBuffers.remove(nativePtr);
+        releasePtr(charsPtr);
     }
 
     @JniImpl
     public void ReleaseStringCritical(@SuppressWarnings("unused") @Host(String.class) StaticObject str, @Pointer TruffleObject criticalRegionPtr) {
-        long nativePtr = interopAsPointer(criticalRegionPtr);
-        assert nativeBuffers.containsKey(nativePtr);
-        nativeBuffers.remove(nativePtr);
+        releasePtr(criticalRegionPtr);
     }
 
     @JniImpl
@@ -1579,7 +1597,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public boolean ExceptionCheck() {
-        StaticObject ex = threadLocalPendingException.get();
+        StaticObject ex = getPendingException();
         assert ex == null || StaticObject.notNull(ex); // ex != null => ex != NULL
         return ex != null;
     }
@@ -1628,7 +1646,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         String message = interopPointerToString(messagePtr);
         // The TLS exception slot will be set by the JNI wrapper.
         // Throwing methods always return the default value, in this case 0 (success).
-        // TODO(tg): inject Meta
         throw Meta.throwExceptionWithMessage((ObjectKlass) clazz.getMirrorKlass(), message);
     }
 
@@ -1643,7 +1660,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Host(Throwable.class) StaticObject ExceptionOccurred() {
-        StaticObject ex = threadLocalPendingException.get();
+        StaticObject ex = getPendingException();
         if (ex == null) {
             ex = StaticObject.NULL;
         }
@@ -1658,14 +1675,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public void ExceptionDescribe() {
-        StaticObject ex = getThreadLocalPendingException().get();
+        StaticObject ex = getPendingException();
         if (ex != null) {
             assert InterpreterToVM.instanceOf(ex, getMeta().java_lang_Throwable);
             // Dynamic lookup.
             Method printStackTrace = ex.getKlass().lookupMethod(Name.printStackTrace, Signature._void);
             printStackTrace.invokeDirect(ex);
             // Restore exception cleared by invokeDirect.
-            getThreadLocalPendingException().set(ex);
+            setPendingException(ex);
         }
     }
 
@@ -1679,6 +1696,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public static void FatalError(@Pointer TruffleObject msgPtr) {
         String msg = interopPointerToString(msgPtr);
+        CompilerDirectives.transferToInterpreter();
         throw new EspressoError(msg);
     }
 
@@ -1687,18 +1705,18 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region Monitors
 
     @JniImpl
-    public static int MonitorEnter(@Host(Object.class) StaticObject object) {
-        InterpreterToVM.monitorEnter(object);
+    public static int MonitorEnter(@Host(Object.class) StaticObject object, @InjectMeta Meta meta) {
+        InterpreterToVM.monitorEnter(object, meta);
         return JNI_OK;
     }
 
     @JniImpl
-    public int MonitorExit(@Host(Object.class) StaticObject object) {
+    public int MonitorExit(@Host(Object.class) StaticObject object, @InjectMeta Meta meta) {
         try {
-            InterpreterToVM.monitorExit(object);
+            InterpreterToVM.monitorExit(object, meta);
         } catch (EspressoException e) {
             assert InterpreterToVM.instanceOf(e.getExceptionObject(), getMeta().java_lang_IllegalMonitorStateException);
-            getThreadLocalPendingException().set(e.getExceptionObject());
+            setPendingException(e.getExceptionObject());
             return JNI_ERR;
         }
         return JNI_OK;
@@ -1878,9 +1896,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             // @formatter:on
         }
         if (mode == 0 || mode == JNI_ABORT) { // Dispose copy.
-            long nativePtr = interopAsPointer(bufPtr);
-            assert nativeBuffers.containsKey(nativePtr);
-            nativeBuffers.remove(nativePtr);
+            releasePtr(bufPtr);
         }
     }
 
@@ -2029,6 +2045,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region Register/Unregister natives
 
     @JniImpl
+    @TruffleBoundary
     public int RegisterNative(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject methodNamePtr, @Pointer TruffleObject methodSignaturePtr, @Pointer TruffleObject closure) {
         String methodName = interopPointerToString(methodNamePtr);
         String methodSignature = interopPointerToString(methodSignaturePtr);
@@ -2039,7 +2056,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
         Meta meta = getMeta();
         if (name == null || signature == null) {
-            getThreadLocalPendingException().set(Meta.initException(meta.java_lang_NoSuchMethodError));
+            setPendingException(Meta.initException(meta.java_lang_NoSuchMethodError));
             return JNI_ERR;
         }
 
@@ -2048,7 +2065,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             m.unregisterNative();
             getSubstitutions().removeRuntimeSubstitution(m);
         } else {
-            getThreadLocalPendingException().set(Meta.initException(meta.java_lang_NoSuchMethodError));
+            setPendingException(Meta.initException(meta.java_lang_NoSuchMethodError));
             return JNI_ERR;
         }
 
@@ -2078,6 +2095,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *            Returns 0 on success; returns a negative value on failure.
      */
     @JniImpl
+    @TruffleBoundary
     public int UnregisterNatives(@Host(Class.class) StaticObject clazz) {
         Klass klass = clazz.getMirrorKlass();
         for (Method m : klass.getDeclaredMethods()) {
@@ -2111,9 +2129,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
         StaticObject methods = null;
         if (method.isConstructor()) {
-            methods = Target_java_lang_Class.getDeclaredConstructors0(method.getDeclaringKlass().mirror(), false);
+            methods = Target_java_lang_Class.getDeclaredConstructors0(method.getDeclaringKlass().mirror(), false, getMeta());
         } else {
-            methods = Target_java_lang_Class.getDeclaredMethods0(method.getDeclaringKlass().mirror(), false);
+            methods = Target_java_lang_Class.getDeclaredMethods0(method.getDeclaringKlass().mirror(), false, getMeta());
         }
 
         for (StaticObject declMethod : methods.<StaticObject[]> unwrap()) {
@@ -2131,7 +2149,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             }
         }
 
-        throw EspressoError.shouldNotReachHere("Method/constructor not found " + method);
+        throw EspressoError.shouldNotReachHere("Method/constructor not found ", method);
     }
 
     /**
@@ -2147,7 +2165,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public @Host(java.lang.reflect.Field.class) StaticObject ToReflectedField(@Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, @SuppressWarnings("unused") boolean isStatic) {
         Field field = fieldIds.getObject(fieldId);
         assert field.getDeclaringKlass().isAssignableFrom(unused.getMirrorKlass());
-        StaticObject fields = Target_java_lang_Class.getDeclaredFields0(field.getDeclaringKlass().mirror(), false);
+        StaticObject fields = Target_java_lang_Class.getDeclaredFields0(field.getDeclaringKlass().mirror(), false, getMeta());
         for (StaticObject declField : fields.<StaticObject[]> unwrap()) {
             assert InterpreterToVM.instanceOf(declField, getMeta().java_lang_reflect_Field);
             Field f = (Field) declField.getHiddenField(getMeta().HIDDEN_FIELD_KEY);
@@ -2156,7 +2174,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             }
         }
 
-        throw EspressoError.shouldNotReachHere("Field not found " + field);
+        throw EspressoError.shouldNotReachHere("Field not found ", field);
     }
 
     /**
@@ -2167,7 +2185,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Handle(Field.class) long FromReflectedField(@Host(java.lang.reflect.Field.class) StaticObject field) {
         assert InterpreterToVM.instanceOf(field, getMeta().java_lang_reflect_Field);
-        Field guestField = Field.getReflectiveFieldRoot(field);
+        Field guestField = Field.getReflectiveFieldRoot(field, getMeta());
         guestField.getDeclaringKlass().initialize();
         return fieldIds.handlify(guestField);
     }
@@ -2182,9 +2200,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Method) || InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Constructor);
         Method guestMethod;
         if (InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Method)) {
-            guestMethod = Method.getHostReflectiveMethodRoot(method);
+            guestMethod = Method.getHostReflectiveMethodRoot(method, getMeta());
         } else if (InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Constructor)) {
-            guestMethod = Method.getHostReflectiveConstructorRoot(method);
+            guestMethod = Method.getHostReflectiveConstructorRoot(method, getMeta());
         } else {
             throw EspressoError.shouldNotReachHere();
         }
@@ -2495,9 +2513,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             // @formatter:on
         }
         if (mode == 0 || mode == JNI_ABORT) { // Dispose copy.
-            long nativePtr = interopAsPointer(carrayPtr);
-            assert nativeBuffers.containsKey(nativePtr);
-            nativeBuffers.remove(nativePtr);
+            releasePtr(carrayPtr);
         }
     }
 
@@ -2541,9 +2557,19 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             throw Meta.throwException(getMeta().java_lang_InstantiationException);
         }
         klass.initialize();
-        StaticObject instance = klass.allocateInstance();
+        StaticObject instance;
+        if (CompilerDirectives.isPartialEvaluationConstant(klass)) {
+            instance = klass.allocateInstance();
+        } else {
+            instance = allocateBoundary(klass);
+        }
         method.invokeDirect(instance, popVarArgs(varargsPtr, method.getParsedSignature()));
         return instance;
+    }
+
+    @TruffleBoundary
+    public static StaticObject allocateBoundary(Klass klass) {
+        return klass.allocateInstance();
     }
 
     /**
@@ -2586,10 +2612,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
-    public @Host(Class.class) StaticObject FindClass(@Pointer TruffleObject namePtr) {
+    public @Host(Class.class) StaticObject FindClass(@Pointer TruffleObject namePtr,
+                    @GuestCall(target = "java_lang_ClassLoader_getSystemClassLoader") DirectCallNode getSystemClassLoader,
+                    @GuestCall(target = "java_lang_ClassLoader$NativeLibrary_getFromClass") DirectCallNode nativeLibraryGetFromClass,
+                    @GuestCall(target = "java_lang_Class_forName_String_boolean_ClassLoader") DirectCallNode classForName,
+                    @InjectProfile SubstitutionProfiler profiler) {
         String name = interopPointerToString(namePtr);
         Meta meta = getMeta();
-        if (name == null || name.contains(".")) {
+        if (name == null || (name.indexOf('.') > -1)) {
+            profiler.profile(7);
             throw Meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, name);
         }
 
@@ -2599,32 +2630,35 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             internalName = "L" + name + ";";
         }
         if (!Validation.validTypeDescriptor(ByteSequence.create(internalName), true)) {
+            profiler.profile(6);
             throw Meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, name);
         }
 
         StaticObject protectionDomain = StaticObject.NULL;
         StaticObject loader = StaticObject.NULL;
 
-        StaticObject caller = getVM().JVM_GetCallerClass(0); // security stack walk
+        StaticObject caller = getVM().JVM_GetCallerClass(0, profiler); // security stack walk
         if (StaticObject.notNull(caller)) {
             Klass callerKlass = caller.getMirrorKlass();
             loader = callerKlass.getDefiningClassLoader();
             if (StaticObject.isNull(loader) && Type.java_lang_ClassLoader$NativeLibrary.equals(callerKlass.getType())) {
-                StaticObject result = (StaticObject) meta.java_lang_ClassLoader$NativeLibrary_getFromClass.invokeDirect(null);
+                StaticObject result = (StaticObject) nativeLibraryGetFromClass.call();
                 loader = result.getMirrorKlass().getDefiningClassLoader();
-                protectionDomain = Target_java_lang_Class.getProtectionDomain0(result);
+                protectionDomain = Target_java_lang_Class.getProtectionDomain0(result, getMeta());
             }
         } else {
-            loader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+            loader = (StaticObject) getSystemClassLoader.call();
         }
 
         StaticObject guestClass = StaticObject.NULL;
         try {
             String dotName = name.replace('/', '.');
-            guestClass = (StaticObject) meta.java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null, meta.toGuestString(dotName), false, loader);
+            guestClass = (StaticObject) classForName.call(meta.toGuestString(dotName), false, loader);
             EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null");
         } catch (EspressoException e) {
+            profiler.profile(5);
             if (InterpreterToVM.instanceOf(e.getExceptionObject(), meta.java_lang_ClassNotFoundException)) {
+                profiler.profile(4);
                 throw Meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, name);
             }
             throw e;
@@ -2649,9 +2683,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @return Returns a Java class object or NULL if an error occurs.
      */
     @JniImpl
-    public @Host(Class.class) StaticObject DefineClass(@Pointer TruffleObject namePtr, @Host(ClassLoader.class) StaticObject loader, @Pointer TruffleObject bufPtr, int bufLen) {
+    public @Host(Class.class) StaticObject DefineClass(@Pointer TruffleObject namePtr, @Host(ClassLoader.class) StaticObject loader, @Pointer TruffleObject bufPtr, int bufLen,
+                    @InjectProfile SubstitutionProfiler profiler) {
         // TODO(peterssen): Propagate errors and verifications, e.g. no class in the java package.
-        return getVM().JVM_DefineClass(namePtr, loader, bufPtr, bufLen, StaticObject.NULL);
+        return getVM().JVM_DefineClass(namePtr, loader, bufPtr, bufLen, StaticObject.NULL, profiler);
     }
 
     // JavaVM **vm);

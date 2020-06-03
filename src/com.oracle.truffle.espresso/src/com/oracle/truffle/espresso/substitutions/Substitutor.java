@@ -23,43 +23,56 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-public abstract class Substitutor {
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 
-    // TODO(garcia): use factories for substitutions, so that profiles can be created per call site.
+public abstract class Substitutor extends SubstitutionProfiler {
 
-    private final String methodName;
-    private final String substitutionClassName;
-    private final String returnType;
-    private final String[] parameterTypes;
-    private final boolean hasReceiver;
+    public abstract static class Factory {
+        public abstract Substitutor create(Meta meta);
 
-    Substitutor(String methodName, String substitutionClassName, String returnType, String[] parameterTypes, boolean hasReceiver) {
-        this.methodName = methodName;
-        this.substitutionClassName = substitutionClassName;
-        this.returnType = returnType;
-        this.parameterTypes = parameterTypes;
-        this.hasReceiver = hasReceiver;
+        private final String methodName;
+        private final String substitutionClassName;
+        private final String returnType;
+        private final String[] parameterTypes;
+        private final boolean hasReceiver;
+
+        public Factory(String methodName, String substitutionClassName, String returnType, String[] parameterTypes, boolean hasReceiver) {
+            this.methodName = methodName;
+            this.substitutionClassName = substitutionClassName;
+            this.returnType = returnType;
+            this.parameterTypes = parameterTypes;
+            this.hasReceiver = hasReceiver;
+        }
+
+        public String getMethodName() {
+            return methodName;
+        }
+
+        public String substitutionClassName() {
+            return substitutionClassName;
+        }
+
+        public String returnType() {
+            return returnType;
+        }
+
+        public String[] parameterTypes() {
+            return parameterTypes;
+        }
+
+        public boolean hasReceiver() {
+            return hasReceiver;
+        }
     }
 
-    public String getMethodName() {
-        return methodName;
-    }
-
-    public String substitutionClassName() {
-        return substitutionClassName;
-    }
-
-    public String returnType() {
-        return returnType;
-    }
-
-    public String[] parameterTypes() {
-        return parameterTypes;
-    }
-
-    public boolean hasReceiver() {
-        return hasReceiver;
+    Substitutor() {
     }
 
     public abstract Object invoke(Object[] args);
+
+    @Override
+    public Substitutor split() {
+        throw EspressoError.shouldNotReachHere();
+    }
 }
