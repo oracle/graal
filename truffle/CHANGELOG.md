@@ -3,6 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 20.2.0
+* Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
 * Added new identity APIs to `InteropLibrary`:
     * `hasIdentity(Object receiver)` to find out whether an object specifies identity
 	* `isIdentical(Object receiver, Object other, InteropLibrary otherLib)` to compare the identity of two object

@@ -77,6 +77,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     final PolyglotEngineImpl engine;
     final PolyglotContextImpl context;
     final Throwable exception;
+    final boolean showInternalStackFrames;
     private final List<TruffleStackTraceElement> guestFrames;
 
     private StackTraceElement[] javaStackTrace;
@@ -114,6 +115,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         this.context = (languageContext != null) ? languageContext.context : null;
         this.exception = original;
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
+        this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
 
         if (exception instanceof TruffleException) {
             TruffleException truffleException = (TruffleException) exception;
