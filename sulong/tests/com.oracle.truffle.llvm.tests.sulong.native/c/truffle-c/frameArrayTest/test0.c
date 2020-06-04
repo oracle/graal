@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,17 +28,17 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int foo() {
-  int a[5] = { 1, 2, 3, 4, 5 };
-  // a[2] = 3;
-  return a[2];
+    int a[5] = { 1, 2, 3, 4, 5 };
+    // a[2] = 3;
+    return a[2];
 }
 
 int compiler() {
-  return foo();
+    return foo();
 }
 
 int main() {
-  compiler();
-  compiler();
-  return compiler();
+    compiler();
+    compiler();
+    return compiler();
 }

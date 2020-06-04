@@ -31,11 +31,11 @@
 #include <stdio.h>
 
 static void myprint_libB(char *str) {
-  printf("libB print: %s", str);
+    printf("libB print: %s", str);
 }
 
 void (*myprint)(char *) = myprint_libB;
 
 __attribute__((constructor)) static void beginB(void) {
-  myprint("ctor b\n");
+    myprint("ctor b\n");
 }

@@ -31,5 +31,5 @@
 #include <assert.h>
 
 int main() {
-  assert(fopen(NULL, "rb") == NULL);
+    assert(fopen(NULL, "rb") == NULL);
 }

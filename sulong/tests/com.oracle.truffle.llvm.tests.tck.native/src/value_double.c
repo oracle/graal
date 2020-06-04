@@ -31,5 +31,5 @@
 #include <stdlib.h>
 
 double val(void) {
-  return 1.42;
+    return 1.42;
 }

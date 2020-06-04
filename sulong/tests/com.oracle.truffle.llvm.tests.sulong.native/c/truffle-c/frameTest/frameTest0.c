@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,14 +28,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int foo() {
-  int a[32];
-  int i = 0;
-  for (i = 0; i < 32; i++) {
-    a[i] = 32;
-  }
-  return a[31];
+    int a[32];
+    int i = 0;
+    for (i = 0; i < 32; i++) {
+        a[i] = 32;
+    }
+    return a[31];
 }
 
 int main() {
-  return foo();
+    return foo();
 }

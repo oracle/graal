@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,11 +32,11 @@
 #include <stdlib.h>
 
 int main() {
-  FILE *tmp = tmpfile();
-  char buffer[100];
-  memset(buffer, 0, 100);
-  if (fgets(buffer, 100, tmp) != NULL) {
-    abort();
-  }
-  puts(buffer);
+    FILE *tmp = tmpfile();
+    char buffer[100];
+    memset(buffer, 0, 100);
+    if (fgets(buffer, 100, tmp) != NULL) {
+        abort();
+    }
+    puts(buffer);
 }

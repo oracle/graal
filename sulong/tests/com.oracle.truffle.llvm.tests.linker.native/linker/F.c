@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,11 +35,11 @@ static int globalA = 6;
 int globalF = 7;
 
 static int methodA(int a, int b) {
-  printf("FileLocalA used by F\n");
-  return a - b;
+    printf("FileLocalA used by F\n");
+    return a - b;
 }
 
 int methodF(int a, int b) {
-  printf("F\n");
-  return methodA(a, b) + (a << b) + globalA + globalF;
+    printf("F\n");
+    return methodA(a, b) + (a << b) + globalA + globalF;
 }

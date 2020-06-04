@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,21 +30,21 @@
 #include <stdio.h>
 
 int main() {
-  try {
     try {
-      try {
-        throw 42;
-      } catch (int e) {
-        printf("C1 %d", e);
-        throw;
-      }
+        try {
+            try {
+                throw 42;
+            } catch (int e) {
+                printf("C1 %d", e);
+                throw;
+            }
+        } catch (int e) {
+            printf("C2 %d", e);
+            throw;
+        }
     } catch (int e) {
-      printf("C2 %d", e);
-      throw;
+        printf("C2 %d", e);
+        return e;
     }
-  } catch (int e) {
-    printf("C2 %d", e);
-    return e;
-  }
-  return -1;
+    return -1;
 }

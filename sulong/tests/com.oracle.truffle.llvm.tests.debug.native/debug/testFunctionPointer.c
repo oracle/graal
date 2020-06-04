@@ -42,43 +42,43 @@ void voidFuncIntVarArgs(int i, ...) {
 }
 
 int intFuncNoArgs(void) {
-  return 42;
+    return 42;
 }
 
 int intFuncImplicitVarArgs() {
-  return 42;
+    return 42;
 }
 
 int intFuncIntArg(int i) {
-  return 42;
+    return 42;
 }
 
 int intFuncIntVarArgs(int i, ...) {
-  return 42;
+    return 42;
 }
 
 int start() __attribute__((constructor)) {
-  void (*voidFuncNoArgsPtr)(void) = &voidFuncNoArgs;
-  void (*voidFuncImplicitVarArgsPtr)() = &voidFuncImplicitVarArgs;
-  void (*voidFuncIntArgPtr)(int) = &voidFuncIntArg;
-  void (*voidFuncIntVarArgsPtr)(int, ...) = &voidFuncIntVarArgs;
-  int (*intFuncNoArgsPtr)(void) = &intFuncNoArgs;
-  int (*intFuncImplicitVarArgsPtr)() = &intFuncImplicitVarArgs;
-  int (*intFuncIntArgPtr)(int) = &intFuncIntArg;
-  int (*intFuncIntVarArgsPtr)(int, ...) = &intFuncIntVarArgs;
+    void (*voidFuncNoArgsPtr)(void) = &voidFuncNoArgs;
+    void (*voidFuncImplicitVarArgsPtr)() = &voidFuncImplicitVarArgs;
+    void (*voidFuncIntArgPtr)(int) = &voidFuncIntArg;
+    void (*voidFuncIntVarArgsPtr)(int, ...) = &voidFuncIntVarArgs;
+    int (*intFuncNoArgsPtr)(void) = &intFuncNoArgs;
+    int (*intFuncImplicitVarArgsPtr)() = &intFuncImplicitVarArgs;
+    int (*intFuncIntArgPtr)(int) = &intFuncIntArg;
+    int (*intFuncIntVarArgsPtr)(int, ...) = &intFuncIntVarArgs;
 
-  __builtin_debugtrap();
+    __builtin_debugtrap();
 
-  voidFuncNoArgsPtr();
-  voidFuncImplicitVarArgsPtr();
-  voidFuncIntArgPtr(42);
-  voidFuncIntVarArgsPtr(42, 42, 42);
+    voidFuncNoArgsPtr();
+    voidFuncImplicitVarArgsPtr();
+    voidFuncIntArgPtr(42);
+    voidFuncIntVarArgsPtr(42, 42, 42);
 
-  int res;
-  res = intFuncNoArgsPtr();
-  res = intFuncImplicitVarArgsPtr();
-  res = intFuncIntArgPtr(42);
-  res = intFuncIntVarArgsPtr(42, 42, 42);
+    int res;
+    res = intFuncNoArgsPtr();
+    res = intFuncImplicitVarArgsPtr();
+    res = intFuncIntArgPtr(42);
+    res = intFuncIntVarArgsPtr(42, 42, 42);
 
-  return 0;
+    return 0;
 }

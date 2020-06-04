@@ -30,5 +30,5 @@
 #include <stdio.h>
 
 int main() {
-  fputs("fdsa\n", stdout);
+    fputs("fdsa\n", stdout);
 }

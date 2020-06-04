@@ -34,23 +34,23 @@
 #define NOINLINE __attribute__((noinline))
 
 #define FUNC(name, ty)                                                                                                                               \
-  NOINLINE int name(float f) {                                                                                                                       \
-    ty c = f;                                                                                                                                        \
-    if (c) {                                                                                                                                         \
-      return c;                                                                                                                                      \
-    }                                                                                                                                                \
-    return 23;                                                                                                                                       \
-  }
+    NOINLINE int name(float f) {                                                                                                                     \
+        ty c = f;                                                                                                                                    \
+        if (c) {                                                                                                                                     \
+            return c;                                                                                                                                \
+        }                                                                                                                                            \
+        return 23;                                                                                                                                   \
+    }
 
 #define STRUCT(ty)                                                                                                                                   \
-  NOINLINE int ty(float f) {                                                                                                                         \
-    struct ty c;                                                                                                                                     \
-    c.field = f;                                                                                                                                     \
-    if (c.field) {                                                                                                                                   \
-      return c.field;                                                                                                                                \
-    }                                                                                                                                                \
-    return 23;                                                                                                                                       \
-  }
+    NOINLINE int ty(float f) {                                                                                                                       \
+        struct ty c;                                                                                                                                 \
+        c.field = f;                                                                                                                                 \
+        if (c.field) {                                                                                                                               \
+            return c.field;                                                                                                                          \
+        }                                                                                                                                            \
+        return 23;                                                                                                                                   \
+    }
 
 #define PACKED __attribute__((packed))
 
@@ -115,25 +115,25 @@ STRUCT(struct_bool_packed_1bit);
 
 int main() {
 #define PRINT(name)                                                                                                                                  \
-  do {                                                                                                                                               \
-    printf(#name " -4.0 = %2d (%0.8x)\n", name(-4.0), name(-4.0));                                                                                   \
-    printf(#name " -3.0 = %2d (%0.8x)\n", name(-3.0), name(-3.0));                                                                                   \
-    printf(#name " -2.0 = %2d (%0.8x)\n", name(-2.0), name(-2.0));                                                                                   \
-    printf(#name " -1.0 = %2d (%0.8x)\n", name(-1.0), name(-1.0));                                                                                   \
-    printf(#name " -0.8 = %2d (%0.8x)\n", name(-0.8), name(-0.8));                                                                                   \
-    printf(#name " -0.5 = %2d (%0.8x)\n", name(-0.5), name(-0.5));                                                                                   \
-    printf(#name " -0.3 = %2d (%0.8x)\n", name(-0.3), name(-0.3));                                                                                   \
-    printf(#name "  0.0 = %2d (%0.8x)\n", name(0.0), name(0.0));                                                                                     \
-    printf(#name "  0.3 = %2d (%0.8x)\n", name(0.3), name(0.3));                                                                                     \
-    printf(#name "  0.5 = %2d (%0.8x)\n", name(0.5), name(0.5));                                                                                     \
-    printf(#name "  0.8 = %2d (%0.8x)\n", name(0.8), name(0.8));                                                                                     \
-    printf(#name "  1.0 = %2d (%0.8x)\n", name(1.0), name(1.0));                                                                                     \
-    printf(#name "  2.0 = %2d (%0.8x)\n", name(2.0), name(2.0));                                                                                     \
-    printf(#name "  3.0 = %2d (%0.8x)\n", name(3.0), name(3.0));                                                                                     \
-    printf(#name "  4.0 = %2d (%0.8x)\n", name(4.0), name(4.0));                                                                                     \
-  } while (0)
+    do {                                                                                                                                             \
+        printf(#name " -4.0 = %2d (%0.8x)\n", name(-4.0), name(-4.0));                                                                               \
+        printf(#name " -3.0 = %2d (%0.8x)\n", name(-3.0), name(-3.0));                                                                               \
+        printf(#name " -2.0 = %2d (%0.8x)\n", name(-2.0), name(-2.0));                                                                               \
+        printf(#name " -1.0 = %2d (%0.8x)\n", name(-1.0), name(-1.0));                                                                               \
+        printf(#name " -0.8 = %2d (%0.8x)\n", name(-0.8), name(-0.8));                                                                               \
+        printf(#name " -0.5 = %2d (%0.8x)\n", name(-0.5), name(-0.5));                                                                               \
+        printf(#name " -0.3 = %2d (%0.8x)\n", name(-0.3), name(-0.3));                                                                               \
+        printf(#name "  0.0 = %2d (%0.8x)\n", name(0.0), name(0.0));                                                                                 \
+        printf(#name "  0.3 = %2d (%0.8x)\n", name(0.3), name(0.3));                                                                                 \
+        printf(#name "  0.5 = %2d (%0.8x)\n", name(0.5), name(0.5));                                                                                 \
+        printf(#name "  0.8 = %2d (%0.8x)\n", name(0.8), name(0.8));                                                                                 \
+        printf(#name "  1.0 = %2d (%0.8x)\n", name(1.0), name(1.0));                                                                                 \
+        printf(#name "  2.0 = %2d (%0.8x)\n", name(2.0), name(2.0));                                                                                 \
+        printf(#name "  3.0 = %2d (%0.8x)\n", name(3.0), name(3.0));                                                                                 \
+        printf(#name "  4.0 = %2d (%0.8x)\n", name(4.0), name(4.0));                                                                                 \
+    } while (0)
 
-  // clang-format off
+    // clang-format off
   PRINT(char_);                    printf("\n");
   PRINT(struct_char);              printf("\n");
   PRINT(struct_char_packed);       printf("\n");
@@ -163,7 +163,7 @@ int main() {
   PRINT(struct_bool_packed);       printf("\n");
   PRINT(struct_bool_1bit);         printf("\n");
   PRINT(struct_bool_packed_1bit);
-  // clang-format on
+    // clang-format on
 
-  return 0;
+    return 0;
 }

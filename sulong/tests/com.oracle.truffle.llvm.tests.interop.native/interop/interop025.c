@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,12 @@
 #include <polyglot.h>
 
 int main() {
-  foo("foreign");
-  foo("foreign2");
-  return foo("foreign3");
+    foo("foreign");
+    foo("foreign2");
+    return foo("foreign3");
 }
 
 int foo(const char *name) {
-  void *obj = polyglot_import(name);
-  return polyglot_as_i32(polyglot_get_member(obj, "valueI"));
+    void *obj = polyglot_import(name);
+    return polyglot_as_i32(polyglot_get_member(obj, "valueI"));
 }

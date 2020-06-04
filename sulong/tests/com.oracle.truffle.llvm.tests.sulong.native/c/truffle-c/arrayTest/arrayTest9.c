@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,27 +28,27 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 void swap(int *a, int *b) {
-  int t = *a;
-  *a = *b;
-  *b = t;
+    int t = *a;
+    *a = *b;
+    *b = t;
 }
 void sort(int arr[], int beg, int end) {
-  if (end > beg + 1) {
-    int piv = arr[beg], l = beg + 1, r = end;
-    while (l < r) {
-      if (arr[l] <= piv)
-        l++;
-      else
-        swap(&arr[l], &arr[--r]);
+    if (end > beg + 1) {
+        int piv = arr[beg], l = beg + 1, r = end;
+        while (l < r) {
+            if (arr[l] <= piv)
+                l++;
+            else
+                swap(&arr[l], &arr[--r]);
+        }
+        swap(&arr[--l], &arr[beg]);
+        sort(arr, beg, l);
+        sort(arr, r, end);
     }
-    swap(&arr[--l], &arr[beg]);
-    sort(arr, beg, l);
-    sort(arr, r, end);
-  }
 }
 
 int main() {
-  int a[20] = { 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
-  sort(a, 0, 20);
-  return a[2];
+    int a[20] = { 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+    sort(a, 0, 20);
+    return a[2];
 }

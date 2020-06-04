@@ -30,5 +30,5 @@
 #include <stdio.h>
 
 int main() {
-  fputs("asdf\n", stderr);
+    fputs("asdf\n", stderr);
 }

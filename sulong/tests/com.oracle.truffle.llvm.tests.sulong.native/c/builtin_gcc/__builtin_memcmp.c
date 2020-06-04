@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,17 +28,17 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  unsigned int a[10] = { 0xFFFFFFFF };
-  unsigned int b[10] = { 0xFFFFFFFF };
-  unsigned int c[10] = { 0xFFFFFFFE };
-  if (__builtin_memcmp(&a, &a, sizeof(a))) {
-    return 1;
-  }
-  if (__builtin_memcmp(&a, &b, sizeof(a))) {
-    return 1;
-  }
-  if (!__builtin_memcmp(&a, &c, sizeof(a))) {
-    return 1;
-  }
-  return 0;
+    unsigned int a[10] = { 0xFFFFFFFF };
+    unsigned int b[10] = { 0xFFFFFFFF };
+    unsigned int c[10] = { 0xFFFFFFFE };
+    if (__builtin_memcmp(&a, &a, sizeof(a))) {
+        return 1;
+    }
+    if (__builtin_memcmp(&a, &b, sizeof(a))) {
+        return 1;
+    }
+    if (!__builtin_memcmp(&a, &c, sizeof(a))) {
+        return 1;
+    }
+    return 0;
 }

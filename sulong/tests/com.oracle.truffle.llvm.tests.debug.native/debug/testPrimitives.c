@@ -71,37 +71,37 @@ double D4 = 1.25;
 double D5 = -1.25;
 
 int start() __attribute__((constructor)) {
-  char c1 = 'A';
-  char c2 = 'a';
-  char c3 = '0';
-  char c4 = '+';
+    char c1 = 'A';
+    char c2 = 'a';
+    char c3 = '0';
+    char c4 = '+';
 
-  short s1 = SHORT_MSB_SET;
-  short s2 = SHORT_LSB_SET;
-  unsigned short s3 = SHORT_MSB_SET;
-  unsigned short s4 = SHORT_LSB_SET;
+    short s1 = SHORT_MSB_SET;
+    short s2 = SHORT_LSB_SET;
+    unsigned short s3 = SHORT_MSB_SET;
+    unsigned short s4 = SHORT_LSB_SET;
 
-  int i1 = INT_MSB_SET;
-  int i2 = INT_LSB_SET;
-  unsigned int i3 = INT_MSB_SET;
-  unsigned int i4 = INT_LSB_SET;
+    int i1 = INT_MSB_SET;
+    int i2 = INT_LSB_SET;
+    unsigned int i3 = INT_MSB_SET;
+    unsigned int i4 = INT_LSB_SET;
 
-  long int l1 = LONG_MSB_SET;
-  long int l2 = LONG_LSB_SET;
-  long unsigned int l3 = LONG_MSB_SET;
-  long unsigned int l4 = LONG_LSB_SET;
+    long int l1 = LONG_MSB_SET;
+    long int l2 = LONG_LSB_SET;
+    long unsigned int l3 = LONG_MSB_SET;
+    long unsigned int l4 = LONG_LSB_SET;
 
-  float f1 = 0.0f;
-  float f2 = 1.0f;
-  float f3 = -1.0f;
-  float f4 = 1.25f;
-  float f5 = -1.25f;
+    float f1 = 0.0f;
+    float f2 = 1.0f;
+    float f3 = -1.0f;
+    float f4 = 1.25f;
+    float f5 = -1.25f;
 
-  double d1 = 0.0;
-  double d2 = 1.0;
-  double d3 = -1.0;
-  double d4 = 1.25;
-  double d5 = -1.25;
+    double d1 = 0.0;
+    double d2 = 1.0;
+    double d3 = -1.0;
+    double d4 = 1.25;
+    double d5 = -1.25;
 
-  return 0;
+    return 0;
 }

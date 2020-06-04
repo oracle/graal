@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,15 @@
  */
 
 int foo2() {
-  int b2 = 21;
-  return b2;
+    int b2 = 21;
+    return b2;
 }
 
 int foo1() {
-  int b1 = 2;
-  return foo2() + b1;
+    int b1 = 2;
+    return foo2() + b1;
 }
 
 int main() {
-  return foo1() + 1;
+    return foo1() + 1;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,9 +33,9 @@
 #include "unsupported.h"
 
 int __clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ...) {
-  ERR_UNSUPPORTED(__clone);
+    ERR_UNSUPPORTED(__clone);
 }
 
 int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ...) {
-  ERR_UNSUPPORTED(__clone);
+    ERR_UNSUPPORTED(__clone);
 }

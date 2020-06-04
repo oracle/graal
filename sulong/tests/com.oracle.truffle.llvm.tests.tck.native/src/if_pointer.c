@@ -32,9 +32,9 @@
 
 bool if_statment(void *flag) {
 
-  if (flag) {
-    return true;
-  } else {
-    return false;
-  }
+    if (flag) {
+        return true;
+    } else {
+        return false;
+    }
 }

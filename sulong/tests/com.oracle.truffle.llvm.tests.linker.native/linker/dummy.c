@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,6 @@
 #include <stdio.h>
 
 int main() {
-  printf("Main\n");
-  return 0;
+    printf("Main\n");
+    return 0;
 }

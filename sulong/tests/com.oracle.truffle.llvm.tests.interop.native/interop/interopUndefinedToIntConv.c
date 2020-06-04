@@ -32,20 +32,20 @@
 #include <polyglot.h>
 
 struct Order {
-  int price;
+    int price;
 };
 
 POLYGLOT_DECLARE_STRUCT(Order);
 
 int main() {
-  struct Order o = (struct Order){ .price = 100 };
+    struct Order o = (struct Order){ .price = 100 };
 
-  /* The following line represents: void *foo = polyglot_eval("js", "(order) => order.price"); */
-  void *foo = polyglot_import("getPrice");
+    /* The following line represents: void *foo = polyglot_eval("js", "(order) => order.price"); */
+    void *foo = polyglot_import("getPrice");
 
-  /* polyglot_from_Order(&o) should be used here for correct operation, but this test is
+    /* polyglot_from_Order(&o) should be used here for correct operation, but this test is
      about making sure we throw a PolyglotException rather than an InternalError. */
-  int price = ((int (*)(struct Order * order)) foo)(&o);
+    int price = ((int (*)(struct Order * order)) foo)(&o);
 
-  return price;
+    return price;
 }

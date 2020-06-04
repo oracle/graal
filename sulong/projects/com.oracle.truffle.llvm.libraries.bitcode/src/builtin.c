@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,10 @@
  */
 
 struct __llvm_builtin_cpu_model {
-  unsigned int __cpu_vendor;
-  unsigned int __cpu_type;
-  unsigned int __cpu_subtype;
-  unsigned int __cpu_features[1];
+    unsigned int __cpu_vendor;
+    unsigned int __cpu_type;
+    unsigned int __cpu_subtype;
+    unsigned int __cpu_features[1];
 };
 
 struct __llvm_builtin_cpu_model __cpu_model = { 0x00, 0x0, 0x0, 0x0 };

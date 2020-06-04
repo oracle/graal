@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,17 +32,17 @@ int b;
 int c;
 
 int main() {
-  int m;
-  int n;
-  int o;
+    int m;
+    int n;
+    int o;
 
-  a = 1;
-  b = 2;
-  c = 3;
+    a = 1;
+    b = 2;
+    c = 3;
 
-  m = 13;
-  n = 14;
-  o = 15;
+    m = 13;
+    n = 14;
+    o = 15;
 
-  return 0;
+    return 0;
 }

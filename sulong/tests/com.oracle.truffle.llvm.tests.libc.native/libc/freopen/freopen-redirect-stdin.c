@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,14 +33,14 @@
 #define BUFFER_SIZE 200
 
 int main() {
-  int oldStdin = dup(0);
-  freopen(__FILE__, "r", stdin);
-  char buf[BUFFER_SIZE];
-  while (fgets(buf, BUFFER_SIZE, stdin) == buf) {
-    printf("%s\n", buf);
-  }
-  fclose(stdin);
-  dup2(oldStdin, 0);
-  close(oldStdin);
-  stdin = fdopen(0, "r");
+    int oldStdin = dup(0);
+    freopen(__FILE__, "r", stdin);
+    char buf[BUFFER_SIZE];
+    while (fgets(buf, BUFFER_SIZE, stdin) == buf) {
+        printf("%s\n", buf);
+    }
+    fclose(stdin);
+    dup2(oldStdin, 0);
+    close(oldStdin);
+    stdin = fdopen(0, "r");
 }

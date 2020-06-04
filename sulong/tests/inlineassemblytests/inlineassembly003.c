@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,12 @@
 #include <stdlib.h>
 
 int main() {
-  int arg1 = 0;
-  int not = 0;
-  __asm__("notl %%eax;" : "=a"(not) : "a"(arg1));
+    int arg1 = 0;
+    int not = 0;
+    __asm__("notl %%eax;" : "=a"(not) : "a"(arg1));
 
-  if (not != -1) {
-    abort();
-  }
-  return 0;
+    if (not != -1) {
+        abort();
+    }
+    return 0;
 }

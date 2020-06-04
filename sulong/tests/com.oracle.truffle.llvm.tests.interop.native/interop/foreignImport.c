@@ -32,33 +32,33 @@
 typedef void *VALUE;
 
 struct Foreign {
-  VALUE a;
-  VALUE b;
+    VALUE a;
+    VALUE b;
 };
 
 POLYGLOT_DECLARE_STRUCT(Foreign)
 
 int main() {
-  struct Foreign *foreign = polyglot_as_Foreign(polyglot_import("foreign"));
+    struct Foreign *foreign = polyglot_as_Foreign(polyglot_import("foreign"));
 
-  if (polyglot_as_i32(foreign->a) != 0) {
-    return 100 + polyglot_as_i32(foreign->a);
-  }
+    if (polyglot_as_i32(foreign->a) != 0) {
+        return 100 + polyglot_as_i32(foreign->a);
+    }
 
-  if (polyglot_as_i32(foreign->b) != 1) {
-    return 200 + polyglot_as_i32(foreign->b);
-  }
+    if (polyglot_as_i32(foreign->b) != 1) {
+        return 200 + polyglot_as_i32(foreign->b);
+    }
 
-  if (polyglot_as_i16(foreign->a) != (short)0) {
-    return 110 + polyglot_as_i32(foreign->a);
-  }
+    if (polyglot_as_i16(foreign->a) != (short) 0) {
+        return 110 + polyglot_as_i32(foreign->a);
+    }
 
-  if (polyglot_as_i16(foreign->b) != (short)1) {
-    return 220 + polyglot_as_i32(foreign->b);
-  }
+    if (polyglot_as_i16(foreign->b) != (short) 1) {
+        return 220 + polyglot_as_i32(foreign->b);
+    }
 
-  foreign->a = 101;
-  foreign->b = 102;
+    foreign->a = 101;
+    foreign->b = 102;
 
-  return 0;
+    return 0;
 }

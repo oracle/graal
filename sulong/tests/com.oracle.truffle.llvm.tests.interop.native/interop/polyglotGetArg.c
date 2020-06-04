@@ -32,9 +32,9 @@
 void *global;
 
 __attribute__((noinline)) int argTest(int a, int b, int c, int d) {
-  return polyglot_as_i32(polyglot_get_arg(2)) + c;
+    return polyglot_as_i32(polyglot_get_arg(2)) + c;
 }
 
 int main() {
-  return argTest(1, 2, 21, 4);
+    return argTest(1, 2, 21, 4);
 }

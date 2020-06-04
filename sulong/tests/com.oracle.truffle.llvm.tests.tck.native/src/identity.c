@@ -31,5 +31,5 @@
 #include <stdlib.h>
 
 void *identity(void *x) {
-  return x;
+    return x;
 }

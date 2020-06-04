@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,22 +31,22 @@
 #include <stdlib.h>
 
 int main() {
-  int *pm;
-  pm = (int *)malloc(5 * 8);
-  int *pc;
-  pc = (int *)calloc(5, 8);
+    int *pm;
+    pm = (int *) malloc(5 * 8);
+    int *pc;
+    pc = (int *) calloc(5, 8);
 
-  int i;
-  for (i = 0; i < 5; i++) {
-    *(pm + i) = i;
-    *(pc + i) = i;
-  }
-  for (i = 0; i < 5; i++) {
-    if (*(pm + i) != *(pc + i)) {
-      return -1;
+    int i;
+    for (i = 0; i < 5; i++) {
+        *(pm + i) = i;
+        *(pc + i) = i;
     }
-  }
-  free(pc);
-  free(pm);
-  return 0;
+    for (i = 0; i < 5; i++) {
+        if (*(pm + i) != *(pc + i)) {
+            return -1;
+        }
+    }
+    free(pc);
+    free(pm);
+    return 0;
 }

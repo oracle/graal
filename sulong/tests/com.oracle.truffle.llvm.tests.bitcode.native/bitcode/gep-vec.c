@@ -42,26 +42,26 @@
 void doloop(float *a[512], float b[512], int c[512], int d[512]);
 
 void init(int c[512], int d[512]) {
-  for (int i = 0; i < 512; i++) {
-    c[i] = i;
-    d[i] = i + 512;
-  }
+    for (int i = 0; i < 512; i++) {
+        c[i] = i;
+        d[i] = i + 512;
+    }
 }
 
 int main() {
-  float *a[512];
-  float b[512];
-  int c[512] = { 0 };
-  int d[512] = { 0 };
+    float *a[512];
+    float b[512];
+    int c[512] = { 0 };
+    int d[512] = { 0 };
 
-  init(c, d);
-  doloop(a, b, c, d);
+    init(c, d);
+    doloop(a, b, c, d);
 
-  for (int i = 0; i < 512; ++i) {
-    if (a[i] != &b[i] + c[i] * d[i]) {
-      return 1;
+    for (int i = 0; i < 512; ++i) {
+        if (a[i] != &b[i] + c[i] * d[i]) {
+            return 1;
+        }
     }
-  }
 
-  return 0;
+    return 0;
 }

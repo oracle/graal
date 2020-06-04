@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,7 @@
 extern void abort(void);
 unsigned short c = 0x8000;
 int main() {
-  if (c - 0x8000 < 0)
-    abort();
-  return 0;
+    if (c - 0x8000 < 0)
+        abort();
+    return 0;
 }

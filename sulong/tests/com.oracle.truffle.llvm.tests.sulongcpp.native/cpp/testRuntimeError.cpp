@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,14 +31,14 @@
 #include <iostream>
 
 void throwException() {
-  throw std::runtime_error("thrown from C++");
+    throw std::runtime_error("thrown from C++");
 }
 
 int main() {
-  try {
-    throwException();
-  } catch (std::runtime_error &ex) {
-    std::cout << "Caught from C++" << std::endl;
-  }
-  return 0;
+    try {
+        throwException();
+    } catch (std::runtime_error &ex) {
+        std::cout << "Caught from C++" << std::endl;
+    }
+    return 0;
 }

@@ -31,5 +31,5 @@
 #include <stdlib.h>
 
 bool val() {
-  return true;
+    return true;
 }

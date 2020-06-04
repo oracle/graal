@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,21 +28,21 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int a() {
-  return 1;
+    return 1;
 }
 
 int b() {
-  return a() + 1;
+    return a() + 1;
 }
 
 int c() {
-  return b() + 1;
+    return b() + 1;
 }
 
 int d() {
-  return c() + 1;
+    return c() + 1;
 }
 
 int main() {
-  return d();
+    return d();
 }

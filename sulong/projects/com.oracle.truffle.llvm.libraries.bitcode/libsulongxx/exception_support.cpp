@@ -50,20 +50,20 @@ static void *thrown_object_from_cxa_exception(__cxa_exception *exception_header)
 extern "C" {
 
 unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info *catchType) {
-  __cxa_exception *ex = ___sulong_import_base64::bGliYysrYWJp::cxa_exception_from_exception_unwind_exception(unwindHeader);
-  void *p = ___sulong_import_base64::bGliYysrYWJp::thrown_object_from_cxa_exception(ex);
-  __shim_type_info *et = dynamic_cast<__shim_type_info *>(ex->exceptionType);
-  __shim_type_info *ct = dynamic_cast<__shim_type_info *>(catchType);
-  if (et == NULL || ct == NULL) {
-    fprintf(stderr, "libsulong: Type error in sulong_eh_canCatch(...).\n");
-    abort();
-  }
-  if (ct->can_catch(et, p)) {
-    ex->adjustedPtr = p;
-    return 1;
-  } else {
-    return 0;
-  }
+    __cxa_exception *ex = ___sulong_import_base64::bGliYysrYWJp::cxa_exception_from_exception_unwind_exception(unwindHeader);
+    void *p = ___sulong_import_base64::bGliYysrYWJp::thrown_object_from_cxa_exception(ex);
+    __shim_type_info *et = dynamic_cast<__shim_type_info *>(ex->exceptionType);
+    __shim_type_info *ct = dynamic_cast<__shim_type_info *>(catchType);
+    if (et == NULL || ct == NULL) {
+        fprintf(stderr, "libsulong: Type error in sulong_eh_canCatch(...).\n");
+        abort();
+    }
+    if (ct->can_catch(et, p)) {
+        ex->adjustedPtr = p;
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 } // extern "C"

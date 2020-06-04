@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,10 @@
 #include <stdlib.h>
 
 int main() {
-  if (atoll("a") != 0) {
-    exit(1);
-  }
-  if (atoll("") != 0) {
-    exit(2);
-  }
+    if (atoll("a") != 0) {
+        exit(1);
+    }
+    if (atoll("") != 0) {
+        exit(2);
+    }
 }

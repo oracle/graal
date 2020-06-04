@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,10 +34,10 @@
 
 #ifdef __linux__
 int __clock_gettime(clockid_t clk_id, struct timespec *tp) {
-  return syscall(SYS_clock_gettime, clk_id, tp);
+    return syscall(SYS_clock_gettime, clk_id, tp);
 }
 
 int clock_gettime(clockid_t clk_id, struct timespec *tp) {
-  return __clock_gettime(clk_id, tp);
+    return __clock_gettime(clk_id, tp);
 }
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,40 +29,40 @@
  */
 int main() {
 
-  int i;
-  int res = 12;
+    int i;
+    int res = 12;
 
-  goto L1;
+    goto L1;
 
-  for (i = 0; i < 100; i++) {
+    for (i = 0; i < 100; i++) {
 
-  L3:
+    L3:
 
-    res = res + 1;
+        res = res + 1;
 
-    goto L2;
+        goto L2;
 
-    if (i > 100) {
-    L1:
+        if (i > 100) {
+        L1:
 
-      res = 0;
+            res = 0;
 
-      goto L3;
+            goto L3;
+        }
+
+        break;
     }
 
-    break;
-  }
+    for (i = 0; i < 10; i++) {
 
-  for (i = 0; i < 10; i++) {
+        if (i > 1000) {
+        L2:
 
-    if (i > 1000) {
-    L2:
-
-      res = 11;
-      i = 0;
+            res = 11;
+            i = 0;
+        }
+        res++;
     }
-    res++;
-  }
 
-  return res;
+    return res;
 }

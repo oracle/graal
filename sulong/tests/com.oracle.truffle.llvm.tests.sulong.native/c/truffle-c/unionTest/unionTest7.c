@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,15 +28,15 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct s1 {
-  int a;
+    int a;
 };
 
 union u1 {
-  struct s1 struct1;
+    struct s1 struct1;
 };
 
 int main() {
-  union u1 u;
-  u.struct1.a = 3;
-  return u.struct1.a;
+    union u1 u;
+    u.struct1.a = 3;
+    return u.struct1.a;
 }

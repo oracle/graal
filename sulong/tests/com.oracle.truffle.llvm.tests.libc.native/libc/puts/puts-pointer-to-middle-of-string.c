@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,7 @@
 char str[50];
 
 int main() {
-  memset(str, 'a', sizeof(str) - 2);
-  str[sizeof(str) - 1] = 0;
-  puts(&str[10]);
+    memset(str, 'a', sizeof(str) - 2);
+    str[sizeof(str) - 1] = 0;
+    puts(&str[10]);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,28 +31,28 @@
 #include "../assert.h"
 
 int main() {
-  // ==
-  assert_false(NAN == -INF);
-  assert_false(-INF == NAN);
-  assert_false(NAN == NAN);
-  // !=
-  assert_true(NAN != -INF);
-  assert_true(-INF != NAN);
-  assert_true(NAN != NAN);
-  // <
-  assert_false(NAN < -INF);
-  assert_false(-INF < NAN);
-  assert_false(NAN < NAN);
-  // <=
-  assert_false(NAN <= -INF);
-  assert_false(-INF <= NAN);
-  assert_false(NAN <= NAN);
-  // >
-  assert_false(NAN > -INF);
-  assert_false(-INF > NAN);
-  assert_false(NAN > NAN);
-  // >=
-  assert_false(NAN >= -INF);
-  assert_false(-INF >= NAN);
-  assert_false(NAN >= NAN);
+    // ==
+    assert_false(NAN == -INF);
+    assert_false(-INF == NAN);
+    assert_false(NAN == NAN);
+    // !=
+    assert_true(NAN != -INF);
+    assert_true(-INF != NAN);
+    assert_true(NAN != NAN);
+    // <
+    assert_false(NAN < -INF);
+    assert_false(-INF < NAN);
+    assert_false(NAN < NAN);
+    // <=
+    assert_false(NAN <= -INF);
+    assert_false(-INF <= NAN);
+    assert_false(NAN <= NAN);
+    // >
+    assert_false(NAN > -INF);
+    assert_false(-INF > NAN);
+    assert_false(NAN > NAN);
+    // >=
+    assert_false(NAN >= -INF);
+    assert_false(-INF >= NAN);
+    assert_false(NAN >= NAN);
 }

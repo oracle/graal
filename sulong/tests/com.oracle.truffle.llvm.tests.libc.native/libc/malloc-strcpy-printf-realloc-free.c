@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,13 +32,13 @@
 #include <string.h>
 
 int main() {
-  char *str = (char *)malloc(15);
-  strcpy(str, "hello world");
-  printf("%s\n", str);
-  str = (char *)realloc(str, 25);
-  printf("%s\n", str);
+    char *str = (char *) malloc(15);
+    strcpy(str, "hello world");
+    printf("%s\n", str);
+    str = (char *) realloc(str, 25);
+    printf("%s\n", str);
 
-  free(str);
+    free(str);
 
-  return (0);
+    return (0);
 }

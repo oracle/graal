@@ -30,16 +30,16 @@
 void *global;
 
 void **returnPointerToGlobal() {
-  return &global;
+    return &global;
 }
 
 void setPointer(void **address, void *value) {
-  *address = value;
+    *address = value;
 }
 void *returnGlobal() {
-  return global;
+    return global;
 }
 
 int main() {
-  return 0;
+    return 0;
 }

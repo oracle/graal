@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,26 +29,26 @@
  */
 int main() {
 
-  int i;
-  int res = 0;
+    int i;
+    int res = 0;
 
-  goto L1;
+    goto L1;
 
-  do {
+    do {
 
-  L2:
+    L2:
 
-    res++;
-    goto L3;
+        res++;
+        goto L3;
 
-  L1:
-    i = 0;
-    goto L2;
+    L1:
+        i = 0;
+        goto L2;
 
-  L3:
-    i++;
+    L3:
+        i++;
 
-  } while (i < 10);
+    } while (i < 10);
 
-  return res;
+    return res;
 }

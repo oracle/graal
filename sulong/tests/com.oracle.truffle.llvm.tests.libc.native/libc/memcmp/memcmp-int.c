@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,15 +31,15 @@
 #include <stdlib.h>
 
 int main() {
-  int val1 = 432459243;
-  int val2 = 234123423;
-  if (memcmp(&val1, &val2, sizeof(int) / sizeof(char)) == 0) {
-    abort();
-  }
-  if (memcmp(&val1, &val1, sizeof(int) / sizeof(char)) != 0) {
-    abort();
-  }
-  if (memcmp(&val2, &val2, sizeof(int) / sizeof(char)) != 0) {
-    abort();
-  }
+    int val1 = 432459243;
+    int val2 = 234123423;
+    if (memcmp(&val1, &val2, sizeof(int) / sizeof(char)) == 0) {
+        abort();
+    }
+    if (memcmp(&val1, &val1, sizeof(int) / sizeof(char)) != 0) {
+        abort();
+    }
+    if (memcmp(&val2, &val2, sizeof(int) / sizeof(char)) != 0) {
+        abort();
+    }
 }

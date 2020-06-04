@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,32 +32,32 @@
 int i = 0;
 
 struct A {
-  A() {
-    printf("CONSTRUCT %d \n", i++);
-  }
-  A(const A &a) {
-    printf("COPY CONSTRUCT %d \n", i++);
-  }
-  ~A() {
-    printf("DESTRUCT %d \n", i++);
-  }
+    A() {
+        printf("CONSTRUCT %d \n", i++);
+    }
+    A(const A &a) {
+        printf("COPY CONSTRUCT %d \n", i++);
+    }
+    ~A() {
+        printf("DESTRUCT %d \n", i++);
+    }
 };
 
 struct B {
-  B() {
-    printf("CONSTRUCT B %d \n", i++);
-  }
-  B(const B &a) {
-    printf("COPY CONSTRUCT B %d \n", i++);
-  }
-  ~B() {
-    printf("DESTRUCT B %d \n", i++);
-  }
+    B() {
+        printf("CONSTRUCT B %d \n", i++);
+    }
+    B(const B &a) {
+        printf("COPY CONSTRUCT B %d \n", i++);
+    }
+    ~B() {
+        printf("DESTRUCT B %d \n", i++);
+    }
 };
 
 A a;
 B b;
 
 int main() {
-  return 0;
+    return 0;
 }

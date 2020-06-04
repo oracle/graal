@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,7 @@
 #include <stdint.h>
 
 int main() {
-  uint64_t rax, rdx;
-  __asm__("rdtsc;" : "=a"(rax), "=d"(rdx) : :);
-  return rax != 0 || rdx != 0;
+    uint64_t rax, rdx;
+    __asm__("rdtsc;" : "=a"(rax), "=d"(rdx) : :);
+    return rax != 0 || rdx != 0;
 }

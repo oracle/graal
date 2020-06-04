@@ -32,34 +32,34 @@
 #include <stdio.h>
 
 #define CALL_INTRINSIC(a, b, cmp)                                                                                                                    \
-  do {                                                                                                                                               \
-    bitconv bc;                                                                                                                                      \
-    __m128 result = _mm_cmp_ss(a, b, cmp);                                                                                                           \
-    bc.f = result[0];                                                                                                                                \
-    printf("\n%X\n", bc.i);                                                                                                                          \
-    bc.f = result[1];                                                                                                                                \
-    printf("%X\n", bc.i);                                                                                                                            \
-    bc.f = result[2];                                                                                                                                \
-    printf("%X\n", bc.i);                                                                                                                            \
-    bc.f = result[3];                                                                                                                                \
-    printf("%X\n", bc.i);                                                                                                                            \
-  } while (0);
+    do {                                                                                                                                             \
+        bitconv bc;                                                                                                                                  \
+        __m128 result = _mm_cmp_ss(a, b, cmp);                                                                                                       \
+        bc.f = result[0];                                                                                                                            \
+        printf("\n%X\n", bc.i);                                                                                                                      \
+        bc.f = result[1];                                                                                                                            \
+        printf("%X\n", bc.i);                                                                                                                        \
+        bc.f = result[2];                                                                                                                            \
+        printf("%X\n", bc.i);                                                                                                                        \
+        bc.f = result[3];                                                                                                                            \
+        printf("%X\n", bc.i);                                                                                                                        \
+    } while (0);
 
 typedef union {
-  float f;
-  int i;
+    float f;
+    int i;
 } bitconv;
 
 int main() {
-  __m128 v1 = { 1, 2, 3, 1 };
-  __m128 v2 = { 3, 2, 1, 2 };
+    __m128 v1 = { 1, 2, 3, 1 };
+    __m128 v2 = { 3, 2, 1, 2 };
 
-  CALL_INTRINSIC(v1, v2, 0);
-  CALL_INTRINSIC(v1, v2, 1);
-  CALL_INTRINSIC(v1, v2, 2);
-  CALL_INTRINSIC(v1, v2, 3);
-  CALL_INTRINSIC(v1, v2, 4);
-  CALL_INTRINSIC(v1, v2, 5);
-  CALL_INTRINSIC(v1, v2, 6);
-  CALL_INTRINSIC(v1, v2, 7);
+    CALL_INTRINSIC(v1, v2, 0);
+    CALL_INTRINSIC(v1, v2, 1);
+    CALL_INTRINSIC(v1, v2, 2);
+    CALL_INTRINSIC(v1, v2, 3);
+    CALL_INTRINSIC(v1, v2, 4);
+    CALL_INTRINSIC(v1, v2, 5);
+    CALL_INTRINSIC(v1, v2, 6);
+    CALL_INTRINSIC(v1, v2, 7);
 }

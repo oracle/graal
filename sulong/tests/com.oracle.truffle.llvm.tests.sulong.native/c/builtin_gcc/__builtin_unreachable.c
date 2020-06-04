@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,10 @@
 #include <stdlib.h>
 
 void exit_application() {
-  exit(11);
+    exit(11);
 }
 
 int main() {
-  exit_application();
-  __builtin_unreachable();
+    exit_application();
+    __builtin_unreachable();
 }

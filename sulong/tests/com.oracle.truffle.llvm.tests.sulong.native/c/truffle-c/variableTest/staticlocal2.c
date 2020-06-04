@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,11 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int cont_add(int a) {
-  static int b = 3;
-  return b += a;
+    static int b = 3;
+    return b += a;
 }
 
 int main() {
-  cont_add(4);
-  return cont_add(7);
+    cont_add(4);
+    return cont_add(7);
 }

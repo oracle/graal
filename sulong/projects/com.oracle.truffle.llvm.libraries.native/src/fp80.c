@@ -30,21 +30,21 @@
 #include <math.h>
 
 void __sulong_fp80_add(long double *out, long double *x, long double *y) {
-  *out = *x + *y;
+    *out = *x + *y;
 }
 
 void __sulong_fp80_sub(long double *out, long double *x, long double *y) {
-  *out = *x - *y;
+    *out = *x - *y;
 }
 
 void __sulong_fp80_mul(long double *out, long double *x, long double *y) {
-  *out = *x * *y;
+    *out = *x * *y;
 }
 
 void __sulong_fp80_div(long double *out, long double *x, long double *y) {
-  *out = *x / *y;
+    *out = *x / *y;
 }
 
 void __sulong_fp80_mod(long double *out, long double *x, long double *y) {
-  *out = fmodl(*x, *y);
+    *out = fmodl(*x, *y);
 }

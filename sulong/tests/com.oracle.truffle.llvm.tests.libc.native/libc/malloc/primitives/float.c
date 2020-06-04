@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,7 @@
 #include <stdlib.h>
 
 int main() {
-  volatile float *f = malloc(sizeof(float));
-  *f = 23423.23423;
-  return (int)(*f * 1000) % 256;
+    volatile float *f = malloc(sizeof(float));
+    *f = 23423.23423;
+    return (int) (*f * 1000) % 256;
 }

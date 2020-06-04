@@ -30,10 +30,10 @@
 #include <trufflenfi.h>
 
 void *identity(void *p) {
-  return p;
+    return p;
 }
 
 TruffleObject createNativeWrapper(TruffleEnv *env, void *fnPtr) {
-  TruffleObject wrapper = (*env)->getClosureObject(env, fnPtr);
-  return (*env)->releaseAndReturn(env, wrapper);
+    TruffleObject wrapper = (*env)->getClosureObject(env, fnPtr);
+    return (*env)->releaseAndReturn(env, wrapper);
 }

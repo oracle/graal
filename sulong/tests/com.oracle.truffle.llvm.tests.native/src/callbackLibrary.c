@@ -32,76 +32,76 @@
 #include <stdbool.h>
 
 struct container {
-  int (*callback)(int p1, int p2);
-  int p1;
+    int (*callback)(int p1, int p2);
+    int p1;
 };
 
 void printPointerToArray(int **a) {
 
-  fprintf(stderr, "Native: a = %p\n", a);
-  fprintf(stderr, "Native: *a = %p\n", *a);
+    fprintf(stderr, "Native: a = %p\n", a);
+    fprintf(stderr, "Native: *a = %p\n", *a);
 
-  fprintf(stderr, "Native: *a[0] = %i\n", (*a)[0]);
-  fprintf(stderr, "Native: *a[1] = %i\n", (*a)[1]);
-  fprintf(stderr, "Native: *a[2] = %i\n", (*a)[2]);
+    fprintf(stderr, "Native: *a[0] = %i\n", (*a)[0]);
+    fprintf(stderr, "Native: *a[1] = %i\n", (*a)[1]);
+    fprintf(stderr, "Native: *a[2] = %i\n", (*a)[2]);
 }
 
 void printArray(int *a) {
 
-  fprintf(stderr, "Native: a = %p\n", a);
+    fprintf(stderr, "Native: a = %p\n", a);
 
-  fprintf(stderr, "Native: a[0] = %i\n", a[0]);
-  fprintf(stderr, "Native: a[1] = %i\n", a[1]);
-  fprintf(stderr, "Native: a[2] = %i\n", a[2]);
+    fprintf(stderr, "Native: a[0] = %i\n", a[0]);
+    fprintf(stderr, "Native: a[1] = %i\n", a[1]);
+    fprintf(stderr, "Native: a[2] = %i\n", a[2]);
 }
 
 void *create_container(int (*callback)(int p1, int p2), int p1) {
-  struct container *c = malloc(sizeof(struct container));
-  c->callback = callback;
-  c->p1 = p1;
-  return c;
+    struct container *c = malloc(sizeof(struct container));
+    c->callback = callback;
+    c->p1 = p1;
+    return c;
 }
 
 int add(int a, int b) {
-  return a + b;
+    return a + b;
 }
 
 int (*get_callback_function())(int, int) {
-  return &add;
+    return &add;
 }
 
 void store_native_function(void *container) {
-  struct container *c = (struct container *)container;
-  c->callback = add;
+    struct container *c = (struct container *) container;
+    c->callback = add;
 }
 
 int call_callback(void *container, int p2) {
-  struct container *c = (struct container *)container;
-  return c->callback(c->p1, p2);
+    struct container *c = (struct container *) container;
+    return c->callback(c->p1, p2);
 }
 
 int call_callback2(void *container) {
-  struct container *c = (struct container *)container;
-  return c->callback(20, 22);
+    struct container *c = (struct container *) container;
+    return c->callback(20, 22);
 }
 
 int call_typecast(int (*fn)(void)) {
-  int (*fn_cast)(int) = (int (*)(int))fn;
-  return fn_cast(42);
+    int (*fn_cast)(int) = (int (*)(int)) fn;
+    return fn_cast(42);
 }
 
 int nullPointerFunctionTest(void (*foo)()) {
-  if (foo == 0) {
-    return 42;
-  } else {
-    return 84;
-  }
+    if (foo == 0) {
+        return 42;
+    } else {
+        return 84;
+    }
 }
 
 int callbackPointerArgTest(int (*callback)(void *), void *arg) {
-  return callback(arg);
+    return callback(arg);
 }
 
 bool nativeInvert(bool value) {
-  return !value;
+    return !value;
 }

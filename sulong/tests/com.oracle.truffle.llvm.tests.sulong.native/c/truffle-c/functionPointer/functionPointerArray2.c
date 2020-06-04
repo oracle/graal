@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,11 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int func() {
-  return 13;
+    return 13;
 }
 
 int (*functionPointers[])() = { func, func };
 
 int main() {
-  return functionPointers[1]();
+    return functionPointers[1]();
 }

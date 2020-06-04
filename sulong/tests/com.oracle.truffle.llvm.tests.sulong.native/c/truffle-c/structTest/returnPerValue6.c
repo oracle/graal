@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,25 +28,25 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct test {
-  char a;
-  int b;
+    char a;
+    int b;
 };
 
 int function(struct test t, int iter) {
-  t.a = 3 + t.a;
-  t.b = 8 + t.b;
-  if (iter == 0) {
-    return t.a + t.b;
-  } else {
-    return function(t, iter - 1);
-  }
+    t.a = 3 + t.a;
+    t.b = 8 + t.b;
+    if (iter == 0) {
+        return t.a + t.b;
+    } else {
+        return function(t, iter - 1);
+    }
 }
 
 int main() {
-  struct test t = { 1, 2 };
-  function(t, 10);
-  function(t, 9);
-  function(t, 9);
-  function(t, 9);
-  return t.a + t.b;
+    struct test t = { 1, 2 };
+    function(t, 10);
+    function(t, 9);
+    function(t, 9);
+    function(t, 9);
+    return t.a + t.b;
 }

@@ -35,13 +35,13 @@ void *global;
 
 int main() {
 
-  void *p = polyglot_import("object");
+    void *p = polyglot_import("object");
 
-  global = p;
+    global = p;
 
-  void **pp = &global; // should not harm us, pp is in the frame
+    void **pp = &global; // should not harm us, pp is in the frame
 
-  void (*returnObject)(void *) = polyglot_import("returnObject");
-  returnObject(global);
-  return 0;
+    void (*returnObject)(void *) = polyglot_import("returnObject");
+    returnObject(global);
+    return 0;
 }

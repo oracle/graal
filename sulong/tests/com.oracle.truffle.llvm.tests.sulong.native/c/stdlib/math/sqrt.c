@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,15 +36,15 @@ volatile double negativeNumber = -3.0;
 volatile double four = 4;
 
 int main() {
-  if (sqrt(zero) != 0.0) {
-    abort();
-  } else if (sqrt(minusZero) != -0) {
-    abort();
-  } else if (!isnan(sqrt(negativeNumber))) {
-    abort();
-  } else if (sqrt(four) != 2.0) {
-    abort();
-  } else if (sqrt(100000000000000.0) != 10000000.0) {
-    abort();
-  }
+    if (sqrt(zero) != 0.0) {
+        abort();
+    } else if (sqrt(minusZero) != -0) {
+        abort();
+    } else if (!isnan(sqrt(negativeNumber))) {
+        abort();
+    } else if (sqrt(four) != 2.0) {
+        abort();
+    } else if (sqrt(100000000000000.0) != 10000000.0) {
+        abort();
+    }
 }

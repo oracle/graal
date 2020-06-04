@@ -31,32 +31,32 @@
 #include <truffle.h>
 
 int main() {
-  void *p = polyglot_import("object");
-  void *p1 = truffle_handle_for_managed(p);
-  void *p2 = truffle_deref_handle_for_managed(p);
-  long l_p1 = (long)p1;
-  long l_p2 = (long)p2;
-  void *n = calloc(sizeof(char), 2);
+    void *p = polyglot_import("object");
+    void *p1 = truffle_handle_for_managed(p);
+    void *p2 = truffle_deref_handle_for_managed(p);
+    long l_p1 = (long) p1;
+    long l_p2 = (long) p2;
+    void *n = calloc(sizeof(char), 2);
 
-  if (!truffle_is_handle_to_managed(p1)) {
-    return 1;
-  }
-  if (!truffle_is_handle_to_managed(l_p1)) {
-    return 2;
-  }
-  if (!truffle_is_handle_to_managed(p2)) {
-    return 3;
-  }
-  if (!truffle_is_handle_to_managed(l_p2)) {
-    return 4;
-  }
-  if (truffle_is_handle_to_managed(p)) {
-    return 5;
-  }
-  if (truffle_is_handle_to_managed(n)) {
-    return 6;
-  }
-  free(n);
+    if (!truffle_is_handle_to_managed(p1)) {
+        return 1;
+    }
+    if (!truffle_is_handle_to_managed(l_p1)) {
+        return 2;
+    }
+    if (!truffle_is_handle_to_managed(p2)) {
+        return 3;
+    }
+    if (!truffle_is_handle_to_managed(l_p2)) {
+        return 4;
+    }
+    if (truffle_is_handle_to_managed(p)) {
+        return 5;
+    }
+    if (truffle_is_handle_to_managed(n)) {
+        return 6;
+    }
+    free(n);
 
-  return 0;
+    return 0;
 }

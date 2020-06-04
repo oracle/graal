@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,6 @@
 typedef int int_alias;
 
 int main() {
-  int_alias a = 3;
-  return a;
+    int_alias a = 3;
+    return a;
 }

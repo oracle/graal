@@ -33,7 +33,7 @@
 long *p;
 
 extern "C" long test() {
-  p = (long *)truffle_virtual_malloc(sizeof(long));
-  *p = 42;
-  return *p;
+    p = (long *) truffle_virtual_malloc(sizeof(long));
+    *p = 42;
+    return *p;
 }

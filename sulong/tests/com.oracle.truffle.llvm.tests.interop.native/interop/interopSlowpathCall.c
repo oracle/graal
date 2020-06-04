@@ -31,25 +31,25 @@
 #include <polyglot.h>
 
 struct Foreign {
-  int a;
-  int b;
-  int c;
-  int d;
-  int e;
+    int a;
+    int b;
+    int c;
+    int d;
+    int e;
 };
 
 int get_a(struct Foreign *f) {
-  return f->a;
+    return f->a;
 }
 int get_b(struct Foreign *f) {
-  return f->b;
+    return f->b;
 }
 int get_c(struct Foreign *f) {
-  return f->c;
+    return f->c;
 }
 int get_d(struct Foreign *f) {
-  return f->d;
+    return f->d;
 }
 int get_e(struct Foreign *f) {
-  return f->e;
+    return f->e;
 }

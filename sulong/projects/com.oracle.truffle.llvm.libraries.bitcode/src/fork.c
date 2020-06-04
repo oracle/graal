@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,9 +33,9 @@
 #include "unsupported.h"
 
 pid_t fork(void) {
-  ERR_UNSUPPORTED(fork);
+    ERR_UNSUPPORTED(fork);
 }
 
 pid_t vfork(void) {
-  ERR_UNSUPPORTED(vfork);
+    ERR_UNSUPPORTED(vfork);
 }

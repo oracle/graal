@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,12 +28,12 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 union test {
-  long a;
-  int b;
-  char c[2];
+    long a;
+    int b;
+    char c[2];
 };
 
 int main() {
-  union test a = { .a = 4, .c[0] = 1, .c[1] = 2 };
-  return (a.b) % 256;
+    union test a = { .a = 4, .c[0] = 1, .c[1] = 2 };
+    return (a.b) % 256;
 }

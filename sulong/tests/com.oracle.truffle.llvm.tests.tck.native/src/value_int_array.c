@@ -31,9 +31,9 @@
 #include <stdlib.h>
 
 void *val() {
-  int *ret = (int *)malloc(sizeof(int) * 10);
-  for (int i = 0; i < 10; i++) {
-    ret[i] = 3;
-  }
-  return ret;
+    int *ret = (int *) malloc(sizeof(int) * 10);
+    for (int i = 0; i < 10; i++) {
+        ret[i] = 3;
+    }
+    return ret;
 }

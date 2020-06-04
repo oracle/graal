@@ -32,7 +32,7 @@
 
 void while_statment(void *flag) {
 
-  while (flag) {
-    break;
-  }
+    while (flag) {
+        break;
+    }
 }
