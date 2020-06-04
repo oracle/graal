@@ -57,6 +57,7 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
 public class SubstrateOptions {
 
@@ -218,13 +219,11 @@ public class SubstrateOptions {
         @Override
         public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
             if (!values.containsKey(this)) {
-                /*
-                 * With the LLVM backend, isolate support has a significant performance cost, so we
-                 * disable it unless it is explicitly enabled.
-                 */
-                return !useLLVMBackend();
+                return true;
             }
-            return (Boolean) values.get(this);
+            Boolean enabled = (Boolean) values.get(this);
+            VMError.guarantee(enabled, "SpawnIsolates must always be enabled (will be removed)");
+            return enabled;
         }
 
         @Override
