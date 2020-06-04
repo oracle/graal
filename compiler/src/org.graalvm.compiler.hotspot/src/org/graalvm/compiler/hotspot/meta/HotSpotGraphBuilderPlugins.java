@@ -161,7 +161,7 @@ public class HotSpotGraphBuilderPlugins {
             plugins.appendNodePlugin(nodePlugin);
         }
         if (!GeneratePIC.getValue(options)) {
-            plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), true));
+            plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), !config.supportsMethodHandleDeoptimizationEntry()));
         }
         plugins.appendInlineInvokePlugin(replacements);
         if (InlineDuringParsing.getValue(options)) {

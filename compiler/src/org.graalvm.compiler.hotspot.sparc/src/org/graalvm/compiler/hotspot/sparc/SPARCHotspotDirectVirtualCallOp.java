@@ -25,6 +25,8 @@
 package org.graalvm.compiler.hotspot.sparc;
 
 import static jdk.vm.ci.sparc.SPARC.g5;
+import static jdk.vm.ci.sparc.SPARC.l7;
+import static jdk.vm.ci.sparc.SPARC.sp;
 
 import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -37,6 +39,7 @@ import org.graalvm.compiler.lir.sparc.SPARCCall.DirectCallOp;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -66,6 +69,10 @@ final class SPARCHotspotDirectVirtualCallOp extends DirectCallOp {
         crb.recordMark(invokeKind == InvokeKind.Virtual ? HotSpotMarkId.INVOKEVIRTUAL : HotSpotMarkId.INVOKEINTERFACE);
         Register scratchRegister = g5;
         masm.setx(config.nonOopBits, scratchRegister, true);
+        if (config.supportsMethodHandleDeoptimizationEntry() && config.isMethodHandleCall((HotSpotResolvedJavaMethod) callTarget)) {
+            crb.setNeedsMHDeoptHandler();
+            masm.mov(sp, l7);
+        }
     }
 
     @Override
