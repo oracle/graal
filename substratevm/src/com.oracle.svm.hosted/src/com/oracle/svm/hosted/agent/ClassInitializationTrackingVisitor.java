@@ -25,13 +25,13 @@
 package com.oracle.svm.hosted.agent;
 
 import static com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent.getJavaVersion;
+import static jdk.internal.org.objectweb.asm.Opcodes.ACC_STATIC;
+import static jdk.internal.org.objectweb.asm.Opcodes.ASM6;
+import static jdk.internal.org.objectweb.asm.Opcodes.GETSTATIC;
+import static jdk.internal.org.objectweb.asm.Opcodes.IFEQ;
+import static jdk.internal.org.objectweb.asm.Opcodes.INVOKESTATIC;
+import static jdk.internal.org.objectweb.asm.Opcodes.RETURN;
 import static org.graalvm.compiler.bytecode.Bytecodes.ALOAD;
-import static org.objectweb.asm.Opcodes.ACC_STATIC;
-import static org.objectweb.asm.Opcodes.ASM6;
-import static org.objectweb.asm.Opcodes.GETSTATIC;
-import static org.objectweb.asm.Opcodes.IFEQ;
-import static org.objectweb.asm.Opcodes.INVOKESTATIC;
-import static org.objectweb.asm.Opcodes.RETURN;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -39,15 +39,15 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
-
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageClassLoader;
+
+import jdk.internal.org.objectweb.asm.ClassVisitor;
+import jdk.internal.org.objectweb.asm.ClassWriter;
+import jdk.internal.org.objectweb.asm.Label;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
+import jdk.internal.org.objectweb.asm.Opcodes;
+import jdk.internal.org.objectweb.asm.Type;
 
 public class ClassInitializationTrackingVisitor extends ClassVisitor {
 

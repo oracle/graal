@@ -24,17 +24,17 @@
  */
 package com.oracle.svm.hosted.agent;
 
-import static org.objectweb.asm.ClassReader.EXPAND_FRAMES;
-import static org.objectweb.asm.ClassWriter.COMPUTE_FRAMES;
-import static org.objectweb.asm.ClassWriter.COMPUTE_MAXS;
+import static jdk.internal.org.objectweb.asm.ClassReader.EXPAND_FRAMES;
+import static jdk.internal.org.objectweb.asm.ClassWriter.COMPUTE_FRAMES;
+import static jdk.internal.org.objectweb.asm.ClassWriter.COMPUTE_MAXS;
 
 import java.lang.instrument.Instrumentation;
 
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
-
 import com.oracle.svm.hosted.agent.jdk8.lambda.LambdaMetaFactoryRewriteVisitor;
 import com.oracle.svm.util.AgentSupport;
+
+import jdk.internal.org.objectweb.asm.ClassReader;
+import jdk.internal.org.objectweb.asm.ClassWriter;
 
 /*
  * Note: no java.lang.invoke.LambdaMetafactory (e.g., Java lambdas) in this file.
