@@ -588,7 +588,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public final boolean isCompiling() {
-        return getCompilationTask() != null;
+        return compilationTask != null;
     }
 
     /**
@@ -1240,6 +1240,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return System.identityHashCode(this);
     }
 
+    // TODO: remove once GraalTruffleRuntime#waitForCompilation is removed
     final CancellableCompileTask getCompilationTask() {
         return compilationTask;
     }
