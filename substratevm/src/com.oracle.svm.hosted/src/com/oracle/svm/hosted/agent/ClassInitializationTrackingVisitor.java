@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.agent;
 
 import static com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent.getJavaVersion;
 import static jdk.internal.org.objectweb.asm.Opcodes.ACC_STATIC;
-import static jdk.internal.org.objectweb.asm.Opcodes.ASM6;
+import static jdk.internal.org.objectweb.asm.Opcodes.ASM5;
 import static jdk.internal.org.objectweb.asm.Opcodes.GETSTATIC;
 import static jdk.internal.org.objectweb.asm.Opcodes.IFEQ;
 import static jdk.internal.org.objectweb.asm.Opcodes.INVOKESTATIC;
@@ -58,7 +58,7 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
     private boolean ldcClassLiteralSupported;
 
     public ClassInitializationTrackingVisitor(String moduleName, ClassLoader loader, String className, ClassWriter writer) {
-        super(ASM6, writer);
+        super(ASM5, writer);
         this.moduleName = moduleName;
         this.hasClinit = false;
         this.loader = loader;
@@ -174,7 +174,7 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
 
     public class ClassInitializerMethod extends MethodVisitor {
         ClassInitializerMethod(MethodVisitor methodVisitor) {
-            super(ASM6, methodVisitor);
+            super(ASM5, methodVisitor);
         }
 
         @Override
@@ -191,7 +191,7 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
 
     public class ClassConstructorMethod extends MethodVisitor {
         ClassConstructorMethod(MethodVisitor methodVisitor) {
-            super(ASM6, methodVisitor);
+            super(ASM5, methodVisitor);
         }
 
         @Override

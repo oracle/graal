@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.agent.jdk8.lambda;
 
-import static jdk.internal.org.objectweb.asm.Opcodes.ASM6;
+import static jdk.internal.org.objectweb.asm.Opcodes.ASM5;
 
 import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent;
@@ -40,7 +40,7 @@ public class LambdaMetaFactoryRewriteVisitor extends ClassVisitor {
     private final String className;
 
     public LambdaMetaFactoryRewriteVisitor(ClassLoader loader, String className, ClassWriter writer) {
-        super(ASM6, writer);
+        super(ASM5, writer);
         this.loader = loader;
         this.className = className;
     }
@@ -65,7 +65,7 @@ public class LambdaMetaFactoryRewriteVisitor extends ClassVisitor {
 
     public class LambdaMetaFactoryMethodVisitor extends MethodVisitor {
         LambdaMetaFactoryMethodVisitor(MethodVisitor methodVisitor) {
-            super(ASM6, methodVisitor);
+            super(ASM5, methodVisitor);
         }
 
         @Override
