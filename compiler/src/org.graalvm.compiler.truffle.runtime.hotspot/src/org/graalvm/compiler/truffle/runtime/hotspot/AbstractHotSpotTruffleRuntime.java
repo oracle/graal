@@ -386,16 +386,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      */
     protected abstract String initLazyCompilerConfigurationName();
 
-    @Override
-    public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        if (lazy == null) {
-            // if Truffle wasn't initialized yet, this is a noop
-            return false;
-        }
-
-        return super.cancelInstalledTask(optimizedCallTarget, source, reason);
-    }
-
     @SuppressWarnings("try")
     @Override
     public void bypassedInstalledCode(OptimizedCallTarget target) {

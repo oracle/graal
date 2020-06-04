@@ -793,17 +793,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
-        if (task != null) {
-            if (task.cancel()) {
-                getListener().onCompilationDequeued(optimizedCallTarget, source, reason);
-                return true;
-            }
-        }
-        return false;
-    }
-
+    // TODO: Used only in tests. Should be removed and task should be reflectively looked up or use
+    // org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.finishCompilation
     public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException {
         CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
         if (task != null && !task.isCancelled()) {
