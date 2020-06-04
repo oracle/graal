@@ -86,7 +86,9 @@ def rename_packages(filepath, verbose=False):
 package_renamings = {
     'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
     'org.graalvm.word'        : 'jdk.internal.vm.compiler.word',
-    'org.graalvm.libgraal'    : 'jdk.internal.vm.compiler.libgraal'
+    'org.graalvm.libgraal'    : 'jdk.internal.vm.compiler.libgraal',
+    'org.graalvm.nativeimage' : 'jdk.internal.vm.compiler.nativeimage',
+    'org.graalvm.options'     : 'jdk.internal.vm.compiler.options'
 }
 
 SuiteJDKInfo = namedtuple('SuiteJDKInfo', 'name includes excludes')
@@ -98,29 +100,55 @@ def updategraalinopenjdk(args):
     parser.add_argument('--pretty', help='value for --pretty when logging the changes since the last JDK* tag')
     parser.add_argument('jdkrepo', help='path to the local OpenJDK repo')
     parser.add_argument('version', type=int, help='Java version of the OpenJDK repo')
+    parser.add_argument('--metro', action='store_true', help='update for Metropolis project (to build libgraal)')
 
     args = parser.parse_args(args)
 
     if mx_compiler.jdk.javaCompliance.value < args.version:
         mx.abort('JAVA_HOME/--java-home must be Java version {} or greater: {}'.format(args.version, mx_compiler.jdk))
 
-    graal_modules = [
-        # JDK module jdk.internal.vm.compiler is composed of sources from:
-        GraalJDKModule('jdk.internal.vm.compiler',
-            # 1. Classes in the compiler suite under the org.graalvm namespace except for packages
-            #    or projects whose names contain terms on the specified exclude list
-            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm', 'replacements.llvm', 'libgraal.jni']),
-            # 2. Classes in the sdk suite under the org.graalvm.collections and org.graalvm.word namespaces
-             SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
-        # JDK module jdk.internal.vm.compiler.management is composed of sources from:
-        GraalJDKModule('jdk.internal.vm.compiler.management',
-            # 1. Classes in the compiler suite under the org.graalvm.compiler.hotspot.management namespace
-            [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], ['libgraal'])]),
-        # JDK module jdk.aot is composed of sources from:
-        GraalJDKModule('jdk.aot',
-            # 1. Classes in the compiler suite under the jdk.tools.jaotc namespace
-            [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
-    ]
+    if not args.metro:
+        mx.log('Processing update for OpenJDK {}'.format(args.version))
+        graal_modules = [
+            # JDK module jdk.internal.vm.compiler is composed of sources from:
+            GraalJDKModule('jdk.internal.vm.compiler',
+                # 1. Classes in the compiler suite under the org.graalvm namespace except for packages
+                #    or projects whose names contain terms on the specified exclude list
+                [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm', 'replacements.llvm', 'libgraal.jni']),
+                # 2. Classes in the sdk suite under the org.graalvm.collections and org.graalvm.word namespaces
+                 SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
+            # JDK module jdk.internal.vm.compiler.management is composed of sources from:
+            GraalJDKModule('jdk.internal.vm.compiler.management',
+                # 1. Classes in the compiler suite under the org.graalvm.compiler.hotspot.management namespace
+                [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], ['libgraal'])]),
+            # JDK module jdk.aot is composed of sources from:
+            GraalJDKModule('jdk.aot',
+                # 1. Classes in the compiler suite under the jdk.tools.jaotc namespace
+                [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
+        ]
+    else:
+        if args.version < 15:
+            mx.abort('Update for Metropolis works only for JDK 15 or later')
+        mx.log('Processing update for Metropolis JDK {}'.format(args.version))
+        # Metropolis needs more code from Graal
+        graal_modules = [
+            # JDK module jdk.internal.vm.compiler is composed of sources from:
+            GraalJDKModule('jdk.internal.vm.compiler',
+                # 1. Classes in the compiler suite under the org.graalvm namespace except for packages
+                #    or projects whose names contain terms on the specified exclude list
+                [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm', 'replacements.llvm']),
+                # 2. Classes in the sdk suite under the org.graalvm.collections and org.graalvm.word namespaces
+                 SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word', 'org.graalvm.nativeimage', 'org.graalvm.options'], [])]),
+            # JDK module jdk.internal.vm.compiler.management is composed of sources from:
+            GraalJDKModule('jdk.internal.vm.compiler.management',
+                # 1. Classes in the compiler suite under the org.graalvm.compiler.hotspot.management namespace
+                [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], ['libgraal'])]),
+            # JDK module jdk.aot is composed of sources from:
+            GraalJDKModule('jdk.aot',
+                # 1. Classes in the compiler suite under the jdk.tools.jaotc namespace
+                [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
+        ]
+
 
     # Strings to be replaced in files copied to OpenJDK.
     replacements = {
@@ -342,6 +370,9 @@ def updategraalinopenjdk(args):
         parts = line.split()
         assert len(parts) == 2 and parts[1] == '\\', line
 
+    def do_nothing(line):
+        pass
+
     # Update jdk.internal.vm.compiler.EXCLUDES in make/CompileJavaModules.gmk
     # to exclude all test, benchmark and annotation processor packages.
     CompileJavaModules_gmk = join(jdkrepo, 'make', 'CompileJavaModules.gmk') # pylint: disable=invalid-name
@@ -384,6 +415,44 @@ def updategraalinopenjdk(args):
     end_line = ', \\'
     old_line_check = single_column_with_continuation
     replace_lines(JtregGraalUnit_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True)
+
+    # Updates for Metropolis
+    if args.metro:
+        # Update 'PROCESSOR_JARS' and 'PROC_SRC_SUBDIRS' in make/modules/jdk.internal.vm.compiler/Gensrc.gmk
+        Gensrc_gmk = join(jdkrepo, 'make', 'modules', 'jdk.internal.vm.compiler', 'Gensrc.gmk') # pylint: disable=invalid-name
+        begin_lines = ['PROC_SRC_SUBDIRS := \\']
+        end_line = 'org.graalvm.compiler.virtual \\'
+        new_lines = ['    jdk.internal.vm.compiler.libgraal.jni \\\n']
+        replace_lines(Gensrc_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True, append_mode=True)
+
+        begin_lines = ['PROCESSOR_JARS := \\']
+        end_line = '$(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.serviceprovider.processor.jar \\'
+        new_lines = ['    $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.libgraal.jni.processor.jar \\\n']
+        replace_lines(Gensrc_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True, append_mode=True)
+
+        # Add 'libgraal.jni.processor' build to make/CompileToolsHotspot.gmk
+        CompileToolsHotspot_gmk = join(jdkrepo, 'make', 'CompileToolsHotspot.gmk') # pylint: disable=invalid-name
+        begin_lines = ['TARGETS += $(BUILD_VM_COMPILER_SERVICEPROVIDER_PROCESSOR)']
+        end_line = '##############################################################################'
+        new_lines = ['\n  $(eval $(call SetupJavaCompilation, BUILD_VM_COMPILER_LIBGRAAL_JNI_PROCESSOR, \\\n',
+                     '      TARGET_RELEASE := $(TARGET_RELEASE_BOOTJDK), \\\n',
+                     '      SRC := \\\n',
+                     '          $(SRC_DIR)/org.graalvm.compiler.processor/src \\\n',
+                     '          $(SRC_DIR)/jdk.internal.vm.compiler.libgraal.jni.annotation/src \\\n',
+                     '          $(SRC_DIR)/jdk.internal.vm.compiler.libgraal.jni.processor/src \\\n',
+                     '          , \\\n',
+                     '      EXCLUDE_FILES := $(EXCLUDE_FILES), \\\n',
+                     '      BIN := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.libgraal.jni.processor, \\\n',
+                     '      JAR := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.libgraal.jni.processor.jar, \\\n',
+                     '      DISABLED_WARNINGS := options, \\\n',
+                     '  ))\n\n',
+                     '  TARGETS += $(BUILD_VM_COMPILER_LIBGRAAL_JNI_PROCESSOR)\n\n',
+                     '  ##############################################################################\n']  # indent is inlined
+        old_line_check = do_nothing
+        replace_lines(CompileToolsHotspot_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True, append_mode=True)
+
+        # Rename packages in libgraal.jni.processor service
+        rename_packages(join(jdkrepo, 'src', 'jdk.internal.vm.compiler', 'share', 'classes', 'jdk.internal.vm.compiler.libgraal.jni.processor', 'src', 'META-INF', 'services', 'javax.annotation.processing.Processor'))
 
     overwritten = ''
     if not git_repo:

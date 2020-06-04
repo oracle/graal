@@ -37,6 +37,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
+
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
@@ -161,7 +163,7 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
     }
 
     private static void guardedTrackingCall(MethodVisitor mv, String methodName, Runnable pushOperands, String descriptor) {
-        String trackingClass = "org/graalvm/nativeimage/impl/clinit/ClassInitializationTracking";
+        String trackingClass = ClassInitializationTracking.class.getName().replace('.', '/');
         mv.visitFieldInsn(GETSTATIC, trackingClass, "IS_IMAGE_BUILD_TIME", "Z");
         Label l1 = new Label();
         mv.visitJumpInsn(IFEQ, l1);
