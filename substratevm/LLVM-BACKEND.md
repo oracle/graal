@@ -6,7 +6,6 @@ The LLVM backend requires Graal's LLVM toolchain to be installed (with `gu insta
 
 ## Code generation options
 
-* `-H:+SpawnIsolates`: Enables isolates, which are disabled by default when using the LLVM backend as they incur a performance penalty.
 * `-H:+BitcodeOptimizations`: Enables aggressive optimizations at the LLVM bitcode level. This is experimental and may cause bugs.
 
 ## Debugging options

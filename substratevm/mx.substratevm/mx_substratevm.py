@@ -478,8 +478,7 @@ def svm_gate_body(args, tasks):
                                     raise Exception()
                             mx.run(["readelf", "--dynamic", lib_output], out=procOutput)
 
-                        reloctest(['-H:+SpawnIsolates', '-H:+UseOnlyWritableBootImageHeap'])
-                        reloctest(['-H:-SpawnIsolates', '-H:+UseOnlyWritableBootImageHeap'])
+                        reloctest(['-H:+UseOnlyWritableBootImageHeap'])
                     finally:
                         remove_tree(reloc_test_path)
                 else:
@@ -975,7 +974,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${.}/../../../polyglot/",
         "-H:CStandard=C11",
-        "-H:+SpawnIsolates",
     ],
     polyglot_lib_jar_dependencies=[
         "substratevm:POLYGLOT_NATIVE_API",
