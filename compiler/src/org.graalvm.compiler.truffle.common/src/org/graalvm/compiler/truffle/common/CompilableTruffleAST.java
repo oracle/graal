@@ -92,7 +92,7 @@ public interface CompilableTruffleAST {
     /**
      * Cancel the installed task, i.e. cancel the compilation of this truffle ast.
      */
-    void cancelInstalledTask();
+    boolean cancelInstalledTask(Object source, CharSequence reason);
 
     /**
      * @param ast the ast to compare to

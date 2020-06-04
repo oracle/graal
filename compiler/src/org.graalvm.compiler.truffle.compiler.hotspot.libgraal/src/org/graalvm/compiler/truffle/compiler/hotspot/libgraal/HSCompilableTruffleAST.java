@@ -226,8 +226,10 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
 
     @TruffleFromLibGraal(CancelInstalledTask)
     @Override
-    public void cancelInstalledTask() {
-        callCancelInstalledTask(env(), getHandle());
+    public boolean cancelInstalledTask(Object source, CharSequence reason) {
+        // callCancelInstalledTask(env(), getHandle());
+        // TODO: Implement
+        return false;
     }
 
     @TruffleFromLibGraal(IsSameOrSplit)
