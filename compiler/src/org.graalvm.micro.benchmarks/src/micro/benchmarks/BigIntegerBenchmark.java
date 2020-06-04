@@ -30,7 +30,6 @@ import java.util.Random;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.Warmup;
 
 /*
  * Benchmarks cost of BigInteger intrinsics:
@@ -55,7 +54,6 @@ public class BigIntegerBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public void bigIntMul(ThreadState state) {
         BigInteger[] data = state.data;
         for (int i = 1; i < data.length; i++) {
@@ -65,7 +63,6 @@ public class BigIntegerBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public void bigIntMulAdd(ThreadState state) {
         BigInteger[] data = state.data;
         for (int i = 0; i < data.length; i++) {
@@ -77,7 +74,6 @@ public class BigIntegerBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public void bigIntMontgomeryMul(ThreadState state) {
         BigInteger[] data = state.data;
         BigInteger exp = BigInteger.valueOf(2);
@@ -94,7 +90,6 @@ public class BigIntegerBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
-    @Warmup(iterations = 5)
     public void bigIntMontgomerySqr(ThreadState state) {
         BigInteger[] data = state.data;
         BigInteger exp = BigInteger.valueOf(2);

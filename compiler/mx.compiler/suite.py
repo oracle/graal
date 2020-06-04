@@ -2173,10 +2173,25 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_ONLY_TEST" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.api.test"
+      ],
+      "distDependencies" : [
+        "JVMCI_HOTSPOT",
+        "GRAAL"
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+        "JAVA_ALLOCATION_INSTRUMENTER",
+      ],
+      "maven": False,
+    },
+
     "GRAAL_TEST" : {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.compiler.api.test",
         "org.graalvm.compiler.api.directives.test",
         "org.graalvm.compiler.asm.sparc.test",
         "org.graalvm.compiler.asm.aarch64.test",
@@ -2207,8 +2222,7 @@ suite = {
         "org.graalvm.compiler.hotspot.jdk9.test",
       ],
       "distDependencies" : [
-        "JVMCI_HOTSPOT",
-        "GRAAL",
+        "GRAAL_ONLY_TEST",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_TEST",
       ],
@@ -2486,7 +2500,7 @@ suite = {
         "org.graalvm.compiler.microbenchmarks",
       ],
       "distDependencies" : [
-        "GRAAL_TEST",
+        "GRAAL_ONLY_TEST"
       ],
       "testDistribution" : True,
       "maven": False,

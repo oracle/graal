@@ -1078,10 +1078,6 @@ def java_base_unittest(args):
     finally:
         _graaljdk_override = None
 
-def microbench(*args):
-    mx.abort("`mx microbench` is deprecated.\n" +
-             "Use `mx benchmark jmh-whitebox:*` and `mx benchmark jmh-dist:*` instead!")
-
 def javadoc(args):
     # metadata package was deprecated, exclude it
     if not '--exclude-packages' in args:
@@ -1433,7 +1429,6 @@ mx.update_commands(_suite, {
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK java.base "only" module(s)'],
     'updategraalinopenjdk' : [updategraalinopenjdk, '[options]'],
     'renamegraalpackages' : [renamegraalpackages, '[options]'],
-    'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk_cli, '[options]'],
 })

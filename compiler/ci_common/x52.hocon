@@ -1,3 +1,31 @@
+// HotSpot client compiler (C1)
+x52.c1 : ${linux-amd64} {
+  capabilities: ${linux-amd64.capabilities} [x52, no_frequency_scaling]
+  environment : {
+    JVM_CONFIG :  "default"
+    JVM        :  "client"
+    MACHINE_NAME: "x52"
+  }
+}
+
+x52.c1-tmpfs10g : ${x52.c1} {
+  capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
+}
+
+// HotSpot server compiler (C2)
+x52.c2 : {
+  capabilities: [linux, x52, no_frequency_scaling]
+  environment : {
+    JVM_CONFIG   : "default"
+    JVM          : "server"
+    MACHINE_NAME : "x52"
+  }
+}
+
+x52.tmpfs10g-c2 : ${x52.c2} {
+  capabilities: ${x52.c2.capabilities} [tmpfs10g]
+}
+
 x52.default : ${linux-amd64} {
   capabilities: ${linux-amd64.capabilities} [x52, no_frequency_scaling]
   environment : {
@@ -76,8 +104,8 @@ builds += [
   ${x52.default-libgraal} ${bench-micros-graal-dist}              ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-jmh-micros-graal-dist-libgraal-linux-x52" }
 
   ${x52.default-libgraal} ${bench-specjvm2008-OneVM}              ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-specjvm2008-OneVM-libgraal-11-linux-x52" }
-  ${x52.default-libgraal} ${bench-micros-graal-whitebox}          ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-jmh-micros-graal-whitebox-libgraal-11-linux-x52" }
-  ${x52.default-libgraal} ${bench-micros-graal-dist}              ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-jmh-micros-graal-dist-libgraal-11-linux-x52" }
+  ${x52.default-libgraal} ${bench-micros-graal-whitebox}          ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-jmh-micros-graal-whitebox-libgraal-11-linux-x52" }
+  ${x52.default-libgraal} ${bench-micros-graal-dist}              ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-jmh-micros-graal-dist-libgraal-11-linux-x52" }
 
   #  special configurations
   ${x52.tmpfs10g-libgraal-g1gc} ${bench-dacapo-hwloc}             ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-dacapo-libgraal-g1gc-linux-x52" }
@@ -112,12 +140,8 @@ builds += [
   ${x52.default} ${bench-renaissance-legacy-hwloc}       ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-renaissance-legacy-linux-x52" }
   ${x52.default} ${bench-specjvm2008-OneVM}              ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-specjvm2008-OneVM-linux-x52" }
   ${x52.default} ${bench-spark-sql-perf}                 ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-spark-sql-perf-linux-x52" }
-  ${x52.default} ${bench-micros-graal-whitebox}          ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-jmh-micros-graal-whitebox-linux-x52" }
-  ${x52.default} ${bench-micros-graal-dist}              ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-jmh-micros-graal-dist-linux-x52" }
 
   ${x52.default} ${bench-specjvm2008-OneVM}              ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-specjvm2008-OneVM-11-linux-x52" }
-  ${x52.default} ${bench-micros-graal-whitebox}          ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-jmh-micros-graal-whitebox-11-linux-x52" }
-  ${x52.default} ${bench-micros-graal-dist}              ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-jmh-micros-graal-dist-11-linux-x52" }
 
   #  special configurations
   ${x52.tmpfs10g-g1gc} ${bench-dacapo-hwloc}             ${oraclejdk8} { targets: [weekly, bench], name: "bench-compiler-dacapo-g1gc-linux-x52" }

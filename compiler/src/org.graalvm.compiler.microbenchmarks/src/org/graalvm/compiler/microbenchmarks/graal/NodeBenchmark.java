@@ -27,7 +27,6 @@ package org.graalvm.compiler.microbenchmarks.graal;
 import java.util.HashMap;
 
 import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
 import org.graalvm.compiler.graph.Node;
@@ -69,7 +68,6 @@ public class NodeBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
-    @Warmup(iterations = 20)
     public int getNodeClass(StringEquals s) {
         int sum = 0;
         for (Node n : s.nodes) {
@@ -148,7 +146,6 @@ public class NodeBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
-    @Warmup(iterations = 20)
     public void nodeBitmap(StringEquals s, @SuppressWarnings("unused") GraalState g) {
         NodeBitMap bitMap = s.graph.createNodeBitMap();
         for (Node node : s.graph.getNodes()) {
@@ -169,7 +166,6 @@ public class NodeBenchmark extends GraalBenchmark {
 
     // Checkstyle: stop method name check
     @Benchmark
-    @Warmup(iterations = 20)
     public int valueEquals_STRING_EQUALS(StringEquals s) {
         int result = 0;
         for (NodePair np : s.valueEqualsNodePairs) {
@@ -183,7 +179,6 @@ public class NodeBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
-    @Warmup(iterations = 20)
     public int valueEquals_HASHMAP_COMPUTE_IF_ABSENT(HashMapComputeIfAbsent s) {
         int result = 0;
         for (NodePair np : s.valueEqualsNodePairs) {
@@ -197,7 +192,6 @@ public class NodeBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
-    @Warmup(iterations = 20)
     public int valueNumberLeaf_HASHMAP_COMPUTE_IF_ABSENT(HashMapComputeIfAbsent s) {
         int result = 0;
         for (Node n : s.valueNumberableLeafNodes) {
@@ -207,7 +201,6 @@ public class NodeBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
-    @Warmup(iterations = 20)
     public int valueNumberLeaf_STRING_EQUALS(StringEquals s) {
         int result = 0;
         for (Node n : s.valueNumberableLeafNodes) {
