@@ -536,6 +536,7 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     protected Iterable<SubstrateField> getNodeFields() {
         return getNodeFields(null);
     }

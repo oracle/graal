@@ -133,6 +133,7 @@ public abstract class NodeClass {
     public abstract Class<? extends Node> getType();
 
     /** @since 0.14 */
+    @Deprecated
     protected abstract Iterable<? extends Object> getNodeFields();
 
     /** @since 20.2 */
