@@ -24,8 +24,11 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.libgraal.jni.HSObject;
 
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AddTargetToDequeue;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.DequeueTargets;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindDecision;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetDescription;
@@ -39,6 +42,8 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTargetStable;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ShouldInline;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callAddTargetToDequeue;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callDequeueTargets;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callFindCallNode;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callFindDecision;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetDescription;
@@ -115,6 +120,21 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
             return null;
         }
         return new HSTruffleSourceLanguagePosition(scope, res);
+    }
+
+    @TruffleFromLibGraal(AddTargetToDequeue)
+    @Override
+    public void addTargetToDequeue(CompilableTruffleAST target) {
+        JObject hsCompilable = ((HSCompilableTruffleAST) target).getHandle();
+        JNIEnv env = scope.getEnv();
+        callAddTargetToDequeue(env, getHandle(), hsCompilable);
+    }
+
+    @TruffleFromLibGraal(DequeueTargets)
+    @Override
+    public void dequeueTargets() {
+        JNIEnv env = scope.getEnv();
+        callDequeueTargets(env, getHandle());
     }
 
     /**

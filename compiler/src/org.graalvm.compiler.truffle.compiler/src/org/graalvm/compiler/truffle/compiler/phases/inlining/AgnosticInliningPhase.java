@@ -80,7 +80,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         if (getPolyglotOptionValue(request.options, PolyglotCompilerOptions.Inlining)) {
             policy.run(tree);
             tree.dumpBasic("After Inline");
-            tree.dequeueInlined();
+            tree.collectTargetsToDequeue(request.inliningPlan);
         }
         tree.finalizeGraph();
         tree.trace();
