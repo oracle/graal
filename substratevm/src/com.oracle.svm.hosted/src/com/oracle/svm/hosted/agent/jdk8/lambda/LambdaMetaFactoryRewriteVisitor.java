@@ -68,12 +68,12 @@ public class LambdaMetaFactoryRewriteVisitor extends ClassVisitor {
             super(ASM5, methodVisitor);
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public void visitInvokeDynamicInsn(String name, String descriptor, Handle bootstrapMethodHandle, Object... bootstrapMethodArguments) {
             if (isMetaFactoryCall(bootstrapMethodHandle.getOwner(), bootstrapMethodHandle.getName())) {
                 Handle handle = new Handle(bootstrapMethodHandle.getTag(), "com/oracle/svm/hosted/agent/jdk8/lambda/LambdaMetafactory", bootstrapMethodHandle.getName(),
-                                bootstrapMethodHandle.getDesc(),
-                                bootstrapMethodHandle.isInterface());
+                                bootstrapMethodHandle.getDesc());
                 super.visitInvokeDynamicInsn(name, descriptor, handle, bootstrapMethodArguments);
             } else {
                 super.visitInvokeDynamicInsn(name, descriptor, bootstrapMethodHandle, bootstrapMethodArguments);
