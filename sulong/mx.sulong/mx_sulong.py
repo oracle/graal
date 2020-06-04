@@ -258,14 +258,19 @@ def build_llvm_org(args=None):
 
 
 @mx.command(_suite.name, "clangformat")
-def clangformat(args=None, extra_paths=None):
+def clangformat(args=None):
     """ Runs clang-format on C/C++ files in native projects of the primary suite """
-    if not extra_paths:
-        extra_paths = []
-    error = False
+    parser = ArgumentParser(prog='mx clangformat')
+    parser.add_argument('--with-projects', action='store_true', help='check native projects. Defaults to true unless a path is specified.')
+    parser.add_argument('paths', metavar='path', nargs='*', help='check given paths')
+    args = parser.parse_args(args)
+    paths = args.paths
 
-    nativeProjects = [p.dir for p in mx.projects(limit_to_primary=True) if p.isNativeProject() and getattr(p, "clangFormat", True)]
-    for f in extra_paths + nativeProjects:
+    if not paths or args.with_projects:
+        paths += [p.dir for p in mx.projects(limit_to_primary=True) if p.isNativeProject() and getattr(p, "clangFormat", True)]
+
+    error = False
+    for f in paths:
         if not checkCFiles(f):
             error = True
     if error:
@@ -273,17 +278,20 @@ def clangformat(args=None, extra_paths=None):
         exit(-1)
 
 
-def checkCFiles(targetDir):
+def checkCFiles(target):
     error = False
     files_to_check = []
-    for path, _, files in os.walk(targetDir):
-        for f in files:
-            if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
-                files_to_check.append(join(path, f))
+    if os.path.isfile(target):
+        files_to_check.append(target)
+    else:
+        for path, _, files in os.walk(target):
+            for f in files:
+                if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
+                    files_to_check.append(join(path, f))
     if not files_to_check:
-        # no files found
+        mx.logv("clang-format: no files found {}".format(target))
         return True
-    mx.logv("clang-format: checking directory {} ({} files)".format(targetDir, len(files_to_check)))
+    mx.logv("clang-format: checking {} ({} files)".format(target, len(files_to_check)))
     for f in files_to_check:
         if not checkCFile(f):
             error = True
