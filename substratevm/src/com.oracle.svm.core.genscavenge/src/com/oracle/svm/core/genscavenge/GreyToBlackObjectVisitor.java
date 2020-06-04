@@ -139,8 +139,6 @@ final class GreyToBlackObjectVisitor implements ObjectVisitor {
                                 .signed(getHistoryLength()).string(" / ").signed(historyCount)
                                 .indent(true);
                 ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
-                Pointer firstRORPointer = Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyReferenceObject);
-                Pointer lastRORPointer = Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyReferenceObject);
                 /*
                  * Report the history from the next available slot in the ring buffer. The older
                  * history is more reliable, since I have already used that to visit objects. The
@@ -152,15 +150,14 @@ final class GreyToBlackObjectVisitor implements ObjectVisitor {
                     Word objectEntry = objectHistory[index];
                     log.string("  objectEntry: ").hex(objectEntry);
                     UnsignedWord headerEntry = headerHistory[index];
-                    UnsignedWord headerHubBits = ObjectHeaderImpl.clearBits(headerEntry);
+                    Pointer headerHub = (Pointer) ObjectHeaderImpl.clearBits(headerEntry);
                     UnsignedWord headerHeaderBits = ObjectHeaderImpl.getHeaderBitsFromHeaderCarefully(headerEntry);
-                    log.string("  headerEntry: ").hex(headerEntry).string(" = ").hex(headerHubBits).string(" | ").hex(headerHeaderBits).string(" / ");
-                    boolean headerInImageHeap = ((headerHubBits.aboveOrEqual(firstRORPointer)) && headerHubBits.belowOrEqual(lastRORPointer));
+                    log.string("  headerEntry: ").hex(headerEntry).string(" = ").hex(headerHub).string(" | ").hex(headerHeaderBits).string(" / ");
+                    boolean headerInImageHeap = imageHeapInfo.isInReadOnlyReferencePartition(headerHub) ||
+                                    imageHeapInfo.isInReadOnlyRelocatablePartition(headerHub);
                     if (headerInImageHeap) {
-                        Pointer hubBitsAsPointer = (Pointer) headerHubBits;
-                        Object hubBitsAsObject = KnownIntrinsics.convertUnknownValue(hubBitsAsPointer.toObject(), Object.class);
-                        DynamicHub hubBitsAsDynamicHub = (DynamicHub) hubBitsAsObject;
-                        log.string("  class: ").string(hubBitsAsDynamicHub.getName());
+                        DynamicHub hub = (DynamicHub) KnownIntrinsics.convertUnknownValue(headerHub.toObject(), Object.class);
+                        log.string("  class: ").string(hub.getName());
                         Object entryAsObject = KnownIntrinsics.convertUnknownValue(objectEntry.toObject(), Object.class);
                         if (LayoutEncoding.isArray(entryAsObject)) {
                             int length = KnownIntrinsics.readArrayLength(entryAsObject);

@@ -27,8 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.image.AbstractImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeap;
-import com.oracle.svm.core.image.ImageHeapObject;
-import com.oracle.svm.core.image.ImageHeapPartition;
 
 public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearImageHeapPartition> {
     private final ImageHeapInfo heapInfo;
@@ -37,19 +35,6 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
     public LinearImageHeapLayouter(ImageHeapInfo heapInfo, boolean compressedNullPadding) {
         this.heapInfo = heapInfo;
         this.compressedNullPadding = compressedNullPadding;
-    }
-
-    @Override
-    public void initialize() {
-        if (compressedNullPadding && useHeapBase()) {
-            /*
-             * Zero designates null, so adding some explicit padding at the beginning of the native
-             * image heap is the easiest approach to make object offsets strictly greater than 0.
-             */
-            assert this.getReadOnlyPrimitive().getSize() == 0L;
-            LinearImageHeapPartition firstPartition = this.getReadOnlyPrimitive();
-            firstPartition.size += ConfigurationValues.getObjectLayout().getAlignment();
-        }
     }
 
     @Override
@@ -63,15 +48,19 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
     }
 
     @Override
-    public void assignPartitionRelativeOffsets(ImageHeap imageHeap) {
-        for (ImageHeapObject info : imageHeap.getObjects()) {
-            ImageHeapPartition partition = info.getPartition();
-            partition.allocate(info);
-
-            assert ConfigurationValues.getObjectLayout().isAligned(info.getOffsetInPartition()) : "start: " + info.getOffsetInPartition() + " must be aligned.";
-            assert ConfigurationValues.getObjectLayout().isAligned(partition.getSize()) : "size: " + partition.getSize() + " must be aligned.";
+    protected void doLayout(ImageHeap imageHeap) {
+        long startOffset = 0;
+        if (compressedNullPadding) {
+            /*
+             * Zero designates null, so adding some explicit padding at the beginning of the native
+             * image heap is the easiest approach to make object offsets strictly greater than 0.
+             */
+            startOffset += ConfigurationValues.getObjectLayout().getAlignment();
         }
-
+        LinearImageHeapAllocator allocator = new LinearImageHeapAllocator(startOffset);
+        for (LinearImageHeapPartition partition : getPartitions()) {
+            partition.allocateObjects(allocator);
+        }
         initializeHeapInfo();
     }
 
@@ -80,16 +69,8 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
      * the read-only reference partition with the read-only relocatable partition.
      */
     private void initializeHeapInfo() {
-        Object firstReadOnlyReferenceObject = getReadOnlyReference().firstObject;
-        if (firstReadOnlyReferenceObject == null) {
-            firstReadOnlyReferenceObject = getReadOnlyRelocatable().firstObject;
-        }
-
-        Object lastReadOnlyReferenceObject = getReadOnlyRelocatable().lastObject;
-        if (lastReadOnlyReferenceObject == null) {
-            lastReadOnlyReferenceObject = getReadOnlyReference().lastObject;
-        }
-        heapInfo.initialize(getReadOnlyPrimitive().firstObject, getReadOnlyPrimitive().lastObject, firstReadOnlyReferenceObject, lastReadOnlyReferenceObject,
-                        getWritablePrimitive().firstObject, getWritablePrimitive().lastObject, getWritableReference().firstObject, getWritableReference().lastObject);
+        heapInfo.initialize(getReadOnlyPrimitive().firstObject, getReadOnlyPrimitive().lastObject, getReadOnlyReference().firstObject, getReadOnlyReference().lastObject,
+                        getReadOnlyRelocatable().firstObject, getReadOnlyRelocatable().lastObject, getWritablePrimitive().firstObject, getWritablePrimitive().lastObject,
+                        getWritableReference().firstObject, getWritableReference().lastObject);
     }
 }

@@ -39,6 +39,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 public final class ImageHeapWalker {
     private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> READ_ONLY_PRIMITIVE_WALKER = new ReadOnlyPrimitiveMemoryWalkerAccess();
     private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> READ_ONLY_REFERENCE_WALKER = new ReadOnlyReferenceMemoryWalkerAccess();
+    private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> READ_ONLY_RELOCATABLE_WALKER = new ReadOnlyRelocatableMemoryWalkerAccess();
     private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> WRITABLE_PRIMITIVE_WALKER = new WritablePrimitiveMemoryWalkerAccess();
     private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> WRITABLE_REFERENCE_WALKER = new WritableReferenceMemoryWalkerAccess();
 
@@ -48,6 +49,7 @@ public final class ImageHeapWalker {
     public static boolean walkRegions(ImageHeapInfo heapInfo, MemoryWalker.Visitor visitor) {
         return visitor.visitNativeImageHeapRegion(heapInfo, READ_ONLY_PRIMITIVE_WALKER) &&
                         visitor.visitNativeImageHeapRegion(heapInfo, READ_ONLY_REFERENCE_WALKER) &&
+                        visitor.visitNativeImageHeapRegion(heapInfo, READ_ONLY_RELOCATABLE_WALKER) &&
                         visitor.visitNativeImageHeapRegion(heapInfo, WRITABLE_PRIMITIVE_WALKER) &&
                         visitor.visitNativeImageHeapRegion(heapInfo, WRITABLE_REFERENCE_WALKER);
     }
@@ -55,6 +57,7 @@ public final class ImageHeapWalker {
     public static boolean walkImageHeapObjects(ImageHeapInfo heapInfo, ObjectVisitor visitor) {
         return walkPartition(heapInfo.firstReadOnlyPrimitiveObject, heapInfo.lastReadOnlyPrimitiveObject, visitor) &&
                         walkPartition(heapInfo.firstReadOnlyReferenceObject, heapInfo.lastReadOnlyReferenceObject, visitor) &&
+                        walkPartition(heapInfo.firstReadOnlyRelocatableObject, heapInfo.lastReadOnlyRelocatableObject, visitor) &&
                         walkPartition(heapInfo.firstWritablePrimitiveObject, heapInfo.lastWritablePrimitiveObject, visitor) &&
                         walkPartition(heapInfo.firstWritableReferenceObject, heapInfo.lastWritableReferenceObject, visitor);
     }
@@ -82,6 +85,8 @@ public final class ImageHeapWalker {
                         Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyPrimitiveObject)).newline();
         log.string("ReadOnly References: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyReferenceObject)).string(" .. ").hex(
                         Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyReferenceObject)).newline();
+        log.string("ReadOnly Relocatables: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyRelocatableObject)).string(" .. ").hex(
+                        Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyRelocatableObject)).newline();
         log.string("Writable Primitives: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritablePrimitiveObject)).string(" .. ").hex(
                         Word.objectToUntrackedPointer(imageHeapInfo.lastWritablePrimitiveObject)).newline();
         log.string("Writable References: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject)).string(" .. ").hex(
@@ -164,6 +169,23 @@ final class ReadOnlyReferenceMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Override
     public Object getLastObject(ImageHeapInfo info) {
         return info.lastReadOnlyReferenceObject;
+    }
+}
+
+final class ReadOnlyRelocatableMemoryWalkerAccess extends MemoryWalkerAccessBase {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    ReadOnlyRelocatableMemoryWalkerAccess() {
+        super("read-only relocatables", true, false);
+    }
+
+    @Override
+    public Object getFirstObject(ImageHeapInfo info) {
+        return info.firstReadOnlyRelocatableObject;
+    }
+
+    @Override
+    public Object getLastObject(ImageHeapInfo info) {
+        return info.lastReadOnlyRelocatableObject;
     }
 }
 
